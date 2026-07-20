@@ -306,9 +306,9 @@ dall'upsell.
 - [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end
 - [x] Ricerca professionisti per categoria/città — `GET /professionals/search` e `/professionals/:id` reali su Postgres, ranking boost→rating→recensioni, SSR/ISR su homepage, `/cerca/[categoria]` e `/professionista/[id]`. Filtro geografico ancora per città (stringa), non raggio PostGIS — richiede geocoding reale degli indirizzi professionista, rimandato a quando i professionisti si registrano con indirizzo vero.
 - [x] Richiesta guidata + fan-out lead — `POST /guided-requests` (autenticato) crea la richiesta e i `Lead` per i professionisti compatibili in categoria+città (o il singolo professionista se la richiesta parte dal suo profilo), pagina `/preventivo` e `/le-mie-richieste` funzionanti end-to-end. Upload foto non ancora implementato: nessun servizio di object storage (S3-compatibile) è nello stack approvato in CLAUDE.md §2, va deciso prima di aggiungerlo. Suggerimento IA sulla categoria dalla foto (menzionato in §7-8) rimandato allo stesso momento.
-- [ ] Preventivo strutturato in-app + modello a lead a pagamento
-- [ ] Recensioni vincolate a prenotazione confermata
-- [ ] Dashboard professionista (agenda, promemoria automatici)
+- [x] Preventivo strutturato in-app — `POST /quotes` (solo se il professionista ha ricevuto il lead), `POST /bookings/from-quote/:id` per l'accettazione cliente → crea `Booking` e chiude la richiesta. Modello a lead a pagamento: il prezzo per lead è calcolato e salvato (`Lead.priceEurCents`, standard vs urgente), ma il gate di pagamento reale al professionista arriva con Stripe (vedi voce sotto) — oggi i lead sono visibili gratis in dashboard.
+- [x] Recensioni vincolate a prenotazione confermata — `POST /reviews` accetta solo `bookingId` con status `COMPLETED`, un cliente non può recensire due volte la stessa prenotazione; il rating mostrato in ricerca è sempre calcolato dalle recensioni reali, mai un valore statico.
+- [x] Dashboard professionista — `/dashboard/profilo` (creazione/modifica profilo pubblico) e `/dashboard` (richieste ricevute con invio preventivo inline, agenda prenotazioni con stato). Promemoria automatici anti no-show non ancora implementati: serve integrare Resend/Twilio (già nello stack approvato) con un job schedulato (BullMQ), rimandato insieme a Stripe.
 - [ ] Abbonamenti Stripe (upsell da Free a Pro/Business)
 - [ ] Pacchetti di visibilità/boost ricerca
 - [ ] Flusso "richiesta urgente" con instant-match

@@ -19,6 +19,7 @@ export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
 
 export const registerSchema = emailPasswordSchema.extend({
   name: z.string().min(2).max(120).optional(),
+  role: z.enum(["CLIENT", "PROFESSIONAL"]).default("CLIENT"),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -45,6 +46,10 @@ export const quoteSchema = z.object({
 });
 export type QuoteInput = z.infer<typeof quoteSchema>;
 
+/** Preventivo inviato dal professionista autenticato: professionalProfileId viene dal JWT, non dal body. */
+export const quoteSelfSchema = quoteSchema.omit({ professionalProfileId: true });
+export type QuoteSelfInput = z.infer<typeof quoteSelfSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),
@@ -64,3 +69,17 @@ export const professionalProfileSchema = z.object({
   bio: z.string().max(2000).optional(),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
+
+/**
+ * Creazione/aggiornamento del proprio profilo professionista (userId preso
+ * dal JWT, non dal body). Nessuna geocodifica reale ancora disponibile
+ * (CLAUDE.md §2): lat/lng sono opzionali e restano 0,0 finché non si integra
+ * un servizio di geocoding, la ricerca filtra comunque per città come stringa.
+ */
+export const professionalProfileSelfSchema = professionalProfileSchema
+  .omit({ userId: true, latitude: true, longitude: true })
+  .extend({
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+  });
+export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;

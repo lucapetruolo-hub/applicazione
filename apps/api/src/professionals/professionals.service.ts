@@ -1,6 +1,14 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { ProfessionalDetail, ProfessionalSearchResult, ProfessionalCategorySlug } from "@professionisti/shared";
+import type {
+  MyProfessionalProfile,
+  ProfessionalBooking,
+  ProfessionalDetail,
+  ProfessionalLead,
+  ProfessionalSearchResult,
+  ProfessionalCategorySlug,
+  ProfessionalProfileSelfInput,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
 export type ProfessionalSearchParams = {
@@ -101,5 +109,120 @@ export class ProfessionalsService {
         createdAt: review.createdAt.toISOString(),
       })),
     };
+  }
+
+  async getMyProfile(userId: string): Promise<MyProfessionalProfile | null> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      include: { category: true },
+    });
+    if (!profile) return null;
+
+    return {
+      id: profile.id,
+      businessName: profile.businessName,
+      categorySlug: profile.category.slug,
+      categoryLabel: profile.category.label,
+      city: profile.city,
+      bio: profile.bio,
+      subTags: profile.subTags,
+      verified: profile.verified,
+    };
+  }
+
+  async upsertMyProfile(userId: string, input: ProfessionalProfileSelfInput): Promise<MyProfessionalProfile> {
+    const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
+    if (!category) {
+      throw new NotFoundException("Categoria non valida.");
+    }
+
+    const profile = await this.prisma.professionalProfile.upsert({
+      where: { userId },
+      update: {
+        categoryId: category.id,
+        subTags: input.subTags,
+        businessName: input.businessName,
+        city: input.city,
+        ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
+        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
+        bio: input.bio,
+      },
+      create: {
+        userId,
+        categoryId: category.id,
+        subTags: input.subTags,
+        businessName: input.businessName,
+        city: input.city,
+        latitude: input.latitude ?? 0,
+        longitude: input.longitude ?? 0,
+        bio: input.bio,
+      },
+      include: { category: true },
+    });
+
+    return {
+      id: profile.id,
+      businessName: profile.businessName,
+      categorySlug: profile.category.slug,
+      categoryLabel: profile.category.label,
+      city: profile.city,
+      bio: profile.bio,
+      subTags: profile.subTags,
+      verified: profile.verified,
+    };
+  }
+
+  private async requireMyProfileId(userId: string): Promise<string> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) {
+      throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    }
+    return profile.id;
+  }
+
+  async getMyLeads(userId: string): Promise<ProfessionalLead[]> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    const leads = await this.prisma.lead.findMany({
+      where: { professionalProfileId },
+      include: {
+        guidedRequest: { include: { category: true, quotes: { where: { professionalProfileId } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return leads.map((lead) => ({
+      id: lead.id,
+      status: lead.status,
+      priceEurCents: lead.priceEurCents,
+      createdAt: lead.createdAt.toISOString(),
+      hasQuote: lead.guidedRequest.quotes.length > 0,
+      guidedRequest: {
+        id: lead.guidedRequest.id,
+        categoryLabel: lead.guidedRequest.category.label,
+        description: lead.guidedRequest.description,
+        city: lead.guidedRequest.city,
+        isUrgent: lead.guidedRequest.isUrgent,
+      },
+    }));
+  }
+
+  async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    const bookings = await this.prisma.booking.findMany({
+      where: { professionalProfileId },
+      include: { client: true, quote: true },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return bookings.map((booking) => ({
+      id: booking.id,
+      scheduledAt: booking.scheduledAt.toISOString(),
+      status: booking.status,
+      clientName: booking.client.name,
+      laborEurCents: booking.quote?.laborEurCents ?? null,
+      materialsEurCents: booking.quote?.materialsEurCents ?? null,
+    }));
   }
 }

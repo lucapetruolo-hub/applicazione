@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
 import { Button, H1, Text, YStack } from "@professionisti/ui";
@@ -11,8 +11,20 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { AuthInput } from "@/components/AuthInput";
 
 export default function RegistratiPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegistratiForm />
+    </Suspense>
+  );
+}
+
+function RegistratiForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  const isProfessional = searchParams.get("ruolo") === "professionista";
+  const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -21,12 +33,17 @@ export default function RegistratiPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function afterAuth() {
+    router.push(isProfessional ? "/dashboard/profilo" : "/");
+  }
+
   async function handleRegister() {
     setError(null);
     const result = registerSchema.safeParse({
       email: email.trim(),
       password,
       name: name.trim() || undefined,
+      role,
     });
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Dati non validi.");
@@ -35,9 +52,9 @@ export default function RegistratiPage() {
 
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.register(result.data.email, result.data.password, result.data.name);
+      const { token } = await apiClient.register(result.data.email, result.data.password, result.data.name, result.data.role);
       await login(token);
-      router.push("/");
+      afterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -51,7 +68,7 @@ export default function RegistratiPage() {
     try {
       const { token } = await apiClient.verifyGoogle(idToken);
       await login(token);
-      router.push("/");
+      afterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -62,7 +79,12 @@ export default function RegistratiPage() {
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={420} gap="$4">
-        <H1 size="$8">Crea il tuo account</H1>
+        <YStack gap="$1">
+          <H1 size="$8">{isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}</H1>
+          {isProfessional ? (
+            <Text color="$color10">Gratis per iniziare: completa il profilo e inizia a ricevere richieste.</Text>
+          ) : null}
+        </YStack>
 
         <GoogleSignInButton onCredential={handleGoogleCredential} />
 

@@ -1,9 +1,24 @@
 import type {
   PROFESSIONAL_CATEGORIES,
   GuidedRequestInput,
+  MyProfessionalProfile,
+  ProfessionalBooking,
   ProfessionalDetail,
+  ProfessionalLead,
+  ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
+  QuoteSelfInput,
+  ReviewInput,
 } from "@professionisti/shared";
+
+export type ClientBooking = {
+  id: string;
+  scheduledAt: string;
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
+  businessName: string;
+  professionalProfileId: string;
+  hasReview: boolean;
+};
 
 export type ClientGuidedRequest = {
   id: string;
@@ -81,10 +96,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     health: () => request<{ status: string }>("/health"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
-    register: (email: string, password: string, name?: string) =>
+    register: (email: string, password: string, name?: string, role?: "CLIENT" | "PROFESSIONAL") =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, name, role }),
       }),
 
     login: (email: string, password: string) =>
@@ -121,6 +136,52 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     myGuidedRequests: (token: string) =>
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    getMyProfessionalProfile: (token: string) =>
+      request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    upsertMyProfessionalProfile: (token: string, input: ProfessionalProfileSelfInput) =>
+      request<MyProfessionalProfile>("/professionals/me", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    myLeads: (token: string) =>
+      request<ProfessionalLead[]>("/professionals/me/leads", { headers: { Authorization: `Bearer ${token}` } }),
+
+    myProfessionalBookings: (token: string) =>
+      request<ProfessionalBooking[]>("/professionals/me/bookings", { headers: { Authorization: `Bearer ${token}` } }),
+
+    createQuote: (token: string, input: QuoteSelfInput) =>
+      request<{ id: string; status: string }>("/quotes", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    acceptQuote: (token: string, quoteId: string) =>
+      request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    updateBookingStatus: (token: string, bookingId: string, status: "COMPLETED" | "CANCELED" | "NO_SHOW") =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      }),
+
+    myClientBookings: (token: string) =>
+      request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    createReview: (token: string, input: ReviewInput) =>
+      request<{ id: string }>("/reviews", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
   };
 }
 

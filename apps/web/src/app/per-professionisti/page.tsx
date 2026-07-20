@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SUBSCRIPTION_PLANS } from "@professionisti/shared";
+import { PerProfessionistiContent } from "./PerProfessionistiContent";
 
 export const metadata: Metadata = {
   title: "Per i professionisti",
@@ -6,10 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function PerProfessionistiPage() {
-  return (
-    <main style={{ padding: "64px 24px", textAlign: "center" }}>
-      <h1>Iscrizione professionisti — presto disponibile</h1>
-      <p>Stiamo costruendo il flusso di registrazione. Torna a trovarci a breve.</p>
-    </main>
-  );
+  return <PerProfessionistiContent plans={SUBSCRIPTION_PLANS} />;
 }

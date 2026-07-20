@@ -22,7 +22,7 @@ export class AuthController {
 
   @Post("register")
   async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput) {
-    return this.authService.register(body.email, body.password, body.name);
+    return this.authService.register(body.email, body.password, body.name, body.role);
   }
 
   @Post("login")

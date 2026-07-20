@@ -20,14 +20,14 @@ export class AuthService {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
 
-  async register(email: string, password: string, name?: string): Promise<AuthResult> {
+  async register(email: string, password: string, name?: string, role: "CLIENT" | "PROFESSIONAL" = "CLIENT"): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new ConflictException("Esiste già un account con questa email.");
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user = await this.prisma.user.create({ data: { email, passwordHash, name } });
+    const user = await this.prisma.user.create({ data: { email, passwordHash, name, role } });
 
     return { token: this.issueToken(user.id), isNewUser: true };
   }
