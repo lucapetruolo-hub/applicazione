@@ -1,0 +1,8 @@
+{
+  "extends": "@professionisti/config/tsconfig.reactnative.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

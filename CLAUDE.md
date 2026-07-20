@@ -59,6 +59,21 @@ Implicazioni tecniche dirette:
 Non introdurre framework o servizi alternativi a questa tabella senza
 prima discuterne e aggiornare questo file.
 
+**Note tecniche di scaffolding:**
+- `.npmrc` usa `node-linker=hoisted`: richiesto da Expo/Metro in monorepo
+  pnpm (risolve problemi di risoluzione dei moduli nested). Non rimuoverlo.
+- I package condivisi (`packages/shared`, `packages/api-client`,
+  `packages/database`) hanno uno step di **build reale** (tsc → `dist/`),
+  non vengono consumati come sorgente TS: `apps/api` (NestJS) esegue
+  `node dist/main.js` in produzione e non transpila i `node_modules` a
+  runtime, a differenza di Next.js (`transpilePackages`) e Metro. `turbo dev`
+  dipende da `^build` per garantire che i package siano compilati prima
+  dell'avvio dei dev server.
+- Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud),
+  non in locale: `expo export` in locale è soggetto a un conflitto di
+  versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
+  risolverlo per un comando che non è il path di build reale.
+
 ---
 
 ## 3. Architettura (vista d'insieme)
@@ -263,11 +278,11 @@ dall'upsell.
 
 - [x] Architettura approvata dall'utente
 - [x] Decisioni di prodotto (categorie, piani, go-to-market) approvate
-- [ ] Scaffolding monorepo (Turborepo/pnpm)
-- [ ] Setup `apps/api` (NestJS + Prisma + Postgres)
-- [ ] Setup `apps/web` (Next.js)
-- [ ] Setup `apps/mobile` (Expo)
-- [ ] Design system condiviso (`packages/ui`)
+- [x] Scaffolding monorepo (Turborepo/pnpm) — build e typecheck verdi su tutti i package
+- [x] Setup `apps/api` (NestJS + Prisma + Postgres) — health check + endpoint categorie funzionanti
+- [x] Setup `apps/web` (Next.js) — home + pagine categoria SSG (`/cerca/[categoria]`)
+- [x] Setup `apps/mobile` (Expo Router) — home + schermata categoria, stessa struttura di rotte del web
+- [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
 - [ ] Autenticazione (OTP telefonico)
 - [ ] Ricerca professionisti per categoria/geolocalizzazione
 - [ ] Richiesta guidata (foto + domande → categoria/prezzo stimato) + fan-out

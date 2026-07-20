@@ -1,0 +1,9 @@
+{
+  "extends": "@professionisti/config/tsconfig.node.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}

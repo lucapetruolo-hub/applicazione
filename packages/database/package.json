@@ -1,0 +1,22 @@
+{
+  "name": "@professionisti/database",
+  "private": true,
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "@professionisti/config": "workspace:*",
+    "@types/node": "^22.7.0",
+    "prisma": "^5.20.0",
+    "typescript": "^5.6.0"
+  }
+}
