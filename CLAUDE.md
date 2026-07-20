@@ -163,18 +163,119 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
 
 ---
 
-## 6. Stato del progetto
+## 6. Decisioni di prodotto
 
-- [ ] Architettura approvata dall'utente
+### Categorie professionisti (MVP)
+
+Lancio con poche categorie ad alta frequenza di ricerca, poi si espande:
+idraulico, elettricista, imbianchino, pulizie (casa/ufficio), giardiniere,
+traslochi, fabbro, climatizzazione/caldaie, muratore/ristrutturazioni,
+falegname. Ogni categoria ha sotto-tag di specializzazione (es. Elettricista
+→ impianti civili, domotica, certificazioni), usati sia per il matching in
+ricerca sia per differenziare i piani a pagamento.
+
+### Monetizzazione professionista — piani SaaS
+
+| Piano | Prezzo indicativo | Cosa include |
+|---|---|---|
+| **Free** | €0 | Profilo base, riceve richieste, nessuna agenda automatica |
+| **Pro** | ~€29/mese | Agenda digitale, promemoria automatici (SMS/push), badge "verificato" |
+| **Business** | ~€59/mese | + fatturazione, multi-operatore, statistiche comparative |
+
+Il piano Free è strategico: serve a popolare l'offerta sul marketplace fin
+dal day 1 (senza professionisti non c'è ricerca). Il ricavo arriva
+dall'upsell.
+
+### Pacchetti di visibilità
+
+- **Boost locale**: prime posizioni nei risultati per categoria + zona, a
+  canone mensile o a credito consumato per contatto ricevuto.
+- **Badge reputazione**: evidenza per rating alto + tempo di risposta rapido.
+- **Storie di successo**: contenuti editoriali per i top professionisti
+  (leva marketing/retention, come su miodottore.it).
+
+---
+
+## 7. Strategia go-to-market
+
+1. **Concentrare la liquidità, non disperderla**: lanciare in 1 città con 3
+   categoria ad alta frequenza (idraulico, elettricista, pulizie) prima di
+   espandere. Un marketplace con ricerca vuota non converte, a prescindere
+   da quante città copre sulla carta.
+2. **Bootstrap manuale del lato offerta**: i primi 50-100 professionisti per
+   città vanno reclutati uno per uno (telefonate, contatti diretti), con
+   piano Pro gratuito per i primi 3 mesi. Senza offerta reale non c'è
+   domanda da servire.
+3. **Sequenza dei ricavi: lead a pagamento prima dell'abbonamento flat.**
+   Un artigiano non si fida di un canone fisso finché non vede un lavoro
+   arrivare dalla piattaforma. Fase iniziale a pagamento per lead
+   qualificato (es. €3-8 a richiesta di preventivo ricevuta); solo dopo che
+   il professionista vede ROI concreto lo si converte su abbonamento flat.
+   **Questo cambia l'ordine del MVP**: il flusso "richiesta guidata + lead a
+   pagamento" viene prima dell'abbonamento Stripe ricorrente (vedi sezione 9).
+4. **La retention vera viene dal gestionale, non dal boost.** Il boost si
+   disattiva con un click; l'agenda con storico clienti/fatture crea
+   switching cost reale. Priorità di investimento tecnico coerente con
+   questo.
+5. **Verticale "urgenza" come margine più alto**: un flusso "richiesta
+   urgente" con instant-match e notifica push immediata ai professionisti
+   disponibili "ora" (es. idraulico per allagamento) giustifica una
+   commissione più alta sul singolo intervento e differenzia da chi offre
+   solo un elenco statico.
+6. **SEO locale come canale di acquisizione a costo quasi zero**: pagine
+   "quanto costa un [servizio] a [città]", recensioni per città/categoria —
+   motivo per cui Next.js SSR non è negoziabile (vedi sezione 2).
+
+---
+
+## 8. Funzionalità chiave per innovazione, utilità, semplicità d'uso
+
+- **Richiesta guidata invece di ricerca a scaffale**: foto + poche domande
+  guidate → il sistema suggerisce categoria/sotto-categoria e un range di
+  prezzo stimato, poi fa il fan-out ai professionisti compatibili in zona.
+  Riduce le richieste alla categoria sbagliata, causa primaria di abbandono
+  in questi marketplace.
+- **Preventivo strutturato in-app**, non solo scambio di numero di
+  telefono: modulo con manodopera/materiali/tempistiche, per mantenere la
+  piattaforma nel mezzo della transazione (necessario anche per il modello
+  a lead/commissione).
+- **Recensioni solo da prenotazione confermata**: niente recensioni libere,
+  per credibilità del sistema reputazionale che giustifica il badge a
+  pagamento.
+- **Onboarding pensato per professionisti non digital-native**: login via
+  OTP telefonico (no password), profilo minimo obbligatorio, bio generata
+  da voce-testo; in fase di lancio manuale, un operatore crea il profilo al
+  telefono con loro.
+- **Notifiche quasi istantanee sulle nuove richieste**: in un mercato
+  locale il primo professionista che risponde spesso si aggiudica il
+  lavoro — la latenza della coda (Redis/BullMQ) è una feature competitiva,
+  non un dettaglio tecnico.
+- **App leggera e offline-friendly**: i professionisti sono spesso su
+  cantieri con connessione scarsa — caching locale delle richieste, retry
+  automatico sull'invio.
+- **Dashboard con dati comparativi** ("il tuo profilo ha ricevuto 12
+  visite, la media di categoria+zona è 28"): leva di prodotto per l'upsell
+  al boost, costruita con dati già raccolti.
+
+---
+
+## 9. Stato del progetto
+
+- [x] Architettura approvata dall'utente
+- [x] Decisioni di prodotto (categorie, piani, go-to-market) approvate
 - [ ] Scaffolding monorepo (Turborepo/pnpm)
 - [ ] Setup `apps/api` (NestJS + Prisma + Postgres)
 - [ ] Setup `apps/web` (Next.js)
 - [ ] Setup `apps/mobile` (Expo)
 - [ ] Design system condiviso (`packages/ui`)
-- [ ] Autenticazione
+- [ ] Autenticazione (OTP telefonico)
 - [ ] Ricerca professionisti per categoria/geolocalizzazione
-- [ ] Dashboard professionista (agenda, promemoria)
-- [ ] Abbonamenti Stripe
+- [ ] Richiesta guidata (foto + domande → categoria/prezzo stimato) + fan-out
+- [ ] Preventivo strutturato in-app + modello a lead a pagamento
+- [ ] Recensioni vincolate a prenotazione confermata
+- [ ] Dashboard professionista (agenda, promemoria automatici)
+- [ ] Abbonamenti Stripe (upsell da Free a Pro/Business)
 - [ ] Pacchetti di visibilità/boost ricerca
+- [ ] Flusso "richiesta urgente" con instant-match
 
 *(Sezione da spuntare/aggiornare mano a mano che si procede.)*
