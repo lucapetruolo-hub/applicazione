@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES, findCategoryByQuery } from "@professionisti/shared";
+import { ITALIAN_CITIES, PLACEHOLDER_PROFESSIONALS, PROFESSIONAL_CATEGORIES, findCategoryByQuery } from "@professionisti/shared";
 import {
   Hero,
   CategoryChips,
@@ -15,6 +15,7 @@ import {
   Text,
   XStack,
   YStack,
+  type ProfessionalSuggestion,
 } from "@professionisti/ui";
 
 // Sotto-servizi in evidenza: campione flat dei subTags di ogni categoria.
@@ -46,19 +47,32 @@ const CLIENT_REVIEWS = [
   { authorName: "Davide P.", rating: 4, text: "Buon lavoro, consigliato per piccole riparazioni urgenti." },
 ];
 
-const NEW_PROFESSIONALS = [
-  { businessName: "Rossi Impianti", categorySlug: "elettricista", categoryLabel: "Elettricista", city: "Latina", rating: 4.8, verified: true },
-  { businessName: "Bianchi Idraulica", categorySlug: "idraulico", categoryLabel: "Idraulico", city: "Roma", rating: 4.6, verified: true },
-  { businessName: "Verdi Pulizie", categorySlug: "pulizie", categoryLabel: "Pulizie", city: "Napoli", rating: 4.9, verified: false },
-  { businessName: "Colombo Ristrutturazioni", categorySlug: "muratore", categoryLabel: "Muratore e ristrutturazioni", city: "Milano", rating: 4.7, verified: true },
-];
+const PROFESSIONAL_SUGGESTIONS: ProfessionalSuggestion[] = PLACEHOLDER_PROFESSIONALS.map((pro) => ({
+  id: pro.businessName,
+  name: pro.businessName,
+  subtitle: `${pro.categoryLabel} · ${pro.city}`,
+  categorySlug: pro.categorySlug,
+  city: pro.city,
+}));
 
 export default function HomePage() {
   const router = useRouter();
 
-  function handleSearch({ query, city }: { query: string; city: string }) {
-    const category = findCategoryByQuery(query);
+  function handleSearch({
+    query,
+    city,
+    professional,
+  }: {
+    query: string;
+    city: string;
+    professional?: ProfessionalSuggestion;
+  }) {
     const params = city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : "";
+    if (professional) {
+      router.push(`/cerca/${professional.categorySlug}${params}`);
+      return;
+    }
+    const category = findCategoryByQuery(query);
     if (category) {
       router.push(`/cerca/${category.slug}${params}`);
     }
@@ -72,6 +86,8 @@ export default function HomePage() {
         onSearch={handleSearch}
         onUrgentPress={() => router.push("/urgente")}
         onQuotePress={() => router.push("/preventivo")}
+        professionalSuggestions={PROFESSIONAL_SUGGESTIONS}
+        citySuggestions={[...ITALIAN_CITIES]}
       />
 
       <YStack width="100%" maxWidth={1080} paddingVertical="$6" paddingHorizontal="$4" gap="$4" alignItems="center">
@@ -133,7 +149,7 @@ export default function HomePage() {
       <YStack width="100%" maxWidth={1080} paddingVertical="$8" paddingHorizontal="$4" gap="$4">
         <H2 size="$7">Nuovi professionisti su Professionisti</H2>
         <XStack gap="$3" overflow="scroll" paddingBottom="$2">
-          {NEW_PROFESSIONALS.map((pro) => (
+          {PLACEHOLDER_PROFESSIONALS.map((pro) => (
             <YStack key={pro.businessName} minWidth={220} gap="$2">
               <ProfessionalCard
                 businessName={pro.businessName}

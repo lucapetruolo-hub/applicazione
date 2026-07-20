@@ -1,21 +1,46 @@
 import { useState } from "react";
-import { Input, XStack, YStack } from "tamagui";
+import { Text, XStack, YStack } from "tamagui";
+import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
 
-export type SearchBarProps = {
-  onSearch: (params: { query: string; city: string }) => void;
-  initialQuery?: string;
-  initialCity?: string;
+export type ProfessionalSuggestion = {
+  id: string;
+  name: string;
+  subtitle: string;
+  categorySlug: string;
+  city: string;
 };
 
-export function SearchBar({ onSearch, initialQuery = "", initialCity = "" }: SearchBarProps) {
+export type SearchBarProps = {
+  onSearch: (params: { query: string; city: string; professional?: ProfessionalSuggestion }) => void;
+  initialQuery?: string;
+  initialCity?: string;
+  /** Suggerimenti mostrati mentre si scrive nel campo "Cosa cerchi". */
+  professionalSuggestions?: ProfessionalSuggestion[];
+  /** Suggerimenti mostrati mentre si scrive nel campo "Città". */
+  citySuggestions?: string[];
+};
+
+export function SearchBar({
+  onSearch,
+  initialQuery = "",
+  initialCity = "",
+  professionalSuggestions = [],
+  citySuggestions = [],
+}: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
+
+  function handleSelectProfessional(professional: ProfessionalSuggestion) {
+    setQuery(professional.name);
+    setCity(professional.city);
+    onSearch({ query: professional.name, city: professional.city, professional });
+  }
 
   return (
     <YStack
       gap="$3"
-      $gtSm={{ flexDirection: "row", alignItems: "center" }}
+      $gtSm={{ flexDirection: "row", alignItems: "flex-start" }}
       backgroundColor="white"
       padding="$3"
       borderRadius="$6"
@@ -24,24 +49,34 @@ export function SearchBar({ onSearch, initialQuery = "", initialCity = "" }: Sea
       shadowOpacity={0.15}
       elevation="$2"
     >
-      <Input
-        flex={2}
-        size="$5"
-        borderWidth={0}
-        placeholder="Cosa cerchi? Es. Idraulico, Elettricista..."
+      <Autocomplete
+        items={professionalSuggestions}
+        getKey={(item) => item.id}
+        getLabel={(item) => item.name}
+        onSelect={handleSelectProfessional}
         value={query}
         onChangeText={setQuery}
-        onSubmitEditing={() => onSearch({ query, city })}
-      />
-      <XStack width={1} height="60%" backgroundColor="$borderColor" display="none" $gtSm={{ display: "flex" }} />
-      <Input
-        flex={1}
+        placeholder="Cosa cerchi? Es. Idraulico, Elettricista..."
         size="$5"
-        borderWidth={0}
-        placeholder="Città"
+        renderItem={(item) => (
+          <YStack gap="$1">
+            <Text fontWeight="600">{item.name}</Text>
+            <Text fontSize="$2" color="$color10">
+              {item.subtitle}
+            </Text>
+          </YStack>
+        )}
+      />
+      <XStack width={1} height={44} backgroundColor="$borderColor" display="none" $gtSm={{ display: "flex" }} />
+      <Autocomplete
+        items={citySuggestions}
+        getKey={(item) => item}
+        getLabel={(item) => item}
+        onSelect={(selectedCity) => setCity(selectedCity)}
         value={city}
         onChangeText={setCity}
-        onSubmitEditing={() => onSearch({ query, city })}
+        placeholder="Città"
+        size="$5"
       />
       <Button size="$5" onPress={() => onSearch({ query, city })}>
         Cerca
