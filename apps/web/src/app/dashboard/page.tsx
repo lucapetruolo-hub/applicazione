@@ -117,6 +117,8 @@ export default function DashboardPage() {
           )}
         </YStack>
 
+        <BoostSection token={token} />
+
         <YStack gap="$3">
           <H2 size="$7">Agenda</H2>
           {bookings === null ? (
@@ -150,6 +152,61 @@ export default function DashboardPage() {
             ))
           )}
         </YStack>
+      </YStack>
+    </YStack>
+  );
+}
+
+const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO"; label: string; description: string; priceEur: number }[] = [
+  { type: "BOOST_LOCALE", label: "Boost locale", description: "Prime posizioni nei risultati per 30 giorni.", priceEur: 19.9 },
+  { type: "BADGE_REPUTAZIONE", label: "Badge reputazione", description: "Evidenza per rating alto e risposta rapida.", priceEur: 9.9 },
+  { type: "STORIA_SUCCESSO", label: "Storia di successo", description: "Contenuto editoriale in evidenza sulla piattaforma.", priceEur: 49.9 },
+];
+
+function BoostSection({ token }: { token: string }) {
+  const [loadingType, setLoadingType] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleBuy(type: (typeof BOOST_OPTIONS)[number]["type"]) {
+    setError(null);
+    setLoadingType(type);
+    try {
+      const { url } = await apiClient.createBoostCheckout(token, type);
+      if (url) {
+        window.location.href = url;
+      } else {
+        setError("Checkout non disponibile al momento.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setLoadingType(null);
+    }
+  }
+
+  return (
+    <YStack gap="$3">
+      <H2 size="$7">Aumenta la tua visibilità</H2>
+      {error ? <Text color="$red10">{error}</Text> : null}
+      <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
+        {BOOST_OPTIONS.map((option) => (
+          <YStack key={option.type} flex={1} borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
+            <Text fontWeight="700">{option.label}</Text>
+            <Text color="$color10" fontSize="$3">
+              {option.description}
+            </Text>
+            <Text fontWeight="700">€{option.priceEur.toFixed(2)}</Text>
+            <Button
+              size="$3"
+              alignSelf="flex-start"
+              onPress={() => handleBuy(option.type)}
+              disabled={loadingType === option.type}
+              opacity={loadingType === option.type ? 0.6 : 1}
+            >
+              {loadingType === option.type ? "Attendi..." : "Acquista"}
+            </Button>
+          </YStack>
+        ))}
       </YStack>
     </YStack>
   );

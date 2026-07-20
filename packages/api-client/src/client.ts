@@ -182,6 +182,26 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    createSubscriptionCheckout: (token: string, plan: "PRO" | "BUSINESS") =>
+      request<{ url: string | null }>("/billing/subscription/checkout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan }),
+      }),
+
+    createLeadCheckout: (token: string, leadId: string) =>
+      request<{ url: string | null }>(`/billing/leads/${leadId}/checkout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    createBoostCheckout: (token: string, type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO") =>
+      request<{ url: string | null }>("/billing/boost/checkout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type }),
+      }),
   };
 }
 

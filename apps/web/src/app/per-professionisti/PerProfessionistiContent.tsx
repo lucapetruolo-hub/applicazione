@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SUBSCRIPTION_PLANS } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 
 const FEATURE_LABELS: Record<string, string> = {
   "profilo-base": "Profilo pubblico su Professionisti",
@@ -16,6 +20,40 @@ const FEATURE_LABELS: Record<string, string> = {
 };
 
 export function PerProfessionistiContent({ plans }: { plans: typeof SUBSCRIPTION_PLANS }) {
+  const router = useRouter();
+  const { user, token, isLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  async function handlePlanSelect(planSlug: string, priceEurCents: number) {
+    setError(null);
+    if (isLoading) {
+      return;
+    }
+    if (priceEurCents === 0 || !user || !token) {
+      router.push("/registrati?ruolo=professionista");
+      return;
+    }
+    if (user.role !== "PROFESSIONAL") {
+      setError("Il tuo account è registrato come cliente: iscriviti come professionista con un'altra email.");
+      return;
+    }
+
+    setLoadingPlan(planSlug);
+    try {
+      const { url } = await apiClient.createSubscriptionCheckout(token, planSlug.toUpperCase() as "PRO" | "BUSINESS");
+      if (url) {
+        window.location.href = url;
+      } else {
+        setError("Checkout non disponibile al momento.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
   return (
     <YStack width="100%" alignItems="center">
       <YStack width="100%" backgroundColor="$blue2" paddingVertical="$9" paddingHorizontal="$4" alignItems="center" gap="$4">
@@ -37,6 +75,13 @@ export function PerProfessionistiContent({ plans }: { plans: typeof SUBSCRIPTION
         <H2 size="$8" textAlign="center">
           Scegli il piano giusto per te
         </H2>
+
+        {error ? (
+          <Text color="$red10" textAlign="center">
+            {error}
+          </Text>
+        ) : null}
+
         <YStack width="100%" gap="$4" $gtSm={{ flexDirection: "row" }}>
           {plans.map((plan, index) => (
             <YStack
@@ -72,18 +117,19 @@ export function PerProfessionistiContent({ plans }: { plans: typeof SUBSCRIPTION
                 ))}
               </YStack>
 
-              <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-                <Button size="$5" backgroundColor={index === 1 ? "$blue10" : "$color4"} color={index === 1 ? "white" : "$color12"}>
-                  {plan.priceEurCents === 0 ? "Inizia gratis" : "Iscriviti"}
-                </Button>
-              </Link>
+              <Button
+                size="$5"
+                backgroundColor={index === 1 ? "$blue10" : "$color4"}
+                color={index === 1 ? "white" : "$color12"}
+                onPress={() => handlePlanSelect(plan.slug, plan.priceEurCents)}
+                disabled={loadingPlan === plan.slug || isLoading}
+                opacity={loadingPlan === plan.slug || isLoading ? 0.6 : 1}
+              >
+                {loadingPlan === plan.slug ? "Attendi..." : plan.priceEurCents === 0 ? "Inizia gratis" : "Iscriviti"}
+              </Button>
             </YStack>
           ))}
         </YStack>
-        <Text fontSize="$2" color="$color9" textAlign="center">
-          Il pagamento con carta per i piani Pro e Business sarà attivo a breve (integrazione Stripe in corso).
-          Nel frattempo puoi iscriverti gratis e iniziare a ricevere richieste con il piano Free.
-        </Text>
       </YStack>
     </YStack>
   );

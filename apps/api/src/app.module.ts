@@ -8,6 +8,7 @@ import { GuidedRequestsModule } from "./guided-requests/guided-requests.module";
 import { QuotesModule } from "./quotes/quotes.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { ReviewsModule } from "./reviews/reviews.module";
+import { BillingModule } from "./billing/billing.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
     QuotesModule,
     BookingsModule,
     ReviewsModule,
+    BillingModule,
   ],
   controllers: [HealthController],
 })
