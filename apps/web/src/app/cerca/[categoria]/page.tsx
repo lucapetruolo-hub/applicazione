@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  PROFESSIONAL_CATEGORIES,
-  isProfessionalCategorySlug,
-} from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
+import { CategorySearchHeader } from "./CategorySearchHeader";
+import { CategoryContent } from "./CategoryContent";
 
 type PageParams = { categoria: string };
+type PageSearchParams = { citta?: string };
 
 // SSG: pre-genera una pagina per categoria a build time — pagina SEO-critica,
 // non va convertita in client-side rendering (CLAUDE.md §5.4).
@@ -24,21 +24,23 @@ export function generateMetadata({ params }: { params: PageParams }): Metadata {
   };
 }
 
-export default function CategoryPage({ params }: { params: PageParams }) {
+export default function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: PageParams;
+  searchParams: PageSearchParams;
+}) {
   if (!isProfessionalCategorySlug(params.categoria)) {
     notFound();
   }
   const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === params.categoria)!;
+  const city = searchParams.citta;
 
   return (
-    <main>
-      <h1>{category.label} vicino a te</h1>
-      <p>Elenco professionisti in arrivo — ricerca per città e disponibilità.</p>
-      <ul>
-        {category.subTags.map((tag) => (
-          <li key={tag}>{tag}</li>
-        ))}
-      </ul>
-    </main>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <CategorySearchHeader initialQuery={category.label} initialCity={city ?? ""} />
+      <CategoryContent category={category} city={city} />
+    </div>
   );
 }

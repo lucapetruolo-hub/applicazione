@@ -1,27 +1,49 @@
-import { FlatList, Text, View } from "react-native";
-import { Link, useRouter } from "expo-router";
-import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
-import { Button } from "@professionisti/ui";
+import { useState } from "react";
+import { FlatList } from "react-native";
+import { useRouter } from "expo-router";
+import { PROFESSIONAL_CATEGORIES, findCategoryByQuery } from "@professionisti/shared";
+import { CategoryCard, SearchBar, H1, Paragraph, YStack } from "@professionisti/ui";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [errorSlug, setErrorSlug] = useState<string | null>(null);
+
+  function handleSearch({ query, city }: { query: string; city: string }) {
+    const category = findCategoryByQuery(query);
+    if (!category) {
+      setErrorSlug(query);
+      return;
+    }
+    setErrorSlug(null);
+    const params = city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : "";
+    router.push(`/cerca/${category.slug}${params}`);
+  }
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 24, fontWeight: "600" }}>Trova un professionista vicino a te</Text>
-      <Text style={{ marginTop: 8, marginBottom: 16 }}>
-        Idraulico, elettricista, imbianchino e altri servizi verificati nella tua città.
-      </Text>
-      <Button onPress={() => router.push("/cerca/idraulico")}>Cerca un idraulico</Button>
+    <YStack flex={1} backgroundColor="white">
+      <YStack padding="$4" gap="$3" backgroundColor="$blue2">
+        <YStack gap="$1">
+          <H1 size="$8">Trova il professionista giusto</H1>
+          <Paragraph color="$color10">Idraulici, elettricisti, imbianchini vicino a te.</Paragraph>
+        </YStack>
+        <SearchBar onSearch={handleSearch} />
+        {errorSlug ? <Paragraph color="$red10">Nessuna categoria trovata per &quot;{errorSlug}&quot;.</Paragraph> : null}
+      </YStack>
+
       <FlatList
+        contentContainerStyle={{ padding: 16, gap: 12 }}
+        columnWrapperStyle={{ gap: 12 }}
+        numColumns={2}
         data={PROFESSIONAL_CATEGORIES}
         keyExtractor={(category) => category.slug}
         renderItem={({ item }) => (
-          <Link href={`/cerca/${item.slug}`} style={{ paddingVertical: 12 }}>
-            {item.label}
-          </Link>
+          <CategoryCard
+            icon={item.icon}
+            label={item.label}
+            onPress={() => router.push(`/cerca/${item.slug}`)}
+          />
         )}
       />
-    </View>
+    </YStack>
   );
 }

@@ -73,6 +73,17 @@ prima discuterne e aggiornare questo file.
   non in locale: `expo export` in locale è soggetto a un conflitto di
   versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
   risolverlo per un comando che non è il path di build reale.
+- **Regola critica Tamagui**: in `apps/web` e `apps/mobile` non importare
+  MAI primitive da `"tamagui"` direttamente (`Text`, `XStack`, `YStack`,
+  `H1`, `Input`, ecc.) — vanno sempre importate da `"@professionisti/ui"`,
+  che le ri-esporta. Motivo: né `apps/web` né `apps/mobile` dichiarano
+  `tamagui` come propria dipendenza (solo `packages/ui` la dichiara);
+  importarla direttamente crea un'istanza del modulo diversa da quella in
+  cui `createTamagui()` è stato eseguito, causando a runtime l'errore
+  `Can't find Tamagui configuration` (capita sia in SSR che client-side,
+  indipendentemente da `@tamagui/next-plugin`). Se serve una nuova
+  primitiva Tamagui in un'app, va prima ri-esportata da
+  `packages/ui/src/index.ts`.
 
 ---
 
