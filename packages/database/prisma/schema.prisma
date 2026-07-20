@@ -25,11 +25,18 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  role      UserRole @default(CLIENT)
-  email     String?  @unique
-  phone     String   @unique
-  name      String
+  id       String   @id @default(uuid())
+  role     UserRole @default(CLIENT)
+  // Login via email+password o Google (CLAUDE.md §8): con l'email+password
+  // passwordHash è popolato; con Google resta nullo (nessuna password da
+  // gestire per quell'account).
+  email        String? @unique
+  passwordHash String?
+  phone        String? @unique
+  googleId     String? @unique
+  // Nullable: al primo accesso (Google senza scope profilo) il nome
+  // potrebbe non essere noto, va completato in un secondo momento.
+  name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

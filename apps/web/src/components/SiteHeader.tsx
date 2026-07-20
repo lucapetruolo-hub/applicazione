@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { Button, Text, XStack } from "@professionisti/ui";
+import { useAuth } from "@/lib/AuthContext";
 
 export function SiteHeader() {
+  const { user, isLoading, logout } = useAuth();
+
   return (
     <XStack
       width="100%"
@@ -22,11 +25,30 @@ export function SiteHeader() {
         </Text>
       </Link>
       <XStack gap="$4" alignItems="center">
-        <Link href="/accedi" style={{ textDecoration: "none" }}>
-          <Text fontSize="$3" fontWeight="600" color="$blue10">
-            Accedi
-          </Text>
-        </Link>
+        {isLoading ? null : user ? (
+          <>
+            <Text fontSize="$3" color="$color11">
+              {user.name ?? user.phone ?? user.email}
+            </Text>
+            <Text
+              fontSize="$3"
+              fontWeight="600"
+              color="$blue10"
+              cursor="pointer"
+              onPress={logout}
+              accessibilityRole="button"
+              accessibilityLabel="Esci dal tuo account"
+            >
+              Esci
+            </Text>
+          </>
+        ) : (
+          <Link href="/accedi" style={{ textDecoration: "none" }}>
+            <Text fontSize="$3" fontWeight="600" color="$blue10">
+              Accedi
+            </Text>
+          </Link>
+        )}
         <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
           <Button size="$3">Sei un professionista?</Button>
         </Link>

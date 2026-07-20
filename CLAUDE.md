@@ -49,7 +49,7 @@ Implicazioni tecniche dirette:
 | Database | **PostgreSQL** + **PostGIS** | Ricerca geografica (professionisti vicini) nativa in SQL; PostGIS evita di introdurre subito un motore di ricerca separato |
 | ORM | **Prisma** | Type-safety end-to-end condivisa col resto del monorepo TS |
 | Ricerca full-text avanzata (fase 2) | **Meilisearch** o **Typesense** | Da introdurre quando serve ranking sponsorizzato + filtri complessi oltre a ciò che Postgres gestisce bene |
-| Autenticazione | **Auth.js / Clerk** | OAuth + email, sessioni condivisibili tra web e API |
+| Autenticazione | **Email+password + Google Sign-In**, JWT emesso da `apps/api` | Login implementato direttamente in NestJS (bcrypt + `@nestjs/jwt`, niente Auth.js/Clerk): un solo backend emette la sessione per web e mobile. Niente Apple Sign-In (richiede Apple Developer Program a pagamento, non attivato) |
 | Pagamenti | **Stripe** (Subscriptions + Checkout one-off) | Copre sia l'abbonamento SaaS ricorrente sia i pacchetti di visibilità one-shot |
 | Notifiche | Expo Push, **Resend** (email), **Twilio** (SMS) | Promemoria automatici anti no-show |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
@@ -73,6 +73,14 @@ prima discuterne e aggiornare questo file.
   non in locale: `expo export` in locale è soggetto a un conflitto di
   versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
   risolverlo per un comando che non è il path di build reale.
+- **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
+  manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
+  `passport-jwt`. Motivo: con quella combinazione (testata con
+  `@nestjs/core@10.4.22` + `@nestjs/passport@10.0.3`), un guard che nega
+  l'accesso restituisce sempre `500 Internal Server Error` invece di `401`
+  — l'eccezione lanciata da `AuthGuard.handleRequest` non viene propagata
+  correttamente nella pipeline async di Nest. Non reintrodurre passport per
+  l'auth JWT senza aver prima verificato che il bug sia risolto a monte.
 - **Regola critica Tamagui**: in `apps/web` e `apps/mobile` non importare
   MAI primitive da `"tamagui"` direttamente (`Text`, `XStack`, `YStack`,
   `H1`, `Input`, ecc.) — vanno sempre importate da `"@professionisti/ui"`,
@@ -269,7 +277,8 @@ dall'upsell.
   per credibilità del sistema reputazionale che giustifica il badge a
   pagamento.
 - **Onboarding pensato per professionisti non digital-native**: login via
-  OTP telefonico (no password), profilo minimo obbligatorio, bio generata
+  email+password o Google (niente OTP telefonico — deciso e implementato
+  in fase di sviluppo, vedi §2), profilo minimo obbligatorio, bio generata
   da voce-testo; in fase di lancio manuale, un operatore crea il profilo al
   telefono con loro.
 - **Notifiche quasi istantanee sulle nuove richieste**: in un mercato
@@ -294,7 +303,7 @@ dall'upsell.
 - [x] Setup `apps/web` (Next.js) — home + pagine categoria SSG (`/cerca/[categoria]`)
 - [x] Setup `apps/mobile` (Expo Router) — home + schermata categoria, stessa struttura di rotte del web
 - [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
-- [ ] Autenticazione (OTP telefonico)
+- [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end
 - [ ] Ricerca professionisti per categoria/geolocalizzazione
 - [ ] Richiesta guidata (foto + domande → categoria/prezzo stimato) + fan-out
 - [ ] Preventivo strutturato in-app + modello a lead a pagamento

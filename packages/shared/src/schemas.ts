@@ -5,6 +5,23 @@ const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) a
 
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
+export const googleVerifySchema = z.object({
+  idToken: z.string().min(10),
+});
+export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
+
+/** Login via email + password (CLAUDE.md §8). */
+export const emailPasswordSchema = z.object({
+  email: z.string().email("Email non valida"),
+  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+});
+export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
+
+export const registerSchema = emailPasswordSchema.extend({
+  name: z.string().min(2).max(120).optional(),
+});
+export type RegisterInput = z.infer<typeof registerSchema>;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z.object({
   categorySlug: professionalCategorySlugSchema,
