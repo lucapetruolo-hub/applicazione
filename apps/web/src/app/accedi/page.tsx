@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { emailPasswordSchema } from "@professionisti/shared";
-import { Button, H1, Input, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AuthInput } from "@/components/AuthInput";
 
 export default function AccediPage() {
   const router = useRouter();
@@ -72,7 +73,8 @@ export default function AccediPage() {
         ) : null}
 
         <YStack gap="$3">
-          <Input
+          <AuthInput
+            icon={<Text fontSize="$4">✉️</Text>}
             size="$5"
             value={email}
             onChangeText={setEmail}
@@ -82,30 +84,27 @@ export default function AccediPage() {
             accessibilityLabel="Email"
             onSubmitEditing={handleLogin}
           />
-          <YStack position="relative">
-            <Input
-              size="$5"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              secureTextEntry={!showPassword}
-              accessibilityLabel="Password"
-              onSubmitEditing={handleLogin}
-            />
-            <Text
-              position="absolute"
-              right="$3"
-              top="$3"
-              fontSize="$2"
-              color="$blue10"
-              cursor="pointer"
-              onPress={() => setShowPassword((v) => !v)}
-              accessibilityRole="button"
-              accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-            >
-              {showPassword ? "Nascondi" : "Mostra"}
-            </Text>
-          </YStack>
+          <AuthInput
+            icon={<Text fontSize="$4">🔒</Text>}
+            rightElement={
+              <Text
+                fontSize="$4"
+                cursor="pointer"
+                onPress={() => setShowPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </Text>
+            }
+            size="$5"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            accessibilityLabel="Password"
+            onSubmitEditing={handleLogin}
+          />
 
           {error ? (
             <Text color="$red10" fontSize="$3">

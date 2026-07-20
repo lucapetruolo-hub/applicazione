@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, H1, Input, Text, YStack } from "@professionisti/ui";
+import { Button, H1, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AuthInput } from "@/components/AuthInput";
 
 export default function RegistratiPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function RegistratiPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,14 +77,16 @@ export default function RegistratiPage() {
         ) : null}
 
         <YStack gap="$3">
-          <Input
+          <AuthInput
+            icon={<Text fontSize="$4">👤</Text>}
             size="$5"
             value={name}
             onChangeText={setName}
             placeholder="Nome (opzionale)"
             accessibilityLabel="Nome"
           />
-          <Input
+          <AuthInput
+            icon={<Text fontSize="$4">✉️</Text>}
             size="$5"
             value={email}
             onChangeText={setEmail}
@@ -91,12 +95,24 @@ export default function RegistratiPage() {
             autoCapitalize="none"
             accessibilityLabel="Email"
           />
-          <Input
+          <AuthInput
+            icon={<Text fontSize="$4">🔒</Text>}
+            rightElement={
+              <Text
+                fontSize="$4"
+                cursor="pointer"
+                onPress={() => setShowPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </Text>
+            }
             size="$5"
             value={password}
             onChangeText={setPassword}
             placeholder="Password (min. 8 caratteri)"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             accessibilityLabel="Password"
             onSubmitEditing={handleRegister}
           />
