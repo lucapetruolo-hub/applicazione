@@ -8,6 +8,10 @@ export type { SearchBarProps } from "./SearchBar";
 export { Hero } from "./Hero";
 export type { HeroProps } from "./Hero";
 export { IconFeature } from "./IconFeature";
+export { CategoryChips } from "./CategoryChips";
+export type { CategoryChip, CategoryChipsProps } from "./CategoryChips";
+export { TestimonialCard } from "./TestimonialCard";
+export type { TestimonialCardProps } from "./TestimonialCard";
 
 // Tutte le primitive Tamagui usate da apps/web e apps/mobile vanno importate
 // da qui, mai direttamente da "tamagui": apps/web e apps/mobile non

@@ -16,19 +16,9 @@ export function SiteFooter() {
       borderTopColor="$borderColor"
     >
       <XStack flexWrap="wrap" gap="$8" justifyContent="space-between">
-        <YStack gap="$2" maxWidth={280}>
-          <Text fontSize="$5" fontWeight="800" color="$blue10">
-            🛠️ Professionisti
-          </Text>
-          <Text fontSize="$3" color="$color10">
-            Trova e prenota professionisti verificati per la casa: idraulici, elettricisti, imbianchini e altro,
-            vicino a te.
-          </Text>
-        </YStack>
-
         <YStack gap="$2">
           <Text fontSize="$3" fontWeight="700">
-            Categorie
+            Servizi
           </Text>
           {PROFESSIONAL_CATEGORIES.slice(0, 6).map((category) => (
             <Link key={category.slug} href={`/cerca/${category.slug}`} style={{ textDecoration: "none" }}>
@@ -41,11 +31,16 @@ export function SiteFooter() {
 
         <YStack gap="$2">
           <Text fontSize="$3" fontWeight="700">
-            Azienda
+            Per i clienti
           </Text>
-          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+          <Link href="/preventivo" style={{ textDecoration: "none" }}>
             <Text fontSize="$3" color="$color10">
-              Per i professionisti
+              Richiedi un preventivo
+            </Text>
+          </Link>
+          <Link href="/urgente" style={{ textDecoration: "none" }}>
+            <Text fontSize="$3" color="$color10">
+              Richiesta urgente
             </Text>
           </Link>
           <Link href="/accedi" style={{ textDecoration: "none" }}>
@@ -53,6 +48,32 @@ export function SiteFooter() {
               Accedi
             </Text>
           </Link>
+        </YStack>
+
+        <YStack gap="$2">
+          <Text fontSize="$3" fontWeight="700">
+            Per i professionisti
+          </Text>
+          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+            <Text fontSize="$3" color="$color10">
+              Iscriviti gratis
+            </Text>
+          </Link>
+          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+            <Text fontSize="$3" color="$color10">
+              Piani e prezzi
+            </Text>
+          </Link>
+        </YStack>
+
+        <YStack gap="$2" maxWidth={280}>
+          <Text fontSize="$5" fontWeight="800" color="$blue10">
+            🛠️ Professionisti
+          </Text>
+          <Text fontSize="$3" color="$color10">
+            Trova e prenota professionisti verificati per la casa: idraulici, elettricisti, imbianchini e altro,
+            vicino a te.
+          </Text>
         </YStack>
       </XStack>
 

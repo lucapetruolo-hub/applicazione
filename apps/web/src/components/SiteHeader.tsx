@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Text, XStack } from "@professionisti/ui";
+import { Button, Text, XStack } from "@professionisti/ui";
 
 export function SiteHeader() {
   return (
@@ -21,18 +21,14 @@ export function SiteHeader() {
           🛠️ Professionisti
         </Text>
       </Link>
-      <XStack gap="$5" alignItems="center">
-        <XStack display="none" $gtSm={{ display: "flex" }}>
-          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-            <Text fontSize="$3" color="$color12">
-              Per i professionisti
-            </Text>
-          </Link>
-        </XStack>
+      <XStack gap="$4" alignItems="center">
         <Link href="/accedi" style={{ textDecoration: "none" }}>
           <Text fontSize="$3" fontWeight="600" color="$blue10">
             Accedi
           </Text>
+        </Link>
+        <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+          <Button size="$3">Sei un professionista?</Button>
         </Link>
       </XStack>
     </XStack>
