@@ -1,4 +1,4 @@
-import type { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
+import type { PROFESSIONAL_CATEGORIES, ProfessionalDetail, ProfessionalSearchResult } from "@professionisti/shared";
 
 export type ApiClientConfig = {
   baseUrl: string;
@@ -74,6 +74,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    searchProfessionals: (params: { category?: string; city?: string; q?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.category) query.set("category", params.category);
+      if (params.city) query.set("city", params.city);
+      if (params.q) query.set("q", params.q);
+      const queryString = query.toString();
+      return request<ProfessionalSearchResult[]>(`/professionals/search${queryString ? `?${queryString}` : ""}`);
+    },
+
+    getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`),
   };
 }
 

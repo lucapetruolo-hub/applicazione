@@ -304,7 +304,7 @@ dall'upsell.
 - [x] Setup `apps/mobile` (Expo Router) — home + schermata categoria, stessa struttura di rotte del web
 - [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
 - [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end
-- [ ] Ricerca professionisti per categoria/geolocalizzazione
+- [x] Ricerca professionisti per categoria/città — `GET /professionals/search` e `/professionals/:id` reali su Postgres, ranking boost→rating→recensioni, SSR/ISR su homepage, `/cerca/[categoria]` e `/professionista/[id]`. Filtro geografico ancora per città (stringa), non raggio PostGIS — richiede geocoding reale degli indirizzi professionista, rimandato a quando i professionisti si registrano con indirizzo vero.
 - [ ] Richiesta guidata (foto + domande → categoria/prezzo stimato) + fan-out
 - [ ] Preventivo strutturato in-app + modello a lead a pagamento
 - [ ] Recensioni vincolate a prenotazione confermata

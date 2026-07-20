@@ -14,6 +14,26 @@ export type PlaceholderProfessional = {
  * la piattaforma non ha professionisti reali (CLAUDE.md §9). Da sostituire
  * con una vera ricerca su `apps/api` quando esisteranno profili reali.
  */
+/** Risultato reale restituito da GET /professionals/search su apps/api. */
+export type ProfessionalSearchResult = {
+  id: string;
+  businessName: string;
+  categorySlug: ProfessionalCategorySlug;
+  categoryLabel: string;
+  city: string;
+  verified: boolean;
+  rating: number | null;
+  reviewCount: number;
+  boosted: boolean;
+};
+
+/** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
+export type ProfessionalDetail = ProfessionalSearchResult & {
+  bio: string | null;
+  subTags: string[];
+  reviews: { id: string; rating: number; comment: string | null; createdAt: string }[];
+};
+
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
   { businessName: "Rossi Impianti", categorySlug: "elettricista", categoryLabel: "Elettricista", city: "Latina", rating: 4.8, verified: true },
   { businessName: "Bianchi Idraulica", categorySlug: "idraulico", categoryLabel: "Idraulico", city: "Roma", rating: 4.6, verified: true },

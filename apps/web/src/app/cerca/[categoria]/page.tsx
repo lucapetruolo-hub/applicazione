@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
+import { apiClient } from "../../../lib/apiClient";
 import { CategorySearchHeader } from "./CategorySearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
@@ -13,6 +14,10 @@ export function generateStaticParams() {
   return PROFESSIONAL_CATEGORIES.map((category) => ({ categoria: category.slug }));
 }
 
+// ISR: la lista risultati va rigenerata periodicamente (nuovi professionisti,
+// boost/rating aggiornati) senza rinunciare al vantaggio SEO di SSG.
+export const revalidate = 300;
+
 export function generateMetadata({ params }: { params: PageParams }): Metadata {
   if (!isProfessionalCategorySlug(params.categoria)) {
     return {};
@@ -24,7 +29,7 @@ export function generateMetadata({ params }: { params: PageParams }): Metadata {
   };
 }
 
-export default function CategoryPage({
+export default async function CategoryPage({
   params,
   searchParams,
 }: {
@@ -37,10 +42,19 @@ export default function CategoryPage({
   const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === params.categoria)!;
   const city = searchParams.citta;
 
+  // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
+  // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
+  let professionals: ProfessionalSearchResult[] = [];
+  try {
+    professionals = await apiClient.searchProfessionals({ category: category.slug, city });
+  } catch {
+    professionals = [];
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <CategorySearchHeader initialQuery={category.label} initialCity={city ?? ""} />
-      <CategoryContent category={category} city={city} />
+      <CategoryContent category={category} city={city} professionals={professionals} />
     </div>
   );
 }

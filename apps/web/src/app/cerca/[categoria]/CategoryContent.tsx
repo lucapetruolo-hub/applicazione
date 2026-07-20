@@ -1,11 +1,22 @@
 "use client";
 
-import type { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
-import { H1, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { useRouter } from "next/navigation";
+import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
+import { H1, Paragraph, ProfessionalCard, Text, XStack, YStack } from "@professionisti/ui";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 
-export function CategoryContent({ category, city }: { category: Category; city?: string }) {
+export function CategoryContent({
+  category,
+  city,
+  professionals,
+}: {
+  category: Category;
+  city?: string;
+  professionals: ProfessionalSearchResult[];
+}) {
+  const router = useRouter();
+
   return (
     <YStack width="100%" maxWidth={1080} paddingHorizontal="$4" paddingVertical="$6" gap="$4">
       <YStack gap="$1">
@@ -14,8 +25,9 @@ export function CategoryContent({ category, city }: { category: Category; city?:
           {city ? ` a ${city}` : " vicino a te"}
         </H1>
         <Paragraph color="$color10">
-          Elenco professionisti in arrivo — a breve potrai vedere disponibilità, recensioni e richiedere un
-          preventivo direttamente qui.
+          {professionals.length > 0
+            ? `${professionals.length} professionist${professionals.length === 1 ? "a" : "i"} verificat${professionals.length === 1 ? "o" : "i"} trovat${professionals.length === 1 ? "o" : "i"}.`
+            : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
         </Paragraph>
       </YStack>
 
@@ -26,6 +38,20 @@ export function CategoryContent({ category, city }: { category: Category; city?:
           </YStack>
         ))}
       </XStack>
+
+      <YStack gap="$3">
+        {professionals.map((pro) => (
+          <ProfessionalCard
+            key={pro.id}
+            businessName={pro.businessName}
+            categoryLabel={pro.categoryLabel}
+            city={pro.city}
+            rating={pro.rating ?? undefined}
+            verified={pro.verified}
+            onPress={() => router.push(`/professionista/${pro.id}`)}
+          />
+        ))}
+      </YStack>
     </YStack>
   );
 }
