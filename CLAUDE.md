@@ -305,7 +305,7 @@ dall'upsell.
 - [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
 - [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end
 - [x] Ricerca professionisti per categoria/città — `GET /professionals/search` e `/professionals/:id` reali su Postgres, ranking boost→rating→recensioni, SSR/ISR su homepage, `/cerca/[categoria]` e `/professionista/[id]`. Filtro geografico ancora per città (stringa), non raggio PostGIS — richiede geocoding reale degli indirizzi professionista, rimandato a quando i professionisti si registrano con indirizzo vero.
-- [ ] Richiesta guidata (foto + domande → categoria/prezzo stimato) + fan-out
+- [x] Richiesta guidata + fan-out lead — `POST /guided-requests` (autenticato) crea la richiesta e i `Lead` per i professionisti compatibili in categoria+città (o il singolo professionista se la richiesta parte dal suo profilo), pagina `/preventivo` e `/le-mie-richieste` funzionanti end-to-end. Upload foto non ancora implementato: nessun servizio di object storage (S3-compatibile) è nello stack approvato in CLAUDE.md §2, va deciso prima di aggiungerlo. Suggerimento IA sulla categoria dalla foto (menzionato in §7-8) rimandato allo stesso momento.
 - [ ] Preventivo strutturato in-app + modello a lead a pagamento
 - [ ] Recensioni vincolate a prenotazione confermata
 - [ ] Dashboard professionista (agenda, promemoria automatici)

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { emailPasswordSchema } from "@professionisti/shared";
 import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
@@ -11,7 +11,17 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { AuthInput } from "@/components/AuthInput";
 
 export default function AccediPage() {
+  return (
+    <Suspense fallback={null}>
+      <AccediForm />
+    </Suspense>
+  );
+}
+
+function AccediForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/";
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -33,7 +43,7 @@ export default function AccediPage() {
     try {
       const { token } = await apiClient.login(result.data.email, result.data.password);
       await login(token);
-      router.push("/");
+      router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -47,7 +57,7 @@ export default function AccediPage() {
     try {
       const { token } = await apiClient.verifyGoogle(idToken);
       await login(token);
-      router.push("/");
+      router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {

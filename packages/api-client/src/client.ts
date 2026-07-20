@@ -1,4 +1,30 @@
-import type { PROFESSIONAL_CATEGORIES, ProfessionalDetail, ProfessionalSearchResult } from "@professionisti/shared";
+import type {
+  PROFESSIONAL_CATEGORIES,
+  GuidedRequestInput,
+  ProfessionalDetail,
+  ProfessionalSearchResult,
+} from "@professionisti/shared";
+
+export type ClientGuidedRequest = {
+  id: string;
+  categorySlug: string;
+  categoryLabel: string;
+  description: string;
+  city: string;
+  isUrgent: boolean;
+  status: "OPEN" | "MATCHED" | "CLOSED";
+  createdAt: string;
+  quotes: {
+    id: string;
+    professionalProfileId: string;
+    businessName: string;
+    laborEurCents: number;
+    materialsEurCents: number;
+    estimatedStartDate: string;
+    notes: string | null;
+    status: "SENT" | "ACCEPTED" | "REJECTED";
+  }[];
+};
 
 export type ApiClientConfig = {
   baseUrl: string;
@@ -85,6 +111,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     },
 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`),
+
+    createGuidedRequest: (token: string, input: GuidedRequestInput) =>
+      request<{ guidedRequestId: string; matchedProfessionals: number }>("/guided-requests", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    myGuidedRequests: (token: string) =>
+      request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
   };
 }
 

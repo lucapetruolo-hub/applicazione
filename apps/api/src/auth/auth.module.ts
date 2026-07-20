@@ -13,6 +13,10 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard],
+  // JwtModule va ri-esportato: JwtAuthGuard dipende da JwtService, e i
+  // moduli che importano AuthModule per usare la guard (es.
+  // GuidedRequestsModule) devono poter risolvere quella dipendenza nel
+  // proprio contesto DI, non solo importare la classe della guard.
+  exports: [JwtModule, AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

@@ -8,6 +8,7 @@ const TOKEN_STORAGE_KEY = "professionisti_token";
 
 type AuthContextValue = {
   user: CurrentUser | null;
+  token: string | null;
   isLoading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
@@ -17,31 +18,34 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadUser = useCallback(async (token: string) => {
+  const loadUser = useCallback(async (currentToken: string) => {
     try {
-      const currentUser = await apiClient.me(token);
+      const currentUser = await apiClient.me(currentToken);
       setUser(currentUser);
+      setToken(currentUser ? currentToken : null);
     } catch {
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
       setUser(null);
+      setToken(null);
     }
   }, []);
 
   useEffect(() => {
-    const token = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (token) {
-      loadUser(token).finally(() => setIsLoading(false));
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (storedToken) {
+      loadUser(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
   }, [loadUser]);
 
   const login = useCallback(
-    async (token: string) => {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      await loadUser(token);
+    async (newToken: string) => {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+      await loadUser(newToken);
     },
     [loadUser],
   );
@@ -49,9 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     setUser(null);
+    setToken(null);
   }, []);
 
-  return <AuthContext.Provider value={{ user, isLoading, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

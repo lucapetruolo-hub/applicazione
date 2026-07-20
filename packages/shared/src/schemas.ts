@@ -29,6 +29,8 @@ export const guidedRequestSchema = z.object({
   photoUrls: z.array(z.string().url()).max(5).default([]),
   city: z.string().min(2),
   isUrgent: z.boolean().default(false),
+  /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
+  professionalProfileId: z.string().uuid().optional(),
 });
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 
