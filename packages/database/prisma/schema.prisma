@@ -3,15 +3,18 @@
 // prima di essere propagata ai client (apps/web, apps/mobile, apps/api).
 
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../generated/client"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
+  output   = "../generated/client"
 }
 
+// Estensione PostGIS non ancora richiesta qui: la ricerca è oggi filtrata per
+// città come stringa (vedi CLAUDE.md §9), non per raggio geografico. Il
+// requisito "extensions = [postgis]" bloccherebbe il deploy su un Postgres
+// gestito standard (es. Railway) che non la include di default — da
+// reintrodurre insieme al geocoding reale degli indirizzi professionista.
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [postgis]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------
