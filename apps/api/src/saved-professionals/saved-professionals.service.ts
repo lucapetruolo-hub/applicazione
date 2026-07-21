@@ -54,6 +54,7 @@ export class SavedProfessionalsService {
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
+        remoteAvailable: profile.remoteAvailable,
       } satisfies ProfessionalSearchResult;
     });
   }

@@ -7,6 +7,7 @@ export type ProfessionalCardProps = {
   city: string;
   rating?: number;
   verified?: boolean;
+  remoteAvailable?: boolean;
   onPress?: () => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
@@ -18,6 +19,7 @@ export function ProfessionalCard({
   city,
   rating,
   verified,
+  remoteAvailable,
   onPress,
   icon,
 }: ProfessionalCardProps) {
@@ -50,7 +52,14 @@ export function ProfessionalCard({
           <Text fontSize="$3" color="$color10">
             {categoryLabel} · {city}
           </Text>
-          {rating !== undefined ? <Text fontSize="$3">⭐ {rating.toFixed(1)}</Text> : null}
+          <XStack gap="$2" alignItems="center">
+            {rating !== undefined ? <Text fontSize="$3">⭐ {rating.toFixed(1)}</Text> : null}
+            {remoteAvailable ? (
+              <Text fontSize="$2" color="$purple10" fontWeight="600">
+                📹 Online
+              </Text>
+            ) : null}
+          </XStack>
         </YStack>
       </XStack>
     </Card>

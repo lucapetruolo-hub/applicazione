@@ -9,8 +9,13 @@ export class ProfessionalsController {
   constructor(private readonly professionalsService: ProfessionalsService) {}
 
   @Get("search")
-  search(@Query("category") category?: string, @Query("city") city?: string, @Query("q") q?: string) {
-    return this.professionalsService.search({ category, city, q });
+  search(
+    @Query("category") category?: string,
+    @Query("city") city?: string,
+    @Query("q") q?: string,
+    @Query("remote") remote?: string,
+  ) {
+    return this.professionalsService.search({ category, city, q, remote: remote === "1" || remote === "true" });
   }
 
   @UseGuards(JwtAuthGuard)

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ITALIAN_CITIES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -165,7 +165,7 @@ export function GuidedRequestForm({
           <Text fontWeight="600">Città</Text>
           <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
             <Autocomplete
-              items={[...ITALIAN_CITIES]}
+              items={ALL_ITALIAN_CITY_NAMES}
               getKey={(item) => item}
               getLabel={(item) => item}
               onSelect={setCity}

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ITALIAN_CITIES, PROFESSIONAL_CATEGORIES, findCategoryByQuery, type ProfessionalSearchResult } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
 import {
   Hero,
   CategoryChips,
@@ -16,10 +16,12 @@ import {
   XStack,
   YStack,
   type ProfessionalSuggestion,
+  type SearchMode,
 } from "@professionisti/ui";
 import { CategoryTile } from "@/components/CategoryTile";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { FadeInSection } from "@/components/FadeInSection";
+import { buildSearchDestination } from "@/lib/searchNavigation";
 
 // Sotto-servizi in evidenza: campione flat dei subTags di ogni categoria.
 const FEATURED_SUB_SERVICES = PROFESSIONAL_CATEGORIES.flatMap((category) =>
@@ -61,24 +63,8 @@ export default function HomeContent({ professionals }: { professionals: Professi
     city: pro.city,
   }));
 
-  function handleSearch({
-    query,
-    city,
-    professional,
-  }: {
-    query: string;
-    city: string;
-    professional?: ProfessionalSuggestion;
-  }) {
-    const params = city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : "";
-    if (professional) {
-      router.push(`/cerca/${professional.categorySlug}${params}`);
-      return;
-    }
-    const category = findCategoryByQuery(query);
-    if (category) {
-      router.push(`/cerca/${category.slug}${params}`);
-    }
+  function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    router.push(buildSearchDestination(params));
   }
 
   return (
@@ -90,7 +76,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
         onUrgentPress={() => router.push("/urgente")}
         onQuotePress={() => router.push("/preventivo")}
         professionalSuggestions={professionalSuggestions}
-        citySuggestions={[...ITALIAN_CITIES]}
+        citySuggestions={ALL_ITALIAN_CITY_NAMES}
       />
 
       <FadeInSection>

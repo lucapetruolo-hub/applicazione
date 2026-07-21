@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES, ITALIAN_CITIES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -16,6 +16,7 @@ export default function DashboardProfiloPage() {
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
+  const [remoteAvailable, setRemoteAvailable] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +32,7 @@ export default function DashboardProfiloPage() {
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
           setCity(profile.city);
           setBio(profile.bio ?? "");
+          setRemoteAvailable(profile.remoteAvailable);
         }
       })
       .finally(() => setIsLoadingProfile(false));
@@ -95,6 +97,7 @@ export default function DashboardProfiloPage() {
         city: city.trim(),
         subTags: [],
         bio: bio.trim() || undefined,
+        remoteAvailable,
       });
       setSaved(true);
       setTimeout(() => router.push("/dashboard"), 900);
@@ -147,7 +150,7 @@ export default function DashboardProfiloPage() {
           <Text fontWeight="600">Città in cui operi</Text>
           <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
             <Autocomplete
-              items={[...ITALIAN_CITIES]}
+              items={ALL_ITALIAN_CITY_NAMES}
               getKey={(item) => item}
               getLabel={(item) => item}
               onSelect={setCity}
@@ -156,6 +159,40 @@ export default function DashboardProfiloPage() {
               placeholder="Es. Milano"
               size="$5"
             />
+          </YStack>
+        </YStack>
+
+        <YStack
+          flexDirection="row"
+          alignItems="center"
+          gap="$3"
+          padding="$3"
+          backgroundColor="$color2"
+          borderRadius="$4"
+          cursor="pointer"
+          onPress={() => setRemoteAvailable((v) => !v)}
+        >
+          <YStack
+            width={22}
+            height={22}
+            borderRadius="$2"
+            borderWidth={2}
+            borderColor={remoteAvailable ? "$blue10" : "$borderColor"}
+            backgroundColor={remoteAvailable ? "$blue10" : "white"}
+            alignItems="center"
+            justifyContent="center"
+          >
+            {remoteAvailable ? (
+              <Text fontSize="$3" color="white" fontWeight="700">
+                ✓
+              </Text>
+            ) : null}
+          </YStack>
+          <YStack flex={1}>
+            <Text fontWeight="600">📹 Offro anche consulenza online</Text>
+            <Text fontSize="$2" color="$color10">
+              Compari nella ricerca "Online" della home: i clienti possono contattarti da remoto, ovunque si trovino.
+            </Text>
           </YStack>
         </YStack>
 

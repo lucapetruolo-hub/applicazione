@@ -4,7 +4,7 @@ export { Button } from "./Button";
 export { ProfessionalCard } from "./ProfessionalCard";
 export { CategoryCard } from "./CategoryCard";
 export { SearchBar } from "./SearchBar";
-export type { SearchBarProps, ProfessionalSuggestion } from "./SearchBar";
+export type { SearchBarProps, ProfessionalSuggestion, SearchMode } from "./SearchBar";
 export { Autocomplete } from "./Autocomplete";
 export type { AutocompleteProps } from "./Autocomplete";
 export { Hero } from "./Hero";

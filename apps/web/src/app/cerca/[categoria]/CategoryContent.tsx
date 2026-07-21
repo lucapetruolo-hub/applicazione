@@ -11,10 +11,12 @@ type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 export function CategoryContent({
   category,
   city,
+  online,
   professionals,
 }: {
   category: Category;
   city?: string;
+  online?: boolean;
   professionals: ProfessionalSearchResult[];
 }) {
   const router = useRouter();
@@ -29,12 +31,14 @@ export function CategoryContent({
             <YStack gap="$1">
               <H1 size="$8">
                 {category.label}
-                {city ? ` a ${city}` : " vicino a te"}
+                {online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
               </H1>
               <Paragraph color="$color11">
                 {professionals.length > 0
                   ? `${professionals.length} professionist${professionals.length === 1 ? "a" : "i"} verificat${professionals.length === 1 ? "o" : "i"} trovat${professionals.length === 1 ? "o" : "i"}.`
-                  : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
+                  : online
+                    ? "Nessun professionista disponibile per consulenza online in questa categoria al momento."
+                    : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
               </Paragraph>
             </YStack>
           </XStack>
@@ -59,6 +63,7 @@ export function CategoryContent({
               city={pro.city}
               rating={pro.rating ?? undefined}
               verified={pro.verified}
+              remoteAvailable={pro.remoteAvailable}
               onPress={() => router.push(`/professionista/${pro.id}`)}
               icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
             />

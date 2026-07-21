@@ -87,14 +87,15 @@ export const professionalProfileSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   bio: z.string().max(2000).optional(),
+  remoteAvailable: z.boolean().default(false),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 
 /**
  * Creazione/aggiornamento del proprio profilo professionista (userId preso
- * dal JWT, non dal body). Nessuna geocodifica reale ancora disponibile
- * (CLAUDE.md §2): lat/lng sono opzionali e restano 0,0 finché non si integra
- * un servizio di geocoding, la ricerca filtra comunque per città come stringa.
+ * dal JWT, non dal body). lat/lng sono opzionali: se non inviate, il backend
+ * le ricava dal comune scelto (`findComuneByName`, dataset ISTAT in
+ * packages/shared) — geocodifica reale, non più un placeholder 0,0.
  */
 export const professionalProfileSelfSchema = professionalProfileSchema
   .omit({ userId: true, latitude: true, longitude: true })

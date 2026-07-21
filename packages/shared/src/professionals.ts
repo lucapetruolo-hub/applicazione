@@ -25,6 +25,7 @@ export type ProfessionalSearchResult = {
   rating: number | null;
   reviewCount: number;
   boosted: boolean;
+  remoteAvailable: boolean;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

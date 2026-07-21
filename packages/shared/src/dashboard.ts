@@ -8,6 +8,7 @@ export type MyProfessionalProfile = {
   bio: string | null;
   subTags: string[];
   verified: boolean;
+  remoteAvailable: boolean;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

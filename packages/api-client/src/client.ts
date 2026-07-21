@@ -156,11 +156,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    searchProfessionals: (params: { category?: string; city?: string; q?: string } = {}) => {
+    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
+      if (params.remote) query.set("remote", "1");
       const queryString = query.toString();
       return request<ProfessionalSearchResult[]>(`/professionals/search${queryString ? `?${queryString}` : ""}`);
     },

@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../../../lib/apiClient";
-import { CategorySearchHeader } from "./CategorySearchHeader";
+import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
 type PageParams = { categoria: string };
-type PageSearchParams = { citta?: string };
+type PageSearchParams = { citta?: string; online?: string };
 
 // SSG: pre-genera una pagina per categoria a build time — pagina SEO-critica,
 // non va convertita in client-side rendering (CLAUDE.md §5.4).
@@ -40,21 +40,27 @@ export default async function CategoryPage({
     notFound();
   }
   const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === params.categoria)!;
-  const city = searchParams.citta;
+  const isOnline = searchParams.online === "1";
+  const city = isOnline ? undefined : searchParams.citta;
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
   let professionals: ProfessionalSearchResult[] = [];
   try {
-    professionals = await apiClient.searchProfessionals({ category: category.slug, city });
+    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline });
   } catch {
     professionals = [];
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <CategorySearchHeader initialQuery={category.label} initialCity={city ?? ""} />
-      <CategoryContent category={category} city={city} professionals={professionals} />
+      <SearchHeader
+        initialQuery={category.label}
+        initialCity={city ?? ""}
+        initialMode={isOnline ? "online" : "domicilio"}
+        professionals={professionals}
+      />
+      <CategoryContent category={category} city={city} online={isOnline} professionals={professionals} />
     </div>
   );
 }

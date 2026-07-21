@@ -76,18 +76,21 @@ model Category {
 // ---------------------------------------------------------------------------
 
 model ProfessionalProfile {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  categoryId   String
-  subTags      String[]
-  businessName String
-  city         String
-  latitude     Float
-  longitude    Float
-  bio          String?
-  verified     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  categoryId      String
+  subTags         String[]
+  businessName    String
+  city            String
+  latitude        Float
+  longitude       Float
+  bio             String?
+  verified        Boolean  @default(false)
+  // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
+  // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
+  remoteAvailable Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])

@@ -1,13 +1,14 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type {
-  MyProfessionalProfile,
-  ProfessionalBooking,
-  ProfessionalDetail,
-  ProfessionalLead,
-  ProfessionalSearchResult,
-  ProfessionalCategorySlug,
-  ProfessionalProfileSelfInput,
+import {
+  findComuneByName,
+  type MyProfessionalProfile,
+  type ProfessionalBooking,
+  type ProfessionalDetail,
+  type ProfessionalLead,
+  type ProfessionalSearchResult,
+  type ProfessionalCategorySlug,
+  type ProfessionalProfileSelfInput,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -15,18 +16,20 @@ export type ProfessionalSearchParams = {
   category?: string;
   city?: string;
   q?: string;
+  remote?: boolean;
 };
 
 @Injectable()
 export class ProfessionalsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  async search({ category, city, q }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
+        ...(remote ? { remoteAvailable: true } : {}),
       },
       include: {
         category: true,
@@ -53,6 +56,7 @@ export class ProfessionalsService {
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
+        remoteAvailable: profile.remoteAvailable,
       } satisfies ProfessionalSearchResult;
     });
 
@@ -100,6 +104,7 @@ export class ProfessionalsService {
       rating,
       reviewCount,
       boosted: profile.visibilityBoosts.length > 0,
+      remoteAvailable: profile.remoteAvailable,
       bio: profile.bio,
       subTags: profile.subTags,
       reviews: reviews.map((review) => ({
@@ -127,6 +132,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      remoteAvailable: profile.remoteAvailable,
     };
   }
 
@@ -136,6 +142,12 @@ export class ProfessionalsService {
       throw new NotFoundException("Categoria non valida.");
     }
 
+    // Geocodifica reale dal comune scelto (dataset ISTAT in packages/shared)
+    // quando lat/lng non sono fornite esplicitamente dal client.
+    const comune = findComuneByName(input.city);
+    const latitude = input.latitude ?? comune?.lat ?? 0;
+    const longitude = input.longitude ?? comune?.lon ?? 0;
+
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },
       update: {
@@ -143,9 +155,10 @@ export class ProfessionalsService {
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
-        ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
-        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
+        latitude,
+        longitude,
         bio: input.bio,
+        remoteAvailable: input.remoteAvailable,
       },
       create: {
         userId,
@@ -153,9 +166,10 @@ export class ProfessionalsService {
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
-        latitude: input.latitude ?? 0,
-        longitude: input.longitude ?? 0,
+        latitude,
+        longitude,
         bio: input.bio,
+        remoteAvailable: input.remoteAvailable,
       },
       include: { category: true },
     });
@@ -169,6 +183,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      remoteAvailable: profile.remoteAvailable,
     };
   }
 
