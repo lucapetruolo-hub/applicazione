@@ -54,7 +54,7 @@ Implicazioni tecniche dirette:
 | Notifiche | Expo Push, **Resend** (email), **Twilio** (SMS) | Promemoria automatici anti no-show |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
-| Hosting | Web → Vercel; Mobile build → EAS (Expo); API/DB → Railway/Fly.io o AWS | Scelta pragmatica per iterare velocemente in fase iniziale |
+| Hosting | Web → **Vercel** (`applicazione-web.vercel.app`); Mobile build → EAS (Expo); API/DB → **Railway** (deciso, deployato) | Scelta pragmatica per iterare velocemente in fase iniziale |
 
 Non introdurre framework o servizi alternativi a questa tabella senza
 prima discuterne e aggiornare questo file.
@@ -84,6 +84,28 @@ prima discuterne e aggiornare questo file.
   in un'interfaccia che l'utente trova difficile da navigare — da sostituire
   con una migrazione esplicita (`prisma migrate deploy`, no data-loss
   automatico) prima che ci siano dati reali di utenti da rischiare.
+  Deploy live e funzionante (registrazione, login email e login Google
+  testati sul sito reale): backend su `professionistiapi-production.up.railway.app`,
+  Postgres su Railway (senza estensione PostGIS — vedi nota schema sotto),
+  variabili impostate: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
+  `FRONTEND_URL`, `PORT=3001`. Due problemi risolti durante il primo
+  deploy, entrambi corretti nel codice (non solo in configurazione, per
+  non doverli rifare ad ogni nuovo ambiente):
+  1. `app.listen(port)` senza host esplicito si lega solo a IPv6 su
+     Railway → il proxy pubblico (IPv4) non raggiunge il processo pur
+     essendo partito correttamente nei log ("Application failed to
+     respond"). Fix: `app.listen(port, "0.0.0.0")` in `apps/api/src/main.ts`.
+  2. Railway inietta un proprio `PORT` (es. 8080) diverso dalla porta
+     dichiarata manualmente in "Generate Domain" durante il setup —
+     serve impostare `PORT` esplicitamente nelle Variables coerente con
+     quella porta, altrimenti il proxy pubblico punta a una porta su cui
+     nessuno ascolta.
+  Sul frontend Vercel vanno impostate anche `NEXT_PUBLIC_API_URL` (verso
+  l'URL Railway) e `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (esisteva solo in
+  `.env.local` locale, mai propagata a Vercel finché non serviva in
+  produzione) — più l'origine `https://applicazione-web.vercel.app`
+  aggiunta manualmente tra le "Authorized JavaScript origins" del Client
+  ID OAuth su Google Cloud Console (altrimenti `Error 400: origin_mismatch`).
 - **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
   manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
   `passport-jwt`. Motivo: con quella combinazione (testata con
@@ -314,7 +336,7 @@ dall'upsell.
 - [x] Setup `apps/web` (Next.js) — home + pagine categoria SSG (`/cerca/[categoria]`)
 - [x] Setup `apps/mobile` (Expo Router) — home + schermata categoria, stessa struttura di rotte del web
 - [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
-- [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end
+- [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end, **in produzione** (sito Vercel + backend Railway, non solo in locale)
 - [x] Ricerca professionisti per categoria/città — `GET /professionals/search` e `/professionals/:id` reali su Postgres, ranking boost→rating→recensioni, SSR/ISR su homepage, `/cerca/[categoria]` e `/professionista/[id]`. Filtro geografico ancora per città (stringa), non raggio PostGIS — richiede geocoding reale degli indirizzi professionista, rimandato a quando i professionisti si registrano con indirizzo vero.
 - [x] Richiesta guidata + fan-out lead — `POST /guided-requests` (autenticato) crea la richiesta e i `Lead` per i professionisti compatibili in categoria+città (o il singolo professionista se la richiesta parte dal suo profilo), pagina `/preventivo` e `/le-mie-richieste` funzionanti end-to-end. Upload foto non ancora implementato: nessun servizio di object storage (S3-compatibile) è nello stack approvato in CLAUDE.md §2, va deciso prima di aggiungerlo. Suggerimento IA sulla categoria dalla foto (menzionato in §7-8) rimandato allo stesso momento.
 - [x] Preventivo strutturato in-app — `POST /quotes` (solo se il professionista ha ricevuto il lead), `POST /bookings/from-quote/:id` per l'accettazione cliente → crea `Booking` e chiude la richiesta. Modello a lead a pagamento: il prezzo per lead è calcolato e salvato (`Lead.priceEurCents`, standard vs urgente), ma il gate di pagamento reale al professionista arriva con Stripe (vedi voce sotto) — oggi i lead sono visibili gratis in dashboard.
