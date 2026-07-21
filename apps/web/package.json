@@ -13,12 +13,15 @@
     "@professionisti/api-client": "workspace:*",
     "@professionisti/shared": "workspace:*",
     "@professionisti/ui": "workspace:*",
+    "leaflet": "^1.9.4",
     "next": "^14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
     "@professionisti/config": "workspace:*",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^22.7.0",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",

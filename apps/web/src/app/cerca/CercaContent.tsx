@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { H1, Paragraph, ProfessionalCard, YStack } from "@professionisti/ui";
-import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { H1, Paragraph, YStack } from "@professionisti/ui";
+import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 
 export function CercaContent({
   city,
@@ -16,8 +15,6 @@ export function CercaContent({
   q?: string;
   professionals: ProfessionalSearchResult[];
 }) {
-  const router = useRouter();
-
   const title = online
     ? "Consulenze online disponibili"
     : city
@@ -41,20 +38,8 @@ export function CercaContent({
         </YStack>
       </YStack>
 
-      <YStack width="100%" maxWidth={1080} paddingHorizontal="$4" paddingVertical="$6" gap="$3">
-        {professionals.map((pro) => (
-          <ProfessionalCard
-            key={pro.id}
-            businessName={pro.businessName}
-            categoryLabel={pro.categoryLabel}
-            city={pro.city}
-            rating={pro.rating ?? undefined}
-            verified={pro.verified}
-            remoteAvailable={pro.remoteAvailable}
-            onPress={() => router.push(`/professionista/${pro.id}`)}
-            icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
-          />
-        ))}
+      <YStack width="100%" maxWidth={1080} paddingHorizontal="$4" paddingVertical="$6">
+        <ResultsListWithMap professionals={professionals} showMap={!online} />
       </YStack>
     </YStack>
   );

@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
-import { H1, Paragraph, ProfessionalCard, Text, XStack, YStack } from "@professionisti/ui";
+import { H1, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { CATEGORY_ACCENT } from "@/components/icons/CategoryIcons";
+import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 
@@ -19,7 +19,6 @@ export function CategoryContent({
   online?: boolean;
   professionals: ProfessionalSearchResult[];
 }) {
-  const router = useRouter();
   const accent = CATEGORY_ACCENT[category.slug as keyof typeof CATEGORY_ACCENT];
 
   return (
@@ -54,21 +53,7 @@ export function CategoryContent({
           ))}
         </XStack>
 
-        <YStack gap="$3">
-          {professionals.map((pro) => (
-            <ProfessionalCard
-              key={pro.id}
-              businessName={pro.businessName}
-              categoryLabel={pro.categoryLabel}
-              city={pro.city}
-              rating={pro.rating ?? undefined}
-              verified={pro.verified}
-              remoteAvailable={pro.remoteAvailable}
-              onPress={() => router.push(`/professionista/${pro.id}`)}
-              icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
-            />
-          ))}
-        </YStack>
+        <ResultsListWithMap professionals={professionals} showMap={!online} />
       </YStack>
     </YStack>
   );

@@ -36,7 +36,6 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
       alignItems="center"
       gap="$5"
       position="relative"
-      overflow="hidden"
     >
       <DecorativeBlobs />
 

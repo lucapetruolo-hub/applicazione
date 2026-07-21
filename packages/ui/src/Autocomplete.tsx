@@ -33,9 +33,12 @@ export function Autocomplete<T>({
   const [isFocused, setIsFocused] = useState(false);
 
   const normalizedQuery = value.trim().toLowerCase();
+  // Query vuota: mostra comunque un elenco (i primi N) invece di un menu
+  // vuoto finché non si digita — l'utente deve vedere subito che ci sono
+  // professionisti/città tra cui scegliere, non scoprirlo solo scrivendo.
   const filtered = normalizedQuery
     ? items.filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery)).slice(0, maxResults)
-    : [];
+    : items.slice(0, maxResults);
 
   const showDropdown = isFocused && filtered.length > 0;
 

@@ -57,6 +57,8 @@ export class ProfessionalsService {
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
         remoteAvailable: profile.remoteAvailable,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
       } satisfies ProfessionalSearchResult;
     });
 
@@ -105,6 +107,8 @@ export class ProfessionalsService {
       reviewCount,
       boosted: profile.visibilityBoosts.length > 0,
       remoteAvailable: profile.remoteAvailable,
+      latitude: profile.latitude,
+      longitude: profile.longitude,
       bio: profile.bio,
       subTags: profile.subTags,
       reviews: reviews.map((review) => ({

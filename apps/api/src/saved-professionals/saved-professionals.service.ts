@@ -55,6 +55,8 @@ export class SavedProfessionalsService {
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
         remoteAvailable: profile.remoteAvailable,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
       } satisfies ProfessionalSearchResult;
     });
   }

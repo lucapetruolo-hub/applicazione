@@ -26,6 +26,8 @@ export type ProfessionalSearchResult = {
   reviewCount: number;
   boosted: boolean;
   remoteAvailable: boolean;
+  latitude: number;
+  longitude: number;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
