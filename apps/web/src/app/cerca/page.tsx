@@ -39,12 +39,7 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <SearchHeader
-        initialQuery={searchParams.q ?? ""}
-        initialCity={city ?? ""}
-        initialMode={isOnline ? "online" : "domicilio"}
-        professionals={professionals}
-      />
+      <SearchHeader initialQuery={searchParams.q ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
       <CercaContent city={city} online={isOnline} q={searchParams.q} professionals={professionals} />
     </div>
   );

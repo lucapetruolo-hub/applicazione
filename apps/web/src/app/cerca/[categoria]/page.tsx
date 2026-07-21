@@ -54,12 +54,7 @@ export default async function CategoryPage({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <SearchHeader
-        initialQuery={category.label}
-        initialCity={city ?? ""}
-        initialMode={isOnline ? "online" : "domicilio"}
-        professionals={professionals}
-      />
+      <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
       <CategoryContent category={category} city={city} online={isOnline} professionals={professionals} />
     </div>
   );

@@ -91,6 +91,7 @@ export function SearchBar({
           onChangeText={setQuery}
           placeholder={mode === "online" ? "Cosa ti serve? Es. Consulenza idraulico..." : "Cosa cerchi? Es. Idraulico, Elettricista..."}
           size="$5"
+          maxResults={professionalSuggestions.length}
           renderItem={(item) => (
             <YStack gap="$1">
               <Text fontWeight="600">{item.name}</Text>

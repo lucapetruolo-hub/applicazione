@@ -1,28 +1,19 @@
-import { PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 
 /**
- * Suggerimenti per il campo "Cosa cerchi": categorie prima (così a campo
- * vuoto si vede subito "Idraulico, Elettricista, ..." come su
- * miodottore.it, non nomi di attività specifiche), poi i professionisti
- * reali per chi digita un nome che conosce già.
+ * Suggerimenti per il campo "Cosa cerchi": solo le categorie professionali
+ * (`PROFESSIONAL_CATEGORIES`, packages/shared) — la stessa lista usata per
+ * le caselle categoria cliccabili sotto la ricerca e, in futuro, per un
+ * eventuale menu laterale. Un'unica fonte di verità, non tre elenchi
+ * diversi da tenere allineati a mano.
  */
-export function buildSearchSuggestions(professionals: ProfessionalSearchResult[]): ProfessionalSuggestion[] {
-  const categorySuggestions: ProfessionalSuggestion[] = PROFESSIONAL_CATEGORIES.map((category) => ({
+export function buildSearchSuggestions(): ProfessionalSuggestion[] {
+  return PROFESSIONAL_CATEGORIES.map((category) => ({
     id: `category:${category.slug}`,
     name: category.label,
     subtitle: "Categoria",
     categorySlug: category.slug,
     city: "",
   }));
-
-  const professionalSuggestions: ProfessionalSuggestion[] = professionals.map((pro) => ({
-    id: pro.id,
-    name: pro.businessName,
-    subtitle: `${pro.categoryLabel} · ${pro.city}`,
-    categorySlug: pro.categorySlug,
-    city: pro.city,
-  }));
-
-  return [...categorySuggestions, ...professionalSuggestions];
 }

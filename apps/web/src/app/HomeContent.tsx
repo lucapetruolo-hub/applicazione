@@ -56,7 +56,7 @@ const CLIENT_REVIEWS = [
 export default function HomeContent({ professionals }: { professionals: ProfessionalSearchResult[] }) {
   const router = useRouter();
 
-  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions(professionals);
+  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     router.push(buildSearchDestination(params));
