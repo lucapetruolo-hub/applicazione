@@ -73,6 +73,17 @@ prima discuterne e aggiornare questo file.
   non in locale: `expo export` in locale è soggetto a un conflitto di
   versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
   risolverlo per un comando che non è il path di build reale.
+- **Deploy `apps/api` su Railway**: Railway (builder "Railpack") rileva da
+  solo il monorepo pnpm ed esegue `pnpm --filter @professionisti/api build`
+  / `start`, ignorando eventuali Build/Start Command custom impostati a
+  mano — per questo lo script `build` di `apps/api/package.json` costruisce
+  esplicitamente prima `@professionisti/database` e `@professionisti/shared`
+  (altrimenti TypeScript non trova quei moduli). Lo script `start` esegue
+  `prisma db push --accept-data-loss` ad ogni avvio prima di far partire il
+  server: scelta pragmatica per non richiedere un comando manuale separato
+  in un'interfaccia che l'utente trova difficile da navigare — da sostituire
+  con una migrazione esplicita (`prisma migrate deploy`, no data-loss
+  automatico) prima che ci siano dati reali di utenti da rischiare.
 - **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
   manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
   `passport-jwt`. Motivo: con quella combinazione (testata con
