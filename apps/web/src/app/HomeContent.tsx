@@ -22,6 +22,7 @@ import { CategoryTile } from "@/components/CategoryTile";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { FadeInSection } from "@/components/FadeInSection";
 import { buildSearchDestination } from "@/lib/searchNavigation";
+import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 
 // Sotto-servizi in evidenza: campione flat dei subTags di ogni categoria.
 const FEATURED_SUB_SERVICES = PROFESSIONAL_CATEGORIES.flatMap((category) =>
@@ -55,13 +56,7 @@ const CLIENT_REVIEWS = [
 export default function HomeContent({ professionals }: { professionals: ProfessionalSearchResult[] }) {
   const router = useRouter();
 
-  const professionalSuggestions: ProfessionalSuggestion[] = professionals.map((pro) => ({
-    id: pro.id,
-    name: pro.businessName,
-    subtitle: `${pro.categoryLabel} · ${pro.city}`,
-    categorySlug: pro.categorySlug,
-    city: pro.city,
-  }));
+  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions(professionals);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     router.push(buildSearchDestination(params));

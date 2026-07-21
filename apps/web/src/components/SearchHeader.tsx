@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES, type ProfessionalSearchResult } from "@professionisti/shared";
 import { SearchBar, YStack, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
+import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 
 export function SearchHeader({
   initialQuery,
@@ -18,13 +19,7 @@ export function SearchHeader({
 }) {
   const router = useRouter();
 
-  const professionalSuggestions: ProfessionalSuggestion[] = professionals.map((pro) => ({
-    id: pro.id,
-    name: pro.businessName,
-    subtitle: `${pro.categoryLabel} · ${pro.city}`,
-    categorySlug: pro.categorySlug,
-    city: pro.city,
-  }));
+  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions(professionals);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     router.push(buildSearchDestination(params));
