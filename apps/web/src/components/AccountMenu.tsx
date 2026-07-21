@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Text, YStack } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
+import { getAccountMenuItems } from "@/lib/accountMenuItems";
 
 export function AccountMenu() {
   const { user, logout } = useAuth();
@@ -22,18 +23,7 @@ export function AccountMenu() {
 
   if (!user) return null;
 
-  const items =
-    user.role === "PROFESSIONAL"
-      ? [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/dashboard/profilo", label: "Profilo pubblico" },
-          { href: "/account", label: "Impostazioni dell'account" },
-        ]
-      : [
-          { href: "/account", label: "Impostazioni dell'account" },
-          { href: "/professionisti-salvati", label: "Professionisti salvati" },
-          { href: "/le-mie-richieste", label: "Le mie visite" },
-        ];
+  const items = getAccountMenuItems(user.role);
 
   return (
     <YStack ref={containerRef} position="relative">

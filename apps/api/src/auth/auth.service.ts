@@ -82,7 +82,7 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: !existingUser };
   }
 
-  async updateAccount(userId: string, data: { name?: string; email?: string; phone?: string }) {
+  async updateAccount(userId: string, data: { name?: string; surname?: string; birthDate?: string; email?: string; phone?: string }) {
     if (data.email) {
       const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
       if (existing && existing.id !== userId) {
@@ -96,7 +96,11 @@ export class AuthService {
       }
     }
 
-    return this.prisma.user.update({ where: { id: userId }, data });
+    const { birthDate, ...rest } = data;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { ...rest, ...(birthDate ? { birthDate: new Date(birthDate) } : {}) },
+    });
   }
 
   async changePassword(userId: string, currentPassword: string | undefined, newPassword: string) {
@@ -117,6 +121,10 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   private issueToken(userId: string): string {

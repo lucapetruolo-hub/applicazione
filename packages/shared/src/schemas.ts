@@ -26,6 +26,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 /** Modifica dati anagrafici dal proprio account (CLAUDE.md §8 — impostazioni account). */
 export const updateAccountSchema = z.object({
   name: z.string().min(2).max(120).optional(),
+  surname: z.string().min(1).max(120).optional(),
+  birthDate: z.string().date("Data non valida").optional(),
   email: z.string().email("Email non valida").optional(),
   phone: z.string().min(6).max(20).optional(),
 });

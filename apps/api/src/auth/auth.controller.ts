@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
   changePasswordSchema,
   emailPasswordSchema,
@@ -44,16 +44,16 @@ export class AuthController {
   async me(@Req() req: AuthenticatedRequest) {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId } });
     if (!user) return null;
-    const { id, phone, email, name, role } = user;
-    return { id, phone, email, name, role };
+    const { id, phone, email, name, surname, birthDate, role, passwordHash } = user;
+    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch("me")
   async updateMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updateAccountSchema)) body: UpdateAccountInput) {
     const user = await this.authService.updateAccount(req.user.userId, body);
-    const { id, phone, email, name, role } = user;
-    return { id, phone, email, name, role };
+    const { id, phone, email, name, surname, birthDate, role, passwordHash } = user;
+    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash) };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -63,6 +63,13 @@ export class AuthController {
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
   ) {
     await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete("me")
+  async deleteMe(@Req() req: AuthenticatedRequest) {
+    await this.authService.deleteAccount(req.user.userId);
     return { success: true };
   }
 }

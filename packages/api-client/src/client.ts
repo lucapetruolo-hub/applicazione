@@ -54,7 +54,10 @@ export type CurrentUser = {
   phone: string | null;
   email: string | null;
   name: string | null;
+  surname: string | null;
+  birthDate: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+  hasPassword: boolean;
 };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -130,6 +133,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    deleteAccount: (token: string) =>
+      request<{ success: boolean }>("/auth/me", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     saveProfessional: (token: string, professionalProfileId: string) =>
