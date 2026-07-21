@@ -51,11 +51,16 @@ export class AuthService {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
 
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
+    let payload: { sub?: string; email?: string; name?: string } | undefined;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException("Token Google non valido o scaduto.");
+    }
     if (!payload?.sub || !payload.email) {
       throw new UnauthorizedException("Token Google non valido.");
     }
