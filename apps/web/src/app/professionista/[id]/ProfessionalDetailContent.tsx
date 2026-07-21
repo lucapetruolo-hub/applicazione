@@ -1,43 +1,91 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 
 export function ProfessionalDetailContent({ professional }: { professional: ProfessionalDetail }) {
+  const { user, token } = useAuth();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!token || user?.role !== "CLIENT") return;
+    apiClient
+      .mySavedProfessionals(token)
+      .then((saved) => setIsSaved(saved.some((p) => p.id === professional.id)))
+      .catch(() => {});
+  }, [token, user, professional.id]);
+
+  async function handleToggleSave() {
+    if (!token) return;
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        await apiClient.unsaveProfessional(token, professional.id);
+        setIsSaved(false);
+      } else {
+        await apiClient.saveProfessional(token, professional.id);
+        setIsSaved(true);
+      }
+    } catch {
+      // silenzioso: non è un'azione critica, l'utente può riprovare
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <YStack width="100%" alignItems="center">
       <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$5">
-        <XStack gap="$3" alignItems="flex-start">
-          <CategoryIconBadge slug={professional.categorySlug} size={64} />
-          <YStack gap="$2" flex={1}>
-            <XStack alignItems="center" gap="$3" flexWrap="wrap">
-              <H1 size="$8">{professional.businessName}</H1>
-              {professional.verified ? (
-                <Text fontSize="$3" color="$blue10" fontWeight="600">
-                  ✓ Verificato
-                </Text>
-              ) : null}
-              {professional.boosted ? (
-                <Text fontSize="$2" backgroundColor="$yellow4" color="$yellow11" paddingHorizontal="$2" paddingVertical="$1" borderRadius="$4">
-                  In evidenza
-                </Text>
-              ) : null}
-            </XStack>
-            <Text fontSize="$5" color="$color10">
-              {professional.categoryLabel} · {professional.city}
-            </Text>
-            {professional.rating !== null ? (
-              <Text fontSize="$5">
-                ⭐ {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
+        <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
+          <XStack gap="$3" alignItems="flex-start" flex={1}>
+            <CategoryIconBadge slug={professional.categorySlug} size={64} />
+            <YStack gap="$2" flex={1}>
+              <XStack alignItems="center" gap="$3" flexWrap="wrap">
+                <H1 size="$8">{professional.businessName}</H1>
+                {professional.verified ? (
+                  <Text fontSize="$3" color="$blue10" fontWeight="600">
+                    ✓ Verificato
+                  </Text>
+                ) : null}
+                {professional.boosted ? (
+                  <Text fontSize="$2" backgroundColor="$yellow4" color="$yellow11" paddingHorizontal="$2" paddingVertical="$1" borderRadius="$4">
+                    In evidenza
+                  </Text>
+                ) : null}
+              </XStack>
+              <Text fontSize="$5" color="$color10">
+                {professional.categoryLabel} · {professional.city}
               </Text>
-            ) : (
-              <Text fontSize="$4" color="$color9">
-                Nessuna recensione ancora
-              </Text>
-            )}
-          </YStack>
+              {professional.rating !== null ? (
+                <Text fontSize="$5">
+                  ⭐ {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
+                </Text>
+              ) : (
+                <Text fontSize="$4" color="$color9">
+                  Nessuna recensione ancora
+                </Text>
+              )}
+            </YStack>
+          </XStack>
+
+          {user?.role === "CLIENT" ? (
+            <Button
+              size="$3"
+              backgroundColor={isSaved ? "$red2" : "$color3"}
+              color={isSaved ? "$red10" : "$color12"}
+              onPress={handleToggleSave}
+              disabled={isSaving}
+              opacity={isSaving ? 0.6 : 1}
+            >
+              {isSaved ? "♥ Salvato" : "♡ Salva"}
+            </Button>
+          ) : null}
         </XStack>
 
         {professional.subTags.length > 0 ? (

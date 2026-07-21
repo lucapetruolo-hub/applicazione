@@ -47,6 +47,7 @@ model User {
   guidedRequests      GuidedRequest[]
   bookingsAsClient    Booking[]
   notifications       Notification[]
+  savedProfessionals  SavedProfessional[]
 
   @@map("users")
 }
@@ -95,9 +96,27 @@ model ProfessionalProfile {
   quotes           Quote[]
   bookings         Booking[]
   payments         Payment[]
+  savedBy          SavedProfessional[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Professionisti salvati dal cliente (preferiti) — sezione account cliente
+// ---------------------------------------------------------------------------
+
+model SavedProfessional {
+  id                    String   @id @default(uuid())
+  userId                String
+  professionalProfileId String
+  createdAt             DateTime @default(now())
+
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalProfileId])
+  @@map("saved_professionals")
 }
 
 // ---------------------------------------------------------------------------

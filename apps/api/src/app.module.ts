@@ -9,6 +9,7 @@ import { QuotesModule } from "./quotes/quotes.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { BillingModule } from "./billing/billing.module";
+import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { BillingModule } from "./billing/billing.module";
     BookingsModule,
     ReviewsModule,
     BillingModule,
+    SavedProfessionalsModule,
   ],
   controllers: [HealthController],
 })

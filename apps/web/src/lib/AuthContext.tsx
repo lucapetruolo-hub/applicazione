@@ -12,6 +12,7 @@ type AuthContextValue = {
   isLoading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,7 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   }, []);
 
-  return <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>{children}</AuthContext.Provider>;
+  const refreshUser = useCallback(async () => {
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (storedToken) {
+      await loadUser(storedToken);
+    }
+  }, [loadUser]);
+
+  return <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

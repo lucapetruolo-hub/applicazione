@@ -23,6 +23,24 @@ export const registerSchema = emailPasswordSchema.extend({
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+/** Modifica dati anagrafici dal proprio account (CLAUDE.md §8 — impostazioni account). */
+export const updateAccountSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+  email: z.string().email("Email non valida").optional(),
+  phone: z.string().min(6).max(20).optional(),
+});
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
+
+/**
+ * Cambio password: currentPassword obbligatoria solo se l'account ne ha già
+ * una impostata (un account creato via Google potrebbe non averla ancora).
+ */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(8).optional(),
+  newPassword: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z.object({
   categorySlug: professionalCategorySlugSchema,

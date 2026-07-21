@@ -1,5 +1,6 @@
 import type {
   PROFESSIONAL_CATEGORIES,
+  ChangePasswordInput,
   GuidedRequestInput,
   MyProfessionalProfile,
   ProfessionalBooking,
@@ -9,6 +10,7 @@ import type {
   ProfessionalSearchResult,
   QuoteSelfInput,
   ReviewInput,
+  UpdateAccountInput,
 } from "@professionisti/shared";
 
 export type ClientBooking = {
@@ -115,6 +117,35 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    updateAccount: (token: string, input: UpdateAccountInput) =>
+      request<CurrentUser>("/auth/me", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    changePassword: (token: string, input: ChangePasswordInput) =>
+      request<{ success: boolean }>("/auth/change-password", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    saveProfessional: (token: string, professionalProfileId: string) =>
+      request<{ saved: boolean }>(`/saved-professionals/${professionalProfileId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    unsaveProfessional: (token: string, professionalProfileId: string) =>
+      request<{ saved: boolean }>(`/saved-professionals/${professionalProfileId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    mySavedProfessionals: (token: string) =>
+      request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     searchProfessionals: (params: { category?: string; city?: string; q?: string } = {}) => {
       const query = new URLSearchParams();

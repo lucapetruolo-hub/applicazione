@@ -1,11 +1,15 @@
-import { Body, Controller, Get, Inject, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
+  changePasswordSchema,
   emailPasswordSchema,
   googleVerifySchema,
   registerSchema,
+  updateAccountSchema,
+  type ChangePasswordInput,
   type EmailPasswordInput,
   type GoogleVerifyInput,
   type RegisterInput,
+  type UpdateAccountInput,
 } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -42,5 +46,23 @@ export class AuthController {
     if (!user) return null;
     const { id, phone, email, name, role } = user;
     return { id, phone, email, name, role };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch("me")
+  async updateMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updateAccountSchema)) body: UpdateAccountInput) {
+    const user = await this.authService.updateAccount(req.user.userId, body);
+    const { id, phone, email, name, role } = user;
+    return { id, phone, email, name, role };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("change-password")
+  async changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
+  ) {
+    await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true };
   }
 }

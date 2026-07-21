@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { Button, Text, XStack } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
+import { AccountMenu } from "./AccountMenu";
 
 export function SiteHeader() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading } = useAuth();
 
   return (
     <XStack
@@ -26,36 +27,7 @@ export function SiteHeader() {
       </Link>
       <XStack gap="$4" alignItems="center">
         {isLoading ? null : user ? (
-          <>
-            {user.role === "CLIENT" ? (
-              <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color="$color11">
-                  Le mie richieste
-                </Text>
-              </Link>
-            ) : null}
-            {user.role === "PROFESSIONAL" ? (
-              <Link href="/dashboard" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color="$color11">
-                  Dashboard
-                </Text>
-              </Link>
-            ) : null}
-            <Text fontSize="$3" color="$color11">
-              {user.name ?? user.phone ?? user.email}
-            </Text>
-            <Text
-              fontSize="$3"
-              fontWeight="600"
-              color="$blue10"
-              cursor="pointer"
-              onPress={logout}
-              accessibilityRole="button"
-              accessibilityLabel="Esci dal tuo account"
-            >
-              Esci
-            </Text>
-          </>
+          <AccountMenu />
         ) : (
           <Link href="/accedi" style={{ textDecoration: "none" }}>
             <Text fontSize="$3" fontWeight="600" color="$blue10">

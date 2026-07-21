@@ -82,6 +82,43 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: !existingUser };
   }
 
+  async updateAccount(userId: string, data: { name?: string; email?: string; phone?: string }) {
+    if (data.email) {
+      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+      if (existing && existing.id !== userId) {
+        throw new ConflictException("Esiste già un account con questa email.");
+      }
+    }
+    if (data.phone) {
+      const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
+      if (existing && existing.id !== userId) {
+        throw new ConflictException("Esiste già un account con questo numero di telefono.");
+      }
+    }
+
+    return this.prisma.user.update({ where: { id: userId }, data });
+  }
+
+  async changePassword(userId: string, currentPassword: string | undefined, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException("Utente non trovato.");
+    }
+
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        throw new BadRequestException("Inserisci la password attuale.");
+      }
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        throw new UnauthorizedException("Password attuale non corretta.");
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
   private issueToken(userId: string): string {
     return this.jwt.sign({ sub: userId });
   }
