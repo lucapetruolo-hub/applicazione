@@ -12,6 +12,20 @@ export type HeroProps = SearchBarProps & {
   onQuotePress?: () => void;
 };
 
+// Macchie decorative soffuse: solo View + opacity + borderRadius (nessun
+// filtro CSS, nessuna libreria di gradienti) così restano rese in modo
+// identico su web (react-native-web) e nativo (Expo), coerente con
+// CLAUDE.md — packages/ui è condiviso da web e mobile.
+function DecorativeBlobs() {
+  return (
+    <YStack position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
+      <YStack position="absolute" top={-120} left={-80} width={320} height={320} borderRadius={320} backgroundColor="$blue7" opacity={0.35} />
+      <YStack position="absolute" top={-60} right={-100} width={280} height={280} borderRadius={280} backgroundColor="$purple7" opacity={0.25} />
+      <YStack position="absolute" bottom={-140} left="35%" width={260} height={260} borderRadius={260} backgroundColor="$yellow7" opacity={0.2} />
+    </YStack>
+  );
+}
+
 export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...searchProps }: HeroProps) {
   return (
     <YStack
@@ -21,8 +35,12 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
       backgroundColor="$blue2"
       alignItems="center"
       gap="$5"
+      position="relative"
+      overflow="hidden"
     >
-      <YStack maxWidth={640} alignItems="center" gap="$2">
+      <DecorativeBlobs />
+
+      <YStack maxWidth={640} alignItems="center" gap="$2" zIndex={1}>
         <H1 textAlign="center" size="$10">
           {title}
         </H1>
@@ -31,7 +49,7 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
         </Paragraph>
       </YStack>
 
-      <YStack width="100%" maxWidth={680} gap="$3">
+      <YStack width="100%" maxWidth={680} gap="$3" zIndex={1}>
         <XStack gap="$2" flexWrap="wrap" justifyContent="center">
           <XStack paddingHorizontal="$3" paddingVertical="$2" borderRadius="$10" backgroundColor="$blue10">
             <Text fontSize="$3" fontWeight="600" color="white">
@@ -43,7 +61,10 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             paddingVertical="$2"
             borderRadius="$10"
             backgroundColor="white"
-            pressStyle={{ backgroundColor: "$color3" }}
+            animation="quick"
+            scale={1}
+            hoverStyle={{ scale: 1.05, backgroundColor: "$color2" }}
+            pressStyle={{ scale: 0.97, backgroundColor: "$color3" }}
             cursor="pointer"
             onPress={onUrgentPress}
           >
@@ -56,7 +77,10 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             paddingVertical="$2"
             borderRadius="$10"
             backgroundColor="white"
-            pressStyle={{ backgroundColor: "$color3" }}
+            animation="quick"
+            scale={1}
+            hoverStyle={{ scale: 1.05, backgroundColor: "$color2" }}
+            pressStyle={{ scale: 0.97, backgroundColor: "$color3" }}
             cursor="pointer"
             onPress={onQuotePress}
           >
@@ -68,7 +92,11 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
 
         <SearchBar {...searchProps} />
       </YStack>
-      {extra}
+      {extra ? (
+        <YStack zIndex={1} width="100%" alignItems="center">
+          {extra}
+        </YStack>
+      ) : null}
     </YStack>
   );
 }
