@@ -85,6 +85,16 @@ prima discuterne e aggiornare questo file.
   in un'interfaccia che l'utente trova difficile da navigare — da sostituire
   con una migrazione esplicita (`prisma migrate deploy`, no data-loss
   automatico) prima che ci siano dati reali di utenti da rischiare.
+  Stesso problema si è presentato per i **dati** (non solo lo schema): `db
+  push` sincronizza le tabelle ma non le righe, quindi la tabella
+  `categories` restava vuota in produzione (mai eseguito `prisma db seed`
+  lì) e ogni salvataggio di un profilo professionista falliva con
+  "Categoria non valida" (`ProfessionalsService.upsertMyProfile`, che cerca
+  la categoria per slug nel DB). Corretto con `CategoriesSeedService`
+  (`apps/api/src/categories/categories-seed.service.ts`, hook
+  `OnModuleInit`): sincronizza (upsert, idempotente) `PROFESSIONAL_CATEGORIES`
+  nella tabella `categories` a ogni avvio dell'API, stesso principio pragmatico
+  del punto sopra.
   Deploy live e funzionante (registrazione, login email e login Google
   testati sul sito reale): backend su `professionistiapi-production.up.railway.app`,
   Postgres su Railway (senza estensione PostGIS — vedi nota schema sotto),
