@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, XStack, YStack } from "@professionisti/ui";
-import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
 // Leaflet legge `window` al modulo: mai importato lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
@@ -38,7 +38,7 @@ export function ResultsListWithMap({
             verified={pro.verified}
             remoteAvailable={pro.remoteAvailable}
             onPress={() => router.push(`/professionista/${pro.id}`)}
-            icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
+            icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
           />
         ))}
       </YStack>

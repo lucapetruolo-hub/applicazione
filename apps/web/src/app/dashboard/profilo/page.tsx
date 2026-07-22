@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
@@ -17,10 +17,14 @@ export default function DashboardProfiloPage() {
   const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -33,6 +37,7 @@ export default function DashboardProfiloPage() {
           setCity(profile.city);
           setBio(profile.bio ?? "");
           setRemoteAvailable(profile.remoteAvailable);
+          setImageUrl(profile.imageUrl);
         }
       })
       .finally(() => setIsLoadingProfile(false));
@@ -108,6 +113,23 @@ export default function DashboardProfiloPage() {
     }
   }
 
+  async function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImageError(null);
+    setIsUploadingImage(true);
+    try {
+      const result = await apiClient.uploadMyProfessionalImage(token as string, file);
+      setImageUrl(result.imageUrl);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Errore durante il caricamento dell'immagine.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={560} gap="$4">
@@ -117,6 +139,53 @@ export default function DashboardProfiloPage() {
             Queste informazioni sono visibili pubblicamente su Professionisti e determinano in quali ricerche
             compari.
           </Paragraph>
+        </YStack>
+
+        <YStack gap="$2">
+          <Text fontWeight="600">Immagine profilo</Text>
+          <YStack flexDirection="row" alignItems="center" gap="$3">
+            <YStack
+              width={72}
+              height={72}
+              borderRadius={36}
+              backgroundColor="$color3"
+              alignItems="center"
+              justifyContent="center"
+              overflow="hidden"
+              borderWidth={1}
+              borderColor="$borderColor"
+            >
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <Text fontSize="$7">📷</Text>
+              )}
+            </YStack>
+            <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
+              <Button
+                size="$3"
+                disabled={isUploadingImage}
+                opacity={isUploadingImage ? 0.6 : 1}
+                onPress={() => imageInputRef.current?.click()}
+              >
+                {isUploadingImage ? "Caricamento..." : imageUrl ? "Cambia immagine" : "Carica immagine"}
+              </Button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                disabled={isUploadingImage}
+                style={{ display: "none" }}
+              />
+              {imageError ? (
+                <Text color="$red10" fontSize="$2" flexShrink={1}>
+                  {imageError}
+                </Text>
+              ) : null}
+            </YStack>
+          </YStack>
         </YStack>
 
         <YStack gap="$2">

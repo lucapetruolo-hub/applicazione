@@ -97,6 +97,25 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     return body as T;
   }
 
+  async function uploadFile<T>(path: string, token: string, file: Blob, fieldName: string): Promise<T> {
+    const formData = new FormData();
+    formData.append(fieldName, file);
+
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`));
+    }
+
+    return body as T;
+  }
+
   return {
     health: () => request<{ status: string }>("/health"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
@@ -187,6 +206,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    uploadMyProfessionalImage: (token: string, file: Blob) =>
+      uploadFile<{ imageUrl: string }>("/professionals/me/image", token, file, "image"),
 
     myLeads: (token: string) =>
       request<ProfessionalLead[]>("/professionals/me/leads", { headers: { Authorization: `Bearer ${token}` } }),

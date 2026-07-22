@@ -28,6 +28,7 @@ export type ProfessionalSearchResult = {
   remoteAvailable: boolean;
   latitude: number;
   longitude: number;
+  imageUrl: string | null;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

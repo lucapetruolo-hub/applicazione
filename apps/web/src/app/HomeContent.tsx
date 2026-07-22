@@ -19,7 +19,7 @@ import {
   type SearchMode,
 } from "@professionisti/ui";
 import { CategoryTile } from "@/components/CategoryTile";
-import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { FadeInSection } from "@/components/FadeInSection";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
@@ -155,7 +155,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
                     rating={pro.rating ?? undefined}
                     verified={pro.verified}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
-                    icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
+                    icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
                   />
                 </YStack>
               ))}

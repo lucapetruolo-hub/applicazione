@@ -85,6 +85,7 @@ model ProfessionalProfile {
   latitude        Float
   longitude       Float
   bio             String?
+  imageUrl        String?
   verified        Boolean  @default(false)
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).

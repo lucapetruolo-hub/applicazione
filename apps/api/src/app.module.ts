@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { CloudinaryModule } from "./cloudinary/cloudinary.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProfessionalsModule } from "./professionals/professionals.module";
 import { GuidedRequestsModule } from "./guided-requests/guided-requests.module";
@@ -14,6 +15,7 @@ import { SavedProfessionalsModule } from "./saved-professionals/saved-profession
 @Module({
   imports: [
     PrismaModule,
+    CloudinaryModule,
     CategoriesModule,
     AuthModule,
     ProfessionalsModule,

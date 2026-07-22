@@ -57,6 +57,7 @@ export class SavedProfessionalsService {
         remoteAvailable: profile.remoteAvailable,
         latitude: profile.latitude,
         longitude: profile.longitude,
+        imageUrl: profile.imageUrl,
       } satisfies ProfessionalSearchResult;
     });
   }

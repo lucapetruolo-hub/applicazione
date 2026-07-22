@@ -59,6 +59,7 @@ export class ProfessionalsService {
         remoteAvailable: profile.remoteAvailable,
         latitude: profile.latitude,
         longitude: profile.longitude,
+        imageUrl: profile.imageUrl,
       } satisfies ProfessionalSearchResult;
     });
 
@@ -109,6 +110,7 @@ export class ProfessionalsService {
       remoteAvailable: profile.remoteAvailable,
       latitude: profile.latitude,
       longitude: profile.longitude,
+      imageUrl: profile.imageUrl,
       bio: profile.bio,
       subTags: profile.subTags,
       reviews: reviews.map((review) => ({
@@ -137,6 +139,7 @@ export class ProfessionalsService {
       subTags: profile.subTags,
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
+      imageUrl: profile.imageUrl,
     };
   }
 
@@ -188,7 +191,12 @@ export class ProfessionalsService {
       subTags: profile.subTags,
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
+      imageUrl: profile.imageUrl,
     };
+  }
+
+  async updateMyImage(userId: string, imageUrl: string): Promise<void> {
+    await this.prisma.professionalProfile.update({ where: { userId }, data: { imageUrl } });
   }
 
   private async requireMyProfileId(userId: string): Promise<string> {

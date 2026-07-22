@@ -17,6 +17,7 @@
     "@professionisti/database": "workspace:*",
     "@professionisti/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "google-auth-library": "^9.14.1",
@@ -31,6 +32,7 @@
     "@professionisti/config": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.7.0",
     "typescript": "^5.6.0"
   }

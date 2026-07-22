@@ -7,7 +7,7 @@ import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Button, H1, Paragraph, ProfessionalCard, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
 export default function ProfessionistiSalvatiPage() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export default function ProfessionistiSalvatiPage() {
                   rating={pro.rating ?? undefined}
                   verified={pro.verified}
                   onPress={() => router.push(`/professionista/${pro.id}`)}
-                  icon={<CategoryIconBadge slug={pro.categorySlug} size={44} />}
+                  icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
                 />
                 <Button size="$2" alignSelf="flex-end" backgroundColor="$color3" color="$color12" onPress={() => handleRemove(pro.id)}>
                   Rimuovi dai salvati

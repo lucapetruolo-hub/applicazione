@@ -1,12 +1,30 @@
-import { Body, Controller, Get, Param, Put, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { professionalProfileSelfSchema, type ProfessionalProfileSelfInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ProfessionalsService } from "./professionals.service";
 
 @Controller("professionals")
 export class ProfessionalsController {
-  constructor(private readonly professionalsService: ProfessionalsService) {}
+  constructor(
+    private readonly professionalsService: ProfessionalsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Get("search")
   search(
@@ -31,6 +49,18 @@ export class ProfessionalsController {
     @Body(new ZodValidationPipe(professionalProfileSelfSchema)) body: ProfessionalProfileSelfInput,
   ) {
     return this.professionalsService.upsertMyProfile(req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("me/image")
+  @UseInterceptors(FileInterceptor("image"))
+  async uploadMyImage(@Req() req: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Nessuna immagine caricata.");
+    }
+    const imageUrl = await this.cloudinaryService.uploadImage(file, "professionisti");
+    await this.professionalsService.updateMyImage(req.user.userId, imageUrl);
+    return { imageUrl };
   }
 
   @UseGuards(JwtAuthGuard)
