@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Input, Text, YStack } from "tamagui";
+import { Input, ScrollView, Text, YStack } from "tamagui";
 
 export type AutocompleteProps<T> = {
   items: T[];
@@ -27,7 +27,7 @@ export function Autocomplete<T>({
   value,
   onChangeText,
   placeholder,
-  maxResults = 6,
+  maxResults = 30,
   size,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
@@ -71,19 +71,24 @@ export function Autocomplete<T>({
           shadowRadius={12}
           shadowOpacity={0.15}
         >
-          {filtered.map((item) => (
-            <YStack
-              key={getKey(item)}
-              padding="$3"
-              borderBottomWidth={1}
-              borderBottomColor="$borderColor"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: "$color3" }}
-              onPress={() => onSelect(item)}
-            >
-              {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
-            </YStack>
-          ))}
+          {/* Altezza fissa + scroll: con centinaia di risultati (es. i comuni
+              italiani) serve poter scorrere con la rotellina, non solo vedere
+              i primi N tagliati senza modo di vedere gli altri. */}
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
+            {filtered.map((item) => (
+              <YStack
+                key={getKey(item)}
+                padding="$3"
+                borderBottomWidth={1}
+                borderBottomColor="$borderColor"
+                cursor="pointer"
+                hoverStyle={{ backgroundColor: "$color3" }}
+                onPress={() => onSelect(item)}
+              >
+                {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
+              </YStack>
+            ))}
+          </ScrollView>
         </YStack>
       ) : null}
     </YStack>
