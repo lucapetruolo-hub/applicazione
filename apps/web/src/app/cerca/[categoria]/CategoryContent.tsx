@@ -53,7 +53,7 @@ export function CategoryContent({
           ))}
         </XStack>
 
-        <ResultsListWithMap professionals={professionals} showMap={!online} />
+        <ResultsListWithMap professionals={professionals} showMap={!online} city={city} />
       </YStack>
     </YStack>
   );

@@ -11,6 +11,8 @@ export type AutocompleteProps<T> = {
   onChangeText: (text: string) => void;
   placeholder?: string;
   maxResults?: number;
+  /** Numero minimo di caratteri digitati prima di mostrare l'elenco (0 = mostra subito, anche a campo vuoto). */
+  minChars?: number;
   size?: React.ComponentProps<typeof Input>["size"];
 };
 
@@ -28,6 +30,7 @@ export function Autocomplete<T>({
   onChangeText,
   placeholder,
   maxResults = 30,
+  minChars = 0,
   size,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
@@ -36,9 +39,15 @@ export function Autocomplete<T>({
   // Query vuota: mostra comunque un elenco (i primi N) invece di un menu
   // vuoto finché non si digita — l'utente deve vedere subito che ci sono
   // professionisti/città tra cui scegliere, non scoprirlo solo scrivendo.
-  const filtered = normalizedQuery
-    ? items.filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery)).slice(0, maxResults)
-    : items.slice(0, maxResults);
+  // Sotto la soglia minChars invece niente elenco (usato per il campo città:
+  // con ~7900 comuni i primi risultati "a caso" non aiutano, meglio aspettare
+  // qualche lettera).
+  const filtered =
+    normalizedQuery.length < minChars
+      ? []
+      : normalizedQuery
+        ? items.filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery)).slice(0, maxResults)
+        : items.slice(0, maxResults);
 
   const showDropdown = isFocused && filtered.length > 0;
 

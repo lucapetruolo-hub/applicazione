@@ -39,7 +39,7 @@ export function CercaContent({
       </YStack>
 
       <YStack width="100%" maxWidth={1080} paddingHorizontal="$4" paddingVertical="$6">
-        <ResultsListWithMap professionals={professionals} showMap={!online} />
+        <ResultsListWithMap professionals={professionals} showMap={!online} city={city} />
       </YStack>
     </YStack>
   );

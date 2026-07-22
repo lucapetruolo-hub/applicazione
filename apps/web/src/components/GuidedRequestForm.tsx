@@ -173,6 +173,7 @@ export function GuidedRequestForm({
               onChangeText={setCity}
               placeholder="Es. Roma"
               size="$5"
+              minChars={3}
             />
           </YStack>
         </YStack>

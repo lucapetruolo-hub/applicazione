@@ -158,6 +158,7 @@ export default function DashboardProfiloPage() {
               onChangeText={setCity}
               placeholder="Es. Milano"
               size="$5"
+              minChars={3}
             />
           </YStack>
         </YStack>

@@ -113,6 +113,7 @@ export function SearchBar({
               onChangeText={setCity}
               placeholder="Città"
               size="$5"
+              minChars={3}
             />
           </>
         ) : null}

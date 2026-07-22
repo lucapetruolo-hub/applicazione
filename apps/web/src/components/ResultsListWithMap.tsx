@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, XStack, YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 
@@ -14,12 +14,16 @@ const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.Result
 export function ResultsListWithMap({
   professionals,
   showMap,
+  city,
 }: {
   professionals: ProfessionalSearchResult[];
   showMap: boolean;
+  /** Città cercata: se non ci sono professionisti con coordinate, la mappa zooma comunque qui invece di sparire. */
+  city?: string;
 }) {
   const router = useRouter();
-  const hasCoords = professionals.some((pro) => pro.latitude !== 0 || pro.longitude !== 0);
+  const comune = city ? findComuneByName(city) : undefined;
+  const fallbackCenter: [number, number] | undefined = comune ? [comune.lat, comune.lon] : undefined;
 
   return (
     <XStack width="100%" gap="$5" alignItems="flex-start" flexWrap="wrap">
@@ -39,7 +43,7 @@ export function ResultsListWithMap({
         ))}
       </YStack>
 
-      {showMap && hasCoords ? (
+      {showMap ? (
         <YStack
           width={420}
           height={600}
@@ -51,7 +55,7 @@ export function ResultsListWithMap({
           display="none"
           $gtMd={{ display: "flex" }}
         >
-          <ResultsMap professionals={professionals} />
+          <ResultsMap professionals={professionals} fallbackCenter={fallbackCenter} />
         </YStack>
       ) : null}
     </XStack>
