@@ -31,22 +31,44 @@ function FitBounds({ points, fallbackCenter }: { points: [number, number][]; fal
   // ogni render, quindi senza guardia questo effetto ripartirebbe sempre).
   const hasFitted = useRef(false);
   useEffect(() => {
-    if (hasFitted.current) return;
-    hasFitted.current = true;
-    if (points.length === 0) {
-      // Nessun professionista con coordinate: se conosciamo comunque la
-      // città cercata (es. "Latina" senza risultati) zooma lì, così la
-      // mappa mostra sempre la zona cercata invece di sparire o restare
-      // ferma sull'inquadratura di default su tutta Italia.
-      if (fallbackCenter) map.setView(fallbackCenter, 12);
-      return;
+    function tryFit() {
+      if (hasFitted.current) return;
+      // Su mobile la mappa nasce dentro un contenitore nascosto (display:none,
+      // dietro al bottone "Mostra mappa"): un fitBounds/setView calcolato su
+      // un contenitore 0×0 produce un'inquadratura sbagliata che poi non
+      // verrebbe mai ricalcolata (questo effetto gira una volta sola). Si
+      // aspetta che il contenitore abbia davvero delle dimensioni.
+      const container = map.getContainer();
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
+      hasFitted.current = true;
+      if (points.length === 0) {
+        // Nessun professionista con coordinate: se conosciamo comunque la
+        // città cercata (es. "Latina" senza risultati) zooma lì, così la
+        // mappa mostra sempre la zona cercata invece di sparire o restare
+        // ferma sull'inquadratura di default su tutta Italia.
+        if (fallbackCenter) map.setView(fallbackCenter, 12);
+        return;
+      }
+      const [first] = points;
+      if (points.length === 1 && first) {
+        map.setView(first, 12);
+        return;
+      }
+      map.fitBounds(points, { padding: [32, 32] });
     }
-    const [first] = points;
-    if (points.length === 1 && first) {
-      map.setView(first, 12);
-      return;
-    }
-    map.fitBounds(points, { padding: [32, 32] });
+
+    tryFit();
+    // Leaflet non si accorge da solo se il suo contenitore cambia dimensione
+    // per un motivo diverso dal resize della finestra (qui: il toggle
+    // "Mostra mappa" che passa da display:none a flex) — serve
+    // invalidateSize() esplicito, altrimenti la mappa resta storta/vuota
+    // una volta rivelata.
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+      tryFit();
+    });
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
   }, [map, points, fallbackCenter]);
   return null;
 }

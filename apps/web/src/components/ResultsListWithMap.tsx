@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
@@ -47,8 +47,39 @@ export function ResultsListWithMap({
   // ricerca. Da desktop ($gtMd) resta sempre visibile a fianco della lista,
   // indipendentemente da questo stato (vedi regola CSS dedicata sotto).
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  // Leaflet inizializzato dentro un contenitore nascosto (display:none, lato
+  // mobile prima del tap su "Mostra mappa") calcola un pixel-origin interno
+  // corrotto che poi NON si ricalcola in modo affidabile nemmeno con
+  // invalidateSize()+fitBounds successivi (verificato: marker finivano a
+  // coordinate come x:-239880 e la lista restava vuota). L'unica soluzione
+  // robusta è non montare affatto <ResultsMap> finché non sarà davvero
+  // visibile: da mobile solo dopo il tap, da desktop solo una volta
+  // rilevato via matchMedia di essere sopra la soglia dei 700px.
+  const [shouldMountMap, setShouldMountMap] = useState(false);
+
+  useEffect(() => {
+    if (mobileMapOpen) setShouldMountMap(true);
+  }, [mobileMapOpen]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 700px)");
+    if (mql.matches) setShouldMountMap(true);
+    function handleChange(e: MediaQueryListEvent) {
+      if (e.matches) setShouldMountMap(true);
+    }
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
 
   function handleBoundsChange(bounds: MapBounds) {
+    // Su mobile la mappa parte chiusa (display:none) ma resta montata: Leaflet
+    // inizializzato in un contenitore di dimensione zero calcola un
+    // inquadramento degenere (nord/sud e/o est/ovest coincidenti), che
+    // filtrerebbe fuori tutti i professionisti dalla lista pur mostrando il
+    // conteggio corretto nell'intestazione — bug reale riscontrato dall'utente
+    // (14 professionisti trovati ma lista vuota). Ignoriamo un inquadramento
+    // di questo tipo invece di applicarlo.
+    if (!(bounds.north > bounds.south) || !(bounds.east > bounds.west)) return;
     const within = pool.filter(
       (pro) =>
         (pro.latitude !== 0 || pro.longitude !== 0) &&
@@ -90,12 +121,14 @@ export function ResultsListWithMap({
         <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}`}>
           <div className="results-map-sticky">
             <YStack width="100%" height="100%" borderRadius="$6" overflow="hidden" borderWidth={1} borderColor="$borderColor">
-              <ResultsMap
-                professionals={pool}
-                initialProfessionals={professionals}
-                fallbackCenter={fallbackCenter}
-                onBoundsChange={handleBoundsChange}
-              />
+              {shouldMountMap ? (
+                <ResultsMap
+                  professionals={pool}
+                  initialProfessionals={professionals}
+                  fallbackCenter={fallbackCenter}
+                  onBoundsChange={handleBoundsChange}
+                />
+              ) : null}
             </YStack>
           </div>
         </div>
