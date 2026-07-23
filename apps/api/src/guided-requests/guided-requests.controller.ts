@@ -1,17 +1,57 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { guidedRequestSchema, type GuidedRequestInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GuidedRequestsService } from "./guided-requests.service";
+
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
 @Controller("guided-requests")
 export class GuidedRequestsController {
-  constructor(private readonly guidedRequestsService: GuidedRequestsService) {}
+  constructor(
+    private readonly guidedRequestsService: GuidedRequestsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema)) body: GuidedRequestInput) {
     return this.guidedRequestsService.create(req.user.userId, body);
+  }
+
+  // Una chiamata per foto (fino a 3, vedi guidedRequestSchema.photoUrls e la
+  // UI in GuidedRequestForm): stesso pattern di ProfessionalsController
+  // (`POST /professionals/me/image`), così ogni foto ha il proprio
+  // stato di caricamento/errore in UI invece di un unico upload multiplo
+  // che fallisce o riesce in blocco.
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(MulterExceptionFilter)
+  @Post("photos")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith("image/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine."), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadPhoto(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Nessuna immagine caricata.");
+    }
+    // Stessa trasformazione Cloudinary (resize + compressione automatica)
+    // già usata per l'immagine profilo: qui serve altrettanto — foto da
+    // cellulare possono pesare diversi MB, "ridimensionale per occupare
+    // meno memoria" richiesta esplicita dell'utente.
+    const imageUrl = await this.cloudinaryService.uploadImage(file, "guided-requests");
+    return { imageUrl };
   }
 
   @UseGuards(JwtAuthGuard)

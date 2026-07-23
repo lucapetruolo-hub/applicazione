@@ -214,6 +214,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     myGuidedRequests: (token: string) =>
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
 
+    uploadGuidedRequestPhoto: (token: string, file: Blob) =>
+      uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),
+
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 

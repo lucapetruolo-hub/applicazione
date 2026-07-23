@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+
+const MAX_PHOTOS = 3;
 
 export type GuidedRequestFormProps = {
   isUrgent: boolean;
@@ -42,6 +44,10 @@ export function GuidedRequestForm({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
     return null;
@@ -108,7 +114,7 @@ export function GuidedRequestForm({
         description: description.trim(),
         city: city.trim(),
         isUrgent,
-        photoUrls: [],
+        photoUrls,
         professionalProfileId,
       });
       setResult({ matchedProfessionals: response.matchedProfessionals });
@@ -117,6 +123,32 @@ export function GuidedRequestForm({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      // Cloudinary ridimensiona e comprime lato server (stessa trasformazione
+      // dell'immagine profilo professionista): una foto da cellulare può
+      // pesare diversi MB, qui viene ridotta prima di finire nel database
+      // come URL — richiesta esplicita dell'utente ("ridimensionala per
+      // occupare meno memoria").
+      const result = await apiClient.uploadGuidedRequestPhoto(token as string, file);
+      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_PHOTOS));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
   return (
@@ -186,6 +218,79 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
+          <Text fontWeight="600">Foto (opzionale, fino a {MAX_PHOTOS})</Text>
+          <Text fontSize="$2" color="$color9">
+            Una foto aiuta il professionista a capire subito il lavoro e a darti un preventivo più preciso.
+          </Text>
+          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+            {photoUrls.map((url) => (
+              <YStack
+                key={url}
+                width={88}
+                height={88}
+                borderRadius="$4"
+                overflow="hidden"
+                position="relative"
+                borderWidth={1}
+                borderColor="$borderColor"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <YStack
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  width={22}
+                  height={22}
+                  borderRadius={11}
+                  backgroundColor="rgba(0,0,0,0.6)"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => removePhoto(url)}
+                >
+                  <Text color="white" fontSize="$2">
+                    ✕
+                  </Text>
+                </YStack>
+              </YStack>
+            ))}
+            {photoUrls.length < MAX_PHOTOS ? (
+              <YStack
+                width={88}
+                height={88}
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                borderStyle="dashed"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                opacity={isUploadingPhoto ? 0.6 : 1}
+                onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+              >
+                <Text fontSize="$7" color="$color9">
+                  {isUploadingPhoto ? "…" : "+"}
+                </Text>
+              </YStack>
+            ) : null}
+          </YStack>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            disabled={isUploadingPhoto}
+            style={{ display: "none" }}
+          />
+          {photoError ? (
+            <Text color="$red10" fontSize="$2">
+              {photoError}
+            </Text>
+          ) : null}
+        </YStack>
+
+        <YStack gap="$2">
           <Text fontWeight="600">Città</Text>
           <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
             <Autocomplete
@@ -212,8 +317,8 @@ export function GuidedRequestForm({
           size="$5"
           backgroundColor={isUrgent ? "$red10" : undefined}
           onPress={handleSubmit}
-          disabled={isSubmitting}
-          opacity={isSubmitting ? 0.6 : 1}
+          disabled={isSubmitting || isUploadingPhoto}
+          opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
         >
           {isSubmitting ? submittingLabel : submitLabel}
         </Button>

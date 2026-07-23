@@ -49,7 +49,7 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export const guidedRequestSchema = z.object({
   categorySlug: professionalCategorySlugSchema,
   description: z.string().min(10).max(2000),
-  photoUrls: z.array(z.string().url()).max(5).default([]),
+  photoUrls: z.array(z.string().url()).max(3).default([]),
   city: z.string().min(2),
   isUrgent: z.boolean().default(false),
   /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
