@@ -49,7 +49,7 @@ export function CercaContent({
         <ResultsListWithMap
           professionals={professionals}
           allProfessionals={allProfessionals}
-          showMap={!online}
+          showMap
           city={city}
           header={header}
         />

@@ -54,17 +54,17 @@ export default async function CategoryPage({
     professionals = [];
   }
 
-  // Tutti i professionisti della categoria (nessun filtro città): alimenta
-  // i puntini sulla mappa così, allontanando lo zoom, ne compaiono altri
-  // oltre a quelli della città cercata — la colonna a sinistra si aggiorna
-  // di conseguenza in base a cosa è visibile sulla mappa (ResultsListWithMap).
+  // Tutti i professionisti della categoria (nessun filtro città, ma stesso
+  // filtro online): alimenta i puntini sulla mappa così, allontanando lo
+  // zoom, ne compaiono altri oltre a quelli della città cercata — la colonna
+  // a sinistra si aggiorna di conseguenza in base a cosa è visibile sulla
+  // mappa (ResultsListWithMap). La mappa è mostrata anche in modalità
+  // "Online", quindi serve calcolarla in entrambe le modalità.
   let allProfessionals: ProfessionalSearchResult[] = professionals;
-  if (!isOnline) {
-    try {
-      allProfessionals = await apiClient.searchProfessionals({ category: category.slug });
-    } catch {
-      allProfessionals = professionals;
-    }
+  try {
+    allProfessionals = await apiClient.searchProfessionals({ category: category.slug, remote: isOnline });
+  } catch {
+    allProfessionals = professionals;
   }
 
   return (

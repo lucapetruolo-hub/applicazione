@@ -41,18 +41,17 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
     professionals = [];
   }
 
-  // Tutti i professionisti (nessun filtro città): alimenta i puntini sulla
-  // mappa così, allontanando lo zoom, ne compaiono altri oltre a quelli
-  // della città cercata — vedi stessa logica in /cerca/[categoria]. In
-  // modalità online la mappa non viene comunque mostrata (vedi showMap in
-  // CercaContent), quindi qui non serve calcolarla.
+  // Tutti i professionisti (nessun filtro città, ma stesso filtro online):
+  // alimenta i puntini sulla mappa così, allontanando lo zoom, ne compaiono
+  // altri oltre a quelli della città cercata — vedi stessa logica in
+  // /cerca/[categoria]. La mappa è mostrata anche in modalità "Online" (un
+  // professionista che offre consulenza da remoto resta comunque radicato in
+  // una zona), quindi serve calcolarla in entrambe le modalità.
   let allProfessionals: ProfessionalSearchResult[] = professionals;
-  if (!isOnline) {
-    try {
-      allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q });
-    } catch {
-      allProfessionals = professionals;
-    }
+  try {
+    allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q, remote: isOnline });
+  } catch {
+    allProfessionals = professionals;
   }
 
   return (

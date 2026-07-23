@@ -61,7 +61,7 @@ export function CategoryContent({
         <ResultsListWithMap
           professionals={professionals}
           allProfessionals={allProfessionals}
-          showMap={!online}
+          showMap
           city={city}
           header={header}
         />
