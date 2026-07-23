@@ -105,6 +105,12 @@ export const professionalProfileSchema = z.object({
   bio: z.string().max(2000).optional(),
   remoteAvailable: z.boolean().default(false),
   services: z.array(professionalServiceSchema).max(30).default([]),
+  // Opzionale: un professionista può caricare la foto prima ancora di aver
+  // salvato il resto del profilo (è la prima sezione del form in
+  // /dashboard/profilo) — in quel caso non esiste ancora una riga
+  // ProfessionalProfile su cui persisterla subito, quindi l'URL resta in
+  // stato locale finché non arriva qui, nel primo salvataggio vero e proprio.
+  imageUrl: z.string().url().optional(),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

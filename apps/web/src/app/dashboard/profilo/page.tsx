@@ -134,6 +134,11 @@ export default function DashboardProfiloPage() {
         subTags: [],
         bio: bio.trim() || undefined,
         remoteAvailable,
+        // Se l'immagine è stata caricata prima ancora di salvare il resto
+        // del profilo (nessuna riga ancora sul server in quel momento), va
+        // inclusa qui nel primo salvataggio vero e proprio — vedi nota in
+        // professionals.service.ts#updateMyImage.
+        imageUrl: imageUrl ?? undefined,
         services: cleanedServices.map((service) => ({
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,

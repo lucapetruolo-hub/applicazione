@@ -204,6 +204,9 @@ export class ProfessionalsService {
         longitude,
         bio: input.bio,
         remoteAvailable: input.remoteAvailable,
+        // undefined = non inviata in questo salvataggio: Prisma la ignora e
+        // lascia il valore esistente invariato, non la azzera.
+        imageUrl: input.imageUrl,
       },
       create: {
         userId,
@@ -216,6 +219,7 @@ export class ProfessionalsService {
         longitude,
         bio: input.bio,
         remoteAvailable: input.remoteAvailable,
+        imageUrl: input.imageUrl,
       },
       include: { category: true },
     });
@@ -254,12 +258,18 @@ export class ProfessionalsService {
   }
 
   async updateMyImage(userId: string, imageUrl: string): Promise<void> {
-    // Senza questa guardia, un professionista che carica una foto prima di
-    // aver salvato il profilo base (nessuna riga ProfessionalProfile ancora)
-    // faceva fallire l'update Prisma con un errore non gestito (P2025,
-    // "Record to update not found"), risultando in un generico Internal
-    // Server Error invece di un messaggio chiaro.
-    await this.requireMyProfileId(userId);
+    // "Immagine profilo" è la prima sezione del form in /dashboard/profilo:
+    // un professionista alla primissima configurazione può naturalmente
+    // provare a caricare la foto prima ancora di aver compilato e salvato il
+    // resto (nessuna riga ProfessionalProfile ancora). In quel caso non c'è
+    // nulla su cui persistere subito l'URL — non è un errore da bloccare con
+    // "Completa prima il tuo profilo professionista" (bug reale segnalato
+    // dall'utente: appariva anche se stava letteralmente completando il
+    // profilo in quel momento), semplicemente non c'è ancora un profilo:
+    // l'URL resta nello stato del form e viene incluso nel primo salvataggio
+    // vero e proprio (vedi `imageUrl` in professionalProfileSchema).
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) return;
     await this.prisma.professionalProfile.update({ where: { userId }, data: { imageUrl } });
   }
 
