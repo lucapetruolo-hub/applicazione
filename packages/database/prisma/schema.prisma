@@ -123,7 +123,12 @@ model ProfessionalService {
   id                    String   @id @default(uuid())
   professionalProfileId String
   name                  String
-  priceEurCents         Int?
+  // Range invece di prezzo fisso: molti lavori (es. "sostituzione caldaia")
+  // hanno un costo che varia da caso a caso, un prezzo unico era fuorviante.
+  // Se solo priceMinEurCents è impostato viene mostrato come prezzo singolo
+  // (vedi formatServicePriceRange in packages/shared).
+  priceMinEurCents      Int?
+  priceMaxEurCents      Int?
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

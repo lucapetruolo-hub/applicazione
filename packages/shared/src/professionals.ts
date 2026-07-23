@@ -14,12 +14,27 @@ export type PlaceholderProfessional = {
  * la piattaforma non ha professionisti reali (CLAUDE.md §9). Da sostituire
  * con una vera ricerca su `apps/api` quando esisteranno profili reali.
  */
-/** Prestazione offerta dal professionista, con prezzo facoltativo (in centesimi). */
+/** Prestazione offerta dal professionista, con range di prezzo facoltativo (in centesimi). */
 export type ProfessionalServiceItem = {
   id: string;
   name: string;
-  priceEurCents: number | null;
+  priceMinEurCents: number | null;
+  priceMaxEurCents: number | null;
 };
+
+/**
+ * Formatta il prezzo di una prestazione: range ("50,00 € - 90,00 €") se sono
+ * impostati sia il minimo che il massimo (e sono diversi), prezzo singolo se
+ * è impostato solo uno dei due, "Su richiesta" se nessuno dei due lo è.
+ */
+export function formatServicePriceRange(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
+  const format = (cents: number) => `${(cents / 100).toFixed(2)} €`;
+  if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
+    return `${format(priceMinEurCents)} - ${format(priceMaxEurCents)}`;
+  }
+  const single = priceMinEurCents ?? priceMaxEurCents;
+  return single !== null ? format(single) : "Su richiesta";
+}
 
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
 export type ProfessionalSearchResult = {

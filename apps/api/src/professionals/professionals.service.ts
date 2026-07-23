@@ -21,8 +21,15 @@ export type ProfessionalSearchParams = {
   remote?: boolean;
 };
 
-function mapServices(services: { id: string; name: string; priceEurCents: number | null }[]): ProfessionalServiceItem[] {
-  return services.map((service) => ({ id: service.id, name: service.name, priceEurCents: service.priceEurCents }));
+function mapServices(
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
+): ProfessionalServiceItem[] {
+  return services.map((service) => ({
+    id: service.id,
+    name: service.name,
+    priceMinEurCents: service.priceMinEurCents,
+    priceMaxEurCents: service.priceMaxEurCents,
+  }));
 }
 
 @Injectable()
@@ -223,7 +230,8 @@ export class ProfessionalsService {
         data: input.services.map((service) => ({
           professionalProfileId: profile.id,
           name: service.name,
-          priceEurCents: service.priceEurCents ?? null,
+          priceMinEurCents: service.priceMinEurCents ?? null,
+          priceMaxEurCents: service.priceMaxEurCents ?? null,
         })),
       });
     }

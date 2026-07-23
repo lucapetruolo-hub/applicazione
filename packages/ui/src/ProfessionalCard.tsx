@@ -4,8 +4,22 @@ import { Card, Text, XStack, YStack } from "tamagui";
 export type ProfessionalCardService = {
   id: string;
   name: string;
-  priceEurCents: number | null;
+  priceMinEurCents: number | null;
+  priceMaxEurCents: number | null;
 };
+
+// Duplicata (non importata da @professionisti/shared): packages/ui non
+// dipende dal resto del monorepo, resta un design system consumabile da solo
+// — vedi formatServicePriceRange in packages/shared/src/professionals.ts per
+// la stessa logica lato pagina profilo pubblica.
+function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
+  const format = (cents: number) => `${(cents / 100).toFixed(2)} €`;
+  if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
+    return `${format(priceMinEurCents)} - ${format(priceMaxEurCents)}`;
+  }
+  const single = priceMinEurCents ?? priceMaxEurCents;
+  return single !== null ? format(single) : "Su richiesta";
+}
 
 export type ProfessionalCardProps = {
   businessName: string;
@@ -85,7 +99,7 @@ export function ProfessionalCard({
                     {service.name}
                   </Text>
                   <Text fontSize="$2" color="$color11" fontWeight="600">
-                    {service.priceEurCents !== null ? `${(service.priceEurCents / 100).toFixed(2)} €` : "Su richiesta"}
+                    {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
                   </Text>
                 </XStack>
               ))}

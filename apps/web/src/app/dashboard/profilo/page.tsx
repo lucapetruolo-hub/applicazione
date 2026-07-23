@@ -19,7 +19,7 @@ export default function DashboardProfiloPage() {
   const [address, setAddress] = useState("");
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
-  const [services, setServices] = useState<{ name: string; price: string }[]>([]);
+  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,8 @@ export default function DashboardProfiloPage() {
           setServices(
             profile.services.map((service) => ({
               name: service.name,
-              price: service.priceEurCents !== null ? (service.priceEurCents / 100).toFixed(2) : "",
+              priceMin: service.priceMinEurCents !== null ? (service.priceMinEurCents / 100).toFixed(2) : "",
+              priceMax: service.priceMaxEurCents !== null ? (service.priceMaxEurCents / 100).toFixed(2) : "",
             })),
           );
         }
@@ -106,11 +107,19 @@ export default function DashboardProfiloPage() {
     }
 
     const cleanedServices = services
-      .map((service) => ({ name: service.name.trim(), price: service.price.trim() }))
+      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim() }))
       .filter((service) => service.name.length > 0);
     for (const service of cleanedServices) {
-      if (service.price && Number.isNaN(Number(service.price.replace(",", ".")))) {
-        setError(`Prezzo non valido per "${service.name}".`);
+      if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
+        setError(`Prezzo minimo non valido per "${service.name}".`);
+        return;
+      }
+      if (service.priceMax && Number.isNaN(Number(service.priceMax.replace(",", ".")))) {
+        setError(`Prezzo massimo non valido per "${service.name}".`);
+        return;
+      }
+      if (service.priceMin && service.priceMax && Number(service.priceMax.replace(",", ".")) < Number(service.priceMin.replace(",", "."))) {
+        setError(`Il prezzo massimo deve essere maggiore o uguale al minimo per "${service.name}".`);
         return;
       }
     }
@@ -127,7 +136,8 @@ export default function DashboardProfiloPage() {
         remoteAvailable,
         services: cleanedServices.map((service) => ({
           name: service.name,
-          priceEurCents: service.price ? Math.round(Number(service.price.replace(",", ".")) * 100) : undefined,
+          priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
+          priceMaxEurCents: service.priceMax ? Math.round(Number(service.priceMax.replace(",", ".")) * 100) : undefined,
         })),
       });
       setSaved(true);
@@ -139,7 +149,7 @@ export default function DashboardProfiloPage() {
     }
   }
 
-  function updateService(index: number, field: "name" | "price", value: string) {
+  function updateService(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setServices((prev) => prev.map((service, i) => (i === index ? { ...service, [field]: value } : service)));
   }
 
@@ -344,24 +354,34 @@ export default function DashboardProfiloPage() {
         <YStack gap="$2">
           <Text fontWeight="600">Prestazioni offerte (opzionale)</Text>
           <Text fontSize="$2" color="$color9">
-            Aggiungi i servizi che offri, con un prezzo se vuoi indicarlo: compariranno nella tua card nei risultati di
-            ricerca.
+            Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
+            costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
           </Text>
           <YStack gap="$2">
             {services.map((service, index) => (
-              <YStack key={index} flexDirection="row" gap="$2" alignItems="center">
+              <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
                 <input
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"
-                  style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ flex: 1, minWidth: 160, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
                 />
                 <input
-                  value={service.price}
-                  onChange={(e) => updateService(index, "price", e.target.value)}
-                  placeholder="Prezzo €"
+                  value={service.priceMin}
+                  onChange={(e) => updateService(index, "priceMin", e.target.value)}
+                  placeholder="Da €"
                   inputMode="decimal"
-                  style={{ width: 110, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                <Text fontSize="$2" color="$color9">
+                  a
+                </Text>
+                <input
+                  value={service.priceMax}
+                  onChange={(e) => updateService(index, "priceMax", e.target.value)}
+                  placeholder="A €"
+                  inputMode="decimal"
+                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
                 />
                 <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeService(index)}>
                   ✕
@@ -374,7 +394,7 @@ export default function DashboardProfiloPage() {
             alignSelf="flex-start"
             backgroundColor="$color3"
             color="$color12"
-            onPress={() => setServices((prev) => [...prev, { name: "", price: "" }])}
+            onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}
           >
             + Aggiungi prestazione
           </Button>

@@ -81,10 +81,16 @@ export const reviewSchema = z.object({
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
-export const professionalServiceSchema = z.object({
-  name: z.string().min(2).max(120),
-  priceEurCents: z.number().int().nonnegative().optional(),
-});
+export const professionalServiceSchema = z
+  .object({
+    name: z.string().min(2).max(120),
+    priceMinEurCents: z.number().int().nonnegative().optional(),
+    priceMaxEurCents: z.number().int().nonnegative().optional(),
+  })
+  .refine((data) => data.priceMinEurCents === undefined || data.priceMaxEurCents === undefined || data.priceMaxEurCents >= data.priceMinEurCents, {
+    message: "Il prezzo massimo deve essere maggiore o uguale al minimo.",
+    path: ["priceMaxEurCents"],
+  });
 export type ProfessionalServiceInput = z.infer<typeof professionalServiceSchema>;
 
 export const professionalProfileSchema = z.object({

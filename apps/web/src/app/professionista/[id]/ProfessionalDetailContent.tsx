@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalDetail } from "@professionisti/shared";
+import { formatServicePriceRange, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { apiClient } from "@/lib/apiClient";
@@ -120,7 +120,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 >
                   <Text>{service.name}</Text>
                   <Text fontWeight="600">
-                    {service.priceEurCents !== null ? `${(service.priceEurCents / 100).toFixed(2)} €` : "Su richiesta"}
+                    {formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
                   </Text>
                 </XStack>
               ))}

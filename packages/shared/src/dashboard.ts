@@ -11,7 +11,7 @@ export type MyProfessionalProfile = {
   verified: boolean;
   remoteAvailable: boolean;
   imageUrl: string | null;
-  services: { id: string; name: string; priceEurCents: number | null }[];
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

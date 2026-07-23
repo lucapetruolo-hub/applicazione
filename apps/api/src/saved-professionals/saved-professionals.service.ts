@@ -63,7 +63,8 @@ export class SavedProfessionalsService {
         services: profile.services.map((service) => ({
           id: service.id,
           name: service.name,
-          priceEurCents: service.priceEurCents,
+          priceMinEurCents: service.priceMinEurCents,
+          priceMaxEurCents: service.priceMaxEurCents,
         })),
       } satisfies ProfessionalSearchResult;
     });
