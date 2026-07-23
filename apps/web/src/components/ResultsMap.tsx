@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
 export type MapBounds = { north: number; south: number; east: number; west: number };
 
@@ -84,6 +85,11 @@ export function ResultsMap({
   onBoundsChange?: (bounds: MapBounds) => void;
 }) {
   const router = useRouter();
+  // Professionista selezionato cliccando un puntino: mostrato come banner in
+  // basso SOPRA la mappa (che resta aperta), invece di navigare subito al
+  // profilo — l'utente vede un'anteprima e decide se aprirlo.
+  const [selected, setSelected] = useState<ProfessionalSearchResult | null>(null);
+
   // Coordinate 0,0 = professionista senza comune geocodificato ancora: non ha senso metterlo sull'oceano davanti all'Africa.
   const withCoords = professionals.filter((p) => p.latitude !== 0 || p.longitude !== 0);
   const initialWithCoords = (initialProfessionals ?? professionals).filter((p) => p.latitude !== 0 || p.longitude !== 0);
@@ -92,27 +98,115 @@ export function ResultsMap({
   const initialZoom = initialPoints.length === 0 && fallbackCenter ? 12 : 6;
 
   return (
-    <MapContainer center={center} zoom={initialZoom} style={{ width: "100%", height: "100%" }} scrollWheelZoom={false}>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <FitBounds points={initialPoints} fallbackCenter={fallbackCenter} />
-      <BoundsSync onBoundsChange={onBoundsChange} />
-      {withCoords.map((pro) => (
-        <Marker
-          key={pro.id}
-          position={[pro.latitude, pro.longitude]}
-          icon={markerIcon}
-          eventHandlers={{ click: () => router.push(`/professionista/${pro.id}`) }}
-        >
-          <Popup>
-            <strong>{pro.businessName}</strong>
-            <br />
-            {pro.categoryLabel} · {pro.city}
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+    <div className="results-map-container">
+      <MapContainer center={center} zoom={initialZoom} style={{ width: "100%", height: "100%" }} scrollWheelZoom={false}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FitBounds points={initialPoints} fallbackCenter={fallbackCenter} />
+        <BoundsSync onBoundsChange={onBoundsChange} />
+        {withCoords.map((pro) => (
+          <Marker
+            key={pro.id}
+            position={[pro.latitude, pro.longitude]}
+            icon={markerIcon}
+            eventHandlers={{ click: () => setSelected(pro) }}
+          />
+        ))}
+      </MapContainer>
+
+      {selected ? (
+        <div className="map-banner" onClick={() => router.push(`/professionista/${selected.id}`)}>
+          <ProfessionalAvatar imageUrl={selected.imageUrl} categorySlug={selected.categorySlug} size={48} />
+          <div className="map-banner-info">
+            <div className="map-banner-title-row">
+              <strong>{selected.businessName}</strong>
+              {selected.verified ? <span className="map-banner-verified">Verificato</span> : null}
+            </div>
+            <span className="map-banner-subtitle">
+              {selected.categoryLabel} · {selected.city}
+              {selected.rating !== null ? ` · ⭐ ${selected.rating.toFixed(1)}` : ""}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="map-banner-close"
+            aria-label="Chiudi"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(null);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+
+      <style jsx>{`
+        .results-map-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+        }
+        .map-banner {
+          position: absolute;
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: white;
+          border-radius: 14px;
+          box-shadow: 0 6px 20px rgba(15, 23, 42, 0.2);
+          padding: 12px 14px;
+          cursor: pointer;
+        }
+        .map-banner-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .map-banner-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+        .map-banner-title-row strong {
+          font-size: 15px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .map-banner-verified {
+          flex-shrink: 0;
+          font-size: 11px;
+          font-weight: 600;
+          color: #1e5eff;
+        }
+        .map-banner-subtitle {
+          font-size: 13px;
+          color: #667085;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .map-banner-close {
+          flex-shrink: 0;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: none;
+          background: #f1f5f9;
+          cursor: pointer;
+          font-size: 14px;
+        }
+      `}</style>
+    </div>
   );
 }
