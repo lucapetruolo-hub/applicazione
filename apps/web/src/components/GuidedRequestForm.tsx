@@ -36,6 +36,7 @@ export function GuidedRequestForm({
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
+  const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
   const [city, setCity] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -126,22 +127,45 @@ export function GuidedRequestForm({
           <Paragraph color="$color10">{subtitle}</Paragraph>
         </YStack>
 
-        <YStack gap="$2">
-          <Text fontWeight="600">Categoria</Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-            {PROFESSIONAL_CATEGORIES.map((category) => (
-              <Button
-                key={category.slug}
-                size="$3"
-                backgroundColor={categorySlug === category.slug ? "$blue10" : "$color3"}
-                color={categorySlug === category.slug ? "white" : "$color12"}
-                onPress={() => setCategorySlug(category.slug)}
-              >
-                {category.icon} {category.label}
-              </Button>
-            ))}
+        {professionalProfileId && selectedCategory ? (
+          // Categoria già determinata dal professionista scelto (si arriva
+          // qui dal suo profilo, con categoria e id già nell'URL): non ha
+          // senso farla ri-scegliere, è la sua specialità.
+          <YStack gap="$2">
+            <Text fontWeight="600">Categoria</Text>
+            <YStack
+              flexDirection="row"
+              alignItems="center"
+              gap="$2"
+              alignSelf="flex-start"
+              paddingHorizontal="$3"
+              paddingVertical="$2"
+              backgroundColor="$blue10"
+              borderRadius="$4"
+            >
+              <Text color="white" fontWeight="600">
+                {selectedCategory.icon} {selectedCategory.label}
+              </Text>
+            </YStack>
           </YStack>
-        </YStack>
+        ) : (
+          <YStack gap="$2">
+            <Text fontWeight="600">Categoria</Text>
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+              {PROFESSIONAL_CATEGORIES.map((category) => (
+                <Button
+                  key={category.slug}
+                  size="$3"
+                  backgroundColor={categorySlug === category.slug ? "$blue10" : "$color3"}
+                  color={categorySlug === category.slug ? "white" : "$color12"}
+                  onPress={() => setCategorySlug(category.slug)}
+                >
+                  {category.icon} {category.label}
+                </Button>
+              ))}
+            </YStack>
+          </YStack>
+        )}
 
         <YStack gap="$2">
           <Text fontWeight="600">Descrivi il lavoro</Text>
