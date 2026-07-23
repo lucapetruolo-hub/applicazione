@@ -119,6 +119,36 @@ function Falegname(props: IconProps) {
   );
 }
 
+function TuttoFare(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="10" width="18" height="10" rx="1.5" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+      <path d="M3 14h18" />
+    </svg>
+  );
+}
+
+function Oss(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 20s-7-4.4-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z" strokeLinejoin="round" />
+      <path d="M7 12h2l1.5-3 2 6 1.5-3H17" />
+    </svg>
+  );
+}
+
+function Badanti(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="8.5" cy="7.5" r="3" />
+      <circle cx="17" cy="8.5" r="2.6" />
+      <path d="M2.5 20v-1.5A4.5 4.5 0 0 1 7 14h3a4.5 4.5 0 0 1 4.5 4.5V20" />
+      <path d="M14.8 14.3A4 4 0 0 1 21.5 17.5V20" />
+    </svg>
+  );
+}
+
 const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX.Element> = {
   idraulico: Idraulico,
   elettricista: Elettricista,
@@ -130,6 +160,9 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
   climatizzazione: Climatizzazione,
   muratore: Muratore,
   falegname: Falegname,
+  tuttofare: TuttoFare,
+  oss: Oss,
+  badanti: Badanti,
 };
 
 export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg: string }> = {
@@ -143,6 +176,9 @@ export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg:
   climatizzazione: { bg: "#CFFAFE", fg: "#0E7490" },
   muratore: { bg: "#FEE2E2", fg: "#B91C1C" },
   falegname: { bg: "#F5E6D3", fg: "#92400E" },
+  tuttofare: { bg: "#E0E7FF", fg: "#3730A3" },
+  oss: { bg: "#FFE4E6", fg: "#BE123C" },
+  badanti: { bg: "#E9D5FF", fg: "#7E22CE" },
 };
 
 export function CategoryIcon({ slug, size = 24, color }: { slug: string; size?: number; color?: string }) {

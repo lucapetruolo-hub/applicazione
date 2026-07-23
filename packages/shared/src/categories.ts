@@ -65,6 +65,24 @@ export const PROFESSIONAL_CATEGORIES = [
     icon: "🪚",
     subTags: ["mobili-su-misura", "riparazioni", "infissi"],
   },
+  {
+    slug: "tuttofare",
+    label: "Tutto Fare",
+    icon: "🛠️",
+    subTags: ["piccole-riparazioni", "montaggio-mobili", "manutenzione-generale"],
+  },
+  {
+    slug: "oss",
+    label: "OSS",
+    icon: "🩺",
+    subTags: ["assistenza-domiciliare", "assistenza-ospedaliera", "mobilizzazione-pazienti"],
+  },
+  {
+    slug: "badanti",
+    label: "Badanti",
+    icon: "🤝",
+    subTags: ["assistenza-anziani", "convivenza", "compagnia"],
+  },
 ] as const;
 
 export type ProfessionalCategorySlug = (typeof PROFESSIONAL_CATEGORIES)[number]["slug"];
