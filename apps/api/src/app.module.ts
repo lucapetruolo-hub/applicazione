@@ -11,6 +11,7 @@ import { BookingsModule } from "./bookings/bookings.module";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { BillingModule } from "./billing/billing.module";
 import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { SavedProfessionalsModule } from "./saved-professionals/saved-profession
     ReviewsModule,
     BillingModule,
     SavedProfessionalsModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

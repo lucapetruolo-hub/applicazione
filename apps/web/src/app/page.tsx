@@ -2,9 +2,10 @@ import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
 import HomeContent from "./HomeContent";
 
-// ISR: rigenera la lista professionisti ogni 5 minuti, così boost/rating
-// restano ragionevolmente aggiornati senza perdere i benefici SSG per SEO.
-export const revalidate = 300;
+// Server-rendered ad ogni richiesta: stesso motivo di /cerca/[categoria],
+// niente finestra di cache in cui un professionista eliminato resterebbe
+// visibile nella vetrina "Professionisti su Professionisti".
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let professionals: ProfessionalSearchResult[] = [];

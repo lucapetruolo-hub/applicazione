@@ -196,6 +196,12 @@ export class ProfessionalsService {
   }
 
   async updateMyImage(userId: string, imageUrl: string): Promise<void> {
+    // Senza questa guardia, un professionista che carica una foto prima di
+    // aver salvato il profilo base (nessuna riga ProfessionalProfile ancora)
+    // faceva fallire l'update Prisma con un errore non gestito (P2025,
+    // "Record to update not found"), risultando in un generico Internal
+    // Server Error invece di un messaggio chiaro.
+    await this.requireMyProfileId(userId);
     await this.prisma.professionalProfile.update({ where: { userId }, data: { imageUrl } });
   }
 

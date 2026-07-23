@@ -31,7 +31,7 @@ export function CategoryContent({
     <YStack gap="$3" backgroundColor={accent?.bg ?? "$color2"} borderRadius="$6" padding="$4">
       <XStack alignItems="center" gap="$3">
         <CategoryIconBadge slug={category.slug} size={56} />
-        <YStack gap="$1">
+        <YStack gap="$1" flex={1} minWidth={0}>
           <H1 size="$7">
             {category.label}
             {online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}

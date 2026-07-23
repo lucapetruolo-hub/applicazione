@@ -49,6 +49,15 @@ export type ApiClientConfig = {
 
 export type AuthResult = { token: string; isNewUser: boolean };
 
+export type AdminUserRow = {
+  email: string | null;
+  name: string | null;
+  surname: string | null;
+  businessName: string | null;
+  createdAt: string;
+};
+export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUserRow[] };
+
 export type CurrentUser = {
   id: string;
   phone: string | null;
@@ -182,10 +191,18 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       if (params.q) query.set("q", params.q);
       if (params.remote) query.set("remote", "1");
       const queryString = query.toString();
-      return request<ProfessionalSearchResult[]>(`/professionals/search${queryString ? `?${queryString}` : ""}`);
+      // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache
+      // può mantenere in cache questa fetch indipendentemente da
+      // `export const dynamic = "force-dynamic"` sulla pagina chiamante —
+      // un professionista eliminato o modificato restava visibile in
+      // ricerca anche dopo il fix della pagina, finché non si toccava
+      // esplicitamente anche la fetch stessa.
+      return request<ProfessionalSearchResult[]>(`/professionals/search${queryString ? `?${queryString}` : ""}`, {
+        cache: "no-store",
+      });
     },
 
-    getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`),
+    getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     createGuidedRequest: (token: string, input: GuidedRequestInput) =>
       request<{ guidedRequestId: string; matchedProfessionals: number }>("/guided-requests", {
@@ -265,6 +282,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ type }),
       }),
+
+    adminListUsers: (token: string) =>
+      request<AdminUsersByRole>("/admin/users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
   };
 }
 

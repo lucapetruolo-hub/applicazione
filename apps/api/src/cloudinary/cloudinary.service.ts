@@ -25,7 +25,15 @@ export class CloudinaryService {
     try {
       return await new Promise<string>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { folder, resource_type: "image", transformation: [{ width: 800, height: 800, crop: "limit" }] },
+          {
+            folder,
+            resource_type: "image",
+            // quality/fetch_format "auto": Cloudinary sceglie la compressione
+            // migliore per contenuto e il formato più leggero supportato dal
+            // browser che la richiede (es. WebP/AVIF), invece del JPEG fisso
+            // caricato dal client — stessa immagine, file più piccolo.
+            transformation: [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
+          },
           (error, result) => {
             if (error || !result) {
               reject(error ?? new Error("Upload immagine fallito."));

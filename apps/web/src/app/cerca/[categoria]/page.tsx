@@ -8,15 +8,15 @@ import { CategoryContent } from "./CategoryContent";
 type PageParams = { categoria: string };
 type PageSearchParams = { citta?: string; online?: string };
 
-// SSG: pre-genera una pagina per categoria a build time — pagina SEO-critica,
-// non va convertita in client-side rendering (CLAUDE.md §5.4).
-export function generateStaticParams() {
-  return PROFESSIONAL_CATEGORIES.map((category) => ({ categoria: category.slug }));
-}
-
-// ISR: la lista risultati va rigenerata periodicamente (nuovi professionisti,
-// boost/rating aggiornati) senza rinunciare al vantaggio SEO di SSG.
-export const revalidate = 300;
+// Server-rendered ad ogni richiesta, non in cache: pagina SEO-critica (resta
+// server-rendered, non client-side — CLAUDE.md §5.4), ma niente ISG/ISR.
+// Con `revalidate` un professionista eliminato o un profilo modificato
+// potevano restare visibili in ricerca fino a 5 minuti dopo la modifica —
+// inaccettabile per un marketplace (un cliente potrebbe chiamare un
+// professionista che non esiste più). Il volume di traffico atteso in fase
+// di lancio (CLAUDE.md §7: 1 città, poche categorie) non giustifica ancora
+// il rischio di dati non aggiornati pur di risparmiare query al DB.
+export const dynamic = "force-dynamic";
 
 export function generateMetadata({ params }: { params: PageParams }): Metadata {
   if (!isProfessionalCategorySlug(params.categoria)) {
