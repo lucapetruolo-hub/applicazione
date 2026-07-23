@@ -13,47 +13,58 @@ export function CategoryContent({
   city,
   online,
   professionals,
+  allProfessionals,
 }: {
   category: Category;
   city?: string;
   online?: boolean;
   professionals: ProfessionalSearchResult[];
+  /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa. */
+  allProfessionals?: ProfessionalSearchResult[];
 }) {
   const accent = CATEGORY_ACCENT[category.slug as keyof typeof CATEGORY_ACCENT];
 
+  // Nella colonna sinistra, in cima alla lista: allineato con l'inizio della
+  // mappa a destra (stesso layout di riferimento miodottore.it — "riquadro"
+  // superiore e mappa che partono dalla stessa altezza).
+  const header = (
+    <YStack gap="$3" backgroundColor={accent?.bg ?? "$color2"} borderRadius="$6" padding="$4">
+      <XStack alignItems="center" gap="$3">
+        <CategoryIconBadge slug={category.slug} size={56} />
+        <YStack gap="$1">
+          <H1 size="$7">
+            {category.label}
+            {online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
+          </H1>
+          <Paragraph color="$color11" fontSize="$3">
+            {professionals.length > 0
+              ? `${professionals.length} professionist${professionals.length === 1 ? "a" : "i"} verificat${professionals.length === 1 ? "o" : "i"} trovat${professionals.length === 1 ? "o" : "i"}.`
+              : online
+                ? "Nessun professionista disponibile per consulenza online in questa categoria al momento."
+                : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
+          </Paragraph>
+        </YStack>
+      </XStack>
+      <XStack flexWrap="wrap" gap="$2">
+        {category.subTags.map((tag) => (
+          <YStack key={tag} paddingHorizontal="$3" paddingVertical="$2" backgroundColor="white" borderRadius="$10">
+            <Text fontSize="$2">{tag.replace(/-/g, " ")}</Text>
+          </YStack>
+        ))}
+      </XStack>
+    </YStack>
+  );
+
   return (
     <YStack width="100%" alignItems="center">
-      <YStack width="100%" backgroundColor={accent?.bg ?? "$color2"} paddingVertical="$6" paddingHorizontal="$4" alignItems="center">
-        <YStack width="100%" maxWidth={1080} gap="$3">
-          <XStack alignItems="center" gap="$3">
-            <CategoryIconBadge slug={category.slug} size={56} />
-            <YStack gap="$1">
-              <H1 size="$8">
-                {category.label}
-                {online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
-              </H1>
-              <Paragraph color="$color11">
-                {professionals.length > 0
-                  ? `${professionals.length} professionist${professionals.length === 1 ? "a" : "i"} verificat${professionals.length === 1 ? "o" : "i"} trovat${professionals.length === 1 ? "o" : "i"}.`
-                  : online
-                    ? "Nessun professionista disponibile per consulenza online in questa categoria al momento."
-                    : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
-              </Paragraph>
-            </YStack>
-          </XStack>
-        </YStack>
-      </YStack>
-
-      <YStack width="100%" maxWidth={1080} paddingHorizontal="$4" paddingVertical="$6" gap="$4">
-        <XStack flexWrap="wrap" gap="$2">
-          {category.subTags.map((tag) => (
-            <YStack key={tag} paddingHorizontal="$3" paddingVertical="$2" backgroundColor="$color3" borderRadius="$10">
-              <Text fontSize="$2">{tag.replace(/-/g, " ")}</Text>
-            </YStack>
-          ))}
-        </XStack>
-
-        <ResultsListWithMap professionals={professionals} showMap={!online} city={city} />
+      <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+        <ResultsListWithMap
+          professionals={professionals}
+          allProfessionals={allProfessionals}
+          showMap={!online}
+          city={city}
+          header={header}
+        />
       </YStack>
     </YStack>
   );

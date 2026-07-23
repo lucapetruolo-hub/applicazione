@@ -40,11 +40,19 @@ export function SearchBar({
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
   const [mode, setMode] = useState<SearchMode>(initialMode);
+  const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
 
   function handleSelectProfessional(professional: ProfessionalSuggestion) {
     setQuery(professional.name);
-    setCity(professional.city);
-    onSearch({ query: professional.name, city: professional.city, professional, mode });
+    if (professional.city) {
+      setCity(professional.city);
+    }
+    setSelectedProfessional(professional);
+  }
+
+  function handleQueryChange(text: string) {
+    setQuery(text);
+    setSelectedProfessional(undefined);
   }
 
   return (
@@ -88,7 +96,7 @@ export function SearchBar({
           getLabel={(item) => item.name}
           onSelect={handleSelectProfessional}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={handleQueryChange}
           placeholder={mode === "online" ? "Cosa ti serve? Es. Consulenza idraulico..." : "Cosa cerchi? Es. Idraulico, Elettricista..."}
           size="$5"
           maxResults={professionalSuggestions.length}
@@ -117,7 +125,17 @@ export function SearchBar({
             />
           </>
         ) : null}
-        <Button size="$5" onPress={() => onSearch({ query, city: mode === "online" ? "" : city, mode })}>
+        <Button
+          size="$5"
+          onPress={() =>
+            onSearch({
+              query,
+              city: mode === "online" ? "" : city,
+              mode,
+              professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+            })
+          }
+        >
           Cerca
         </Button>
       </YStack>

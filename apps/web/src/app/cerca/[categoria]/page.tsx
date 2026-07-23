@@ -52,10 +52,29 @@ export default async function CategoryPage({
     professionals = [];
   }
 
+  // Tutti i professionisti della categoria (nessun filtro città): alimenta
+  // i puntini sulla mappa così, allontanando lo zoom, ne compaiono altri
+  // oltre a quelli della città cercata — la colonna a sinistra si aggiorna
+  // di conseguenza in base a cosa è visibile sulla mappa (ResultsListWithMap).
+  let allProfessionals: ProfessionalSearchResult[] = professionals;
+  if (!isOnline) {
+    try {
+      allProfessionals = await apiClient.searchProfessionals({ category: category.slug });
+    } catch {
+      allProfessionals = professionals;
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
-      <CategoryContent category={category} city={city} online={isOnline} professionals={professionals} />
+      <CategoryContent
+        category={category}
+        city={city}
+        online={isOnline}
+        professionals={professionals}
+        allProfessionals={allProfessionals}
+      />
     </div>
   );
 }

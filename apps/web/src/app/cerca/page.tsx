@@ -37,10 +37,28 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
     professionals = [];
   }
 
+  // Tutti i professionisti (nessun filtro città): alimenta i puntini sulla
+  // mappa così, allontanando lo zoom, ne compaiono altri oltre a quelli
+  // della città cercata — vedi stessa logica in /cerca/[categoria].
+  let allProfessionals: ProfessionalSearchResult[] = professionals;
+  if (!isOnline) {
+    try {
+      allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q });
+    } catch {
+      allProfessionals = professionals;
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <SearchHeader initialQuery={searchParams.q ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
-      <CercaContent city={city} online={isOnline} q={searchParams.q} professionals={professionals} />
+      <CercaContent
+        city={city}
+        online={isOnline}
+        q={searchParams.q}
+        professionals={professionals}
+        allProfessionals={allProfessionals}
+      />
     </div>
   );
 }

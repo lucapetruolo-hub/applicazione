@@ -22,18 +22,27 @@ export class CloudinaryService {
       );
     }
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: "image", transformation: [{ width: 800, height: 800, crop: "limit" }] },
-        (error, result) => {
-          if (error || !result) {
-            reject(error ?? new Error("Upload immagine fallito."));
-            return;
-          }
-          resolve(result.secure_url);
-        },
-      );
-      uploadStream.end(file.buffer);
-    });
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder, resource_type: "image", transformation: [{ width: 800, height: 800, crop: "limit" }] },
+          (error, result) => {
+            if (error || !result) {
+              reject(error ?? new Error("Upload immagine fallito."));
+              return;
+            }
+            resolve(result.secure_url);
+          },
+        );
+        uploadStream.end(file.buffer);
+      });
+    } catch (error) {
+      // Un errore di Cloudinary (formato non valido, file troppo grande per
+      // il piano, timeout di rete) non deve mai risultare in un generico
+      // "Internal Server Error" lato client — stesso principio "errore
+      // chiaro invece di crash" già usato per Stripe/Google in questo file.
+      const message = error instanceof Error ? error.message : "Errore sconosciuto.";
+      throw new BadRequestException(`Caricamento immagine non riuscito: ${message}`);
+    }
   }
 }
