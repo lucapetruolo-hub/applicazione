@@ -254,6 +254,19 @@ falegname. Ogni categoria ha sotto-tag di specializzazione (es. Elettricista
 → impianti civili, domotica, certificazioni), usati sia per il matching in
 ricerca sia per differenziare i piani a pagamento.
 
+Espansa oltre il set iniziale di mestieri artigianali con tre categorie di
+assistenza alla persona, su richiesta esplicita dell'utente: **Tutto Fare**
+(piccole riparazioni generiche), **OSS** (Operatore Socio-Sanitario,
+assistenza domiciliare/ospedaliera), **Badanti** (assistenza anziani,
+convivenza, compagnia). Fonte di verità unica in
+`packages/shared/src/categories.ts` (`PROFESSIONAL_CATEGORIES`): icone SVG
+e colori accento in `apps/web/src/components/icons/CategoryIcons.tsx`
+(`CATEGORY_ICONS`/`CATEGORY_ACCENT`, tipizzati `Record<ProfessionalCategorySlug, ...>`
+così il compilatore segnala ogni punto da aggiornare per una categoria
+nuova). Nessuna migrazione DB necessaria per aggiungerne: `CategoriesSeedService`
+sincronizza `PROFESSIONAL_CATEGORIES` nella tabella `categories` a ogni
+avvio dell'API (stesso meccanismo del seed iniziale, vedi §2).
+
 ### Monetizzazione professionista — piani SaaS
 
 | Piano | Prezzo indicativo | Cosa include |
