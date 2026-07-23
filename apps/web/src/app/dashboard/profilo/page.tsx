@@ -7,6 +7,7 @@ import { PROFESSIONAL_CATEGORIES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCateg
 import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 export default function DashboardProfiloPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function DashboardProfiloPage() {
   const [saved, setSaved] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,15 +115,31 @@ export default function DashboardProfiloPage() {
     }
   }
 
-  async function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
 
     setImageError(null);
+    setCropImageSrc(URL.createObjectURL(file));
+  }
+
+  // L'URL blob va revocato solo qui, dal genitore, quando la modale si
+  // chiude (annulla o conferma) — non dentro ImageCropModal con un effetto
+  // legato al mount/unmount: in dev React StrictMode monta/smonta/rimonta
+  // ogni componente una volta per verificarne gli effetti, e questo
+  // revocava l'URL subito dopo la sua creazione, rompendo l'anteprima.
+  function closeCropModal() {
+    if (cropImageSrc) URL.revokeObjectURL(cropImageSrc);
+    setCropImageSrc(null);
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    closeCropModal();
+    setImageError(null);
     setIsUploadingImage(true);
     try {
-      const result = await apiClient.uploadMyProfessionalImage(token as string, file);
+      const result = await apiClient.uploadMyProfessionalImage(token as string, blob);
       setImageUrl(result.imageUrl);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : "Errore durante il caricamento dell'immagine.");
@@ -292,6 +310,10 @@ export default function DashboardProfiloPage() {
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}
         </Button>
       </YStack>
+
+      {cropImageSrc ? (
+        <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
+      ) : null}
     </YStack>
   );
 }
