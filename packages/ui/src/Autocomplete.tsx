@@ -42,11 +42,28 @@ export function Autocomplete<T>({
   // Sotto la soglia minChars invece niente elenco (usato per il campo città:
   // con ~7900 comuni i primi risultati "a caso" non aiutano, meglio aspettare
   // qualche lettera).
+  // Match che iniziano con il testo digitato prima di quelli che lo
+  // contengono solo in mezzo — altrimenti scrivendo "Roma" può comparire
+  // prima "Fabrica di Roma" o un altro comune che contiene "roma" ma non
+  // inizia così, invece del comune più pertinente (bug reale segnalato
+  // dall'utente). L'ordine originale di `items` (es. dataset ISTAT dei
+  // comuni, raggruppato per regione/provincia) non riflette la pertinenza
+  // rispetto a quello che si sta cercando.
   const filtered =
     normalizedQuery.length < minChars
       ? []
       : normalizedQuery
-        ? items.filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery)).slice(0, maxResults)
+        ? items
+            .filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery))
+            .sort((a, b) => {
+              const aLabel = getLabel(a).toLowerCase();
+              const bLabel = getLabel(b).toLowerCase();
+              const aStarts = aLabel.startsWith(normalizedQuery);
+              const bStarts = bLabel.startsWith(normalizedQuery);
+              if (aStarts !== bStarts) return aStarts ? -1 : 1;
+              return aLabel.localeCompare(bLabel);
+            })
+            .slice(0, maxResults)
         : items.slice(0, maxResults);
 
   const showDropdown = isFocused && filtered.length > 0;
