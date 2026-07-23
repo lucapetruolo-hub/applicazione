@@ -12,6 +12,7 @@ import {
   type ProfessionalProfileSelfInput,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { GeocodingService } from "../geocoding/geocoding.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -26,7 +27,10 @@ function mapServices(services: { id: string; name: string; priceEurCents: number
 
 @Injectable()
 export class ProfessionalsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly geocodingService: GeocodingService,
+  ) {}
 
   async search({ category, city, q, remote }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -162,11 +166,24 @@ export class ProfessionalsService {
       throw new NotFoundException("Categoria non valida.");
     }
 
-    // Geocodifica reale dal comune scelto (dataset ISTAT in packages/shared)
-    // quando lat/lng non sono fornite esplicitamente dal client.
+    // Posizione sulla mappa: se il professionista indica un indirizzo
+    // preciso, prova a geocodificarlo (Nominatim) per posizionarlo esatto
+    // invece che al centro del comune — richiesta esplicita dell'utente
+    // ("scegliere sia la città generica, che un indirizzo preciso che andrà
+    // a posizionarsi precisamente sulla mappa"). Se la geocodifica non trova
+    // nulla (indirizzo incompleto, servizio non raggiungibile) si ricade sul
+    // centro del comune scelto (dataset ISTAT, sempre disponibile), mai su
+    // un blocco del salvataggio del profilo.
     const comune = findComuneByName(input.city);
-    const latitude = input.latitude ?? comune?.lat ?? 0;
-    const longitude = input.longitude ?? comune?.lon ?? 0;
+    let latitude = input.latitude ?? comune?.lat ?? 0;
+    let longitude = input.longitude ?? comune?.lon ?? 0;
+    if (input.latitude === undefined && input.longitude === undefined && input.address?.trim()) {
+      const geocoded = await this.geocodingService.geocodeAddress(`${input.address.trim()}, ${input.city}, Italia`);
+      if (geocoded) {
+        latitude = geocoded.latitude;
+        longitude = geocoded.longitude;
+      }
+    }
 
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },

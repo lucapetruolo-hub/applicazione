@@ -265,34 +265,46 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
-        <YStack gap="$2">
-          <Text fontWeight="600">Città in cui operi</Text>
-          <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
-            <Autocomplete
-              items={ALL_ITALIAN_CITY_NAMES}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={setCity}
-              value={city}
-              onChangeText={setCity}
-              placeholder="Es. Milano"
-              size="$5"
-              minChars={3}
-            />
+        <YStack gap="$3">
+          <YStack gap="$1">
+            <Text fontWeight="600">Posizione</Text>
+            <Text fontSize="$2" color="$color9">
+              La città è obbligatoria e ti fa trovare nelle ricerche per zona. Se aggiungi anche l&apos;indirizzo
+              preciso, il tuo profilo comparirà esattamente lì sulla mappa dei risultati invece che al centro della
+              città.
+            </Text>
           </YStack>
-        </YStack>
 
-        <YStack gap="$2">
-          <Text fontWeight="600">Indirizzo (opzionale)</Text>
-          <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Es. Via delle Camelie 38, Latina Scalo"
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
-          />
-          <Text fontSize="$2" color="$color9">
-            Se hai un negozio o un laboratorio, indica l&apos;indirizzo: comparirà nella tua card e nel tuo profilo pubblico.
-          </Text>
+          <YStack gap="$2">
+            <Text fontWeight="600">Città in cui operi</Text>
+            <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
+              <Autocomplete
+                items={ALL_ITALIAN_CITY_NAMES}
+                getKey={(item) => item}
+                getLabel={(item) => item}
+                onSelect={setCity}
+                value={city}
+                onChangeText={setCity}
+                placeholder="Es. Milano"
+                size="$5"
+                minChars={3}
+              />
+            </YStack>
+          </YStack>
+
+          <YStack gap="$2">
+            <Text fontWeight="600">Indirizzo preciso (opzionale)</Text>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Es. Via delle Camelie 38, Latina Scalo"
+              style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
+            />
+            <Text fontSize="$2" color="$color9">
+              Se hai un negozio o un laboratorio, indica l&apos;indirizzo: comparirà anche nella tua card e nel tuo
+              profilo pubblico.
+            </Text>
+          </YStack>
         </YStack>
 
         <YStack

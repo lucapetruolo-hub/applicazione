@@ -3,6 +3,7 @@ import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { CloudinaryModule } from "./cloudinary/cloudinary.module";
+import { GeocodingModule } from "./geocoding/geocoding.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProfessionalsModule } from "./professionals/professionals.module";
 import { GuidedRequestsModule } from "./guided-requests/guided-requests.module";
@@ -17,6 +18,7 @@ import { AdminModule } from "./admin/admin.module";
   imports: [
     PrismaModule,
     CloudinaryModule,
+    GeocodingModule,
     CategoriesModule,
     AuthModule,
     ProfessionalsModule,
