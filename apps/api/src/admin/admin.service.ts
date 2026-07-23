@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -40,5 +40,14 @@ export class AdminService {
       clients: users.filter((u) => u.role === "CLIENT").map(toRow),
       professionals: users.filter((u) => u.role === "PROFESSIONAL").map(toRow),
     };
+  }
+
+  async promoteToAdmin(email: string): Promise<{ email: string; role: string }> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new NotFoundException("Nessun utente registrato con questa email.");
+    }
+    const updated = await this.prisma.user.update({ where: { email }, data: { role: "ADMIN" } });
+    return { email: updated.email as string, role: updated.role };
   }
 }

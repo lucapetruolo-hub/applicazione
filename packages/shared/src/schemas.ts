@@ -127,3 +127,16 @@ export const professionalProfileSelfSchema = professionalProfileSchema
     longitude: z.number().min(-180).max(180).optional(),
   });
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
+
+/**
+ * Promozione ad ADMIN dell'account con questa email, protetta da un segreto
+ * condiviso (`ADMIN_BOOTSTRAP_SECRET`, solo variabile d'ambiente su
+ * apps/api, mai committato) invece che da un JWT: serve proprio a creare il
+ * PRIMO admin, quando nessun account ha ancora quel ruolo per poter passare
+ * dal normale AdminGuard (che richiede di essere già ADMIN).
+ */
+export const adminBootstrapSchema = z.object({
+  email: z.string().email(),
+  secret: z.string().min(1),
+});
+export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;

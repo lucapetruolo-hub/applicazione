@@ -288,6 +288,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminListUsers: (token: string) =>
       request<AdminUsersByRole>("/admin/users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminBootstrapPromote: (email: string, secret: string) =>
+      request<{ email: string; role: string }>("/admin/bootstrap", {
+        method: "POST",
+        body: JSON.stringify({ email, secret }),
+      }),
   };
 }
 
