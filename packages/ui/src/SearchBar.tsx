@@ -109,28 +109,24 @@ export function SearchBar({
             </YStack>
           )}
         />
-        {mode === "domicilio" ? (
-          <>
-            <XStack width={1} height={44} backgroundColor="$borderColor" display="none" $gtSm={{ display: "flex" }} />
-            <Autocomplete
-              items={citySuggestions}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={(selectedCity) => setCity(selectedCity)}
-              value={city}
-              onChangeText={setCity}
-              placeholder="Città"
-              size="$5"
-              minChars={3}
-            />
-          </>
-        ) : null}
+        <XStack width={1} height={44} backgroundColor="$borderColor" display="none" $gtSm={{ display: "flex" }} />
+        <Autocomplete
+          items={citySuggestions}
+          getKey={(item) => item}
+          getLabel={(item) => item}
+          onSelect={(selectedCity) => setCity(selectedCity)}
+          value={city}
+          onChangeText={setCity}
+          placeholder={mode === "online" ? "Città (opzionale)" : "Città"}
+          size="$5"
+          minChars={3}
+        />
         <Button
           size="$5"
           onPress={() =>
             onSearch({
               query,
-              city: mode === "online" ? "" : city,
+              city,
               mode,
               professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
             })
@@ -141,7 +137,8 @@ export function SearchBar({
       </YStack>
       {mode === "online" ? (
         <Text fontSize="$2" color="$color9">
-          ℹ️ Consulenza online: parla con il professionista da remoto, ovunque tu sia.
+          ℹ️ Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
+          trovare professionisti online della tua zona.
         </Text>
       ) : null}
     </YStack>

@@ -41,7 +41,9 @@ export default async function CategoryPage({
   }
   const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === params.categoria)!;
   const isOnline = searchParams.online === "1";
-  const city = isOnline ? undefined : searchParams.citta;
+  // La città resta un filtro valido anche in modalità "Online" (vedi stessa
+  // nota in /cerca/page.tsx).
+  const city = searchParams.citta;
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).

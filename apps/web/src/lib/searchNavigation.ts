@@ -19,7 +19,7 @@ export function buildSearchDestination({
 }): string {
   const isOnline = mode === "online";
   const params = new URLSearchParams();
-  if (!isOnline && city.trim()) params.set("citta", city.trim());
+  if (city.trim()) params.set("citta", city.trim());
   if (isOnline) params.set("online", "1");
   const qs = params.toString() ? `?${params.toString()}` : "";
 

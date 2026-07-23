@@ -34,7 +34,7 @@ export function CategoryContent({
         <YStack gap="$1" flex={1} minWidth={0}>
           <H1 size="$7">
             {category.label}
-            {online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
+            {online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
           </H1>
           <Paragraph color="$color11" fontSize="$3">
             {professionals.length > 0

@@ -19,7 +19,9 @@ export function CercaContent({
   allProfessionals?: ProfessionalSearchResult[];
 }) {
   const title = online
-    ? "Consulenze online disponibili"
+    ? city
+      ? `Consulenze online a ${city}`
+      : "Consulenze online disponibili"
     : city
       ? `Professionisti a ${city}`
       : q

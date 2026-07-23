@@ -28,7 +28,11 @@ export function generateMetadata({ searchParams }: { searchParams: PageSearchPar
 
 export default async function CercaPage({ searchParams }: { searchParams: PageSearchParams }) {
   const isOnline = searchParams.online === "1";
-  const city = isOnline ? undefined : searchParams.citta;
+  // La città resta un filtro valido anche in modalità "Online": permette di
+  // trovare professionisti che offrono consulenza da remoto ma sono radicati
+  // in una zona specifica, invece di scartarla del tutto — richiesta esplicita
+  // dell'utente ("dai la possibilità di selezionare un luogo" anche online).
+  const city = searchParams.citta;
 
   let professionals: ProfessionalSearchResult[] = [];
   try {
@@ -39,7 +43,9 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
 
   // Tutti i professionisti (nessun filtro città): alimenta i puntini sulla
   // mappa così, allontanando lo zoom, ne compaiono altri oltre a quelli
-  // della città cercata — vedi stessa logica in /cerca/[categoria].
+  // della città cercata — vedi stessa logica in /cerca/[categoria]. In
+  // modalità online la mappa non viene comunque mostrata (vedi showMap in
+  // CercaContent), quindi qui non serve calcolarla.
   let allProfessionals: ProfessionalSearchResult[] = professionals;
   if (!isOnline) {
     try {
