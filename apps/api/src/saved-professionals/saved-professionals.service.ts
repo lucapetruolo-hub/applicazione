@@ -31,6 +31,7 @@ export class SavedProfessionalsService {
             category: true,
             bookings: { include: { review: true } },
             visibilityBoosts: { where: { status: "ACTIVE" } },
+            services: true,
           },
         },
       },
@@ -50,6 +51,7 @@ export class SavedProfessionalsService {
         categorySlug: profile.category.slug as ProfessionalCategorySlug,
         categoryLabel: profile.category.label,
         city: profile.city,
+        address: profile.address,
         verified: profile.verified,
         rating,
         reviewCount,
@@ -58,6 +60,11 @@ export class SavedProfessionalsService {
         latitude: profile.latitude,
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
+        services: profile.services.map((service) => ({
+          id: service.id,
+          name: service.name,
+          priceEurCents: service.priceEurCents,
+        })),
       } satisfies ProfessionalSearchResult;
     });
   }

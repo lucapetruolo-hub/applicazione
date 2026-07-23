@@ -83,8 +83,10 @@ export default function ProfessionistiSalvatiPage() {
                     businessName={pro.businessName}
                     categoryLabel={pro.categoryLabel}
                     city={pro.city}
+                    address={pro.address}
                     rating={pro.rating ?? undefined}
                     verified={pro.verified}
+                    services={pro.services}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
                   />

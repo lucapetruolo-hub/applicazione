@@ -70,12 +70,15 @@ export function ResultsListWithMap({
   return (
     // Layout con classi CSS grezze (styled-jsx, incluso in Next.js) invece dei
     // props responsive di Tamagui: qui serve sia riordinare le due colonne
-    // (mappa sopra la lista su mobile, mappa a destra su desktop) sia rendere
-    // la mappa sticky e sempre aperta SOLO da desktop in su — cose che i props
-    // Tamagui non esprimono direttamente (niente `order`, `position:"sticky"`
-    // non tipizzato). 1021px = soglia esatta di `$gtMd` in
-    // packages/ui/src/config.ts, per restare coerenti con gli altri breakpoint
-    // già usati nella pagina.
+    // (mappa sopra la lista su schermi stretti, mappa a destra altrimenti)
+    // sia rendere la mappa sticky e sempre aperta SOLO sopra la soglia — cose
+    // che i props Tamagui non esprimono direttamente (niente `order`,
+    // `position:"sticky"` non tipizzato). Soglia a 700px (non lo `$gtMd` di
+    // Tamagui, 1021px): quella era pensata per nascondere la mappa del tutto
+    // sotto una certa larghezza, ma con l'affiancamento a colonne una finestra
+    // desktop "normale" (~1000px, non a schermo intero) ricadeva comunque
+    // sotto i 1021px e mostrava il layout impilato da mobile — sbagliato, non
+    // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
       {showMap ? (
         <button type="button" className="mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
@@ -107,9 +110,11 @@ export function ResultsListWithMap({
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               city={pro.city}
+              address={pro.address}
               rating={pro.rating ?? undefined}
               verified={pro.verified}
               remoteAvailable={pro.remoteAvailable}
+              services={pro.services}
               onPress={() => router.push(`/professionista/${pro.id}`)}
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
             />
@@ -150,7 +155,7 @@ export function ResultsListWithMap({
           width: 100%;
           min-width: 0;
         }
-        @media (min-width: 1021px) {
+        @media (min-width: 700px) {
           .results-layout {
             flex-direction: row;
             align-items: flex-start;
@@ -162,18 +167,21 @@ export function ResultsListWithMap({
           .results-map-col,
           .results-map-col.mobile-open {
             display: flex;
-            width: 480px;
+            width: 40%;
+            max-width: 480px;
+            min-width: 260px;
+            flex-shrink: 0;
             order: 2;
           }
           .results-map-sticky {
             position: sticky;
             top: 24px;
             height: calc(100vh - 140px);
-            min-height: 480px;
+            min-height: 420px;
           }
           .results-list-col {
             flex: 1;
-            min-width: 280px;
+            min-width: 240px;
             order: 1;
           }
         }

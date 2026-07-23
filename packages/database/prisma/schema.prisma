@@ -85,6 +85,10 @@ model ProfessionalProfile {
   latitude        Float
   longitude       Float
   bio             String?
+  // Indirizzo del negozio/laboratorio (facoltativo: molti professionisti a
+  // domicilio non ne hanno uno da mostrare pubblicamente), mostrato nella
+  // card risultati e nel profilo pubblico come su miodottore.it.
+  address         String?
   imageUrl        String?
   verified        Boolean  @default(false)
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
@@ -103,9 +107,28 @@ model ProfessionalProfile {
   bookings         Booking[]
   payments         Payment[]
   savedBy          SavedProfessional[]
+  services         ProfessionalService[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
+}
+
+// Prestazioni offerte dal professionista con prezzo facoltativo (mostrate
+// nella card risultati e nel profilo pubblico, come le voci "Colloquio
+// psicologico — 60€" nel riferimento miodottore.it fornito dall'utente).
+// Salvate come lista semplice (nessun editing granulare per singola voce):
+// ad ogni salvataggio del profilo l'intera lista viene sostituita, coerente
+// con la scala attesa (poche voci a professionista).
+model ProfessionalService {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  name                  String
+  priceEurCents         Int?
+  createdAt             DateTime @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_services")
 }
 
 // ---------------------------------------------------------------------------

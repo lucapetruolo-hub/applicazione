@@ -7,6 +7,7 @@ import {
   type ProfessionalDetail,
   type ProfessionalLead,
   type ProfessionalSearchResult,
+  type ProfessionalServiceItem,
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
 } from "@professionisti/shared";
@@ -18,6 +19,10 @@ export type ProfessionalSearchParams = {
   q?: string;
   remote?: boolean;
 };
+
+function mapServices(services: { id: string; name: string; priceEurCents: number | null }[]): ProfessionalServiceItem[] {
+  return services.map((service) => ({ id: service.id, name: service.name, priceEurCents: service.priceEurCents }));
+}
 
 @Injectable()
 export class ProfessionalsService {
@@ -35,6 +40,7 @@ export class ProfessionalsService {
         category: true,
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
+        services: true,
       },
     });
 
@@ -52,6 +58,7 @@ export class ProfessionalsService {
         categorySlug: profile.category.slug as ProfessionalCategorySlug,
         categoryLabel: profile.category.label,
         city: profile.city,
+        address: profile.address,
         verified: profile.verified,
         rating,
         reviewCount,
@@ -60,6 +67,7 @@ export class ProfessionalsService {
         latitude: profile.latitude,
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
+        services: mapServices(profile.services),
       } satisfies ProfessionalSearchResult;
     });
 
@@ -82,6 +90,7 @@ export class ProfessionalsService {
         category: true,
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
+        services: true,
       },
     });
 
@@ -103,6 +112,7 @@ export class ProfessionalsService {
       categorySlug: profile.category.slug as ProfessionalCategorySlug,
       categoryLabel: profile.category.label,
       city: profile.city,
+      address: profile.address,
       verified: profile.verified,
       rating,
       reviewCount,
@@ -111,6 +121,7 @@ export class ProfessionalsService {
       latitude: profile.latitude,
       longitude: profile.longitude,
       imageUrl: profile.imageUrl,
+      services: mapServices(profile.services),
       bio: profile.bio,
       subTags: profile.subTags,
       reviews: reviews.map((review) => ({
@@ -125,7 +136,7 @@ export class ProfessionalsService {
   async getMyProfile(userId: string): Promise<MyProfessionalProfile | null> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      include: { category: true },
+      include: { category: true, services: true },
     });
     if (!profile) return null;
 
@@ -135,11 +146,13 @@ export class ProfessionalsService {
       categorySlug: profile.category.slug,
       categoryLabel: profile.category.label,
       city: profile.city,
+      address: profile.address,
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
+      services: mapServices(profile.services),
     };
   }
 
@@ -162,6 +175,7 @@ export class ProfessionalsService {
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
+        address: input.address,
         latitude,
         longitude,
         bio: input.bio,
@@ -173,6 +187,7 @@ export class ProfessionalsService {
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
+        address: input.address,
         latitude,
         longitude,
         bio: input.bio,
@@ -181,17 +196,35 @@ export class ProfessionalsService {
       include: { category: true },
     });
 
+    // Lista prestazioni sostituita per intero ad ogni salvataggio (nessun
+    // editing granulare per singola voce): coerente con la scala attesa
+    // (poche voci a professionista), molto più semplice che diffare la
+    // lista esistente contro quella inviata.
+    await this.prisma.professionalService.deleteMany({ where: { professionalProfileId: profile.id } });
+    if (input.services.length) {
+      await this.prisma.professionalService.createMany({
+        data: input.services.map((service) => ({
+          professionalProfileId: profile.id,
+          name: service.name,
+          priceEurCents: service.priceEurCents ?? null,
+        })),
+      });
+    }
+    const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
+
     return {
       id: profile.id,
       businessName: profile.businessName,
       categorySlug: profile.category.slug,
       categoryLabel: profile.category.label,
       city: profile.city,
+      address: profile.address,
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
+      services: mapServices(savedServices),
     };
   }
 

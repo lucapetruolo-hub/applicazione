@@ -62,6 +62,11 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               <Text fontSize="$5" color="$color10">
                 {professional.categoryLabel} · {professional.city}
               </Text>
+              {professional.address ? (
+                <Text fontSize="$4" color="$color10">
+                  📍 {professional.address}
+                </Text>
+              ) : null}
               {professional.rating !== null ? (
                 <Text fontSize="$5">
                   ⭐ {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
@@ -99,6 +104,29 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         ) : null}
 
         {professional.bio ? <Paragraph color="$color10">{professional.bio}</Paragraph> : null}
+
+        {professional.services.length > 0 ? (
+          <YStack gap="$2">
+            <H2 size="$6">Prestazioni</H2>
+            <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" overflow="hidden">
+              {professional.services.map((service, index) => (
+                <XStack
+                  key={service.id}
+                  justifyContent="space-between"
+                  alignItems="center"
+                  paddingHorizontal="$3"
+                  paddingVertical="$3"
+                  backgroundColor={index % 2 === 0 ? "transparent" : "$color2"}
+                >
+                  <Text>{service.name}</Text>
+                  <Text fontWeight="600">
+                    {service.priceEurCents !== null ? `${(service.priceEurCents / 100).toFixed(2)} €` : "Su richiesta"}
+                  </Text>
+                </XStack>
+              ))}
+            </YStack>
+          </YStack>
+        ) : null}
 
         <Link
           href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}`}

@@ -1,13 +1,23 @@
 import type { ReactNode } from "react";
 import { Card, Text, XStack, YStack } from "tamagui";
 
+export type ProfessionalCardService = {
+  id: string;
+  name: string;
+  priceEurCents: number | null;
+};
+
 export type ProfessionalCardProps = {
   businessName: string;
   categoryLabel: string;
   city: string;
+  /** Indirizzo del negozio/laboratorio, se il professionista lo ha indicato. */
+  address?: string | null;
   rating?: number;
   verified?: boolean;
   remoteAvailable?: boolean;
+  /** Prestazioni offerte con prezzo facoltativo, mostrate sotto l'indirizzo. */
+  services?: ProfessionalCardService[];
   onPress?: () => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
@@ -17,9 +27,11 @@ export function ProfessionalCard({
   businessName,
   categoryLabel,
   city,
+  address,
   rating,
   verified,
   remoteAvailable,
+  services,
   onPress,
   icon,
 }: ProfessionalCardProps) {
@@ -52,6 +64,11 @@ export function ProfessionalCard({
           <Text fontSize="$3" color="$color10">
             {categoryLabel} · {city}
           </Text>
+          {address ? (
+            <Text fontSize="$2" color="$color10">
+              📍 {address}
+            </Text>
+          ) : null}
           <XStack gap="$2" alignItems="center">
             {rating !== undefined ? <Text fontSize="$3">⭐ {rating.toFixed(1)}</Text> : null}
             {remoteAvailable ? (
@@ -60,6 +77,20 @@ export function ProfessionalCard({
               </Text>
             ) : null}
           </XStack>
+          {services && services.length > 0 ? (
+            <YStack gap="$1" paddingTop="$1">
+              {services.slice(0, 3).map((service) => (
+                <XStack key={service.id} justifyContent="space-between" gap="$2">
+                  <Text fontSize="$2" color="$color11" flex={1}>
+                    {service.name}
+                  </Text>
+                  <Text fontSize="$2" color="$color11" fontWeight="600">
+                    {service.priceEurCents !== null ? `${(service.priceEurCents / 100).toFixed(2)} €` : "Su richiesta"}
+                  </Text>
+                </XStack>
+              ))}
+            </YStack>
+          ) : null}
         </YStack>
       </XStack>
     </Card>

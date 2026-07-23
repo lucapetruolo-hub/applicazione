@@ -80,16 +80,25 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+/** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
+export const professionalServiceSchema = z.object({
+  name: z.string().min(2).max(120),
+  priceEurCents: z.number().int().nonnegative().optional(),
+});
+export type ProfessionalServiceInput = z.infer<typeof professionalServiceSchema>;
+
 export const professionalProfileSchema = z.object({
   userId: z.string().uuid(),
   categorySlug: professionalCategorySlugSchema,
   subTags: z.array(z.string()).default([]),
   businessName: z.string().min(2).max(120),
   city: z.string().min(2),
+  address: z.string().max(200).optional(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   bio: z.string().max(2000).optional(),
   remoteAvailable: z.boolean().default(false),
+  services: z.array(professionalServiceSchema).max(30).default([]),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

@@ -5,11 +5,13 @@ export type MyProfessionalProfile = {
   categorySlug: string;
   categoryLabel: string;
   city: string;
+  address: string | null;
   bio: string | null;
   subTags: string[];
   verified: boolean;
   remoteAvailable: boolean;
   imageUrl: string | null;
+  services: { id: string; name: string; priceEurCents: number | null }[];
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

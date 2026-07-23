@@ -14,6 +14,13 @@ export type PlaceholderProfessional = {
  * la piattaforma non ha professionisti reali (CLAUDE.md §9). Da sostituire
  * con una vera ricerca su `apps/api` quando esisteranno profili reali.
  */
+/** Prestazione offerta dal professionista, con prezzo facoltativo (in centesimi). */
+export type ProfessionalServiceItem = {
+  id: string;
+  name: string;
+  priceEurCents: number | null;
+};
+
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
 export type ProfessionalSearchResult = {
   id: string;
@@ -21,6 +28,7 @@ export type ProfessionalSearchResult = {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
   city: string;
+  address: string | null;
   verified: boolean;
   rating: number | null;
   reviewCount: number;
@@ -29,6 +37,7 @@ export type ProfessionalSearchResult = {
   latitude: number;
   longitude: number;
   imageUrl: string | null;
+  services: ProfessionalServiceItem[];
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

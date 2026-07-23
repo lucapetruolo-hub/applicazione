@@ -16,8 +16,10 @@ export default function DashboardProfiloPage() {
   const [businessName, setBusinessName] = useState("");
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
+  const [services, setServices] = useState<{ name: string; price: string }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +39,16 @@ export default function DashboardProfiloPage() {
           setBusinessName(profile.businessName);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
           setCity(profile.city);
+          setAddress(profile.address ?? "");
           setBio(profile.bio ?? "");
           setRemoteAvailable(profile.remoteAvailable);
           setImageUrl(profile.imageUrl);
+          setServices(
+            profile.services.map((service) => ({
+              name: service.name,
+              price: service.priceEurCents !== null ? (service.priceEurCents / 100).toFixed(2) : "",
+            })),
+          );
         }
       })
       .finally(() => setIsLoadingProfile(false));
@@ -96,15 +105,30 @@ export default function DashboardProfiloPage() {
       return;
     }
 
+    const cleanedServices = services
+      .map((service) => ({ name: service.name.trim(), price: service.price.trim() }))
+      .filter((service) => service.name.length > 0);
+    for (const service of cleanedServices) {
+      if (service.price && Number.isNaN(Number(service.price.replace(",", ".")))) {
+        setError(`Prezzo non valido per "${service.name}".`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await apiClient.upsertMyProfessionalProfile(token as string, {
         businessName: businessName.trim(),
         categorySlug: categorySlug as ProfessionalCategorySlug,
         city: city.trim(),
+        address: address.trim() || undefined,
         subTags: [],
         bio: bio.trim() || undefined,
         remoteAvailable,
+        services: cleanedServices.map((service) => ({
+          name: service.name,
+          priceEurCents: service.price ? Math.round(Number(service.price.replace(",", ".")) * 100) : undefined,
+        })),
       });
       setSaved(true);
       setTimeout(() => router.push("/dashboard"), 900);
@@ -113,6 +137,14 @@ export default function DashboardProfiloPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function updateService(index: number, field: "name" | "price", value: string) {
+    setServices((prev) => prev.map((service, i) => (i === index ? { ...service, [field]: value } : service)));
+  }
+
+  function removeService(index: number) {
+    setServices((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
@@ -250,6 +282,19 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
+        <YStack gap="$2">
+          <Text fontWeight="600">Indirizzo (opzionale)</Text>
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Es. Via delle Camelie 38, Latina Scalo"
+            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
+          />
+          <Text fontSize="$2" color="$color9">
+            Se hai un negozio o un laboratorio, indica l&apos;indirizzo: comparirà nella tua card e nel tuo profilo pubblico.
+          </Text>
+        </YStack>
+
         <YStack
           flexDirection="row"
           alignItems="center"
@@ -282,6 +327,45 @@ export default function DashboardProfiloPage() {
               Compari nella ricerca "Online" della home: i clienti possono contattarti da remoto, ovunque si trovino.
             </Text>
           </YStack>
+        </YStack>
+
+        <YStack gap="$2">
+          <Text fontWeight="600">Prestazioni offerte (opzionale)</Text>
+          <Text fontSize="$2" color="$color9">
+            Aggiungi i servizi che offri, con un prezzo se vuoi indicarlo: compariranno nella tua card nei risultati di
+            ricerca.
+          </Text>
+          <YStack gap="$2">
+            {services.map((service, index) => (
+              <YStack key={index} flexDirection="row" gap="$2" alignItems="center">
+                <input
+                  value={service.name}
+                  onChange={(e) => updateService(index, "name", e.target.value)}
+                  placeholder="Es. Sostituzione caldaia"
+                  style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                <input
+                  value={service.price}
+                  onChange={(e) => updateService(index, "price", e.target.value)}
+                  placeholder="Prezzo €"
+                  inputMode="decimal"
+                  style={{ width: 110, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeService(index)}>
+                  ✕
+                </Button>
+              </YStack>
+            ))}
+          </YStack>
+          <Button
+            size="$3"
+            alignSelf="flex-start"
+            backgroundColor="$color3"
+            color="$color12"
+            onPress={() => setServices((prev) => [...prev, { name: "", price: "" }])}
+          >
+            + Aggiungi prestazione
+          </Button>
         </YStack>
 
         <YStack gap="$2">

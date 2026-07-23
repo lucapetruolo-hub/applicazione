@@ -152,6 +152,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
                     businessName={pro.businessName}
                     categoryLabel={pro.categoryLabel}
                     city={pro.city}
+                    address={pro.address}
                     rating={pro.rating ?? undefined}
                     verified={pro.verified}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
