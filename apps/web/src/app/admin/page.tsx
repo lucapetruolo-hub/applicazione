@@ -63,6 +63,7 @@ export default function AdminPage() {
           <Text color="$color9">Caricamento...</Text>
         ) : data ? (
           <>
+            <UserGroup title={`Amministratori (${data.admins.length})`} rows={data.admins} showBusiness={false} />
             <UserGroup title={`Professionisti (${data.professionals.length})`} rows={data.professionals} showBusiness />
             <UserGroup title={`Clienti (${data.clients.length})`} rows={data.clients} showBusiness={false} />
           </>

@@ -14,9 +14,13 @@ export type AdminUserRow = {
 export class AdminService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  async listUsersByRole(): Promise<{ clients: AdminUserRow[]; professionals: AdminUserRow[] }> {
+  async listUsersByRole(): Promise<{ clients: AdminUserRow[]; professionals: AdminUserRow[]; admins: AdminUserRow[] }> {
+    // Tutti i ruoli, ADMIN incluso: prima venivano lette solo CLIENT/PROFESSIONAL,
+    // quindi un'email appena promossa via /admin/bootstrap spariva del tutto da
+    // questa pagina invece di comparire come admin — sembrava che la
+    // promozione non fosse stata salvata (bug reale segnalato dall'utente),
+    // mentre in realtà era salvata sul DB ma semplicemente mai mostrata qui.
     const users = await this.prisma.user.findMany({
-      where: { role: { in: ["CLIENT", "PROFESSIONAL"] } },
       orderBy: { createdAt: "desc" },
       select: {
         email: true,
@@ -39,6 +43,7 @@ export class AdminService {
     return {
       clients: users.filter((u) => u.role === "CLIENT").map(toRow),
       professionals: users.filter((u) => u.role === "PROFESSIONAL").map(toRow),
+      admins: users.filter((u) => u.role === "ADMIN").map(toRow),
     };
   }
 

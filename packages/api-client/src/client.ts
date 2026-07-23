@@ -56,7 +56,7 @@ export type AdminUserRow = {
   businessName: string | null;
   createdAt: string;
 };
-export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUserRow[] };
+export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUserRow[]; admins: AdminUserRow[] };
 
 export type CurrentUser = {
   id: string;
