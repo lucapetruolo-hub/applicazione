@@ -132,10 +132,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ email, password }),
       }),
 
-    verifyGoogle: (idToken: string) =>
+    verifyGoogle: (idToken: string, role?: "CLIENT" | "PROFESSIONAL") =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, role }),
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),

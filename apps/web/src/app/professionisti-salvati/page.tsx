@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Button, H1, Paragraph, ProfessionalCard, Text, YStack } from "@professionisti/ui";
+import { Button, H1, Paragraph, ProfessionalCard, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { AccountSidebar } from "@/components/AccountSidebar";
 
 export default function ProfessionistiSalvatiPage() {
   const router = useRouter();
@@ -52,46 +53,56 @@ export default function ProfessionistiSalvatiPage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={720} gap="$5">
-        <H1 size="$8">Professionisti salvati</H1>
+      <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
+        <AccountSidebar />
 
-        {error ? <Text color="$red10">{error}</Text> : null}
+        <YStack flex={1} minWidth={280} gap="$5">
+          <H1 size="$8">Professionisti salvati</H1>
 
-        {professionals === null ? (
-          <Text color="$color9">Caricamento...</Text>
-        ) : professionals.length === 0 ? (
-          <YStack gap="$3">
-            <Paragraph color="$color10">
-              Non hai ancora salvato nessun professionista. Apri il profilo di un professionista e tocca &quot;Salva&quot;
-              per ritrovarlo qui.
-            </Paragraph>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <Text color="$blue10" fontWeight="600">
-                Cerca professionisti
-              </Text>
-            </Link>
-          </YStack>
-        ) : (
-          <YStack gap="$3">
-            {professionals.map((pro) => (
-              <YStack key={pro.id} gap="$2">
-                <ProfessionalCard
-                  businessName={pro.businessName}
-                  categoryLabel={pro.categoryLabel}
-                  city={pro.city}
-                  rating={pro.rating ?? undefined}
-                  verified={pro.verified}
-                  onPress={() => router.push(`/professionista/${pro.id}`)}
-                  icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
-                />
-                <Button size="$2" alignSelf="flex-end" backgroundColor="$color3" color="$color12" onPress={() => handleRemove(pro.id)}>
-                  Rimuovi dai salvati
-                </Button>
-              </YStack>
-            ))}
-          </YStack>
-        )}
-      </YStack>
+          {error ? <Text color="$red10">{error}</Text> : null}
+
+          {professionals === null ? (
+            <Text color="$color9">Caricamento...</Text>
+          ) : professionals.length === 0 ? (
+            <YStack gap="$3">
+              <Paragraph color="$color10">
+                Non hai ancora salvato nessun professionista. Apri il profilo di un professionista e tocca
+                &quot;Salva&quot; per ritrovarlo qui.
+              </Paragraph>
+              <Link href="/" style={{ textDecoration: "none" }}>
+                <Text color="$blue10" fontWeight="600">
+                  Cerca professionisti
+                </Text>
+              </Link>
+            </YStack>
+          ) : (
+            <YStack gap="$3">
+              {professionals.map((pro) => (
+                <YStack key={pro.id} gap="$2">
+                  <ProfessionalCard
+                    businessName={pro.businessName}
+                    categoryLabel={pro.categoryLabel}
+                    city={pro.city}
+                    rating={pro.rating ?? undefined}
+                    verified={pro.verified}
+                    onPress={() => router.push(`/professionista/${pro.id}`)}
+                    icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
+                  />
+                  <Button
+                    size="$2"
+                    alignSelf="flex-end"
+                    backgroundColor="$color3"
+                    color="$color12"
+                    onPress={() => handleRemove(pro.id)}
+                  >
+                    Rimuovi dai salvati
+                  </Button>
+                </YStack>
+              ))}
+            </YStack>
+          )}
+        </YStack>
+      </XStack>
     </YStack>
   );
 }

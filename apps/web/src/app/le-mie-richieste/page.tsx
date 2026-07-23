@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { Button, H1, H2, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { AccountSidebar } from "@/components/AccountSidebar";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -74,94 +75,103 @@ export default function LeMieRichiestePage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={720} gap="$6">
-        <YStack gap="$5">
-          <H1 size="$8">Le mie richieste</H1>
+      <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
+        <AccountSidebar />
 
-          {error ? <Text color="$red10">{error}</Text> : null}
+        <YStack flex={1} minWidth={280} gap="$6">
+          <YStack gap="$5">
+            <H1 size="$8">Le mie richieste</H1>
 
-          {requests === null ? (
-            <Text color="$color9">Caricamento...</Text>
-          ) : requests.length === 0 ? (
-            <YStack gap="$3">
-              <Paragraph color="$color10">Non hai ancora inviato nessuna richiesta di preventivo.</Paragraph>
-              <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                <Text color="$blue10" fontWeight="600">
-                  Richiedi il tuo primo preventivo
-                </Text>
-              </Link>
-            </YStack>
-          ) : (
-            requests.map((request) => (
-              <YStack key={request.id} borderWidth={1} borderColor="$borderColor" borderRadius="$5" padding="$4" gap="$3">
-                <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-                  <YStack gap="$1">
-                    <Text fontWeight="700" fontSize="$5">
-                      {request.categoryLabel} · {request.city}
-                    </Text>
-                    <Text color="$color10">{request.description}</Text>
-                  </YStack>
-                  <Text fontSize="$2" color="$blue10" fontWeight="600">
-                    {STATUS_LABEL[request.status]}
+            {error ? <Text color="$red10">{error}</Text> : null}
+
+            {requests === null ? (
+              <Text color="$color9">Caricamento...</Text>
+            ) : requests.length === 0 ? (
+              <YStack gap="$3">
+                <Paragraph color="$color10">Non hai ancora inviato nessuna richiesta di preventivo.</Paragraph>
+                <Link href="/preventivo" style={{ textDecoration: "none" }}>
+                  <Text color="$blue10" fontWeight="600">
+                    Richiedi il tuo primo preventivo
                   </Text>
-                </YStack>
-
-                {request.quotes.length > 0 ? (
-                  <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
-                    <H2 size="$4">Preventivi ricevuti</H2>
-                    {request.quotes.map((quote) => (
-                      <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
-                        <Text fontWeight="600">{quote.businessName}</Text>
-                        <Text color="$color10" fontSize="$3">
-                          Manodopera: €{(quote.laborEurCents / 100).toFixed(2)} · Materiali: €
-                          {(quote.materialsEurCents / 100).toFixed(2)}
-                        </Text>
-                        {quote.notes ? (
-                          <Text color="$color10" fontSize="$3">
-                            {quote.notes}
-                          </Text>
-                        ) : null}
-                        {quote.status === "SENT" ? (
-                          <Button
-                            size="$3"
-                            alignSelf="flex-start"
-                            onPress={() => handleAcceptQuote(quote.id)}
-                            disabled={acceptingQuoteId === quote.id}
-                            opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
-                          >
-                            {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
-                          </Button>
-                        ) : quote.status === "ACCEPTED" ? (
-                          <Text fontSize="$2" color="$green10" fontWeight="600">
-                            Accettato
-                          </Text>
-                        ) : null}
-                      </YStack>
-                    ))}
-                  </YStack>
-                ) : (
-                  <Text color="$color9" fontSize="$3">
-                    Nessun preventivo ricevuto ancora.
-                  </Text>
-                )}
+                </Link>
               </YStack>
-            ))
-          )}
-        </YStack>
+            ) : (
+              requests.map((request) => (
+                <YStack
+                  key={request.id}
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  borderRadius="$5"
+                  padding="$4"
+                  gap="$3"
+                >
+                  <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
+                    <YStack gap="$1">
+                      <Text fontWeight="700" fontSize="$5">
+                        {request.categoryLabel} · {request.city}
+                      </Text>
+                      <Text color="$color10">{request.description}</Text>
+                    </YStack>
+                    <Text fontSize="$2" color="$blue10" fontWeight="600">
+                      {STATUS_LABEL[request.status]}
+                    </Text>
+                  </YStack>
 
-        <YStack gap="$5">
-          <H1 size="$8">Le mie prenotazioni</H1>
-          {bookings === null ? (
-            <Text color="$color9">Caricamento...</Text>
-          ) : bookings.length === 0 ? (
-            <Paragraph color="$color10">Nessuna prenotazione ancora: accetta un preventivo per crearne una.</Paragraph>
-          ) : (
-            bookings.map((booking) => (
-              <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />
-            ))
-          )}
+                  {request.quotes.length > 0 ? (
+                    <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
+                      <H2 size="$4">Preventivi ricevuti</H2>
+                      {request.quotes.map((quote) => (
+                        <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
+                          <Text fontWeight="600">{quote.businessName}</Text>
+                          <Text color="$color10" fontSize="$3">
+                            Manodopera: €{(quote.laborEurCents / 100).toFixed(2)} · Materiali: €
+                            {(quote.materialsEurCents / 100).toFixed(2)}
+                          </Text>
+                          {quote.notes ? (
+                            <Text color="$color10" fontSize="$3">
+                              {quote.notes}
+                            </Text>
+                          ) : null}
+                          {quote.status === "SENT" ? (
+                            <Button
+                              size="$3"
+                              alignSelf="flex-start"
+                              onPress={() => handleAcceptQuote(quote.id)}
+                              disabled={acceptingQuoteId === quote.id}
+                              opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
+                            >
+                              {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
+                            </Button>
+                          ) : quote.status === "ACCEPTED" ? (
+                            <Text fontSize="$2" color="$green10" fontWeight="600">
+                              Accettato
+                            </Text>
+                          ) : null}
+                        </YStack>
+                      ))}
+                    </YStack>
+                  ) : (
+                    <Text color="$color9" fontSize="$3">
+                      Nessun preventivo ricevuto ancora.
+                    </Text>
+                  )}
+                </YStack>
+              ))
+            )}
+          </YStack>
+
+          <YStack gap="$5">
+            <H1 size="$8">Le mie prenotazioni</H1>
+            {bookings === null ? (
+              <Text color="$color9">Caricamento...</Text>
+            ) : bookings.length === 0 ? (
+              <Paragraph color="$color10">Nessuna prenotazione ancora: accetta un preventivo per crearne una.</Paragraph>
+            ) : (
+              bookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
+            )}
+          </YStack>
         </YStack>
-      </YStack>
+      </XStack>
     </YStack>
   );
 }

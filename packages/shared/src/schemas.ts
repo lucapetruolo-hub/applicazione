@@ -7,6 +7,8 @@ export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
 export const googleVerifySchema = z.object({
   idToken: z.string().min(10),
+  /** Usato solo se l'account Google non esiste ancora (nuova registrazione): un login su un account esistente non cambia mai il ruolo. */
+  role: z.enum(["CLIENT", "PROFESSIONAL"]).optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 

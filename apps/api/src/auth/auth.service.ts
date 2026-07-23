@@ -46,7 +46,7 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: false };
   }
 
-  async verifyGoogleToken(idToken: string): Promise<AuthResult> {
+  async verifyGoogleToken(idToken: string, role?: "CLIENT" | "PROFESSIONAL"): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
@@ -72,7 +72,7 @@ export class AuthService {
     const user =
       existingUser ??
       (await this.prisma.user.create({
-        data: { googleId: payload.sub, email: payload.email, name: payload.name },
+        data: { googleId: payload.sub, email: payload.email, name: payload.name, role: role ?? "CLIENT" },
       }));
 
     if (existingUser && !existingUser.googleId) {

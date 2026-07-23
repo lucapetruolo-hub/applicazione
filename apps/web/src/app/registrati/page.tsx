@@ -66,7 +66,7 @@ function RegistratiForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.verifyGoogle(idToken);
+      const { token } = await apiClient.verifyGoogle(idToken, role);
       await login(token);
       afterAuth();
     } catch (err) {

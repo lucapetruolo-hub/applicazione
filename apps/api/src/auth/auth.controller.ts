@@ -36,7 +36,7 @@ export class AuthController {
 
   @Post("google/verify")
   async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput) {
-    return this.authService.verifyGoogleToken(body.idToken);
+    return this.authService.verifyGoogleToken(body.idToken, body.role);
   }
 
   @UseGuards(JwtAuthGuard)
