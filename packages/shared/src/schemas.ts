@@ -147,8 +147,18 @@ export type AvailabilitySlotInput = z.infer<typeof availabilitySlotSchema>;
 
 export const professionalAvailabilitySchema = z.object({
   slots: z.array(availabilitySlotSchema).max(50).default([]),
+  /** Se true, un cliente può prenotare direttamente una fascia libera dell'agenda pubblica. */
+  bookableAgenda: z.boolean().default(false),
 });
 export type ProfessionalAvailabilityInput = z.infer<typeof professionalAvailabilitySchema>;
+
+/** Prenotazione diretta di una fascia dell'agenda pubblica (solo se bookableAgenda è true). */
+export const bookAgendaSlotSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."),
+  startTime: timeSchema,
+  endTime: timeSchema,
+});
+export type BookAgendaSlotInput = z.infer<typeof bookAgendaSlotSchema>;
 
 /**
  * Promozione ad ADMIN dell'account con questa email, protetta da un segreto

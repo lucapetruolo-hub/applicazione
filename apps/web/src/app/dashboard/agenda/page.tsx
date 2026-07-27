@@ -13,6 +13,7 @@ export default function DashboardAgendaPage() {
   const { user, token, isLoading } = useAuth();
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
+  const [bookableAgenda, setBookableAgenda] = useState(false);
   const [isLoadingSlots, setIsLoadingSlots] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +24,8 @@ export default function DashboardAgendaPage() {
     apiClient
       .getMyAvailability(token)
       .then((existing) => {
-        setSlots(existing.map((s) => ({ dayOfWeek: s.dayOfWeek, start: s.startTime, end: s.endTime })));
+        setSlots(existing.slots.map((s) => ({ dayOfWeek: s.dayOfWeek, start: s.startTime, end: s.endTime })));
+        setBookableAgenda(existing.bookableAgenda);
       })
       .finally(() => setIsLoadingSlots(false));
   }, [token]);
@@ -83,6 +85,7 @@ export default function DashboardAgendaPage() {
       await apiClient.upsertMyAvailability(
         token as string,
         slots.map((slot) => ({ dayOfWeek: slot.dayOfWeek, startTime: slot.start, endTime: slot.end })),
+        bookableAgenda,
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -102,6 +105,41 @@ export default function DashboardAgendaPage() {
             Indica in quali giorni della settimana e fasce orarie sei disponibile: i clienti la vedranno sul tuo
             profilo pubblico, con le fasce già prenotate barrate.
           </Paragraph>
+        </YStack>
+
+        <YStack
+          flexDirection="row"
+          alignItems="center"
+          gap="$3"
+          padding="$3"
+          backgroundColor="$color2"
+          borderRadius="$4"
+          cursor="pointer"
+          onPress={() => setBookableAgenda((v) => !v)}
+        >
+          <YStack
+            width={22}
+            height={22}
+            borderRadius="$2"
+            borderWidth={2}
+            borderColor={bookableAgenda ? "$blue10" : "$borderColor"}
+            backgroundColor={bookableAgenda ? "$blue10" : "white"}
+            alignItems="center"
+            justifyContent="center"
+          >
+            {bookableAgenda ? (
+              <Text fontSize="$3" color="white" fontWeight="700">
+                ✓
+              </Text>
+            ) : null}
+          </YStack>
+          <YStack flex={1}>
+            <Text fontWeight="600">📅 Permetti ai clienti di prenotare direttamente da questi orari</Text>
+            <Text fontSize="$2" color="$color10">
+              Se disattivo, l&apos;agenda resta visibile ma solo come orari generali di disponibilità: il cliente ti
+              contatta comunque tramite richiesta di preventivo.
+            </Text>
+          </YStack>
         </YStack>
 
         <YStack gap="$4">

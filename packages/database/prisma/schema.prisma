@@ -94,6 +94,11 @@ model ProfessionalProfile {
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
   remoteAvailable Boolean  @default(false)
+  // Se true, un cliente può prenotare direttamente una fascia libera
+  // dell'agenda pubblica (crea subito un Booking, niente Quote). Se false
+  // (default) l'agenda resta solo informativa: orari generali di
+  // disponibilità, la prenotazione passa dal flusso preventivo/quote.
+  bookableAgenda  Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

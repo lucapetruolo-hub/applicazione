@@ -39,3 +39,15 @@ export type ProfessionalAgendaDay = {
   dayOfWeek: number;
   slots: ProfessionalAgendaSlot[];
 };
+
+/** Risposta di GET /professionals/:id/agenda: giorni + se le fasce libere sono prenotabili direttamente. */
+export type ProfessionalAgenda = {
+  bookableAgenda: boolean;
+  days: ProfessionalAgendaDay[];
+};
+
+/** Risposta di GET/PUT /professionals/me/availability. */
+export type MyAvailability = {
+  slots: AvailabilitySlotItem[];
+  bookableAgenda: boolean;
+};

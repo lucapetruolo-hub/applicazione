@@ -1,11 +1,12 @@
 import type {
   PROFESSIONAL_CATEGORIES,
   AvailabilitySlotInput,
-  AvailabilitySlotItem,
+  BookAgendaSlotInput,
   ChangePasswordInput,
   GuidedRequestInput,
+  MyAvailability,
   MyProfessionalProfile,
-  ProfessionalAgendaDay,
+  ProfessionalAgenda,
   ProfessionalBooking,
   ProfessionalDetail,
   ProfessionalLead,
@@ -208,16 +209,23 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     getProfessionalAgenda: (id: string) =>
-      request<ProfessionalAgendaDay[]>(`/professionals/${id}/agenda`, { cache: "no-store" }),
+      request<ProfessionalAgenda>(`/professionals/${id}/agenda`, { cache: "no-store" }),
 
     getMyAvailability: (token: string) =>
-      request<AvailabilitySlotItem[]>("/professionals/me/availability", { headers: { Authorization: `Bearer ${token}` } }),
+      request<MyAvailability>("/professionals/me/availability", { headers: { Authorization: `Bearer ${token}` } }),
 
-    upsertMyAvailability: (token: string, slots: AvailabilitySlotInput[]) =>
-      request<AvailabilitySlotItem[]>("/professionals/me/availability", {
+    upsertMyAvailability: (token: string, slots: AvailabilitySlotInput[], bookableAgenda: boolean) =>
+      request<MyAvailability>("/professionals/me/availability", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ slots }),
+        body: JSON.stringify({ slots, bookableAgenda }),
+      }),
+
+    bookAgendaSlot: (token: string, professionalId: string, input: BookAgendaSlotInput) =>
+      request<{ bookingId: string }>(`/professionals/${professionalId}/agenda/book`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     createGuidedRequest: (token: string, input: GuidedRequestInput) =>

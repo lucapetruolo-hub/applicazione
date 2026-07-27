@@ -15,8 +15,10 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
+  bookAgendaSlotSchema,
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
+  type BookAgendaSlotInput,
   type ProfessionalAvailabilityInput,
   type ProfessionalProfileSelfInput,
 } from "@professionisti/shared";
@@ -108,7 +110,7 @@ export class ProfessionalsController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(professionalAvailabilitySchema)) body: ProfessionalAvailabilityInput,
   ) {
-    return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots);
+    return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots, body.bookableAgenda);
   }
 
   @Get(":id")
@@ -119,5 +121,15 @@ export class ProfessionalsController {
   @Get(":id/agenda")
   getAgenda(@Param("id") id: string) {
     return this.professionalsService.getPublicAgenda(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/agenda/book")
+  bookAgendaSlot(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(bookAgendaSlotSchema)) body: BookAgendaSlotInput,
+  ) {
+    return this.professionalsService.bookAgendaSlot(req.user.userId, id, body);
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatServicePriceRange, type ProfessionalAgendaDay, type ProfessionalDetail } from "@professionisti/shared";
+import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { apiClient } from "@/lib/apiClient";
@@ -12,7 +12,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   const { user, token } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [agenda, setAgenda] = useState<ProfessionalAgendaDay[] | null>(null);
+  const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
+  const [bookingSlot, setBookingSlot] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
@@ -28,6 +31,37 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       .then(setAgenda)
       .catch(() => {});
   }, [professional.id]);
+
+  async function handleBookSlot(date: string, startTime: string, endTime: string) {
+    if (!token) return;
+    const slotKey = `${date}-${startTime}`;
+    setBookingError(null);
+    setBookingSuccess(false);
+    setBookingSlot(slotKey);
+    try {
+      await apiClient.bookAgendaSlot(token, professional.id, { date, startTime, endTime });
+      setBookingSuccess(true);
+      // Segna subito la fascia come prenotata in locale, invece di rifare la
+      // fetch dell'agenda: la stessa richiesta appena inviata è già la fonte
+      // di verità per questo slot.
+      setAgenda((prev) =>
+        prev
+          ? {
+              ...prev,
+              days: prev.days.map((day) =>
+                day.date === date
+                  ? { ...day, slots: day.slots.map((slot) => (slot.startTime === startTime ? { ...slot, booked: true } : slot)) }
+                  : day,
+              ),
+            }
+          : prev,
+      );
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setBookingSlot(null);
+    }
+  }
 
   async function handleToggleSave() {
     if (!token) return;
@@ -136,14 +170,16 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
 
-        {agenda && agenda.some((day) => day.slots.length > 0) ? (
+        {agenda && agenda.days.some((day) => day.slots.length > 0) ? (
           <YStack gap="$2">
             <H2 size="$6">Agenda</H2>
             <Paragraph color="$color9" fontSize="$2">
-              Orari disponibili nei prossimi giorni. Le fasce barrate sono già prenotate.
+              {agenda.bookableAgenda
+                ? "Tocca un orario libero per prenotare subito. Le fasce barrate sono già prenotate."
+                : "Orari disponibili nei prossimi giorni. Le fasce barrate sono già prenotate."}
             </Paragraph>
             <YStack gap="$2">
-              {agenda
+              {agenda.days
                 .filter((day) => day.slots.length > 0)
                 .map((day) => (
                   <XStack key={day.date} gap="$3" alignItems="flex-start" flexWrap="wrap">
@@ -158,27 +194,50 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       })}
                     </Text>
                     <XStack gap="$2" flexWrap="wrap" flex={1}>
-                      {day.slots.map((slot) => (
-                        <YStack
-                          key={`${slot.startTime}-${slot.endTime}`}
-                          paddingHorizontal="$2"
-                          paddingVertical="$1"
-                          borderRadius="$3"
-                          backgroundColor={slot.booked ? "$color3" : "$green3"}
-                        >
-                          <Text
-                            fontSize="$2"
-                            color={slot.booked ? "$color9" : "$green11"}
-                            textDecorationLine={slot.booked ? "line-through" : "none"}
+                      {day.slots.map((slot) => {
+                        const canBook = agenda.bookableAgenda && !slot.booked && !!token && user?.role === "CLIENT";
+                        const slotKey = `${day.date}-${slot.startTime}`;
+                        return (
+                          <YStack
+                            key={slotKey}
+                            paddingHorizontal="$2"
+                            paddingVertical="$1"
+                            borderRadius="$3"
+                            backgroundColor={slot.booked ? "$color3" : "$green3"}
+                            cursor={canBook ? "pointer" : undefined}
+                            opacity={bookingSlot === slotKey ? 0.6 : 1}
+                            onPress={canBook ? () => handleBookSlot(day.date, slot.startTime, slot.endTime) : undefined}
                           >
-                            {slot.startTime}–{slot.endTime}
-                          </Text>
-                        </YStack>
-                      ))}
+                            <Text
+                              fontSize="$2"
+                              color={slot.booked ? "$color9" : "$green11"}
+                              textDecorationLine={slot.booked ? "line-through" : "none"}
+                              fontWeight={canBook ? "700" : "400"}
+                            >
+                              {slot.startTime}–{slot.endTime}
+                            </Text>
+                          </YStack>
+                        );
+                      })}
                     </XStack>
                   </XStack>
                 ))}
             </YStack>
+            {agenda.bookableAgenda && (!token || user?.role !== "CLIENT") ? (
+              <Text fontSize="$2" color="$color9">
+                Accedi come cliente per prenotare direttamente da questi orari.
+              </Text>
+            ) : null}
+            {bookingError ? (
+              <Text color="$red10" fontSize="$2">
+                {bookingError}
+              </Text>
+            ) : null}
+            {bookingSuccess ? (
+              <Text color="$green10" fontSize="$2">
+                Prenotazione inviata! La trovi in &quot;Le mie visite&quot;.
+              </Text>
+            ) : null}
           </YStack>
         ) : null}
 
