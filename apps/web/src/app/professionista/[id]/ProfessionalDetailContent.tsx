@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatServicePriceRange, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
-import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -44,7 +44,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$5">
         <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
           <XStack gap="$3" alignItems="flex-start" flex={1}>
-            <CategoryIconBadge slug={professional.categorySlug} size={64} />
+            <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
             <YStack gap="$2" flex={1}>
               <XStack alignItems="center" gap="$3" flexWrap="wrap">
                 <H1 size="$8">{professional.businessName}</H1>
