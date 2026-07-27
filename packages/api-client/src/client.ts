@@ -266,6 +266,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
+    uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),
+
     createSubscriptionCheckout: (token: string, plan: "PRO" | "BUSINESS") =>
       request<{ url: string | null }>("/billing/subscription/checkout", {
         method: "POST",

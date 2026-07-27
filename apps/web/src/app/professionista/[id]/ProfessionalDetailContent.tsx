@@ -141,9 +141,19 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             <Text color="$color9">Questo professionista non ha ancora recensioni.</Text>
           ) : (
             professional.reviews.map((review) => (
-              <YStack key={review.id} padding="$3" backgroundColor="$color2" borderRadius="$4" gap="$1">
+              <YStack key={review.id} padding="$3" backgroundColor="$color2" borderRadius="$4" gap="$2">
                 <Text fontWeight="600">⭐ {review.rating}/5</Text>
                 {review.comment ? <Text color="$color10">{review.comment}</Text> : null}
+                {review.photoUrls.length > 0 ? (
+                  <XStack gap="$2" flexWrap="wrap">
+                    {review.photoUrls.map((url) => (
+                      <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" borderWidth={1} borderColor="$borderColor">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      </YStack>
+                    ))}
+                  </XStack>
+                ) : null}
               </YStack>
             ))
           )}

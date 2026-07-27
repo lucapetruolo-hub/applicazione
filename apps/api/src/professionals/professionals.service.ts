@@ -139,6 +139,7 @@ export class ProfessionalsService {
         id: review.id,
         rating: review.rating,
         comment: review.comment,
+        photoUrls: review.photoUrls,
         createdAt: review.createdAt.toISOString(),
       })),
     };

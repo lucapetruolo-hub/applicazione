@@ -59,7 +59,7 @@ export type ProfessionalSearchResult = {
 export type ProfessionalDetail = ProfessionalSearchResult & {
   bio: string | null;
   subTags: string[];
-  reviews: { id: string; rating: number; comment: string | null; createdAt: string }[];
+  reviews: { id: string; rating: number; comment: string | null; photoUrls: string[]; createdAt: string }[];
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

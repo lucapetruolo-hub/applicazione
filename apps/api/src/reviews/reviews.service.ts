@@ -28,7 +28,7 @@ export class ReviewsService {
     }
 
     const review = await this.prisma.review.create({
-      data: { bookingId: input.bookingId, rating: input.rating, comment: input.comment },
+      data: { bookingId: input.bookingId, rating: input.rating, comment: input.comment, photoUrls: input.photoUrls },
     });
 
     return { id: review.id };

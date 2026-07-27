@@ -77,6 +77,8 @@ export const reviewSchema = z.object({
   bookingId: z.string().uuid(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(2000).optional(),
+  /** Foto del lavoro svolto, opzionali: mostrate poi nella sezione recensioni del professionista. */
+  photoUrls: z.array(z.string().url()).max(3).default([]),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 

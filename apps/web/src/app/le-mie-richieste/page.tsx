@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
@@ -13,6 +13,8 @@ const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   MATCHED: "Inviata ai professionisti",
   CLOSED: "Chiusa",
 };
+
+const MAX_REVIEW_PHOTOS = 3;
 
 const BOOKING_STATUS_LABEL: Record<ClientBooking["status"], string> = {
   PENDING: "In attesa",
@@ -182,12 +184,16 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmitReview() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await apiClient.createReview(token, { bookingId: booking.id, rating, comment: comment.trim() || undefined });
+      await apiClient.createReview(token, { bookingId: booking.id, rating, comment: comment.trim() || undefined, photoUrls });
       setShowReviewForm(false);
       onReviewed();
     } catch (err) {
@@ -195,6 +201,30 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      // Cloudinary ridimensiona e comprime lato server, stessa trasformazione
+      // già usata per le foto della richiesta guidata e per l'immagine
+      // profilo professionista.
+      const result = await apiClient.uploadReviewPhoto(token, file);
+      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REVIEW_PHOTOS));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
   return (
@@ -233,12 +263,91 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
               rows={2}
               style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
             />
+
+            <YStack gap="$1">
+              <Text fontSize="$2" color="$color9">
+                Foto del lavoro svolto (opzionale, fino a {MAX_REVIEW_PHOTOS})
+              </Text>
+              <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+                {photoUrls.map((url) => (
+                  <YStack
+                    key={url}
+                    width={64}
+                    height={64}
+                    borderRadius="$3"
+                    overflow="hidden"
+                    position="relative"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <YStack
+                      position="absolute"
+                      top={2}
+                      right={2}
+                      width={18}
+                      height={18}
+                      borderRadius={9}
+                      backgroundColor="rgba(0,0,0,0.6)"
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      onPress={() => removePhoto(url)}
+                    >
+                      <Text color="white" fontSize="$1">
+                        ✕
+                      </Text>
+                    </YStack>
+                  </YStack>
+                ))}
+                {photoUrls.length < MAX_REVIEW_PHOTOS ? (
+                  <YStack
+                    width={64}
+                    height={64}
+                    borderRadius="$3"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    borderStyle="dashed"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    opacity={isUploadingPhoto ? 0.6 : 1}
+                    onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                  >
+                    <Text fontSize="$6" color="$color9">
+                      {isUploadingPhoto ? "…" : "+"}
+                    </Text>
+                  </YStack>
+                ) : null}
+              </YStack>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                disabled={isUploadingPhoto}
+                style={{ display: "none" }}
+              />
+              {photoError ? (
+                <Text color="$red10" fontSize="$2">
+                  {photoError}
+                </Text>
+              ) : null}
+            </YStack>
+
             {error ? (
               <Text color="$red10" fontSize="$3">
                 {error}
               </Text>
             ) : null}
-            <Button size="$3" alignSelf="flex-start" onPress={handleSubmitReview} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button
+              size="$3"
+              alignSelf="flex-start"
+              onPress={handleSubmitReview}
+              disabled={isSubmitting || isUploadingPhoto}
+              opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
+            >
               {isSubmitting ? "Invio..." : "Invia recensione"}
             </Button>
           </YStack>
