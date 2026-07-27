@@ -130,6 +130,26 @@ export const professionalProfileSelfSchema = professionalProfileSchema
   });
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
 
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Orario non valido.");
+
+/** Fascia oraria ricorrente (agenda settimanale), vedi packages/shared/src/availability.ts. */
+export const availabilitySlotSchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startTime: timeSchema,
+    endTime: timeSchema,
+  })
+  .refine((data) => data.endTime > data.startTime, {
+    message: "L'orario di fine deve essere dopo l'orario di inizio.",
+    path: ["endTime"],
+  });
+export type AvailabilitySlotInput = z.infer<typeof availabilitySlotSchema>;
+
+export const professionalAvailabilitySchema = z.object({
+  slots: z.array(availabilitySlotSchema).max(50).default([]),
+});
+export type ProfessionalAvailabilityInput = z.infer<typeof professionalAvailabilitySchema>;
+
 /**
  * Promozione ad ADMIN dell'account con questa email, protetta da un segreto
  * condiviso (`ADMIN_BOOTSTRAP_SECRET`, solo variabile d'ambiente su

@@ -5,6 +5,7 @@ export function getAccountMenuItems(role: "CLIENT" | "PROFESSIONAL" | "ADMIN"): 
     ? [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/dashboard/profilo", label: "Profilo pubblico" },
+        { href: "/dashboard/agenda", label: "Agenda" },
         { href: "/account", label: "Impostazioni dell'account" },
       ]
     : [

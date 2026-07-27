@@ -14,7 +14,12 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { professionalProfileSelfSchema, type ProfessionalProfileSelfInput } from "@professionisti/shared";
+import {
+  professionalAvailabilitySchema,
+  professionalProfileSelfSchema,
+  type ProfessionalAvailabilityInput,
+  type ProfessionalProfileSelfInput,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -91,8 +96,28 @@ export class ProfessionalsController {
     return this.professionalsService.getMyBookings(req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("me/availability")
+  getMyAvailability(@Req() req: AuthenticatedRequest) {
+    return this.professionalsService.getMyAvailability(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put("me/availability")
+  upsertMyAvailability(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(professionalAvailabilitySchema)) body: ProfessionalAvailabilityInput,
+  ) {
+    return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots);
+  }
+
   @Get(":id")
   getById(@Param("id") id: string) {
     return this.professionalsService.getById(id);
+  }
+
+  @Get(":id/agenda")
+  getAgenda(@Param("id") id: string) {
+    return this.professionalsService.getPublicAgenda(id);
   }
 }

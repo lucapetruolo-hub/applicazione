@@ -108,6 +108,7 @@ model ProfessionalProfile {
   payments         Payment[]
   savedBy          SavedProfessional[]
   services         ProfessionalService[]
+  availabilitySlots AvailabilitySlot[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -134,6 +135,27 @@ model ProfessionalService {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@map("professional_services")
+}
+
+// Disponibilità settimanale ricorrente (non date specifiche): il
+// professionista indica in quali giorni della settimana e fasce orarie è
+// disponibile, mostrata poi come agenda nel profilo pubblico (CLAUDE.md §8:
+// "Notifiche quasi istantanee..." e agenda digitale come feature core SaaS).
+// dayOfWeek segue la convenzione di JS `Date.getUTCDay()` (0=domenica...
+// 6=sabato) apposta, per confrontare senza conversioni la disponibilità
+// ricorrente con le prenotazioni reali (Booking.scheduledAt) quando si
+// calcola l'agenda pubblica.
+model AvailabilitySlot {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  dayOfWeek             Int
+  startTime             String
+  endTime               String
+  createdAt             DateTime @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("availability_slots")
 }
 
 // ---------------------------------------------------------------------------

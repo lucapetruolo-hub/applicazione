@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatServicePriceRange, type ProfessionalDetail } from "@professionisti/shared";
+import { formatServicePriceRange, type ProfessionalAgendaDay, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { apiClient } from "@/lib/apiClient";
@@ -12,6 +12,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   const { user, token } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [agenda, setAgenda] = useState<ProfessionalAgendaDay[] | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
@@ -20,6 +21,13 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       .then((saved) => setIsSaved(saved.some((p) => p.id === professional.id)))
       .catch(() => {});
   }, [token, user, professional.id]);
+
+  useEffect(() => {
+    apiClient
+      .getProfessionalAgenda(professional.id)
+      .then(setAgenda)
+      .catch(() => {});
+  }, [professional.id]);
 
   async function handleToggleSave() {
     if (!token) return;
@@ -124,6 +132,52 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </Text>
                 </XStack>
               ))}
+            </YStack>
+          </YStack>
+        ) : null}
+
+        {agenda && agenda.some((day) => day.slots.length > 0) ? (
+          <YStack gap="$2">
+            <H2 size="$6">Agenda</H2>
+            <Paragraph color="$color9" fontSize="$2">
+              Orari disponibili nei prossimi giorni. Le fasce barrate sono già prenotate.
+            </Paragraph>
+            <YStack gap="$2">
+              {agenda
+                .filter((day) => day.slots.length > 0)
+                .map((day) => (
+                  <XStack key={day.date} gap="$3" alignItems="flex-start" flexWrap="wrap">
+                    <Text fontWeight="600" width={110} flexShrink={0}>
+                      {/* Data UTC (vedi getPublicAgenda lato API): formattata così com'è, senza conversione di
+                          fuso — coerente con come scheduledAt viene già trattato nel resto del progetto. */}
+                      {new Date(`${day.date}T00:00:00Z`).toLocaleDateString("it-IT", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        timeZone: "UTC",
+                      })}
+                    </Text>
+                    <XStack gap="$2" flexWrap="wrap" flex={1}>
+                      {day.slots.map((slot) => (
+                        <YStack
+                          key={`${slot.startTime}-${slot.endTime}`}
+                          paddingHorizontal="$2"
+                          paddingVertical="$1"
+                          borderRadius="$3"
+                          backgroundColor={slot.booked ? "$color3" : "$green3"}
+                        >
+                          <Text
+                            fontSize="$2"
+                            color={slot.booked ? "$color9" : "$green11"}
+                            textDecorationLine={slot.booked ? "line-through" : "none"}
+                          >
+                            {slot.startTime}–{slot.endTime}
+                          </Text>
+                        </YStack>
+                      ))}
+                    </XStack>
+                  </XStack>
+                ))}
             </YStack>
           </YStack>
         ) : null}

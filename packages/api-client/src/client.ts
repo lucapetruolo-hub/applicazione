@@ -1,8 +1,11 @@
 import type {
   PROFESSIONAL_CATEGORIES,
+  AvailabilitySlotInput,
+  AvailabilitySlotItem,
   ChangePasswordInput,
   GuidedRequestInput,
   MyProfessionalProfile,
+  ProfessionalAgendaDay,
   ProfessionalBooking,
   ProfessionalDetail,
   ProfessionalLead,
@@ -203,6 +206,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     },
 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
+
+    getProfessionalAgenda: (id: string) =>
+      request<ProfessionalAgendaDay[]>(`/professionals/${id}/agenda`, { cache: "no-store" }),
+
+    getMyAvailability: (token: string) =>
+      request<AvailabilitySlotItem[]>("/professionals/me/availability", { headers: { Authorization: `Bearer ${token}` } }),
+
+    upsertMyAvailability: (token: string, slots: AvailabilitySlotInput[]) =>
+      request<AvailabilitySlotItem[]>("/professionals/me/availability", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ slots }),
+      }),
 
     createGuidedRequest: (token: string, input: GuidedRequestInput) =>
       request<{ guidedRequestId: string; matchedProfessionals: number }>("/guided-requests", {

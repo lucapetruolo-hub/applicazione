@@ -2,7 +2,10 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
   findComuneByName,
+  type AvailabilitySlotInput,
+  type AvailabilitySlotItem,
   type MyProfessionalProfile,
+  type ProfessionalAgendaDay,
   type ProfessionalBooking,
   type ProfessionalDetail,
   type ProfessionalLead,
@@ -326,5 +329,86 @@ export class ProfessionalsService {
       laborEurCents: booking.quote?.laborEurCents ?? null,
       materialsEurCents: booking.quote?.materialsEurCents ?? null,
     }));
+  }
+
+  async getMyAvailability(userId: string): Promise<AvailabilitySlotItem[]> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const slots = await this.prisma.availabilitySlot.findMany({
+      where: { professionalProfileId },
+      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+    });
+    return slots.map((slot) => ({ id: slot.id, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, endTime: slot.endTime }));
+  }
+
+  async upsertMyAvailability(userId: string, slots: AvailabilitySlotInput[]): Promise<AvailabilitySlotItem[]> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    // Lista sostituita per intero ad ogni salvataggio, stesso pattern già
+    // usato per le prestazioni (ProfessionalService): coerente con la scala
+    // attesa (poche decine di fasce a professionista), molto più semplice
+    // che diffare la lista esistente contro quella inviata.
+    await this.prisma.availabilitySlot.deleteMany({ where: { professionalProfileId } });
+    if (slots.length) {
+      await this.prisma.availabilitySlot.createMany({
+        data: slots.map((slot) => ({
+          professionalProfileId,
+          dayOfWeek: slot.dayOfWeek,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        })),
+      });
+    }
+    return this.getMyAvailability(userId);
+  }
+
+  /**
+   * Agenda pubblica: proietta la disponibilità settimanale ricorrente sui
+   * prossimi 14 giorni di calendario, barrando le fasce che coincidono con
+   * una prenotazione reale già presa. Confronto su data/ora UTC (nessuna
+   * libreria di timezone nello stack): coerente con come `scheduledAt` viene
+   * già scritto/letto altrove nel progetto, senza introdurre una nuova
+   * dipendenza per un confronto di sola data.
+   */
+  async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgendaDay[]> {
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const endWindow = new Date(startOfToday);
+    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+
+    const [slots, bookings] = await Promise.all([
+      this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
+      this.prisma.booking.findMany({
+        where: {
+          professionalProfileId,
+          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+          scheduledAt: { gte: startOfToday, lt: endWindow },
+        },
+        select: { scheduledAt: true },
+      }),
+    ]);
+
+    const days: ProfessionalAgendaDay[] = [];
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(startOfToday);
+      date.setUTCDate(date.getUTCDate() + i);
+      const dayOfWeek = date.getUTCDay();
+      const dateStr = date.toISOString().slice(0, 10);
+
+      const daySlots = slots
+        .filter((slot) => slot.dayOfWeek === dayOfWeek)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+        .map((slot) => {
+          const booked = bookings.some((booking) => {
+            const bookingDate = booking.scheduledAt.toISOString().slice(0, 10);
+            if (bookingDate !== dateStr) return false;
+            const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
+            return bookingTime >= slot.startTime && bookingTime < slot.endTime;
+          });
+          return { startTime: slot.startTime, endTime: slot.endTime, booked };
+        });
+
+      days.push({ date: dateStr, dayOfWeek, slots: daySlots });
+    }
+    return days;
   }
 }
