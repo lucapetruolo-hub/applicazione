@@ -24,9 +24,14 @@ export default function DashboardAgendaPage() {
     apiClient
       .getMyAvailability(token)
       .then((existing) => {
+        // Stessa cautela della pagina profilo pubblico: non fidarsi
+        // ciecamente della forma della risposta se l'API non è ancora
+        // allineata all'ultimo deploy del frontend.
+        if (!Array.isArray(existing?.slots)) return;
         setSlots(existing.slots.map((s) => ({ dayOfWeek: s.dayOfWeek, start: s.startTime, end: s.endTime })));
-        setBookableAgenda(existing.bookableAgenda);
+        setBookableAgenda(Boolean(existing.bookableAgenda));
       })
+      .catch(() => {})
       .finally(() => setIsLoadingSlots(false));
   }, [token]);
 

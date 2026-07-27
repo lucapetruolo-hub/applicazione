@@ -28,7 +28,17 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   useEffect(() => {
     apiClient
       .getProfessionalAgenda(professional.id)
-      .then(setAgenda)
+      .then((res) => {
+        // L'agenda è un widget accessorio (mai bloccare l'apertura del
+        // profilo per colpa sua): valida la forma della risposta prima di
+        // usarla invece di fidarsi ciecamente del tipo dichiarato — un API
+        // Railway non ancora allineata all'ultimo deploy del frontend (i due
+        // servizi si deployano indipendentemente) potrebbe rispondere ancora
+        // con la vecchia forma, e `agenda.days.some(...)` su un valore senza
+        // `days` mandava in crash l'intera pagina (bug reale segnalato
+        // dall'utente: "Application error" aprendo un profilo).
+        if (res && Array.isArray(res.days)) setAgenda(res);
+      })
       .catch(() => {});
   }, [professional.id]);
 
@@ -257,9 +267,11 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               <YStack key={review.id} padding="$3" backgroundColor="$color2" borderRadius="$4" gap="$2">
                 <Text fontWeight="600">⭐ {review.rating}/5</Text>
                 {review.comment ? <Text color="$color10">{review.comment}</Text> : null}
-                {review.photoUrls.length > 0 ? (
+                {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
+                    potrebbe non includere ancora photoUrls su una recensione. */}
+                {(review.photoUrls ?? []).length > 0 ? (
                   <XStack gap="$2" flexWrap="wrap">
-                    {review.photoUrls.map((url) => (
+                    {(review.photoUrls ?? []).map((url) => (
                       <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" borderWidth={1} borderColor="$borderColor">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
