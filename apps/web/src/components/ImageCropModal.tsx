@@ -9,15 +9,21 @@ const MAX_ZOOM = 3;
 
 type Offset = { x: number; y: number };
 
-function clampOffset(offset: Offset, displayedSize: number): Offset {
-  // L'immagine (quadrata, "cover") non deve mai lasciare spazi vuoti nel
-  // riquadro: se è più grande dello stage, i bordi non possono superare
-  // verso l'interno lo spazio [stage - displayed, 0].
-  const min = Math.min(0, STAGE_SIZE - displayedSize);
-  const max = 0;
+function clampOffset(offset: Offset, displayedWidth: number, displayedHeight: number): Offset {
+  // L'immagine ("cover") non deve mai lasciare spazi vuoti nel riquadro: se è
+  // più grande dello stage, i bordi non possono superare verso l'interno lo
+  // spazio [stage - displayed, 0] — calcolato separatamente per larghezza e
+  // altezza. Con un unico limite condiviso (bug reale segnalato dall'utente),
+  // una foto "lunga" (verticale) ha displayedWidth == STAGE_SIZE esatto
+  // (copre esattamente in larghezza) e displayedHeight > STAGE_SIZE
+  // (sborda in verticale, come previsto): usare displayedWidth anche per
+  // l'asse Y azzerava il range verticale, bloccando del tutto il trascinamento
+  // verso il basso e impedendo di vedere la parte inferiore della foto.
+  const minX = Math.min(0, STAGE_SIZE - displayedWidth);
+  const minY = Math.min(0, STAGE_SIZE - displayedHeight);
   return {
-    x: Math.min(max, Math.max(min, offset.x)),
-    y: Math.min(max, Math.max(min, offset.y)),
+    x: Math.min(0, Math.max(minX, offset.x)),
+    y: Math.min(0, Math.max(minY, offset.y)),
   };
 }
 
@@ -78,7 +84,9 @@ export function ImageCropModal({
       x: dragState.current.offsetStart.x + dx,
       y: dragState.current.offsetStart.y + dy,
     };
-    setOffset(clampOffset(next, displayedWidth > 0 ? displayedWidth : STAGE_SIZE));
+    setOffset(
+      clampOffset(next, displayedWidth > 0 ? displayedWidth : STAGE_SIZE, displayedHeight > 0 ? displayedHeight : STAGE_SIZE),
+    );
   }
 
   function handlePointerUp() {
@@ -95,7 +103,7 @@ export function ImageCropModal({
     setOffset((prev) => {
       const centerX = prev.x - (nextDisplayedWidth - displayedWidth) / 2;
       const centerY = prev.y - (nextDisplayedHeight - displayedHeight) / 2;
-      return clampOffset({ x: centerX, y: centerY }, Math.max(nextDisplayedWidth, nextDisplayedHeight));
+      return clampOffset({ x: centerX, y: centerY }, nextDisplayedWidth, nextDisplayedHeight);
     });
   }
 
