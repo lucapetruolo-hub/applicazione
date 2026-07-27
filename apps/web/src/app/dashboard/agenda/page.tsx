@@ -15,6 +15,7 @@ export default function DashboardAgendaPage() {
   const [slots, setSlots] = useState<SlotDraft[]>([]);
   const [bookableAgenda, setBookableAgenda] = useState(false);
   const [isLoadingSlots, setIsLoadingSlots] = useState(true);
+  const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -31,7 +32,19 @@ export default function DashboardAgendaPage() {
         setSlots(existing.slots.map((s) => ({ dayOfWeek: s.dayOfWeek, start: s.startTime, end: s.endTime })));
         setBookableAgenda(Boolean(existing.bookableAgenda));
       })
-      .catch(() => {})
+      .catch((err) => {
+        // Bug reale segnalato dall'utente: senza questo controllo, un
+        // professionista che apre "Agenda" (nuova voce di menu) prima di
+        // aver salvato il profilo base in /dashboard/profilo poteva
+        // compilare e "salvare" l'agenda normalmente, ma il salvataggio
+        // falliva silenziosamente con un piccolo testo d'errore facile da
+        // non notare ("Completa prima il tuo profilo professionista") —
+        // sembrava che l'agenda non si salvasse. Stesso pattern già usato
+        // in /dashboard per lo stesso identico caso.
+        if (err instanceof Error && err.message.includes("profilo")) {
+          setProfileMissing(true);
+        }
+      })
       .finally(() => setIsLoadingSlots(false));
   }, [token]);
 
@@ -59,6 +72,24 @@ export default function DashboardAgendaPage() {
           <H1 size="$7" textAlign="center">
             Questa sezione è per i professionisti
           </H1>
+        </YStack>
+      </YStack>
+    );
+  }
+
+  if (profileMissing) {
+    return (
+      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
+          <H1 size="$7" textAlign="center">
+            Completa il tuo profilo per iniziare
+          </H1>
+          <Paragraph color="$color10" textAlign="center">
+            Serve un profilo completo (nome attività, categoria, città) prima di poter impostare l&apos;agenda.
+          </Paragraph>
+          <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
+            <Button size="$5">Completa profilo</Button>
+          </Link>
         </YStack>
       </YStack>
     );
@@ -95,6 +126,10 @@ export default function DashboardAgendaPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
+      if (err instanceof Error && err.message.includes("profilo")) {
+        setProfileMissing(true);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
