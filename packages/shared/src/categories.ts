@@ -91,6 +91,107 @@ export function isProfessionalCategorySlug(value: string): value is Professional
   return PROFESSIONAL_CATEGORIES.some((category) => category.slug === value);
 }
 
+/**
+ * Prestazioni più richieste per categoria, suggerite in /dashboard/profilo
+ * come scorciatoia per aggiungere una prestazione senza doverne scrivere il
+ * nome da zero — il prezzo (range) resta comunque da compilare a mano,
+ * queste sono solo il nome. `Record<ProfessionalCategorySlug, ...>` così il
+ * compilatore segnala se manca una categoria quando se ne aggiunge una nuova.
+ */
+export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
+  idraulico: [
+    "Riparazione perdita d'acqua",
+    "Sostituzione rubinetteria",
+    "Sturatura scarichi",
+    "Installazione scaldabagno",
+    "Sostituzione caldaia",
+  ],
+  elettricista: [
+    "Impianto elettrico civile",
+    "Installazione punti luce",
+    "Sostituzione quadro elettrico",
+    "Installazione videocitofono",
+    "Certificazione impianto",
+  ],
+  imbianchino: [
+    "Tinteggiatura interni",
+    "Tinteggiatura esterni",
+    "Rasatura pareti",
+    "Decorazioni pareti",
+    "Verniciatura infissi",
+  ],
+  pulizie: [
+    "Pulizie di casa",
+    "Pulizie di ufficio",
+    "Pulizie di fine cantiere",
+    "Pulizie post-trasloco",
+    "Sanificazione ambienti",
+  ],
+  giardiniere: [
+    "Manutenzione giardino",
+    "Potatura siepi",
+    "Taglio erba",
+    "Progettazione giardino",
+    "Rimozione alberi",
+  ],
+  traslochi: [
+    "Trasloco locale",
+    "Trasloco lunga distanza",
+    "Smontaggio e montaggio mobili",
+    "Imballaggio oggetti",
+    "Trasporto con montacarichi",
+  ],
+  fabbro: [
+    "Apertura porte bloccate",
+    "Sostituzione serratura",
+    "Installazione cancelli",
+    "Riparazione grate",
+    "Duplicazione chiavi",
+  ],
+  climatizzazione: [
+    "Installazione climatizzatore",
+    "Manutenzione caldaia",
+    "Ricarica gas climatizzatore",
+    "Pulizia filtri climatizzatore",
+    "Assistenza guasti",
+  ],
+  muratore: [
+    "Ristrutturazione bagno",
+    "Ristrutturazione cucina",
+    "Realizzazione cartongesso",
+    "Demolizioni",
+    "Rifacimento pavimenti",
+  ],
+  falegname: [
+    "Mobili su misura",
+    "Riparazione mobili",
+    "Sostituzione infissi",
+    "Montaggio mobili",
+    "Restauro mobili",
+  ],
+  tuttofare: [
+    "Piccole riparazioni domestiche",
+    "Montaggio mobili",
+    "Manutenzione generale casa",
+    "Piccoli lavori idraulici",
+    "Piccoli lavori elettrici",
+  ],
+  oss: [
+    "Assistenza domiciliare",
+    "Assistenza ospedaliera",
+    "Mobilizzazione pazienti",
+    "Igiene personale",
+    "Somministrazione terapie",
+  ],
+  badanti: [
+    "Assistenza anziani",
+    "Compagnia e supporto",
+    "Aiuto nelle faccende domestiche",
+    "Accompagnamento a visite mediche",
+    "Convivenza h24",
+  ],
+};
+
 function normalize(value: string): string {
   return value
     .toLowerCase()

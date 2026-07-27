@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -161,6 +161,19 @@ export default function DashboardProfiloPage() {
   function removeService(index: number) {
     setServices((prev) => prev.filter((_, i) => i !== index));
   }
+
+  function addSuggestedService(name: string) {
+    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "" }]);
+  }
+
+  // Scorciatoia per aggiungere una prestazione senza doverne scrivere il nome
+  // da zero: il prezzo (range) resta comunque da compilare a mano — richiesta
+  // esplicita dell'utente. Esclude i nomi già aggiunti, confronto case-insensitive.
+  const suggestedServices = categorySlug
+    ? POPULAR_SERVICES[categorySlug].filter(
+        (name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()),
+      )
+    : [];
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -362,6 +375,28 @@ export default function DashboardProfiloPage() {
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
             costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
           </Text>
+
+          {suggestedServices.length > 0 ? (
+            <YStack gap="$1">
+              <Text fontSize="$2" color="$color9">
+                Le più richieste per questa categoria:
+              </Text>
+              <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+                {suggestedServices.map((name) => (
+                  <Button
+                    key={name}
+                    size="$2"
+                    backgroundColor="$blue2"
+                    color="$blue11"
+                    onPress={() => addSuggestedService(name)}
+                  >
+                    + {name}
+                  </Button>
+                ))}
+              </YStack>
+            </YStack>
+          ) : null}
+
           <YStack gap="$2">
             {services.map((service, index) => (
               <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
