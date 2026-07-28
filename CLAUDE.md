@@ -750,6 +750,37 @@ rimandate a un giro successivo).
   nessun indirizzo visibile in nessuna delle due viste, badge/rating/chip
   renderizzati correttamente, zero errori console/pageerror.
 
+**Correzione post-Fase 4 — ricerca ripristinata come funzione primaria
+dell'hero homepage:** la Fase 4 aveva sostituito l'hero con un form di
+richiesta guidata (categoria/città/urgenza → `/preventivo` o `/urgente`,
+"Scheda Intervento" animata a fianco), coerente col brief ma una scelta di
+prodotto che l'utente ha esplicitamente respinto dopo averla vista: la home
+deve tornare ad avere la **ricerca** (non la richiesta guidata) come
+funzione principale — stessa barra "A domicilio"/"Online" + città + tasto
+"Cerca" di prima del redesign. Corretto senza toccare il resto del
+linguaggio visivo di Fase 4 (tipografia Archivo, eyebrow mono, sfondo
+blueprint): `HomeHero.tsx` ora monta `SearchBar` (`packages/ui`, già
+esistente e già usata da `SearchHeader.tsx` nelle pagine risultati e da
+`apps/mobile`) invece del form categoria/città/urgenza, con lo stesso
+routing (`buildSearchDestination`, `apps/web/src/lib/searchNavigation.ts`)
+già usato dagli altri punti di ingresso alla ricerca — nessun secondo
+comportamento parallelo. `SchedaIntervento.tsx` è stato eliminato (non
+aveva più senso senza i campi categoria/urgenza del form guidato, ed era
+usata solo lì): a differenza dei casi già documentati in questo file in
+cui una feature "rimandata" resta nel codice per una fase successiva,
+qui la feature stessa (richiesta guidata in hero) è stata scartata come
+scelta di prodotto, non solo rimandata — nessun motivo di tenere il
+componente. `SearchBar.tsx` (condiviso web+mobile) è stato ricolorato sui
+token brand in questo stesso giro (era rimasto sui colori Tamagui stock
+— `$blue10`/`$color3`/`$color9`— mai toccato nelle fasi precedenti),
+visto che torna ad essere l'elemento centrale della homepage: beneficio
+automatico anche per `SearchHeader` e per la home di `apps/mobile`, che
+la riusano. Verificato: typecheck pulito su `apps/web`/`packages/ui`/
+`apps/mobile`, build `apps/web` verde, sessione locale con Playwright —
+ricerca "Idraulico"+"Roma" da homepage porta correttamente a
+`/cerca/idraulico?citta=Roma`, tab "Online" cambia placeholder/copy come
+nelle pagine risultati, nessun errore console, nessun overflow mobile.
+
 Fasi successive (pagine interne restanti — dashboard, account,
 autenticazione —, SEO/accessibilità/performance) non ancora iniziate. Riga
 legale del footer da completare quando disponibili i dati societari reali

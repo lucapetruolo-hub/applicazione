@@ -58,17 +58,8 @@ export function SearchBar({
   }
 
   return (
-    <YStack
-      gap="$3"
-      backgroundColor="white"
-      padding="$3"
-      borderRadius="$6"
-      shadowColor="$shadowColor"
-      shadowRadius={20}
-      shadowOpacity={0.15}
-      elevation="$2"
-    >
-      <XStack gap="$2" backgroundColor="$color3" borderRadius="$10" padding="$1" alignSelf="flex-start">
+    <YStack gap="$3" backgroundColor={brand.calce} padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.filetto}>
+      <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
         {MODE_TABS.map((tab) => {
           const active = tab.key === mode;
           return (
@@ -77,7 +68,7 @@ export function SearchBar({
               paddingHorizontal="$3"
               paddingVertical="$2"
               borderRadius="$10"
-              backgroundColor={active ? "$blue10" : "transparent"}
+              backgroundColor={active ? brand.cianografia : "transparent"}
               cursor="pointer"
               alignItems="center"
               gap="$2"
@@ -86,7 +77,7 @@ export function SearchBar({
               accessibilityLabel={tab.label}
             >
               <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-              <Text fontSize="$3" fontWeight="600" color={active ? "white" : "$color11"}>
+              <Text fontSize="$3" fontWeight="600" color={active ? "white" : brand.grafite70}>
                 {tab.label}
               </Text>
             </XStack>
@@ -114,7 +105,7 @@ export function SearchBar({
             </YStack>
           )}
         />
-        <XStack width={1} height={44} backgroundColor="$borderColor" display="none" $gtSm={{ display: "flex" }} />
+        <XStack width={1} height={44} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
         <Autocomplete
           items={citySuggestions}
           getKey={(item) => item}
@@ -127,7 +118,7 @@ export function SearchBar({
           minChars={3}
         />
         <Button
-          size="$5"
+          variant="primary"
           onPress={() =>
             onSearch({
               query,
@@ -141,7 +132,7 @@ export function SearchBar({
         </Button>
       </YStack>
       {mode === "online" ? (
-        <Text fontSize="$2" color="$color9">
+        <Text fontSize="$2" color={brand.grafite70}>
           Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
           trovare professionisti online della tua zona.
         </Text>
