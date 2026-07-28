@@ -529,5 +529,47 @@ con l'app mobile** — vedi §2/§3, conflitto non risolvibile silenziosamente):
   dashboard profilo/agenda, le mie richieste, ricerca con `ProfessionalCard`)
   — zero emoji visibili, zero errori console nuovi.
 
-Fasi successive (libreria componenti primitivi, homepage, pagine interne,
-SEO/accessibilità/performance) non ancora iniziate.
+**Fase 3 — libreria componenti primitivi (fatto):**
+- Tutti i nuovi componenti vivono in `packages/ui` (non un
+  `apps/web/components/ui/` locale), stessa decisione architetturale delle
+  fasi precedenti — restano condivisi con `apps/mobile`.
+- **Puramente additiva**: nessuna pagina esistente è stata riscritta per
+  usarli in questa fase (arriverà con la Fase 4/5, home e pagine interne).
+  Il sito resta visivamente identico a prima — verificato per screenshot
+  (vedi sotto).
+- `Button.tsx` **esteso**, non sostituito: nuova prop opzionale `variant`
+  (`primary | secondary | ghost | urgent`, 48px altezza, radius 4,
+  cianografia/grafite/urgenza) — quando `variant` non è passata (tutte le
+  decine di usi esistenti oggi) il bottone resta esattamente com'era prima
+  (sfondo `$blue10`, radius `$4`), zero regressioni. Le pagine future
+  opteranno in modo esplicito per le nuove varianti.
+- `Surface.tsx` — il "Card" del brief (superficie bianca, bordo hairline,
+  radius 4, niente ombra), **rinominato `Surface`** invece di `Card`: questo
+  package già re-esporta `Card` di Tamagui (usato da `CategoryTile` e da
+  `ProfessionalCard` con le prop originali `elevate`/`bordered`, non ancora
+  riscritte) — un secondo componente con lo stesso nome avrebbe causato un
+  conflitto di export o cambiato quelle pagine senza controllo.
+- `Chip.tsx`, `Badge.tsx` (varianti `verificato | pro | urgente | nuovo`,
+  colori semantici fissi, mai liberi — coerente con la regola di CLAUDE.md
+  §1.2 "rosso solo su urgenza, verde solo su verificato, ottone solo su
+  pagamento"), `Rating.tsx`, `Field.tsx`, `Avatar.tsx`, `EmptyState.tsx`:
+  nuovi, nessun nome in conflitto.
+- `Rating.tsx` **non sostituisce** `apps/web/src/components/StarRating.tsx`
+  (che resta dov'è, web-only): quello usa una tecnica di ritaglio CSS per il
+  riempimento frazionario esatto delle stelle (es. 4,5/5 → 90% di
+  riempimento), non portabile su React Native. `Rating.tsx` in `packages/ui`
+  arrotonda alla stella intera più vicina per restare cross-platform — stessa
+  informazione, precisione visiva diversa, uso diverso (componente di libreria
+  condivisa vs. sezione recensioni specifica del profilo pubblico web).
+- `Avatar.tsx` mostra la foto reale se `imageUrl` è passato (via `Image` da
+  `"react-native"`, che risolve a un `<img>` reale tramite `react-native-web`
+  senza la stessa complicazione di `react-native-svg` — vedi nota
+  Logo.tsx/Logo.web.tsx in Fase 2), altrimenti iniziali su fondo
+  cianografia-velo — mai un'icona placeholder generica.
+- Verificato: typecheck pulito su `packages/ui`/`apps/web`/`apps/mobile`,
+  build `apps/web` verde, screenshot di regressione sulla homepage (colore
+  bottone `rgb(0,129,241)`, identico a prima della modifica a `Button.tsx`,
+  zero differenze visive, zero errori console).
+
+Fasi successive (homepage, pagine interne, SEO/accessibilità/performance)
+non ancora iniziate.

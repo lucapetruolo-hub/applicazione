@@ -23,6 +23,19 @@ export { Icon } from "./Icon";
 export type { IconProps, IconName } from "./Icon";
 export { Logo } from "./Logo";
 export type { LogoProps } from "./Logo";
+export { Surface } from "./Surface";
+export { Chip } from "./Chip";
+export type { ChipProps } from "./Chip";
+export { Badge } from "./Badge";
+export type { BadgeProps, BadgeVariant } from "./Badge";
+export { Rating } from "./Rating";
+export type { RatingProps } from "./Rating";
+export { Field } from "./Field";
+export type { FieldProps } from "./Field";
+export { Avatar } from "./Avatar";
+export type { AvatarProps } from "./Avatar";
+export { EmptyState } from "./EmptyState";
+export type { EmptyStateProps } from "./EmptyState";
 
 // Tutte le primitive Tamagui usate da apps/web e apps/mobile vanno importate
 // da qui, mai direttamente da "tamagui": apps/web e apps/mobile non
