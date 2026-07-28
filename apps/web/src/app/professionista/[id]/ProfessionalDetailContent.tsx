@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, Heart, MapPin, Star } from "lucide-react";
 import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
-import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { StarRating } from "@/components/StarRating";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -96,8 +94,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   }
 
   return (
-    <YStack width="100%" alignItems="center">
-      <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$5">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+      <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
         <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
           <XStack gap="$3" alignItems="flex-start" flex={1}>
             <YStack
@@ -109,60 +107,37 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
             </YStack>
             <YStack gap="$2" flex={1}>
-              <XStack alignItems="center" gap="$3" flexWrap="wrap">
-                <H1 size="$8">{professional.businessName}</H1>
-                {professional.verified ? (
-                  <XStack alignItems="center" gap="$1">
-                    <BadgeCheck size={16} strokeWidth={1.5} color="#1B4D8F" />
-                    <Text fontSize="$3" color="$blue10" fontWeight="600">
-                      Verificato
-                    </Text>
-                  </XStack>
-                ) : null}
-                {professional.boosted ? (
-                  <Text fontSize="$2" backgroundColor="$yellow4" color="$yellow11" paddingHorizontal="$2" paddingVertical="$1" borderRadius="$4">
-                    In evidenza
-                  </Text>
-                ) : null}
+              <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+                  {professional.businessName}
+                </Text>
+                {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                {professional.boosted ? <Badge variant="pro">In evidenza</Badge> : null}
               </XStack>
-              <Text fontSize="$5" color="$color10">
+              <Text fontFamily="$mono" fontSize={13} textTransform="uppercase" color={brand.grafite70}>
                 {professional.categoryLabel} · {professional.city}
               </Text>
-              {professional.address ? (
-                <XStack alignItems="center" gap="$1">
-                  <MapPin size={15} strokeWidth={1.5} color="#4A525E" />
-                  <Text fontSize="$4" color="$color10">
-                    {professional.address}
-                  </Text>
-                </XStack>
-              ) : null}
               {professional.rating !== null ? (
-                <XStack alignItems="center" gap="$1">
-                  <Star size={17} strokeWidth={1.5} color="#B4893A" fill="#B4893A" />
-                  <Text fontSize="$5">
-                    {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
-                  </Text>
-                </XStack>
+                <Rating value={professional.rating} count={professional.reviewCount} size={16} />
               ) : (
-                <Text fontSize="$4" color="$color9">
-                  Nessuna recensione ancora
-                </Text>
+                <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
               )}
             </YStack>
           </XStack>
 
           {user?.role === "CLIENT" ? (
             <Button
+              variant={isSaved ? "primary" : "secondary"}
               size="$3"
-              backgroundColor={isSaved ? "$red2" : "$color3"}
-              color={isSaved ? "$red10" : "$color12"}
               onPress={handleToggleSave}
               disabled={isSaving}
               opacity={isSaving ? 0.6 : 1}
             >
               <XStack alignItems="center" gap="$2">
-                <Heart size={15} strokeWidth={1.5} color={isSaved ? "#C8362B" : "#14181E"} fill={isSaved ? "#C8362B" : "none"} />
-                <Text color={isSaved ? "$red10" : "$color12"}>{isSaved ? "Salvato" : "Salva"}</Text>
+                <Icon name="heart" size={15} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
+                <Text color={isSaved ? "white" : brand.grafite} fontWeight="600">
+                  {isSaved ? "Salvato" : "Salva"}
+                </Text>
               </XStack>
             </Button>
           ) : null}
@@ -171,52 +146,55 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         {professional.subTags.length > 0 ? (
           <XStack flexWrap="wrap" gap="$2">
             {professional.subTags.map((tag) => (
-              <YStack key={tag} paddingHorizontal="$3" paddingVertical="$2" backgroundColor="$color3" borderRadius="$10">
-                <Text fontSize="$2">{tag.replace(/-/g, " ")}</Text>
-              </YStack>
+              <Chip key={tag}>{tag.replace(/-/g, " ")}</Chip>
             ))}
           </XStack>
         ) : null}
 
-        {professional.bio ? <Paragraph color="$color10">{professional.bio}</Paragraph> : null}
+        {professional.bio ? <Text color={brand.grafite70}>{professional.bio}</Text> : null}
 
         {professional.services.length > 0 ? (
-          <YStack gap="$2">
-            <H2 size="$6">Prestazioni</H2>
-            <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" overflow="hidden">
+          <YStack gap="$3">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              Prestazioni
+            </Text>
+            <Surface padding={0} overflow="hidden">
               {professional.services.map((service, index) => (
                 <XStack
                   key={service.id}
                   justifyContent="space-between"
                   alignItems="center"
-                  paddingHorizontal="$3"
+                  paddingHorizontal="$4"
                   paddingVertical="$3"
-                  backgroundColor={index % 2 === 0 ? "transparent" : "$color2"}
+                  borderTopWidth={index === 0 ? 0 : 1}
+                  borderTopColor={brand.filetto}
                 >
-                  <Text>{service.name}</Text>
-                  <Text fontWeight="600">
+                  <Text color={brand.grafite}>{service.name}</Text>
+                  <Text fontWeight="600" color={brand.grafite}>
                     {formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
                   </Text>
                 </XStack>
               ))}
-            </YStack>
+            </Surface>
           </YStack>
         ) : null}
 
         {agenda && agenda.days.some((day) => day.slots.length > 0) ? (
-          <YStack gap="$2">
-            <H2 size="$6">Agenda</H2>
-            <Paragraph color="$color9" fontSize="$2">
+          <YStack gap="$3">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              Agenda
+            </Text>
+            <Text fontSize="$2" color={brand.grafite70}>
               {agenda.bookableAgenda
                 ? "Tocca un orario libero per prenotare subito. Le fasce barrate sono già prenotate."
                 : "Orari disponibili nei prossimi giorni. Le fasce barrate sono già prenotate."}
-            </Paragraph>
+            </Text>
             <YStack gap="$2">
               {agenda.days
                 .filter((day) => day.slots.length > 0)
                 .map((day) => (
                   <XStack key={day.date} gap="$3" alignItems="flex-start" flexWrap="wrap">
-                    <Text fontWeight="600" width={110} flexShrink={0}>
+                    <Text fontFamily="$mono" fontSize={12} textTransform="uppercase" color={brand.grafite70} width={110} flexShrink={0}>
                       {/* Data UTC (vedi getPublicAgenda lato API): formattata così com'è, senza conversione di
                           fuso — coerente con come scheduledAt viene già trattato nel resto del progetto. */}
                       {new Date(`${day.date}T00:00:00Z`).toLocaleDateString("it-IT", {
@@ -235,15 +213,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                             key={slotKey}
                             paddingHorizontal="$2"
                             paddingVertical="$1"
-                            borderRadius="$3"
-                            backgroundColor={slot.booked ? "$color3" : "$green3"}
+                            borderRadius="$2"
+                            borderWidth={1}
+                            borderColor={slot.booked ? brand.filetto : brand.verificato}
+                            backgroundColor={slot.booked ? brand.gesso : "#E6F4EC"}
                             cursor={canBook ? "pointer" : undefined}
                             opacity={bookingSlot === slotKey ? 0.6 : 1}
                             onPress={canBook ? () => handleBookSlot(day.date, slot.startTime, slot.endTime) : undefined}
                           >
                             <Text
-                              fontSize="$2"
-                              color={slot.booked ? "$color9" : "$green11"}
+                              fontFamily="$mono"
+                              fontSize={12}
+                              color={slot.booked ? brand.grafite70 : brand.verificato}
                               textDecorationLine={slot.booked ? "line-through" : "none"}
                               fontWeight={canBook ? "700" : "400"}
                             >
@@ -257,17 +238,17 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 ))}
             </YStack>
             {agenda.bookableAgenda && (!token || user?.role !== "CLIENT") ? (
-              <Text fontSize="$2" color="$color9">
+              <Text fontSize="$2" color={brand.grafite70}>
                 Accedi come cliente per prenotare direttamente da questi orari.
               </Text>
             ) : null}
             {bookingError ? (
-              <Text color="$red10" fontSize="$2">
+              <Text color={brand.urgenza} fontSize="$2">
                 {bookingError}
               </Text>
             ) : null}
             {bookingSuccess ? (
-              <Text color="$green10" fontSize="$2">
+              <Text color={brand.verificato} fontSize="$2">
                 Prenotazione inviata! La trovi in &quot;Le mie visite&quot;.
               </Text>
             ) : null}
@@ -278,24 +259,28 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}`}
           style={{ textDecoration: "none", alignSelf: "flex-start" }}
         >
-          <Button size="$5">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
+          <Button variant="primary">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
         </Link>
 
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
-            <H2 size="$6">Recensioni</H2>
-            {professional.rating !== null ? <StarRating rating={professional.rating} reviewCount={professional.reviewCount} /> : null}
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              Recensioni
+            </Text>
+            {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} /> : null}
           </YStack>
           {professional.reviews.length === 0 ? (
-            <Text color="$color9">Questo professionista non ha ancora recensioni.</Text>
+            <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da prenotazioni confermate." />
           ) : (
             professional.reviews.map((review) => (
-              <YStack key={review.id} padding="$3" backgroundColor="$color2" borderRadius="$4" gap="$2">
+              <Surface key={review.id} gap="$2">
                 <XStack alignItems="center" gap="$1">
-                  <Star size={15} strokeWidth={1.5} color="#B4893A" fill="#B4893A" />
-                  <Text fontWeight="600">{review.rating}/5</Text>
+                  <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                  <Text fontWeight="600" color={brand.grafite}>
+                    {review.rating}/5
+                  </Text>
                 </XStack>
-                {review.comment ? <Text color="$color10">{review.comment}</Text> : null}
+                {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
                     potrebbe non includere ancora photoUrls su una recensione. */}
                 {(review.photoUrls ?? []).length > 0 ? (
@@ -308,7 +293,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         borderRadius="$3"
                         overflow="hidden"
                         borderWidth={1}
-                        borderColor="$borderColor"
+                        borderColor={brand.filetto}
                         cursor="pointer"
                         onPress={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
                       >
@@ -318,7 +303,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     ))}
                   </XStack>
                 ) : null}
-              </YStack>
+              </Surface>
             ))
           )}
         </YStack>

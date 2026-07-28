@@ -1,7 +1,7 @@
 "use client";
 
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { H1, Paragraph, YStack } from "@professionisti/ui";
+import { Eyebrow, Text, YStack, brand } from "@professionisti/ui";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 
 export function CercaContent({
@@ -31,20 +31,23 @@ export function CercaContent({
   // Nella colonna sinistra, in cima alla lista: allineato con l'inizio della
   // mappa a destra (stesso layout di riferimento miodottore.it).
   const header = (
-    <YStack gap="$1" backgroundColor="$color2" borderRadius="$6" padding="$4">
-      <H1 size="$7">{title}</H1>
-      <Paragraph color="$color11" fontSize="$3">
+    <YStack gap="$2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
+      <Eyebrow>Ricerca</Eyebrow>
+      <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+        {title}
+      </Text>
+      <Text color={brand.grafite70} fontSize="$3">
         {professionals.length > 0
           ? `${professionals.length} professionist${professionals.length === 1 ? "a" : "i"} verificat${professionals.length === 1 ? "o" : "i"} trovat${professionals.length === 1 ? "o" : "i"}.`
           : online
             ? "Nessun professionista disponibile per consulenza online al momento."
             : "Nessun professionista trovato: prova con un'altra città o richiedi un preventivo guidato."}
-      </Paragraph>
+      </Text>
     </YStack>
   );
 
   return (
-    <YStack width="100%" alignItems="center">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap
           professionals={professionals}

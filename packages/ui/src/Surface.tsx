@@ -4,11 +4,9 @@ import { brand, radiusDoc } from "./tokens";
 /**
  * Superficie bianca a bordo hairline, radius 4, senza ombra — il "Card" del
  * brief redesign (brief §3), rinominato `Surface` per non collidere col
- * `Card` di Tamagui già re-esportato da questo package e già usato da
- * `CategoryTile`/`ProfessionalCard` con le sue prop originali (`elevate`,
- * `bordered`, ombre incluse) — quelle pagine non sono ancora state
- * riscritte nel nuovo linguaggio visivo, un `Card` ridefinito con lo
- * stesso nome le avrebbe cambiate senza controllo.
+ * `Card` di Tamagui, già re-esportato da questo package e ancora in uso da
+ * pagine non ancora riscritte nel nuovo linguaggio visivo: un `Card`
+ * ridefinito con lo stesso nome le avrebbe cambiate senza controllo.
  */
 export const Surface = styled(YStack, {
   name: "Surface",

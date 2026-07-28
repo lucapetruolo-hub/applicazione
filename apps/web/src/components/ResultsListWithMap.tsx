@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Map as MapIcon, X } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
-import { ProfessionalCard, YStack } from "@professionisti/ui";
+import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import type { MapBounds } from "./ResultsMap";
 
@@ -122,7 +122,7 @@ export function ResultsListWithMap({
       {showMap ? (
         <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}`}>
           <div className="results-map-sticky">
-            <YStack width="100%" height="100%" borderRadius="$6" overflow="hidden" borderWidth={1} borderColor="$borderColor">
+            <YStack width="100%" height="100%" borderRadius="$4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
               {shouldMountMap ? (
                 <ResultsMap
                   professionals={pool}
@@ -145,8 +145,8 @@ export function ResultsListWithMap({
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               city={pro.city}
-              address={pro.address}
               rating={pro.rating ?? undefined}
+              reviewCount={pro.reviewCount}
               verified={pro.verified}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
@@ -167,10 +167,11 @@ export function ResultsListWithMap({
         .mobile-map-toggle {
           width: 100%;
           padding: 12px 16px;
-          border-radius: 999px;
-          border: 1px solid #d0d5dd;
-          background: white;
-          font-size: 15px;
+          border-radius: 4px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          font-size: 14px;
           font-weight: 600;
           cursor: pointer;
           display: flex;

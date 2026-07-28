@@ -676,6 +676,81 @@ con l'app mobile** — vedi §2/§3, conflitto non risolvibile silenziosamente):
   inline SSR/client, non un errore funzionale) osservato in console, non
   introdotto da questa fase.
 
-Fasi successive (pagine interne, SEO/accessibilità/performance) non ancora
-iniziate. Riga legale del footer da completare quando disponibili i dati
-societari reali (vedi sopra).
+**Fase 5 — pagine interne, primo giro: ricerca + profilo pubblico (fatto):**
+Scope scelto senza istruzione esplicita del brief su "pagine interne"
+(genericamente ~15 route): priorità alle due tipologie che CLAUDE.md §7.6
+già indica come più critiche per SEO/business (ricerca e profilo
+pubblico) — non un giro esaustivo su ogni pagina interna (dashboard,
+account, autenticazione restano nel linguaggio visivo precedente,
+rimandate a un giro successivo).
+- **`packages/ui/src/ProfessionalCard.tsx`** riscritta su `Surface` (Fase 3)
+  invece del `Card` Tamagui originale (`elevate`/`bordered`, ombre): bordo
+  hairline, `hoverStyle`/`pressStyle` nativi Tamagui (cross-platform, non
+  CSS grezzo — a differenza dell'hover di `CategoryTile.tsx`, che è
+  web-only per costruzione) al posto di `scale`/`y` in animazione. Badge
+  "Verificato" (`Badge` variant `verificato`) e stelle+conteggio
+  (`Rating`, Fase 3) sostituiscono il testo/icona ad-hoc precedente.
+  Componente condiviso web+mobile: verificato che `apps/mobile` non lo usa
+  ancora (schermata categoria mobile è tuttora un placeholder "in arrivo",
+  vedi `apps/mobile/app/cerca/[categoria].tsx`), quindi la riscrittura non
+  tocca nulla lato app nativa oggi.
+- **Rimossa la visualizzazione pubblica dell'indirizzo esatto** (civico
+  completo) da `ProfessionalCard` e da `ProfessionalDetailContent.tsx`:
+  problema reale già segnalato in `AUDIT.md` §7 e mai risolto prima
+  d'ora — un professionista che compila l'indirizzo di casa/laboratorio in
+  `/dashboard/profilo` lo esponeva integralmente in ricerca e nel profilo
+  pubblico. Diventato bloccante in questa fase perché `QualitySection.tsx`
+  (Fase 4, homepage) promette già esplicitamente "Nessun indirizzo esposto
+  senza motivo" — lasciarlo com'era avrebbe reso quella sezione una
+  dichiarazione falsa. Il campo indirizzo resta in `/dashboard/profilo` e
+  continua ad alimentare la geocodifica Nominatim per il puntino preciso
+  sulla mappa (CLAUDE.md §2): solo la resa testuale pubblica è stata
+  rimossa, non il dato né il suo uso lato mappa. Città+categoria (già
+  mostrate) restano il solo riferimento geografico pubblico.
+- **`ProfessionalDetailContent.tsx`** riscritta sui token/primitivi: header
+  con `Badge` (`verificato` + `pro` per "In evidenza"/boosted — ottone,
+  coerente con la regola "ottone solo su pagamento" essendo un
+  posizionamento a pagamento), `Rating` al posto delle stelle ad-hoc,
+  sotto-tag su `Chip` (Fase 3) invece di pillole colorate libere, elenco
+  prestazioni e recensioni su `Surface`, stato vuoto recensioni su
+  `EmptyState` (Fase 3) invece di una riga di testo isolata. Icone lucide
+  dirette (`BadgeCheck`, `Heart`, `MapPin`, `Star`) sostituite con `Icon`
+  di `@professionisti/ui` per coerenza con la convenzione stabilita nei
+  nuovi file di Fase 4 (anche se il file resta web-only, dove tecnicamente
+  l'import diretto da `lucide-react` sarebbe ammesso) — aggiunte due chiavi
+  nuove al registro icone condiviso (`heart`, `badge-check`,
+  `packages/ui/src/icons.tsx`/`icons.web.tsx`, verificate presenti sia in
+  `lucide-react` che `lucide-react-native`). Logica di prenotazione agenda
+  e salvataggio profilo **non toccata**, solo la resa visiva.
+- **`apps/web/src/components/StarRating.tsx`** (tecnica di ritaglio CSS
+  per il riempimento frazionario, resta web-only per quello — vedi Fase 3):
+  colori hex hardcoded (`#d0d5dd`/`#f5a623`) sostituiti con `brand.filetto`/
+  `brand.ottone`, unico residuo di colore libero individuato in questo giro.
+- **`CercaContent.tsx`**/**`CategoryContent.tsx`** (header `/cerca` e
+  `/cerca/[categoria]`): riscritti su `Eyebrow` + tipografia Archivo +
+  token brand invece di `$color2`/`H1`/`Paragraph` Tamagui generici. Il
+  tint di sfondo per categoria (`CATEGORY_ACCENT`) è stato rimosso a
+  favore di una superficie bianca hairline uniforme, coerente con la
+  regola "niente colori liberi fuori dai badge semantici" — resta invece
+  `CategoryIconBadge` (icona colorata) accanto al titolo, non è un colore
+  di sfondo libero ma la stessa identità visiva categoria già usata
+  ovunque nel prodotto (ricerca, profilo, dashboard), decisione di
+  coerenza già presa in Fase 4 per `CategoryTile`.
+- **`ResultsListWithMap.tsx`**: solo restyling (bordo mappa, bottone
+  "Mostra mappa" mobile su token brand/radius 4 invece di pillola
+  `border-radius:999px` grigia) — **nessuna modifica alla logica**
+  (filtro per inquadratura mappa, soglia 700px, mount-on-visible di
+  Leaflet, sticky): area ad alto rischio di regressione già documentata
+  con bug reali risolti in passato, toccata solo nelle righe di stile.
+- Verificato: typecheck pulito su `apps/web`/`packages/ui`/`apps/mobile`,
+  build di produzione `apps/web` verde, sessione locale end-to-end
+  (Postgres+Redis+API+web) con screenshot Playwright su `/cerca/idraulico`
+  (desktop e mobile) e due profili pubblici (uno senza recensioni — verificato
+  lo stato vuoto `EmptyState`, uno con recensione+foto+agenda prenotabile):
+  nessun indirizzo visibile in nessuna delle due viste, badge/rating/chip
+  renderizzati correttamente, zero errori console/pageerror.
+
+Fasi successive (pagine interne restanti — dashboard, account,
+autenticazione —, SEO/accessibilità/performance) non ancora iniziate. Riga
+legale del footer da completare quando disponibili i dati societari reali
+(vedi Fase 4).

@@ -27,6 +27,8 @@ import {
   ReceiptText,
   BellRing,
   Sparkles,
+  Heart,
+  BadgeCheck,
 } from "lucide-react";
 
 export const ICONS = {
@@ -53,6 +55,8 @@ export const ICONS = {
   "receipt-text": ReceiptText,
   "bell-ring": BellRing,
   sparkles: Sparkles,
+  heart: Heart,
+  "badge-check": BadgeCheck,
 } as const;
 
 export type IconName = keyof typeof ICONS;

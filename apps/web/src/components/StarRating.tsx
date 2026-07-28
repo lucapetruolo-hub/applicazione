@@ -1,5 +1,7 @@
 "use client";
 
+import { brand } from "@professionisti/ui";
+
 /**
  * Stelline proporzionali alla media reale (es. 4.5 → 4 piene e mezza su 5),
  * non solo stelle intere: due righe di stelle sovrapposte (una grigia di
@@ -31,18 +33,18 @@ export function StarRating({
       <div style={{ position: "relative", display: "inline-flex" }}>
         <div style={{ display: "flex", gap: 2 }}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <StarIcon key={i} size={size} color="#d0d5dd" />
+            <StarIcon key={i} size={size} color={brand.filetto} />
           ))}
         </div>
         <div style={{ position: "absolute", top: 0, left: 0, display: "flex", gap: 2, overflow: "hidden", width: `${percent}%` }}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <StarIcon key={i} size={size} color="#f5a623" />
+            <StarIcon key={i} size={size} color={brand.ottone} />
           ))}
         </div>
       </div>
-      <span style={{ fontSize: 14, fontWeight: 700 }}>{rating.toFixed(1)}</span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: brand.grafite }}>{rating.toFixed(1)}</span>
       {reviewCount !== undefined ? (
-        <span style={{ fontSize: 14, color: "#6b7280" }}>
+        <span style={{ fontSize: 14, color: brand.grafite70 }}>
           ({reviewCount} recension{reviewCount === 1 ? "e" : "i"})
         </span>
       ) : null}
