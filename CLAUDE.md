@@ -388,3 +388,84 @@ dall'upsell.
 - [x] Mappa risultati responsive da mobile — `ResultsListWithMap.tsx` non usa più i props responsive di Tamagui per il layout mappa/lista (niente `order` — non supportato da React Native/Tamagui — né `position:"sticky"` tipizzato): usa classi CSS grezze via styled-jsx (incluso in Next.js, nessuna libreria aggiunta). Da mobile la mappa **non appare più automaticamente** (occupava subito spazio sotto la ricerca): un bottone "🗺️ Mostra mappa" nella barra sopra i risultati la apre/chiude a comando, a tutta larghezza sopra la lista. Sopra la soglia resta sempre visibile a fianco della lista (larghezza fluida 40%, tra 260 e 480px, per non forzare overflow orizzontale), alta e sticky in scroll. Soglia a **700px** (non lo `$gtMd` di Tamagui, 1021px): quella lasciava impilata la mappa anche su una finestra desktop "normale" non a schermo intero (~1000px) — bug reale segnalato dall'utente con screenshot, dove la mappa doveva stare a destra e invece appariva sotto la lista. Cliccando un puntino sulla mappa (`ResultsMap.tsx`) non si naviga più subito al profilo: appare un banner in basso sulla mappa (foto/icona categoria, nome attività, categoria+città, rating, "Verificato") con un tasto "✕" per chiuderlo — solo toccando il banner si apre il profilo completo, la mappa resta aperta nel frattempo.
 - [x] Indirizzo e prestazioni con prezzo nella card — nuovo modello Prisma `ProfessionalService` (nome + prezzo facoltativo in centesimi, cascade su eliminazione profilo) e campo `ProfessionalProfile.address` (facoltativo: molti professionisti a domicilio non hanno un indirizzo fisso da mostrare). Editabili in `/dashboard/profilo` (campo indirizzo + lista prestazioni con bottone "+ Aggiungi prestazione", ogni voce nome+prezzo in euro convertito in centesimi al salvataggio; la lista viene sostituita per intero ad ogni salvataggio, niente editing granulare per singola voce — coerente con la scala attesa). Mostrati in `ProfessionalCard` (packages/ui, sotto categoria/città: 📍 indirizzo, poi fino a 3 prestazioni con prezzo o "Su richiesta" se non indicato) nei risultati di ricerca e nel profilo pubblico — modellato sullo screenshot di miodottore.it fornito dall'utente. Il prezzo di ogni prestazione è un **range** (`priceMinEurCents`/`priceMaxEurCents`, non più un valore fisso): molti lavori (es. "sostituzione caldaia") hanno un costo che varia da caso a caso, un prezzo unico era fuorviante — richiesta esplicita dell'utente. In `/dashboard/profilo` due campi "Da €"/"a €" per prestazione (validazione: il massimo dev'essere ≥ del minimo). Visualizzazione centralizzata in `formatServicePriceRange` (`packages/shared/src/professionals.ts`, usata da `ProfessionalDetailContent`; duplicata localmente in `packages/ui/src/ProfessionalCard.tsx` che non dipende da `@professionisti/shared`): mostra il range se min e max sono entrambi impostati e diversi, un prezzo singolo se solo uno dei due è impostato (o sono uguali), "Su richiesta" se nessuno dei due lo è. Suggerimenti di prestazioni popolari per categoria (`POPULAR_SERVICES`, `packages/shared/src/categories.ts`, 5 voci per ciascuna delle 13 categorie): in `/dashboard/profilo` una riga di chip cliccabili sopra la lista (solo i nomi non ancora aggiunti) aggiunge una prestazione col nome precompilato — il range di prezzo resta comunque da compilare a mano, è solo una scorciatoia sul nome, richiesta esplicita dell'utente.
 - [x] Agenda settimanale del professionista — nuovo modello Prisma `AvailabilitySlot` (fasce orarie ricorrenti: `dayOfWeek` + `startTime`/`endTime`, `dayOfWeek` segue la convenzione `Date.getUTCDay()` — 0=domenica...6=sabato — apposta per confrontare senza conversioni la disponibilità con `Booking.scheduledAt`). Editabile in `/dashboard/agenda` (nuova voce "Agenda" nel menu account professionista, `accountMenuItems.ts`): un editor per giorno della settimana (Lunedì...Domenica) con più fasce orarie aggiungibili/rimovibili, lista sostituita per intero ad ogni salvataggio (stesso pattern delle prestazioni). `GET /professionals/:id/agenda` proietta la disponibilità ricorrente sui prossimi 14 giorni di calendario e barra le fasce che coincidono con una prenotazione reale (`Booking` con status `PENDING`/`CONFIRMED`/`COMPLETED` il cui `scheduledAt` cade dentro quella fascia) — confronto su data/ora UTC dirette, nessuna libreria di timezone introdotta. Mostrata nel profilo pubblico (`ProfessionalDetailContent`, sezione "Agenda" tra Prestazioni e il bottone preventivo, visibile solo se il professionista ha impostato almeno una fascia): elenco giorno per giorno, pillola verde per le fasce libere, grigia con barrato per quelle prenotate. Prenotazione diretta opzionale: `ProfessionalProfile.bookableAgenda` (checkbox in `/dashboard/agenda`, "Permetti ai clienti di prenotare direttamente da questi orari" — default `false`, altrimenti l'agenda resta solo informativa come sopra). Se attiva, le fasce libere nel profilo pubblico diventano cliccabili per un cliente loggato: `POST /professionals/:id/agenda/book` rivalida tutto lato server (mai fidarsi del client) — 403 se `bookableAgenda` è spenta, 404 se la fascia non fa parte della disponibilità ricorrente del professionista, 409 se già prenotata — altrimenti crea direttamente un `Booking` (`PENDING`, nessuna `Quote`) e la fascia si aggiorna subito in UI.
+
+---
+
+## 10. Redesign visivo — "Scheda Intervento"
+
+Iniziativa di redesign completo su brief esterno dettagliato (linguaggio visivo
+da disegno tecnico/scheda di lavoro cartacea: griglia cianografica, etichette
+mono, filetti sottili, niente ombre/gradienti/emoji). Eseguita per fasi
+incrementali, ogni fase deployabile — **non una riscrittura**. Fase 0 (audit)
+in `AUDIT.md` (root del repo): mappa stack/route/componenti reali, uso emoji,
+fonti dati, form/validazione, dati demo in produzione — riferimento per capire
+cosa esisteva prima di ogni fase successiva.
+
+Decisioni prese con l'utente prima di procedere oltre l'audit (il brief
+presupponeva Next.js+Tailwind, lo stack reale è Next.js+**Tamagui condiviso
+con l'app mobile** — vedi §2/§3, conflitto non risolvibile silenziosamente):
+
+1. **Token e componenti nuovi vivono dentro Tamagui** (`packages/ui`), non in
+   un `apps/web/components/ui/` parallelo con Tailwind — mantiene la garanzia
+   "stessa interfaccia web+mobile" di CLAUDE.md invece di introdurre un secondo
+   design system nello stesso repo.
+2. **Icone**: `lucide-react` su web, `lucide-react-native` su mobile per gli
+   stessi punti condivisi (icone SVG scritte a mano dove serve un'icona
+   identica su entrambe le piattaforme senza due dipendenze parallele, es.
+   `CategoryIcons.tsx` già esistente).
+3. **Dati demo**: da rimuovere subito dal codice non appena si arriva a
+   toccare quella pagina (non in blocco prima del resto) — testimonial statiche
+   in `HomeContent.tsx`, etichetta "Profili dimostrativi" fuorviante su dati
+   reali. L'account professionista di test "Rossss" (indirizzo esposto) visto
+   in produzione **non è gestibile da qui**: va rimosso manualmente su Railway,
+   segnalato in `AUDIT.md` §7.
+
+**Fase 1 — token colore/tipografia, `Section`/`Eyebrow` (fatto):**
+- `packages/ui/src/tokens.ts`: palette brand (`gesso`, `calce`, `grafite`,
+  `grafite70`, `filetto`, `cianografia`, `cianografiaScuro`, `cianografiaVelo`,
+  `verificato`, `urgenza`, `ottone`) come costanti raw + `radiusDoc`/`radiusDocLg`
+  (4px/8px). **Additivi**: `packages/ui/src/config.ts` estende
+  `createTokens({...defaultConfig.tokens, color: {...defaultConfig.tokens.color, ...brand}})`
+  invece di sostituire — i token Tamagui di default (`$blue10`, `$color3`,
+  `$red10`...) restano intatti e continuano a funzionare su tutte le pagine
+  non ancora coinvolte nel redesign.
+- Tipografia: **Archivo** (display/heading), **Inter Tight** (body), **IBM
+  Plex Mono** (mono/etichette) — cablati come `family` dei font token Tamagui
+  già esistenti (`heading`/`body`/`mono`, scale size/weight/lineHeight non
+  toccate). Famiglia diversa **per piattaforma sullo stesso token**: su web
+  punta alle CSS variable di `next/font` (`apps/web/src/app/fonts.ts`,
+  applicate su `<html>` in `layout.tsx`); su native al nome esatto caricato
+  via `useFonts` in `apps/mobile/app/_layout.tsx`
+  (`@expo-google-fonts/archivo`, `/inter-tight`, `/ibm-plex-mono`, pesi
+  700/800, 400/500/600, 500 — installati e caricati, gate del render finché
+  non sono pronti). Limite noto e documentato in `config.ts`: React Native non
+  supporta il cambio di peso su un'unica famiglia variabile come il CSS — ogni
+  peso è una famiglia nativa a parte, il token porta un solo peso
+  rappresentativo per ruolo, non ancora una scala completa lato native.
+  `Platform.OS` risolve correttamente in `config.ts` (file unico condiviso)
+  grazie a `react-native-web`, già dipendenza di `packages/ui`.
+- **Nuovo alias webpack obbligatorio** in `apps/web/next.config.mjs`
+  (`"react-native$": "react-native-web"` + estensioni `.web.*`): prima
+  d'ora nessun file bundlato per il web importava `"react-native"`
+  direttamente, quindi il problema non si era mai presentato — Metro
+  (Expo) risolve quell'alias in automatico, il webpack di Next.js no.
+  Pattern standard per ogni integrazione Tamagui+Next.js, non specifico di
+  questo progetto.
+- `packages/ui/src/Section.tsx` + `Eyebrow.tsx`: wrapper unico per il ritmo
+  verticale delle sezioni (96px desktop / 64px mobile via `$gtSm`, mai
+  padding ad-hoc nelle pagine) ed etichetta mono uppercase con filetto 24px.
+  Il pattern a griglia cianografica (`tone="blueprint"`) **non genera CSS
+  nel componente**: resta portabile al 100% su React Native (stessa ragione
+  per cui Leaflet resta `apps/web`-only, vedi §2) — il pattern vero
+  (`repeating-linear-gradient`) è la classe utility `.bp-grid` in
+  `apps/web/src/app/globals.css`, da applicare dalle pagine dove serve
+  (hero, CTA finale — Fase 4, non ancora fatto).
+- Verificato: typecheck pulito su `packages/ui`/`apps/web`/`apps/mobile`,
+  build di produzione `apps/web` verde, smoke test Playwright su 5 pagine
+  (font applicati correttamente via `getComputedStyle`, zero errori nuovi in
+  console — i soli fallimenti di rete osservati sono tile OpenStreetMap e
+  script Google Identity, bloccati dalla policy di rete dell'ambiente di
+  sviluppo, non causati da questo cambio).
+
+Fasi successive (icone/logo, libreria componenti primitivi, homepage,
+pagine interne, SEO/accessibilità/performance) non ancora iniziate.

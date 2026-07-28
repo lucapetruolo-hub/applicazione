@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { display, body, mono } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="it">
+    <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
         <Providers>
           <SiteHeader />

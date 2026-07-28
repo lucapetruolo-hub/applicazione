@@ -10,9 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/inter-tight": "^0.4.2",
     "@professionisti/shared": "workspace:*",
     "@professionisti/ui": "workspace:*",
     "expo": "~51.0.28",
+    "expo-font": "^57.0.1",
     "expo-router": "~3.5.23",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
@@ -21,8 +25,8 @@
     "react-native-screens": "3.31.1"
   },
   "devDependencies": {
-    "@professionisti/config": "workspace:*",
     "@babel/core": "^7.25.2",
+    "@professionisti/config": "workspace:*",
     "@types/react": "^18.3.11",
     "babel-preset-expo": "~11.0.15",
     "typescript": "^5.6.0"

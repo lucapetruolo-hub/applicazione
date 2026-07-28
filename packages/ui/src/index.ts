@@ -14,6 +14,11 @@ export { CategoryChips } from "./CategoryChips";
 export type { CategoryChip, CategoryChipsProps } from "./CategoryChips";
 export { TestimonialCard } from "./TestimonialCard";
 export type { TestimonialCardProps } from "./TestimonialCard";
+export { Section } from "./Section";
+export type { SectionProps, SectionTone } from "./Section";
+export { Eyebrow } from "./Eyebrow";
+export type { EyebrowProps } from "./Eyebrow";
+export { brand, radiusDoc, radiusDocLg } from "./tokens";
 
 // Tutte le primitive Tamagui usate da apps/web e apps/mobile vanno importate
 // da qui, mai direttamente da "tamagui": apps/web e apps/mobile non
