@@ -47,13 +47,13 @@ export function GuidedRequestForm({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  // Due input distinti invece di uno solo: quello con `capture` apre
-  // direttamente la fotocamera sulla maggior parte dei browser mobile
-  // (Android/iOS), l'altro apre la galleria/file picker come prima —
-  // richiesta esplicita dell'utente di poter scattare una foto al momento
-  // invece di dover per forza sceglierne una già esistente.
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
+  // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
+  // stile iPhone) invece di aprire direttamente una delle due opzioni —
+  // richiesta esplicita dell'utente. Con `capture` impostato il browser
+  // salta il menu e apre subito la fotocamera, che è il comportamento che
+  // si vuole evitare qui.
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
     return null;
@@ -262,65 +262,31 @@ export function GuidedRequestForm({
               </YStack>
             ))}
             {photoUrls.length < MAX_PHOTOS ? (
-              <>
-                <YStack
-                  width={88}
-                  height={88}
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderStyle="dashed"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap="$1"
-                  cursor="pointer"
-                  opacity={isUploadingPhoto ? 0.6 : 1}
-                  onPress={() => !isUploadingPhoto && cameraInputRef.current?.click()}
-                >
-                  <Text fontSize="$7" color="$color9">
-                    {isUploadingPhoto ? "…" : "📷"}
-                  </Text>
-                  <Text fontSize="$1" color="$color9">
-                    Scatta
-                  </Text>
-                </YStack>
-                <YStack
-                  width={88}
-                  height={88}
-                  borderRadius="$4"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderStyle="dashed"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap="$1"
-                  cursor="pointer"
-                  opacity={isUploadingPhoto ? 0.6 : 1}
-                  onPress={() => !isUploadingPhoto && galleryInputRef.current?.click()}
-                >
-                  <Text fontSize="$7" color="$color9">
-                    {isUploadingPhoto ? "…" : "🖼️"}
-                  </Text>
-                  <Text fontSize="$1" color="$color9">
-                    Galleria
-                  </Text>
-                </YStack>
-              </>
+              <YStack
+                width={88}
+                height={88}
+                borderRadius="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                borderStyle="dashed"
+                alignItems="center"
+                justifyContent="center"
+                gap="$1"
+                cursor="pointer"
+                opacity={isUploadingPhoto ? 0.6 : 1}
+                onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+              >
+                <Text fontSize="$7" color="$color9">
+                  {isUploadingPhoto ? "…" : "+"}
+                </Text>
+                <Text fontSize="$1" color="$color9">
+                  Aggiungi
+                </Text>
+              </YStack>
             ) : null}
           </YStack>
-          {/* `capture="environment"` apre direttamente la fotocamera posteriore su Android/iOS invece del
-              file picker generico — le foto sono lavori/ambienti, ha senso di default la camera posteriore. */}
           <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePhotoChange}
-            disabled={isUploadingPhoto}
-            style={{ display: "none" }}
-          />
-          <input
-            ref={galleryInputRef}
+            ref={photoInputRef}
             type="file"
             accept="image/*"
             onChange={handlePhotoChange}

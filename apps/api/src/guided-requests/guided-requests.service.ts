@@ -89,6 +89,10 @@ export class GuidedRequestsService {
       include: {
         category: true,
         quotes: { include: { professionalProfile: true } },
+        // A chi è stata inviata la richiesta: mostrato in /le-mie-richieste
+        // (richiesta esplicita dell'utente — "deve essere chiaro a chi si è
+        // inviata la richiesta"), un professionista o più in caso di fan-out.
+        leads: { include: { professionalProfile: { include: { category: true } } } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -102,6 +106,15 @@ export class GuidedRequestsService {
       isUrgent: request.isUrgent,
       status: request.status,
       createdAt: request.createdAt.toISOString(),
+      sentTo: request.leads.map((lead) => ({
+        id: lead.professionalProfileId,
+        businessName: lead.professionalProfile.businessName,
+        imageUrl: lead.professionalProfile.imageUrl,
+        categorySlug: lead.professionalProfile.category.slug,
+        categoryLabel: lead.professionalProfile.category.label,
+        city: lead.professionalProfile.city,
+        verified: lead.professionalProfile.verified,
+      })),
       quotes: request.quotes.map((quote) => ({
         id: quote.id,
         professionalProfileId: quote.professionalProfileId,

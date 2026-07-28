@@ -36,6 +36,16 @@ export type ClientGuidedRequest = {
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;
+  /** Professionisti a cui è stata inoltrata la richiesta (fan-out o singolo, vedi GuidedRequestsService.listForClient). */
+  sentTo: {
+    id: string;
+    businessName: string;
+    imageUrl: string | null;
+    categorySlug: string;
+    categoryLabel: string;
+    city: string;
+    verified: boolean;
+  }[];
   quotes: {
     id: string;
     professionalProfileId: string;

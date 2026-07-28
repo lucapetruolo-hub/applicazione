@@ -8,6 +8,7 @@ import { Autocomplete, Button, H1, H2, Paragraph, Text, XStack, YStack } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -287,6 +288,42 @@ function GuidedRequestCard({
           ) : null}
         </>
       )}
+
+      {request.sentTo.length > 0 ? (
+        <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
+          <H2 size="$4">Inviata a</H2>
+          {request.sentTo.map((professional) => (
+            <Link
+              key={professional.id}
+              href={`/professionista/${professional.id}`}
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <XStack
+                gap="$3"
+                alignItems="center"
+                backgroundColor="$color2"
+                borderRadius="$4"
+                padding="$3"
+              >
+                <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
+                <YStack gap="$1" flex={1}>
+                  <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                    <Text fontWeight="600">{professional.businessName}</Text>
+                    {professional.verified ? (
+                      <Text fontSize="$1" color="$blue10" fontWeight="600">
+                        ✓ Verificato
+                      </Text>
+                    ) : null}
+                  </XStack>
+                  <Text color="$color10" fontSize="$3">
+                    {professional.categoryLabel} · {professional.city}
+                  </Text>
+                </YStack>
+              </XStack>
+            </Link>
+          ))}
+        </YStack>
+      ) : null}
 
       {request.quotes.length > 0 ? (
         <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
