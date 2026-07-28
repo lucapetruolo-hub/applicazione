@@ -1,6 +1,6 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { GuidedRequestInput } from "@professionisti/shared";
+import type { GuidedRequestInput, GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
@@ -113,5 +113,47 @@ export class GuidedRequestsService {
         status: quote.status,
       })),
     }));
+  }
+
+  /**
+   * Modifica di una richiesta già inviata: solo descrizione e città (vedi
+   * guidedRequestUpdateSchema), non la categoria — determina già a chi è
+   * stata inoltrata la richiesta. Consentita finché non è CLOSED (una
+   * richiesta chiusa ha già portato a una prenotazione, non ha senso
+   * modificarla — stesso confine già usato per l'eliminazione).
+   */
+  async update(clientId: string, id: string, input: GuidedRequestUpdateInput) {
+    const request = await this.requireOwnEditableRequest(clientId, id, "modificare");
+    const updated = await this.prisma.guidedRequest.update({
+      where: { id: request.id },
+      data: { description: input.description, city: input.city },
+    });
+    return { id: updated.id, description: updated.description, city: updated.city };
+  }
+
+  /**
+   * Eliminazione di una richiesta già inviata: cascata su Lead e Quote
+   * (onDelete: Cascade nello schema Prisma). Bloccata se CLOSED — a quel
+   * punto esiste una Booking che referenzia la Quote (Booking.quoteId non è
+   * in cascade), cancellarla romperebbe un lavoro già confermato, oltre a
+   * violare il vincolo di chiave esterna.
+   */
+  async remove(clientId: string, id: string): Promise<void> {
+    await this.requireOwnEditableRequest(clientId, id, "eliminare");
+    await this.prisma.guidedRequest.delete({ where: { id } });
+  }
+
+  private async requireOwnEditableRequest(clientId: string, id: string, action: string) {
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id } });
+    if (!request) {
+      throw new NotFoundException("Richiesta non trovata.");
+    }
+    if (request.clientId !== clientId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+    if (request.status === "CLOSED") {
+      throw new ForbiddenException(`Non puoi ${action} una richiesta già conclusa.`);
+    }
+    return request;
   }
 }

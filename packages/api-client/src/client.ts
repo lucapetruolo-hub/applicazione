@@ -4,6 +4,7 @@ import type {
   BookAgendaSlotInput,
   ChangePasswordInput,
   GuidedRequestInput,
+  GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
   ProfessionalAgenda,
@@ -237,6 +238,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     myGuidedRequests: (token: string) =>
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    updateGuidedRequest: (token: string, id: string, input: GuidedRequestUpdateInput) =>
+      request<{ id: string; description: string; city: string }>(`/guided-requests/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    deleteGuidedRequest: (token: string, id: string) =>
+      request<null>(`/guided-requests/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
 
     uploadGuidedRequestPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),

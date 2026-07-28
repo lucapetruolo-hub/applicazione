@@ -57,6 +57,19 @@ export const guidedRequestSchema = z.object({
 });
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 
+/**
+ * Modifica di una richiesta già inviata (solo descrizione e città: la
+ * categoria non è modificabile perché determina già a quali professionisti
+ * è stata inoltrata la richiesta — cambiarla dopo il fan-out non avrebbe
+ * senso). Consentita solo finché la richiesta non è `CLOSED` (vedi
+ * GuidedRequestsService.update).
+ */
+export const guidedRequestUpdateSchema = z.object({
+  description: z.string().min(10).max(2000),
+  city: z.string().min(2),
+});
+export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
+
 /** Preventivo strutturato in-app (CLAUDE.md §8): niente scambio libero di contatti. */
 export const quoteSchema = z.object({
   requestId: z.string().uuid(),

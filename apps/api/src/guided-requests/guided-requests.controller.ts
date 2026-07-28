@@ -1,6 +1,21 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { guidedRequestSchema, type GuidedRequestInput } from "@professionisti/shared";
+import { guidedRequestSchema, guidedRequestUpdateSchema, type GuidedRequestInput, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -58,5 +73,22 @@ export class GuidedRequestsController {
   @Get("me")
   listMine(@Req() req: AuthenticatedRequest) {
     return this.guidedRequestsService.listForClient(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id")
+  update(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(guidedRequestUpdateSchema)) body: GuidedRequestUpdateInput,
+  ) {
+    return this.guidedRequestsService.update(req.user.userId, id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id")
+  @HttpCode(204)
+  remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.guidedRequestsService.remove(req.user.userId, id);
   }
 }

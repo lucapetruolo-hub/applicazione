@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
+import { Autocomplete, Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
@@ -99,65 +100,14 @@ export default function LeMieRichiestePage() {
               </YStack>
             ) : (
               requests.map((request) => (
-                <YStack
+                <GuidedRequestCard
                   key={request.id}
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  borderRadius="$5"
-                  padding="$4"
-                  gap="$3"
-                >
-                  <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-                    <YStack gap="$1">
-                      <Text fontWeight="700" fontSize="$5">
-                        {request.categoryLabel} · {request.city}
-                      </Text>
-                      <Text color="$color10">{request.description}</Text>
-                    </YStack>
-                    <Text fontSize="$2" color="$blue10" fontWeight="600">
-                      {STATUS_LABEL[request.status]}
-                    </Text>
-                  </YStack>
-
-                  {request.quotes.length > 0 ? (
-                    <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
-                      <H2 size="$4">Preventivi ricevuti</H2>
-                      {request.quotes.map((quote) => (
-                        <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
-                          <Text fontWeight="600">{quote.businessName}</Text>
-                          <Text color="$color10" fontSize="$3">
-                            Manodopera: €{(quote.laborEurCents / 100).toFixed(2)} · Materiali: €
-                            {(quote.materialsEurCents / 100).toFixed(2)}
-                          </Text>
-                          {quote.notes ? (
-                            <Text color="$color10" fontSize="$3">
-                              {quote.notes}
-                            </Text>
-                          ) : null}
-                          {quote.status === "SENT" ? (
-                            <Button
-                              size="$3"
-                              alignSelf="flex-start"
-                              onPress={() => handleAcceptQuote(quote.id)}
-                              disabled={acceptingQuoteId === quote.id}
-                              opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
-                            >
-                              {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
-                            </Button>
-                          ) : quote.status === "ACCEPTED" ? (
-                            <Text fontSize="$2" color="$green10" fontWeight="600">
-                              Accettato
-                            </Text>
-                          ) : null}
-                        </YStack>
-                      ))}
-                    </YStack>
-                  ) : (
-                    <Text color="$color9" fontSize="$3">
-                      Nessun preventivo ricevuto ancora.
-                    </Text>
-                  )}
-                </YStack>
+                  request={request}
+                  token={token}
+                  onChanged={reload}
+                  acceptingQuoteId={acceptingQuoteId}
+                  onAcceptQuote={handleAcceptQuote}
+                />
               ))
             )}
           </YStack>
@@ -174,6 +124,207 @@ export default function LeMieRichiestePage() {
           </YStack>
         </YStack>
       </XStack>
+    </YStack>
+  );
+}
+
+function GuidedRequestCard({
+  request,
+  token,
+  onChanged,
+  acceptingQuoteId,
+  onAcceptQuote,
+}: {
+  request: ClientGuidedRequest;
+  token: string;
+  onChanged: () => void;
+  acceptingQuoteId: string | null;
+  onAcceptQuote: (quoteId: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [description, setDescription] = useState(request.description);
+  const [city, setCity] = useState(request.city);
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Una richiesta CLOSED ha già portato a una prenotazione: non ha senso
+  // modificarla o eliminarla a quel punto (stesso confine applicato lato
+  // API in GuidedRequestsService).
+  const canEdit = request.status !== "CLOSED";
+
+  function startEditing() {
+    setDescription(request.description);
+    setCity(request.city);
+    setError(null);
+    setIsEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    setError(null);
+    if (description.trim().length < 10) {
+      setError("Descrivi il lavoro con almeno 10 caratteri.");
+      return;
+    }
+    if (!city.trim()) {
+      setError("Indica la città.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await apiClient.updateGuidedRequest(token, request.id, { description: description.trim(), city: city.trim() });
+      setIsEditing(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setError(null);
+    setIsDeleting(true);
+    try {
+      await apiClient.deleteGuidedRequest(token, request.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingDelete(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$5" padding="$4" gap="$3">
+      {isEditing ? (
+        <YStack gap="$2">
+          <Text fontWeight="700" fontSize="$5">
+            {request.categoryLabel}
+          </Text>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
+          />
+          <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
+            <Autocomplete
+              items={ALL_ITALIAN_CITY_NAMES}
+              getKey={(item) => item}
+              getLabel={(item) => item}
+              onSelect={setCity}
+              value={city}
+              onChangeText={setCity}
+              placeholder="Città"
+              minChars={3}
+            />
+          </YStack>
+          {error ? (
+            <Text color="$red10" fontSize="$3">
+              {error}
+            </Text>
+          ) : null}
+          <XStack gap="$2">
+            <Button size="$3" onPress={handleSaveEdit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+              {isSaving ? "Salvataggio..." : "Salva modifiche"}
+            </Button>
+            <Button size="$3" backgroundColor="$color3" color="$color12" onPress={() => setIsEditing(false)} disabled={isSaving}>
+              Annulla
+            </Button>
+          </XStack>
+        </YStack>
+      ) : (
+        <>
+          <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
+            <YStack gap="$1">
+              <Text fontWeight="700" fontSize="$5">
+                {request.categoryLabel} · {request.city}
+              </Text>
+              <Text color="$color10">{request.description}</Text>
+            </YStack>
+            <Text fontSize="$2" color="$blue10" fontWeight="600">
+              {STATUS_LABEL[request.status]}
+            </Text>
+          </YStack>
+
+          {canEdit ? (
+            <XStack gap="$2" flexWrap="wrap" alignItems="center">
+              <Button size="$2" backgroundColor="$color3" color="$color12" onPress={startEditing}>
+                Modifica
+              </Button>
+              {confirmingDelete ? (
+                <>
+                  <Text fontSize="$2" color="$red10">
+                    Eliminare questa richiesta?
+                  </Text>
+                  <Button
+                    size="$2"
+                    backgroundColor="$red10"
+                    onPress={handleDelete}
+                    disabled={isDeleting}
+                    opacity={isDeleting ? 0.6 : 1}
+                  >
+                    {isDeleting ? "Eliminazione..." : "Conferma"}
+                  </Button>
+                  <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => setConfirmingDelete(false)}>
+                    Annulla
+                  </Button>
+                </>
+              ) : (
+                <Button size="$2" backgroundColor="$color3" color="$red10" onPress={() => setConfirmingDelete(true)}>
+                  Elimina
+                </Button>
+              )}
+            </XStack>
+          ) : null}
+          {error ? (
+            <Text color="$red10" fontSize="$3">
+              {error}
+            </Text>
+          ) : null}
+        </>
+      )}
+
+      {request.quotes.length > 0 ? (
+        <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
+          <H2 size="$4">Preventivi ricevuti</H2>
+          {request.quotes.map((quote) => (
+            <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
+              <Text fontWeight="600">{quote.businessName}</Text>
+              <Text color="$color10" fontSize="$3">
+                Manodopera: €{(quote.laborEurCents / 100).toFixed(2)} · Materiali: €{(quote.materialsEurCents / 100).toFixed(2)}
+              </Text>
+              {quote.notes ? (
+                <Text color="$color10" fontSize="$3">
+                  {quote.notes}
+                </Text>
+              ) : null}
+              {quote.status === "SENT" ? (
+                <Button
+                  size="$3"
+                  alignSelf="flex-start"
+                  onPress={() => onAcceptQuote(quote.id)}
+                  disabled={acceptingQuoteId === quote.id}
+                  opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
+                >
+                  {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
+                </Button>
+              ) : quote.status === "ACCEPTED" ? (
+                <Text fontSize="$2" color="$green10" fontWeight="600">
+                  Accettato
+                </Text>
+              ) : null}
+            </YStack>
+          ))}
+        </YStack>
+      ) : (
+        <Text color="$color9" fontSize="$3">
+          Nessun preventivo ricevuto ancora.
+        </Text>
+      )}
     </YStack>
   );
 }
