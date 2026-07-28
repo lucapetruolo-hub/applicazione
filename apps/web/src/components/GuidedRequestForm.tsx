@@ -189,6 +189,29 @@ export function GuidedRequestForm({
         ) : (
           <YStack gap="$2">
             <Text fontWeight="600">Categoria</Text>
+            {/* Menu a tendina come scorciatoia alla griglia sotto — stessa
+                selezione (categorySlug), utile su schermi piccoli o quando si
+                sa già cosa cercare invece di scorrere le caselle — richiesta
+                esplicita dell'utente. */}
+            <select
+              value={categorySlug}
+              onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #d0d5dd",
+                fontSize: 15,
+                fontFamily: "inherit",
+                backgroundColor: "white",
+              }}
+            >
+              <option value="">Seleziona una categoria...</option>
+              {PROFESSIONAL_CATEGORIES.map((category) => (
+                <option key={category.slug} value={category.slug}>
+                  {category.icon} {category.label}
+                </option>
+              ))}
+            </select>
             <YStack flexDirection="row" flexWrap="wrap" gap="$2">
               {PROFESSIONAL_CATEGORIES.map((category) => (
                 <Button
