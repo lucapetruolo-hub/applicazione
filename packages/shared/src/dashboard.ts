@@ -36,6 +36,5 @@ export type ProfessionalBooking = {
   scheduledAt: string;
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
   clientName: string | null;
-  laborEurCents: number | null;
-  materialsEurCents: number | null;
+  items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
 };

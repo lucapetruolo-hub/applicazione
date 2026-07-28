@@ -71,11 +71,23 @@ export const guidedRequestUpdateSchema = z.object({
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 
 /** Preventivo strutturato in-app (CLAUDE.md §8): niente scambio libero di contatti. */
+/** Voce di un preventivo (es. "Manodopera", "Materiali"): nome + range di prezzo, stesso pattern di professionalServiceSchema. */
+export const quoteItemSchema = z
+  .object({
+    name: z.string().min(2).max(120),
+    priceMinEurCents: z.number().int().nonnegative().optional(),
+    priceMaxEurCents: z.number().int().nonnegative().optional(),
+  })
+  .refine((data) => data.priceMinEurCents === undefined || data.priceMaxEurCents === undefined || data.priceMaxEurCents >= data.priceMinEurCents, {
+    message: "Il prezzo massimo deve essere maggiore o uguale al minimo.",
+    path: ["priceMaxEurCents"],
+  });
+export type QuoteItemInput = z.infer<typeof quoteItemSchema>;
+
 export const quoteSchema = z.object({
   requestId: z.string().uuid(),
   professionalProfileId: z.string().uuid(),
-  laborEurCents: z.number().int().nonnegative(),
-  materialsEurCents: z.number().int().nonnegative(),
+  items: z.array(quoteItemSchema).min(1).max(20),
   estimatedStartDate: z.string().datetime(),
   notes: z.string().max(2000).optional(),
 });

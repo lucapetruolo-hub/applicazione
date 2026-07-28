@@ -310,8 +310,6 @@ model Quote {
   id                    String      @id @default(uuid())
   guidedRequestId       String
   professionalProfileId String
-  laborEurCents         Int
-  materialsEurCents     Int
   estimatedStartDate    DateTime
   notes                 String?
   status                QuoteStatus @default(SENT)
@@ -319,10 +317,28 @@ model Quote {
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  items               QuoteItem[]
 
   booking Booking?
 
   @@map("quotes")
+}
+
+// Voce di un preventivo (es. "Manodopera", "Materiali", "Trasporto"), ognuna
+// col proprio range di prezzo — sostituisce i due campi fissi
+// laborEurCents/materialsEurCents: un preventivo può avere quante voci
+// servono, non solo manodopera+materiali (CLAUDE.md, richiesta esplicita
+// dell'utente). Stesso pattern range min/max di ProfessionalService.
+model QuoteItem {
+  id               String  @id @default(uuid())
+  quoteId          String
+  name             String
+  priceMinEurCents Int?
+  priceMaxEurCents Int?
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("quote_items")
 }
 
 // ---------------------------------------------------------------------------

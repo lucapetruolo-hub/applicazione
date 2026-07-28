@@ -50,8 +50,7 @@ export type ClientGuidedRequest = {
     id: string;
     professionalProfileId: string;
     businessName: string;
-    laborEurCents: number;
-    materialsEurCents: number;
+    items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     estimatedStartDate: string;
     notes: string | null;
     status: "SENT" | "ACCEPTED" | "REJECTED";

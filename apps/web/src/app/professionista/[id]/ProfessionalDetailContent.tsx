@@ -5,6 +5,8 @@ import Link from "next/link";
 import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { StarRating } from "@/components/StarRating";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -16,6 +18,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   const [bookingSlot, setBookingSlot] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
@@ -96,7 +99,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$5">
         <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
           <XStack gap="$3" alignItems="flex-start" flex={1}>
-            <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
+            <YStack
+              cursor={professional.imageUrl ? "pointer" : undefined}
+              onPress={() => {
+                if (professional.imageUrl) setLightbox({ photos: [professional.imageUrl], index: 0 });
+              }}
+            >
+              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
+            </YStack>
             <YStack gap="$2" flex={1}>
               <XStack alignItems="center" gap="$3" flexWrap="wrap">
                 <H1 size="$8">{professional.businessName}</H1>
@@ -259,7 +269,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         </Link>
 
         <YStack gap="$3">
-          <H2 size="$6">Recensioni</H2>
+          <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
+            <H2 size="$6">Recensioni</H2>
+            {professional.rating !== null ? <StarRating rating={professional.rating} reviewCount={professional.reviewCount} /> : null}
+          </YStack>
           {professional.reviews.length === 0 ? (
             <Text color="$color9">Questo professionista non ha ancora recensioni.</Text>
           ) : (
@@ -271,8 +284,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     potrebbe non includere ancora photoUrls su una recensione. */}
                 {(review.photoUrls ?? []).length > 0 ? (
                   <XStack gap="$2" flexWrap="wrap">
-                    {(review.photoUrls ?? []).map((url) => (
-                      <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" borderWidth={1} borderColor="$borderColor">
+                    {(review.photoUrls ?? []).map((url, photoIndex) => (
+                      <YStack
+                        key={url}
+                        width={72}
+                        height={72}
+                        borderRadius="$3"
+                        overflow="hidden"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        cursor="pointer"
+                        onPress={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       </YStack>
@@ -284,6 +307,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           )}
         </YStack>
       </YStack>
+
+      {lightbox ? (
+        <PhotoLightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
+      ) : null}
     </YStack>
   );
 }

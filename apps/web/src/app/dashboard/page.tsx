@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
+import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -137,11 +137,14 @@ export default function DashboardPage() {
                 <Text color="$color10" fontSize="$3">
                   {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
                 </Text>
-                {booking.laborEurCents !== null ? (
-                  <Text color="$color10" fontSize="$3">
-                    Manodopera: €{(booking.laborEurCents / 100).toFixed(2)} · Materiali: €
-                    {((booking.materialsEurCents ?? 0) / 100).toFixed(2)}
-                  </Text>
+                {booking.items.length > 0 ? (
+                  <YStack gap="$1">
+                    {booking.items.map((item) => (
+                      <Text key={item.id} color="$color10" fontSize="$3">
+                        {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+                      </Text>
+                    ))}
+                  </YStack>
                 ) : null}
                 {booking.status === "CONFIRMED" ? (
                   <Button size="$3" alignSelf="flex-start" onPress={() => handleCompleteBooking(booking.id)}>
@@ -212,28 +215,61 @@ function BoostSection({ token }: { token: string }) {
   );
 }
 
+type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
+
 function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
   const [showForm, setShowForm] = useState(false);
-  const [labor, setLabor] = useState("");
-  const [materials, setMaterials] = useState("");
+  // Una voce di default ("Manodopera") già pronta, il professionista può
+  // rinominarla/rimuoverla e aggiungerne altre (es. "Materiali", "Trasporto")
+  // — ogni voce ha il proprio range di prezzo, non più due campi fissi
+  // manodopera/materiali — richiesta esplicita dell'utente.
+  const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
   const [startDate, setStartDate] = useState("");
   const [notes, setNotes] = useState("");
   const [sent, setSent] = useState(lead.hasQuote);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSendQuote() {
     setError(null);
-    const laborEurCents = Math.round(Number(labor.replace(",", ".")) * 100);
-    const materialsEurCents = Math.round(Number(materials.replace(",", ".")) * 100);
-    if (!Number.isFinite(laborEurCents) || laborEurCents < 0) {
-      setError("Inserisci un costo manodopera valido.");
+
+    const cleanedItems = items.map((item) => ({ ...item, name: item.name.trim() })).filter((item) => item.name.length > 0);
+    if (cleanedItems.length === 0) {
+      setError("Aggiungi almeno una voce al preventivo.");
       return;
     }
-    if (!Number.isFinite(materialsEurCents) || materialsEurCents < 0) {
-      setError("Inserisci un costo materiali valido.");
-      return;
+
+    const parsedItems: { name: string; priceMinEurCents?: number; priceMaxEurCents?: number }[] = [];
+    for (const item of cleanedItems) {
+      const priceMinEurCents = item.priceMin.trim() ? Math.round(Number(item.priceMin.replace(",", ".")) * 100) : undefined;
+      const priceMaxEurCents = item.priceMax.trim() ? Math.round(Number(item.priceMax.replace(",", ".")) * 100) : undefined;
+      if (item.priceMin.trim() && !Number.isFinite(priceMinEurCents)) {
+        setError(`Prezzo minimo non valido per "${item.name}".`);
+        return;
+      }
+      if (item.priceMax.trim() && !Number.isFinite(priceMaxEurCents)) {
+        setError(`Prezzo massimo non valido per "${item.name}".`);
+        return;
+      }
+      if (priceMinEurCents === undefined && priceMaxEurCents === undefined) {
+        setError(`Indica almeno un prezzo per "${item.name}".`);
+        return;
+      }
+      if (priceMinEurCents !== undefined && priceMaxEurCents !== undefined && priceMaxEurCents < priceMinEurCents) {
+        setError(`Il prezzo massimo di "${item.name}" dev'essere maggiore o uguale al minimo.`);
+        return;
+      }
+      parsedItems.push({ name: item.name, priceMinEurCents, priceMaxEurCents });
     }
+
     if (!startDate) {
       setError("Indica una data di inizio stimata.");
       return;
@@ -243,8 +279,7 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
     try {
       await apiClient.createQuote(token, {
         requestId: lead.guidedRequest.id,
-        laborEurCents,
-        materialsEurCents,
+        items: parsedItems,
         estimatedStartDate: new Date(startDate).toISOString(),
         notes: notes.trim() || undefined,
       });
@@ -282,28 +317,58 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
 
       {showForm ? (
         <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
-          <YStack flexDirection="row" gap="$2" flexWrap="wrap">
-            <input
-              value={labor}
-              onChange={(e) => setLabor(e.target.value)}
-              placeholder="Manodopera (€)"
-              inputMode="decimal"
-              style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, width: 140 }}
-            />
-            <input
-              value={materials}
-              onChange={(e) => setMaterials(e.target.value)}
-              placeholder="Materiali (€)"
-              inputMode="decimal"
-              style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, width: 140 }}
-            />
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
-            />
+          <YStack gap="$2">
+            <Text fontSize="$3" fontWeight="600">
+              Voci del preventivo
+            </Text>
+            {items.map((item, index) => (
+              <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
+                <input
+                  value={item.name}
+                  onChange={(e) => updateItem(index, "name", e.target.value)}
+                  placeholder="Es. Manodopera"
+                  style={{ flex: 1, minWidth: 140, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                <input
+                  value={item.priceMin}
+                  onChange={(e) => updateItem(index, "priceMin", e.target.value)}
+                  placeholder="Da €"
+                  inputMode="decimal"
+                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                <Text fontSize="$2" color="$color9">
+                  a
+                </Text>
+                <input
+                  value={item.priceMax}
+                  onChange={(e) => updateItem(index, "priceMax", e.target.value)}
+                  placeholder="A €"
+                  inputMode="decimal"
+                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                />
+                {items.length > 1 ? (
+                  <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeItem(index)}>
+                    ✕
+                  </Button>
+                ) : null}
+              </YStack>
+            ))}
+            <Button
+              size="$2"
+              alignSelf="flex-start"
+              backgroundColor="$color3"
+              color="$color12"
+              onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}
+            >
+              + Aggiungi voce
+            </Button>
           </YStack>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, alignSelf: "flex-start" }}
+          />
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

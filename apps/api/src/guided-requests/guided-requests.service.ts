@@ -88,7 +88,7 @@ export class GuidedRequestsService {
       where: { clientId },
       include: {
         category: true,
-        quotes: { include: { professionalProfile: true } },
+        quotes: { include: { professionalProfile: true, items: true } },
         // A chi è stata inviata la richiesta: mostrato in /le-mie-richieste
         // (richiesta esplicita dell'utente — "deve essere chiaro a chi si è
         // inviata la richiesta"), un professionista o più in caso di fan-out.
@@ -119,8 +119,12 @@ export class GuidedRequestsService {
         id: quote.id,
         professionalProfileId: quote.professionalProfileId,
         businessName: quote.professionalProfile.businessName,
-        laborEurCents: quote.laborEurCents,
-        materialsEurCents: quote.materialsEurCents,
+        items: quote.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          priceMinEurCents: item.priceMinEurCents,
+          priceMaxEurCents: item.priceMaxEurCents,
+        })),
         estimatedStartDate: quote.estimatedStartDate.toISOString(),
         notes: quote.notes,
         status: quote.status,

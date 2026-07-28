@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange } from "@professionisti/shared";
 import { Autocomplete, Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -331,9 +331,13 @@ function GuidedRequestCard({
           {request.quotes.map((quote) => (
             <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
               <Text fontWeight="600">{quote.businessName}</Text>
-              <Text color="$color10" fontSize="$3">
-                Manodopera: €{(quote.laborEurCents / 100).toFixed(2)} · Materiali: €{(quote.materialsEurCents / 100).toFixed(2)}
-              </Text>
+              <YStack gap="$1">
+                {quote.items.map((item) => (
+                  <Text key={item.id} color="$color10" fontSize="$3">
+                    {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+                  </Text>
+                ))}
+              </YStack>
               {quote.notes ? (
                 <Text color="$color10" fontSize="$3">
                   {quote.notes}

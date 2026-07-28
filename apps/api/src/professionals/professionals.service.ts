@@ -319,7 +319,7 @@ export class ProfessionalsService {
 
     const bookings = await this.prisma.booking.findMany({
       where: { professionalProfileId },
-      include: { client: true, quote: true },
+      include: { client: true, quote: { include: { items: true } } },
       orderBy: { scheduledAt: "desc" },
     });
 
@@ -328,8 +328,12 @@ export class ProfessionalsService {
       scheduledAt: booking.scheduledAt.toISOString(),
       status: booking.status,
       clientName: booking.client.name,
-      laborEurCents: booking.quote?.laborEurCents ?? null,
-      materialsEurCents: booking.quote?.materialsEurCents ?? null,
+      items: (booking.quote?.items ?? []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        priceMinEurCents: item.priceMinEurCents,
+        priceMaxEurCents: item.priceMaxEurCents,
+      })),
     }));
   }
 

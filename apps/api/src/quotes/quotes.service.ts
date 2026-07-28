@@ -33,8 +33,6 @@ export class QuotesService {
     });
 
     const data = {
-      laborEurCents: input.laborEurCents,
-      materialsEurCents: input.materialsEurCents,
       estimatedStartDate: new Date(input.estimatedStartDate),
       notes: input.notes,
     };
@@ -48,6 +46,18 @@ export class QuotesService {
             professionalProfileId: professionalProfile.id,
           },
         });
+
+    // Voci sostituite per intero ad ogni invio/modifica del preventivo,
+    // stesso pattern di ProfessionalService in ProfessionalsService.
+    await this.prisma.quoteItem.deleteMany({ where: { quoteId: quote.id } });
+    await this.prisma.quoteItem.createMany({
+      data: input.items.map((item) => ({
+        quoteId: quote.id,
+        name: item.name,
+        priceMinEurCents: item.priceMinEurCents ?? null,
+        priceMaxEurCents: item.priceMaxEurCents ?? null,
+      })),
+    });
 
     return { id: quote.id, status: quote.status };
   }
