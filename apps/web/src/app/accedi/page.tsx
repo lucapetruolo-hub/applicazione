@@ -3,13 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { emailPasswordSchema } from "@professionisti/shared";
-import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, Field, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { AuthInput } from "@/components/AuthInput";
 
 export default function AccediPage() {
   return (
@@ -67,36 +65,42 @@ function AccediForm() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={420} gap="$4">
-        <H1 size="$8">Effettua il login al tuo account</H1>
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={420} gap="$5">
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.cianografia}>
+            Accedi
+          </Text>
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Bentornato
+          </Text>
+        </YStack>
 
         <GoogleSignInButton onCredential={handleGoogleCredential} />
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
-            <YStack flex={1} height={1} backgroundColor="$borderColor" />
-            <Text color="$color9" fontSize="$2">
-              o
+            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
+              oppure
             </Text>
-            <YStack flex={1} height={1} backgroundColor="$borderColor" />
+            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
           </YStack>
         ) : null}
 
-        <YStack gap="$3">
-          <AuthInput
-            icon={<Mail size={18} strokeWidth={1.5} />}
-            size="$5"
+        <YStack gap="$4">
+          <Field
+            label="Email"
             value={email}
             onChangeText={setEmail}
-            placeholder="E-mail"
+            placeholder="nome@esempio.it"
             keyboardType="email-address"
             autoCapitalize="none"
             accessibilityLabel="Email"
             onSubmitEditing={handleLogin}
           />
-          <AuthInput
-            icon={<Lock size={18} strokeWidth={1.5} />}
+          <Field
+            label="Password"
             rightElement={
               <Text
                 cursor="pointer"
@@ -104,10 +108,9 @@ function AccediForm() {
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
               >
-                {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+                <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
               </Text>
             }
-            size="$5"
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
@@ -117,28 +120,28 @@ function AccediForm() {
           />
 
           {error ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
 
-          <Button size="$5" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-            {isSubmitting ? "Accesso in corso..." : "Login"}
+          <Button variant="primary" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            {isSubmitting ? "Accesso in corso..." : "Accedi"}
           </Button>
 
           <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>
-            <Text fontSize="$3" color="$blue10" textAlign="center">
+            <Text fontSize="$3" color={brand.cianografia} textAlign="center" fontWeight="600">
               Hai dimenticato la password?
             </Text>
           </Link>
         </YStack>
 
-        <YStack borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$4" gap="$3">
-          <Text fontSize="$3" textAlign="center">
+        <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$4" gap="$3">
+          <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
             Non hai ancora un account?{" "}
             <Link href="/registrati" style={{ textDecoration: "none" }}>
-              <Text color="$blue10" fontWeight="600">
-                Registrati!
+              <Text color={brand.cianografia} fontWeight="600">
+                Registrati
               </Text>
             </Link>
           </Text>
@@ -146,20 +149,23 @@ function AccediForm() {
 
         <YStack gap="$2">
           <Text
-            fontSize="$3"
+            fontFamily="$mono"
+            fontSize={12}
+            textTransform="uppercase"
             fontWeight="600"
+            color={brand.grafite}
             cursor="pointer"
             onPress={() => setHelpOpen((open) => !open)}
             accessibilityRole="button"
             accessibilityLabel={helpOpen ? "Chiudi la sezione di aiuto" : "Apri la sezione di aiuto"}
           >
-            Hai bisogno di aiuto? {helpOpen ? "▲" : "▼"}
+            Hai bisogno di aiuto? {helpOpen ? "−" : "+"}
           </Text>
           {helpOpen ? (
-            <Paragraph color="$color10" fontSize="$3">
+            <Text color={brand.grafite70} fontSize="$3">
               Se non riesci ad accedere, verifica di aver inserito correttamente email e password. Per problemi
               persistenti scrivi a supporto@professionisti.it.
-            </Paragraph>
+            </Text>
           ) : null}
         </YStack>
       </YStack>

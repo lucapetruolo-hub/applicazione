@@ -29,6 +29,8 @@ import {
   Sparkles,
   Heart,
   BadgeCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export const ICONS = {
@@ -57,6 +59,8 @@ export const ICONS = {
   sparkles: Sparkles,
   heart: Heart,
   "badge-check": BadgeCheck,
+  eye: Eye,
+  "eye-off": EyeOff,
 } as const;
 
 export type IconName = keyof typeof ICONS;
