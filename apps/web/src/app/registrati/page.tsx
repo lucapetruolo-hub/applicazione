@@ -33,8 +33,20 @@ function RegistratiForm() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function afterAuth() {
-    router.push(isProfessional ? "/dashboard/profilo" : "/");
+  // Con Google Sign-In questa pagina può autenticare anche un account
+  // professionista già esistente (es. cliccando "Iscriviti gratis" da
+  // /per-professionisti pur avendo già un profilo) — non solo una vera
+  // registrazione. `isNewUser` (già restituito da /auth/register e
+  // /auth/google/verify) distingue i due casi: solo chi si è appena
+  // registrato deve completare il profilo, chi ha già un account va
+  // dritto in Dashboard — bug reale segnalato dall'utente, prima si
+  // finiva sempre su /dashboard/profilo anche da loggati.
+  function afterAuth(isNewUser: boolean) {
+    if (!isProfessional) {
+      router.push("/");
+      return;
+    }
+    router.push(isNewUser ? "/dashboard/profilo" : "/dashboard");
   }
 
   async function handleRegister() {
@@ -52,9 +64,9 @@ function RegistratiForm() {
 
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.register(result.data.email, result.data.password, result.data.name, result.data.role);
+      const { token, isNewUser } = await apiClient.register(result.data.email, result.data.password, result.data.name, result.data.role);
       await login(token);
-      afterAuth();
+      afterAuth(isNewUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -66,9 +78,9 @@ function RegistratiForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.verifyGoogle(idToken, role);
+      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role);
       await login(token);
-      afterAuth();
+      afterAuth(isNewUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
