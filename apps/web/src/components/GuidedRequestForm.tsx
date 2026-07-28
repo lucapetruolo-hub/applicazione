@@ -315,7 +315,7 @@ export function GuidedRequestForm({
 
         <Button
           size="$5"
-          backgroundColor={isUrgent ? "$red10" : undefined}
+          backgroundColor={isUrgent ? "$red10" : "$blue10"}
           onPress={handleSubmit}
           disabled={isSubmitting || isUploadingPhoto}
           opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
