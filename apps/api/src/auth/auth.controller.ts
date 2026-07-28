@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Inject, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
   emailPasswordSchema,
@@ -24,16 +25,22 @@ export class AuthController {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
   ) {}
 
+  // Limiti più stretti del default globale (60/min): creazione account e
+  // login sono i bersagli classici di bot/credential-stuffing — un IP che
+  // prova decine di combinazioni al minuto non è un utente reale.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("register")
   async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput) {
     return this.authService.register(body.email, body.password, body.name, body.role);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("login")
   async login(@Body(new ZodValidationPipe(emailPasswordSchema)) body: EmailPasswordInput) {
     return this.authService.login(body.email, body.password);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("google/verify")
   async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput) {
     return this.authService.verifyGoogleToken(body.idToken, body.role);

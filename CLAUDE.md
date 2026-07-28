@@ -781,7 +781,130 @@ ricerca "Idraulico"+"Roma" da homepage porta correttamente a
 `/cerca/idraulico?citta=Roma`, tab "Online" cambia placeholder/copy come
 nelle pagine risultati, nessun errore console, nessun overflow mobile.
 
+**Fase 6 — anti-spam, SEO, accessibilità, performance (fatto):**
+Scope deciso senza istruzione esplicita del brief originale per questa fase
+(testo non più disponibile verbatim in questa sessione): anti-spam/rate
+limiting (già segnalato come rimandato in `AUDIT.md` §6), più SEO/
+accessibilità/performance come da indicazione generica delle fasi
+successive. Verificato con un audit reale (Lighthouse locale, non solo
+lettura di codice) prima e dopo, non solo assunto.
+
+- **Rate limiting** — `@nestjs/throttler` (`apps/api`): limite globale
+  prudente (60 richieste/minuto per IP, `ThrottlerModule.forRoot` in
+  `app.module.ts`) più limiti più stretti sugli endpoint pubblici a
+  rischio: `POST /auth/register` (5/min), `POST /auth/login` e
+  `POST /auth/google/verify` (10/min — credential stuffing/brute force),
+  `POST /waitlist` (5/min — unico endpoint del tutto pubblico senza
+  account di mezzo), `POST /guided-requests` e `POST /reviews` (10/min —
+  autenticati ma comunque capaci di fan-out/pubblicazione). `app.set("trust
+  proxy", 1)` in `main.ts`: senza, dietro il proxy di Railway il limite
+  avrebbe contato tutte le richieste come provenienti da un solo IP interno,
+  azzerando la protezione per-utente invece di limitarla per IP reale.
+  **Honeypot** su `POST /waitlist` (unico form pubblico senza account):
+  `waitlistSignupSchema.website`, campo tenuto fuori schermo in UI
+  (`WaitlistBlock`, non `display:none` — alcuni bot lo ignorano proprio per
+  quello) — se arrivano valorizzato il controller finge un successo senza
+  scrivere nulla.
+  **Bug reale scoperto e risolto durante l'implementazione, da tenere a
+  mente per pacchetti aggiunti in futuro ad `apps/api`**: dopo
+  `pnpm --filter @professionisti/api add @nestjs/throttler`, `ThrottlerGuard`
+  falliva a runtime nel risolvere `Reflector` al terzo parametro del
+  costruttore — **non un errore nel codice**, ma un artefatto del linker
+  hoisted di pnpm (`.npmrc`, richiesto da Expo): il nuovo pacchetto era
+  stato hoistato nel `node_modules` di root senza un symlink locale in
+  `apps/api/node_modules/@nestjs/throttler`, quindi il suo `require("@nestjs/core")`
+  risolveva un'istanza fisica diversa (e quindi una classe `Reflector`
+  diversa, per identità di modulo) rispetto a quella usata dal resto di
+  `apps/api`. Una guardia globale falliva così in silenzio (nessun crash,
+  nessun rate limiting applicato — verificato con richieste ripetute,
+  sempre `201` oltre il limite) invece di bloccare. `pnpm install`/
+  `pnpm dedupe` da soli non bastavano a ricreare correttamente i symlink;
+  risolto con `rm -rf apps/api/node_modules && pnpm install` (reinstall
+  mirato, non l'intero monorepo). Probabile solo di questa sessione di
+  sviluppo locale con installazioni incrementali ripetute — un deploy
+  Railway pulito (`pnpm install` da lockfile, non `pnpm add` incrementale)
+  non dovrebbe riprodurlo, ma se un futuro pacchetto aggiunto ad `apps/api`
+  desse un errore di risoluzione dipendenze superficialmente identico, è il
+  primo sospetto da controllare prima di cercare bug nel codice.
+- **SEO** — `apps/web/src/app/robots.ts` (Next.js file convention):
+  esclude dalla scansione le pagine senza valore come contenuto indicizzato
+  e dietro login (`/accedi`, `/registrati`, `/password-dimenticata`,
+  `/account`, `/le-mie-richieste`, `/professionisti-salvati`, `/dashboard/*`,
+  `/admin/*`) — nessuna di queste può usare `noindex` via `<meta>` perché
+  sono pagine `"use client"` nel file stesso (non un server component con
+  `generateMetadata`), `robots.txt` è l'unico modo corretto di escluderle
+  senza riscriverne la struttura solo per questo.
+  `apps/web/src/app/sitemap.ts`: pagine statiche (home, `/cerca`, le 13
+  categorie, `/per-professionisti`) più una voce per ogni professionista
+  reale (`excludeDemo: true`, stessa regola già applicata altrove per non
+  pubblicizzare dati del seed) — se l'API non risponde il sitemap resta
+  comunque valido con le sole pagine statiche invece di fallire del tutto.
+  **JSON-LD** `LocalBusiness` su `/professionista/[id]` (`page.tsx`, server
+  component): nome, url, immagine, `aggregateRating` se ci sono recensioni
+  — indirizzo solo `addressLocality` (città), mai la via esatta, stessa
+  scelta già fatta per la UI del profilo in Fase 5. Nuova costante
+  `apps/web/src/lib/siteUrl.ts` (`SITE_URL`): prima l'URL assoluto del sito
+  era ripetuto come stringa hardcoded solo in `layout.tsx`, ora è la stessa
+  fonte usata anche da `robots.ts`/`sitemap.ts`/JSON-LD.
+- **Accessibilità** — skip link ("Vai al contenuto", `layout.tsx` +
+  `.skip-link` in `globals.css`): fuori schermo finché non riceve il focus
+  da tastiera, evita di dover attraversare header+mega-menu ad ogni cambio
+  pagina; `{children}` ora avvolto in `<main id="main-content">` come
+  landmark di destinazione. `accessibilityRole="button"` aggiunto a tutte
+  le card/tile cliccabili introdotte in Fase 3-5 (`ProfessionalCard`,
+  `CategoryTile`, riga professionisti in `ProfessionalsShowcase`, tile
+  "Altro servizio" in `HomeContent`, fasce orario prenotabili e foto
+  cliccabili in `ProfessionalDetailContent`) — mancava del tutto, uno
+  screen reader non le annunciava come elementi interattivi.
+  **Bug reale trovato e corretto nello stesso giro**: un primo tentativo
+  aveva aggiunto anche un `accessibilityLabel` personalizzato riassuntivo
+  (es. "Apri il profilo di X") su card che contengono già più righe di
+  testo visibile (nome, categoria, città, rating) — violazione WCAG 2.5.3
+  "Label in Name" (rilevata da axe/Lighthouse: `label-content-name-mismatch`),
+  perché il nome accessibile non includeva tutto il contenuto visibile.
+  Corretto rimuovendo l'`accessibilityLabel` personalizzato dove il
+  contenuto visibile è già una descrizione sufficiente (lasciando solo
+  `accessibilityRole="button"`, il nome accessibile si calcola dal
+  contenuto) — mantenuto solo dove non c'è testo visibile in conflitto
+  (foto cliccabili, che non hanno alternativa testuale propria) o dove il
+  testo visibile è un sottoinsieme genuino dell'etichetta (fascia oraria
+  "09:00–13:00" + label "Prenota la fascia 09:00–13:00", che la contiene
+  per intero). `PhotoLightbox.tsx`: aggiunto `role="dialog"`
+  `aria-modal="true"` e chiusura con Escape (mancava del tutto — l'unico
+  modo di uscire da un overlay a schermo intero era il click). Contrasto
+  colore: `SiteHeader.tsx`, link "Accedi" passato da `$blue10` Tamagui
+  stock (contrasto 3.84:1 su bianco, sotto la soglia 4.5:1 richiesta per
+  testo normale) a `brand.cianografia` (8.37:1) — unico problema di
+  contrasto rilevato da Lighthouse sull'intero sito, ma sull'header
+  globale quindi presente su ogni pagina. `StarRating.tsx`
+  (`apps/web/src/components`): ultimi due colori hex hardcoded rimasti nel
+  codice sorgente (`#d0d5dd`/`#f5a623`) sostituiti con `brand.filetto`/
+  `brand.ottone`. Punteggio Lighthouse Accessibility dopo questi fix:
+  **100/100** su home, `/cerca/[categoria]`, `/professionista/[id]`
+  (era 96-100 prima, con `color-contrast` e poi `label-content-name-mismatch`
+  come soli problemi).
+- **Performance** — punteggio Lighthouse reale (locale, non solo lettura di
+  codice) su home/categoria/profilo: **51-65/100**, sensibilmente sotto il
+  95 citato tra i criteri di accettazione del brief originale. Causa
+  principale identificata (non ipotizzata): main-thread work/bootup time
+  dominati da script evaluation (Tamagui + `react-native-web` + runtime
+  Lucide), non da un singolo file facilmente ottimizzabile — un
+  compromesso architetturale già deciso esplicitamente per condividere il
+  design system con `apps/mobile` (CLAUDE.md §2/§3), non qualcosa da
+  rifattorizzare unilateralmente in questa fase senza discuterne (andrebbe
+  contro la regola "non introdurre framework o servizi alternativi senza
+  prima discuterne"). `unused-css-rules`/`unused-javascript` sono in gran
+  parte le classi atomiche generate da Tamagui per l'intera app, stesso
+  compromesso. **Non azionabile e lasciato invariato**: `bf-cache`
+  fallisce perché la home usa `cache-control: no-store` — deliberato (vedi
+  voce "Ricerca sempre aggiornata" più sopra in questo file), reintrodurre
+  il bf-cache richiederebbe riportare la cache e con essa il bug reale già
+  risolto (professionisti eliminati visibili in ricerca). Il punteggio
+  misurato qui è indicativo, non sostitutivo di un audit reale su Vercel in
+  produzione (CDN, HTTP/2, hardware reale invece di CPU throttling
+  simulato su una macchina condivisa) — da rifare a deploy attivo prima di
+  considerare chiuso il punto.
+
 Fasi successive (pagine interne restanti — dashboard, account,
-autenticazione —, SEO/accessibilità/performance) non ancora iniziate. Riga
-legale del footer da completare quando disponibili i dati societari reali
-(vedi Fase 4).
+autenticazione —, motion) non ancora iniziate. Riga legale del footer da
+completare quando disponibili i dati societari reali (vedi Fase 4).

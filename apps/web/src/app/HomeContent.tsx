@@ -48,6 +48,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
               gap="$2"
               cursor="pointer"
               onPress={() => router.push("/preventivo")}
+              accessibilityRole="button"
               backgroundColor={brand.gesso}
             >
               <Icon name="sparkles" size={22} color={brand.cianografia} strokeWidth={1.5} />

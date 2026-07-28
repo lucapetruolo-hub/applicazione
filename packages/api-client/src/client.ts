@@ -345,10 +345,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ email, secret }),
       }),
 
-    waitlistSignup: (email: string) =>
+    /** `website`: honeypot anti-spam, va sempre passato vuoto da un form reale (Fase 6). */
+    waitlistSignup: (email: string, website = "") =>
       request<{ ok: true }>("/waitlist", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, website }),
       }),
   };
 }

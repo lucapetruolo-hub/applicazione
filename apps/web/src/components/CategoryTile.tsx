@@ -30,6 +30,7 @@ export function CategoryTile({ slug, label, count, onPress }: CategoryTileProps)
       gap="$3"
       onPress={onPress}
       cursor="pointer"
+      accessibilityRole="button"
       borderColor={hovered ? brand.cianografia : brand.filetto}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}

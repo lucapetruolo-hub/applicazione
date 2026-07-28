@@ -35,6 +35,7 @@ function RealShowcase({ professionals }: { professionals: ProfessionalSearchResu
             borderRadius="$4"
             cursor="pointer"
             onPress={() => router.push(`/professionista/${pro.id}`)}
+            accessibilityRole="button"
           >
             <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={40} />
             <Text fontWeight="600">{pro.businessName}</Text>
@@ -52,6 +53,10 @@ function RealShowcase({ professionals }: { professionals: ProfessionalSearchResu
 
 function WaitlistBlock() {
   const [email, setEmail] = useState("");
+  // Honeypot anti-spam (Fase 6): un utente reale non lo vede né lo compila
+  // (fuori schermo, non display:none — alcuni bot ignorano i campi nascosti
+  // così, non la posizione), un bot che compila ogni campo del form sì.
+  const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   async function handleSubmit() {
@@ -61,7 +66,7 @@ function WaitlistBlock() {
     }
     setStatus("loading");
     try {
-      await apiClient.waitlistSignup(email.trim());
+      await apiClient.waitlistSignup(email.trim(), website);
       setStatus("done");
     } catch {
       setStatus("error");
@@ -87,6 +92,16 @@ function WaitlistBlock() {
           </Text>
         ) : (
           <XStack gap="$2" width="100%" maxWidth={420} flexWrap="wrap" justifyContent="center">
+            <input
+              type="text"
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }}
+            />
             <input
               type="email"
               value={email}

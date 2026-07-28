@@ -15,6 +15,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import { guidedRequestSchema, guidedRequestUpdateSchema, type GuidedRequestInput, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -31,6 +32,10 @@ export class GuidedRequestsController {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
+  // Autenticato, ma comunque limitato (Fase 6): ogni richiesta fa fan-out di
+  // Lead a più professionisti, un account che ne crea decine al minuto è
+  // spam per l'intera piattaforma, non solo per sé stesso.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema)) body: GuidedRequestInput) {

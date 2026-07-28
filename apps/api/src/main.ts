@@ -2,6 +2,7 @@ import "dotenv/config";
 import "reflect-metadata";
 import * as express from "express";
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
@@ -9,7 +10,13 @@ async function bootstrap() {
   // body raw (non parsato) per verificare la firma, quindi lo montiamo
   // manualmente solo su quella rotta, prima del parser JSON globale
   // (CLAUDE.md §2 — Stripe è già nello stack approvato).
-  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  // Railway (come ogni hosting dietro un proxy) inoltra le richieste da un
+  // solo IP interno: senza "trust proxy" il rate limiting (ThrottlerGuard,
+  // Fase 6) userebbe quell'IP del proxy per tutti gli utenti, azzerando la
+  // protezione (un solo client abusivo blocca tutti) invece di limitare per
+  // singolo IP reale — Express deve fidarsi dell'header X-Forwarded-For.
+  app.set("trust proxy", 1);
   app.use("/billing/webhook", express.raw({ type: "application/json" }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

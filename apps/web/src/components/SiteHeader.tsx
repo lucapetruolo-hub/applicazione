@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Logo, Text, XStack } from "@professionisti/ui";
+import { Button, Logo, Text, XStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { MegaMenu } from "./MegaMenu";
@@ -81,7 +81,10 @@ export function SiteHeader() {
             <AccountMenu />
           ) : (
             <Link href="/accedi" style={{ textDecoration: "none" }}>
-              <Text fontSize="$3" fontWeight="600" color="$blue10">
+              {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
+                  contrasto su bianco a questa dimensione, sotto la soglia
+                  4.5:1 richiesta per testo normale (Lighthouse color-contrast). */}
+              <Text fontSize="$3" fontWeight="600" color={brand.cianografia}>
                 Accedi
               </Text>
             </Link>

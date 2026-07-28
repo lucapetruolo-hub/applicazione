@@ -54,9 +54,17 @@ export function ProfessionalCard({
   icon,
 }: ProfessionalCardProps) {
   return (
+    // Niente accessibilityLabel personalizzato: la card contiene già come
+    // testo visibile nome/categoria/città/rating, un'etichetta diversa da
+    // quel testo violerebbe WCAG 2.5.3 "Label in Name" (rilevato da axe/
+    // Lighthouse in Fase 6 — un primo tentativo con un aria-label riassuntivo
+    // fallisce perché non include tutto il contenuto visibile). Il solo
+    // accessibilityRole basta a far annunciare la card come elemento
+    // interattivo, leggendo poi il contenuto reale.
     <Surface
       onPress={onPress}
       cursor={onPress ? "pointer" : undefined}
+      accessibilityRole={onPress ? "button" : undefined}
       padding="$4"
       hoverStyle={onPress ? { borderColor: brand.cianografia } : undefined}
       pressStyle={onPress ? { borderColor: brand.cianografiaScuro } : undefined}

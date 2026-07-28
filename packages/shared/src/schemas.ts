@@ -15,6 +15,11 @@ export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 /** Iscrizione alla waitlist "in costruzione" della homepage (redesign "Scheda Intervento" §4.6). */
 export const waitlistSignupSchema = z.object({
   email: z.string().email("Email non valida"),
+  // Honeypot anti-spam (Fase 6): campo tenuto vuoto e nascosto in UI per un
+  // utente reale, ma visibile ai bot che compilano ogni campo del form —
+  // se arriva valorizzato, il controller finge un successo senza salvare
+  // nulla (apps/api/src/waitlist/waitlist.controller.ts).
+  website: z.string().max(200).optional(),
 });
 export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
 

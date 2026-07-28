@@ -18,6 +18,25 @@ a {
   color: inherit;
 }
 
+/* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
+   focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 8px;
+  z-index: 1000;
+  background: #14181e;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 150ms ease;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
 /* Pattern a griglia cianografica (brief redesign "Scheda Intervento" §1.4):
    solo su hero e sezione CTA finale, mai su tutta la pagina. Web-only per
    costruzione (CSS puro) — applicata come classe da apps/web sulle sezioni

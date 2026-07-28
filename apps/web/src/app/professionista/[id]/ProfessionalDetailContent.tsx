@@ -103,6 +103,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               onPress={() => {
                 if (professional.imageUrl) setLightbox({ photos: [professional.imageUrl], index: 0 });
               }}
+              accessibilityRole={professional.imageUrl ? "button" : undefined}
+              accessibilityLabel={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
             >
               <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
             </YStack>
@@ -220,6 +222,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                             cursor={canBook ? "pointer" : undefined}
                             opacity={bookingSlot === slotKey ? 0.6 : 1}
                             onPress={canBook ? () => handleBookSlot(day.date, slot.startTime, slot.endTime) : undefined}
+                            accessibilityRole={canBook ? "button" : undefined}
+                            accessibilityLabel={canBook ? `Prenota la fascia ${slot.startTime}–${slot.endTime}` : undefined}
                           >
                             <Text
                               fontFamily="$mono"
@@ -296,6 +300,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         borderColor={brand.filetto}
                         cursor="pointer"
                         onPress={() => setLightbox({ photos: review.photoUrls ?? [], index: photoIndex })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} della recensione`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 /**
@@ -20,6 +20,17 @@ export function PhotoLightbox({
 }) {
   const [index, setIndex] = useState(initialIndex);
 
+  // Fase 6 (accessibilità): un overlay a schermo intero senza via di uscita
+  // da tastiera intrappola un utente che naviga solo con Tab/Esc — mancava
+  // del tutto, l'unico modo per chiudere era il click sul backdrop o sulla X.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   function showPrev(e: React.MouseEvent) {
     e.stopPropagation();
     setIndex((i) => (i - 1 + photos.length) % photos.length);
@@ -33,6 +44,9 @@ export function PhotoLightbox({
   return (
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Foto ingrandita"
       style={{
         position: "fixed",
         top: 0,

@@ -20,6 +20,8 @@ export function Chip({ children, selected = false, onPress }: ChipProps) {
       backgroundColor={selected ? brand.cianografiaVelo : brand.calce}
       cursor={onPress ? "pointer" : undefined}
       onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityState={onPress ? { selected } : undefined}
       pressStyle={onPress ? { backgroundColor: brand.cianografiaVelo } : undefined}
     >
       <Text fontSize="$3" fontWeight="600" color={selected ? brand.cianografia : brand.grafite}>
