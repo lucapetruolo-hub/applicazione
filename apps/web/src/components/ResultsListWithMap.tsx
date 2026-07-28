@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { Map as MapIcon, X } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, YStack } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -113,7 +114,8 @@ export function ResultsListWithMap({
     <div className="results-layout">
       {showMap ? (
         <button type="button" className="mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
-          {mobileMapOpen ? "✕ Nascondi mappa" : "🗺️ Mostra mappa"}
+          {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
+          {mobileMapOpen ? "Nascondi mappa" : "Mostra mappa"}
         </button>
       ) : null}
 
@@ -171,6 +173,10 @@ export function ResultsListWithMap({
           font-size: 15px;
           font-weight: 600;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         .results-map-col {
           display: none;

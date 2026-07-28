@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { registerSchema } from "@professionisti/shared";
 import { Button, H1, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -112,7 +113,7 @@ function RegistratiForm() {
 
         <YStack gap="$3">
           <AuthInput
-            icon={<Text fontSize="$4">👤</Text>}
+            icon={<User size={18} strokeWidth={1.5} />}
             size="$5"
             value={name}
             onChangeText={setName}
@@ -120,7 +121,7 @@ function RegistratiForm() {
             accessibilityLabel="Nome"
           />
           <AuthInput
-            icon={<Text fontSize="$4">✉️</Text>}
+            icon={<Mail size={18} strokeWidth={1.5} />}
             size="$5"
             value={email}
             onChangeText={setEmail}
@@ -130,16 +131,15 @@ function RegistratiForm() {
             accessibilityLabel="Email"
           />
           <AuthInput
-            icon={<Text fontSize="$4">🔒</Text>}
+            icon={<Lock size={18} strokeWidth={1.5} />}
             rightElement={
               <Text
-                fontSize="$4"
                 cursor="pointer"
                 onPress={() => setShowPassword((v) => !v)}
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
               </Text>
             }
             size="$5"

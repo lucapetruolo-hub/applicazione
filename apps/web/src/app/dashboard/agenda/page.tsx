@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Calendar, Check, X } from "lucide-react";
 import { WEEKDAYS } from "@professionisti/shared";
 import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -167,14 +168,13 @@ export default function DashboardAgendaPage() {
             alignItems="center"
             justifyContent="center"
           >
-            {bookableAgenda ? (
-              <Text fontSize="$3" color="white" fontWeight="700">
-                ✓
-              </Text>
-            ) : null}
+            {bookableAgenda ? <Check size={14} strokeWidth={2} color="white" /> : null}
           </YStack>
-          <YStack flex={1}>
-            <Text fontWeight="600">📅 Permetti ai clienti di prenotare direttamente da questi orari</Text>
+          <YStack flex={1} gap="$1">
+            <YStack flexDirection="row" gap="$2" alignItems="center">
+              <Calendar size={16} strokeWidth={1.5} />
+              <Text fontWeight="600">Permetti ai clienti di prenotare direttamente da questi orari</Text>
+            </YStack>
             <Text fontSize="$2" color="$color10">
               Se disattivo, l&apos;agenda resta visibile ma solo come orari generali di disponibilità: il cliente ti
               contatta comunque tramite richiesta di preventivo.
@@ -213,8 +213,8 @@ export default function DashboardAgendaPage() {
                           onChange={(e) => updateSlot(index, "end", e.target.value)}
                           style={{ padding: 8, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
                         />
-                        <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeSlot(index)}>
-                          ✕
+                        <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeSlot(index)} accessibilityLabel="Rimuovi fascia oraria">
+                          <X size={14} strokeWidth={1.5} />
                         </Button>
                       </YStack>
                     ))}

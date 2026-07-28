@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
+import { Icon, type IconName } from "./Icon";
+import { brand } from "./tokens";
 
 export type ProfessionalSuggestion = {
   id: string;
@@ -24,9 +26,9 @@ export type SearchBarProps = {
   citySuggestions?: string[];
 };
 
-const MODE_TABS: { key: SearchMode; label: string; icon: string }[] = [
-  { key: "domicilio", label: "A domicilio", icon: "🏠" },
-  { key: "online", label: "Online", icon: "📹" },
+const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
+  { key: "domicilio", label: "A domicilio", icon: "house" },
+  { key: "online", label: "Online", icon: "video" },
 ];
 
 export function SearchBar({
@@ -77,12 +79,15 @@ export function SearchBar({
               borderRadius="$10"
               backgroundColor={active ? "$blue10" : "transparent"}
               cursor="pointer"
+              alignItems="center"
+              gap="$2"
               onPress={() => setMode(tab.key)}
               accessibilityRole="button"
               accessibilityLabel={tab.label}
             >
+              <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
               <Text fontSize="$3" fontWeight="600" color={active ? "white" : "$color11"}>
-                {tab.icon} {tab.label}
+                {tab.label}
               </Text>
             </XStack>
           );
@@ -137,7 +142,7 @@ export function SearchBar({
       </YStack>
       {mode === "online" ? (
         <Text fontSize="$2" color="$color9">
-          ℹ️ Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
+          Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
           trovare professionisti online della tua zona.
         </Text>
       ) : null}

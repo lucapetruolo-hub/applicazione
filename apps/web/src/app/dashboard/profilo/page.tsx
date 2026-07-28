@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Camera, Check, Video, X } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Autocomplete, Button, H1, Icon, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
@@ -237,7 +238,7 @@ export default function DashboardProfiloPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <Text fontSize="$7">📷</Text>
+                <Camera size={28} strokeWidth={1.5} color="#4A525E" />
               )}
             </YStack>
             <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
@@ -287,7 +288,10 @@ export default function DashboardProfiloPage() {
                 color={categorySlug === category.slug ? "white" : "$color12"}
                 onPress={() => setCategorySlug(category.slug)}
               >
-                {category.icon} {category.label}
+                <XStack alignItems="center" gap="$2">
+                  <Icon name={category.icon} size={15} color={categorySlug === category.slug ? "white" : "#14181E"} />
+                  <Text color={categorySlug === category.slug ? "white" : "$color12"}>{category.label}</Text>
+                </XStack>
               </Button>
             ))}
           </YStack>
@@ -355,14 +359,13 @@ export default function DashboardProfiloPage() {
             alignItems="center"
             justifyContent="center"
           >
-            {remoteAvailable ? (
-              <Text fontSize="$3" color="white" fontWeight="700">
-                ✓
-              </Text>
-            ) : null}
+            {remoteAvailable ? <Check size={14} strokeWidth={2} color="white" /> : null}
           </YStack>
-          <YStack flex={1}>
-            <Text fontWeight="600">📹 Offro anche consulenza online</Text>
+          <YStack flex={1} gap="$1">
+            <XStack alignItems="center" gap="$2">
+              <Video size={16} strokeWidth={1.5} />
+              <Text fontWeight="600">Offro anche consulenza online</Text>
+            </XStack>
             <Text fontSize="$2" color="$color10">
               Compari nella ricerca "Online" della home: i clienti possono contattarti da remoto, ovunque si trovino.
             </Text>
@@ -423,8 +426,14 @@ export default function DashboardProfiloPage() {
                   inputMode="decimal"
                   style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
                 />
-                <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeService(index)}>
-                  ✕
+                <Button
+                  size="$2"
+                  backgroundColor="$color3"
+                  color="$color12"
+                  onPress={() => removeService(index)}
+                  accessibilityLabel="Rimuovi prestazione"
+                >
+                  <X size={14} strokeWidth={1.5} />
                 </Button>
               </YStack>
             ))}

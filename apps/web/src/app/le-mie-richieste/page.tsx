@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { BadgeCheck, Star, X } from "lucide-react";
 import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange } from "@professionisti/shared";
 import { Autocomplete, Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -310,9 +311,12 @@ function GuidedRequestCard({
                   <XStack gap="$2" alignItems="center" flexWrap="wrap">
                     <Text fontWeight="600">{professional.businessName}</Text>
                     {professional.verified ? (
-                      <Text fontSize="$1" color="$blue10" fontWeight="600">
-                        ✓ Verificato
-                      </Text>
+                      <XStack alignItems="center" gap={3}>
+                        <BadgeCheck size={13} strokeWidth={1.5} color="#1B4D8F" />
+                        <Text fontSize="$1" color="$blue10" fontWeight="600">
+                          Verificato
+                        </Text>
+                      </XStack>
                     ) : null}
                   </XStack>
                   <Text color="$color10" fontSize="$3">
@@ -436,16 +440,15 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
           <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
             <YStack flexDirection="row" gap="$1">
               {[1, 2, 3, 4, 5].map((value) => (
-                <Text
+                <YStack
                   key={value}
-                  fontSize="$6"
                   cursor="pointer"
                   onPress={() => setRating(value)}
                   accessibilityRole="button"
                   accessibilityLabel={`${value} stelle`}
                 >
-                  {value <= rating ? "⭐" : "☆"}
-                </Text>
+                  <Star size={24} strokeWidth={1.5} color="#B4893A" fill={value <= rating ? "#B4893A" : "none"} />
+                </YStack>
               ))}
             </YStack>
             <textarea
@@ -486,10 +489,9 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
                       justifyContent="center"
                       cursor="pointer"
                       onPress={() => removePhoto(url)}
+                      accessibilityLabel="Rimuovi foto"
                     >
-                      <Text color="white" fontSize="$1">
-                        ✕
-                      </Text>
+                      <X size={11} strokeWidth={2} color="white" />
                     </YStack>
                   </YStack>
                 ))}

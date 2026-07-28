@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { ZoomIn } from "lucide-react";
 
 const STAGE_SIZE = 280;
 const OUTPUT_SIZE = 480;
@@ -211,7 +212,7 @@ export function ImageCropModal({
         </div>
 
         <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🔍</span>
+          <ZoomIn size={18} strokeWidth={1.5} color="#4A525E" />
           <input
             type="range"
             min={MIN_ZOOM}

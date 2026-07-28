@@ -467,5 +467,67 @@ con l'app mobile** — vedi §2/§3, conflitto non risolvibile silenziosamente):
   script Google Identity, bloccati dalla policy di rete dell'ambiente di
   sviluppo, non causati da questo cambio).
 
-Fasi successive (icone/logo, libreria componenti primitivi, homepage,
-pagine interne, SEO/accessibilità/performance) non ancora iniziate.
+**Fase 2 — sistema icone, eliminazione emoji, logo (fatto):**
+- **64 emoji sostituite in 23 file** (audit iniziale ne aveva trovate 51 in 22
+  file: mancavano `apps/mobile/app` — verificato vuoto — e
+  `packages/shared/src/categories.ts`, trovate in un secondo giro con range
+  Unicode più ampi). Zero rimaste nel codice sorgente delle interfacce
+  (verificato con scansione finale, gli unici `→` residui sono frecce dentro
+  commenti di codice, non testo UI).
+- **Icone cross-platform**: `packages/ui/src/icons.tsx` (nativo,
+  `lucide-react-native`) + `icons.web.tsx` (web, `lucide-react`) — stesso
+  pattern di risoluzione per estensione già usato per i font in Fase 1
+  (`icons.web.tsx` vince su Next.js grazie a `resolve.extensions` in
+  `next.config.mjs`, `icons.tsx` è il default che Metro risolve per
+  Expo/mobile). `packages/ui/src/Icon.tsx` è il componente pubblico
+  (`<Icon name="wrench" size={20} color={...} />`), unico punto da importare
+  da `apps/web`/`apps/mobile`. `color` è un valore letterale (hex/rgba), mai
+  `"currentColor"` (non esiste su React Native) — default `brand.grafite`.
+  Nei file `apps/web`-only (18 dei 23) le icone sono importate direttamente
+  da `lucide-react` (nessun bisogno del layer cross-platform, quel codice
+  non gira mai su mobile) — `lucide-react` è ora dipendenza diretta anche di
+  `apps/web`, non solo di `packages/ui`.
+- **`packages/shared/src/categories.ts`**: il campo `icon` di ogni categoria
+  non è più un glifo emoji ma una chiave di `packages/ui/src/icons.tsx`
+  (es. `"wrench"`, kebab-case) — coerente col principio che
+  `packages/shared` non ha dipendenze UI, porta solo la chiave testuale. Ogni
+  punto che prima renderizzava `{category.icon}` come testo (griglia
+  categoria in `GuidedRequestForm`, `/dashboard/profilo`, menu a tendina
+  categoria, schermata categoria di `apps/mobile`) ora usa `<Icon
+  name={category.icon} />`. `CategoryCard` (`packages/ui`, usata da
+  `apps/mobile/app/index.tsx`) idem. Il `<select>` nativo non può contenere
+  un'icona SVG dentro un `<option>` (i browser la ignorano): lì resta solo
+  il testo.
+- **`apps/web/src/components/icons/CategoryIcons.tsx`** (badge colorati
+  categoria in card/ricerca) **non toccato**: erano già SVG disegnate a mano,
+  zero emoji, sistema funzionante — sostituirle con Lucide non era necessario
+  per l'obiettivo "zero emoji" della Fase 2 e avrebbe rischiato regressioni
+  visive su ricerca/card senza un problema reale da risolvere.
+- **Logo**: `packages/ui/src/Logo.tsx` (nativo, `react-native-svg`) +
+  `Logo.web.tsx` (web, SVG DOM piatto) — stesso split per-piattaforma delle
+  icone, necessario perché lo shim web di `react-native-svg` importa a sua
+  volta `@react-native/assets-registry` (sintassi Flow non parsabile dal
+  webpack di Next.js, anche passando dal suo stesso entry point `.web.js`):
+  bypassato non facendo mai toccare `react-native-svg` al bundle web.
+  Marchio quadrato 28×28 blu cianografia con un glifo bianco a due tratti
+  (linee ad angolo retto, richiamo alla "squadra da disegno" del brief),
+  wordmark "Professionisti" in Archivo 800. Sostituisce "🛠️ Professionisti"
+  in `SiteHeader`/`SiteFooter`. `variant="mark"` per spazi stretti.
+- **Favicon/icone di sistema**: `apps/web/src/app/icon.svg` (favicon, stesso
+  mark, convenzione file-based di Next.js — nessun `<link>` manuale),
+  `apple-icon.tsx` (180×180, generato con `next/og` `ImageResponse`: PNG
+  richiesto da Apple, non producibile come SVG statico) e
+  `opengraph-image.tsx` (1200×630, `next/og`, fondo grafite + marchio +
+  claim — l'unico blocco scuro coerente col resto del redesign). Aggiunto
+  `metadataBase` in `layout.tsx` (mancava del tutto): senza quello Next.js
+  risolve i link social con un fallback `http://localhost:3000` anche in
+  produzione.
+- Verificato: typecheck pulito su tutti i package, build `apps/web` verde
+  (incluse le tre nuove route `icon.svg`/`apple-icon`/`opengraph-image`),
+  smoke test Playwright con screenshot su 11 pagine (home, login,
+  registrazione, preventivo da loggati — griglia categorie con icone,
+  dashboard profilo/agenda, le mie richieste, ricerca con `ProfessionalCard`)
+  — zero emoji visibili, zero errori console nuovi.
+
+Fasi successive (libreria componenti primitivi, homepage, pagine interne,
+SEO/accessibilità/performance) non ancora iniziate.

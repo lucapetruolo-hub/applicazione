@@ -18,6 +18,7 @@ import {
   type ProfessionalSuggestion,
   type SearchMode,
 } from "@professionisti/ui";
+import { LayoutDashboard, Sparkles } from "lucide-react";
 import { CategoryTile } from "@/components/CategoryTile";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { FadeInSection } from "@/components/FadeInSection";
@@ -99,22 +100,22 @@ export default function HomeContent({ professionals }: { professionals: Professi
         <YStack width="100%" backgroundColor="$color2" paddingVertical="$8" paddingHorizontal="$4" alignItems="center">
           <XStack flexWrap="wrap" justifyContent="center" gap="$6" maxWidth={1080}>
             <IconFeature
-              icon="🔍"
+              icon="search"
               title="Trova un professionista nella tua città"
               description="Scegli tra decine di professionisti verificati e specializzati per categoria e zona."
             />
             <IconFeature
-              icon="📷"
+              icon="camera"
               title="Richiedi un preventivo: è facile e gratuito"
               description="Descrivi il lavoro, invia una foto e ricevi un preventivo. Nessun costo aggiuntivo per richiederlo."
             />
             <IconFeature
-              icon="🧾"
+              icon="receipt-text"
               title="Ricevi un preventivo strutturato"
               description="Manodopera, materiali e tempistiche chiare prima di accettare, tutto dentro la piattaforma."
             />
             <IconFeature
-              icon="🔔"
+              icon="bell-ring"
               title="Promemoria via email e SMS"
               description="Non perderai un appuntamento: te lo ricordiamo noi via email e SMS."
             />
@@ -173,7 +174,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
           <H2 size="$8">Sei un professionista? Inizia a crescere oggi</H2>
           <YStack width="100%" gap="$4" $gtSm={{ flexDirection: "row" }}>
             <YStack flex={1} backgroundColor="$blue2" borderRadius="$6" padding="$5" gap="$3">
-              <Text fontSize="$9">📊</Text>
+              <LayoutDashboard size={32} strokeWidth={1.5} color="#1B4D8F" />
               <H2 size="$6">Gestionale per professionisti</H2>
               <Paragraph color="$color10">
                 Agenda digitale, promemoria automatici e fatturazione: fatti trovare pronto ad ogni richiesta.
@@ -183,7 +184,7 @@ export default function HomeContent({ professionals }: { professionals: Professi
               </Link>
             </YStack>
             <YStack flex={1} backgroundColor="$color3" borderRadius="$6" padding="$5" gap="$3">
-              <Text fontSize="$9">🤖</Text>
+              <Sparkles size={32} strokeWidth={1.5} color="#1B4D8F" />
               <H2 size="$6">Richiesta Guidata con IA</H2>
               <Paragraph color="$color10">
                 Il cliente descrive il lavoro con una foto: a te arrivano solo richieste già qualificate, con

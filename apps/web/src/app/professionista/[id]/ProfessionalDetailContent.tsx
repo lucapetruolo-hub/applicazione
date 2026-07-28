@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BadgeCheck, Heart, MapPin, Star } from "lucide-react";
 import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -111,9 +112,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               <XStack alignItems="center" gap="$3" flexWrap="wrap">
                 <H1 size="$8">{professional.businessName}</H1>
                 {professional.verified ? (
-                  <Text fontSize="$3" color="$blue10" fontWeight="600">
-                    ✓ Verificato
-                  </Text>
+                  <XStack alignItems="center" gap="$1">
+                    <BadgeCheck size={16} strokeWidth={1.5} color="#1B4D8F" />
+                    <Text fontSize="$3" color="$blue10" fontWeight="600">
+                      Verificato
+                    </Text>
+                  </XStack>
                 ) : null}
                 {professional.boosted ? (
                   <Text fontSize="$2" backgroundColor="$yellow4" color="$yellow11" paddingHorizontal="$2" paddingVertical="$1" borderRadius="$4">
@@ -125,14 +129,20 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 {professional.categoryLabel} · {professional.city}
               </Text>
               {professional.address ? (
-                <Text fontSize="$4" color="$color10">
-                  📍 {professional.address}
-                </Text>
+                <XStack alignItems="center" gap="$1">
+                  <MapPin size={15} strokeWidth={1.5} color="#4A525E" />
+                  <Text fontSize="$4" color="$color10">
+                    {professional.address}
+                  </Text>
+                </XStack>
               ) : null}
               {professional.rating !== null ? (
-                <Text fontSize="$5">
-                  ⭐ {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
-                </Text>
+                <XStack alignItems="center" gap="$1">
+                  <Star size={17} strokeWidth={1.5} color="#B4893A" fill="#B4893A" />
+                  <Text fontSize="$5">
+                    {professional.rating.toFixed(1)} · {professional.reviewCount} recension{professional.reviewCount === 1 ? "e" : "i"}
+                  </Text>
+                </XStack>
               ) : (
                 <Text fontSize="$4" color="$color9">
                   Nessuna recensione ancora
@@ -150,7 +160,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               disabled={isSaving}
               opacity={isSaving ? 0.6 : 1}
             >
-              {isSaved ? "♥ Salvato" : "♡ Salva"}
+              <XStack alignItems="center" gap="$2">
+                <Heart size={15} strokeWidth={1.5} color={isSaved ? "#C8362B" : "#14181E"} fill={isSaved ? "#C8362B" : "none"} />
+                <Text color={isSaved ? "$red10" : "$color12"}>{isSaved ? "Salvato" : "Salva"}</Text>
+              </XStack>
             </Button>
           ) : null}
         </XStack>
@@ -278,7 +291,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           ) : (
             professional.reviews.map((review) => (
               <YStack key={review.id} padding="$3" backgroundColor="$color2" borderRadius="$4" gap="$2">
-                <Text fontWeight="600">⭐ {review.rating}/5</Text>
+                <XStack alignItems="center" gap="$1">
+                  <Star size={15} strokeWidth={1.5} color="#B4893A" fill="#B4893A" />
+                  <Text fontWeight="600">{review.rating}/5</Text>
+                </XStack>
                 {review.comment ? <Text color="$color10">{review.comment}</Text> : null}
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy
                     potrebbe non includere ancora photoUrls su una recensione. */}

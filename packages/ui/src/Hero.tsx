@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { H1, Paragraph, Text, XStack, YStack } from "tamagui";
+import { Icon } from "./Icon";
 import { SearchBar, type SearchBarProps } from "./SearchBar";
 
 export type HeroProps = SearchBarProps & {
@@ -50,9 +51,10 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
 
       <YStack width="100%" maxWidth={680} gap="$3" zIndex={1}>
         <XStack gap="$2" flexWrap="wrap" justifyContent="center">
-          <XStack paddingHorizontal="$3" paddingVertical="$2" borderRadius="$10" backgroundColor="$blue10">
+          <XStack paddingHorizontal="$3" paddingVertical="$2" borderRadius="$10" backgroundColor="$blue10" alignItems="center" gap="$2">
+            <Icon name="search" size={16} color="white" />
             <Text fontSize="$3" fontWeight="600" color="white">
-              🔍 Trova un professionista
+              Trova un professionista
             </Text>
           </XStack>
           <XStack
@@ -65,10 +67,13 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             hoverStyle={{ scale: 1.05, backgroundColor: "$color2" }}
             pressStyle={{ scale: 0.97, backgroundColor: "$color3" }}
             cursor="pointer"
+            alignItems="center"
+            gap="$2"
             onPress={onUrgentPress}
           >
+            <Icon name="zap" size={16} />
             <Text fontSize="$3" fontWeight="600" color="$color12">
-              ⚡ Richiesta urgente
+              Richiesta urgente
             </Text>
           </XStack>
           <XStack
@@ -81,10 +86,13 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             hoverStyle={{ scale: 1.05, backgroundColor: "$color2" }}
             pressStyle={{ scale: 0.97, backgroundColor: "$color3" }}
             cursor="pointer"
+            alignItems="center"
+            gap="$2"
             onPress={onQuotePress}
           >
+            <Icon name="file-text" size={16} />
             <Text fontSize="$3" fontWeight="600" color="$color12">
-              📋 Preventivo gratuito
+              Preventivo gratuito
             </Text>
           </XStack>
         </XStack>

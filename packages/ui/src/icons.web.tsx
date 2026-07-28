@@ -1,0 +1,56 @@
+// Variante web del registro icone: risolta al posto di "./icons" dal
+// webpack di Next.js grazie all'estensione ".web.tsx" aggiunta a
+// resolve.extensions in apps/web/next.config.mjs (stesso ordine di
+// risoluzione che Metro applica in automatico per apps/mobile, dove invece
+// viene usato "./icons.tsx", la variante lucide-react-native — vedi lì).
+import {
+  Search,
+  Zap,
+  FileText,
+  MapPin,
+  Star,
+  Video,
+  House,
+  Wrench,
+  PaintRoller,
+  SprayCan,
+  Trees,
+  Truck,
+  KeyRound,
+  Thermometer,
+  HardHat,
+  Hammer,
+  Drill,
+  Stethoscope,
+  HeartHandshake,
+  Camera,
+  ReceiptText,
+  BellRing,
+} from "lucide-react";
+
+export const ICONS = {
+  search: Search,
+  zap: Zap,
+  "file-text": FileText,
+  "map-pin": MapPin,
+  star: Star,
+  video: Video,
+  house: House,
+  wrench: Wrench,
+  "paint-roller": PaintRoller,
+  "spray-can": SprayCan,
+  trees: Trees,
+  truck: Truck,
+  "key-round": KeyRound,
+  thermometer: Thermometer,
+  "hard-hat": HardHat,
+  hammer: Hammer,
+  drill: Drill,
+  stethoscope: Stethoscope,
+  "heart-handshake": HeartHandshake,
+  camera: Camera,
+  "receipt-text": ReceiptText,
+  "bell-ring": BellRing,
+} as const;
+
+export type IconName = keyof typeof ICONS;

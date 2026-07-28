@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Text, XStack } from "@professionisti/ui";
+import { Button, Logo, Text, XStack } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 
@@ -21,9 +21,7 @@ export function SiteHeader() {
       backgroundColor="white"
     >
       <Link href="/" style={{ textDecoration: "none" }}>
-        <Text fontSize="$5" $gtSm={{ fontSize: "$6" }} fontWeight="800" color="$blue10">
-          🛠️ Professionisti
-        </Text>
+        <Logo size={26} />
       </Link>
       <XStack gap="$4" alignItems="center">
         {isLoading ? null : user ? (

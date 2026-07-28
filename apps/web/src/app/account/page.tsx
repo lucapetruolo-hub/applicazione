@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { Button, H1, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -338,9 +339,19 @@ export default function AccountPage() {
             </XStack>
 
             {!isConfirmingDelete ? (
-              <Text color="$red10" fontWeight="600" cursor="pointer" onPress={() => setIsConfirmingDelete(true)}>
-                ✕ Elimina il mio account
-              </Text>
+              <XStack
+                gap="$1"
+                alignItems="center"
+                cursor="pointer"
+                onPress={() => setIsConfirmingDelete(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Elimina il mio account"
+              >
+                <Trash2 size={15} strokeWidth={1.5} color="#C8362B" />
+                <Text color="$red10" fontWeight="600">
+                  Elimina il mio account
+                </Text>
+              </XStack>
             ) : null}
           </XStack>
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import type { SUBSCRIPTION_PLANS } from "@professionisti/shared";
 import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -109,7 +110,7 @@ export function PerProfessionistiContent({ plans }: { plans: typeof SUBSCRIPTION
               <YStack gap="$2">
                 {plan.features.map((feature) => (
                   <XStack key={feature} gap="$2" alignItems="flex-start">
-                    <Text color="$blue10">✓</Text>
+                    <Check size={16} strokeWidth={2} color="#1B4D8F" />
                     <Text color="$color11" flex={1}>
                       {FEATURE_LABELS[feature] ?? feature}
                     </Text>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 /**
  * Overlay a schermo intero per aprire in grande le foto delle recensioni
@@ -59,11 +60,13 @@ export function PhotoLightbox({
           border: "none",
           backgroundColor: "rgba(255,255,255,0.15)",
           color: "white",
-          fontSize: 18,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           cursor: "pointer",
         }}
       >
-        ✕
+        <X size={20} strokeWidth={1.5} />
       </button>
 
       {photos.length > 1 ? (
@@ -81,11 +84,13 @@ export function PhotoLightbox({
               border: "none",
               backgroundColor: "rgba(255,255,255,0.15)",
               color: "white",
-              fontSize: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
             }}
           >
-            ‹
+            <ChevronLeft size={24} strokeWidth={1.5} />
           </button>
           <button
             type="button"
@@ -100,11 +105,13 @@ export function PhotoLightbox({
               border: "none",
               backgroundColor: "rgba(255,255,255,0.15)",
               color: "white",
-              fontSize: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
             }}
           >
-            ›
+            <ChevronRight size={24} strokeWidth={1.5} />
           </button>
           <div style={{ position: "absolute", bottom: 20, color: "white", fontSize: 14 }}>
             {index + 1} / {photos.length}

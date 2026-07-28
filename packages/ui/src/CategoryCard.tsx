@@ -1,7 +1,9 @@
 import { Card, Text, YStack } from "tamagui";
+import { Icon, type IconName } from "./Icon";
+import { brand } from "./tokens";
 
 export type CategoryCardProps = {
-  icon: string;
+  icon: IconName;
   label: string;
   onPress?: () => void;
 };
@@ -22,7 +24,7 @@ export function CategoryCard({ icon, label, onPress }: CategoryCardProps) {
       cursor="pointer"
     >
       <YStack alignItems="center" gap="$2">
-        <Text fontSize="$9">{icon}</Text>
+        <Icon name={icon} size={28} color={brand.cianografia} strokeWidth={1.5} />
         <Text fontSize="$3" fontWeight="600" textAlign="center">
           {label}
         </Text>

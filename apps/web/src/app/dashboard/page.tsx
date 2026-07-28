@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { X, Zap } from "lucide-react";
 import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
-import { Button, H1, H2, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -296,10 +297,19 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
     <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
         <YStack gap="$1" flex={1}>
-          <Text fontWeight="700">
-            {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
-            {lead.guidedRequest.isUrgent ? " · 🔴 Urgente" : ""}
-          </Text>
+          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <Text fontWeight="700">
+              {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
+            </Text>
+            {lead.guidedRequest.isUrgent ? (
+              <XStack alignItems="center" gap={3} backgroundColor="#C8362B" paddingHorizontal="$2" paddingVertical={2} borderRadius="$2">
+                <Zap size={11} strokeWidth={2} color="white" fill="white" />
+                <Text fontSize={10} color="white" fontWeight="700" textTransform="uppercase">
+                  Urgente
+                </Text>
+              </XStack>
+            ) : null}
+          </XStack>
           <Text color="$color10">{lead.guidedRequest.description}</Text>
         </YStack>
         {sent ? (
@@ -347,8 +357,14 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
                   style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
                 />
                 {items.length > 1 ? (
-                  <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeItem(index)}>
-                    ✕
+                  <Button
+                    size="$2"
+                    backgroundColor="$color3"
+                    color="$color12"
+                    onPress={() => removeItem(index)}
+                    accessibilityLabel="Rimuovi voce"
+                  >
+                    <X size={14} strokeWidth={1.5} />
                   </Button>
                 ) : null}
               </YStack>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
-import { Text, XStack, YStack } from "@professionisti/ui";
+import { Logo, Text, XStack, YStack } from "@professionisti/ui";
 
 export function SiteFooter() {
   return (
@@ -67,9 +67,7 @@ export function SiteFooter() {
         </YStack>
 
         <YStack gap="$2" maxWidth={280}>
-          <Text fontSize="$5" fontWeight="800" color="$blue10">
-            🛠️ Professionisti
-          </Text>
+          <Logo size={22} />
           <Text fontSize="$3" color="$color10">
             Trova e prenota professionisti verificati per la casa: idraulici, elettricisti, imbianchini e altro,
             vicino a te.

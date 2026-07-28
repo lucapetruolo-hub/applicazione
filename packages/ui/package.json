@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@tamagui/config": "1.144.4",
+    "lucide-react": "^1.27.0",
+    "lucide-react-native": "^1.27.0",
+    "react-native-svg": "^15.15.5",
     "react-native-web": "^0.19.13",
     "tamagui": "1.144.4"
   },

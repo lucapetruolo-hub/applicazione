@@ -1,4 +1,6 @@
 import { Card, Text, XStack, YStack } from "tamagui";
+import { Icon } from "./Icon";
+import { brand } from "./tokens";
 
 export type TestimonialCardProps = {
   authorName: string;
@@ -14,10 +16,17 @@ export function TestimonialCard({ authorName, authorRole, text, rating }: Testim
         <XStack justifyContent="space-between" alignItems="center">
           <Text fontWeight="700">{authorName}</Text>
           {rating !== undefined ? (
-            <Text color="$yellow10" fontSize="$3">
-              {"★".repeat(rating)}
-              {"☆".repeat(5 - rating)}
-            </Text>
+            <XStack gap={2}>
+              {[1, 2, 3, 4, 5].map((position) => (
+                <Icon
+                  key={position}
+                  name="star"
+                  size={14}
+                  color={position <= rating ? brand.ottone : "#D6DAD5"}
+                  fill={position <= rating ? brand.ottone : "none"}
+                />
+              ))}
+            </XStack>
           ) : null}
         </XStack>
         <Text color="$color11" fontSize="$3">

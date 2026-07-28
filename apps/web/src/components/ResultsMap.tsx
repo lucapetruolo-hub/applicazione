@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
@@ -148,7 +149,15 @@ export function ResultsMap({
             </div>
             <span className="map-banner-subtitle">
               {selected.categoryLabel} · {selected.city}
-              {selected.rating !== null ? ` · ⭐ ${selected.rating.toFixed(1)}` : ""}
+              {selected.rating !== null ? (
+                <>
+                  {" · "}
+                  <Star size={12} strokeWidth={1.5} color="#B4893A" fill="#B4893A" style={{ verticalAlign: "-1px" }} />{" "}
+                  {selected.rating.toFixed(1)}
+                </>
+              ) : (
+                ""
+              )}
             </span>
           </div>
           <button
@@ -160,7 +169,7 @@ export function ResultsMap({
               setSelected(null);
             }}
           >
-            ✕
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
       ) : null}
@@ -226,7 +235,9 @@ export function ResultsMap({
           border: none;
           background: #f1f5f9;
           cursor: pointer;
-          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       `}</style>
     </div>

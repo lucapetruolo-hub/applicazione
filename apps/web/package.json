@@ -14,6 +14,7 @@
     "@professionisti/shared": "workspace:*",
     "@professionisti/ui": "workspace:*",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.27.0",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

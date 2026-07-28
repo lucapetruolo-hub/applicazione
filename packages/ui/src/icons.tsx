@@ -1,0 +1,55 @@
+// Variante nativa del registro icone (Expo/React Native, lucide-react-native
+// + react-native-svg): risolta di default da Metro per "./icons" quando non
+// c'è una variante ".web.tsx" applicabile alla piattaforma di build — vedi
+// icons.web.tsx per la controparte web e la spiegazione della risoluzione.
+import {
+  Search,
+  Zap,
+  FileText,
+  MapPin,
+  Star,
+  Video,
+  House,
+  Wrench,
+  PaintRoller,
+  SprayCan,
+  Trees,
+  Truck,
+  KeyRound,
+  Thermometer,
+  HardHat,
+  Hammer,
+  Drill,
+  Stethoscope,
+  HeartHandshake,
+  Camera,
+  ReceiptText,
+  BellRing,
+} from "lucide-react-native";
+
+export const ICONS = {
+  search: Search,
+  zap: Zap,
+  "file-text": FileText,
+  "map-pin": MapPin,
+  star: Star,
+  video: Video,
+  house: House,
+  wrench: Wrench,
+  "paint-roller": PaintRoller,
+  "spray-can": SprayCan,
+  trees: Trees,
+  truck: Truck,
+  "key-round": KeyRound,
+  thermometer: Thermometer,
+  "hard-hat": HardHat,
+  hammer: Hammer,
+  drill: Drill,
+  stethoscope: Stethoscope,
+  "heart-handshake": HeartHandshake,
+  camera: Camera,
+  "receipt-text": ReceiptText,
+  "bell-ring": BellRing,
+} as const;
+
+export type IconName = keyof typeof ICONS;

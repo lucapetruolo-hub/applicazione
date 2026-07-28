@@ -19,6 +19,10 @@ export type { SectionProps, SectionTone } from "./Section";
 export { Eyebrow } from "./Eyebrow";
 export type { EyebrowProps } from "./Eyebrow";
 export { brand, radiusDoc, radiusDocLg } from "./tokens";
+export { Icon } from "./Icon";
+export type { IconProps, IconName } from "./Icon";
+export { Logo } from "./Logo";
+export type { LogoProps } from "./Logo";
 
 // Tutte le primitive Tamagui usate da apps/web e apps/mobile vanno importate
 // da qui, mai direttamente da "tamagui": apps/web e apps/mobile non

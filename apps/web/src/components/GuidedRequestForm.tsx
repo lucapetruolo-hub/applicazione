@@ -3,8 +3,9 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Autocomplete, Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Autocomplete, Button, H1, Icon, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -181,8 +182,9 @@ export function GuidedRequestForm({
               backgroundColor="$blue10"
               borderRadius="$4"
             >
+              <Icon name={selectedCategory.icon} size={16} color="white" />
               <Text color="white" fontWeight="600">
-                {selectedCategory.icon} {selectedCategory.label}
+                {selectedCategory.label}
               </Text>
             </YStack>
           </YStack>
@@ -208,7 +210,7 @@ export function GuidedRequestForm({
               <option value="">Seleziona una categoria...</option>
               {PROFESSIONAL_CATEGORIES.map((category) => (
                 <option key={category.slug} value={category.slug}>
-                  {category.icon} {category.label}
+                  {category.label}
                 </option>
               ))}
             </select>
@@ -221,7 +223,10 @@ export function GuidedRequestForm({
                   color={categorySlug === category.slug ? "white" : "$color12"}
                   onPress={() => setCategorySlug(category.slug)}
                 >
-                  {category.icon} {category.label}
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name={category.icon} size={15} color={categorySlug === category.slug ? "white" : "#14181E"} />
+                    <Text color={categorySlug === category.slug ? "white" : "$color12"}>{category.label}</Text>
+                  </XStack>
                 </Button>
               ))}
             </YStack>
@@ -277,10 +282,9 @@ export function GuidedRequestForm({
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removePhoto(url)}
+                  accessibilityLabel="Rimuovi foto"
                 >
-                  <Text color="white" fontSize="$2">
-                    ✕
-                  </Text>
+                  <X size={13} strokeWidth={2} color="white" />
                 </YStack>
               </YStack>
             ))}

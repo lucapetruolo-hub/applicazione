@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Card, Text, XStack, YStack } from "tamagui";
+import { Icon } from "./Icon";
+import { brand } from "./tokens";
 
 export type ProfessionalCardService = {
   id: string;
@@ -79,16 +81,27 @@ export function ProfessionalCard({
             {categoryLabel} · {city}
           </Text>
           {address ? (
-            <Text fontSize="$2" color="$color10">
-              📍 {address}
-            </Text>
+            <XStack gap="$1" alignItems="center">
+              <Icon name="map-pin" size={13} color={brand.grafite70} />
+              <Text fontSize="$2" color="$color10">
+                {address}
+              </Text>
+            </XStack>
           ) : null}
           <XStack gap="$2" alignItems="center">
-            {rating !== undefined ? <Text fontSize="$3">⭐ {rating.toFixed(1)}</Text> : null}
+            {rating !== undefined ? (
+              <XStack gap="$1" alignItems="center">
+                <Icon name="star" size={14} color={brand.ottone} fill={brand.ottone} />
+                <Text fontSize="$3">{rating.toFixed(1)}</Text>
+              </XStack>
+            ) : null}
             {remoteAvailable ? (
-              <Text fontSize="$2" color="$purple10" fontWeight="600">
-                📹 Online
-              </Text>
+              <XStack gap="$1" alignItems="center">
+                <Icon name="video" size={13} color={brand.cianografia} />
+                <Text fontSize="$2" color="$purple10" fontWeight="600">
+                  Online
+                </Text>
+              </XStack>
             ) : null}
           </XStack>
           {services && services.length > 0 ? (

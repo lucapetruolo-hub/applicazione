@@ -1,16 +1,20 @@
 "use client";
 
 import { Suspense } from "react";
-import { Text, YStack } from "@professionisti/ui";
+import { Zap } from "lucide-react";
+import { Text, XStack, YStack } from "@professionisti/ui";
 import { GuidedRequestForm } from "@/components/GuidedRequestForm";
 
 export function UrgenteContent() {
   return (
     <YStack width="100%" alignItems="center">
       <YStack width="100%" backgroundColor="$red2" paddingVertical="$4" alignItems="center">
-        <Text fontSize="$4" color="$red11" fontWeight="600">
-          🔴 Richiesta urgente: notifichiamo subito i professionisti disponibili ora nella tua zona
-        </Text>
+        <XStack alignItems="center" gap="$2" paddingHorizontal="$4">
+          <Zap size={16} strokeWidth={2} color="#C8362B" fill="#C8362B" />
+          <Text fontSize="$4" color="$red11" fontWeight="600">
+            Richiesta urgente: notifichiamo subito i professionisti disponibili ora nella tua zona
+          </Text>
+        </XStack>
       </YStack>
       <Suspense fallback={null}>
         <GuidedRequestForm
