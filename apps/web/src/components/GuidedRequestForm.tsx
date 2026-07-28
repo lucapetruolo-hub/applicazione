@@ -34,6 +34,7 @@ export function GuidedRequestForm({
   const { user, token, isLoading } = useAuth();
 
   const initialCategory = searchParams.get("categoria");
+  const initialCity = searchParams.get("citta") ?? "";
   const professionalProfileId = searchParams.get("professionista") ?? undefined;
 
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
@@ -41,7 +42,7 @@ export function GuidedRequestForm({
   );
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState(initialCity);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);

@@ -58,6 +58,7 @@ async function main() {
         latitude: coords.latitude,
         longitude: coords.longitude,
         verified: pro.verified,
+        isDemo: true,
       },
       create: {
         userId: user.id,
@@ -68,6 +69,7 @@ async function main() {
         latitude: coords.latitude,
         longitude: coords.longitude,
         verified: pro.verified,
+        isDemo: true,
       },
     });
 

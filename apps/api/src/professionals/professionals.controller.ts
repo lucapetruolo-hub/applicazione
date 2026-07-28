@@ -43,8 +43,15 @@ export class ProfessionalsController {
     @Query("city") city?: string,
     @Query("q") q?: string,
     @Query("remote") remote?: string,
+    @Query("excludeDemo") excludeDemo?: string,
   ) {
-    return this.professionalsService.search({ category, city, q, remote: remote === "1" || remote === "true" });
+    return this.professionalsService.search({
+      category,
+      city,
+      q,
+      remote: remote === "1" || remote === "true",
+      excludeDemo: excludeDemo === "1" || excludeDemo === "true",
+    });
   }
 
   @UseGuards(JwtAuthGuard)

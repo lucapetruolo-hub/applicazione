@@ -25,6 +25,7 @@ import {
   Camera,
   ReceiptText,
   BellRing,
+  Sparkles,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -50,6 +51,7 @@ export const ICONS = {
   camera: Camera,
   "receipt-text": ReceiptText,
   "bell-ring": BellRing,
+  sparkles: Sparkles,
 } as const;
 
 export type IconName = keyof typeof ICONS;

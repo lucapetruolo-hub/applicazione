@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   let professionals: ProfessionalSearchResult[] = [];
   try {
-    professionals = await apiClient.searchProfessionals({});
+    // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
+    // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
+    // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
+    // né ai conteggi per categoria né alla vetrina in evidenza.
+    professionals = await apiClient.searchProfessionals({ excludeDemo: true });
   } catch {
     professionals = [];
   }

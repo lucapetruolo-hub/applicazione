@@ -24,6 +24,8 @@ export type ProfessionalSearchParams = {
   city?: string;
   q?: string;
   remote?: boolean;
+  /** Esclude i profili demo del seed (isDemo) — usato dalla homepage per non mostrare vetrine finte come reali. */
+  excludeDemo?: boolean;
 };
 
 function mapServices(
@@ -44,13 +46,14 @@ export class ProfessionalsService {
     private readonly geocodingService: GeocodingService,
   ) {}
 
-  async search({ category, city, q, remote }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
         ...(remote ? { remoteAvailable: true } : {}),
+        ...(excludeDemo ? { isDemo: false } : {}),
       },
       include: {
         category: true,

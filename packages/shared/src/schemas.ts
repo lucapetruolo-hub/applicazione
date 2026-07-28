@@ -12,6 +12,12 @@ export const googleVerifySchema = z.object({
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
+/** Iscrizione alla waitlist "in costruzione" della homepage (redesign "Scheda Intervento" §4.6). */
+export const waitlistSignupSchema = z.object({
+  email: z.string().email("Email non valida"),
+});
+export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
+
 /** Login via email + password (CLAUDE.md §8). */
 export const emailPasswordSchema = z.object({
   email: z.string().email("Email non valida"),

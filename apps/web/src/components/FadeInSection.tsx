@@ -37,8 +37,8 @@ export function FadeInSection({ children, delay = 0 }: { children: ReactNode; de
         display: "flex",
         justifyContent: "center",
         opacity: isVisible ? 1 : 0,
-        transform: isVisible ? "translateY(0)" : "translateY(24px)",
-        transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
+        transform: isVisible ? "translateY(0)" : "translateY(12px)",
+        transition: `opacity 220ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms`,
       }}
     >
       {children}

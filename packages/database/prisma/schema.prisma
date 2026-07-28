@@ -91,6 +91,12 @@ model ProfessionalProfile {
   address         String?
   imageUrl        String?
   verified        Boolean  @default(false)
+  // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
+  // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
+  // escludere questi profili dalle sezioni pubbliche che dichiarano
+  // esplicitamente di mostrare dati reali (redesign "Scheda Intervento"
+  // §4.6: mai spacciare vetrine finte per vere, CLAUDE.md §10).
+  isDemo          Boolean  @default(false)
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
   remoteAvailable Boolean  @default(false)
@@ -444,4 +450,19 @@ model Notification {
 
   @@index([userId, sentAt])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Waitlist "in costruzione" — homepage, sezione professionisti in evidenza
+// quando non ci sono ancora abbastanza profili reali (redesign "Scheda
+// Intervento" §4.6): cattura l'email di chi vuole essere avvisato quando la
+// sua zona è coperta, invece di un form decorativo che non fa nulla.
+// ---------------------------------------------------------------------------
+
+model WaitlistSignup {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_signups")
 }

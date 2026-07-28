@@ -571,5 +571,111 @@ con l'app mobile** — vedi §2/§3, conflitto non risolvibile silenziosamente):
   bottone `rgb(0,129,241)`, identico a prima della modifica a `Button.tsx`,
   zero differenze visive, zero errori console).
 
-Fasi successive (homepage, pagine interne, SEO/accessibilità/performance)
-non ancora iniziate.
+**Fase 4 — homepage riscritta sezione per sezione (fatto):**
+- `apps/web/src/app/HomeContent.tsx` riscritto: `HomeHero` → griglia categorie
+  (`CategoryTile` × 13 + tile "Altro servizio →") → `HowItWorks` (ancora
+  `#come-funziona`, linkata dall'header) → `QualitySection` → `ProfessionalsShowcase`
+  → `ProCtaSection` → link secondario "Hai un'emergenza?" → `SiteFooter`. Ogni
+  sezione avvolta in `FadeInSection` (già esistente, solo i tempi aggiornati
+  a 220ms/12px in Fase 1 — timing brief §7), tranne `ProCtaSection` (fondo
+  pieno cianografia, deliberatamente sempre visibile per non nascondere il
+  CTA principale lato professionisti dietro uno scroll-reveal).
+- **`isDemo`** (nuovo campo `ProfessionalProfile`, Prisma) + **`excludeDemo`**
+  (nuovo query param `GET /professionals/search` → `packages/api-client` →
+  usato solo dalla home) risolvono un problema di correttezza necessario
+  prima di poter scrivere sezioni "oneste" sulla home: senza un modo per
+  distinguere i professionisti reali dai `PLACEHOLDER_PROFESSIONALS` di
+  seed, sia il conteggio "N professionisti" per categoria sia la vetrina
+  "Sulla piattaforma" avrebbero pubblicizzato dati finti come reali.
+  `CategoriesSeedService`/`seed.ts` impostano `isDemo: true` sui dati
+  placeholder; ogni professionista creato da un utente reale resta `false`
+  (default schema).
+- **`SchedaIntervento.tsx`** (nuovo, `apps/web/src/components`): il
+  "documento" animato dell'hero non è decorativo — riflette in tempo reale
+  categoria/zona/urgenza scelte nel form (`HomeHero.tsx`), con lo stampo
+  "IN ATTESA DI PREVENTIVO" → "PRONTA PER L'INVIO" (verde) solo quando tutti
+  e tre i campi sono compilati. `prefers-reduced-motion` rispettato
+  (`matchMedia`, disabilita le transizioni CSS). Verificato via Playwright:
+  digitando "Idraulico"/"Roma" nel form la card si aggiorna dal vivo.
+- **`MegaMenu.tsx`** (nuovo): dropdown "Servizi" desktop a 3 colonne
+  (`apps/web/src/lib/megaMenuGroups.ts`, 13 categorie raggruppate in
+  "Casa e impianti"/"Manutenzione e spazi"/"Persona e servizi", una
+  micro-descrizione di 4 parole per categoria) + drawer mobile a tutta
+  altezza con accordion (`<details>/<summary>` nativi, niente libreria).
+  Istanza unica: la responsività desktop/mobile vive **dentro** il
+  componente stesso (`@media(min-width:860px)` in styled-jsx), mai in un
+  wrapper Tamagui `$gtMd`-only esterno — un tentativo iniziale con due
+  istanze separate (una nascosta per breakpoint) duplicava lo stato
+  open/close ed è stato corretto prima del typecheck.
+- **`SiteHeader.tsx`** riscritto: un solo CTA primario ("Richiedi
+  preventivo", brief "un solo CTA per schermata") al posto del vecchio
+  bottone "Sei un professionista?" — l'audience professionisti resta
+  servita dal link testuale "Prezzi" e da `ProCtaSection` più in basso.
+  `position:"sticky"` non è un valore tipizzato per il prop `position` di
+  Tamagui (React Native non lo supporta): risolto avvolgendo l'header in un
+  `<div>` grezzo con lo style sticky inline, la barra vera resta un
+  `XStack` Tamagui senza quel prop — stesso limite già documentato per
+  `ResultsListWithMap.tsx`.
+- **`CategoryTile.tsx`** riscritto su `Surface` (Fase 3): bordo hairline,
+  hover via `translateX(2px)` + `borderColor` cianografia, niente ombra né
+  scala. `CategoryIconBadge` (icone colorate disegnate a mano, già
+  esistenti) **non sostituita** con Lucide qui — coerenza visiva con le
+  card di ricerca esistenti; il mega-menu invece usa `Icon`/Lucide,
+  contesto più compatto dove è la scelta giusta.
+- **Vetrina professionisti onesta** (`ProfessionalsShowcase.tsx`, brief
+  §4.6): sotto **12** professionisti reali (`isDemo: false`) in una zona,
+  la home mostra un blocco "In costruzione" con raccolta email reale
+  invece di una vetrina striminzita o di dati finti — soglia scelta perché
+  3-4 profili "in evidenza" darebbero comunque l'impressione (falsa) di
+  un'offerta consistente. Il blocco email non è un dead-end decorativo:
+  nuovo modello Prisma `WaitlistSignup` + `POST /waitlist` (upsert
+  idempotente per email, nessuna autenticazione richiesta) — coerente con
+  la regola di progetto di non pubblicare mai una UI che non fa nulla.
+  Sopra soglia, `RealShowcase` mostra una riga orizzontale scrollabile di
+  card (avatar, nome attività, categoria+città, rating, badge "Verificato").
+  Verificato dal vivo: il DB locale ha >12 professionisti non-demo, la
+  home mostra `RealShowcase`; il branch `WaitlistBlock` è stato verificato
+  solo per lettura di codice/typecheck, non ancora osservato a schermo con
+  dati reali sotto soglia.
+- **`QualitySection.tsx`** (nuovo) **sostituisce** la vecchia sezione
+  "Consigli dai professionisti + Recensioni" a dati demo hardcoded (mai
+  pubblicata, coerente con la stessa regola sopra): fondo `$grafite` pieno
+  (unico blocco scuro della home oltre a `ProCtaSection`), 3 punti sul
+  processo reale che rende affidabile il sistema di reputazione
+  (preventivo strutturato, recensioni solo da prenotazione confermata,
+  indirizzo mai esposto senza motivo) invece di testimonianze inventate.
+- **`SiteFooter.tsx`** riscritto a 4 colonne (logo+claim, Servizi — prime 8
+  categorie, Per i clienti, Per i professionisti) su token brand invece dei
+  colori Tamagui generici (`$color2`/`$color9`/`$color10`) usati prima.
+  **Riga legale del brief §4.8 (Privacy/Cookie/Termini/P.IVA/PEC/link
+  ODR) volutamente omessa**: richiede dati reali di un'azienda registrata
+  (partita IVA, sede legale, PEC) che non sono disponibili in questa
+  sessione — inventarli o linkare pagine `/privacy`/`/cookie`/`/termini`
+  inesistenti sarebbe stata una violazione diretta della regola
+  "niente UI finta o rotta" seguita in tutto il resto del progetto. Da
+  aggiungere quando l'utente fornisce i dati societari reali.
+- **Routing hero ripensato** (`HomeHero.tsx`): il campo "Quando?" ha una
+  conseguenza reale, non è un riempitivo per animare la Scheda Intervento —
+  "Il prima possibile" instrada a `/urgente`, le altre scelte a
+  `/preventivo`, categoria non riconosciuta ricade su `/cerca?q=...`
+  (stessa ricerca libera di prima, preservata come via di fuga). Richiede
+  supporto al prefill città (`?citta=`) in `GuidedRequestForm.tsx`, prima
+  gestiva solo `?categoria=`/`?professionista=`.
+- Verificato: typecheck pulito su `apps/web`/`packages/ui`/`apps/mobile`,
+  build di produzione `apps/web` verde, sessione locale end-to-end
+  (Postgres+Redis+API+web) con screenshot Playwright: homepage desktop e
+  mobile complete (nessun gap, tutte le `FadeInSection` verificate con
+  scroll simulato fino a fondo pagina — un primo giro di screenshot con
+  scroll incompleto aveva fatto sembrare `QualitySection` vuota, falso
+  positivo dovuto solo al test, non al componente), mega-menu desktop
+  (dropdown 3 colonne) e mobile (drawer) aperti entrambi correttamente,
+  interazione hero con aggiornamento dal vivo della Scheda Intervento.
+  Nessun overflow orizzontale osservato a 390px. Warning di hydration
+  cosmetico pre-esistente su `Autocomplete`/`react-native-web`
+  (`--placeholderTextColor`, differenza di formattazione dello style
+  inline SSR/client, non un errore funzionale) osservato in console, non
+  introdotto da questa fase.
+
+Fasi successive (pagine interne, SEO/accessibilità/performance) non ancora
+iniziate. Riga legale del footer da completare quando disponibili i dati
+societari reali (vedi sopra).

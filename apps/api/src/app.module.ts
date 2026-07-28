@@ -13,6 +13,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
 import { BillingModule } from "./billing/billing.module";
 import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
 import { AdminModule } from "./admin/admin.module";
+import { WaitlistModule } from "./waitlist/waitlist.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AdminModule } from "./admin/admin.module";
     BillingModule,
     SavedProfessionalsModule,
     AdminModule,
+    WaitlistModule,
   ],
   controllers: [HealthController],
 })

@@ -198,12 +198,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean } = {}) => {
+    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
       if (params.remote) query.set("remote", "1");
+      if (params.excludeDemo) query.set("excludeDemo", "1");
       const queryString = query.toString();
       // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache
       // può mantenere in cache questa fetch indipendentemente da
@@ -342,6 +343,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{ email: string; role: string }>("/admin/bootstrap", {
         method: "POST",
         body: JSON.stringify({ email, secret }),
+      }),
+
+    waitlistSignup: (email: string) =>
+      request<{ ok: true }>("/waitlist", {
+        method: "POST",
+        body: JSON.stringify({ email }),
       }),
   };
 }
