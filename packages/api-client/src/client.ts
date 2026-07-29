@@ -38,6 +38,9 @@ export type ClientGuidedRequest = {
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;
+  /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
+  preferredDate: string | null;
+  preferredTimeSlot: string | null;
   /** Professionisti a cui è stata inoltrata la richiesta (fan-out o singolo, vedi GuidedRequestsService.listForClient). */
   sentTo: {
     id: string;

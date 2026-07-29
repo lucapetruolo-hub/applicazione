@@ -313,6 +313,11 @@ export class ProfessionalsService {
         description: lead.guidedRequest.description,
         city: lead.guidedRequest.city,
         isUrgent: lead.guidedRequest.isUrgent,
+        // Valorizzati solo se la richiesta è nata da una fascia generica
+        // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
+        // deve vedere subito per quale orario è stata richiesta.
+        preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
+        preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
       },
     }));
   }
@@ -352,7 +357,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, profile, upcomingBookings, exceptions] = await Promise.all([
+    const [slots, profile, upcomingBookings, upcomingGenericRequests, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId },
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
@@ -370,6 +375,12 @@ export class ProfessionalsService {
         },
         select: { scheduledAt: true },
       }),
+      // Equivalente per le fasce generiche (maxBookings > 1): non nascono
+      // Booking ma GuidedRequest con preferredDate/preferredTimeSlot.
+      this.prisma.guidedRequest.findMany({
+        where: { professionalProfileId, preferredDate: { gte: startOfToday, lt: endWindow } },
+        select: { preferredDate: true, preferredTimeSlot: true },
+      }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday } },
         orderBy: { date: "asc" },
@@ -378,17 +389,27 @@ export class ProfessionalsService {
     ]);
 
     return {
-      slots: slots.map((slot) => ({
-        id: slot.id,
-        dayOfWeek: slot.dayOfWeek,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        hasUpcomingBooking: upcomingBookings.some((booking) => {
-          if (booking.scheduledAt.getUTCDay() !== slot.dayOfWeek) return false;
-          const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
-          return bookingTime >= slot.startTime && bookingTime < slot.endTime;
-        }),
-      })),
+      slots: slots.map((slot) => {
+        const timeRange = `${slot.startTime}-${slot.endTime}`;
+        const hasUpcomingBooking =
+          slot.maxBookings > 1
+            ? upcomingGenericRequests.some(
+                (request) => request.preferredDate?.getUTCDay() === slot.dayOfWeek && request.preferredTimeSlot === timeRange,
+              )
+            : upcomingBookings.some((booking) => {
+                if (booking.scheduledAt.getUTCDay() !== slot.dayOfWeek) return false;
+                const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
+                return bookingTime >= slot.startTime && bookingTime < slot.endTime;
+              });
+        return {
+          id: slot.id,
+          dayOfWeek: slot.dayOfWeek,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          maxBookings: slot.maxBookings,
+          hasUpcomingBooking,
+        };
+      }),
       bookableAgenda: profile.bookableAgenda,
       exceptionDates: exceptions.map((exception) => exception.date.toISOString().slice(0, 10)),
     };
@@ -415,6 +436,7 @@ export class ProfessionalsService {
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
           endTime: slot.endTime,
+          maxBookings: slot.maxBookings,
         })),
       });
     }
@@ -471,7 +493,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, bookings, profile, exceptions] = await Promise.all([
+    const [slots, bookings, genericRequests, profile, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
       this.prisma.booking.findMany({
         where: {
@@ -480,6 +502,15 @@ export class ProfessionalsService {
           scheduledAt: { gte: startOfToday, lt: endWindow },
         },
         select: { scheduledAt: true },
+      }),
+      // Per le fasce generiche (maxBookings > 1) la "prenotazione" è una
+      // richiesta di preventivo con preferredDate/preferredTimeSlot, non un
+      // Booking — contata a parte, per data esatta (non per giorno della
+      // settimana come in getMyAvailability: qui serve sapere la capienza
+      // residua di QUEL giorno preciso, non solo se la ricorrenza è "usata").
+      this.prisma.guidedRequest.findMany({
+        where: { professionalProfileId, preferredDate: { gte: startOfToday, lt: endWindow } },
+        select: { preferredDate: true, preferredTimeSlot: true },
       }),
       this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
       this.prisma.availabilityException.findMany({
@@ -504,11 +535,19 @@ export class ProfessionalsService {
         : slots
             .filter((slot) => slot.dayOfWeek === dayOfWeek)
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((slot) => ({
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-              booked: isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime),
-            }));
+            .map((slot) => {
+              const bookedCount =
+                slot.maxBookings > 1
+                  ? genericRequests.filter(
+                      (request) =>
+                        request.preferredDate?.toISOString().slice(0, 10) === dateStr &&
+                        request.preferredTimeSlot === `${slot.startTime}-${slot.endTime}`,
+                    ).length
+                  : isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime)
+                    ? 1
+                    : 0;
+              return { startTime: slot.startTime, endTime: slot.endTime, maxBookings: slot.maxBookings, bookedCount };
+            });
 
       days.push({ date: dateStr, dayOfWeek, slots: daySlots });
     }
@@ -562,6 +601,9 @@ export class ProfessionalsService {
     ]);
     if (!matchingSlot) {
       throw new NotFoundException("Questa fascia oraria non fa parte dell'agenda del professionista.");
+    }
+    if (matchingSlot.maxBookings > 1) {
+      throw new ForbiddenException("Questa fascia richiede l'invio di una richiesta di preventivo, non una prenotazione diretta.");
     }
     if (exception) {
       throw new ConflictException("Il professionista non è disponibile in questa data.");

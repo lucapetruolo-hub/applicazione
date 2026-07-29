@@ -1,5 +1,5 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PrismaClient } from "@professionisti/database";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { GuidedRequestInput, GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -18,25 +18,69 @@ export class GuidedRequestsService {
       throw new BadRequestException("Categoria non valida.");
     }
 
+    let targetProfile: { id: string } | null = null;
     if (input.professionalProfileId) {
-      const targetProfile = await this.prisma.professionalProfile.findUnique({
+      targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
+        select: { id: true },
       });
       if (!targetProfile) {
         throw new NotFoundException("Professionista non trovato.");
       }
     }
 
-    const guidedRequest = await this.prisma.guidedRequest.create({
-      data: {
-        clientId,
-        categoryId: category.id,
-        description: input.description,
-        photoUrls: input.photoUrls,
-        city: input.city,
-        isUrgent: input.isUrgent,
-      },
-    });
+    // Richiesta agganciata a una fascia "generica" dell'agenda pubblica
+    // (AvailabilitySlot.maxBookings > 1, vedi packages/shared/src/
+    // availability.ts): rivalida server-side che la fascia esista davvero,
+    // non cada in un giorno di chiusura e abbia ancora capienza libera,
+    // invece di fidarsi ciecamente di quanto inviato dal client — stessa
+    // cautela già applicata a bookAgendaSlot.
+    let resolvedSlot: { date: Date; maxBookings: number } | null = null;
+    if (input.preferredDate && input.preferredTimeSlot) {
+      if (!targetProfile) {
+        throw new BadRequestException("Una fascia oraria preferita richiede un professionista specifico.");
+      }
+      resolvedSlot = await this.resolveGenericSlot(targetProfile.id, input.preferredDate, input.preferredTimeSlot);
+    }
+
+    let guidedRequest;
+    try {
+      guidedRequest = await this.prisma.$transaction(
+        async (tx) => {
+          if (resolvedSlot && targetProfile) {
+            // Riconta dentro la transazione (isolamento Serializable) per
+            // evitare che due clienti superino insieme la capienza massima
+            // della stessa fascia nello stesso istante — stesso principio
+            // già applicato a ProfessionalsService.bookAgendaSlot.
+            const currentCount = await tx.guidedRequest.count({
+              where: { professionalProfileId: targetProfile.id, preferredDate: resolvedSlot.date, preferredTimeSlot: input.preferredTimeSlot },
+            });
+            if (currentCount >= resolvedSlot.maxBookings) {
+              throw new ConflictException("Questa fascia ha già raggiunto il numero massimo di richieste.");
+            }
+          }
+          return tx.guidedRequest.create({
+            data: {
+              clientId,
+              categoryId: category.id,
+              description: input.description,
+              photoUrls: input.photoUrls,
+              city: input.city,
+              isUrgent: input.isUrgent,
+              professionalProfileId: targetProfile?.id,
+              preferredDate: resolvedSlot?.date,
+              preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
+            },
+          });
+        },
+        resolvedSlot ? { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } : undefined,
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia ha già raggiunto il numero massimo di richieste.");
+      }
+      throw err;
+    }
 
     // Fan-out: se la richiesta parte dal profilo di un professionista specifico
     // va solo a lui, altrimenti a tutti i professionisti compatibili per
@@ -106,6 +150,8 @@ export class GuidedRequestsService {
       isUrgent: request.isUrgent,
       status: request.status,
       createdAt: request.createdAt.toISOString(),
+      preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
+      preferredTimeSlot: request.preferredTimeSlot,
       sentTo: request.leads.map((lead) => ({
         id: lead.professionalProfileId,
         businessName: lead.professionalProfile.businessName,
@@ -172,5 +218,34 @@ export class GuidedRequestsService {
       throw new ForbiddenException(`Non puoi ${action} una richiesta già conclusa.`);
     }
     return request;
+  }
+
+  /**
+   * Valida che dateStr/timeSlot corrispondano a una fascia "generica" reale
+   * (AvailabilitySlot.maxBookings > 1) del professionista, e che quella data
+   * non sia un giorno di chiusura straordinaria — stessa cautela già
+   * applicata da ProfessionalsService.bookAgendaSlot per le fasce esatte.
+   */
+  private async resolveGenericSlot(professionalProfileId: string, dateStr: string, timeSlot: string): Promise<{ date: Date; maxBookings: number }> {
+    const date = new Date(`${dateStr}T00:00:00.000Z`);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException("Data non valida.");
+    }
+    const [startTime, endTime] = timeSlot.split("-");
+    const dayOfWeek = date.getUTCDay();
+
+    const [slot, exception] = await Promise.all([
+      this.prisma.availabilitySlot.findFirst({ where: { professionalProfileId, dayOfWeek, startTime, endTime } }),
+      this.prisma.availabilityException.findUnique({
+        where: { professionalProfileId_date: { professionalProfileId, date } },
+      }),
+    ]);
+    if (!slot || slot.maxBookings <= 1) {
+      throw new BadRequestException("Questa fascia oraria non è disponibile per l'invio di una richiesta di preventivo.");
+    }
+    if (exception) {
+      throw new ConflictException("Il professionista non è disponibile in questa data.");
+    }
+    return { date, maxBookings: slot.maxBookings };
   }
 }

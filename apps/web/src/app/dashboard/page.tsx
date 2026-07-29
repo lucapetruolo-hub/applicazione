@@ -3,19 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import type { ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
-
-const BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
-  PENDING: "In attesa",
-  CONFIRMED: "Confermata",
-  COMPLETED: "Completata",
-  CANCELED: "Annullata",
-  NO_SHOW: "Cliente non presentato",
-};
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -49,16 +41,6 @@ export default function DashboardPage() {
         }
       });
   }, [token]);
-
-  async function handleCompleteBooking(bookingId: string) {
-    if (!token) return;
-    try {
-      await apiClient.updateBookingStatus(token, bookingId, "COMPLETED");
-      setBookings((prev) => (prev ? prev.map((b) => (b.id === bookingId ? { ...b, status: "COMPLETED" } : b)) : prev));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    }
-  }
 
   if (isLoading) return null;
 
@@ -137,43 +119,34 @@ export default function DashboardPage() {
           <SectionTitle>Agenda</SectionTitle>
           {bookings === null ? (
             <LoadingState />
-          ) : bookings.length === 0 ? (
-            <Text color={brand.grafite70}>Nessuna prenotazione confermata ancora.</Text>
           ) : (
-            bookings.map((booking) => (
-              <Surface key={booking.id} gap="$2">
-                <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-                  <Text fontWeight="600" color={brand.grafite}>
-                    {booking.clientName ?? "Cliente"}
-                  </Text>
-                  <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
-                    {BOOKING_STATUS_LABEL[booking.status]}
-                  </Text>
-                </YStack>
-                <Text color={brand.grafite70} fontSize="$3">
-                  {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+            <Surface flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+              <YStack gap="$1">
+                <Text fontWeight="600" color={brand.grafite}>
+                  {upcomingBookingsCount(bookings) === 0
+                    ? "Nessuna prenotazione in arrivo."
+                    : `${upcomingBookingsCount(bookings)} prenotazion${upcomingBookingsCount(bookings) === 1 ? "e" : "i"} in arrivo.`}
                 </Text>
-                {booking.items.length > 0 ? (
-                  <YStack gap="$1">
-                    {booking.items.map((item) => (
-                      <Text key={item.id} color={brand.grafite70} fontSize="$3">
-                        {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-                      </Text>
-                    ))}
-                  </YStack>
-                ) : null}
-                {booking.status === "CONFIRMED" ? (
-                  <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => handleCompleteBooking(booking.id)}>
-                    Segna come completato
-                  </Button>
-                ) : null}
-              </Surface>
-            ))
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Calendario disponibilità e prenotazioni, con i dettagli di ogni appuntamento.
+                </Text>
+              </YStack>
+              <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
+                <Button variant="secondary" size="$3" height={40}>
+                  Apri il calendario
+                </Button>
+              </Link>
+            </Surface>
           )}
         </YStack>
       </YStack>
     </YStack>
   );
+}
+
+function upcomingBookingsCount(bookings: ProfessionalBooking[]): number {
+  const now = Date.now();
+  return bookings.filter((b) => (b.status === "PENDING" || b.status === "CONFIRMED") && new Date(b.scheduledAt).getTime() >= now).length;
 }
 
 const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO"; label: string; description: string; priceEur: number }[] = [

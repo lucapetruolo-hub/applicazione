@@ -27,6 +27,9 @@ export type ProfessionalLead = {
     description: string;
     city: string;
     isUrgent: boolean;
+    /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
+    preferredDate: string | null;
+    preferredTimeSlot: string | null;
   };
 };
 

@@ -387,7 +387,7 @@ dall'upsell.
 - [x] Pannello admin minimale — `GET /admin/users` (JWT + `AdminGuard`, verifica il ruolo `ADMIN` rileggendolo dal DB ad ogni richiesta invece di fidarsi del JWT, così una promozione/retrocessione ha effetto immediato) restituisce utenti registrati divisi per ruolo (email, nome, ragione sociale se professionista, data). Pagina `/admin` (nessun link in UI, solo URL diretto) mostra le due liste. Promozione ad ADMIN self-service: `POST /admin/bootstrap` (`AdminBootstrapController`, deliberatamente **senza** `JwtAuthGuard`/`AdminGuard` — quei guard richiedono di essere già ADMIN, impossibile per il primissimo admin) protetto da `ADMIN_BOOTSTRAP_SECRET` (solo variabile d'ambiente su Railway, mai committata; senza quella variabile risponde con un errore chiaro, stesso pattern già usato per Stripe/Cloudinary/Google): email sconosciuta → 404, codice sbagliato → 403, altrimenti promuove e ritorna il nuovo ruolo. Pagina `/admin/promuovi` (form email+codice, nessun link in UI, nessun controllo di login — la protezione è il codice) evita di dover usare la console SQL di Railway per il primo admin.
 - [x] Mappa risultati responsive da mobile — `ResultsListWithMap.tsx` non usa più i props responsive di Tamagui per il layout mappa/lista (niente `order` — non supportato da React Native/Tamagui — né `position:"sticky"` tipizzato): usa classi CSS grezze via styled-jsx (incluso in Next.js, nessuna libreria aggiunta). Da mobile la mappa **non appare più automaticamente** (occupava subito spazio sotto la ricerca): un bottone "🗺️ Mostra mappa" nella barra sopra i risultati la apre/chiude a comando, a tutta larghezza sopra la lista. Sopra la soglia resta sempre visibile a fianco della lista (larghezza fluida 40%, tra 260 e 480px, per non forzare overflow orizzontale), alta e sticky in scroll. Soglia a **700px** (non lo `$gtMd` di Tamagui, 1021px): quella lasciava impilata la mappa anche su una finestra desktop "normale" non a schermo intero (~1000px) — bug reale segnalato dall'utente con screenshot, dove la mappa doveva stare a destra e invece appariva sotto la lista. Cliccando un puntino sulla mappa (`ResultsMap.tsx`) non si naviga più subito al profilo: appare un banner in basso sulla mappa (foto/icona categoria, nome attività, categoria+città, rating, "Verificato") con un tasto "✕" per chiuderlo — solo toccando il banner si apre il profilo completo, la mappa resta aperta nel frattempo.
 - [x] Indirizzo e prestazioni con prezzo nella card — nuovo modello Prisma `ProfessionalService` (nome + prezzo facoltativo in centesimi, cascade su eliminazione profilo) e campo `ProfessionalProfile.address` (facoltativo: molti professionisti a domicilio non hanno un indirizzo fisso da mostrare). Editabili in `/dashboard/profilo` (campo indirizzo + lista prestazioni con bottone "+ Aggiungi prestazione", ogni voce nome+prezzo in euro convertito in centesimi al salvataggio; la lista viene sostituita per intero ad ogni salvataggio, niente editing granulare per singola voce — coerente con la scala attesa). Mostrati in `ProfessionalCard` (packages/ui, sotto categoria/città: 📍 indirizzo, poi fino a 3 prestazioni con prezzo o "Su richiesta" se non indicato) nei risultati di ricerca e nel profilo pubblico — modellato sullo screenshot di miodottore.it fornito dall'utente. Il prezzo di ogni prestazione è un **range** (`priceMinEurCents`/`priceMaxEurCents`, non più un valore fisso): molti lavori (es. "sostituzione caldaia") hanno un costo che varia da caso a caso, un prezzo unico era fuorviante — richiesta esplicita dell'utente. In `/dashboard/profilo` due campi "Da €"/"a €" per prestazione (validazione: il massimo dev'essere ≥ del minimo). Visualizzazione centralizzata in `formatServicePriceRange` (`packages/shared/src/professionals.ts`, usata da `ProfessionalDetailContent`; duplicata localmente in `packages/ui/src/ProfessionalCard.tsx` che non dipende da `@professionisti/shared`): mostra il range se min e max sono entrambi impostati e diversi, un prezzo singolo se solo uno dei due è impostato (o sono uguali), "Su richiesta" se nessuno dei due lo è. Suggerimenti di prestazioni popolari per categoria (`POPULAR_SERVICES`, `packages/shared/src/categories.ts`, 5 voci per ciascuna delle 13 categorie): in `/dashboard/profilo` una riga di chip cliccabili sopra la lista (solo i nomi non ancora aggiunti) aggiunge una prestazione col nome precompilato — il range di prezzo resta comunque da compilare a mano, è solo una scorciatoia sul nome, richiesta esplicita dell'utente.
-- [x] Agenda settimanale del professionista — nuovo modello Prisma `AvailabilitySlot` (fasce orarie ricorrenti: `dayOfWeek` + `startTime`/`endTime`, `dayOfWeek` segue la convenzione `Date.getUTCDay()` — 0=domenica...6=sabato — apposta per confrontare senza conversioni la disponibilità con `Booking.scheduledAt`). Editabile in `/dashboard/agenda` (nuova voce "Agenda" nel menu account professionista, `accountMenuItems.ts`): un editor per giorno della settimana (Lunedì...Domenica) con più fasce orarie aggiungibili/rimovibili, lista sostituita per intero ad ogni salvataggio (stesso pattern delle prestazioni). `GET /professionals/:id/agenda` proietta la disponibilità ricorrente sui prossimi 14 giorni di calendario e barra le fasce che coincidono con una prenotazione reale (`Booking` con status `PENDING`/`CONFIRMED`/`COMPLETED` il cui `scheduledAt` cade dentro quella fascia) — confronto su data/ora UTC dirette, nessuna libreria di timezone introdotta. Mostrata nel profilo pubblico (`ProfessionalDetailContent`, sezione "Agenda" tra Prestazioni e il bottone preventivo, visibile solo se il professionista ha impostato almeno una fascia): elenco giorno per giorno, pillola verde per le fasce libere, grigia con barrato per quelle prenotate. Prenotazione diretta opzionale: `ProfessionalProfile.bookableAgenda` (checkbox in `/dashboard/agenda`, "Permetti ai clienti di prenotare direttamente da questi orari" — default `false`, altrimenti l'agenda resta solo informativa come sopra). Se attiva, le fasce libere nel profilo pubblico diventano cliccabili per un cliente loggato: `POST /professionals/:id/agenda/book` rivalida tutto lato server (mai fidarsi del client) — 403 se `bookableAgenda` è spenta, 404 se la fascia non fa parte della disponibilità ricorrente del professionista, 409 se già prenotata — altrimenti crea direttamente un `Booking` (`PENDING`, nessuna `Quote`) e la fascia si aggiorna subito in UI.
+- [x] Agenda settimanale del professionista — nuovo modello Prisma `AvailabilitySlot` (fasce orarie ricorrenti: `dayOfWeek` + `startTime`/`endTime`, `dayOfWeek` segue la convenzione `Date.getUTCDay()` — 0=domenica...6=sabato — apposta per confrontare senza conversioni la disponibilità con `Booking.scheduledAt`). Editabile in `/dashboard/agenda` (nuova voce "Agenda" nel menu account professionista, `accountMenuItems.ts`): un editor per giorno della settimana (Lunedì...Domenica) con più fasce orarie aggiungibili/rimovibili, lista sostituita per intero ad ogni salvataggio (stesso pattern delle prestazioni). `GET /professionals/:id/agenda` proietta la disponibilità ricorrente sui prossimi 14 giorni di calendario e barra le fasce che coincidono con una prenotazione reale (`Booking` con status `PENDING`/`CONFIRMED`/`COMPLETED` il cui `scheduledAt` cade dentro quella fascia) — confronto su data/ora UTC dirette, nessuna libreria di timezone introdotta. Mostrata nel profilo pubblico (`ProfessionalDetailContent`, sezione "Agenda" tra Prestazioni e il bottone preventivo, visibile solo se il professionista ha impostato almeno una fascia): elenco giorno per giorno, pillola verde per le fasce libere, grigia con barrato per quelle prenotate. Prenotazione diretta opzionale: `ProfessionalProfile.bookableAgenda` (checkbox in `/dashboard/agenda`, "Permetti ai clienti di prenotare direttamente da questi orari" — default `false`, altrimenti l'agenda resta solo informativa come sopra). Se attiva, le fasce libere nel profilo pubblico diventano cliccabili per un cliente loggato: `POST /professionals/:id/agenda/book` rivalida tutto lato server (mai fidarsi del client) — 403 se `bookableAgenda` è spenta, 404 se la fascia non fa parte della disponibilità ricorrente del professionista, 409 se già prenotata — altrimenti crea direttamente un `Booking` (`PENDING`, nessuna `Quote`) e la fascia si aggiorna subito in UI. **Superata da un giro successivo di correzioni/funzionalità — vedi §11.**
 
 ---
 
@@ -1020,3 +1020,167 @@ autenticazione — erano già state coperte dal giro "Redesign restanti"
 sopra; nessun'altra fase nota rimane in coda) non ancora identificate.
 Riga legale del footer da completare quando disponibili i dati societari
 reali (vedi Fase 4).
+
+---
+
+## 11. Agenda — motore di disponibilità e prenotazioni (v2)
+
+Richiesta esplicita dell'utente ("sviluppare in modo impeccabile l'agenda")
+di correggere i bug reali della prima versione (§9, "Agenda settimanale del
+professionista") e aggiungere le funzionalità mancanti — non solo restyling.
+Portata concordata con l'utente tramite `AskUserQuestion` prima di
+procedere: bug di correttezza + fasce a capienza + giorni di chiusura +
+doppio calendario, non solo i bug.
+
+**Bug di correttezza corretti:**
+- **Race condition sulla doppia prenotazione** — `bookAgendaSlot`
+  (`ProfessionalsService`) non aveva alcuna protezione contro due clienti
+  che toccano la stessa fascia nello stesso istante: entrambi potevano
+  superare il controllo "libera?" prima che l'altro scrivesse. Corretto
+  avvolgendo controllo+creazione in una transazione Postgres
+  `Serializable` (`Prisma.TransactionIsolationLevel.Serializable`): una
+  delle due transazioni viene rifiutata con un errore di serializzazione
+  (`P2034`), tradotto in un 409 pulito invece di propagarsi come 500.
+  **Nessuna modifica allo schema** (niente vincolo `@@unique` su
+  `Booking.scheduledAt`): quel campo ha già un secondo significato per le
+  prenotazioni da preventivo (data stimata di inizio lavori, non uno slot
+  esatto — due preventivi diversi possono legittimamente condividere la
+  stessa data), un vincolo globale le avrebbe rotte. Stesso pattern
+  riusato in `GuidedRequestsService.create` per la capienza delle fasce
+  generiche (vedi sotto). Verificato con un test reale a due richieste
+  concorrenti (non solo letto il codice): una riceve `201`, l'altra `409`.
+- **Overlap fasce orarie** — l'editor permetteva di salvare due fasce
+  sovrapposte nello stesso giorno (es. 09:00–13:00 e 10:00–11:00) senza
+  alcun avviso. `professionalAvailabilitySchema` (packages/shared) ha ora
+  un `superRefine` che rifiuta l'intero payload se due fasce dello stesso
+  giorno si sovrappongono — stessa validazione applicata sia lato client
+  (editor) sia lato server (`ZodValidationPipe`), un'unica fonte di verità.
+- **Ordinamento prenotazioni** — `ProfessionalsService.getMyBookings`
+  ordinava `scheduledAt: "desc"`: un professionista vedeva per primo
+  l'impegno più lontano nel futuro invece del prossimo. Corretto in `asc`.
+- **Prenotazioni dirette bloccate a `PENDING` per sempre** —
+  `bookAgendaSlot` crea la prenotazione come `PENDING`, ma prima di questo
+  giro nessuna azione permetteva di farla avanzare (la dashboard mostrava
+  "Segna come completato" solo per lo stato `CONFIRMED`). `BookingsService.
+  updateStatus` accetta ora anche `CONFIRMED`; il nuovo calendario
+  "Prenotazioni" mostra il bottone "Conferma" per le prenotazioni `PENDING`.
+- **Cliente senza modo di annullare** — un cliente che prenotava
+  direttamente una fascia esatta dall'agenda pubblica non aveva alcun modo
+  di disdire (solo il professionista poteva farlo). Nuovo endpoint
+  `PATCH /bookings/:id/cancel` (`BookingsService.cancelForClient`, solo
+  per prenotazioni proprie in stato `PENDING`/`CONFIRMED`) + bottone
+  "Annulla prenotazione" in `/le-mie-richieste` (doppia conferma, stesso
+  pattern già in uso per l'eliminazione di una richiesta guidata).
+
+**Giorni di chiusura straordinaria** — nuovo modello Prisma
+`AvailabilityException` (`professionalProfileId` + `date`, unique
+composito): blocca una data specifica (ferie, festività, imprevisto)
+senza toccare la ricorrenza settimanale, che ha un ciclo di vita
+indipendente (cambia di rado, le eccezioni si aggiungono/rimuovono una
+alla volta) — da qui la scelta di un modello separato invece di un campo
+su `AvailabilitySlot`. `getPublicAgenda` e `bookAgendaSlot` rispettano
+l'eccezione (nessuna fascia mostrata/prenotabile in quella data); nuovi
+endpoint `POST`/`DELETE /professionals/me/availability/exceptions[/:date]`.
+In `/dashboard/agenda`, ogni colonna giorno (vista Settimana/Giorno) ha un
+bottone "Chiudi giorno"/"Riapri giorno" per la data specifica mostrata.
+
+**Fasce a capienza ("generiche") → richiesta di preventivo** — richiesta
+esplicita dell'utente, arrivata a metà del giro di lavoro: oltre alla
+fascia "esatta" (capienza 1, prenotazione istantanea se `bookableAgenda`
+è attivo), il professionista può impostare `maxBookings` > 1 su una fascia
+(es. "9–13, fino a 5 richieste"). Un click su una fascia generica nel
+profilo pubblico **non prenota nulla**: apre `/preventivo` precompilato
+con professionista/categoria/data/fascia oraria (nuovi query param `data`/
+`fasciaOraria`, mostrati in `GuidedRequestForm` come blocco informativo
+"Fascia richiesta" — stesso pattern del blocco categoria bloccata quando
+si arriva dal profilo di un professionista specifico). La richiesta
+guidata (`GuidedRequest`) porta ora due campi opzionali,
+`preferredDate`/`preferredTimeSlot` (+ `professionalProfileId`
+denormalizzato, prima ricavabile solo tramite `Lead`), valorizzati solo in
+questo percorso — usati per contare quante richieste sono già state
+inviate per quella data+fascia esatta (capienza), con lo stesso pattern di
+transazione `Serializable` del punto sopra per evitare che due clienti
+superino insieme il limite. `GuidedRequestsService.resolveGenericSlot`
+rivalida server-side che la fascia esista davvero come "generica" e che la
+data non sia un giorno di chiusura, prima di accettare la richiesta —
+stessa cautela già applicata a `bookAgendaSlot`. `bookAgendaSlot` rifiuta
+esplicitamente (403) un tentativo di prenotare direttamente una fascia
+generica: quel percorso resta riservato alle fasce esatte. L'agenda
+pubblica (`GET /professionals/:id/agenda`) espone ora `maxBookings` +
+`bookedCount` per fascia (sostituisce il precedente `booked: boolean`,
+che bastava solo per le fasce esatte) — sul profilo pubblico le fasce
+generiche si mostrano con bordo tratteggiato ottone e contatore
+"N/M richieste" invece del bordo verde pieno delle fasce esatte.
+
+**Doppio calendario in stile Apple Calendar** — richiesta esplicita
+dell'utente ("un calendario dove imposti gli orari e un altro dove
+compaiono le prenotazioni, con dettagli al click"), con vista
+Giorno/Settimana/Mese selezionabile. Prima di costruirlo è stato mostrato
+un mockup HTML di due alternative (calendario solo-disponibilità vs
+calendario con anche gli eventi reali sovrapposti) via Artifact, per
+allineare l'aspettativa prima di un investimento di sviluppo consistente;
+l'utente ha scelto la prima (`AskUserQuestion`), coerente con la struttura
+poi realizzata: due calendari separati invece di uno che mescola due fonti
+di dati diverse nella stessa griglia.
+- **Nessuna libreria di calendario aggiunta**: nessuna era nello stack
+  approvato (CLAUDE.md §2), introdurne una senza discuterne avrebbe
+  violato la regola §5.1. Costruito da zero con Tamagui + CSS grid via
+  `styled-jsx` (stesso pattern già in uso per `ResultsListWithMap`/
+  `MegaMenu`, componenti "difficili" che Tamagui da solo non rende bene).
+  Nuove utility di date pure in `apps/web/src/lib/calendarDates.ts`
+  (nessuna libreria di date: stessa convenzione "data pura in UTC, mai
+  convertita al fuso del browser" già in uso in tutto il modulo agenda).
+- **`apps/web/src/components/calendar/CalendarShell.tsx`**: componente
+  condiviso (toggle Giorno/Settimana/Mese, navigazione precedente/oggi/
+  successivo, griglia settimana a colonne, griglia mese con indicatori a
+  pallino) — gestisce solo il guscio, il contenuto di ogni giorno è deciso
+  dal chiamante via render prop (`renderDayColumn`/`renderMonthCell`).
+  Deliberatamente **web-only** (non in `packages/ui`): stesso confine già
+  stabilito per Leaflet/MegaMenu/ResultsListWithMap, coerente con le
+  schermate agenda di `apps/mobile` tuttora un placeholder "in arrivo".
+  Usato due volte, con dati e stato di navigazione completamente
+  indipendenti (evita di dover tenere sincronizzate due fonti di dati
+  nella stessa griglia):
+  - **"Disponibilità"** (`/dashboard/agenda`, tab di default): editor
+    delle fasce ricorrenti. Ogni colonna giorno mostra le fasce già
+    impostate (chip piena cianografia per le esatte, tratteggiata ottone
+    per le generiche, con badge "capienza max N" e un'icona di avviso se
+    `hasUpcomingBooking` è vero) più un editor inline per aggiungerne una
+    nuova o modificarne una esistente (start/end/capienza) — con nota
+    esplicita che la modifica si applica a tutti i giorni della settimana
+    corrispondenti, non solo alla data mostrata (la ricorrenza è
+    settimanale, non per data esatta). Rimuovere una fascia con
+    prenotazioni future richiede un secondo click di conferma (stesso
+    pattern a due passaggi già in uso per l'eliminazione di una richiesta
+    guidata). `MyAvailability` (packages/shared) espone ora
+    `hasUpcomingBooking` per fascia (calcolato incrociando sia `Booking`
+    che `GuidedRequest.preferredDate/preferredTimeSlot`, a seconda che la
+    fascia sia esatta o generica) ed `exceptionDates`.
+  - **"Prenotazioni"** (tab secondaria): eventi reali (`Booking`, incluse
+    sia le prenotazioni da preventivo accettato sia quelle dirette da
+    fascia esatta), un blocco colorato per stato (`PENDING` ottone,
+    `CONFIRMED` verde, `COMPLETED` grigio, `CANCELED`/`NO_SHOW` rosso)
+    per colonna giorno. Click su un evento apre
+    `BookingDetailPanel.tsx` (overlay DOM, stesso pattern di
+    `PhotoLightbox` — `role="dialog"`, chiusura con Escape/click sul
+    backdrop, nessuna libreria aggiunta): cliente, data/ora, voci
+    preventivo, bottoni Conferma/Completa/Annulla in base allo stato
+    corrente. La vecchia lista piatta di prenotazioni in `/dashboard` è
+    stata sostituita da un riepilogo breve ("N prenotazioni in arrivo")
+    con link a questo calendario, invece di mostrare la stessa
+    informazione in due punti diversi del sito.
+
+**Verificato**: typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+verde. Test funzionali reali contro l'API locale (non solo letture di
+codice): validazione overlap rifiutata (400), eccezione aggiunta/rimossa,
+tre richieste su una fascia generica a capienza 3 accettate e la quarta
+rifiutata (409, capienza esaurita), agenda pubblica che riflette
+`bookedCount` aggiornato, due prenotazioni concorrenti sulla stessa fascia
+esatta — una accettata (201), l'altra rifiutata (409) — tentativo di
+prenotazione diretta su una fascia generica rifiutato (403), conferma
+professionista (`PENDING`→`CONFIRMED`) e cancellazione cliente entrambe
+verificate. Screenshot Playwright su `/dashboard/agenda` (entrambe le tab,
+viste Settimana/Mese) e sul profilo pubblico (pillola fascia generica con
+contatore, form `/preventivo` precompilato con la fascia richiesta) —
+zero errori console.

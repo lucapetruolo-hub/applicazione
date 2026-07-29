@@ -394,6 +394,23 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  async function handleCancelBooking() {
+    setCancelError(null);
+    setIsCanceling(true);
+    try {
+      await apiClient.cancelMyBooking(token, booking.id);
+      onReviewed();
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingCancel(false);
+    } finally {
+      setIsCanceling(false);
+    }
+  }
 
   async function handleSubmitReview() {
     setError(null);
@@ -446,6 +463,40 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
       <Text color={brand.grafite70} fontSize="$3">
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
       </Text>
+
+      {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          {confirmingCancel ? (
+            <>
+              <Text fontSize="$2" color={brand.urgenza}>
+                Annullare questa prenotazione?
+              </Text>
+              <Button variant="urgent" size="$2" height={36} onPress={handleCancelBooking} disabled={isCanceling} opacity={isCanceling ? 0.6 : 1}>
+                {isCanceling ? "Annullamento..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingCancel(false)}>
+                Torna indietro
+              </Button>
+            </>
+          ) : (
+            <Text
+              color={brand.urgenza}
+              fontWeight="600"
+              fontSize="$3"
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setConfirmingCancel(true)}
+            >
+              Annulla prenotazione
+            </Text>
+          )}
+        </XStack>
+      ) : null}
+      {cancelError ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {cancelError}
+        </Text>
+      ) : null}
 
       {booking.status === "COMPLETED" && !booking.hasReview ? (
         showReviewForm ? (

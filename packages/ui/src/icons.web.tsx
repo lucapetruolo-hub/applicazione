@@ -32,6 +32,12 @@ import {
   Eye,
   EyeOff,
   Check,
+  Clock,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Plus,
 } from "lucide-react";
 
 export const ICONS = {
@@ -63,6 +69,12 @@ export const ICONS = {
   eye: Eye,
   "eye-off": EyeOff,
   check: Check,
+  clock: Clock,
+  calendar: Calendar,
+  "chevron-left": ChevronLeft,
+  "chevron-right": ChevronRight,
+  x: X,
+  plus: Plus,
 } as const;
 
 export type IconName = keyof typeof ICONS;

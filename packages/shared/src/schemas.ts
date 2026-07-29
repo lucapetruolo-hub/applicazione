@@ -3,6 +3,10 @@ import { PROFESSIONAL_CATEGORIES } from "./categories";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Orario non valido.");
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
+const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/, "Fascia oraria non valida.");
+
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
 export const googleVerifySchema = z.object({
@@ -57,15 +61,34 @@ export const changePasswordSchema = z.object({
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
-export const guidedRequestSchema = z.object({
-  categorySlug: professionalCategorySlugSchema,
-  description: z.string().min(10).max(2000),
-  photoUrls: z.array(z.string().url()).max(3).default([]),
-  city: z.string().min(2),
-  isUrgent: z.boolean().default(false),
-  /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
-  professionalProfileId: z.string().uuid().optional(),
-});
+export const guidedRequestSchema = z
+  .object({
+    categorySlug: professionalCategorySlugSchema,
+    description: z.string().min(10).max(2000),
+    photoUrls: z.array(z.string().url()).max(3).default([]),
+    city: z.string().min(2),
+    isUrgent: z.boolean().default(false),
+    /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
+    professionalProfileId: z.string().uuid().optional(),
+    /**
+     * Data+fascia oraria preferita: valorizzate solo quando la richiesta
+     * parte da una fascia "generica" dell'agenda pubblica di un
+     * professionista (AvailabilitySlot.maxBookings > 1) — vedi
+     * packages/shared/src/availability.ts. Richiedono sempre
+     * professionalProfileId (una fascia generica appartiene a un
+     * professionista specifico).
+     */
+    preferredDate: isoDateSchema.optional(),
+    preferredTimeSlot: timeRangeSchema.optional(),
+  })
+  .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {
+    message: "Data e fascia oraria preferita vanno indicate insieme.",
+    path: ["preferredTimeSlot"],
+  })
+  .refine((data) => !data.preferredDate || Boolean(data.professionalProfileId), {
+    message: "Una fascia oraria preferita richiede un professionista specifico.",
+    path: ["professionalProfileId"],
+  });
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 
 /**
@@ -166,15 +189,14 @@ export const professionalProfileSelfSchema = professionalProfileSchema
   });
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
 
-const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Orario non valido.");
-const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
-
 /** Fascia oraria ricorrente (agenda settimanale), vedi packages/shared/src/availability.ts. */
 export const availabilitySlotSchema = z
   .object({
     dayOfWeek: z.number().int().min(0).max(6),
     startTime: timeSchema,
     endTime: timeSchema,
+    /** 1 (esatta) o >1 (generica, richiede preventivo invece di prenotazione istantanea). */
+    maxBookings: z.number().int().min(1).max(20).default(1),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: "L'orario di fine deve essere dopo l'orario di inizio.",

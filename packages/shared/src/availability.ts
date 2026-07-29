@@ -25,19 +25,34 @@ export type AvailabilitySlotItem = {
   startTime: string;
   endTime: string;
   /**
+   * Capienza della fascia: 1 (default) = fascia esatta, un solo impegno
+   * possibile. > 1 = fascia "generica" — più clienti possono inviare una
+   * richiesta di preventivo nella stessa finestra invece di occupare un
+   * orario preciso (vedi GuidedRequest.preferredDate/preferredTimeSlot).
+   */
+  maxBookings: number;
+  /**
    * True se nei prossimi 14 giorni (stessa finestra di getPublicAgenda)
-   * esiste già almeno una prenotazione reale che cade in questa fascia
-   * ricorrente. Usato in /dashboard/agenda per avvisare prima di
-   * rimuovere/ridurre un orario che un cliente ha già prenotato.
+   * esiste già almeno una prenotazione reale (fasce esatte) o una richiesta
+   * di preventivo (fasce generiche) che cade in questa fascia ricorrente.
+   * Usato in /dashboard/agenda per avvisare prima di rimuovere/ridurre un
+   * orario già impegnato.
    */
   hasUpcomingBooking: boolean;
 };
 
-/** Fascia oraria proiettata su una data reale, con lo stato di prenotazione. */
+/**
+ * Fascia oraria proiettata su una data reale. Per le fasce esatte
+ * (maxBookings === 1) bookedCount vale 0 o 1 — stesso significato del
+ * precedente campo booleano `booked`. Per le fasce generiche
+ * (maxBookings > 1) conta le richieste di preventivo già inviate per
+ * quella data+fascia.
+ */
 export type ProfessionalAgendaSlot = {
   startTime: string;
   endTime: string;
-  booked: boolean;
+  maxBookings: number;
+  bookedCount: number;
 };
 
 export type ProfessionalAgendaDay = {

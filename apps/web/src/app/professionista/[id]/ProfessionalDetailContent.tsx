@@ -62,7 +62,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               ...prev,
               days: prev.days.map((day) =>
                 day.date === date
-                  ? { ...day, slots: day.slots.map((slot) => (slot.startTime === startTime ? { ...slot, booked: true } : slot)) }
+                  ? { ...day, slots: day.slots.map((slot) => (slot.startTime === startTime ? { ...slot, bookedCount: slot.maxBookings } : slot)) }
                   : day,
               ),
             }
@@ -208,8 +208,46 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     </Text>
                     <XStack gap="$2" flexWrap="wrap" flex={1}>
                       {day.slots.map((slot) => {
-                        const canBook = agenda.bookableAgenda && !slot.booked && !!token && user?.role === "CLIENT";
+                        const isGeneric = slot.maxBookings > 1;
+                        const isFull = slot.bookedCount >= slot.maxBookings;
                         const slotKey = `${day.date}-${slot.startTime}`;
+
+                        if (isGeneric) {
+                          // Fascia a capienza: un click non prenota nulla, apre
+                          // una richiesta di preventivo precompilata con
+                          // data+fascia — sempre raggiungibile (non richiede
+                          // bookableAgenda, che governa solo la prenotazione
+                          // istantanea delle fasce esatte), finché c'è
+                          // capienza residua.
+                          const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}`;
+                          return (
+                            <YStack
+                              key={slotKey}
+                              paddingHorizontal="$2"
+                              paddingVertical="$1"
+                              borderRadius="$2"
+                              borderWidth={1}
+                              borderStyle="dashed"
+                              borderColor={isFull ? brand.filetto : brand.ottone}
+                              backgroundColor={isFull ? brand.gesso : brand.calce}
+                              opacity={isFull ? 0.7 : 1}
+                            >
+                              {isFull ? (
+                                <Text fontFamily="$mono" fontSize={12} color={brand.grafite70}>
+                                  {slot.startTime}–{slot.endTime} · al completo
+                                </Text>
+                              ) : (
+                                <Link href={href} style={{ textDecoration: "none" }}>
+                                  <Text fontFamily="$mono" fontSize={12} color={brand.ottone} fontWeight="700">
+                                    {slot.startTime}–{slot.endTime} · {slot.bookedCount}/{slot.maxBookings} richieste
+                                  </Text>
+                                </Link>
+                              )}
+                            </YStack>
+                          );
+                        }
+
+                        const canBook = agenda.bookableAgenda && !isFull && !!token && user?.role === "CLIENT";
                         return (
                           <YStack
                             key={slotKey}
@@ -217,8 +255,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                             paddingVertical="$1"
                             borderRadius="$2"
                             borderWidth={1}
-                            borderColor={slot.booked ? brand.filetto : brand.verificato}
-                            backgroundColor={slot.booked ? brand.gesso : "#E6F4EC"}
+                            borderColor={isFull ? brand.filetto : brand.verificato}
+                            backgroundColor={isFull ? brand.gesso : "#E6F4EC"}
                             cursor={canBook ? "pointer" : undefined}
                             opacity={bookingSlot === slotKey ? 0.6 : 1}
                             onPress={canBook ? () => handleBookSlot(day.date, slot.startTime, slot.endTime) : undefined}
@@ -228,8 +266,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                             <Text
                               fontFamily="$mono"
                               fontSize={12}
-                              color={slot.booked ? brand.grafite70 : brand.verificato}
-                              textDecorationLine={slot.booked ? "line-through" : "none"}
+                              color={isFull ? brand.grafite70 : brand.verificato}
+                              textDecorationLine={isFull ? "line-through" : "none"}
                               fontWeight={canBook ? "700" : "400"}
                             >
                               {slot.startTime}–{slot.endTime}

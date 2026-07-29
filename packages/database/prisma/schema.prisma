@@ -121,6 +121,7 @@ model ProfessionalProfile {
   services         ProfessionalService[]
   availabilitySlots AvailabilitySlot[]
   availabilityExceptions AvailabilityException[]
+  guidedRequests   GuidedRequest[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -163,6 +164,15 @@ model AvailabilitySlot {
   dayOfWeek             Int
   startTime             String
   endTime               String
+  // Capienza della fascia. 1 (default) = fascia "esatta": un solo impegno,
+  // se bookableAgenda è attivo il cliente la prenota istantaneamente e
+  // occupa l'intero orario. > 1 = fascia "generica" (es. "9–13, fino a 5
+  // richieste"): un click non prenota nulla, apre una richiesta di
+  // preventivo precompilata con quella data/fascia (GuidedRequest.
+  // preferredDate/preferredTimeSlot) — più clienti possono richiedere nella
+  // stessa finestra, il professionista sceglie poi con chi fissare
+  // l'appuntamento reale.
+  maxBookings           Int      @default(1)
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -292,9 +302,22 @@ model GuidedRequest {
   isUrgent    Boolean             @default(false)
   status      GuidedRequestStatus @default(OPEN)
   createdAt   DateTime            @default(now())
+  // Valorizzati solo quando la richiesta parte da una fascia "generica"
+  // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
+  // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
+  // dell'agenda) + fascia oraria testuale "HH:MM-HH:MM". Servono a contare
+  // quante richieste sono già state inviate per quella fascia specifica
+  // (capienza massima) e a mostrarla al professionista nel lead.
+  // professionalProfileId denormalizzato (oltre al Lead che nasce comunque
+  // dal fan-out) perché qui serve un riferimento diretto e univoco per
+  // contare la capienza senza passare da un join su Lead.
+  preferredDate          DateTime?
+  preferredTimeSlot      String?
+  professionalProfileId  String?
 
-  client   User     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category            Category             @relation(fields: [categoryId], references: [id])
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id], onDelete: SetNull)
 
   leads  Lead[]
   quotes Quote[]

@@ -44,6 +44,13 @@ export function GuidedRequestForm({
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
   const professionalProfileId = searchParams.get("professionista") ?? undefined;
+  // Valorizzati solo quando si arriva da una fascia "generica" dell'agenda
+  // pubblica di un professionista (AvailabilitySlot.maxBookings > 1, vedi
+  // packages/shared/src/availability.ts): mostrati come info bloccata sotto,
+  // stesso pattern già in uso per la categoria quando si arriva dal profilo
+  // di un professionista specifico.
+  const preferredDate = searchParams.get("data") ?? undefined;
+  const preferredTimeSlot = searchParams.get("fasciaOraria") ?? undefined;
 
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
@@ -132,6 +139,8 @@ export function GuidedRequestForm({
         isUrgent,
         photoUrls,
         professionalProfileId,
+        preferredDate,
+        preferredTimeSlot,
       });
       setResult({ matchedProfessionals: response.matchedProfessionals });
     } catch (err) {
@@ -253,6 +262,34 @@ export function GuidedRequestForm({
             </YStack>
           </YStack>
         )}
+
+        {preferredDate && preferredTimeSlot ? (
+          <YStack gap="$2">
+            <FieldLabel>Fascia richiesta</FieldLabel>
+            <XStack
+              alignItems="center"
+              gap="$2"
+              alignSelf="flex-start"
+              paddingHorizontal="$3"
+              paddingVertical="$2"
+              backgroundColor={brand.calce}
+              borderWidth={1}
+              borderColor={brand.ottone}
+              borderRadius="$2"
+            >
+              <Icon name="clock" size={16} color={brand.ottone} />
+              <Text color={brand.grafite} fontWeight="600">
+                {new Date(`${preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}
+                {" · "}
+                {preferredTimeSlot.replace("-", "–")}
+              </Text>
+            </XStack>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Questa è una fascia a capienza limitata: la richiesta non prenota subito l&apos;orario, il professionista ti
+              risponderà con un preventivo.
+            </Text>
+          </YStack>
+        ) : null}
 
         <YStack gap="$2">
           <FieldLabel>Descrivi il lavoro</FieldLabel>
