@@ -17,6 +17,10 @@ type AgendaTab = "disponibilita" | "prenotazioni";
 const timeInputStyle = { padding: 7, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, width: 88 };
 const maxInputStyle = { ...timeInputStyle, width: 46, textAlign: "center" as const };
 
+function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
+
 const BOOKING_STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
   PENDING: brand.ottone,
   CONFIRMED: brand.verificato,
@@ -197,18 +201,34 @@ export default function DashboardAgendaPage() {
     setDraftMax(String(slot.maxBookings));
   }
 
-  function commitSlotEdit(dayOfWeek: number) {
+  // Sovrapposizione controllata "dal vivo" mentre si scelgono gli orari,
+  // non solo al momento di cliccare "Salva agenda" (richiesta esplicita
+  // dell'utente): stessa logica di professionalAvailabilitySchema
+  // (packages/shared) ma calcolata subito lato client, senza aspettare il
+  // round-trip col server.
+  function slotEditorLiveError(dayOfWeek: number, excludeIndex: number | null): string | null {
     if (draftEnd <= draftStart) {
-      setError("L'orario di fine deve essere dopo l'orario di inizio.");
+      return "L'orario di fine deve essere dopo l'orario di inizio.";
+    }
+    const overlaps = slots.some(
+      (s, i) => s.dayOfWeek === dayOfWeek && i !== excludeIndex && slotsOverlap(draftStart, draftEnd, s.start, s.end),
+    );
+    return overlaps ? "Questa fascia si sovrappone a un'altra già impostata per questo giorno." : null;
+  }
+
+  function commitSlotEdit(dayOfWeek: number) {
+    const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
+    const liveError = slotEditorLiveError(dayOfWeek, editIndex);
+    if (liveError) {
+      setError(liveError);
       return;
     }
     const maxBookings = Math.max(1, Math.min(20, Math.round(Number(draftMax)) || 1));
 
     if (editingKey?.startsWith("new-")) {
       setSlots((prev) => [...prev, { dayOfWeek, start: draftStart, end: draftEnd, maxBookings }]);
-    } else if (editingKey?.startsWith("edit-")) {
-      const index = Number(editingKey.slice(5));
-      setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
+    } else if (editIndex !== null) {
+      setSlots((prev) => prev.map((s, i) => (i === editIndex ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
     }
     setEditingKey(null);
     setError(null);
@@ -310,6 +330,7 @@ export default function DashboardAgendaPage() {
                   start={draftStart}
                   end={draftEnd}
                   maxBookings={draftMax}
+                  liveError={slotEditorLiveError(dayOfWeek, index)}
                   onStartChange={setDraftStart}
                   onEndChange={setDraftEnd}
                   onMaxChange={setDraftMax}
@@ -331,6 +352,7 @@ export default function DashboardAgendaPage() {
                 start={draftStart}
                 end={draftEnd}
                 maxBookings={draftMax}
+                liveError={slotEditorLiveError(dayOfWeek, null)}
                 onStartChange={setDraftStart}
                 onEndChange={setDraftEnd}
                 onMaxChange={setDraftMax}
@@ -639,6 +661,7 @@ function SlotEditorInline({
   start,
   end,
   maxBookings,
+  liveError,
   onStartChange,
   onEndChange,
   onMaxChange,
@@ -648,6 +671,8 @@ function SlotEditorInline({
   start: string;
   end: string;
   maxBookings: string;
+  /** Calcolato ad ogni render da slotEditorLiveError: mostrato subito, senza aspettare "Salva agenda". */
+  liveError: string | null;
   onStartChange: (v: string) => void;
   onEndChange: (v: string) => void;
   onMaxChange: (v: string) => void;
@@ -655,7 +680,14 @@ function SlotEditorInline({
   onCancel: () => void;
 }) {
   return (
-    <YStack borderWidth={1} borderColor={brand.cianografia} borderRadius="$2" padding="$2" gap="$2" backgroundColor={brand.cianografiaVelo}>
+    <YStack
+      borderWidth={1}
+      borderColor={liveError ? brand.urgenza : brand.cianografia}
+      borderRadius="$2"
+      padding="$2"
+      gap="$2"
+      backgroundColor={liveError ? brand.gesso : brand.cianografiaVelo}
+    >
       <XStack gap="$1" alignItems="center" flexWrap="wrap">
         <input type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={timeInputStyle} />
         <Text fontSize="$1" color={brand.grafite70}>
@@ -669,8 +701,20 @@ function SlotEditorInline({
         </Text>
         <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={maxInputStyle} />
       </XStack>
+      {liveError ? (
+        <Text fontSize={11} color={brand.urgenza} fontWeight="600">
+          {liveError}
+        </Text>
+      ) : null}
       <XStack gap="$2">
-        <Text fontSize={11} color={brand.verificato} fontWeight="700" cursor="pointer" onPress={onSave}>
+        <Text
+          fontSize={11}
+          color={liveError ? brand.grafite70 : brand.verificato}
+          fontWeight="700"
+          cursor={liveError ? "default" : "pointer"}
+          opacity={liveError ? 0.5 : 1}
+          onPress={liveError ? undefined : onSave}
+        >
           Salva
         </Text>
         <Text fontSize={11} color={brand.grafite70} fontWeight="600" cursor="pointer" onPress={onCancel}>

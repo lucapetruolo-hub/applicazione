@@ -37,6 +37,8 @@ import {
   ChevronRight,
   X,
   Plus,
+  Maximize2,
+  Minimize2,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -74,6 +76,8 @@ export const ICONS = {
   "chevron-right": ChevronRight,
   x: X,
   plus: Plus,
+  "maximize-2": Maximize2,
+  "minimize-2": Minimize2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

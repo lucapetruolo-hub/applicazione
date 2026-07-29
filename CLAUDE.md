@@ -1184,3 +1184,20 @@ verificate. Screenshot Playwright su `/dashboard/agenda` (entrambe le tab,
 viste Settimana/Mese) e sul profilo pubblico (pillola fascia generica con
 contatore, form `/preventivo` precompilato con la fascia richiesta) —
 zero errori console.
+
+**Rifiniture successive, richieste esplicite dell'utente:**
+- **Sovrapposizione segnalata subito, non solo al salvataggio** —
+  l'editor inline (`SlotEditorInline`) calcola l'overlap ad ogni render
+  (`slotEditorLiveError`, stessa logica di `professionalAvailabilitySchema`
+  ma valutata lato client mentre si scelgono gli orari): bordo ed errore
+  rossi immediati, bottone "Salva" disabilitato finché la fascia si
+  sovrappone a un'altra dello stesso giorno — prima l'unico feedback
+  arrivava dopo il click su "Salva agenda" e il giro fino al server.
+- **Vista a schermo intero** — bottone (icona `maximize-2`/`minimize-2`)
+  nell'header del calendario condiviso (`CalendarShell`), visibile su
+  entrambi i calendari "Disponibilità"/"Prenotazioni": apre un overlay
+  fisso a tutto viewport con lo stesso guscio (toggle vista, navigazione,
+  griglia), nessuna Fullscreen API del browser — stesso pattern DOM già
+  in uso per `PhotoLightbox`/`BookingDetailPanel` (più affidabile della
+  vera Fullscreen API in contesti sandboxed/iframe), chiusura con Escape
+  o con lo stesso bottone.

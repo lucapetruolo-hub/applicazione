@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon, Text, XStack, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import {
   addDaysUtc,
@@ -44,6 +44,22 @@ const VIEW_LABELS: { value: CalendarView; label: string }[] = [
  */
 export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onSelectDay, renderDayColumn, renderMonthCell }: CalendarShellProps) {
   const today = todayUtc();
+  // Vista a schermo intero (richiesta esplicita dell'utente per una
+  // migliore visualizzazione): overlay fisso a tutto viewport, stesso
+  // guscio (toggle vista + navigazione + griglia) mostrato più grande,
+  // nessuna Fullscreen API del browser — stesso pattern DOM già in uso per
+  // PhotoLightbox/BookingDetailPanel (più affidabile in contesti
+  // sandboxed/iframe rispetto a requestFullscreen).
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsFullscreen(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
   function handlePrev() {
     if (view === "day") onNavigate(addDaysUtc(currentDate, -1));
@@ -66,7 +82,7 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
     rangeLabel = `${monthLabel(currentDate)} ${currentDate.getUTCFullYear()}`;
   }
 
-  return (
+  const content = (
     <YStack gap="$3">
       <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
         <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden">
@@ -152,6 +168,21 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
           <Text fontFamily="$mono" fontSize={12.5} color={brand.grafite70}>
             {rangeLabel}
           </Text>
+          <XStack
+            width={30}
+            height={30}
+            borderRadius="$2"
+            borderWidth={1}
+            borderColor={brand.filetto}
+            alignItems="center"
+            justifyContent="center"
+            cursor="pointer"
+            onPress={() => setIsFullscreen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={isFullscreen ? "Esci da schermo intero" : "Apri a schermo intero"}
+          >
+            <Icon name={isFullscreen ? "minimize-2" : "maximize-2"} size={14} color={brand.grafite} />
+          </XStack>
         </XStack>
       </XStack>
 
@@ -179,6 +210,31 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
         }
       `}</style>
     </YStack>
+  );
+
+  if (!isFullscreen) {
+    return content;
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Calendario a schermo intero"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+        backgroundColor: brand.gesso,
+        overflow: "auto",
+        padding: 24,
+      }}
+    >
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>{content}</div>
+    </div>
   );
 }
 
