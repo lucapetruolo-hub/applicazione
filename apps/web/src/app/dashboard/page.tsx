@@ -7,6 +7,7 @@ import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLea
 import { Badge, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { LoadingState } from "@/components/LoadingState";
 
 const BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa",
@@ -122,7 +123,7 @@ export default function DashboardPage() {
         <YStack gap="$3">
           <SectionTitle>Richieste ricevute</SectionTitle>
           {leads === null ? (
-            <Text color={brand.grafite70}>Caricamento...</Text>
+            <LoadingState />
           ) : leads.length === 0 ? (
             <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
           ) : (
@@ -135,7 +136,7 @@ export default function DashboardPage() {
         <YStack gap="$3">
           <SectionTitle>Agenda</SectionTitle>
           {bookings === null ? (
-            <Text color={brand.grafite70}>Caricamento...</Text>
+            <LoadingState />
           ) : bookings.length === 0 ? (
             <Text color={brand.grafite70}>Nessuna prenotazione confermata ancora.</Text>
           ) : (

@@ -18,7 +18,7 @@ export { Section } from "./Section";
 export type { SectionProps, SectionTone } from "./Section";
 export { Eyebrow } from "./Eyebrow";
 export type { EyebrowProps } from "./Eyebrow";
-export { brand, radiusDoc, radiusDocLg } from "./tokens";
+export { brand, radiusDoc, radiusDocLg, motionEasing, motionFast, motionBase } from "./tokens";
 export { Icon } from "./Icon";
 export type { IconProps, IconName } from "./Icon";
 export { Logo } from "./Logo";

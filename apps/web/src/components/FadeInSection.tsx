@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { motionBase, motionEasing } from "@professionisti/ui";
 
 /**
  * Rivela il contenuto con una dissolvenza + leggero slide quando entra nel
@@ -38,7 +39,7 @@ export function FadeInSection({ children, delay = 0 }: { children: ReactNode; de
         justifyContent: "center",
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? "translateY(0)" : "translateY(12px)",
-        transition: `opacity 220ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms`,
+        transition: `opacity ${motionBase} ${motionEasing} ${delay}ms, transform ${motionBase} ${motionEasing} ${delay}ms`,
       }}
     >
       {children}

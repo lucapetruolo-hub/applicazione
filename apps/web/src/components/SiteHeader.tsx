@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Logo, Text, XStack, brand } from "@professionisti/ui";
+import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { MegaMenu } from "./MegaMenu";
@@ -44,7 +44,7 @@ export function SiteHeader() {
         backgroundColor: "rgba(255,255,255,0.9)",
         backdropFilter: "blur(8px)",
         borderBottom: `1px solid ${scrolled ? "#D6DAD5" : "transparent"}`,
-        transition: "border-color 150ms ease",
+        transition: `border-color ${motionFast} ${motionEasing}`,
       }}
     >
       <XStack

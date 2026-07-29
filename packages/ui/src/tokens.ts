@@ -23,3 +23,17 @@ export const brand = {
 // componenti non ancora coinvolti nel redesign.
 export const radiusDoc = 4;
 export const radiusDocLg = 8;
+
+// Motion (brief redesign, fase "motion"): due velocità, una sola curva di
+// accelerazione condivisa — prima ogni componente scriveva la propria
+// stringa CSS `transition` con valori/easing leggermente diversi
+// (`150ms ease` qui, `220ms cubic-bezier(...)` lì), risultato incoerente
+// pur restando nello stesso ordine di grandezza. `fast` per il feedback
+// immediato all'interazione (hover, press, apertura menu); `base` per le
+// rivelazioni di contenuto più ampie (FadeInSection). Stringhe grezze (non
+// token Tamagui `animation=`) perché i punti che le usano sono tutti CSS
+// puro web-only (styled-jsx, style inline) — vedi la stessa nota sopra per
+// `radiusDoc`.
+export const motionEasing = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+export const motionFast = "150ms";
+export const motionBase = "220ms";

@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { AccountSidebar } from "@/components/AccountSidebar";
+import { LoadingState } from "@/components/LoadingState";
 
 export default function ProfessionistiSalvatiPage() {
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function ProfessionistiSalvatiPage() {
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
           {professionals === null ? (
-            <Text color={brand.grafite70}>Caricamento...</Text>
+            <LoadingState />
           ) : professionals.length === 0 ? (
             <EmptyState
               icon="heart"

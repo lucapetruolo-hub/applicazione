@@ -6,6 +6,7 @@ import type { AdminUserRow, AdminUsersByRole } from "@professionisti/api-client"
 import { Button, H1, H2, Paragraph, Text, YStack } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { LoadingState } from "@/components/LoadingState";
 
 export default function AdminPage() {
   const { user, token, isLoading } = useAuth();
@@ -60,7 +61,7 @@ export default function AdminPage() {
         {error ? <Text color="$red10">{error}</Text> : null}
 
         {data === null && !error ? (
-          <Text color="$color9">Caricamento...</Text>
+          <LoadingState />
         ) : data ? (
           <>
             <UserGroup title={`Amministratori (${data.admins.length})`} rows={data.admins} showBusiness={false} />

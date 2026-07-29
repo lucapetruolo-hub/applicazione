@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Surface, Text, YStack, brand } from "@professionisti/ui";
+import { Surface, Text, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { CategoryIconBadge } from "./CategoryIconBadge";
 
 export type CategoryTileProps = {
@@ -34,9 +34,12 @@ export function CategoryTile({ slug, label, count, onPress }: CategoryTileProps)
       borderColor={hovered ? brand.cianografia : brand.filetto}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      style={{ transition: `border-color 150ms ease, transform 150ms ease`, transform: hovered ? "translateX(2px)" : "none" }}
+      style={{
+        transition: `border-color ${motionFast} ${motionEasing}, transform ${motionFast} ${motionEasing}`,
+        transform: hovered ? "translateX(2px)" : "none",
+      }}
     >
-      <YStack style={{ transition: "transform 150ms ease", transform: hovered ? "translateX(2px)" : "none" }}>
+      <YStack style={{ transition: `transform ${motionFast} ${motionEasing}`, transform: hovered ? "translateX(2px)" : "none" }}>
         <CategoryIconBadge slug={slug} size={44} />
       </YStack>
       <YStack gap={2}>

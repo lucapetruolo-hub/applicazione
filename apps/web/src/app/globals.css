@@ -31,10 +31,53 @@ a {
   border-radius: 4px;
   font-weight: 600;
   text-decoration: none;
-  transition: top 150ms ease;
+  transition: top 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .skip-link:focus {
   top: 8px;
+}
+
+/* Motion (brief redesign, fase "motion"): un utente con
+   prefers-reduced-motion: reduce non deve vedere nessuna delle transizioni/
+   animazioni del sito (FadeInSection, hover di CategoryTile, apertura del
+   mega-menu, header sticky, skip link...) — prima nessuna regola globale lo
+   rispettava, l'unico punto che lo faceva (la Scheda Intervento dell'hero,
+   via matchMedia in JS) è stato rimosso insieme al resto di quel
+   componente. Una sola regola qui copre tutto il sito in un colpo, senza
+   dover ripetere un controllo `matchMedia` in ogni componente che anima
+   qualcosa: le transizioni diventano istantanee (la UI raggiunge comunque
+   lo stato finale corretto, es. il contenuto di FadeInSection resta
+   visibile), non vengono nascoste o disabilitate. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
+   `ease-in-out` invece della curva direzionale `motionEasing` (pensata per
+   una transizione che parte e arriva a riposo una sola volta, non per un
+   ciclo che va avanti e indietro all'infinito). Applicata via className
+   diretto sul componente (`LoadingState`, apps/web/src/components) invece
+   di `<style jsx>` scoped: stesso pattern già in uso per `.bp-grid`, dato
+   che i componenti Tamagui inoltrano `className` al nodo DOM sottostante
+   su web (react-native-web). */
+@keyframes loading-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.loading-pulse {
+  animation: loading-pulse 1.4s ease-in-out infinite;
 }
 
 /* Pattern a griglia cianografica (brief redesign "Scheda Intervento" §1.4):

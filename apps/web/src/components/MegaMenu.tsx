@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Icon } from "@professionisti/ui";
+import { Icon, motionBase, motionEasing, motionFast } from "@professionisti/ui";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION, categoryBySlug } from "@/lib/megaMenuGroups";
 
 /**
@@ -152,7 +152,7 @@ export function MegaMenu() {
         }
         .mega-chevron {
           font-size: 10px;
-          transition: transform 150ms ease;
+          transition: transform ${motionFast} ${motionEasing};
         }
         .mega-chevron.open {
           transform: rotate(180deg);
@@ -167,7 +167,7 @@ export function MegaMenu() {
           border-radius: 8px;
           box-shadow: 0 8px 24px rgba(20, 24, 30, 0.1);
           overflow: hidden;
-          animation: mega-fade 160ms ease;
+          animation: mega-fade ${motionFast} ${motionEasing};
           z-index: 50;
         }
         @keyframes mega-fade {
@@ -280,7 +280,7 @@ export function MegaMenu() {
           background: #ffffff;
           display: flex;
           flex-direction: column;
-          animation: mega-slide 200ms ease;
+          animation: mega-slide ${motionBase} ${motionEasing};
         }
         @keyframes mega-slide {
           from {

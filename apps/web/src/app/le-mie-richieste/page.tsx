@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { LoadingState } from "@/components/LoadingState";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -100,7 +101,7 @@ export default function LeMieRichiestePage() {
             {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
             {requests === null ? (
-              <Text color={brand.grafite70}>Caricamento...</Text>
+              <LoadingState />
             ) : requests.length === 0 ? (
               <EmptyState
                 icon="file-text"
@@ -133,7 +134,7 @@ export default function LeMieRichiestePage() {
               Le mie prenotazioni
             </Text>
             {bookings === null ? (
-              <Text color={brand.grafite70}>Caricamento...</Text>
+              <LoadingState />
             ) : bookings.length === 0 ? (
               <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
             ) : (

@@ -957,7 +957,66 @@ business **non toccata in nessuna pagina**, solo la resa visiva.
   `/urgente` — zero errori console, categoria selezionabile, checkbox
   funzionante, empty state coerenti.
 
-Fasi successive (motion) non ancora iniziate — nessuna specifica
-concreta disponibile in questa sessione per quella fase (solo un'etichetta
-generica nel riepilogo). Riga legale del footer da completare quando
-disponibili i dati societari reali (vedi Fase 4).
+**Fase "motion" — micro-interazioni e movimento coerente (fatto):**
+Scope auto-definito senza istruzione esplicita del brief originale per
+questa fase (testo non più disponibile in questa sessione, solo
+un'etichetta generica nel riepilogo): tre interventi mirati a rendere
+coerente il poco movimento già presente nel sito (hover di
+`CategoryTile`, apertura mega-menu, `FadeInSection`, header sticky, skip
+link) invece di aggiungere animazioni nuove non richieste — coerente con
+la regola generale del progetto di non introdurre funzionalità oltre
+lo scope.
+- **Token di timing/easing condivisi** — `packages/ui/src/tokens.ts`:
+  `motionEasing` (`cubic-bezier(0.2, 0.8, 0.2, 1)`), `motionFast` (150ms,
+  micro-interazioni: hover, focus, chevron), `motionBase` (220ms,
+  transizioni di layout: fade-in, apertura pannelli) — sostituiscono i
+  valori identici ma scritti a mano in punti diversi (`CategoryTile.tsx`,
+  `SiteHeader.tsx`, `MegaMenu.tsx`, `FadeInSection.tsx`), più un valore
+  precedentemente incoerente (`mega-drawer` usava 200ms, allineato a
+  `motionBase`). Esportati da `packages/ui/src/index.ts`. Il CSS puro
+  (`globals.css`, skip link) non può importare costanti JS: valore
+  duplicato come stringa letterale identica, commentato per tenerlo
+  allineato manualmente se cambia.
+- **`prefers-reduced-motion: reduce` globale** — prima solo la (ormai
+  eliminata, vedi correzione post-Fase 4) `SchedaIntervento.tsx` lo
+  rispettava, via `matchMedia` in JS, un pattern che avrebbe richiesto di
+  essere ripetuto in ogni componente che anima qualcosa. Sostituito con
+  un'unica regola in `globals.css` (`* , *::before, *::after { animation-
+  duration: 0.01ms !important; transition-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important; scroll-behavior: auto
+  !important; }`): le transizioni diventano istantanee (lo stato finale
+  resta corretto, es. `FadeInSection` è comunque visibile) invece di
+  essere nascoste o disabilitate. Verificato con Playwright
+  (`browser.newContext({ reducedMotion: "reduce" })`):
+  `transition-duration` sullo skip link passa da `0.15s` a `1e-05s`.
+- **Stato di caricamento con micro-animazione** — nuovo
+  `apps/web/src/components/LoadingState.tsx`: sostituisce il testo
+  statico "Caricamento..." ripetuto uguale in 6 punti (`/admin`,
+  `/professionisti-salvati`, `/le-mie-richieste` ×2, `/dashboard` ×2) con
+  un pulsare lento (`.loading-pulse`, keyframe in `globals.css`, 1.4s
+  `ease-in-out` — deliberatamente diverso da `motionEasing`, pensata per
+  un ciclo simmetrico infinito e non per una transizione direzionale
+  one-shot) che dà un segnale di attività reale invece di un testo fermo;
+  rispetta `prefers-reduced-motion` tramite la stessa regola globale sopra
+  (nessun controllo aggiuntivo necessario). Applicata via `className`
+  diretto sul componente Tamagui (`Text`) — stesso pattern già in uso per
+  `.bp-grid` (Fase 4): i componenti Tamagui inoltrano `className` al nodo
+  DOM su web (`react-native-web`), niente `<style jsx>` scoped necessario.
+  Un solo caso lasciato volutamente invariato:
+  `/dashboard/profilo` ha un "Caricamento..." dentro l'etichetta di un
+  bottone disabilitato durante l'upload immagine — feedback di stato di
+  un bottone, un pattern diverso da un placeholder di caricamento a sé
+  stante, non un candidato per `LoadingState`.
+- Verificato: typecheck pulito su `apps/web`/`packages/ui`/`apps/mobile`,
+  build di produzione `apps/web` verde (24 route), sessione locale
+  end-to-end (Postgres+Redis+API+web) con Playwright: nessun errore
+  console/pageerror su home e `/le-mie-richieste` (autenticata, token JWT
+  iniettato in `localStorage`), screenshot di controllo su entrambe —
+  home con la ricerca A domicilio/Online invariata, `/le-mie-richieste`
+  con `EmptyState` corretto.
+
+Fasi successive (pagine interne restanti — dashboard, account,
+autenticazione — erano già state coperte dal giro "Redesign restanti"
+sopra; nessun'altra fase nota rimane in coda) non ancora identificate.
+Riga legale del footer da completare quando disponibili i dati societari
+reali (vedi Fase 4).
