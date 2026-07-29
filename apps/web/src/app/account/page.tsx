@@ -4,19 +4,27 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { Button, H1, Text, XStack, YStack } from "@professionisti/ui";
+import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
 
-const inputStyle = { padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15, width: "100%" };
+const inputStyle = {
+  padding: "10px 12px",
+  borderRadius: 4,
+  border: `1px solid ${brand.filetto}`,
+  fontSize: 15,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  width: "100%",
+};
 const smallInputStyle = { ...inputStyle, width: 76, textAlign: "center" as const };
 
 function FieldRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <XStack flexDirection="column" $gtSm={{ flexDirection: "row", alignItems: "center" }} gap="$2">
       <YStack width={200} flexShrink={0}>
-        <Text fontWeight="700" fontSize="$4">
+        <Text fontFamily="$mono" fontSize={12} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
           {label}
           {required ? " *" : ""}
         </Text>
@@ -91,13 +99,13 @@ export default function AccountPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per gestire il tuo account
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -190,14 +198,16 @@ export default function AccountPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <AccountSidebar />
 
         <YStack flex={1} gap="$5" minWidth={280}>
           <YStack gap="$1">
-            <H1 size="$8">Impostazioni dell&apos;account</H1>
-            <Text fontSize="$2" color="$color9">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+              Impostazioni dell&apos;account
+            </Text>
+            <Text fontSize="$2" color={brand.grafite70}>
               * Campo obbligatorio
             </Text>
           </YStack>
@@ -257,13 +267,15 @@ export default function AccountPage() {
                     style={inputStyle}
                   />
                   {passwordError ? (
-                    <Text color="$red10" fontSize="$3">
+                    <Text color={brand.urgenza} fontSize="$3">
                       {passwordError}
                     </Text>
                   ) : null}
-                  <XStack gap="$3">
+                  <XStack gap="$3" alignItems="center">
                     <Button
+                      variant="secondary"
                       size="$3"
+                      height={40}
                       onPress={handleChangePassword}
                       disabled={isSavingPassword}
                       opacity={isSavingPassword ? 0.6 : 1}
@@ -271,9 +283,10 @@ export default function AccountPage() {
                       {isSavingPassword ? "Salvataggio..." : "Salva password"}
                     </Button>
                     <Text
-                      color="$color10"
+                      color={brand.grafite70}
                       fontWeight="600"
                       cursor="pointer"
+                      accessibilityRole="button"
                       onPress={() => {
                         setIsEditingPassword(false);
                         setPasswordError(null);
@@ -286,19 +299,25 @@ export default function AccountPage() {
                   </XStack>
                 </YStack>
               ) : (
-                <Text color="$blue10" fontWeight="600" cursor="pointer" onPress={() => setIsEditingPassword(true)}>
+                <Text
+                  color={brand.cianografia}
+                  fontWeight="600"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => setIsEditingPassword(true)}
+                >
                   {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
                 </Text>
               )}
               {!isEditingPassword && passwordSaved ? (
-                <Text color="$green10" fontSize="$3">
+                <Text color={brand.verificato} fontSize="$3">
                   Password aggiornata!
                 </Text>
               ) : null}
             </FieldRow>
           </YStack>
 
-          <YStack height={1} backgroundColor="$borderColor" />
+          <YStack height={1} backgroundColor={brand.filetto} />
 
           <YStack gap="$4">
             <FieldRow label="Telefono">
@@ -315,25 +334,25 @@ export default function AccountPage() {
             </FieldRow>
           </YStack>
 
-          <YStack height={1} backgroundColor="$borderColor" />
+          <YStack height={1} backgroundColor={brand.filetto} />
 
           {profileError ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {profileError}
             </Text>
           ) : null}
           {profileSaved ? (
-            <Text color="$green10" fontSize="$3">
+            <Text color={brand.verificato} fontSize="$3">
               Dati salvati!
             </Text>
           ) : null}
 
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
             <XStack gap="$4" alignItems="center">
-              <Button size="$4" borderRadius="$10" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
+              <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
                 {isSavingProfile ? "Salvataggio..." : "Salva"}
               </Button>
-              <Text color="$color10" fontWeight="600" cursor="pointer" onPress={handleCancelProfile}>
+              <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
                 Annulla
               </Text>
             </XStack>
@@ -347,8 +366,8 @@ export default function AccountPage() {
                 accessibilityRole="button"
                 accessibilityLabel="Elimina il mio account"
               >
-                <Trash2 size={15} strokeWidth={1.5} color="#C8362B" />
-                <Text color="$red10" fontWeight="600">
+                <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
+                <Text color={brand.urgenza} fontWeight="600">
                   Elimina il mio account
                 </Text>
               </XStack>
@@ -356,8 +375,8 @@ export default function AccountPage() {
           </XStack>
 
           {isConfirmingDelete ? (
-            <YStack gap="$3" padding="$4" backgroundColor="$red2" borderRadius="$4" borderWidth={1} borderColor="$red6">
-              <Text color="$color11" fontSize="$3">
+            <YStack gap="$3" padding="$4" backgroundColor="#FBEAE8" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza}>
+              <Text color={brand.grafite} fontSize="$3">
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
               </Text>
@@ -368,15 +387,15 @@ export default function AccountPage() {
                 style={{ ...inputStyle, maxWidth: 240 }}
               />
               {deleteError ? (
-                <Text color="$red10" fontSize="$3">
+                <Text color={brand.urgenza} fontSize="$3">
                   {deleteError}
                 </Text>
               ) : null}
-              <XStack gap="$3">
+              <XStack gap="$3" alignItems="center">
                 <Button
+                  variant="urgent"
                   size="$3"
-                  backgroundColor="$red9"
-                  color="white"
+                  height={40}
                   onPress={handleDeleteAccount}
                   disabled={isDeleting}
                   opacity={isDeleting ? 0.6 : 1}
@@ -384,9 +403,10 @@ export default function AccountPage() {
                   {isDeleting ? "Eliminazione..." : "Elimina definitivamente"}
                 </Button>
                 <Text
-                  color="$color10"
+                  color={brand.grafite70}
                   fontWeight="600"
                   cursor="pointer"
+                  accessibilityRole="button"
                   onPress={() => {
                     setIsConfirmingDelete(false);
                     setDeleteConfirmText("");

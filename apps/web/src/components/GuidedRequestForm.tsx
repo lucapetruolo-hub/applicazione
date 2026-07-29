@@ -1,15 +1,23 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Autocomplete, Button, H1, Icon, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
 const MAX_PHOTOS = 3;
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.grafite70}>
+      {children}
+    </Text>
+  );
+}
 
 export type GuidedRequestFormProps = {
   isUrgent: boolean;
@@ -64,16 +72,16 @@ export function GuidedRequestForm({
   if (!user || !token) {
     const redirect = `${basePath}${initialCategory ? `?categoria=${initialCategory}` : ""}`;
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per inviare la richiesta
-          </H1>
-          <Paragraph color="$color10" textAlign="center">
+          </Text>
+          <Text color={brand.grafite70} textAlign="center">
             Serve un account per inviare la richiesta ai professionisti e ricevere le risposte.
-          </Paragraph>
+          </Text>
           <Link href={`/accedi?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -82,18 +90,18 @@ export function GuidedRequestForm({
 
   if (result) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Richiesta inviata!
-          </H1>
-          <Paragraph color="$color10" textAlign="center">
+          </Text>
+          <Text color={brand.grafite70} textAlign="center">
             {result.matchedProfessionals > 0
               ? `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? " disponibili ora" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
-          </Paragraph>
+          </Text>
           <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
-            <Button size="$5">Vai alle mie richieste</Button>
+            <Button variant="primary">Vai alle mie richieste</Button>
           </Link>
         </YStack>
       </YStack>
@@ -160,11 +168,13 @@ export function GuidedRequestForm({
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} gap="$4">
-        <YStack gap="$1">
-          <H1 size="$8">{title}</H1>
-          <Paragraph color="$color10">{subtitle}</Paragraph>
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={560} gap="$5">
+        <YStack gap="$2">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            {title}
+          </Text>
+          <Text color={brand.grafite70}>{subtitle}</Text>
         </YStack>
 
         {professionalProfileId && selectedCategory ? (
@@ -172,26 +182,25 @@ export function GuidedRequestForm({
           // qui dal suo profilo, con categoria e id già nell'URL): non ha
           // senso farla ri-scegliere, è la sua specialità.
           <YStack gap="$2">
-            <Text fontWeight="600">Categoria</Text>
-            <YStack
-              flexDirection="row"
+            <FieldLabel>Categoria</FieldLabel>
+            <XStack
               alignItems="center"
               gap="$2"
               alignSelf="flex-start"
               paddingHorizontal="$3"
               paddingVertical="$2"
-              backgroundColor="$blue10"
-              borderRadius="$4"
+              backgroundColor={brand.cianografia}
+              borderRadius="$2"
             >
               <Icon name={selectedCategory.icon} size={16} color="white" />
               <Text color="white" fontWeight="600">
                 {selectedCategory.label}
               </Text>
-            </YStack>
+            </XStack>
           </YStack>
         ) : (
           <YStack gap="$2">
-            <Text fontWeight="600">Categoria</Text>
+            <FieldLabel>Categoria</FieldLabel>
             {/* Menu a tendina come scorciatoia alla griglia sotto — stessa
                 selezione (categorySlug), utile su schermi piccoli o quando si
                 sa già cosa cercare invece di scorrere le caselle — richiesta
@@ -201,11 +210,12 @@ export function GuidedRequestForm({
               onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
               style={{
                 padding: 12,
-                borderRadius: 8,
-                border: "1px solid #d0d5dd",
+                borderRadius: 4,
+                border: `1px solid ${brand.filetto}`,
                 fontSize: 15,
                 fontFamily: "inherit",
-                backgroundColor: "white",
+                backgroundColor: brand.calce,
+                color: brand.grafite,
               }}
             >
               <option value="">Seleziona una categoria...</option>
@@ -216,26 +226,36 @@ export function GuidedRequestForm({
               ))}
             </select>
             <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-              {PROFESSIONAL_CATEGORIES.map((category) => (
-                <Button
-                  key={category.slug}
-                  size="$3"
-                  backgroundColor={categorySlug === category.slug ? "$blue10" : "$color3"}
-                  color={categorySlug === category.slug ? "white" : "$color12"}
-                  onPress={() => setCategorySlug(category.slug)}
-                >
-                  <XStack alignItems="center" gap="$2">
-                    <Icon name={category.icon} size={15} color={categorySlug === category.slug ? "white" : "#14181E"} />
-                    <Text color={categorySlug === category.slug ? "white" : "$color12"}>{category.label}</Text>
+              {PROFESSIONAL_CATEGORIES.map((category) => {
+                const active = categorySlug === category.slug;
+                return (
+                  <XStack
+                    key={category.slug}
+                    alignItems="center"
+                    gap="$2"
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius="$2"
+                    borderWidth={1}
+                    borderColor={active ? brand.cianografia : brand.filetto}
+                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                    cursor="pointer"
+                    onPress={() => setCategorySlug(category.slug)}
+                    accessibilityRole="button"
+                  >
+                    <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
+                    <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                      {category.label}
+                    </Text>
                   </XStack>
-                </Button>
-              ))}
+                );
+              })}
             </YStack>
           </YStack>
         )}
 
         <YStack gap="$2">
-          <Text fontWeight="600">Descrivi il lavoro</Text>
+          <FieldLabel>Descrivi il lavoro</FieldLabel>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -243,32 +263,24 @@ export function GuidedRequestForm({
             rows={5}
             style={{
               padding: 12,
-              borderRadius: 8,
-              border: "1px solid #d0d5dd",
+              borderRadius: 4,
+              border: `1px solid ${brand.filetto}`,
               fontSize: 15,
               fontFamily: "inherit",
+              color: brand.grafite,
               resize: "vertical",
             }}
           />
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Foto (opzionale, fino a {MAX_PHOTOS})</Text>
-          <Text fontSize="$2" color="$color9">
+          <FieldLabel>Foto (opzionale, fino a {MAX_PHOTOS})</FieldLabel>
+          <Text fontSize="$2" color={brand.grafite70}>
             Una foto aiuta il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
             {photoUrls.map((url) => (
-              <YStack
-                key={url}
-                width={88}
-                height={88}
-                borderRadius="$4"
-                overflow="hidden"
-                position="relative"
-                borderWidth={1}
-                borderColor="$borderColor"
-              >
+              <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 <YStack
@@ -278,11 +290,12 @@ export function GuidedRequestForm({
                   width={22}
                   height={22}
                   borderRadius={11}
-                  backgroundColor="rgba(0,0,0,0.6)"
+                  backgroundColor="rgba(20,24,30,0.7)"
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => removePhoto(url)}
+                  accessibilityRole="button"
                   accessibilityLabel="Rimuovi foto"
                 >
                   <X size={13} strokeWidth={2} color="white" />
@@ -293,9 +306,9 @@ export function GuidedRequestForm({
               <YStack
                 width={88}
                 height={88}
-                borderRadius="$4"
+                borderRadius="$3"
                 borderWidth={1}
-                borderColor="$borderColor"
+                borderColor={brand.filetto}
                 borderStyle="dashed"
                 alignItems="center"
                 justifyContent="center"
@@ -303,11 +316,13 @@ export function GuidedRequestForm({
                 cursor="pointer"
                 opacity={isUploadingPhoto ? 0.6 : 1}
                 onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi foto"
               >
-                <Text fontSize="$7" color="$color9">
+                <Text fontSize="$7" color={brand.grafite70}>
                   {isUploadingPhoto ? "…" : "+"}
                 </Text>
-                <Text fontSize="$1" color="$color9">
+                <Text fontSize="$1" color={brand.grafite70}>
                   Aggiungi
                 </Text>
               </YStack>
@@ -322,15 +337,15 @@ export function GuidedRequestForm({
             style={{ display: "none" }}
           />
           {photoError ? (
-            <Text color="$red10" fontSize="$2">
+            <Text color={brand.urgenza} fontSize="$2">
               {photoError}
             </Text>
           ) : null}
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Città</Text>
-          <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
+          <FieldLabel>Città</FieldLabel>
+          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete
               items={ALL_ITALIAN_CITY_NAMES}
               getKey={(item) => item}
@@ -346,14 +361,13 @@ export function GuidedRequestForm({
         </YStack>
 
         {error ? (
-          <Text color="$red10" fontSize="$3">
+          <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
 
         <Button
-          size="$5"
-          backgroundColor={isUrgent ? "$red10" : "$blue10"}
+          variant={isUrgent ? "urgent" : "primary"}
           onPress={handleSubmit}
           disabled={isSubmitting || isUploadingPhoto}
           opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}

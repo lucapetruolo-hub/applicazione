@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import { WEEKDAYS } from "@professionisti/shared";
-import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
 type SlotDraft = { dayOfWeek: number; start: string; end: string };
+
+const timeInputStyle = { padding: 8, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
 export default function DashboardAgendaPage() {
   const { user, token, isLoading } = useAuth();
@@ -53,13 +55,13 @@ export default function DashboardAgendaPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi come professionista
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/dashboard/agenda" style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -68,11 +70,11 @@ export default function DashboardAgendaPage() {
 
   if (user.role !== "PROFESSIONAL") {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
-          </H1>
+          </Text>
         </YStack>
       </YStack>
     );
@@ -80,16 +82,16 @@ export default function DashboardAgendaPage() {
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
-          </H1>
-          <Paragraph color="$color10" textAlign="center">
+          </Text>
+          <Text color={brand.grafite70} textAlign="center">
             Serve un profilo completo (nome attività, categoria, città) prima di poter impostare l&apos;agenda.
-          </Paragraph>
+          </Text>
           <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button size="$5">Completa profilo</Button>
+            <Button variant="primary">Completa profilo</Button>
           </Link>
         </YStack>
       </YStack>
@@ -138,14 +140,16 @@ export default function DashboardAgendaPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={640} gap="$5">
-        <YStack gap="$1">
-          <H1 size="$8">Agenda</H1>
-          <Paragraph color="$color10">
+        <YStack gap="$2">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Agenda
+          </Text>
+          <Text color={brand.grafite70}>
             Indica in quali giorni della settimana e fasce orarie sei disponibile: i clienti la vedranno sul tuo
             profilo pubblico, con le fasce già prenotate barrate.
-          </Paragraph>
+          </Text>
         </YStack>
 
         <YStack
@@ -153,29 +157,35 @@ export default function DashboardAgendaPage() {
           alignItems="center"
           gap="$3"
           padding="$3"
-          backgroundColor="$color2"
+          backgroundColor={brand.calce}
+          borderWidth={1}
+          borderColor={brand.filetto}
           borderRadius="$4"
           cursor="pointer"
           onPress={() => setBookableAgenda((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: bookableAgenda }}
         >
           <YStack
             width={22}
             height={22}
             borderRadius="$2"
             borderWidth={2}
-            borderColor={bookableAgenda ? "$blue10" : "$borderColor"}
-            backgroundColor={bookableAgenda ? "$blue10" : "white"}
+            borderColor={bookableAgenda ? brand.cianografia : brand.filetto}
+            backgroundColor={bookableAgenda ? brand.cianografia : brand.calce}
             alignItems="center"
             justifyContent="center"
           >
-            {bookableAgenda ? <Check size={14} strokeWidth={2} color="white" /> : null}
+            {bookableAgenda ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
           </YStack>
           <YStack flex={1} gap="$1">
             <YStack flexDirection="row" gap="$2" alignItems="center">
-              <Calendar size={16} strokeWidth={1.5} />
-              <Text fontWeight="600">Permetti ai clienti di prenotare direttamente da questi orari</Text>
+              <Icon name="receipt-text" size={16} strokeWidth={1.5} color={brand.grafite} />
+              <Text fontWeight="600" color={brand.grafite}>
+                Permetti ai clienti di prenotare direttamente da questi orari
+              </Text>
             </YStack>
-            <Text fontSize="$2" color="$color10">
+            <Text fontSize="$2" color={brand.grafite70}>
               Se disattivo, l&apos;agenda resta visibile ma solo come orari generali di disponibilità: il cliente ti
               contatta comunque tramite richiesta di preventivo.
             </Text>
@@ -189,44 +199,30 @@ export default function DashboardAgendaPage() {
               .filter(({ slot }) => slot.dayOfWeek === day.value);
             return (
               <YStack key={day.value} gap="$2">
-                <Text fontWeight="600">{day.label}</Text>
+                <Text fontWeight="600" color={brand.grafite}>
+                  {day.label}
+                </Text>
                 {daySlots.length === 0 ? (
-                  <Text fontSize="$2" color="$color9">
+                  <Text fontSize="$2" color={brand.grafite70}>
                     Nessun orario impostato.
                   </Text>
                 ) : (
                   <YStack gap="$2">
                     {daySlots.map(({ slot, index }) => (
                       <YStack key={index} flexDirection="row" gap="$2" alignItems="center">
-                        <input
-                          type="time"
-                          value={slot.start}
-                          onChange={(e) => updateSlot(index, "start", e.target.value)}
-                          style={{ padding: 8, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
-                        />
-                        <Text fontSize="$2" color="$color9">
+                        <input type="time" value={slot.start} onChange={(e) => updateSlot(index, "start", e.target.value)} style={timeInputStyle} />
+                        <Text fontSize="$2" color={brand.grafite70}>
                           –
                         </Text>
-                        <input
-                          type="time"
-                          value={slot.end}
-                          onChange={(e) => updateSlot(index, "end", e.target.value)}
-                          style={{ padding: 8, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
-                        />
-                        <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => removeSlot(index)} accessibilityLabel="Rimuovi fascia oraria">
-                          <X size={14} strokeWidth={1.5} />
+                        <input type="time" value={slot.end} onChange={(e) => updateSlot(index, "end", e.target.value)} style={timeInputStyle} />
+                        <Button variant="ghost" size="$2" height={36} onPress={() => removeSlot(index)} accessibilityLabel="Rimuovi fascia oraria">
+                          <X size={14} strokeWidth={1.5} color={brand.grafite} />
                         </Button>
                       </YStack>
                     ))}
                   </YStack>
                 )}
-                <Button
-                  size="$2"
-                  alignSelf="flex-start"
-                  backgroundColor="$color3"
-                  color="$color12"
-                  onPress={() => addSlot(day.value)}
-                >
+                <Button variant="ghost" size="$2" height={36} alignSelf="flex-start" onPress={() => addSlot(day.value)}>
                   + Aggiungi orario
                 </Button>
               </YStack>
@@ -235,17 +231,17 @@ export default function DashboardAgendaPage() {
         </YStack>
 
         {error ? (
-          <Text color="$red10" fontSize="$3">
+          <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
         {saved ? (
-          <Text color="$green10" fontSize="$3">
+          <Text color={brand.verificato} fontSize="$3">
             Agenda salvata!
           </Text>
         ) : null}
 
-        <Button size="$5" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+        <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva agenda"}
         </Button>
       </YStack>

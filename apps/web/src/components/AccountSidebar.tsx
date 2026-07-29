@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Text, YStack } from "@professionisti/ui";
+import { Text, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuItems } from "@/lib/accountMenuItems";
 
@@ -16,7 +16,16 @@ export function AccountSidebar() {
 
   return (
     <YStack width={220} gap="$1" flexShrink={0}>
-      <Text fontSize="$2" color="$color9" fontWeight="600" paddingHorizontal="$3" paddingBottom="$1">
+      <Text
+        fontFamily="$mono"
+        fontSize={11}
+        fontWeight="500"
+        letterSpacing={0.6}
+        textTransform="uppercase"
+        color={brand.grafite70}
+        paddingHorizontal="$3"
+        paddingBottom="$2"
+      >
         Impostazioni dell&apos;account
       </Text>
       {items.map((item) => {
@@ -26,11 +35,12 @@ export function AccountSidebar() {
             <YStack
               paddingHorizontal="$3"
               paddingVertical="$3"
-              borderRadius="$4"
-              backgroundColor={active ? "$color4" : "transparent"}
-              hoverStyle={{ backgroundColor: "$color3" }}
+              borderRadius="$2"
+              backgroundColor={active ? brand.cianografiaVelo : "transparent"}
+              hoverStyle={{ backgroundColor: active ? brand.cianografiaVelo : brand.gesso }}
+              accessibilityRole="link"
             >
-              <Text fontSize="$3" fontWeight={active ? "700" : "500"} color="$color12">
+              <Text fontSize="$3" fontWeight={active ? "700" : "500"} color={active ? brand.cianografia : brand.grafite}>
                 {item.label}
               </Text>
             </YStack>

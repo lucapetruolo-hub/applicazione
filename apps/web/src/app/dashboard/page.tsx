@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { X, Zap } from "lucide-react";
+import { X } from "lucide-react";
 import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
-import { Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { Badge, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -15,6 +15,16 @@ const BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   CANCELED: "Annullata",
   NO_SHOW: "Cliente non presentato",
 };
+
+const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
+      {children}
+    </Text>
+  );
+}
 
 export default function DashboardPage() {
   const { user, token, isLoading } = useAuth();
@@ -53,13 +63,13 @@ export default function DashboardPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi come professionista
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -68,25 +78,25 @@ export default function DashboardPage() {
 
   if (user.role !== "PROFESSIONAL") {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-        <Paragraph color="$color10">Questa sezione è riservata ai professionisti.</Paragraph>
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+        <Text color={brand.grafite70}>Questa sezione è riservata ai professionisti.</Text>
       </YStack>
     );
   }
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
-          </H1>
-          <Paragraph color="$color10" textAlign="center">
+          </Text>
+          <Text color={brand.grafite70} textAlign="center">
             Serve un profilo completo (nome attività, categoria, città) per comparire in ricerca e ricevere
             richieste.
-          </Paragraph>
+          </Text>
           <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button size="$5">Completa profilo</Button>
+            <Button variant="primary">Completa profilo</Button>
           </Link>
         </YStack>
       </YStack>
@@ -94,25 +104,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={780} gap="$6">
         <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-          <H1 size="$8">Dashboard</H1>
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Dashboard
+          </Text>
           <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Text color="$blue10" fontWeight="600">
+            <Text color={brand.cianografia} fontWeight="600">
               Modifica profilo
             </Text>
           </Link>
         </YStack>
 
-        {error ? <Text color="$red10">{error}</Text> : null}
+        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         <YStack gap="$3">
-          <H2 size="$7">Richieste ricevute</H2>
+          <SectionTitle>Richieste ricevute</SectionTitle>
           {leads === null ? (
-            <Text color="$color9">Caricamento...</Text>
+            <Text color={brand.grafite70}>Caricamento...</Text>
           ) : leads.length === 0 ? (
-            <Paragraph color="$color10">Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Paragraph>
+            <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
           ) : (
             leads.map((lead) => <LeadCard key={lead.id} lead={lead} token={token} />)
           )}
@@ -121,38 +133,40 @@ export default function DashboardPage() {
         <BoostSection token={token} />
 
         <YStack gap="$3">
-          <H2 size="$7">Agenda</H2>
+          <SectionTitle>Agenda</SectionTitle>
           {bookings === null ? (
-            <Text color="$color9">Caricamento...</Text>
+            <Text color={brand.grafite70}>Caricamento...</Text>
           ) : bookings.length === 0 ? (
-            <Paragraph color="$color10">Nessuna prenotazione confermata ancora.</Paragraph>
+            <Text color={brand.grafite70}>Nessuna prenotazione confermata ancora.</Text>
           ) : (
             bookings.map((booking) => (
-              <YStack key={booking.id} borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
+              <Surface key={booking.id} gap="$2">
                 <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-                  <Text fontWeight="600">{booking.clientName ?? "Cliente"}</Text>
-                  <Text fontSize="$2" color="$blue10" fontWeight="600">
+                  <Text fontWeight="600" color={brand.grafite}>
+                    {booking.clientName ?? "Cliente"}
+                  </Text>
+                  <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
                     {BOOKING_STATUS_LABEL[booking.status]}
                   </Text>
                 </YStack>
-                <Text color="$color10" fontSize="$3">
+                <Text color={brand.grafite70} fontSize="$3">
                   {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
                 </Text>
                 {booking.items.length > 0 ? (
                   <YStack gap="$1">
                     {booking.items.map((item) => (
-                      <Text key={item.id} color="$color10" fontSize="$3">
+                      <Text key={item.id} color={brand.grafite70} fontSize="$3">
                         {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
                       </Text>
                     ))}
                   </YStack>
                 ) : null}
                 {booking.status === "CONFIRMED" ? (
-                  <Button size="$3" alignSelf="flex-start" onPress={() => handleCompleteBooking(booking.id)}>
+                  <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => handleCompleteBooking(booking.id)}>
                     Segna come completato
                   </Button>
                 ) : null}
-              </YStack>
+              </Surface>
             ))
           )}
         </YStack>
@@ -190,18 +204,22 @@ function BoostSection({ token }: { token: string }) {
 
   return (
     <YStack gap="$3">
-      <H2 size="$7">Aumenta la tua visibilità</H2>
-      {error ? <Text color="$red10">{error}</Text> : null}
+      <SectionTitle>Aumenta la tua visibilità</SectionTitle>
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
         {BOOST_OPTIONS.map((option) => (
-          <YStack key={option.type} flex={1} borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
-            <Text fontWeight="700">{option.label}</Text>
-            <Text color="$color10" fontSize="$3">
+          <Surface key={option.type} flex={1} gap="$2">
+            <Badge variant="pro">{option.label}</Badge>
+            <Text color={brand.grafite70} fontSize="$3">
               {option.description}
             </Text>
-            <Text fontWeight="700">€{option.priceEur.toFixed(2)}</Text>
+            <Text fontWeight="700" color={brand.grafite}>
+              €{option.priceEur.toFixed(2)}
+            </Text>
             <Button
+              variant="secondary"
               size="$3"
+              height={40}
               alignSelf="flex-start"
               onPress={() => handleBuy(option.type)}
               disabled={loadingType === option.type}
@@ -209,7 +227,7 @@ function BoostSection({ token }: { token: string }) {
             >
               {loadingType === option.type ? "Attendi..." : "Acquista"}
             </Button>
-          </YStack>
+          </Surface>
         ))}
       </YStack>
     </YStack>
@@ -294,41 +312,34 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
   }
 
   return (
-    <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
+    <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
         <YStack gap="$1" flex={1}>
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
-            <Text fontWeight="700">
+            <Text fontWeight="700" color={brand.grafite}>
               {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
             </Text>
-            {lead.guidedRequest.isUrgent ? (
-              <XStack alignItems="center" gap={3} backgroundColor="#C8362B" paddingHorizontal="$2" paddingVertical={2} borderRadius="$2">
-                <Zap size={11} strokeWidth={2} color="white" fill="white" />
-                <Text fontSize={10} color="white" fontWeight="700" textTransform="uppercase">
-                  Urgente
-                </Text>
-              </XStack>
-            ) : null}
+            {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
           </XStack>
-          <Text color="$color10">{lead.guidedRequest.description}</Text>
+          <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
         </YStack>
         {sent ? (
-          <Text fontSize="$2" color="$green10" fontWeight="600">
+          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
             Preventivo inviato
           </Text>
         ) : null}
       </YStack>
 
       {!sent && !showForm ? (
-        <Button size="$3" alignSelf="flex-start" onPress={() => setShowForm(true)}>
+        <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
           Invia preventivo
         </Button>
       ) : null}
 
       {showForm ? (
-        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
           <YStack gap="$2">
-            <Text fontSize="$3" fontWeight="600">
+            <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
               Voci del preventivo
             </Text>
             {items.map((item, index) => (
@@ -337,16 +348,16 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
                   value={item.name}
                   onChange={(e) => updateItem(index, "name", e.target.value)}
                   placeholder="Es. Manodopera"
-                  style={{ flex: 1, minWidth: 140, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, flex: 1, minWidth: 140 }}
                 />
                 <input
                   value={item.priceMin}
                   onChange={(e) => updateItem(index, "priceMin", e.target.value)}
                   placeholder="Da €"
                   inputMode="decimal"
-                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, width: 90 }}
                 />
-                <Text fontSize="$2" color="$color9">
+                <Text fontSize="$2" color={brand.grafite70}>
                   a
                 </Text>
                 <input
@@ -354,54 +365,43 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
                   onChange={(e) => updateItem(index, "priceMax", e.target.value)}
                   placeholder="A €"
                   inputMode="decimal"
-                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, width: 90 }}
                 />
                 {items.length > 1 ? (
-                  <Button
-                    size="$2"
-                    backgroundColor="$color3"
-                    color="$color12"
-                    onPress={() => removeItem(index)}
-                    accessibilityLabel="Rimuovi voce"
-                  >
-                    <X size={14} strokeWidth={1.5} />
+                  <Button variant="ghost" size="$2" height={36} onPress={() => removeItem(index)} accessibilityLabel="Rimuovi voce">
+                    <X size={14} strokeWidth={1.5} color={brand.grafite} />
                   </Button>
                 ) : null}
               </YStack>
             ))}
             <Button
+              variant="ghost"
               size="$2"
+              height={36}
               alignSelf="flex-start"
-              backgroundColor="$color3"
-              color="$color12"
               onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}
             >
               + Aggiungi voce
             </Button>
           </YStack>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, alignSelf: "flex-start" }}
-          />
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ ...smallInputStyle, alignSelf: "flex-start" }} />
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Note per il cliente (opzionale)"
             rows={2}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
+            style={{ ...smallInputStyle, resize: "vertical" }}
           />
           {error ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
-          <Button size="$3" alignSelf="flex-start" onPress={handleSendQuote} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={handleSendQuote} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Invio..." : "Conferma preventivo"}
           </Button>
         </YStack>
       ) : null}
-    </YStack>
+    </Surface>
   );
 }

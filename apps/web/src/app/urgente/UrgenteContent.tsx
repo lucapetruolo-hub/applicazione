@@ -1,17 +1,16 @@
 "use client";
 
 import { Suspense } from "react";
-import { Zap } from "lucide-react";
-import { Text, XStack, YStack } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { GuidedRequestForm } from "@/components/GuidedRequestForm";
 
 export function UrgenteContent() {
   return (
     <YStack width="100%" alignItems="center">
-      <YStack width="100%" backgroundColor="$red2" paddingVertical="$4" alignItems="center">
+      <YStack width="100%" backgroundColor="#FBEAE8" paddingVertical="$4" alignItems="center">
         <XStack alignItems="center" gap="$2" paddingHorizontal="$4">
-          <Zap size={16} strokeWidth={2} color="#C8362B" fill="#C8362B" />
-          <Text fontSize="$4" color="$red11" fontWeight="600">
+          <Icon name="zap" size={16} strokeWidth={2} color={brand.urgenza} fill={brand.urgenza} />
+          <Text fontSize="$4" color={brand.urgenza} fontWeight="600">
             Richiesta urgente: notifichiamo subito i professionisti disponibili ora nella tua zona
           </Text>
         </XStack>

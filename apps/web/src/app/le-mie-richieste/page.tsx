@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
+import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { BadgeCheck, Star, X } from "lucide-react";
 import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange } from "@professionisti/shared";
-import { Autocomplete, Button, H1, H2, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
@@ -25,6 +25,16 @@ const BOOKING_STATUS_LABEL: Record<ClientBooking["status"], string> = {
   COMPLETED: "Completata",
   CANCELED: "Annullata",
   NO_SHOW: "Non presentato",
+};
+
+const textareaStyle = {
+  padding: 10,
+  borderRadius: 4,
+  border: `1px solid ${brand.filetto}`,
+  fontSize: 14,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  resize: "vertical" as const,
 };
 
 export default function LeMieRichiestePage() {
@@ -63,15 +73,13 @@ export default function LeMieRichiestePage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue richieste
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/le-mie-richieste" style={{ textDecoration: "none" }}>
-            <Text color="$blue10" fontWeight="600">
-              Vai al login
-            </Text>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -79,27 +87,33 @@ export default function LeMieRichiestePage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <AccountSidebar />
 
-        <YStack flex={1} minWidth={280} gap="$6">
-          <YStack gap="$5">
-            <H1 size="$8">Le mie richieste</H1>
+        <YStack flex={1} minWidth={280} gap="$7">
+          <YStack gap="$4">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+              Le mie richieste
+            </Text>
 
-            {error ? <Text color="$red10">{error}</Text> : null}
+            {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
             {requests === null ? (
-              <Text color="$color9">Caricamento...</Text>
+              <Text color={brand.grafite70}>Caricamento...</Text>
             ) : requests.length === 0 ? (
-              <YStack gap="$3">
-                <Paragraph color="$color10">Non hai ancora inviato nessuna richiesta di preventivo.</Paragraph>
-                <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                  <Text color="$blue10" fontWeight="600">
-                    Richiedi il tuo primo preventivo
-                  </Text>
-                </Link>
-              </YStack>
+              <EmptyState
+                icon="file-text"
+                title="Nessuna richiesta inviata"
+                description="Non hai ancora inviato nessuna richiesta di preventivo."
+                action={
+                  <Link href="/preventivo" style={{ textDecoration: "none" }}>
+                    <Text color={brand.cianografia} fontWeight="600">
+                      Richiedi il tuo primo preventivo
+                    </Text>
+                  </Link>
+                }
+              />
             ) : (
               requests.map((request) => (
                 <GuidedRequestCard
@@ -114,12 +128,14 @@ export default function LeMieRichiestePage() {
             )}
           </YStack>
 
-          <YStack gap="$5">
-            <H1 size="$8">Le mie prenotazioni</H1>
+          <YStack gap="$4">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+              Le mie prenotazioni
+            </Text>
             {bookings === null ? (
-              <Text color="$color9">Caricamento...</Text>
+              <Text color={brand.grafite70}>Caricamento...</Text>
             ) : bookings.length === 0 ? (
-              <Paragraph color="$color10">Nessuna prenotazione ancora: accetta un preventivo per crearne una.</Paragraph>
+              <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
             ) : (
               bookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
             )}
@@ -200,19 +216,14 @@ function GuidedRequestCard({
   }
 
   return (
-    <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$5" padding="$4" gap="$3">
+    <Surface gap="$3">
       {isEditing ? (
         <YStack gap="$2">
-          <Text fontWeight="700" fontSize="$5">
+          <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
             {request.categoryLabel}
           </Text>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
-          />
-          <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
+          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete
               items={ALL_ITALIAN_CITY_NAMES}
               getKey={(item) => item}
@@ -225,15 +236,15 @@ function GuidedRequestCard({
             />
           </YStack>
           {error ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
           <XStack gap="$2">
-            <Button size="$3" onPress={handleSaveEdit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+            <Button variant="primary" size="$3" height={40} onPress={handleSaveEdit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
               {isSaving ? "Salvataggio..." : "Salva modifiche"}
             </Button>
-            <Button size="$3" backgroundColor="$color3" color="$color12" onPress={() => setIsEditing(false)} disabled={isSaving}>
+            <Button variant="secondary" size="$3" height={40} onPress={() => setIsEditing(false)} disabled={isSaving}>
               Annulla
             </Button>
           </XStack>
@@ -242,48 +253,49 @@ function GuidedRequestCard({
         <>
           <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
             <YStack gap="$1">
-              <Text fontWeight="700" fontSize="$5">
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
                 {request.categoryLabel} · {request.city}
               </Text>
-              <Text color="$color10">{request.description}</Text>
+              <Text color={brand.grafite70}>{request.description}</Text>
             </YStack>
-            <Text fontSize="$2" color="$blue10" fontWeight="600">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
               {STATUS_LABEL[request.status]}
             </Text>
           </YStack>
 
           {canEdit ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
-              <Button size="$2" backgroundColor="$color3" color="$color12" onPress={startEditing}>
+              <Button variant="secondary" size="$2" height={36} onPress={startEditing}>
                 Modifica
               </Button>
               {confirmingDelete ? (
                 <>
-                  <Text fontSize="$2" color="$red10">
+                  <Text fontSize="$2" color={brand.urgenza}>
                     Eliminare questa richiesta?
                   </Text>
-                  <Button
-                    size="$2"
-                    backgroundColor="$red10"
-                    onPress={handleDelete}
-                    disabled={isDeleting}
-                    opacity={isDeleting ? 0.6 : 1}
-                  >
+                  <Button variant="urgent" size="$2" height={36} onPress={handleDelete} disabled={isDeleting} opacity={isDeleting ? 0.6 : 1}>
                     {isDeleting ? "Eliminazione..." : "Conferma"}
                   </Button>
-                  <Button size="$2" backgroundColor="$color3" color="$color12" onPress={() => setConfirmingDelete(false)}>
+                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDelete(false)}>
                     Annulla
                   </Button>
                 </>
               ) : (
-                <Button size="$2" backgroundColor="$color3" color="$red10" onPress={() => setConfirmingDelete(true)}>
+                <Text
+                  color={brand.urgenza}
+                  fontWeight="600"
+                  fontSize="$3"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => setConfirmingDelete(true)}
+                >
                   Elimina
-                </Button>
+                </Text>
               )}
             </XStack>
           ) : null}
           {error ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
@@ -291,35 +303,26 @@ function GuidedRequestCard({
       )}
 
       {request.sentTo.length > 0 ? (
-        <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
-          <H2 size="$4">Inviata a</H2>
+        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+            Inviata a
+          </Text>
           {request.sentTo.map((professional) => (
             <Link
               key={professional.id}
               href={`/professionista/${professional.id}`}
               style={{ textDecoration: "none", color: "inherit" }}
             >
-              <XStack
-                gap="$3"
-                alignItems="center"
-                backgroundColor="$color2"
-                borderRadius="$4"
-                padding="$3"
-              >
+              <XStack gap="$3" alignItems="center" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
                 <YStack gap="$1" flex={1}>
                   <XStack gap="$2" alignItems="center" flexWrap="wrap">
-                    <Text fontWeight="600">{professional.businessName}</Text>
-                    {professional.verified ? (
-                      <XStack alignItems="center" gap={3}>
-                        <BadgeCheck size={13} strokeWidth={1.5} color="#1B4D8F" />
-                        <Text fontSize="$1" color="$blue10" fontWeight="600">
-                          Verificato
-                        </Text>
-                      </XStack>
-                    ) : null}
+                    <Text fontWeight="600" color={brand.grafite}>
+                      {professional.businessName}
+                    </Text>
+                    {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
                   </XStack>
-                  <Text color="$color10" fontSize="$3">
+                  <Text color={brand.grafite70} fontSize="$3">
                     {professional.categoryLabel} · {professional.city}
                   </Text>
                 </YStack>
@@ -330,26 +333,32 @@ function GuidedRequestCard({
       ) : null}
 
       {request.quotes.length > 0 ? (
-        <YStack gap="$2" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$3">
-          <H2 size="$4">Preventivi ricevuti</H2>
+        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+            Preventivi ricevuti
+          </Text>
           {request.quotes.map((quote) => (
-            <YStack key={quote.id} backgroundColor="$color2" borderRadius="$4" padding="$3" gap="$2">
-              <Text fontWeight="600">{quote.businessName}</Text>
+            <YStack key={quote.id} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
+              <Text fontWeight="600" color={brand.grafite}>
+                {quote.businessName}
+              </Text>
               <YStack gap="$1">
                 {quote.items.map((item) => (
-                  <Text key={item.id} color="$color10" fontSize="$3">
+                  <Text key={item.id} color={brand.grafite70} fontSize="$3">
                     {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
                   </Text>
                 ))}
               </YStack>
               {quote.notes ? (
-                <Text color="$color10" fontSize="$3">
+                <Text color={brand.grafite70} fontSize="$3">
                   {quote.notes}
                 </Text>
               ) : null}
               {quote.status === "SENT" ? (
                 <Button
+                  variant="primary"
                   size="$3"
+                  height={40}
                   alignSelf="flex-start"
                   onPress={() => onAcceptQuote(quote.id)}
                   disabled={acceptingQuoteId === quote.id}
@@ -358,7 +367,7 @@ function GuidedRequestCard({
                   {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
                 </Button>
               ) : quote.status === "ACCEPTED" ? (
-                <Text fontSize="$2" color="$green10" fontWeight="600">
+                <Text fontSize="$2" color={brand.verificato} fontWeight="600">
                   Accettato
                 </Text>
               ) : null}
@@ -366,11 +375,11 @@ function GuidedRequestCard({
           ))}
         </YStack>
       ) : (
-        <Text color="$color9" fontSize="$3">
+        <Text color={brand.grafite70} fontSize="$3">
           Nessun preventivo ricevuto ancora.
         </Text>
       )}
-    </YStack>
+    </Surface>
   );
 }
 
@@ -424,20 +433,22 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
   }
 
   return (
-    <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" padding="$3" gap="$2">
+    <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-        <Text fontWeight="600">{booking.businessName}</Text>
-        <Text fontSize="$2" color="$blue10" fontWeight="600">
+        <Text fontWeight="600" color={brand.grafite}>
+          {booking.businessName}
+        </Text>
+        <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
           {BOOKING_STATUS_LABEL[booking.status]}
         </Text>
       </YStack>
-      <Text color="$color10" fontSize="$3">
+      <Text color={brand.grafite70} fontSize="$3">
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
       </Text>
 
       {booking.status === "COMPLETED" && !booking.hasReview ? (
         showReviewForm ? (
-          <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+          <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
             <YStack flexDirection="row" gap="$1">
               {[1, 2, 3, 4, 5].map((value) => (
                 <YStack
@@ -447,7 +458,7 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
                   accessibilityRole="button"
                   accessibilityLabel={`${value} stelle`}
                 >
-                  <Star size={24} strokeWidth={1.5} color="#B4893A" fill={value <= rating ? "#B4893A" : "none"} />
+                  <Icon name="star" size={24} strokeWidth={1.5} color={brand.ottone} fill={value <= rating ? brand.ottone : "none"} />
                 </YStack>
               ))}
             </YStack>
@@ -456,25 +467,16 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
               onChange={(e) => setComment(e.target.value)}
               placeholder="Com'è andata? (opzionale)"
               rows={2}
-              style={{ padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14, fontFamily: "inherit", resize: "vertical" }}
+              style={textareaStyle}
             />
 
             <YStack gap="$1">
-              <Text fontSize="$2" color="$color9">
+              <Text fontSize="$2" color={brand.grafite70}>
                 Foto del lavoro svolto (opzionale, fino a {MAX_REVIEW_PHOTOS})
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
                 {photoUrls.map((url) => (
-                  <YStack
-                    key={url}
-                    width={64}
-                    height={64}
-                    borderRadius="$3"
-                    overflow="hidden"
-                    position="relative"
-                    borderWidth={1}
-                    borderColor="$borderColor"
-                  >
+                  <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     <YStack
@@ -484,11 +486,12 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
                       width={18}
                       height={18}
                       borderRadius={9}
-                      backgroundColor="rgba(0,0,0,0.6)"
+                      backgroundColor="rgba(20,24,30,0.7)"
                       alignItems="center"
                       justifyContent="center"
                       cursor="pointer"
                       onPress={() => removePhoto(url)}
+                      accessibilityRole="button"
                       accessibilityLabel="Rimuovi foto"
                     >
                       <X size={11} strokeWidth={2} color="white" />
@@ -501,15 +504,17 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
                     height={64}
                     borderRadius="$3"
                     borderWidth={1}
-                    borderColor="$borderColor"
+                    borderColor={brand.filetto}
                     borderStyle="dashed"
                     alignItems="center"
                     justifyContent="center"
                     cursor="pointer"
                     opacity={isUploadingPhoto ? 0.6 : 1}
                     onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Aggiungi foto"
                   >
-                    <Text fontSize="$6" color="$color9">
+                    <Text fontSize="$6" color={brand.grafite70}>
                       {isUploadingPhoto ? "…" : "+"}
                     </Text>
                   </YStack>
@@ -524,19 +529,21 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
                 style={{ display: "none" }}
               />
               {photoError ? (
-                <Text color="$red10" fontSize="$2">
+                <Text color={brand.urgenza} fontSize="$2">
                   {photoError}
                 </Text>
               ) : null}
             </YStack>
 
             {error ? (
-              <Text color="$red10" fontSize="$3">
+              <Text color={brand.urgenza} fontSize="$3">
                 {error}
               </Text>
             ) : null}
             <Button
+              variant="primary"
               size="$3"
+              height={40}
               alignSelf="flex-start"
               onPress={handleSubmitReview}
               disabled={isSubmitting || isUploadingPhoto}
@@ -546,15 +553,15 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
             </Button>
           </YStack>
         ) : (
-          <Button size="$3" alignSelf="flex-start" onPress={() => setShowReviewForm(true)}>
+          <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewForm(true)}>
             Lascia una recensione
           </Button>
         )
       ) : booking.status === "COMPLETED" && booking.hasReview ? (
-        <Text fontSize="$2" color="$green10" fontWeight="600">
+        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Recensione inviata
         </Text>
       ) : null}
-    </YStack>
+    </Surface>
   );
 }

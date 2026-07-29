@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Button, H1, Paragraph, ProfessionalCard, Text, XStack, YStack } from "@professionisti/ui";
+import { Button, EmptyState, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -38,13 +38,13 @@ export default function ProfessionistiSalvatiPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per vedere i tuoi professionisti salvati
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/professionisti-salvati" style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -52,29 +52,32 @@ export default function ProfessionistiSalvatiPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <AccountSidebar />
 
         <YStack flex={1} minWidth={280} gap="$5">
-          <H1 size="$8">Professionisti salvati</H1>
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Professionisti salvati
+          </Text>
 
-          {error ? <Text color="$red10">{error}</Text> : null}
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
           {professionals === null ? (
-            <Text color="$color9">Caricamento...</Text>
+            <Text color={brand.grafite70}>Caricamento...</Text>
           ) : professionals.length === 0 ? (
-            <YStack gap="$3">
-              <Paragraph color="$color10">
-                Non hai ancora salvato nessun professionista. Apri il profilo di un professionista e tocca
-                &quot;Salva&quot; per ritrovarlo qui.
-              </Paragraph>
-              <Link href="/" style={{ textDecoration: "none" }}>
-                <Text color="$blue10" fontWeight="600">
-                  Cerca professionisti
-                </Text>
-              </Link>
-            </YStack>
+            <EmptyState
+              icon="heart"
+              title="Nessun professionista salvato"
+              description='Apri il profilo di un professionista e tocca "Salva" per ritrovarlo qui.'
+              action={
+                <Link href="/" style={{ textDecoration: "none" }}>
+                  <Text color={brand.cianografia} fontWeight="600">
+                    Cerca professionisti
+                  </Text>
+                </Link>
+              }
+            />
           ) : (
             <YStack gap="$3">
               {professionals.map((pro) => (
@@ -90,13 +93,7 @@ export default function ProfessionistiSalvatiPage() {
                     onPress={() => router.push(`/professionista/${pro.id}`)}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
                   />
-                  <Button
-                    size="$2"
-                    alignSelf="flex-end"
-                    backgroundColor="$color3"
-                    color="$color12"
-                    onPress={() => handleRemove(pro.id)}
-                  >
+                  <Button variant="ghost" size="$2" height={36} alignSelf="flex-end" onPress={() => handleRemove(pro.id)}>
                     Rimuovi dai salvati
                   </Button>
                 </YStack>

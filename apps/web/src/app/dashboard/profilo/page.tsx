@@ -3,12 +3,23 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, Check, Video, X } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Autocomplete, Button, H1, Icon, Paragraph, Text, XStack, YStack } from "@professionisti/ui";
+import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+
+const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
+const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.grafite70}>
+      {children}
+    </Text>
+  );
+}
 
 export default function DashboardProfiloPage() {
   const router = useRouter();
@@ -60,13 +71,13 @@ export default function DashboardProfiloPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi come professionista
-          </H1>
+          </Text>
           <Link href="/accedi?redirect=/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button size="$5">Accedi</Button>
+            <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -75,17 +86,17 @@ export default function DashboardProfiloPage() {
 
   if (user.role !== "PROFESSIONAL") {
     return (
-      <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
-          <H1 size="$7" textAlign="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
-          </H1>
-          <Paragraph color="$color10" textAlign="center">
+          </Text>
+          <Text color={brand.grafite70} textAlign="center">
             Il tuo account è registrato come cliente. Per offrire i tuoi servizi, iscriviti come professionista con
             un&apos;altra email.
-          </Paragraph>
+          </Text>
           <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-            <Button size="$5">Iscriviti come professionista</Button>
+            <Button variant="primary">Iscriviti come professionista</Button>
           </Link>
         </YStack>
       </YStack>
@@ -210,40 +221,44 @@ export default function DashboardProfiloPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={560} gap="$4">
-        <YStack gap="$1">
-          <H1 size="$8">Il tuo profilo professionista</H1>
-          <Paragraph color="$color10">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={560} gap="$5">
+        <YStack gap="$2">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Il tuo profilo professionista
+          </Text>
+          <Text color={brand.grafite70}>
             Queste informazioni sono visibili pubblicamente su Professionisti e determinano in quali ricerche
             compari.
-          </Paragraph>
+          </Text>
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Immagine profilo</Text>
+          <FieldLabel>Immagine profilo</FieldLabel>
           <YStack flexDirection="row" alignItems="center" gap="$3">
             <YStack
               width={72}
               height={72}
               borderRadius={36}
-              backgroundColor="$color3"
+              backgroundColor={brand.gesso}
               alignItems="center"
               justifyContent="center"
               overflow="hidden"
               borderWidth={1}
-              borderColor="$borderColor"
+              borderColor={brand.filetto}
             >
               {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <Camera size={28} strokeWidth={1.5} color="#4A525E" />
+                <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
               )}
             </YStack>
             <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
               <Button
+                variant="secondary"
                 size="$3"
+                height={40}
                 disabled={isUploadingImage}
                 opacity={isUploadingImage ? 0.6 : 1}
                 onPress={() => imageInputRef.current?.click()}
@@ -259,7 +274,7 @@ export default function DashboardProfiloPage() {
                 style={{ display: "none" }}
               />
               {imageError ? (
-                <Text color="$red10" fontSize="$2" flexShrink={1}>
+                <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
                   {imageError}
                 </Text>
               ) : null}
@@ -268,39 +283,44 @@ export default function DashboardProfiloPage() {
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Nome attività</Text>
-          <input
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            placeholder="Es. Rossi Impianti"
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
-          />
+          <FieldLabel>Nome attività</FieldLabel>
+          <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Categoria</Text>
+          <FieldLabel>Categoria</FieldLabel>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-            {PROFESSIONAL_CATEGORIES.map((category) => (
-              <Button
-                key={category.slug}
-                size="$3"
-                backgroundColor={categorySlug === category.slug ? "$blue10" : "$color3"}
-                color={categorySlug === category.slug ? "white" : "$color12"}
-                onPress={() => setCategorySlug(category.slug)}
-              >
-                <XStack alignItems="center" gap="$2">
-                  <Icon name={category.icon} size={15} color={categorySlug === category.slug ? "white" : "#14181E"} />
-                  <Text color={categorySlug === category.slug ? "white" : "$color12"}>{category.label}</Text>
+            {PROFESSIONAL_CATEGORIES.map((category) => {
+              const active = categorySlug === category.slug;
+              return (
+                <XStack
+                  key={category.slug}
+                  alignItems="center"
+                  gap="$2"
+                  paddingHorizontal="$3"
+                  paddingVertical="$2"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={active ? brand.cianografia : brand.filetto}
+                  backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                  cursor="pointer"
+                  onPress={() => setCategorySlug(category.slug)}
+                  accessibilityRole="button"
+                >
+                  <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
+                  <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                    {category.label}
+                  </Text>
                 </XStack>
-              </Button>
-            ))}
+              );
+            })}
           </YStack>
         </YStack>
 
         <YStack gap="$3">
           <YStack gap="$1">
-            <Text fontWeight="600">Posizione</Text>
-            <Text fontSize="$2" color="$color9">
+            <FieldLabel>Posizione</FieldLabel>
+            <Text fontSize="$2" color={brand.grafite70}>
               La città è obbligatoria e ti fa trovare nelle ricerche per zona. Se aggiungi anche l&apos;indirizzo
               preciso, il tuo profilo comparirà esattamente lì sulla mappa dei risultati invece che al centro della
               città.
@@ -308,8 +328,8 @@ export default function DashboardProfiloPage() {
           </YStack>
 
           <YStack gap="$2">
-            <Text fontWeight="600">Città in cui operi</Text>
-            <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="white">
+            <FieldLabel>Città in cui operi</FieldLabel>
+            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
               <Autocomplete
                 items={ALL_ITALIAN_CITY_NAMES}
                 getKey={(item) => item}
@@ -325,16 +345,16 @@ export default function DashboardProfiloPage() {
           </YStack>
 
           <YStack gap="$2">
-            <Text fontWeight="600">Indirizzo preciso (opzionale)</Text>
+            <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Es. Via delle Camelie 38, Latina Scalo"
-              style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
+              style={inputStyle}
             />
-            <Text fontSize="$2" color="$color9">
-              Se hai un negozio o un laboratorio, indica l&apos;indirizzo: comparirà anche nella tua card e nel tuo
-              profilo pubblico.
+            <Text fontSize="$2" color={brand.grafite70}>
+              Usato solo per posizionarti con precisione sulla mappa dei risultati: non viene mai mostrato per
+              intero nel tuo profilo pubblico o nella tua card.
             </Text>
           </YStack>
         </YStack>
@@ -344,57 +364,70 @@ export default function DashboardProfiloPage() {
           alignItems="center"
           gap="$3"
           padding="$3"
-          backgroundColor="$color2"
+          backgroundColor={brand.calce}
+          borderWidth={1}
+          borderColor={brand.filetto}
           borderRadius="$4"
           cursor="pointer"
           onPress={() => setRemoteAvailable((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: remoteAvailable }}
         >
           <YStack
             width={22}
             height={22}
             borderRadius="$2"
             borderWidth={2}
-            borderColor={remoteAvailable ? "$blue10" : "$borderColor"}
-            backgroundColor={remoteAvailable ? "$blue10" : "white"}
+            borderColor={remoteAvailable ? brand.cianografia : brand.filetto}
+            backgroundColor={remoteAvailable ? brand.cianografia : brand.calce}
             alignItems="center"
             justifyContent="center"
           >
-            {remoteAvailable ? <Check size={14} strokeWidth={2} color="white" /> : null}
+            {remoteAvailable ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
           </YStack>
           <YStack flex={1} gap="$1">
             <XStack alignItems="center" gap="$2">
-              <Video size={16} strokeWidth={1.5} />
-              <Text fontWeight="600">Offro anche consulenza online</Text>
+              <Icon name="video" size={16} strokeWidth={1.5} color={brand.grafite} />
+              <Text fontWeight="600" color={brand.grafite}>
+                Offro anche consulenza online
+              </Text>
             </XStack>
-            <Text fontSize="$2" color="$color10">
-              Compari nella ricerca "Online" della home: i clienti possono contattarti da remoto, ovunque si trovino.
+            <Text fontSize="$2" color={brand.grafite70}>
+              Compari nella ricerca &quot;Online&quot; della home: i clienti possono contattarti da remoto, ovunque si trovino.
             </Text>
           </YStack>
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Prestazioni offerte (opzionale)</Text>
-          <Text fontSize="$2" color="$color9">
+          <FieldLabel>Prestazioni offerte (opzionale)</FieldLabel>
+          <Text fontSize="$2" color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
             costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
           </Text>
 
           {suggestedServices.length > 0 ? (
             <YStack gap="$1">
-              <Text fontSize="$2" color="$color9">
+              <Text fontSize="$2" color={brand.grafite70}>
                 Le più richieste per questa categoria:
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
                 {suggestedServices.map((name) => (
-                  <Button
+                  <XStack
                     key={name}
-                    size="$2"
-                    backgroundColor="$blue2"
-                    color="$blue11"
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius={999}
+                    borderWidth={1}
+                    borderColor={brand.cianografia}
+                    backgroundColor={brand.cianografiaVelo}
+                    cursor="pointer"
                     onPress={() => addSuggestedService(name)}
+                    accessibilityRole="button"
                   >
-                    + {name}
-                  </Button>
+                    <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                      + {name}
+                    </Text>
+                  </XStack>
                 ))}
               </YStack>
             </YStack>
@@ -407,16 +440,16 @@ export default function DashboardProfiloPage() {
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"
-                  style={{ flex: 1, minWidth: 160, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
                 />
                 <input
                   value={service.priceMin}
                   onChange={(e) => updateService(index, "priceMin", e.target.value)}
                   placeholder="Da €"
                   inputMode="decimal"
-                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, width: 90 }}
                 />
-                <Text fontSize="$2" color="$color9">
+                <Text fontSize="$2" color={brand.grafite70}>
                   a
                 </Text>
                 <input
@@ -424,54 +457,42 @@ export default function DashboardProfiloPage() {
                   onChange={(e) => updateService(index, "priceMax", e.target.value)}
                   placeholder="A €"
                   inputMode="decimal"
-                  style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 14 }}
+                  style={{ ...smallInputStyle, width: 90 }}
                 />
-                <Button
-                  size="$2"
-                  backgroundColor="$color3"
-                  color="$color12"
-                  onPress={() => removeService(index)}
-                  accessibilityLabel="Rimuovi prestazione"
-                >
-                  <X size={14} strokeWidth={1.5} />
+                <Button variant="ghost" size="$2" height={36} onPress={() => removeService(index)} accessibilityLabel="Rimuovi prestazione">
+                  <X size={14} strokeWidth={1.5} color={brand.grafite} />
                 </Button>
               </YStack>
             ))}
           </YStack>
-          <Button
-            size="$3"
-            alignSelf="flex-start"
-            backgroundColor="$color3"
-            color="$color12"
-            onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}
-          >
+          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
             + Aggiungi prestazione
           </Button>
         </YStack>
 
         <YStack gap="$2">
-          <Text fontWeight="600">Bio (opzionale)</Text>
+          <FieldLabel>Bio (opzionale)</FieldLabel>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Presenta la tua attività in poche righe."
             rows={4}
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15, fontFamily: "inherit", resize: "vertical" }}
+            style={{ ...inputStyle, resize: "vertical" }}
           />
         </YStack>
 
         {error ? (
-          <Text color="$red10" fontSize="$3">
+          <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
         {saved ? (
-          <Text color="$green10" fontSize="$3">
+          <Text color={brand.verificato} fontSize="$3">
             Profilo salvato!
           </Text>
         ) : null}
 
-        <Button size="$5" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+        <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}
         </Button>
       </YStack>

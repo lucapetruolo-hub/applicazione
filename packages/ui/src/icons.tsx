@@ -30,6 +30,7 @@ import {
   BadgeCheck,
   Eye,
   EyeOff,
+  Check,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -60,6 +61,7 @@ export const ICONS = {
   "badge-check": BadgeCheck,
   eye: Eye,
   "eye-off": EyeOff,
+  check: Check,
 } as const;
 
 export type IconName = keyof typeof ICONS;

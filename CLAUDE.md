@@ -905,6 +905,59 @@ lettura di codice) prima e dopo, non solo assunto.
   simulato su una macchina condivisa) — da rifare a deploy attivo prima di
   considerare chiuso il punto.
 
-Fasi successive (pagine interne restanti — dashboard, account,
-autenticazione —, motion) non ancora iniziate. Riga legale del footer da
-completare quando disponibili i dati societari reali (vedi Fase 4).
+**Fase 5, secondo giro — pagine interne restanti (fatto):** completa il
+giro rimasto in sospeso dopo il primo passaggio ricerca+profilo pubblico:
+autenticazione (`/accedi`, `/registrati`, `/password-dimenticata`), area
+cliente (`/account`, `/professionisti-salvati`, `/le-mie-richieste`), form
+condiviso (`GuidedRequestForm`, usato da `/preventivo` e `/urgente`),
+dashboard professionista (`/dashboard`, `/dashboard/profilo`,
+`/dashboard/agenda`) — stesso trattamento delle pagine già fatte: `Field`/
+`Surface`/`Badge`/`EmptyState`/`Button variant=`/token brand al posto di
+`AuthInput`/`H1`/`H2`/`Paragraph`/colori Tamagui generici. Logica di
+business **non toccata in nessuna pagina**, solo la resa visiva.
+
+- **`Field.tsx`** (`packages/ui`, Fase 3) esteso con uno slot opzionale
+  `rightElement` (usato per il toggle mostra/nascondi password): prima
+  supportava solo label+input+hint/errore. Niente icona a sinistra dentro
+  il campo (a differenza del vecchio `AuthInput`): la label mono sopra
+  basta a identificare il campo, coerente con l'estetica "scheda tecnica".
+  Aggiunte due chiavi icona al registro condiviso: `eye`/`eye-off` (toggle
+  password) e `check` (spunta nelle checkbox di `/dashboard/profilo` e
+  `/dashboard/agenda`, sostituisce un uso improprio di `badge-check` in un
+  primo tentativo).
+- **Bug reale scoperto e corretto**: `SearchBar.tsx` e `Autocomplete.tsx`
+  (`packages/ui`) usano `useState` ma non erano mai stati marcati
+  `"use client"` — latente da sempre (mai emerso perché nessun Server
+  Component puro aveva mai importato dal barrel di `@professionisti/ui`
+  senza un client component di mezzo), esploso in build ("You're importing
+  a component that needs useState... none of its parents are marked with
+  'use client'") solo quando `/password-dimenticata/page.tsx` è stato
+  toccato per la prima volta. `/password-dimenticata` è passata dal
+  pattern "pagina server con solo HTML grezzo" (per evitare esattamente
+  questo problema) al pattern page.tsx+Content.tsx già usato da
+  `/preventivo`: renderizzare Tamagui direttamente in un vero Server
+  Component fallisce comunque in build ("createContext is not a
+  function"), un componente `"use client"` intermedio è necessario. Lo
+  stesso file aveva anche un secondo `<main>` proprio, che duplicava il
+  landmark `<main>` appena introdotto in `layout.tsx` (Fase 6) — rimosso.
+- **`AccountSidebar.tsx`** (menu laterale di tutte le pagine account/
+  dashboard) ricolorato una sola volta qui: beneficio automatico su tutte
+  le pagine di questo giro, che lo condividono.
+- **Bug reale corretto nello stesso giro**: il testo di aiuto del campo
+  "Indirizzo preciso" in `/dashboard/profilo` diceva ancora "comparirà
+  anche nella tua card e nel tuo profilo pubblico" — non più vero da
+  quando l'indirizzo esatto è stato rimosso dalla resa pubblica in Fase 5
+  (primo giro). Corretto per non promettere al professionista qualcosa
+  che il prodotto non fa più.
+- Verificato: typecheck pulito su `apps/web`/`packages/ui`/`apps/mobile`,
+  build di produzione verde su tutte le 24 route, screenshot Playwright
+  autenticati (token JWT iniettato in `localStorage`) su
+  `/dashboard`, `/dashboard/profilo`, `/dashboard/agenda`, `/account`,
+  `/le-mie-richieste`, `/professionisti-salvati`, `/preventivo`,
+  `/urgente` — zero errori console, categoria selezionabile, checkbox
+  funzionante, empty state coerenti.
+
+Fasi successive (motion) non ancora iniziate — nessuna specifica
+concreta disponibile in questa sessione per quella fase (solo un'etichetta
+generica nel riepilogo). Riga legale del footer da completare quando
+disponibili i dati societari reali (vedi Fase 4).
