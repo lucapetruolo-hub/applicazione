@@ -1318,3 +1318,12 @@ Oggi/Domani/... con pillole orario cliccabili in verde).
   overflow orizzontale, zero errori console/pageerror nuovi (l'unico
   warning osservato, `accessibilityState` non riconosciuto su `Chip`, è
   preesistente dalla Fase 3 e non toccato in questo giro).
+
+**Rimozione prestazione in `/dashboard/profilo`**: il tasto "×" per
+rimuovere una voce già inserita in "Prestazioni offerte" era un `Button
+variant="ghost"` con icona grigia, poco visibile — richiesta esplicita
+dell'utente di renderlo rosso con un riquadro rosso accanto alla voce.
+Sostituito con un riquadro 36×36 bordato `brand.urgenza`, sfondo
+`brand.urgenzaVelo`, icona X rossa (`apps/web/src/app/dashboard/profilo/page.tsx`)
+— stesso principio semantico "rosso solo su urgenza/distruttivo" già in
+uso altrove nel redesign (es. i chip di conflitto nell'agenda).

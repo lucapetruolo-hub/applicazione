@@ -459,9 +459,22 @@ export default function DashboardProfiloPage() {
                   inputMode="decimal"
                   style={{ ...smallInputStyle, width: 90 }}
                 />
-                <Button variant="ghost" size="$2" height={36} onPress={() => removeService(index)} accessibilityLabel="Rimuovi prestazione">
-                  <X size={14} strokeWidth={1.5} color={brand.grafite} />
-                </Button>
+                <XStack
+                  width={36}
+                  height={36}
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.urgenza}
+                  backgroundColor={brand.urgenzaVelo}
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => removeService(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rimuovi prestazione"
+                >
+                  <X size={16} strokeWidth={2} color={brand.urgenza} />
+                </XStack>
               </YStack>
             ))}
           </YStack>
