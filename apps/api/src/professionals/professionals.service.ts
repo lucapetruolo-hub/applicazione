@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PrismaClient } from "@professionisti/database";
+import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   findComuneByName,
   type AvailabilitySlotInput,
@@ -320,10 +320,15 @@ export class ProfessionalsService {
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
 
+    // Ascendente (prossima prima): un'agenda operativa deve mostrare
+    // l'appuntamento più vicino in cima, non il più lontano — bug reale,
+    // l'ordinamento discendente precedente mostrava per primo l'impegno più
+    // lontano nel futuro. La UI (/dashboard) raggruppa poi per giorno e
+    // separa prossime/storico, questo endpoint resta la lista grezza.
     const bookings = await this.prisma.booking.findMany({
       where: { professionalProfileId },
       include: { client: true, quote: { include: { items: true } } },
-      orderBy: { scheduledAt: "desc" },
+      orderBy: { scheduledAt: "asc" },
     });
 
     return bookings.map((booking) => ({
@@ -342,16 +347,50 @@ export class ProfessionalsService {
 
   async getMyAvailability(userId: string): Promise<MyAvailability> {
     const professionalProfileId = await this.requireMyProfileId(userId);
-    const [slots, profile] = await Promise.all([
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const endWindow = new Date(startOfToday);
+    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+
+    const [slots, profile, upcomingBookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId },
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       }),
       this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
+      // Stessa finestra di getPublicAgenda (14 giorni): serve solo a segnalare
+      // in UI "questa fascia ha già una prenotazione futura", non a bloccare
+      // nulla lato server — un professionista resta libero di modificare la
+      // propria agenda, viene solo avvisato prima di farlo.
+      this.prisma.booking.findMany({
+        where: {
+          professionalProfileId,
+          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+          scheduledAt: { gte: startOfToday, lt: endWindow },
+        },
+        select: { scheduledAt: true },
+      }),
+      this.prisma.availabilityException.findMany({
+        where: { professionalProfileId, date: { gte: startOfToday } },
+        orderBy: { date: "asc" },
+        select: { date: true },
+      }),
     ]);
+
     return {
-      slots: slots.map((slot) => ({ id: slot.id, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, endTime: slot.endTime })),
+      slots: slots.map((slot) => ({
+        id: slot.id,
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        hasUpcomingBooking: upcomingBookings.some((booking) => {
+          if (booking.scheduledAt.getUTCDay() !== slot.dayOfWeek) return false;
+          const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
+          return bookingTime >= slot.startTime && bookingTime < slot.endTime;
+        }),
+      })),
       bookableAgenda: profile.bookableAgenda,
+      exceptionDates: exceptions.map((exception) => exception.date.toISOString().slice(0, 10)),
     };
   }
 
@@ -361,7 +400,10 @@ export class ProfessionalsService {
     // Lista sostituita per intero ad ogni salvataggio, stesso pattern già
     // usato per le prestazioni (ProfessionalService): coerente con la scala
     // attesa (poche decine di fasce a professionista), molto più semplice
-    // che diffare la lista esistente contro quella inviata.
+    // che diffare la lista esistente contro quella inviata. La validazione
+    // di non-sovrapposizione tra fasce dello stesso giorno vive a monte, nello
+    // zod schema condiviso (professionalAvailabilitySchema in packages/shared,
+    // applicato da ZodValidationPipe) — stessa regola usata anche lato client.
     await Promise.all([
       this.prisma.availabilitySlot.deleteMany({ where: { professionalProfileId } }),
       this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { bookableAgenda } }),
@@ -380,6 +422,42 @@ export class ProfessionalsService {
   }
 
   /**
+   * Giorno di chiusura straordinaria (ferie, festività, imprevisto): blocca
+   * una data specifica senza toccare la ricorrenza settimanale. `upsert`
+   * invece di `create` per restare idempotente (aggiungere due volte la
+   * stessa data non deve fallire con un errore di vincolo unico visibile
+   * all'utente).
+   */
+  async addAvailabilityException(userId: string, dateStr: string): Promise<{ exceptionDates: string[] }> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const date = parseIsoDateUtc(dateStr);
+    await this.prisma.availabilityException.upsert({
+      where: { professionalProfileId_date: { professionalProfileId, date } },
+      create: { professionalProfileId, date },
+      update: {},
+    });
+    return this.listMyExceptionDates(professionalProfileId);
+  }
+
+  async removeAvailabilityException(userId: string, dateStr: string): Promise<{ exceptionDates: string[] }> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const date = parseIsoDateUtc(dateStr);
+    await this.prisma.availabilityException.deleteMany({ where: { professionalProfileId, date } });
+    return this.listMyExceptionDates(professionalProfileId);
+  }
+
+  private async listMyExceptionDates(professionalProfileId: string): Promise<{ exceptionDates: string[] }> {
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const exceptions = await this.prisma.availabilityException.findMany({
+      where: { professionalProfileId, date: { gte: startOfToday } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+    return { exceptionDates: exceptions.map((exception) => exception.date.toISOString().slice(0, 10)) };
+  }
+
+  /**
    * Agenda pubblica: proietta la disponibilità settimanale ricorrente sui
    * prossimi 14 giorni di calendario, barrando le fasce che coincidono con
    * una prenotazione reale già presa. Confronto su data/ora UTC (nessuna
@@ -393,7 +471,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, bookings, profile] = await Promise.all([
+    const [slots, bookings, profile, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
       this.prisma.booking.findMany({
         where: {
@@ -404,7 +482,12 @@ export class ProfessionalsService {
         select: { scheduledAt: true },
       }),
       this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
+      this.prisma.availabilityException.findMany({
+        where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
+        select: { date: true },
+      }),
     ]);
+    const exceptionDates = new Set(exceptions.map((exception) => exception.date.toISOString().slice(0, 10)));
 
     const days: ProfessionalAgendaDay[] = [];
     for (let i = 0; i < 14; i++) {
@@ -413,14 +496,19 @@ export class ProfessionalsService {
       const dayOfWeek = date.getUTCDay();
       const dateStr = date.toISOString().slice(0, 10);
 
-      const daySlots = slots
-        .filter((slot) => slot.dayOfWeek === dayOfWeek)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime))
-        .map((slot) => ({
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          booked: isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime),
-        }));
+      // Giorno di chiusura straordinaria: nessuna fascia, indipendentemente
+      // dalla ricorrenza settimanale — stesso effetto visivo di un giorno
+      // senza orari impostati (il frontend nasconde già i giorni senza slot).
+      const daySlots = exceptionDates.has(dateStr)
+        ? []
+        : slots
+            .filter((slot) => slot.dayOfWeek === dayOfWeek)
+            .sort((a, b) => a.startTime.localeCompare(b.startTime))
+            .map((slot) => ({
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              booked: isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime),
+            }));
 
       days.push({ date: dateStr, dayOfWeek, slots: daySlots });
     }
@@ -432,8 +520,22 @@ export class ProfessionalsService {
    * professionista ha attivato `bookableAgenda` (checkbox in
    * /dashboard/agenda, "dà l'opzione al cliente di potersi prenotare",
    * altrimenti l'agenda resta solo informativa). Rivalida server-side che la
-   * fascia esista davvero nella disponibilità ricorrente e non sia già
-   * occupata, invece di fidarsi ciecamente di quanto inviato dal client.
+   * fascia esista davvero nella disponibilità ricorrente, non sia già
+   * occupata e non cada in un giorno di chiusura, invece di fidarsi
+   * ciecamente di quanto inviato dal client.
+   *
+   * Il controllo "libera?" e la creazione della prenotazione avvengono dentro
+   * un'unica transazione Serializable: senza, due clienti che toccano la
+   * stessa fascia nello stesso istante possono entrambi superare il
+   * controllo prima che l'altro scriva (race condition reale, non teorica,
+   * in un marketplace dove "il primo che risponde si aggiudica il lavoro" -
+   * CLAUDE.md §8). Postgres rifiuta una delle due transazioni con un errore
+   * di serializzazione (P2034), che qui diventa un 409 pulito invece di
+   * propagarsi come 500. Nessuna modifica allo schema per questo fix (niente
+   * vincolo unique su Booking.scheduledAt): quel campo ha già un secondo
+   * significato per le prenotazioni da preventivo (data stimata di inizio,
+   * non uno slot esatto — due preventivi diversi possono legittimamente
+   * condividere la stessa data), un vincolo globale li avrebbe rotti.
    */
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
@@ -447,43 +549,68 @@ export class ProfessionalsService {
       throw new ForbiddenException("Questo professionista non permette la prenotazione diretta dall'agenda.");
     }
 
-    const date = new Date(`${input.date}T00:00:00.000Z`);
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException("Data non valida.");
-    }
+    const date = parseIsoDateUtc(input.date);
     const dayOfWeek = date.getUTCDay();
 
-    const matchingSlot = await this.prisma.availabilitySlot.findFirst({
-      where: { professionalProfileId, dayOfWeek, startTime: input.startTime, endTime: input.endTime },
-    });
+    const [matchingSlot, exception] = await Promise.all([
+      this.prisma.availabilitySlot.findFirst({
+        where: { professionalProfileId, dayOfWeek, startTime: input.startTime, endTime: input.endTime },
+      }),
+      this.prisma.availabilityException.findUnique({
+        where: { professionalProfileId_date: { professionalProfileId, date } },
+      }),
+    ]);
     if (!matchingSlot) {
       throw new NotFoundException("Questa fascia oraria non fa parte dell'agenda del professionista.");
     }
-
-    const dayStart = new Date(date);
-    const dayEnd = new Date(date);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-    const existingBookings = await this.prisma.booking.findMany({
-      where: {
-        professionalProfileId,
-        status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-        scheduledAt: { gte: dayStart, lt: dayEnd },
-      },
-      select: { scheduledAt: true },
-    });
-    if (isSlotBooked(existingBookings, input.date, input.startTime, input.endTime)) {
-      throw new ConflictException("Questa fascia è già stata prenotata.");
+    if (exception) {
+      throw new ConflictException("Il professionista non è disponibile in questa data.");
     }
 
     const [hoursStr, minutesStr] = input.startTime.split(":");
     const scheduledAt = new Date(date);
     scheduledAt.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
 
-    const booking = await this.prisma.booking.create({
-      data: { clientId, professionalProfileId, scheduledAt, status: "PENDING" },
-    });
-    return { bookingId: booking.id };
+    const dayStart = new Date(date);
+    const dayEnd = new Date(date);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+    try {
+      const booking = await this.prisma.$transaction(
+        async (tx) => {
+          const existingBookings = await tx.booking.findMany({
+            where: {
+              professionalProfileId,
+              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+              scheduledAt: { gte: dayStart, lt: dayEnd },
+            },
+            select: { scheduledAt: true },
+          });
+          if (isSlotBooked(existingBookings, input.date, input.startTime, input.endTime)) {
+            throw new ConflictException("Questa fascia è già stata prenotata.");
+          }
+          return tx.booking.create({
+            data: { clientId, professionalProfileId, scheduledAt, status: "PENDING" },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+      return { bookingId: booking.id };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia è già stata prenotata.");
+      }
+      throw err;
+    }
   }
+}
+
+function parseIsoDateUtc(dateStr: string): Date {
+  const date = new Date(`${dateStr}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException("Data non valida.");
+  }
+  return date;
 }
 
 function isSlotBooked(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): boolean {

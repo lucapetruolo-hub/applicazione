@@ -24,6 +24,13 @@ export type AvailabilitySlotItem = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /**
+   * True se nei prossimi 14 giorni (stessa finestra di getPublicAgenda)
+   * esiste già almeno una prenotazione reale che cade in questa fascia
+   * ricorrente. Usato in /dashboard/agenda per avvisare prima di
+   * rimuovere/ridurre un orario che un cliente ha già prenotato.
+   */
+  hasUpcomingBooking: boolean;
 };
 
 /** Fascia oraria proiettata su una data reale, con lo stato di prenotazione. */
@@ -50,4 +57,6 @@ export type ProfessionalAgenda = {
 export type MyAvailability = {
   slots: AvailabilitySlotItem[];
   bookableAgenda: boolean;
+  /** Date ISO (YYYY-MM-DD) da oggi in poi in cui il professionista ha chiuso per quel giorno (ferie, festività, imprevisto). */
+  exceptionDates: string[];
 };

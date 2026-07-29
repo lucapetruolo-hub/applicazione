@@ -18,10 +18,12 @@ import type {
   UpdateAccountInput,
 } from "@professionisti/shared";
 
+export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
+
 export type ClientBooking = {
   id: string;
   scheduledAt: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
+  status: BookingStatus;
   businessName: string;
   professionalProfileId: string;
   hasReview: boolean;
@@ -232,6 +234,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ slots, bookableAgenda }),
       }),
 
+    addAvailabilityException: (token: string, date: string) =>
+      request<{ exceptionDates: string[] }>("/professionals/me/availability/exceptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ date }),
+      }),
+
+    removeAvailabilityException: (token: string, date: string) =>
+      request<{ exceptionDates: string[] }>(`/professionals/me/availability/exceptions/${date}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
     bookAgendaSlot: (token: string, professionalId: string, input: BookAgendaSlotInput) =>
       request<{ bookingId: string }>(`/professionals/${professionalId}/agenda/book`, {
         method: "POST",
@@ -297,11 +312,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
-    updateBookingStatus: (token: string, bookingId: string, status: "COMPLETED" | "CANCELED" | "NO_SHOW") =>
+    updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
+      }),
+
+    cancelMyBooking: (token: string, bookingId: string) =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     myClientBookings: (token: string) =>

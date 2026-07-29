@@ -38,8 +38,16 @@ export class BookingsService {
     return { bookingId: booking.id };
   }
 
-  /** Il professionista segna una prenotazione come completata (o annullata/no-show). */
-  async updateStatus(professionalUserId: string, bookingId: string, status: "COMPLETED" | "CANCELED" | "NO_SHOW") {
+  /**
+   * Il professionista conferma, completa o annulla una prenotazione.
+   * CONFIRMED serve soprattutto alle prenotazioni dirette dall'agenda
+   * pubblica (bookAgendaSlot le crea come PENDING, vedi
+   * ProfessionalsService): prima di questo cambio non esisteva alcuna azione
+   * per farle avanzare, restavano PENDING per sempre — bug reale, la
+   * dashboard mostrava il bottone "Segna come completato" solo per lo stato
+   * CONFIRMED.
+   */
+  async updateStatus(professionalUserId: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {
       throw new NotFoundException("Profilo professionista non trovato.");
@@ -49,9 +57,31 @@ export class BookingsService {
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
+    if (booking.status === "COMPLETED" || booking.status === "CANCELED") {
+      throw new ForbiddenException("Questa prenotazione è già conclusa.");
+    }
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status } });
     return { bookingId, status };
+  }
+
+  /**
+   * Il cliente annulla una propria prenotazione ancora attiva (PENDING o
+   * CONFIRMED). Prima di questo endpoint un cliente che prenotava
+   * direttamente una fascia dall'agenda pubblica (bookAgendaSlot) non aveva
+   * alcun modo di disdire — solo il professionista poteva farlo.
+   */
+  async cancelForClient(clientId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.clientId !== clientId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
+      throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
+    }
+
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED" } });
+    return { bookingId, status: "CANCELED" as const };
   }
 
   /** Prenotazioni del cliente autenticato, per proporre la recensione a lavoro completato. */

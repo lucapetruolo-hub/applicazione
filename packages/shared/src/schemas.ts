@@ -167,6 +167,7 @@ export const professionalProfileSelfSchema = professionalProfileSchema
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Orario non valido.");
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
 
 /** Fascia oraria ricorrente (agenda settimanale), vedi packages/shared/src/availability.ts. */
 export const availabilitySlotSchema = z
@@ -181,16 +182,50 @@ export const availabilitySlotSchema = z
   });
 export type AvailabilitySlotInput = z.infer<typeof availabilitySlotSchema>;
 
-export const professionalAvailabilitySchema = z.object({
-  slots: z.array(availabilitySlotSchema).max(50).default([]),
-  /** Se true, un cliente può prenotare direttamente una fascia libera dell'agenda pubblica. */
-  bookableAgenda: z.boolean().default(false),
-});
+export const professionalAvailabilitySchema = z
+  .object({
+    slots: z.array(availabilitySlotSchema).max(50).default([]),
+    /** Se true, un cliente può prenotare direttamente una fascia libera dell'agenda pubblica. */
+    bookableAgenda: z.boolean().default(false),
+  })
+  // Due fasce sullo stesso giorno non possono sovrapporsi (es. 09:00–13:00 e
+  // 10:00–11:00): fonte di verità unica condivisa da client (validazione
+  // immediata in /dashboard/agenda) e server (ZodValidationPipe), invece di
+  // duplicare la stessa logica in due punti che potrebbero disallinearsi.
+  .superRefine((data, ctx) => {
+    const byDay = new Map<number, { startTime: string; endTime: string }[]>();
+    for (const slot of data.slots) {
+      const list = byDay.get(slot.dayOfWeek) ?? [];
+      list.push(slot);
+      byDay.set(slot.dayOfWeek, list);
+    }
+    for (const daySlots of byDay.values()) {
+      const sorted = [...daySlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      for (let i = 1; i < sorted.length; i++) {
+        const current = sorted[i];
+        const previous = sorted[i - 1];
+        if (current && previous && current.startTime < previous.endTime) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Due fasce orarie dello stesso giorno non possono sovrapporsi.",
+            path: ["slots"],
+          });
+          return;
+        }
+      }
+    }
+  });
 export type ProfessionalAvailabilityInput = z.infer<typeof professionalAvailabilitySchema>;
+
+/** Giorno di chiusura straordinaria (ferie, festività, imprevisto), vedi packages/shared/src/availability.ts. */
+export const availabilityExceptionSchema = z.object({
+  date: isoDateSchema,
+});
+export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionSchema>;
 
 /** Prenotazione diretta di una fascia dell'agenda pubblica (solo se bookableAgenda è true). */
 export const bookAgendaSlotSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."),
+  date: isoDateSchema,
   startTime: timeSchema,
   endTime: timeSchema,
 });

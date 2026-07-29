@@ -120,6 +120,7 @@ model ProfessionalProfile {
   savedBy          SavedProfessional[]
   services         ProfessionalService[]
   availabilitySlots AvailabilitySlot[]
+  availabilityExceptions AvailabilityException[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -167,6 +168,29 @@ model AvailabilitySlot {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@map("availability_slots")
+}
+
+// Giorno di chiusura straordinaria (ferie, festività, imprevisto): una data
+// specifica in cui il professionista non è disponibile nonostante la
+// ricorrenza settimanale di AvailabilitySlot lo preveda. Modello separato
+// invece di un campo su AvailabilitySlot: la ricorrenza settimanale e le
+// eccezioni puntuali hanno cicli di vita indipendenti (la prima cambia di
+// rado, le seconde si aggiungono/rimuovono una alla volta) — confonderle in
+// un'unica entità avrebbe reso "sostituisci tutta la lista ad ogni
+// salvataggio" (pattern già in uso per gli slot) scomodo per un'aggiunta
+// estemporanea di un solo giorno. `date` normalizzata a mezzanotte UTC
+// (stessa convenzione "data pura, nessun fuso" già in uso per
+// ProfessionalAgendaDay/scheduledAt in questo modulo).
+model AvailabilityException {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  date                  DateTime
+  createdAt             DateTime @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, date])
+  @@map("availability_exceptions")
 }
 
 // ---------------------------------------------------------------------------

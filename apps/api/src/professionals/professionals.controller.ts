@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -15,9 +16,11 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
+  availabilityExceptionSchema,
   bookAgendaSlotSchema,
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
+  type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
   type ProfessionalAvailabilityInput,
   type ProfessionalProfileSelfInput,
@@ -118,6 +121,21 @@ export class ProfessionalsController {
     @Body(new ZodValidationPipe(professionalAvailabilitySchema)) body: ProfessionalAvailabilityInput,
   ) {
     return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots, body.bookableAgenda);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("me/availability/exceptions")
+  addAvailabilityException(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(availabilityExceptionSchema)) body: AvailabilityExceptionInput,
+  ) {
+    return this.professionalsService.addAvailabilityException(req.user.userId, body.date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete("me/availability/exceptions/:date")
+  removeAvailabilityException(@Req() req: AuthenticatedRequest, @Param("date") date: string) {
+    return this.professionalsService.removeAvailabilityException(req.user.userId, date);
   }
 
   @Get(":id")
