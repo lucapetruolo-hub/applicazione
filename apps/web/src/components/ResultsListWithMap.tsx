@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Map as MapIcon, X } from "lucide-react";
+import { Map as MapIcon, Maximize2, Minimize2, X } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -48,6 +48,10 @@ export function ResultsListWithMap({
   // ricerca. Da desktop ($gtMd) resta sempre visibile a fianco della lista,
   // indipendentemente da questo stato (vedi regola CSS dedicata sotto).
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  // "Espandi mappa" (riferimento miodottore.it): allarga la colonna mappa a
+  // scapito della lista, solo da desktop — da mobile la mappa è già a piena
+  // larghezza quando aperta, non ha senso "espanderla" ulteriormente.
+  const [mapExpanded, setMapExpanded] = useState(false);
   // Leaflet inizializzato dentro un contenitore nascosto (display:none, lato
   // mobile prima del tap su "Mostra mappa") calcola un pixel-origin interno
   // corrotto che poi NON si ricalcola in modo affidabile nemmeno con
@@ -120,8 +124,12 @@ export function ResultsListWithMap({
       ) : null}
 
       {showMap ? (
-        <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}`}>
+        <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}>
           <div className="results-map-sticky">
+            <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
+              {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
+              {mapExpanded ? "Riduci mappa" : "Espandi mappa"}
+            </button>
             <YStack width="100%" height="100%" borderRadius="$4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
               {shouldMountMap ? (
                 <ResultsMap
@@ -145,13 +153,16 @@ export function ResultsListWithMap({
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               city={pro.city}
+              subTags={pro.subTags}
               rating={pro.rating ?? undefined}
               reviewCount={pro.reviewCount}
               verified={pro.verified}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
+              availabilityPreview={pro.availabilityPreview}
               onPress={() => router.push(`/professionista/${pro.id}`)}
-              icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
+              onSlotPress={() => router.push(`/professionista/${pro.id}#agenda`)}
+              icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
             />
           ))}
         </YStack>
@@ -190,6 +201,10 @@ export function ResultsListWithMap({
         .results-map-sticky {
           width: 100%;
           height: 320px;
+          position: relative;
+        }
+        .map-expand-toggle {
+          display: none;
         }
         .results-list-col {
           width: 100%;
@@ -212,12 +227,34 @@ export function ResultsListWithMap({
             min-width: 260px;
             flex-shrink: 0;
             order: 2;
+            transition: max-width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          .results-map-col.expanded {
+            width: 58%;
+            max-width: 760px;
           }
           .results-map-sticky {
             position: sticky;
             top: 24px;
             height: calc(100vh - 140px);
             min-height: 420px;
+          }
+          .map-expand-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 500;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid ${brand.filetto};
+            background: ${brand.calce};
+            color: ${brand.grafite};
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
           }
           .results-list-col {
             flex: 1;

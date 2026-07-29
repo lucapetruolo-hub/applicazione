@@ -1221,3 +1221,100 @@ zero errori console.
   in uso per `PhotoLightbox`/`BookingDetailPanel` (più affidabile della
   vera Fullscreen API in contesti sandboxed/iframe), chiusura con Escape
   o con lo stesso bottone.
+- **Editor fascia in pop-up invece che incastrato nella colonna** — richiesta
+  esplicita dell'utente: il riquadro con orario inizio/fine e capienza,
+  aperto cliccando il tasto "+" o una fascia già impostata, non appare più
+  come piccolo box incastrato dentro la colonna del giorno (`SlotEditorInline`,
+  campi 74px/12px, poco leggibile) ma come overlay centrato a schermo
+  (`SlotEditorModal`, `apps/web/src/app/dashboard/agenda/page.tsx`): stesso
+  pattern DOM di `BookingDetailPanel`/`PhotoLightbox` (`role="dialog"`,
+  chiusura con Escape o click sul backdrop), campi orario più grandi
+  (130px/17px) con etichetta del giorno ("Lunedì", ecc.) in testa. La colonna
+  del calendario mostra solo le fasce già salvate (`SlotChip`, invariato) più
+  il tasto "+"; l'errore di sovrapposizione "dal vivo" (già esistente) è
+  mostrato dentro il pop-up invece che nel piccolo riquadro — il banner sotto
+  lo schema del calendario resta ma solo quando nessun pop-up è aperto (altrimenti
+  duplicava lo stesso messaggio dietro l'overlay semi-trasparente).
+
+---
+
+## 12. Ricerca professionisti — proporzioni card in stile miodottore.it + mini-agenda
+
+Richiesta esplicita dell'utente, con screenshot di riferimento
+(risultati di ricerca miodottore.it): le card dei risultati di ricerca
+dovevano avere le stesse proporzioni del riferimento (immagine profilo
+grande, gerarchia di dimensioni carattere per nome/specialità/rating,
+mappa grande a fianco con controllo di espansione) — poi, a metà turno,
+richiesto anche di replicare la mini-agenda inline per card (colonne
+Oggi/Domani/... con pillole orario cliccabili in verde).
+
+- **`ProfessionalCard`** (`packages/ui`) riscritta: avatar da 44px a 88px
+  (passato dal chiamante, non cambia il componente in sé — vedi
+  `ResultsListWithMap.tsx`), nome attività a 22px/800 (era `$5`/700), riga
+  categoria+specializzazioni a 15px (nuova prop `subTags`, fino a 3,
+  es. "Idraulico · impianti civili, caldaie"), spunta "Verificato" come
+  icona accanto al nome invece del badge testuale (più simile al
+  riferimento), città con icona `map-pin`, prestazioni a 14px (era 12px).
+  **Nessun indirizzo esatto ri-esposto**: la rimozione dell'indirizzo
+  pubblico dalla card (Fase 5, redesign) resta — il riferimento
+  miodottore.it mostra "Indirizzo"/"Online" come tab, ma nel nostro dominio
+  quell'indirizzo è appositamente nascosto (CLAUDE.md §10, motivo
+  privacy/sicurezza già deciso), quindi non riprodotto; resta il badge
+  "📹 Online" già esistente.
+- **Mini-agenda per card** (`ProfessionalAvailabilityPreviewDay[]`, nuovo
+  tipo in `packages/shared/src/professionals.ts`): fino a 4 giorni
+  (Oggi/Domani/giorno abbreviato) × 3 orari liberi per giorno, solo fasce
+  esatte (`maxBookings=1`, quelle a capienza restano estranee a questa
+  anteprima — richiedono comunque un preventivo, non ha senso una pillola
+  "cliccabile rapida" per quelle) e solo se il professionista ha
+  `bookableAgenda` attivo. **Calcolata in un'unica query batch per l'intera
+  pagina di risultati** (`ProfessionalsService.buildAvailabilityPreviews`,
+  `apps/api/src/professionals/professionals.service.ts`): mai una query per
+  professionista dentro `search()`, che sarebbe un N+1 reale in un endpoint
+  di ricerca (a differenza di `getPublicAgenda`, chiamata una sola volta per
+  la pagina di un singolo profilo). Click su una pillola naviga a
+  `/professionista/{id}#agenda` (non prenota direttamente dalla card): nuovo
+  anchor `id="agenda"` con `scrollMarginTop` in `ProfessionalDetailContent.tsx`
+  per compensare l'header sticky — la prenotazione vera resta quella già
+  esistente sulla pagina profilo, nessuna logica di prenotazione duplicata
+  nella card.
+- **Bug reale scoperto e corretto durante la verifica visiva** (non
+  ipotizzato, riprodotto con Playwright): un nome attività lungo
+  (es. "Rossi Idraulica 194621734", ~26 caratteri) faceva andare a capo
+  l'intera mini-agenda SOTTO il blocco informativo invece che a fianco, pur
+  restando spazio a sufficienza una volta che il testo si spezza
+  correttamente su più righe — nomi più corti (es. "Rossi Idraulica Test")
+  sulla stessa larghezza di colonna restavano invece correttamente
+  affiancati. Causa: il blocco sinistro della card aveva `flex={1}` senza
+  `flexBasis={0}` esplicito — con `flex-basis:auto` (il default), il
+  browser usa la larghezza "a contenuto pieno" (non spezzata) del nome come
+  ipotesi nel calcolo del wrap dell'intero `flexWrap` esterno, invece di
+  rispettare il solo `minWidth={260}` già impostato. Corretto aggiungendo
+  `flexBasis={0}` sul blocco sinistro e `minWidth={0}` sulla colonna
+  interna (stesso principio "CSS Grid/Flexbox: gli item non si restringono
+  sotto la dimensione del contenuto per default" già documentato altrove in
+  questo file per `CalendarShell`).
+- **`ResultsListWithMap.tsx`**: bottone "Espandi mappa"/"Riduci mappa"
+  (icona `maximize-2`/`minimize-2` di lucide-react, stato `mapExpanded`)
+  sovrapposto in alto a destra della mappa — allarga la colonna mappa da
+  40%/480px a 58%/760px (la colonna lista si restringe di conseguenza,
+  `flex:1` sul suo contenitore, nessun calcolo manuale necessario), solo da
+  desktop (`>=700px`, stessa soglia già in uso per l'affiancamento
+  lista/mappa). Nessuna modifica alla logica di mount-on-visible di Leaflet
+  o al filtro per inquadratura, solo il controllo di larghezza.
+- **`/professionisti-salvati`**: stesso avatar ingrandito (72px, leggermente
+  più piccolo della ricerca) e `subTags` passati per coerenza visiva; niente
+  mini-agenda qui (il backend restituisce `availabilityPreview: []` per
+  questa lista — non vale la query batch aggiuntiva per un elenco personale
+  corto, la mini-agenda esiste solo nei risultati di ricerca).
+- Verificato: typecheck pulito su `packages/shared`/`packages/ui`/
+  `apps/api`/`apps/web`/`apps/mobile`, build di produzione `apps/web` verde,
+  sessione locale end-to-end (Postgres+Redis+API+web) con Playwright:
+  card con mini-agenda popolata (professionista con `bookableAgenda` e fasce
+  esatte libere), click su una pillola naviga correttamente a
+  `/professionista/{id}#agenda` con scroll alla sezione giusta, bottone
+  "Espandi mappa" allarga la colonna e la lista si restringe di conseguenza,
+  vista mobile (390px) impila correttamente card e mini-agenda sotto senza
+  overflow orizzontale, zero errori console/pageerror nuovi (l'unico
+  warning osservato, `accessibilityState` non riconosciuto su `Chip`, è
+  preesistente dalla Fase 3 e non toccato in questo giro).

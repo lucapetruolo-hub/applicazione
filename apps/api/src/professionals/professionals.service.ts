@@ -8,6 +8,7 @@ import {
   type MyProfessionalProfile,
   type ProfessionalAgenda,
   type ProfessionalAgendaDay,
+  type ProfessionalAvailabilityPreviewDay,
   type ProfessionalBooking,
   type ProfessionalDetail,
   type ProfessionalLead,
@@ -27,6 +28,14 @@ export type ProfessionalSearchParams = {
   /** Esclude i profili demo del seed (isDemo) — usato dalla homepage per non mostrare vetrine finte come reali. */
   excludeDemo?: boolean;
 };
+
+// date.getUTCDay(): 0=domenica...6=sabato — stessa convenzione già usata in
+// tutto il modulo agenda (vedi CLAUDE.md §11).
+const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+
+const PREVIEW_WINDOW_DAYS = 9;
+const PREVIEW_MAX_DAYS = 4;
+const PREVIEW_MAX_TIMES_PER_DAY = 3;
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
@@ -63,6 +72,8 @@ export class ProfessionalsService {
       },
     });
 
+    const previewsByProfileId = await this.buildAvailabilityPreviews(profiles.map((profile) => profile.id));
+
     const results = profiles.map((profile) => {
       const reviews = profile.bookings
         .map((booking) => booking.review)
@@ -87,6 +98,8 @@ export class ProfessionalsService {
         longitude: profile.longitude,
         imageUrl: profile.imageUrl,
         services: mapServices(profile.services),
+        subTags: profile.subTags,
+        availabilityPreview: previewsByProfileId.get(profile.id) ?? [],
       } satisfies ProfessionalSearchResult;
     });
 
@@ -100,6 +113,103 @@ export class ProfessionalsService {
     });
 
     return results;
+  }
+
+  /**
+   * Anteprima "prossimi orari liberi" per la mini-agenda della card di
+   * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it).
+   * Un'unica query batch per l'intera pagina di risultati invece di una per
+   * professionista: a differenza di getPublicAgenda (14 giorni, un solo
+   * profilo, chiamata dalla pagina profilo) qui il numero di profili può
+   * essere alto e questa funzione gira dentro l'endpoint di ricerca, dove un
+   * N+1 sarebbe un problema di scala reale, non solo teorico.
+   */
+  private async buildAvailabilityPreviews(profileIds: string[]): Promise<Map<string, ProfessionalAvailabilityPreviewDay[]>> {
+    const result = new Map<string, ProfessionalAvailabilityPreviewDay[]>();
+    if (profileIds.length === 0) return result;
+
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const endWindow = new Date(startOfToday);
+    endWindow.setUTCDate(endWindow.getUTCDate() + PREVIEW_WINDOW_DAYS);
+
+    const [profiles, slots, bookings, exceptions] = await Promise.all([
+      this.prisma.professionalProfile.findMany({
+        where: { id: { in: profileIds }, bookableAgenda: true },
+        select: { id: true },
+      }),
+      // Solo fasce esatte (maxBookings=1): le fasce generiche richiedono
+      // comunque un preventivo, non sono "prenotabili" con un click sulla
+      // pillola della mini-agenda.
+      this.prisma.availabilitySlot.findMany({
+        where: { professionalProfileId: { in: profileIds }, maxBookings: 1 },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          professionalProfileId: { in: profileIds },
+          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+          scheduledAt: { gte: startOfToday, lt: endWindow },
+        },
+        select: { professionalProfileId: true, scheduledAt: true },
+      }),
+      this.prisma.availabilityException.findMany({
+        where: { professionalProfileId: { in: profileIds }, date: { gte: startOfToday, lt: endWindow } },
+        select: { professionalProfileId: true, date: true },
+      }),
+    ]);
+
+    const bookableProfileIds = new Set(profiles.map((profile) => profile.id));
+    if (bookableProfileIds.size === 0) return result;
+
+    const slotsByProfile = new Map<string, typeof slots>();
+    for (const slot of slots) {
+      const list = slotsByProfile.get(slot.professionalProfileId) ?? [];
+      list.push(slot);
+      slotsByProfile.set(slot.professionalProfileId, list);
+    }
+    const bookingsByProfile = new Map<string, typeof bookings>();
+    for (const booking of bookings) {
+      const list = bookingsByProfile.get(booking.professionalProfileId) ?? [];
+      list.push(booking);
+      bookingsByProfile.set(booking.professionalProfileId, list);
+    }
+    const exceptionDatesByProfile = new Map<string, Set<string>>();
+    for (const exception of exceptions) {
+      const set = exceptionDatesByProfile.get(exception.professionalProfileId) ?? new Set<string>();
+      set.add(exception.date.toISOString().slice(0, 10));
+      exceptionDatesByProfile.set(exception.professionalProfileId, set);
+    }
+
+    for (const profileId of bookableProfileIds) {
+      const profileSlots = slotsByProfile.get(profileId);
+      if (!profileSlots || profileSlots.length === 0) continue;
+      const profileBookings = bookingsByProfile.get(profileId) ?? [];
+      const exceptionDates = exceptionDatesByProfile.get(profileId);
+
+      const days: ProfessionalAvailabilityPreviewDay[] = [];
+      for (let offset = 0; offset < PREVIEW_WINDOW_DAYS && days.length < PREVIEW_MAX_DAYS; offset++) {
+        const date = new Date(startOfToday);
+        date.setUTCDate(date.getUTCDate() + offset);
+        const dateStr = date.toISOString().slice(0, 10);
+        if (exceptionDates?.has(dateStr)) continue;
+
+        const dayOfWeek = date.getUTCDay();
+        const times = profileSlots
+          .filter((slot) => slot.dayOfWeek === dayOfWeek)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+          .filter((slot) => !isSlotBooked(profileBookings, dateStr, slot.startTime, slot.endTime))
+          .slice(0, PREVIEW_MAX_TIMES_PER_DAY)
+          .map((slot) => slot.startTime);
+        if (times.length === 0) continue;
+
+        const label = offset === 0 ? "Oggi" : offset === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[dayOfWeek]!;
+        days.push({ date: dateStr, label, times });
+      }
+
+      if (days.length > 0) result.set(profileId, days);
+    }
+
+    return result;
   }
 
   async getById(id: string): Promise<ProfessionalDetail> {
@@ -141,8 +251,11 @@ export class ProfessionalsService {
       longitude: profile.longitude,
       imageUrl: profile.imageUrl,
       services: mapServices(profile.services),
-      bio: profile.bio,
       subTags: profile.subTags,
+      // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
+      // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
+      availabilityPreview: [],
+      bio: profile.bio,
       reviews: reviews.map((review) => ({
         id: review.id,
         rating: review.rating,

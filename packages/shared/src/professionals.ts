@@ -36,6 +36,25 @@ export function formatServicePriceRange(priceMinEurCents: number | null, priceMa
   return single !== null ? format(single) : "Su richiesta";
 }
 
+/**
+ * Anteprima "prossimi orari liberi" mostrata nella mini-agenda della card di
+ * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it: colonne
+ * Oggi/Domani/... con pillole orario cliccabili). Solo fasce esatte
+ * (maxBookings=1, prenotazione istantanea se bookableAgenda è attivo) — le
+ * fasce generiche richiedono comunque un preventivo, non hanno senso come
+ * pillola "cliccabile" in una mini-agenda pensata per la prenotazione rapida.
+ * Calcolata lato server in un'unica query batch per l'intera pagina di
+ * risultati (mai una query per professionista, vedi ProfessionalsService.search).
+ */
+export type ProfessionalAvailabilityPreviewDay = {
+  /** Data ISO (yyyy-mm-dd). */
+  date: string;
+  /** Etichetta già pronta per la UI: "Oggi", "Domani" o il giorno della settimana abbreviato. */
+  label: string;
+  /** Fino a 3 orari liberi, ordinati. */
+  times: string[];
+};
+
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
 export type ProfessionalSearchResult = {
   id: string;
@@ -53,12 +72,14 @@ export type ProfessionalSearchResult = {
   longitude: number;
   imageUrl: string | null;
   services: ProfessionalServiceItem[];
+  subTags: string[];
+  /** Vuota se il professionista non ha attivato bookableAgenda o non ha fasce esatte libere nei prossimi giorni. */
+  availabilityPreview: ProfessionalAvailabilityPreviewDay[];
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {
   bio: string | null;
-  subTags: string[];
   reviews: { id: string; rating: number; comment: string | null; photoUrls: string[]; createdAt: string }[];
 };
 

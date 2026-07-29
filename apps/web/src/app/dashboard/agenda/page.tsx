@@ -14,8 +14,9 @@ import { todayUtc, toIsoDate } from "@/lib/calendarDates";
 type SlotDraft = { id?: string; dayOfWeek: number; start: string; end: string; maxBookings: number; hasUpcomingBooking?: boolean };
 type AgendaTab = "disponibilita" | "prenotazioni";
 
-const timeInputStyle = { padding: 6, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 12, fontFamily: "inherit", color: brand.grafite, width: 74, minWidth: 0 };
-const maxInputStyle = { ...timeInputStyle, width: 46, textAlign: "center" as const };
+// dayOfWeek segue date.getUTCDay(): 0=domenica...6=sabato, stessa convenzione
+// usata in tutto il modulo agenda.
+const WEEKDAY_FULL_LABELS = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
 
 function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart < bEnd && bStart < aEnd;
@@ -369,60 +370,33 @@ export default function DashboardAgendaPage() {
           </Text>
         ) : (
           <>
-            {daySlots.map(({ slot, index }) =>
-              editingKey === `edit-${index}` ? (
-                <SlotEditorInline
-                  key={index}
-                  start={draftStart}
-                  end={draftEnd}
-                  maxBookings={draftMax}
-                  liveError={slotEditorLiveError(dayOfWeek, index)}
-                  onStartChange={setDraftStart}
-                  onEndChange={setDraftEnd}
-                  onMaxChange={setDraftMax}
-                  onSave={() => commitSlotEdit(dayOfWeek)}
-                  onCancel={() => setEditingKey(null)}
-                />
-              ) : (
-                <SlotChip
-                  key={index}
-                  slot={slot}
-                  pendingDelete={pendingDeleteIndex === index}
-                  isConflicting={conflicts.has(index)}
-                  onEdit={() => startEditSlot(index)}
-                  onRemove={() => requestRemoveSlot(index)}
-                />
-              ),
-            )}
-            {editingKey === `new-${dayOfWeek}` ? (
-              <SlotEditorInline
-                start={draftStart}
-                end={draftEnd}
-                maxBookings={draftMax}
-                liveError={slotEditorLiveError(dayOfWeek, null)}
-                onStartChange={setDraftStart}
-                onEndChange={setDraftEnd}
-                onMaxChange={setDraftMax}
-                onSave={() => commitSlotEdit(dayOfWeek)}
-                onCancel={() => setEditingKey(null)}
+            {daySlots.map(({ slot, index }) => (
+              <SlotChip
+                key={index}
+                slot={slot}
+                pendingDelete={pendingDeleteIndex === index}
+                isConflicting={conflicts.has(index)}
+                isEditing={editingKey === `edit-${index}`}
+                onEdit={() => startEditSlot(index)}
+                onRemove={() => requestRemoveSlot(index)}
               />
-            ) : (
-              <XStack
-                height={34}
-                borderWidth={1.5}
-                borderStyle="dashed"
-                borderColor={brand.cianografia}
-                borderRadius="$2"
-                alignItems="center"
-                justifyContent="center"
-                cursor="pointer"
-                onPress={() => startAddSlot(dayOfWeek)}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi fascia oraria"
-              >
-                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
-              </XStack>
-            )}
+            ))}
+            <XStack
+              height={34}
+              borderWidth={1.5}
+              borderStyle="dashed"
+              borderColor={brand.cianografia}
+              borderRadius="$2"
+              alignItems="center"
+              justifyContent="center"
+              cursor="pointer"
+              backgroundColor={editingKey === `new-${dayOfWeek}` ? brand.cianografiaVelo : undefined}
+              onPress={() => startAddSlot(dayOfWeek)}
+              accessibilityRole="button"
+              accessibilityLabel="Aggiungi fascia oraria"
+            >
+              <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
+            </XStack>
           </>
         )}
       </YStack>
@@ -618,7 +592,10 @@ export default function DashboardAgendaPage() {
               renderMonthCell={renderMonthCell}
             />
 
-            {error ? (
+            {/* Mentre il pop-up è aperto l'errore è già mostrato lì (più leggibile):
+                questo banner serve solo per gli errori del salvataggio finale,
+                quando nessun editor è in corso. */}
+            {error && !editingKey ? (
               <XStack
                 borderWidth={1}
                 borderColor={brand.urgenza}
@@ -680,6 +657,21 @@ export default function DashboardAgendaPage() {
           isActionPending={isBookingActionPending}
         />
       ) : null}
+
+      {editingKey && editingDayOfWeek() !== null ? (
+        <SlotEditorModal
+          dayLabel={WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!}
+          start={draftStart}
+          end={draftEnd}
+          maxBookings={draftMax}
+          liveError={error}
+          onStartChange={setDraftStart}
+          onEndChange={setDraftEnd}
+          onMaxChange={setDraftMax}
+          onSave={() => commitSlotEdit(editingDayOfWeek()!)}
+          onCancel={() => setEditingKey(null)}
+        />
+      ) : null}
     </YStack>
   );
 }
@@ -688,6 +680,7 @@ function SlotChip({
   slot,
   pendingDelete,
   isConflicting,
+  isEditing,
   onEdit,
   onRemove,
 }: {
@@ -695,6 +688,8 @@ function SlotChip({
   pendingDelete: boolean;
   /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
   isConflicting: boolean;
+  /** True mentre questa fascia è aperta nel pop-up di modifica: evidenziata per farla ritrovare facilmente quando si chiude. */
+  isEditing: boolean;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -702,13 +697,15 @@ function SlotChip({
   const flagged = pendingDelete || isConflicting;
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
   // vista Settimana (richiesta esplicita dell'utente): il resto (modifica,
-  // capienza, rimozione con conferma) si apre nell'editor inline, che ha
-  // più spazio verticale invece di dover stare tutto sulla stessa riga.
+  // capienza, rimozione con conferma) si apre nel pop-up di modifica
+  // (SlotEditorModal), più leggibile del piccolo editor che stava prima
+  // incastrato dentro la colonna del calendario — richiesta esplicita
+  // dell'utente.
   return (
     <XStack
-      borderWidth={flagged ? 1.5 : 1}
+      borderWidth={flagged || isEditing ? 1.5 : 1}
       borderStyle={isGeneric && !flagged ? "dashed" : "solid"}
-      borderColor={flagged ? brand.urgenza : isGeneric ? brand.ottone : brand.cianografia}
+      borderColor={flagged ? brand.urgenza : isEditing ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
       borderRadius="$2"
       paddingHorizontal="$1.5"
       paddingVertical={5}
@@ -716,7 +713,7 @@ function SlotChip({
       justifyContent="space-between"
       gap={4}
       minWidth={0}
-      backgroundColor={isConflicting ? brand.urgenzaVelo : brand.calce}
+      backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing ? brand.cianografiaVelo : brand.calce}
     >
       <XStack
         flex={1}
@@ -749,7 +746,29 @@ function SlotChip({
   );
 }
 
-function SlotEditorInline({
+const modalTimeInputStyle = {
+  padding: 12,
+  borderRadius: 4,
+  border: `1px solid ${brand.filetto}`,
+  fontSize: 17,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  width: 130,
+  minWidth: 0,
+};
+const modalMaxInputStyle = { ...modalTimeInputStyle, width: 80, textAlign: "center" as const };
+
+/**
+ * Pop-up per impostare/modificare una fascia oraria, aperto sia dal tasto
+ * "+" (nuova fascia) sia cliccando una fascia già impostata: prima gli
+ * stessi campi stavano incastrati in un riquadro minuscolo dentro la
+ * colonna del calendario, illeggibile — richiesta esplicita dell'utente di
+ * aprirli invece in un overlay grande, stesso pattern DOM di
+ * BookingDetailPanel/PhotoLightbox (role="dialog", chiusura con Escape o
+ * click sul backdrop, nessuna libreria aggiunta).
+ */
+function SlotEditorModal({
+  dayLabel,
   start,
   end,
   maxBookings,
@@ -760,6 +779,7 @@ function SlotEditorInline({
   onSave,
   onCancel,
 }: {
+  dayLabel: string;
   start: string;
   end: string;
   maxBookings: string;
@@ -771,47 +791,95 @@ function SlotEditorInline({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
   return (
-    <YStack
-      borderWidth={liveError ? 1.5 : 1}
-      borderColor={liveError ? brand.urgenza : brand.cianografia}
-      borderRadius="$2"
-      padding="$2"
-      gap="$2"
-      // Riquadro colorato di rosso subito in caso di conflitto (richiesta
-      // esplicita dell'utente); la spiegazione testuale compare sotto lo
-      // schema del calendario (vedi l'effetto che sincronizza `error` con
-      // slotEditorLiveError), non più ripetuta qui per restare compatti.
-      backgroundColor={liveError ? brand.urgenzaVelo : brand.cianografiaVelo}
+    <div
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Imposta fascia oraria"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(20,24,30,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 16,
+      }}
     >
-      <XStack gap="$1" alignItems="center" flexWrap="wrap">
-        <input type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={timeInputStyle} />
-        <Text fontSize="$1" color={brand.grafite70}>
-          –
-        </Text>
-        <input type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={timeInputStyle} />
-      </XStack>
-      <XStack gap="$1" alignItems="center" flexWrap="wrap">
-        <Text fontFamily="$mono" fontSize={9.5} textTransform="uppercase" color={brand.grafite70}>
-          Max
-        </Text>
-        <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={maxInputStyle} />
-      </XStack>
-      <XStack gap="$2">
-        <Text
-          fontSize={11}
-          color={liveError ? brand.grafite70 : brand.verificato}
-          fontWeight="700"
-          cursor={liveError ? "default" : "pointer"}
-          opacity={liveError ? 0.5 : 1}
-          onPress={liveError ? undefined : onSave}
-        >
-          Salva
-        </Text>
-        <Text fontSize={11} color={brand.grafite70} fontWeight="600" cursor="pointer" onPress={onCancel}>
-          Annulla
-        </Text>
-      </XStack>
-    </YStack>
+      <YStack
+        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        width="100%"
+        maxWidth={400}
+        backgroundColor={brand.calce}
+        borderRadius="$3"
+        borderWidth={1}
+        borderColor={brand.filetto}
+        padding="$5"
+        gap="$4"
+      >
+        <XStack justifyContent="space-between" alignItems="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            {dayLabel}
+          </Text>
+          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onCancel} accessibilityRole="button" accessibilityLabel="Chiudi">
+            ✕
+          </Text>
+        </XStack>
+
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            Orario
+          </Text>
+          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <input type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={modalTimeInputStyle} />
+            <Text fontSize="$3" color={brand.grafite70}>
+              –
+            </Text>
+            <input type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={modalTimeInputStyle} />
+          </XStack>
+        </YStack>
+
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            Numero massimo di prenotazioni
+          </Text>
+          <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={modalMaxInputStyle} />
+          <Text fontSize="$2" color={brand.grafite70}>
+            1 = fascia esatta (prenotazione diretta se attiva). Più di 1 = fascia generica, sempre a richiesta di preventivo.
+          </Text>
+        </YStack>
+
+        {liveError ? (
+          <XStack borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius="$2" paddingHorizontal="$3" paddingVertical="$2" gap="$2" alignItems="center">
+            <Icon name="bell-ring" size={14} color={brand.urgenza} />
+            <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+              {liveError}
+            </Text>
+          </XStack>
+        ) : null}
+
+        <XStack gap="$3">
+          <Button variant="primary" disabled={!!liveError} opacity={liveError ? 0.5 : 1} onPress={liveError ? undefined : onSave}>
+            Salva
+          </Button>
+          <Button variant="ghost" onPress={onCancel}>
+            Annulla
+          </Button>
+        </XStack>
+      </YStack>
+    </div>
   );
 }

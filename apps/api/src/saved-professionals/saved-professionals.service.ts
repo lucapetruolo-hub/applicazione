@@ -66,6 +66,10 @@ export class SavedProfessionalsService {
           priceMinEurCents: service.priceMinEurCents,
           priceMaxEurCents: service.priceMaxEurCents,
         })),
+        subTags: profile.subTags,
+        // La mini-agenda esiste solo nei risultati di ricerca (CLAUDE.md §12):
+        // non vale la query batch aggiuntiva per una lista personale corta.
+        availabilityPreview: [],
       } satisfies ProfessionalSearchResult;
     });
   }

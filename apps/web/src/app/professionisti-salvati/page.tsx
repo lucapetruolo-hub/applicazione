@@ -87,12 +87,13 @@ export default function ProfessionistiSalvatiPage() {
                     businessName={pro.businessName}
                     categoryLabel={pro.categoryLabel}
                     city={pro.city}
+                    subTags={pro.subTags}
                     rating={pro.rating ?? undefined}
                     reviewCount={pro.reviewCount}
                     verified={pro.verified}
                     services={pro.services}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
-                    icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={44} />}
+                    icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
                   />
                   <Button variant="ghost" size="$2" height={36} alignSelf="flex-end" onPress={() => handleRemove(pro.id)}>
                     Rimuovi dai salvati

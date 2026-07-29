@@ -183,6 +183,9 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
         {agenda && agenda.days.some((day) => day.slots.length > 0) ? (
           <YStack gap="$3">
+            {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
+                (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
+            <div id="agenda" style={{ scrollMarginTop: 96 }} />
             <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
               Agenda
             </Text>
