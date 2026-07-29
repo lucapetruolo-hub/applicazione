@@ -14,6 +14,10 @@ export const brand = {
   cianografiaVelo: "#E8EEF6",
   verificato: "#1F7A52",
   urgenza: "#C8362B",
+  // Tinta chiara di sfondo per segnalare un conflitto/errore (es. due fasce
+  // dell'agenda sovrapposte), stesso principio di cianografiaVelo: colore
+  // pieno solo per bordi/testo, mai per sfondi estesi.
+  urgenzaVelo: "#FBEAE7",
   ottone: "#B4893A",
 } as const;
 

@@ -114,6 +114,25 @@ export default function DashboardAgendaPage() {
       .catch((err) => setBookingsError(err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni."));
   }, [token]);
 
+  // Riflette l'errore "dal vivo" dell'editor anche sotto lo schema del
+  // calendario (richiesta esplicita dell'utente), non solo nel piccolo
+  // riquadro di modifica: si aggiorna mentre si scelgono gli orari e si
+  // pulisce da solo quando l'editor si chiude (Annulla/Salva/Rimuovi).
+  // Deve stare prima dei return condizionali qui sotto (regola degli hook:
+  // stesso numero/ordine di hook ad ogni render) — editingDayOfWeek/
+  // slotEditorLiveError sono function declaration, quindi già disponibili
+  // per hoisting anche se definite più in basso nel corpo del componente.
+  useEffect(() => {
+    const dayOfWeek = editingDayOfWeek();
+    if (dayOfWeek === null) {
+      setError(null);
+      return;
+    }
+    const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
+    setError(slotEditorLiveError(dayOfWeek, editIndex));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftStart, draftEnd, editingKey, slots]);
+
   async function handleBookingAction(status: "CONFIRMED" | "COMPLETED" | "CANCELED") {
     if (!token || !selectedBooking) return;
     setIsBookingActionPending(true);
@@ -216,6 +235,26 @@ export default function DashboardAgendaPage() {
     return overlaps ? "Questa fascia si sovrappone a un'altra già impostata per questo giorno." : null;
   }
 
+  /** dayOfWeek della fascia attualmente in modifica (nuova o esistente), o null se nessun editor è aperto. */
+  function editingDayOfWeek(): number | null {
+    if (!editingKey) return null;
+    if (editingKey.startsWith("new-")) return Number(editingKey.slice(4));
+    const index = Number(editingKey.slice(5));
+    return slots[index]?.dayOfWeek ?? null;
+  }
+
+  /** Indici delle fasce già salvate che la fascia in modifica sta sovrapponendo — per colorarle di rosso anche loro, non solo il riquadro in modifica. */
+  function conflictingSlotIndexes(dayOfWeek: number, excludeIndex: number | null): Set<number> {
+    const result = new Set<number>();
+    if (draftEnd <= draftStart) return result;
+    slots.forEach((s, i) => {
+      if (s.dayOfWeek === dayOfWeek && i !== excludeIndex && slotsOverlap(draftStart, draftEnd, s.start, s.end)) {
+        result.add(i);
+      }
+    });
+    return result;
+  }
+
   function commitSlotEdit(dayOfWeek: number) {
     const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
     const liveError = slotEditorLiveError(dayOfWeek, editIndex);
@@ -299,6 +338,12 @@ export default function DashboardAgendaPage() {
       .map((slot, index) => ({ slot, index }))
       .filter(({ slot }) => slot.dayOfWeek === dayOfWeek)
       .sort((a, b) => a.slot.start.localeCompare(b.slot.start));
+    // Fasce già salvate colorate di rosso anche loro quando quella in
+    // modifica ci si sovrappone (richiesta esplicita dell'utente), non
+    // solo il riquadro dell'editor.
+    const editIndexForThisDay = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
+    const isEditingThisDay = editingKey === `new-${dayOfWeek}` || (editIndexForThisDay !== null && slots[editIndexForThisDay]?.dayOfWeek === dayOfWeek);
+    const conflicts = isEditingThisDay ? conflictingSlotIndexes(dayOfWeek, editIndexForThisDay) : new Set<number>();
 
     return (
       <YStack gap="$2" minWidth={0}>
@@ -343,6 +388,7 @@ export default function DashboardAgendaPage() {
                   key={index}
                   slot={slot}
                   pendingDelete={pendingDeleteIndex === index}
+                  isConflicting={conflicts.has(index)}
                   onEdit={() => startEditSlot(index)}
                   onRemove={() => requestRemoveSlot(index)}
                 />
@@ -361,9 +407,21 @@ export default function DashboardAgendaPage() {
                 onCancel={() => setEditingKey(null)}
               />
             ) : (
-              <Button variant="ghost" size="$2" height={30} alignSelf="flex-start" onPress={() => startAddSlot(dayOfWeek)}>
-                + Fascia
-              </Button>
+              <XStack
+                height={34}
+                borderWidth={1.5}
+                borderStyle="dashed"
+                borderColor={brand.cianografia}
+                borderRadius="$2"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                onPress={() => startAddSlot(dayOfWeek)}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi fascia oraria"
+              >
+                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
+              </XStack>
             )}
           </>
         )}
@@ -561,9 +619,21 @@ export default function DashboardAgendaPage() {
             />
 
             {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {error}
-              </Text>
+              <XStack
+                borderWidth={1}
+                borderColor={brand.urgenza}
+                backgroundColor={brand.urgenzaVelo}
+                borderRadius="$2"
+                paddingHorizontal="$3"
+                paddingVertical="$2"
+                alignItems="center"
+                gap="$2"
+              >
+                <Icon name="bell-ring" size={14} color={brand.urgenza} />
+                <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+                  {error}
+                </Text>
+              </XStack>
             ) : null}
             {saved ? (
               <Text color={brand.verificato} fontSize="$3">
@@ -617,24 +687,28 @@ export default function DashboardAgendaPage() {
 function SlotChip({
   slot,
   pendingDelete,
+  isConflicting,
   onEdit,
   onRemove,
 }: {
   slot: SlotDraft;
   pendingDelete: boolean;
+  /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
+  isConflicting: boolean;
   onEdit: () => void;
   onRemove: () => void;
 }) {
   const isGeneric = slot.maxBookings > 1;
+  const flagged = pendingDelete || isConflicting;
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
   // vista Settimana (richiesta esplicita dell'utente): il resto (modifica,
   // capienza, rimozione con conferma) si apre nell'editor inline, che ha
   // più spazio verticale invece di dover stare tutto sulla stessa riga.
   return (
     <XStack
-      borderWidth={1}
-      borderStyle={isGeneric ? "dashed" : "solid"}
-      borderColor={pendingDelete ? brand.urgenza : isGeneric ? brand.ottone : brand.cianografia}
+      borderWidth={flagged ? 1.5 : 1}
+      borderStyle={isGeneric && !flagged ? "dashed" : "solid"}
+      borderColor={flagged ? brand.urgenza : isGeneric ? brand.ottone : brand.cianografia}
       borderRadius="$2"
       paddingHorizontal="$1.5"
       paddingVertical={5}
@@ -642,7 +716,7 @@ function SlotChip({
       justifyContent="space-between"
       gap={4}
       minWidth={0}
-      backgroundColor={brand.calce}
+      backgroundColor={isConflicting ? brand.urgenzaVelo : brand.calce}
     >
       <XStack
         flex={1}
@@ -699,12 +773,16 @@ function SlotEditorInline({
 }) {
   return (
     <YStack
-      borderWidth={1}
+      borderWidth={liveError ? 1.5 : 1}
       borderColor={liveError ? brand.urgenza : brand.cianografia}
       borderRadius="$2"
       padding="$2"
       gap="$2"
-      backgroundColor={liveError ? brand.gesso : brand.cianografiaVelo}
+      // Riquadro colorato di rosso subito in caso di conflitto (richiesta
+      // esplicita dell'utente); la spiegazione testuale compare sotto lo
+      // schema del calendario (vedi l'effetto che sincronizza `error` con
+      // slotEditorLiveError), non più ripetuta qui per restare compatti.
+      backgroundColor={liveError ? brand.urgenzaVelo : brand.cianografiaVelo}
     >
       <XStack gap="$1" alignItems="center" flexWrap="wrap">
         <input type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={timeInputStyle} />
@@ -719,11 +797,6 @@ function SlotEditorInline({
         </Text>
         <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={maxInputStyle} />
       </XStack>
-      {liveError ? (
-        <Text fontSize={11} color={brand.urgenza} fontWeight="600">
-          {liveError}
-        </Text>
-      ) : null}
       <XStack gap="$2">
         <Text
           fontSize={11}
