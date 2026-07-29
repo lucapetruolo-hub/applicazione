@@ -1327,3 +1327,12 @@ Sostituito con un riquadro 36×36 bordato `brand.urgenza`, sfondo
 `brand.urgenzaVelo`, icona X rossa (`apps/web/src/app/dashboard/profilo/page.tsx`)
 — stesso principio semantico "rosso solo su urgenza/distruttivo" già in
 uso altrove nel redesign (es. i chip di conflitto nell'agenda).
+Bug reale corretto subito dopo, segnalato dall'utente: su schermo stretto
+(cellulare) la riga di una prestazione (nome, prezzo min, "a", prezzo max,
+tasto rimuovi) andava a capo in modo scomposto — il tasto "×" finiva isolato
+su una riga a parte, staccato dalla voce a cui si riferiva. Corretto
+raggruppando prezzo min/"a"/prezzo max/tasto rimuovi in un unico blocco
+`flexWrap="nowrap"`: quel gruppo va a capo (sotto al nome) come unità sola
+quando lo spazio non basta, ma non si spezza mai più al suo interno — il
+tasto rimuovi resta sempre affiancato al prezzo. Nessuna modifica al layout
+desktop (tutto in un'unica riga, come già era).

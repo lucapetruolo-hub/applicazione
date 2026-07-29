@@ -442,38 +442,46 @@ export default function DashboardProfiloPage() {
                   placeholder="Es. Sostituzione caldaia"
                   style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
                 />
-                <input
-                  value={service.priceMin}
-                  onChange={(e) => updateService(index, "priceMin", e.target.value)}
-                  placeholder="Da €"
-                  inputMode="decimal"
-                  style={{ ...smallInputStyle, width: 90 }}
-                />
-                <Text fontSize="$2" color={brand.grafite70}>
-                  a
-                </Text>
-                <input
-                  value={service.priceMax}
-                  onChange={(e) => updateService(index, "priceMax", e.target.value)}
-                  placeholder="A €"
-                  inputMode="decimal"
-                  style={{ ...smallInputStyle, width: 90 }}
-                />
-                <XStack
-                  width={36}
-                  height={36}
-                  borderRadius="$2"
-                  borderWidth={1}
-                  borderColor={brand.urgenza}
-                  backgroundColor={brand.urgenzaVelo}
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  onPress={() => removeService(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi prestazione"
-                >
-                  <X size={16} strokeWidth={2} color={brand.urgenza} />
+                {/* Prezzo e tasto rimuovi raggruppati in un unico blocco senza
+                    wrap interno: su schermo stretto (cellulare) l'intero
+                    gruppo va a capo insieme sotto al nome, invece di spezzarsi
+                    lasciando la "X" isolata su una riga a parte, lontana dalla
+                    voce a cui appartiene — bug reale segnalato dall'utente. */}
+                <XStack gap="$2" alignItems="center" flexWrap="nowrap">
+                  <input
+                    value={service.priceMin}
+                    onChange={(e) => updateService(index, "priceMin", e.target.value)}
+                    placeholder="Da €"
+                    inputMode="decimal"
+                    style={{ ...smallInputStyle, width: 90 }}
+                  />
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    a
+                  </Text>
+                  <input
+                    value={service.priceMax}
+                    onChange={(e) => updateService(index, "priceMax", e.target.value)}
+                    placeholder="A €"
+                    inputMode="decimal"
+                    style={{ ...smallInputStyle, width: 90 }}
+                  />
+                  <XStack
+                    width={36}
+                    height={36}
+                    flexShrink={0}
+                    borderRadius="$2"
+                    borderWidth={1}
+                    borderColor={brand.urgenza}
+                    backgroundColor={brand.urgenzaVelo}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => removeService(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi prestazione"
+                  >
+                    <X size={16} strokeWidth={2} color={brand.urgenza} />
+                  </XStack>
                 </XStack>
               </YStack>
             ))}
