@@ -119,6 +119,26 @@ prima discuterne e aggiornare questo file.
   produzione) — più l'origine `https://applicazione-web.vercel.app`
   aggiunta manualmente tra le "Authorized JavaScript origins" del Client
   ID OAuth su Google Cloud Console (altrimenti `Error 400: origin_mismatch`).
+- **Deploy `apps/web` su Vercel — push che non attivano una build**: il
+  repository ha un solo branch (`claude/professionisti-platform-architecture-xr9gmn`,
+  nessun `main`). Il progetto Vercel (piano Hobby) risultava collegato al
+  repository GitHub giusto (Settings → Git → "Connected Git Repository"
+  mostrava `lucapetruolo-hub/applicazione`) ma i push non generavano più
+  alcuna build automatica — sintomo: il sito live restava fermo a una
+  versione vecchia anche dopo diversi commit, e persino "Redeploy" manuale
+  dalla dashboard ricostruiva lo stesso commit vecchio invece di quello più
+  recente. Su questo piano Vercel non espone un campo "Production Branch"
+  modificabile in UI: il branch di produzione viene dedotto dal branch
+  predefinito del repository al momento del collegamento, e non risulta
+  aggiornarsi da solo se quel riferimento cambia dopo. **Fix che ha
+  funzionato**: disconnect + reconnect del repository da Settings → Git
+  (forza Vercel a ri-rilevare il branch predefinito attuale). Non risolto
+  da un push vuoto da solo (provato prima, nessun effetto). Per un innesco
+  immediato di build senza aspettare il rilevamento automatico, un **Deploy
+  Hook** (Settings → Git → "Deploy Hooks", URL dedicato per branch) chiamato
+  via browser/`curl` funziona sempre indipendentemente da questo problema —
+  utile sia come verifica sia come soluzione ponte. Se ricapita in futuro,
+  ripartire da lì invece di affidarsi solo a push+attesa.
 - **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
   manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
   `passport-jwt`. Motivo: con quella combinazione (testata con
