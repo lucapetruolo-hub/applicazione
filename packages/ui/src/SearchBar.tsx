@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";

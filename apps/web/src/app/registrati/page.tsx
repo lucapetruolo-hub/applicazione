@@ -3,13 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { registerSchema } from "@professionisti/shared";
-import { Button, H1, Text, YStack } from "@professionisti/ui";
+import { Button, Field, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { AuthInput } from "@/components/AuthInput";
 
 export default function RegistratiPage() {
   return (
@@ -90,12 +88,17 @@ function RegistratiForm() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={420} gap="$4">
-        <YStack gap="$1">
-          <H1 size="$8">{isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}</H1>
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={420} gap="$5">
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.cianografia}>
+            {isProfessional ? "Professionisti" : "Registrati"}
+          </Text>
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            {isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}
+          </Text>
           {isProfessional ? (
-            <Text color="$color10">Gratis per iniziare: completa il profilo e inizia a ricevere richieste.</Text>
+            <Text color={brand.grafite70}>Gratis per iniziare: completa il profilo e inizia a ricevere richieste.</Text>
           ) : null}
         </YStack>
 
@@ -103,35 +106,28 @@ function RegistratiForm() {
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
-            <YStack flex={1} height={1} backgroundColor="$borderColor" />
-            <Text color="$color9" fontSize="$2">
-              o
+            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
+              oppure
             </Text>
-            <YStack flex={1} height={1} backgroundColor="$borderColor" />
+            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
           </YStack>
         ) : null}
 
-        <YStack gap="$3">
-          <AuthInput
-            icon={<User size={18} strokeWidth={1.5} />}
-            size="$5"
-            value={name}
-            onChangeText={setName}
-            placeholder="Nome (opzionale)"
-            accessibilityLabel="Nome"
-          />
-          <AuthInput
-            icon={<Mail size={18} strokeWidth={1.5} />}
-            size="$5"
+        <YStack gap="$4">
+          <Field label="Nome (opzionale)" value={name} onChangeText={setName} placeholder="Il tuo nome" accessibilityLabel="Nome" />
+          <Field
+            label="Email"
             value={email}
             onChangeText={setEmail}
-            placeholder="E-mail"
+            placeholder="nome@esempio.it"
             keyboardType="email-address"
             autoCapitalize="none"
             accessibilityLabel="Email"
           />
-          <AuthInput
-            icon={<Lock size={18} strokeWidth={1.5} />}
+          <Field
+            label="Password"
+            hint="Minimo 8 caratteri"
             rightElement={
               <Text
                 cursor="pointer"
@@ -139,33 +135,32 @@ function RegistratiForm() {
                 accessibilityRole="button"
                 accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
               >
-                {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+                <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
               </Text>
             }
-            size="$5"
             value={password}
             onChangeText={setPassword}
-            placeholder="Password (min. 8 caratteri)"
+            placeholder="Password"
             secureTextEntry={!showPassword}
             accessibilityLabel="Password"
             onSubmitEditing={handleRegister}
           />
 
           {error ? (
-            <Text color="$red10" fontSize="$3">
+            <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
 
-          <Button size="$5" onPress={handleRegister} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="primary" onPress={handleRegister} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Creazione account..." : "Registrati"}
           </Button>
         </YStack>
 
-        <Text fontSize="$3" textAlign="center">
+        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
           Hai già un account?{" "}
           <Link href="/accedi" style={{ textDecoration: "none" }}>
-            <Text color="$blue10" fontWeight="600">
+            <Text color={brand.cianografia} fontWeight="600">
               Accedi
             </Text>
           </Link>

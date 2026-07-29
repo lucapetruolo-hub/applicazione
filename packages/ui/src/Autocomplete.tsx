@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, type ReactNode } from "react";
 import { Input, ScrollView, Text, YStack } from "tamagui";
 
