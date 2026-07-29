@@ -117,7 +117,23 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
         </XStack>
 
         <XStack alignItems="center" gap="$3">
-          <XStack alignItems="center" gap="$1">
+          <XStack
+            paddingHorizontal="$2"
+            height={30}
+            borderRadius="$2"
+            borderWidth={1}
+            borderColor={brand.filetto}
+            alignItems="center"
+            justifyContent="center"
+            cursor="pointer"
+            onPress={() => onNavigate(today)}
+            accessibilityRole="button"
+          >
+            <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite}>
+              Oggi
+            </Text>
+          </XStack>
+          <XStack alignItems="center" gap="$2">
             <XStack
               width={30}
               height={30}
@@ -133,22 +149,9 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
             >
               <Icon name="chevron-left" size={15} color={brand.grafite} />
             </XStack>
-            <XStack
-              paddingHorizontal="$2"
-              height={30}
-              borderRadius="$2"
-              borderWidth={1}
-              borderColor={brand.filetto}
-              alignItems="center"
-              justifyContent="center"
-              cursor="pointer"
-              onPress={() => onNavigate(today)}
-              accessibilityRole="button"
-            >
-              <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite}>
-                Oggi
-              </Text>
-            </XStack>
+            <Text fontFamily="$mono" fontSize={12.5} color={brand.grafite70} minWidth={140} textAlign="center">
+              {rangeLabel}
+            </Text>
             <XStack
               width={30}
               height={30}
@@ -165,9 +168,6 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
               <Icon name="chevron-right" size={15} color={brand.grafite} />
             </XStack>
           </XStack>
-          <Text fontFamily="$mono" fontSize={12.5} color={brand.grafite70}>
-            {rangeLabel}
-          </Text>
           <XStack
             width={30}
             height={30}
@@ -244,7 +244,7 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
       {days.map((date) => {
         const isToday = isSameDateUtc(date, today);
         return (
-          <YStack key={date.toISOString()} borderRightWidth={1} borderRightColor={brand.filetto}>
+          <YStack key={date.toISOString()} borderRightWidth={1} borderRightColor={brand.filetto} minWidth={0} overflow="hidden">
             <YStack
               paddingVertical="$2"
               paddingHorizontal="$2"
@@ -270,7 +270,7 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
                 </Text>
               </XStack>
             </YStack>
-            <YStack padding="$2" gap="$2" minHeight={220}>
+            <YStack padding="$2" gap="$2" minHeight={220} minWidth={0} overflow="hidden">
               {renderDayColumn(date)}
             </YStack>
           </YStack>
@@ -313,6 +313,8 @@ function MonthGrid({
             <YStack
               key={date.toISOString()}
               minHeight={84}
+              minWidth={0}
+              overflow="hidden"
               padding="$2"
               gap="$1"
               borderRightWidth={1}

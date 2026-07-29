@@ -14,7 +14,7 @@ import { todayUtc, toIsoDate } from "@/lib/calendarDates";
 type SlotDraft = { id?: string; dayOfWeek: number; start: string; end: string; maxBookings: number; hasUpcomingBooking?: boolean };
 type AgendaTab = "disponibilita" | "prenotazioni";
 
-const timeInputStyle = { padding: 7, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, width: 88 };
+const timeInputStyle = { padding: 6, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 12, fontFamily: "inherit", color: brand.grafite, width: 74, minWidth: 0 };
 const maxInputStyle = { ...timeInputStyle, width: 46, textAlign: "center" as const };
 
 function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
@@ -301,18 +301,19 @@ export default function DashboardAgendaPage() {
       .sort((a, b) => a.slot.start.localeCompare(b.slot.start));
 
     return (
-      <YStack gap="$2">
+      <YStack gap="$2" minWidth={0}>
         {!isPast ? (
           <XStack
             alignItems="center"
             gap="$1"
+            minWidth={0}
             cursor="pointer"
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
           >
-            <Text fontFamily="$mono" fontSize={10} fontWeight="600" letterSpacing={0.3} color={isClosed ? brand.verificato : brand.urgenza}>
-              {isClosed ? "↺ Riapri giorno" : "✕ Chiudi giorno"}
+            <Text fontFamily="$mono" fontSize={9} fontWeight="600" letterSpacing={0.2} color={isClosed ? brand.verificato : brand.urgenza}>
+              {isClosed ? "↺ Riapri" : "✕ Chiudi"}
             </Text>
           </XStack>
         ) : null}
@@ -413,13 +414,14 @@ export default function DashboardAgendaPage() {
       );
     }
     return (
-      <YStack gap="$2">
+      <YStack gap="$2" minWidth={0}>
         {dayBookings.map((booking) => {
           const time = new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
           const isCanceled = booking.status === "CANCELED" || booking.status === "NO_SHOW";
           return (
             <YStack
               key={booking.id}
+              minWidth={0}
               borderLeftWidth={3}
               borderLeftColor={BOOKING_STATUS_COLOR[booking.status]}
               backgroundColor={brand.gesso}
@@ -431,10 +433,10 @@ export default function DashboardAgendaPage() {
               onPress={() => setSelectedBooking(booking)}
               accessibilityRole="button"
             >
-              <Text fontFamily="$mono" fontSize={11} fontWeight="700" color={brand.grafite} textDecorationLine={isCanceled ? "line-through" : "none"}>
+              <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" color={brand.grafite} textDecorationLine={isCanceled ? "line-through" : "none"}>
                 {time}
               </Text>
-              <Text fontSize={11} color={brand.grafite70}>
+              <Text fontSize={10.5} color={brand.grafite70}>
                 {booking.clientName ?? "Cliente"}
               </Text>
             </YStack>
@@ -624,36 +626,52 @@ function SlotChip({
   onRemove: () => void;
 }) {
   const isGeneric = slot.maxBookings > 1;
+  // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
+  // vista Settimana (richiesta esplicita dell'utente): il resto (modifica,
+  // capienza, rimozione con conferma) si apre nell'editor inline, che ha
+  // più spazio verticale invece di dover stare tutto sulla stessa riga.
   return (
-    <YStack
+    <XStack
       borderWidth={1}
       borderStyle={isGeneric ? "dashed" : "solid"}
-      borderColor={isGeneric ? brand.ottone : brand.cianografia}
+      borderColor={pendingDelete ? brand.urgenza : isGeneric ? brand.ottone : brand.cianografia}
       borderRadius="$2"
-      padding="$2"
-      gap="$1"
+      paddingHorizontal="$1.5"
+      paddingVertical={5}
+      alignItems="center"
+      justifyContent="space-between"
+      gap={4}
+      minWidth={0}
       backgroundColor={brand.calce}
     >
-      <XStack justifyContent="space-between" alignItems="center" gap="$2">
-        <Text fontFamily="$mono" fontSize={12} fontWeight="700" color={isGeneric ? brand.ottone : brand.cianografia}>
+      <XStack
+        flex={1}
+        minWidth={0}
+        alignItems="center"
+        gap={3}
+        cursor="pointer"
+        onPress={onEdit}
+        accessibilityRole="button"
+        accessibilityLabel={`Modifica fascia ${slot.start}–${slot.end}`}
+      >
+        {slot.hasUpcomingBooking ? <Icon name="bell-ring" size={9} color={brand.urgenza} /> : null}
+        <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric ? brand.ottone : brand.cianografia}>
           {slot.start}–{slot.end}
         </Text>
-        {slot.hasUpcomingBooking ? <Icon name="bell-ring" size={12} color={brand.urgenza} /> : null}
       </XStack>
-      {isGeneric ? (
-        <Text fontFamily="$mono" fontSize={9.5} textTransform="uppercase" color={brand.grafite70}>
-          Generica · max {slot.maxBookings}
-        </Text>
-      ) : null}
-      <XStack gap="$2">
-        <Text fontSize={11} color={brand.cianografia} fontWeight="600" cursor="pointer" onPress={onEdit}>
-          Modifica
-        </Text>
-        <Text fontSize={11} color={brand.urgenza} fontWeight="600" cursor="pointer" onPress={onRemove}>
-          {pendingDelete ? "Conferma rimozione?" : "Rimuovi"}
-        </Text>
-      </XStack>
-    </YStack>
+      <Text
+        fontSize={13}
+        lineHeight={13}
+        fontWeight="800"
+        color={pendingDelete ? brand.urgenza : brand.grafite70}
+        cursor="pointer"
+        onPress={onRemove}
+        accessibilityRole="button"
+        accessibilityLabel={pendingDelete ? "Conferma rimozione fascia" : "Rimuovi fascia"}
+      >
+        ×
+      </Text>
+    </XStack>
   );
 }
 
@@ -695,9 +713,9 @@ function SlotEditorInline({
         </Text>
         <input type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={timeInputStyle} />
       </XStack>
-      <XStack gap="$1" alignItems="center">
+      <XStack gap="$1" alignItems="center" flexWrap="wrap">
         <Text fontFamily="$mono" fontSize={9.5} textTransform="uppercase" color={brand.grafite70}>
-          Max prenotazioni
+          Max
         </Text>
         <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={maxInputStyle} />
       </XStack>
