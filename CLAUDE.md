@@ -1348,3 +1348,17 @@ di lunghezza variabile, era quello che rischiava di non starci — ora
 padding/font dell'orario, mostrato sempre su una sola riga
 (`numberOfLines={1}`). La vista Giorno (una sola colonna, molto più spazio)
 resta invariata: orario + nome cliente.
+
+**Eliminazione fascia disponibilità spostata nel pop-up**: `SlotChip`
+(calendario "Disponibilità") aveva un tasto "×" separato dal resto della
+fascia per la rimozione — su cellulare si sovrapponeva visivamente al
+riquadro della fascia, poco chiaro (richiesta esplicita dell'utente). Tutta
+la fascia è ora un unico target: click/tap apre sempre `SlotEditorModal`
+(stesso pop-up già usato per orario/capienza), che in fondo mostra un link
+"Elimina fascia" — presente solo quando si modifica una fascia già
+esistente (`onDelete` prop assente quando si sta creando una fascia nuova).
+Stessa doppia conferma di prima per le fasce con prenotazioni future
+(`hasUpcomingBooking`), ora come stato locale del pop-up
+(`confirmingDelete`) invece che nello stato della pagina: `key={editingKey}`
+sul `<SlotEditorModal>` forza un componente nuovo (quindi uno stato di
+conferma azzerato) ogni volta che si apre una fascia diversa.

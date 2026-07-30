@@ -52,10 +52,6 @@ export default function DashboardAgendaPage() {
   const [draftStart, setDraftStart] = useState("09:00");
   const [draftEnd, setDraftEnd] = useState("13:00");
   const [draftMax, setDraftMax] = useState("1");
-  // Rimuovere una fascia con prenotazioni future richiede un secondo click
-  // di conferma (stesso pattern a due passaggi già in uso in
-  // /le-mie-richieste per l'eliminazione di una richiesta).
-  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
   const [exceptionBusyDate, setExceptionBusyDate] = useState<string | null>(null);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
@@ -274,15 +270,15 @@ export default function DashboardAgendaPage() {
     setError(null);
   }
 
-  function requestRemoveSlot(index: number) {
-    const slot = slots[index];
-    if (slot?.hasUpcomingBooking && pendingDeleteIndex !== index) {
-      setPendingDeleteIndex(index);
-      return;
-    }
+  // La rimozione ora avviene solo dal pop-up di modifica (SlotEditorModal),
+  // non più da un tasto "×" sulla fascia: su cellulare quella "×" si
+  // sovrapponeva al riquadro della fascia, poco chiara — richiesta esplicita
+  // dell'utente. La doppia conferma per le fasce con prenotazioni future
+  // vive ora dentro il pop-up stesso (stato locale lì).
+  function deleteSlot(index: number) {
     setSlots((prev) => prev.filter((_, i) => i !== index));
-    setPendingDeleteIndex(null);
-    if (editingKey === `edit-${index}`) setEditingKey(null);
+    setEditingKey(null);
+    setError(null);
   }
 
   async function toggleException(dateStr: string) {
@@ -374,11 +370,9 @@ export default function DashboardAgendaPage() {
               <SlotChip
                 key={index}
                 slot={slot}
-                pendingDelete={pendingDeleteIndex === index}
                 isConflicting={conflicts.has(index)}
                 isEditing={editingKey === `edit-${index}`}
                 onEdit={() => startEditSlot(index)}
-                onRemove={() => requestRemoveSlot(index)}
               />
             ))}
             <XStack
@@ -676,6 +670,12 @@ export default function DashboardAgendaPage() {
 
       {editingKey && editingDayOfWeek() !== null ? (
         <SlotEditorModal
+          // key forza un nuovo componente (quindi uno stato di conferma
+          // eliminazione azzerato) ad ogni fascia diversa aperta — non può
+          // succedere che il pop-up resti aperto passando da una fascia
+          // all'altra (l'overlay blocca il resto della pagina), ma è una
+          // garanzia a costo zero.
+          key={editingKey}
           dayLabel={WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!}
           start={draftStart}
           end={draftEnd}
@@ -686,6 +686,14 @@ export default function DashboardAgendaPage() {
           onMaxChange={setDraftMax}
           onSave={() => commitSlotEdit(editingDayOfWeek()!)}
           onCancel={() => setEditingKey(null)}
+          // La fascia si può eliminare solo modificando una già esistente,
+          // non mentre se ne sta creando una nuova.
+          onDelete={
+            editingKey.startsWith("edit-") ? () => deleteSlot(Number(editingKey.slice(5))) : undefined
+          }
+          hasUpcomingBooking={
+            editingKey.startsWith("edit-") ? (slots[Number(editingKey.slice(5))]?.hasUpcomingBooking ?? false) : false
+          }
         />
       ) : null}
     </YStack>
@@ -694,69 +702,44 @@ export default function DashboardAgendaPage() {
 
 function SlotChip({
   slot,
-  pendingDelete,
   isConflicting,
   isEditing,
   onEdit,
-  onRemove,
 }: {
   slot: SlotDraft;
-  pendingDelete: boolean;
   /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
   isConflicting: boolean;
   /** True mentre questa fascia è aperta nel pop-up di modifica: evidenziata per farla ritrovare facilmente quando si chiude. */
   isEditing: boolean;
   onEdit: () => void;
-  onRemove: () => void;
 }) {
   const isGeneric = slot.maxBookings > 1;
-  const flagged = pendingDelete || isConflicting;
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
-  // vista Settimana (richiesta esplicita dell'utente): il resto (modifica,
-  // capienza, rimozione con conferma) si apre nel pop-up di modifica
-  // (SlotEditorModal), più leggibile del piccolo editor che stava prima
-  // incastrato dentro la colonna del calendario — richiesta esplicita
-  // dell'utente.
+  // vista Settimana (richiesta esplicita dell'utente): tutto il resto
+  // (modifica, capienza, eliminazione) si apre nel pop-up di modifica
+  // (SlotEditorModal) toccando l'intera fascia — niente più tasto "×" a
+  // parte: su cellulare si sovrapponeva al riquadro della fascia, poco
+  // chiaro, richiesta esplicita dell'utente.
   return (
     <XStack
-      borderWidth={flagged || isEditing ? 1.5 : 1}
-      borderStyle={isGeneric && !flagged ? "dashed" : "solid"}
-      borderColor={flagged ? brand.urgenza : isEditing ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
+      borderWidth={isConflicting || isEditing ? 1.5 : 1}
+      borderStyle={isGeneric && !isConflicting ? "dashed" : "solid"}
+      borderColor={isConflicting ? brand.urgenza : isEditing ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
       borderRadius="$2"
       paddingHorizontal="$1.5"
       paddingVertical={5}
       alignItems="center"
-      justifyContent="space-between"
-      gap={4}
+      gap={3}
       minWidth={0}
+      cursor="pointer"
       backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing ? brand.cianografiaVelo : brand.calce}
+      onPress={onEdit}
+      accessibilityRole="button"
+      accessibilityLabel={`Modifica fascia ${slot.start}–${slot.end}`}
     >
-      <XStack
-        flex={1}
-        minWidth={0}
-        alignItems="center"
-        gap={3}
-        cursor="pointer"
-        onPress={onEdit}
-        accessibilityRole="button"
-        accessibilityLabel={`Modifica fascia ${slot.start}–${slot.end}`}
-      >
-        {slot.hasUpcomingBooking ? <Icon name="bell-ring" size={9} color={brand.urgenza} /> : null}
-        <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric ? brand.ottone : brand.cianografia}>
-          {slot.start}–{slot.end}
-        </Text>
-      </XStack>
-      <Text
-        fontSize={13}
-        lineHeight={13}
-        fontWeight="800"
-        color={pendingDelete ? brand.urgenza : brand.grafite70}
-        cursor="pointer"
-        onPress={onRemove}
-        accessibilityRole="button"
-        accessibilityLabel={pendingDelete ? "Conferma rimozione fascia" : "Rimuovi fascia"}
-      >
-        ×
+      {slot.hasUpcomingBooking ? <Icon name="bell-ring" size={9} color={brand.urgenza} /> : null}
+      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric ? brand.ottone : brand.cianografia}>
+        {slot.start}–{slot.end}
       </Text>
     </XStack>
   );
@@ -794,6 +777,8 @@ function SlotEditorModal({
   onMaxChange,
   onSave,
   onCancel,
+  onDelete,
+  hasUpcomingBooking,
 }: {
   dayLabel: string;
   start: string;
@@ -806,7 +791,16 @@ function SlotEditorModal({
   onMaxChange: (v: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  /** Assente quando si sta creando una fascia nuova: solo una fascia già esistente si può eliminare. */
+  onDelete?: () => void;
+  /** Richiede una seconda conferma prima di eliminare, stesso pattern a due passaggi già in uso altrove nel progetto. */
+  hasUpcomingBooking: boolean;
 }) {
+  // Eliminazione dal pop-up invece che da un tasto "×" sulla fascia: su
+  // cellulare quella "×" si sovrapponeva al riquadro della fascia, poco
+  // chiara — richiesta esplicita dell'utente.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onCancel();
@@ -895,6 +889,56 @@ function SlotEditorModal({
             Annulla
           </Button>
         </XStack>
+
+        {onDelete ? (
+          <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+            {confirmingDelete ? (
+              <YStack gap="$2">
+                {hasUpcomingBooking ? (
+                  <XStack
+                    borderWidth={1}
+                    borderColor={brand.urgenza}
+                    backgroundColor={brand.urgenzaVelo}
+                    borderRadius="$2"
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    gap="$2"
+                    alignItems="center"
+                  >
+                    <Icon name="bell-ring" size={14} color={brand.urgenza} />
+                    <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+                      Questa fascia ha una prenotazione futura. Eliminarla comunque?
+                    </Text>
+                  </XStack>
+                ) : (
+                  <Text color={brand.grafite70} fontSize="$3">
+                    Eliminare questa fascia?
+                  </Text>
+                )}
+                <XStack gap="$3">
+                  <Button variant="urgent" onPress={onDelete}>
+                    Conferma eliminazione
+                  </Button>
+                  <Button variant="ghost" onPress={() => setConfirmingDelete(false)}>
+                    Annulla
+                  </Button>
+                </XStack>
+              </YStack>
+            ) : (
+              <Text
+                fontSize="$3"
+                fontWeight="700"
+                color={brand.urgenza}
+                cursor="pointer"
+                onPress={() => setConfirmingDelete(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Elimina fascia"
+              >
+                Elimina fascia
+              </Text>
+            )}
+          </YStack>
+        ) : null}
       </YStack>
     </div>
   );
