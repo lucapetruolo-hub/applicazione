@@ -492,6 +492,11 @@ function LeadCard({
               timeZone: "UTC",
             })}
           </Text>
+          {lead.quote.clientProposedNote ? (
+            <Text fontSize="$3" color={brand.grafite70}>
+              {lead.quote.clientProposedNote}
+            </Text>
+          ) : null}
           <XStack gap="$2">
             <Button
               variant="secondary"

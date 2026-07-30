@@ -90,9 +90,14 @@ export class QuotesService {
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
-      data: { clientProposedDate: proposedDate, status: "MODIFICATION_REQUESTED" },
+      data: { clientProposedDate: proposedDate, clientProposedNote: input.note?.trim() || null, status: "MODIFICATION_REQUESTED" },
     });
-    return { id: updated.id, status: updated.status, clientProposedDate: updated.clientProposedDate?.toISOString() ?? null };
+    return {
+      id: updated.id,
+      status: updated.status,
+      clientProposedDate: updated.clientProposedDate?.toISOString() ?? null,
+      clientProposedNote: updated.clientProposedNote,
+    };
   }
 
   /**
@@ -177,7 +182,10 @@ export class QuotesService {
     if (quote.status !== "MODIFICATION_REQUESTED") {
       throw new ForbiddenException("Nessuna data proposta da rifiutare per questo preventivo.");
     }
-    const updated = await this.prisma.quote.update({ where: { id: quote.id }, data: { status: "SENT", clientProposedDate: null } });
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: { status: "SENT", clientProposedDate: null, clientProposedNote: null },
+    });
     return { id: updated.id, status: updated.status };
   }
 

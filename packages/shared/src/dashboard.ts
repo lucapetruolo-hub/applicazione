@@ -31,6 +31,8 @@ export type ProfessionalLead = {
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
     estimatedStartDate: string;
     clientProposedDate: string | null;
+    /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
+    clientProposedNote: string | null;
   } | null;
   guidedRequest: {
     id: string;

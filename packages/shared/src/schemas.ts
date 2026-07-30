@@ -145,6 +145,8 @@ export const proposeQuoteDateSchema = z.object({
   date: isoDateSchema,
   startTime: timeSchema,
   endTime: timeSchema,
+  /** Dettagli facoltativi sulla data proposta (es. "posso solo dopo le 17"), mostrati al professionista. */
+  note: z.string().max(1000).optional(),
 });
 export type ProposeQuoteDateInput = z.infer<typeof proposeQuoteDateSchema>;
 

@@ -1483,3 +1483,15 @@ prenotazioni accidentali sulla stessa fascia).
   data proposta dal cliente (non quella originale del professionista).
   Screenshot su tutte le fasi (form preventivo con select, avviso proposta
   lato cliente, avviso conferma lato professionista), zero errori console.
+
+**Nota facoltativa sulla data proposta** — richiesta esplicita dell'utente:
+quando il cliente propone un'altra data (`/le-mie-richieste`), una
+textarea opzionale sotto la selezione della fascia permette di aggiungere
+dettagli scritti (es. "posso solo dopo le 17"). Nuovo campo `Quote.
+clientProposedNote` (nullable, azzerato insieme a `clientProposedDate`
+quando il professionista rifiuta o conferma la proposta — stesso ciclo di
+vita). Mostrata al professionista nel blocco "Il cliente ha proposto
+un'altra data" in `/dashboard`, e al cliente stesso nello stato "in attesa
+di conferma" finché il professionista non decide. Verificato end-to-end
+con l'API locale e Playwright: nota inserita dal cliente, salvata
+correttamente, visibile sulla dashboard del professionista.

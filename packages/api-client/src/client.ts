@@ -63,6 +63,8 @@ export type ClientGuidedRequest = {
     estimatedStartDate: string;
     /** Valorizzata solo se il cliente ha proposto una data diversa (status MODIFICATION_REQUESTED), in attesa di conferma del professionista. */
     clientProposedDate: string | null;
+    /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
+    clientProposedNote: string | null;
     notes: string | null;
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
   }[];
@@ -326,7 +328,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     /** Il cliente propone una data diversa per un preventivo ricevuto, tra le fasce libere dell'agenda del professionista. */
     proposeQuoteDate: (token: string, quoteId: string, input: ProposeQuoteDateInput) =>
-      request<{ id: string; status: string; clientProposedDate: string | null }>(`/quotes/${quoteId}/propose-date`, {
+      request<{ id: string; status: string; clientProposedDate: string | null; clientProposedNote: string | null }>(`/quotes/${quoteId}/propose-date`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

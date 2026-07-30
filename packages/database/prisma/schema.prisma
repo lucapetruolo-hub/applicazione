@@ -382,6 +382,10 @@ model Quote {
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate    DateTime?
+  // Dettagli facoltativi scritti dal cliente insieme alla data proposta
+  // (es. "posso solo dopo le 17" o "meglio se venite con il furgone"),
+  // mostrati al professionista quando deve confermare/rifiutare.
+  clientProposedNote    String?
   notes                 String?
   status                QuoteStatus @default(SENT)
   createdAt             DateTime    @default(now())

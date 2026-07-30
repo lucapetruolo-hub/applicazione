@@ -175,6 +175,7 @@ export class GuidedRequestsService {
         })),
         estimatedStartDate: quote.estimatedStartDate.toISOString(),
         clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+        clientProposedNote: quote.clientProposedNote,
         notes: quote.notes,
         status: quote.status,
       })),

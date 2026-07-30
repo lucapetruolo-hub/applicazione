@@ -407,6 +407,7 @@ function QuoteCard({
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
+  const [proposeNote, setProposeNote] = useState("");
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -441,8 +442,9 @@ function QuoteCard({
     setError(null);
     setIsProposing(true);
     try {
-      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime });
+      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined });
       setIsChoosingDate(false);
+      setProposeNote("");
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -514,6 +516,13 @@ function QuoteCard({
                       );
                     })}
                   </select>
+                  <textarea
+                    value={proposeNote}
+                    onChange={(e) => setProposeNote(e.target.value)}
+                    placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17"
+                    rows={2}
+                    style={textareaStyle}
+                  />
                   <XStack gap="$2">
                     <Button variant="primary" size="$3" height={40} onPress={handleProposeDate} disabled={isProposing} opacity={isProposing ? 0.6 : 1}>
                       {isProposing ? "Invio..." : "Invia proposta"}
@@ -528,9 +537,16 @@ function QuoteCard({
           ) : null}
         </>
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
-        <Text fontSize="$2" color={brand.ottone} fontWeight="600">
-          In attesa di conferma del professionista per il {quote.clientProposedDate ? formatQuoteDate(quote.clientProposedDate) : ""}
-        </Text>
+        <YStack gap="$1">
+          <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+            In attesa di conferma del professionista per il {quote.clientProposedDate ? formatQuoteDate(quote.clientProposedDate) : ""}
+          </Text>
+          {quote.clientProposedNote ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              {quote.clientProposedNote}
+            </Text>
+          ) : null}
+        </YStack>
       ) : quote.status === "ACCEPTED" ? (
         <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Accettato

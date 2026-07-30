@@ -432,6 +432,7 @@ export class ProfessionalsService {
               status: quote.status,
               estimatedStartDate: quote.estimatedStartDate.toISOString(),
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+              clientProposedNote: quote.clientProposedNote,
             }
           : null,
         guidedRequest: {
