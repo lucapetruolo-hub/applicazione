@@ -365,6 +365,13 @@ enum QuoteStatus {
   SENT
   ACCEPTED
   REJECTED
+  // Il cliente ha proposto una data diversa da estimatedStartDate (scelta
+  // tra le fasce libere dell'agenda del professionista): resta così finché
+  // il professionista non conferma (→ ACCEPTED, crea la Booking) o rifiuta
+  // (torna a SENT). Mai una prenotazione automatica sulla sola richiesta
+  // del cliente: evita che due clienti "vincano" la stessa fascia solo
+  // proponendola, la capienza va sempre validata di nuovo alla conferma.
+  MODIFICATION_REQUESTED
 }
 
 model Quote {
@@ -372,6 +379,9 @@ model Quote {
   guidedRequestId       String
   professionalProfileId String
   estimatedStartDate    DateTime
+  // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
+  // valorizzata solo in quello stato — null altrimenti.
+  clientProposedDate    DateTime?
   notes                 String?
   status                QuoteStatus @default(SENT)
   createdAt             DateTime    @default(now())

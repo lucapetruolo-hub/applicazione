@@ -109,6 +109,12 @@ export class ProfessionalsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get("me/available-slots")
+  getMyAvailableSlots(@Req() req: AuthenticatedRequest) {
+    return this.professionalsService.getMyAvailableSlots(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get("me/availability")
   getMyAvailability(@Req() req: AuthenticatedRequest) {
     return this.professionalsService.getMyAvailability(req.user.userId);

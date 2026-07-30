@@ -20,7 +20,18 @@ export type ProfessionalLead = {
   status: "PENDING" | "PAID" | "CONVERTED";
   priceEurCents: number;
   createdAt: string;
-  hasQuote: boolean;
+  /**
+   * Preventivo eventualmente già inviato per questo lead (null se non ancora
+   * inviato). `clientProposedDate` valorizzata solo quando status è
+   * MODIFICATION_REQUESTED: il cliente ha proposto una data diversa tra le
+   * fasce libere dell'agenda del professionista, in attesa di conferma.
+   */
+  quote: {
+    id: string;
+    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
+    estimatedStartDate: string;
+    clientProposedDate: string | null;
+  } | null;
   guidedRequest: {
     id: string;
     categoryLabel: string;
@@ -58,4 +69,16 @@ export type ProfessionalBooking = {
   clientEmail: string | null;
   address: string | null;
   items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+};
+
+/**
+ * Fascia esatta libera del professionista autenticato (prossimi 14 giorni,
+ * solo fasce maxBookings=1): usata per far scegliere la data di inizio di
+ * un preventivo dentro le proprie disponibilità reali, invece di una data
+ * libera scollegata dall'agenda.
+ */
+export type ProfessionalAvailableSlot = {
+  date: string;
+  startTime: string;
+  endTime: string;
 };

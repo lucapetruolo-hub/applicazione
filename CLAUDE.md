@@ -1424,3 +1424,62 @@ libero come oggi; il cliente dovrebbe poter non solo accettare ma anche
 quelle disponibili nell'agenda del professionista. Notifiche email/SMS/
 WhatsApp su nuovo lead + un sottomenu impostazioni per disattivarle
 restano anch'esse esplicitamente rimandate dall'utente a prima del lancio.
+
+**Data del preventivo legata all'agenda + modifica cliente (fatto)** —
+implementato nel giro successivo, scope confermato con l'utente tramite
+`AskUserQuestion` (elenco fasce libere prossimi 14gg, non un mini-calendario
+embedded; il cliente propone una modifica che il professionista deve
+riconfermare, mai un cambio diretto senza passare da lui — evita doppie
+prenotazioni accidentali sulla stessa fascia).
+- **`QuoteStatus` nuovo valore `MODIFICATION_REQUESTED`** + `Quote.
+  clientProposedDate` (nullable): il cliente ha proposto una data diversa,
+  in attesa che il professionista confermi (→ crea la `Booking`, stesso
+  esito di un'accettazione normale) o rifiuti (→ torna `SENT` con la data
+  originale, `clientProposedDate` azzerato).
+- **`GET /professionals/me/available-slots`** (`ProfessionalsService.
+  getMyAvailableSlots`): fasce esatte (`maxBookings=1`) libere nei
+  prossimi 14 giorni del professionista autenticato, stesso orizzonte di
+  `getPublicAgenda` ma come elenco piatto (non raggruppato per giorno) e
+  **ignora `bookableAgenda`** apposta — quel flag governa solo la
+  prenotazione diretta pubblica, qui il professionista guarda la propria
+  agenda per pianificare un preventivo, non per farsi prenotare da un
+  cliente. Usato in `/dashboard` (`LeadCard`) per sostituire il vecchio
+  `<input type="date">` libero con un `<select>` di fasce reali; se non ce
+  ne sono (agenda non ancora impostata) ricade sul vecchio input libero
+  con una nota che rimanda a `/dashboard/agenda`, invece di bloccare
+  l'invio del preventivo.
+- **`QuotesService.proposeDate`/`confirmProposedDate`/`rejectProposedDate`**
+  (`apps/api/src/quotes/`, nuovi endpoint `POST /quotes/:id/propose-date`,
+  `/confirm-proposed-date`, `/reject-proposed-date`): la fascia proposta
+  dal cliente è sempre rivalidata server-side contro l'agenda reale del
+  professionista (`resolveFreeExactSlot`, stessa cautela già applicata a
+  `bookAgendaSlot`/`resolveGenericSlot` altrove — mai fidarsi di quanto
+  inviato dal client), e la conferma del professionista avviene dentro la
+  stessa transazione Postgres Serializable anti race-condition già in uso
+  per `bookAgendaSlot`/`BookingsService.createFromQuote` (P2034 → 409
+  pulito), per evitare che la fascia proposta venga occupata da qualcun
+  altro tra la proposta e la conferma.
+- **`/dashboard` (`LeadCard`)**: `ProfessionalLead.hasQuote` (booleano)
+  sostituito con `ProfessionalLead.quote` (oggetto con id/status/date o
+  `null`) — più informazione utile per la card senza una seconda chiamata.
+  Quando lo stato è `MODIFICATION_REQUESTED`, la card mostra la data
+  proposta dal cliente con due bottoni "Conferma questa data"/"Rifiuta".
+- **`/le-mie-richieste` (`QuoteCard`, nuovo componente)**: mostrava già
+  `estimatedStartDate` nel tipo ma non lo rendeva mai a schermo — bug di
+  esposizione dati corretto nello stesso giro (il cliente non poteva
+  vedere quando il professionista proponeva di iniziare). Bottone "Proponi
+  altra data" apre un `<select>` caricato lazy dall'agenda pubblica del
+  professionista (`GET /professionals/:id/agenda`, filtrato alle sole
+  fasce esatte libere — stesso endpoint già usato dalla pagina profilo
+  pubblica, nessun nuovo endpoint pubblico necessario) accanto al bottone
+  "Accetta preventivo" già esistente; a `MODIFICATION_REQUESTED` mostra lo
+  stato "in attesa di conferma del professionista" invece dei bottoni.
+- Verificato end-to-end con l'API locale e Playwright (non solo
+  typecheck): professionista invia preventivo scegliendo una fascia dalla
+  propria agenda (28 fasce libere su 14gg × 2 al giorno) → cliente propone
+  una fascia diversa dall'agenda pubblica del professionista → stato
+  preventivo `MODIFICATION_REQUESTED` con `clientProposedDate` corretto →
+  professionista conferma → `Booking` creata con `scheduledAt` uguale alla
+  data proposta dal cliente (non quella originale del professionista).
+  Screenshot su tutte le fasi (form preventivo con select, avviso proposta
+  lato cliente, avviso conferma lato professionista), zero errori console.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { formatServicePriceRange, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -24,14 +24,26 @@ export default function DashboardPage() {
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
+  // Fasce libere della propria agenda (prossimi 14gg): usate nel form
+  // preventivo per far scegliere la data di inizio dentro la disponibilità
+  // reale invece di una data libera scollegata — richiesta esplicita
+  // dell'utente. Caricate una sola volta qui e passate a tutte le
+  // LeadCard, non una chiamata per card.
+  const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  function reloadLeads() {
+    if (!token) return;
+    apiClient.myLeads(token).then(setLeads);
+  }
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token)])
-      .then(([leadsResult, bookingsResult]) => {
+    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token)])
+      .then(([leadsResult, bookingsResult, slotsResult]) => {
         setLeads(leadsResult);
         setBookings(bookingsResult);
+        setAvailableSlots(slotsResult);
       })
       .catch((err) => {
         if (err instanceof Error && err.message.includes("profilo")) {
@@ -109,7 +121,9 @@ export default function DashboardPage() {
           ) : leads.length === 0 ? (
             <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
           ) : (
-            leads.map((lead) => <LeadCard key={lead.id} lead={lead} token={token} />)
+            leads.map((lead) => (
+              <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
+            ))
           )}
         </YStack>
 
@@ -285,18 +299,46 @@ function BoostSection({ token }: { token: string }) {
 
 type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
 
-function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
+/** Codifica una fascia come chiave selezionabile in un <select>, decodificata al momento dell'invio. */
+function slotKey(slot: ProfessionalAvailableSlot): string {
+  return `${slot.date}|${slot.startTime}|${slot.endTime}`;
+}
+
+function slotLabel(slot: ProfessionalAvailableSlot): string {
+  const date = new Date(`${slot.date}T00:00:00Z`);
+  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
+}
+
+function LeadCard({
+  lead,
+  token,
+  availableSlots,
+  onChanged,
+}: {
+  lead: ProfessionalLead;
+  token: string;
+  /** Fasce esatte libere della propria agenda (prossimi 14gg): usate per scegliere la data di inizio invece di una data libera. */
+  availableSlots: ProfessionalAvailableSlot[];
+  onChanged: () => void;
+}) {
   const [showForm, setShowForm] = useState(false);
   // Una voce di default ("Manodopera") già pronta, il professionista può
   // rinominarla/rimuoverla e aggiungerne altre (es. "Materiali", "Trasporto")
   // — ogni voce ha il proprio range di prezzo, non più due campi fissi
   // manodopera/materiali — richiesta esplicita dell'utente.
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
-  const [startDate, setStartDate] = useState("");
+  const [selectedSlotKey, setSelectedSlotKey] = useState(availableSlots[0] ? slotKey(availableSlots[0]) : "");
+  // Ripiego se l'agenda non ha fasce esatte libere nei prossimi 14gg (es.
+  // professionista che non l'ha ancora impostata): una data libera come
+  // prima, per non bloccare comunque l'invio del preventivo.
+  const [fallbackDate, setFallbackDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [sent, setSent] = useState(lead.hasQuote);
+  const sent = lead.quote !== null;
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmingDate, setIsConfirmingDate] = useState(false);
+  const [isRejectingDate, setIsRejectingDate] = useState(false);
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -338,9 +380,20 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
       parsedItems.push({ name: item.name, priceMinEurCents, priceMaxEurCents });
     }
 
-    if (!startDate) {
-      setError("Indica una data di inizio stimata.");
-      return;
+    let estimatedStartDate: string;
+    if (availableSlots.length > 0) {
+      const slot = availableSlots.find((s) => slotKey(s) === selectedSlotKey);
+      if (!slot) {
+        setError("Scegli un orario dalla tua agenda.");
+        return;
+      }
+      estimatedStartDate = new Date(`${slot.date}T${slot.startTime}:00.000Z`).toISOString();
+    } else {
+      if (!fallbackDate) {
+        setError("Indica una data di inizio stimata.");
+        return;
+      }
+      estimatedStartDate = new Date(fallbackDate).toISOString();
     }
 
     setIsSubmitting(true);
@@ -348,15 +401,43 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
       await apiClient.createQuote(token, {
         requestId: lead.guidedRequest.id,
         items: parsedItems,
-        estimatedStartDate: new Date(startDate).toISOString(),
+        estimatedStartDate,
         notes: notes.trim() || undefined,
       });
-      setSent(true);
       setShowForm(false);
+      onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleConfirmDate() {
+    if (!lead.quote) return;
+    setError(null);
+    setIsConfirmingDate(true);
+    try {
+      await apiClient.confirmProposedQuoteDate(token, lead.quote.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsConfirmingDate(false);
+    }
+  }
+
+  async function handleRejectDate() {
+    if (!lead.quote) return;
+    setError(null);
+    setIsRejectingDate(true);
+    try {
+      await apiClient.rejectProposedQuoteDate(token, lead.quote.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsRejectingDate(false);
     }
   }
 
@@ -380,12 +461,61 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
             </XStack>
           ) : null}
         </YStack>
-        {sent ? (
+        {sent && lead.quote?.status !== "MODIFICATION_REQUESTED" ? (
           <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-            Preventivo inviato
+            {lead.quote?.status === "ACCEPTED" ? "Preventivo accettato" : "Preventivo inviato"}
           </Text>
         ) : null}
       </YStack>
+
+      {lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate ? (
+        <YStack
+          gap="$2"
+          borderWidth={1}
+          borderColor={brand.ottone}
+          backgroundColor={brand.calce}
+          borderRadius="$3"
+          padding="$3"
+        >
+          <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+            Il cliente ha proposto un&apos;altra data:{" "}
+            {new Date(lead.quote.clientProposedDate).toLocaleDateString("it-IT", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              timeZone: "UTC",
+            })}
+            {" · "}
+            {new Date(lead.quote.clientProposedDate).toLocaleTimeString("it-IT", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC",
+            })}
+          </Text>
+          <XStack gap="$2">
+            <Button
+              variant="secondary"
+              size="$3"
+              height={40}
+              onPress={handleConfirmDate}
+              disabled={isConfirmingDate || isRejectingDate}
+              opacity={isConfirmingDate ? 0.6 : 1}
+            >
+              {isConfirmingDate ? "Conferma..." : "Conferma questa data"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="$3"
+              height={40}
+              onPress={handleRejectDate}
+              disabled={isConfirmingDate || isRejectingDate}
+              opacity={isRejectingDate ? 0.6 : 1}
+            >
+              {isRejectingDate ? "Rifiuto..." : "Rifiuta"}
+            </Button>
+          </XStack>
+        </YStack>
+      ) : null}
 
       {lead.guidedRequest.photoUrls.length > 0 ? (
         <XStack gap="$2" flexWrap="wrap">
@@ -455,7 +585,40 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
               + Aggiungi voce
             </Button>
           </YStack>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ ...smallInputStyle, alignSelf: "flex-start" }} />
+          <YStack gap="$1">
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+              Data di inizio
+            </Text>
+            {availableSlots.length > 0 ? (
+              <select
+                value={selectedSlotKey}
+                onChange={(e) => setSelectedSlotKey(e.target.value)}
+                style={{ ...smallInputStyle, alignSelf: "flex-start" }}
+              >
+                {availableSlots.map((slot) => (
+                  <option key={slotKey(slot)} value={slotKey(slot)}>
+                    {slotLabel(slot)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  type="date"
+                  value={fallbackDate}
+                  onChange={(e) => setFallbackDate(e.target.value)}
+                  style={{ ...smallInputStyle, alignSelf: "flex-start" }}
+                />
+                <Text fontSize="$1" color={brand.grafite70}>
+                  Nessun orario libero nei prossimi 14 giorni nella tua agenda — imposta le tue fasce in{" "}
+                  <Link href="/dashboard/agenda" style={{ color: brand.cianografia }}>
+                    Agenda
+                  </Link>{" "}
+                  per scegliere direttamente da lì.
+                </Text>
+              </>
+            )}
+          </YStack>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

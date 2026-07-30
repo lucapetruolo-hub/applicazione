@@ -134,6 +134,20 @@ export type QuoteInput = z.infer<typeof quoteSchema>;
 export const quoteSelfSchema = quoteSchema.omit({ professionalProfileId: true });
 export type QuoteSelfInput = z.infer<typeof quoteSelfSchema>;
 
+/**
+ * Il cliente propone una data diversa per un preventivo ricevuto, scelta
+ * tra le fasce libere dell'agenda del professionista (mai una data libera
+ * scollegata: sarebbe validata comunque server-side, meglio vincolarla già
+ * qui). Stessa struttura date+startTime+endTime già usata per le fasce
+ * generiche dell'agenda in guidedRequestSchema.
+ */
+export const proposeQuoteDateSchema = z.object({
+  date: isoDateSchema,
+  startTime: timeSchema,
+  endTime: timeSchema,
+});
+export type ProposeQuoteDateInput = z.infer<typeof proposeQuoteDateSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

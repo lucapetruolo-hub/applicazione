@@ -9,6 +9,7 @@ import {
   type ProfessionalAgenda,
   type ProfessionalAgendaDay,
   type ProfessionalAvailabilityPreviewDay,
+  type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalDetail,
   type ProfessionalLead,
@@ -414,27 +415,41 @@ export class ProfessionalsService {
       orderBy: { createdAt: "desc" },
     });
 
-    return leads.map((lead) => ({
-      id: lead.id,
-      status: lead.status,
-      priceEurCents: lead.priceEurCents,
-      createdAt: lead.createdAt.toISOString(),
-      hasQuote: lead.guidedRequest.quotes.length > 0,
-      guidedRequest: {
-        id: lead.guidedRequest.id,
-        categoryLabel: lead.guidedRequest.category.label,
-        description: lead.guidedRequest.description,
-        city: lead.guidedRequest.city,
-        address: lead.guidedRequest.address,
-        photoUrls: lead.guidedRequest.photoUrls,
-        isUrgent: lead.guidedRequest.isUrgent,
-        // Valorizzati solo se la richiesta è nata da una fascia generica
-        // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
-        // deve vedere subito per quale orario è stata richiesta.
-        preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
-        preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
-      },
-    }));
+    return leads.map((lead) => {
+      // quotes è filtrato per professionalProfileId nella query: al più una
+      // voce (un professionista invia un solo preventivo per richiesta,
+      // QuotesService.createOrUpdate aggiorna quello esistente invece di
+      // crearne un secondo).
+      const quote = lead.guidedRequest.quotes[0] ?? null;
+      return {
+        id: lead.id,
+        status: lead.status,
+        priceEurCents: lead.priceEurCents,
+        createdAt: lead.createdAt.toISOString(),
+        quote: quote
+          ? {
+              id: quote.id,
+              status: quote.status,
+              estimatedStartDate: quote.estimatedStartDate.toISOString(),
+              clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+            }
+          : null,
+        guidedRequest: {
+          id: lead.guidedRequest.id,
+          categoryLabel: lead.guidedRequest.category.label,
+          description: lead.guidedRequest.description,
+          city: lead.guidedRequest.city,
+          address: lead.guidedRequest.address,
+          photoUrls: lead.guidedRequest.photoUrls,
+          isUrgent: lead.guidedRequest.isUrgent,
+          // Valorizzati solo se la richiesta è nata da una fascia generica
+          // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
+          // deve vedere subito per quale orario è stata richiesta.
+          preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
+          preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+        },
+      };
+    });
   }
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
@@ -478,6 +493,58 @@ export class ProfessionalsService {
         priceMaxEurCents: item.priceMaxEurCents,
       })),
     }));
+  }
+
+  /**
+   * Fasce esatte libere del professionista autenticato nei prossimi 14
+   * giorni (solo maxBookings=1, le fasce a capienza non c'entrano con una
+   * "data di inizio" puntuale): usata per far scegliere la data di un
+   * preventivo dentro l'agenda reale invece di una data libera scollegata.
+   * Ignora bookableAgenda apposta (quel flag governa solo la prenotazione
+   * diretta pubblica, qui il professionista guarda la propria agenda per
+   * pianificare, non per farsi prenotare da un cliente).
+   */
+  async getMyAvailableSlots(userId: string): Promise<ProfessionalAvailableSlot[]> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const endWindow = new Date(startOfToday);
+    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+
+    const [slots, bookings, exceptions] = await Promise.all([
+      this.prisma.availabilitySlot.findMany({ where: { professionalProfileId, maxBookings: 1 } }),
+      this.prisma.booking.findMany({
+        where: {
+          professionalProfileId,
+          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+          scheduledAt: { gte: startOfToday, lt: endWindow },
+        },
+        select: { scheduledAt: true },
+      }),
+      this.prisma.availabilityException.findMany({
+        where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
+        select: { date: true },
+      }),
+    ]);
+    const exceptionDates = new Set(exceptions.map((exception) => exception.date.toISOString().slice(0, 10)));
+
+    const result: ProfessionalAvailableSlot[] = [];
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(startOfToday);
+      date.setUTCDate(date.getUTCDate() + i);
+      const dateStr = date.toISOString().slice(0, 10);
+      if (exceptionDates.has(dateStr)) continue;
+
+      const dayOfWeek = date.getUTCDay();
+      const freeSlots = slots
+        .filter((slot) => slot.dayOfWeek === dayOfWeek)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+        .filter((slot) => !isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime));
+      for (const slot of freeSlots) {
+        result.push({ date: dateStr, startTime: slot.startTime, endTime: slot.endTime });
+      }
+    }
+    return result;
   }
 
   async getMyAvailability(userId: string): Promise<MyAvailability> {

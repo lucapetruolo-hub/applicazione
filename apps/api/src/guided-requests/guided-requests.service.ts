@@ -174,6 +174,7 @@ export class GuidedRequestsService {
           priceMaxEurCents: item.priceMaxEurCents,
         })),
         estimatedStartDate: quote.estimatedStartDate.toISOString(),
+        clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
         notes: quote.notes,
         status: quote.status,
       })),

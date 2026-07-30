@@ -8,11 +8,13 @@ import type {
   MyAvailability,
   MyProfessionalProfile,
   ProfessionalAgenda,
+  ProfessionalAvailableSlot,
   ProfessionalBooking,
   ProfessionalDetail,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
+  ProposeQuoteDateInput,
   QuoteSelfInput,
   ReviewInput,
   UpdateAccountInput,
@@ -59,8 +61,10 @@ export type ClientGuidedRequest = {
     businessName: string;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     estimatedStartDate: string;
+    /** Valorizzata solo se il cliente ha proposto una data diversa (status MODIFICATION_REQUESTED), in attesa di conferma del professionista. */
+    clientProposedDate: string | null;
     notes: string | null;
-    status: "SENT" | "ACCEPTED" | "REJECTED";
+    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
   }[];
 };
 
@@ -304,6 +308,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     myProfessionalBookings: (token: string) =>
       request<ProfessionalBooking[]>("/professionals/me/bookings", { headers: { Authorization: `Bearer ${token}` } }),
 
+    myAvailableSlots: (token: string) =>
+      request<ProfessionalAvailableSlot[]>("/professionals/me/available-slots", { headers: { Authorization: `Bearer ${token}` } }),
+
     createQuote: (token: string, input: QuoteSelfInput) =>
       request<{ id: string; status: string }>("/quotes", {
         method: "POST",
@@ -313,6 +320,28 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     acceptQuote: (token: string, quoteId: string) =>
       request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il cliente propone una data diversa per un preventivo ricevuto, tra le fasce libere dell'agenda del professionista. */
+    proposeQuoteDate: (token: string, quoteId: string, input: ProposeQuoteDateInput) =>
+      request<{ id: string; status: string; clientProposedDate: string | null }>(`/quotes/${quoteId}/propose-date`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Il professionista conferma la data proposta dal cliente: crea direttamente la prenotazione. */
+    confirmProposedQuoteDate: (token: string, quoteId: string) =>
+      request<{ bookingId: string }>(`/quotes/${quoteId}/confirm-proposed-date`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il professionista rifiuta la data proposta dal cliente: il preventivo torna SENT con la data originale. */
+    rejectProposedQuoteDate: (token: string, quoteId: string) =>
+      request<{ id: string; status: string }>(`/quotes/${quoteId}/reject-proposed-date`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),

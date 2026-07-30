@@ -359,40 +359,14 @@ function GuidedRequestCard({
             Preventivi ricevuti
           </Text>
           {request.quotes.map((quote) => (
-            <YStack key={quote.id} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
-              <Text fontWeight="600" color={brand.grafite}>
-                {quote.businessName}
-              </Text>
-              <YStack gap="$1">
-                {quote.items.map((item) => (
-                  <Text key={item.id} color={brand.grafite70} fontSize="$3">
-                    {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-                  </Text>
-                ))}
-              </YStack>
-              {quote.notes ? (
-                <Text color={brand.grafite70} fontSize="$3">
-                  {quote.notes}
-                </Text>
-              ) : null}
-              {quote.status === "SENT" ? (
-                <Button
-                  variant="primary"
-                  size="$3"
-                  height={40}
-                  alignSelf="flex-start"
-                  onPress={() => onAcceptQuote(quote.id)}
-                  disabled={acceptingQuoteId === quote.id}
-                  opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
-                >
-                  {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
-                </Button>
-              ) : quote.status === "ACCEPTED" ? (
-                <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-                  Accettato
-                </Text>
-              ) : null}
-            </YStack>
+            <QuoteCard
+              key={quote.id}
+              quote={quote}
+              token={token}
+              onChanged={onChanged}
+              acceptingQuoteId={acceptingQuoteId}
+              onAcceptQuote={onAcceptQuote}
+            />
           ))}
         </YStack>
       ) : (
@@ -401,6 +375,174 @@ function GuidedRequestCard({
         </Text>
       )}
     </Surface>
+  );
+}
+
+function formatQuoteDate(iso: string): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })} · ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}`;
+}
+
+type FreeSlot = { date: string; startTime: string; endTime: string };
+
+/**
+ * Preventivo ricevuto: mostra la data proposta dal professionista (prima
+ * non era visibile affatto) e permette al cliente di accettarla o
+ * proporne un'altra, scelta tra le fasce libere reali dell'agenda del
+ * professionista (mai una data a caso — richiesta esplicita dell'utente).
+ */
+function QuoteCard({
+  quote,
+  token,
+  onChanged,
+  acceptingQuoteId,
+  onAcceptQuote,
+}: {
+  quote: ClientGuidedRequest["quotes"][number];
+  token: string;
+  onChanged: () => void;
+  acceptingQuoteId: string | null;
+  onAcceptQuote: (quoteId: string) => void;
+}) {
+  const [isChoosingDate, setIsChoosingDate] = useState(false);
+  const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
+  const [selectedSlotKey, setSelectedSlotKey] = useState("");
+  const [isProposing, setIsProposing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function startChoosingDate() {
+    setError(null);
+    setIsChoosingDate(true);
+    if (freeSlots === null) {
+      try {
+        const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
+        const slots: FreeSlot[] = [];
+        for (const day of agenda.days) {
+          for (const slot of day.slots) {
+            if (slot.maxBookings === 1 && slot.bookedCount < slot.maxBookings) {
+              slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
+            }
+          }
+        }
+        setFreeSlots(slots);
+        if (slots[0]) setSelectedSlotKey(`${slots[0].date}|${slots[0].startTime}|${slots[0].endTime}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
+      }
+    }
+  }
+
+  async function handleProposeDate() {
+    const [date, startTime, endTime] = selectedSlotKey.split("|");
+    if (!date || !startTime || !endTime) {
+      setError("Scegli un orario.");
+      return;
+    }
+    setError(null);
+    setIsProposing(true);
+    try {
+      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime });
+      setIsChoosingDate(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsProposing(false);
+    }
+  }
+
+  return (
+    <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
+      <Text fontWeight="600" color={brand.grafite}>
+        {quote.businessName}
+      </Text>
+      <Text fontSize="$3" color={brand.grafite70}>
+        Data proposta: {formatQuoteDate(quote.estimatedStartDate)}
+      </Text>
+      <YStack gap="$1">
+        {quote.items.map((item) => (
+          <Text key={item.id} color={brand.grafite70} fontSize="$3">
+            {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+          </Text>
+        ))}
+      </YStack>
+      {quote.notes ? (
+        <Text color={brand.grafite70} fontSize="$3">
+          {quote.notes}
+        </Text>
+      ) : null}
+
+      {quote.status === "SENT" ? (
+        <>
+          <XStack gap="$2" flexWrap="wrap">
+            <Button
+              variant="primary"
+              size="$3"
+              height={40}
+              onPress={() => onAcceptQuote(quote.id)}
+              disabled={acceptingQuoteId === quote.id}
+              opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
+            >
+              {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
+            </Button>
+            {!isChoosingDate ? (
+              <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
+                Proponi altra data
+              </Button>
+            ) : null}
+          </XStack>
+          {isChoosingDate ? (
+            <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+              {freeSlots === null ? (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Caricamento orari disponibili...
+                </Text>
+              ) : freeSlots.length === 0 ? (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
+                </Text>
+              ) : (
+                <>
+                  <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
+                    {freeSlots.map((slot) => {
+                      const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
+                      const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}`;
+                      return (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <XStack gap="$2">
+                    <Button variant="primary" size="$3" height={40} onPress={handleProposeDate} disabled={isProposing} opacity={isProposing ? 0.6 : 1}>
+                      {isProposing ? "Invio..." : "Invia proposta"}
+                    </Button>
+                    <Button variant="ghost" size="$3" height={40} onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
+                      Annulla
+                    </Button>
+                  </XStack>
+                </>
+              )}
+            </YStack>
+          ) : null}
+        </>
+      ) : quote.status === "MODIFICATION_REQUESTED" ? (
+        <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+          In attesa di conferma del professionista per il {quote.clientProposedDate ? formatQuoteDate(quote.clientProposedDate) : ""}
+        </Text>
+      ) : quote.status === "ACCEPTED" ? (
+        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+          Accettato
+        </Text>
+      ) : null}
+
+      {error ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
   );
 }
 
