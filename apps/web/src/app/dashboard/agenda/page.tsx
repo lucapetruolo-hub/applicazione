@@ -445,6 +445,12 @@ export default function DashboardAgendaPage() {
         </Text>
       );
     }
+    // Vista Settimana: colonna stretta, solo l'orario (niente nome cliente,
+    // che essendo di lunghezza variabile è quello che non ci stava dentro) —
+    // richiesta esplicita dell'utente, stesso principio già applicato a
+    // SlotChip nel calendario "Disponibilità". Vista Giorno: molto più
+    // spazio per colonna (una sola), il nome cliente resta.
+    const compact = bookingView === "week";
     return (
       <YStack gap="$2" minWidth={0}>
         {dayBookings.map((booking) => {
@@ -458,19 +464,29 @@ export default function DashboardAgendaPage() {
               borderLeftColor={BOOKING_STATUS_COLOR[booking.status]}
               backgroundColor={brand.gesso}
               borderRadius="$2"
-              padding="$2"
-              gap="$1"
+              paddingHorizontal={compact ? "$1.5" : "$2"}
+              paddingVertical={compact ? 5 : "$2"}
+              gap={compact ? 0 : "$1"}
               cursor="pointer"
               opacity={isCanceled ? 0.6 : 1}
               onPress={() => setSelectedBooking(booking)}
               accessibilityRole="button"
             >
-              <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" color={brand.grafite} textDecorationLine={isCanceled ? "line-through" : "none"}>
+              <Text
+                fontFamily="$mono"
+                fontSize={compact ? 10 : 10.5}
+                fontWeight="700"
+                color={brand.grafite}
+                textDecorationLine={isCanceled ? "line-through" : "none"}
+                numberOfLines={1}
+              >
                 {time}
               </Text>
-              <Text fontSize={10.5} color={brand.grafite70}>
-                {booking.clientName ?? "Cliente"}
-              </Text>
+              {!compact ? (
+                <Text fontSize={10.5} color={brand.grafite70}>
+                  {booking.clientName ?? "Cliente"}
+                </Text>
+              ) : null}
             </YStack>
           );
         })}

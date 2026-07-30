@@ -1336,3 +1336,15 @@ raggruppando prezzo min/"a"/prezzo max/tasto rimuovi in un unico blocco
 quando lo spazio non basta, ma non si spezza mai più al suo interno — il
 tasto rimuovi resta sempre affiancato al prezzo. Nessuna modifica al layout
 desktop (tutto in un'unica riga, come già era).
+
+**Calendario "Prenotazioni", vista Settimana — solo l'orario**: richiesta
+esplicita dell'utente, stesso principio già applicato a `SlotChip` nel
+calendario "Disponibilità" ("nella vista settimanale scrivere solo l'orario
+piccolo in modo da farlo entrare nella colonna", CLAUDE.md §11). Il blocco
+prenotazione in `renderBookingDayColumn` mostrava orario + nome cliente su
+due righe: nella colonna stretta della vista Settimana (7 colonne) il nome,
+di lunghezza variabile, era quello che rischiava di non starci — ora
+`compact = bookingView === "week"` nasconde il nome e riduce leggermente
+padding/font dell'orario, mostrato sempre su una sola riga
+(`numberOfLines={1}`). La vista Giorno (una sola colonna, molto più spazio)
+resta invariata: orario + nome cliente.
