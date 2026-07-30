@@ -35,6 +35,8 @@ export type ClientGuidedRequest = {
   categoryLabel: string;
   description: string;
   city: string;
+  /** Via e numero civico, facoltativo: dove il professionista dovrà andare a svolgere il lavoro. */
+  address: string | null;
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;
@@ -268,7 +270,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     updateGuidedRequest: (token: string, id: string, input: GuidedRequestUpdateInput) =>
-      request<{ id: string; description: string; city: string }>(`/guided-requests/${id}`, {
+      request<{ id: string; description: string; city: string; address: string | null }>(`/guided-requests/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

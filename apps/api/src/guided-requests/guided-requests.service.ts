@@ -66,6 +66,7 @@ export class GuidedRequestsService {
               description: input.description,
               photoUrls: input.photoUrls,
               city: input.city,
+              address: input.address?.trim() || null,
               isUrgent: input.isUrgent,
               professionalProfileId: targetProfile?.id,
               preferredDate: resolvedSlot?.date,
@@ -147,6 +148,7 @@ export class GuidedRequestsService {
       categoryLabel: request.category.label,
       description: request.description,
       city: request.city,
+      address: request.address,
       isUrgent: request.isUrgent,
       status: request.status,
       createdAt: request.createdAt.toISOString(),
@@ -179,19 +181,19 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Modifica di una richiesta già inviata: solo descrizione e città (vedi
-   * guidedRequestUpdateSchema), non la categoria — determina già a chi è
-   * stata inoltrata la richiesta. Consentita finché non è CLOSED (una
-   * richiesta chiusa ha già portato a una prenotazione, non ha senso
-   * modificarla — stesso confine già usato per l'eliminazione).
+   * Modifica di una richiesta già inviata: descrizione, città e indirizzo
+   * preciso (vedi guidedRequestUpdateSchema), non la categoria — determina
+   * già a chi è stata inoltrata la richiesta. Consentita finché non è
+   * CLOSED (una richiesta chiusa ha già portato a una prenotazione, non ha
+   * senso modificarla — stesso confine già usato per l'eliminazione).
    */
   async update(clientId: string, id: string, input: GuidedRequestUpdateInput) {
     const request = await this.requireOwnEditableRequest(clientId, id, "modificare");
     const updated = await this.prisma.guidedRequest.update({
       where: { id: request.id },
-      data: { description: input.description, city: input.city },
+      data: { description: input.description, city: input.city, address: input.address?.trim() || null },
     });
-    return { id: updated.id, description: updated.description, city: updated.city };
+    return { id: updated.id, description: updated.description, city: updated.city, address: updated.address };
   }
 
   /**

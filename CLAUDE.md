@@ -1362,3 +1362,65 @@ Stessa doppia conferma di prima per le fasce con prenotazioni future
 (`confirmingDelete`) invece che nello stato della pagina: `key={editingKey}`
 sul `<SlotEditorModal>` forza un componente nuovo (quindi uno stato di
 conferma azzerato) ogni volta che si apre una fascia diversa.
+
+**Indirizzo preciso della richiesta + dati di contatto del cliente in
+agenda/dashboard** — richiesta esplicita dell'utente (percorso completo:
+richiesta → preventivo → accettazione → il professionista deve poter
+vedere nome/cognome, indirizzo, telefono, email per andare a svolgere il
+lavoro): nuovo campo `GuidedRequest.address` (facoltativo, via e numero
+civico — sulla richiesta, non sul profilo cliente: un cliente può avere
+lavori in indirizzi diversi da una richiesta all'altra), editabile in
+`GuidedRequestForm.tsx` (`/preventivo`, `/urgente`) e nel form di modifica
+inline di `/le-mie-richieste`. Il pagamento trattenuto dalla piattaforma
+all'accettazione del preventivo (menzionato dall'utente) resta
+esplicitamente rimandato a prima del lancio, insieme a Stripe/Cloudinary
+(CLAUDE.md §9) — non implementato in questo giro.
+- `ProfessionalsService.getMyBookings` ora seleziona anche
+  `client.phone`/`client.email` e, quando la prenotazione viene da un
+  preventivo accettato, `quote.guidedRequest.address` (`null` per le
+  prenotazioni dirette dall'agenda pubblica, che non hanno una
+  GuidedRequest collegata). `clientName` combina ora nome **e** cognome
+  (`[name, surname].filter(Boolean).join(" ")`) — prima esponeva solo il
+  nome di battesimo (`booking.client.name`), insufficiente per un
+  professionista che deve presentarsi sapendo con chi ha a che fare.
+- `BookingDetailPanel.tsx` (calendario "Prenotazioni" in
+  `/dashboard/agenda`): nuova sezione "Contatti cliente" — telefono come
+  link `tel:`, email come link `mailto:`, indirizzo con icona `map-pin`.
+  Mostrata solo se almeno uno dei tre è presente.
+- **Nuova sezione "Lavori accettati" in `/dashboard`**: sostituisce il
+  breve riepilogo "N prenotazioni in arrivo" (introdotto nella Fase
+  "motion", §9) con un elenco vero delle prenotazioni `CONFIRMED`/
+  `COMPLETED` (non `PENDING` — una prenotazione diretta da agenda pubblica
+  ancora da confermare non è "accettata" da questo lato; non
+  `CANCELED`/`NO_SHOW`), ognuna con data/ora, stato, nome e cognome,
+  telefono/email (link diretti), indirizzo e voci del preventivo — proprio
+  la richiesta esplicita dell'utente ("un elenco dei lavori accettati con
+  tutti i dettagli del cliente"). Il link "Apri il calendario completo"
+  resta per la vista calendario piena.
+- **Foto della richiesta guidata visibili al professionista**: `ProfessionalLead.
+  guidedRequest.photoUrls` era assente dal tipo condiviso pur esistendo già
+  nello schema (`GuidedRequest.photoUrls`, usato per l'upload lato cliente)
+  — bug di esposizione dati corretto nello stesso giro (richiesta esplicita
+  dell'utente, "potrà vedere tutti i dati del cliente con le richieste e
+  foto"): `LeadCard` in `/dashboard` mostra ora le miniature (fino a 3)
+  sotto la descrizione, oltre all'indirizzo con icona `map-pin`.
+- Nuove icone nel registro condiviso (`packages/ui/src/icons.tsx`/
+  `icons.web.tsx`): `phone`, `mail`.
+- Verificato end-to-end con l'API locale (non solo lettura di codice):
+  richiesta guidata con indirizzo → lead con indirizzo e foto lato
+  professionista → preventivo inviato → accettato dal cliente → prenotazione
+  con nome+cognome/telefono/email/indirizzo corretti, sia in
+  `BookingDetailPanel` (agenda) sia nella nuova sezione "Lavori accettati"
+  (dashboard). Screenshot Playwright su entrambe le viste, zero errori
+  console.
+
+**Prossimo giro (non ancora implementato, descritto dall'utente ma non
+richiesto per questo turno)**: quando il professionista compila la data di
+inizio di un preventivo, le opzioni dovrebbero derivare dalla propria
+agenda (fasce impostate in `/dashboard/agenda`, escludendo gli orari già
+occupati da altre prenotazioni) invece di un semplice `<input type="date">`
+libero come oggi; il cliente dovrebbe poter non solo accettare ma anche
+"modificare" un preventivo ricevuto, scegliendo un'altra data sempre tra
+quelle disponibili nell'agenda del professionista. Notifiche email/SMS/
+WhatsApp su nuovo lead + un sottomenu impostazioni per disattivarle
+restano anch'esse esplicitamente rimandate dall'utente a prima del lancio.

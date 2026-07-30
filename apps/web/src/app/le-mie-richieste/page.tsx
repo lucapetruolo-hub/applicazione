@@ -163,6 +163,7 @@ function GuidedRequestCard({
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
+  const [address, setAddress] = useState(request.address ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -176,6 +177,7 @@ function GuidedRequestCard({
   function startEditing() {
     setDescription(request.description);
     setCity(request.city);
+    setAddress(request.address ?? "");
     setError(null);
     setIsEditing(true);
   }
@@ -192,7 +194,11 @@ function GuidedRequestCard({
     }
     setIsSaving(true);
     try {
-      await apiClient.updateGuidedRequest(token, request.id, { description: description.trim(), city: city.trim() });
+      await apiClient.updateGuidedRequest(token, request.id, {
+        description: description.trim(),
+        city: city.trim(),
+        address: address.trim() || undefined,
+      });
       setIsEditing(false);
       onChanged();
     } catch (err) {
@@ -236,6 +242,12 @@ function GuidedRequestCard({
               minChars={3}
             />
           </YStack>
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Indirizzo preciso (opzionale): via e numero civico"
+            style={textareaStyle}
+          />
           {error ? (
             <Text color={brand.urgenza} fontSize="$3">
               {error}
@@ -258,6 +270,14 @@ function GuidedRequestCard({
                 {request.categoryLabel} · {request.city}
               </Text>
               <Text color={brand.grafite70}>{request.description}</Text>
+              {request.address ? (
+                <XStack alignItems="center" gap="$1">
+                  <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    {request.address}
+                  </Text>
+                </XStack>
+              ) : null}
             </YStack>
             <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
               {STATUS_LABEL[request.status]}

@@ -67,6 +67,8 @@ export const guidedRequestSchema = z
     description: z.string().min(10).max(2000),
     photoUrls: z.array(z.string().url()).max(3).default([]),
     city: z.string().min(2),
+    /** Via e numero civico, facoltativo: dove il professionista dovrà andare a svolgere il lavoro. */
+    address: z.string().max(200).optional(),
     isUrgent: z.boolean().default(false),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.string().uuid().optional(),
@@ -101,6 +103,7 @@ export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 export const guidedRequestUpdateSchema = z.object({
   description: z.string().min(10).max(2000),
   city: z.string().min(2),
+  address: z.string().max(200).optional(),
 });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 

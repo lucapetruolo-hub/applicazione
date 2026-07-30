@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import type { ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
-import { Badge, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { formatServicePriceRange, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -116,27 +116,27 @@ export default function DashboardPage() {
         <BoostSection token={token} />
 
         <YStack gap="$3">
-          <SectionTitle>Agenda</SectionTitle>
+          <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
+            <SectionTitle>Lavori accettati</SectionTitle>
+            <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
+              <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                Apri il calendario completo
+              </Text>
+            </Link>
+          </YStack>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
+          </Text>
           {bookings === null ? (
             <LoadingState />
+          ) : acceptedJobs(bookings).length === 0 ? (
+            <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
           ) : (
-            <Surface flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-              <YStack gap="$1">
-                <Text fontWeight="600" color={brand.grafite}>
-                  {upcomingBookingsCount(bookings) === 0
-                    ? "Nessuna prenotazione in arrivo."
-                    : `${upcomingBookingsCount(bookings)} prenotazion${upcomingBookingsCount(bookings) === 1 ? "e" : "i"} in arrivo.`}
-                </Text>
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Calendario disponibilità e prenotazioni, con i dettagli di ogni appuntamento.
-                </Text>
-              </YStack>
-              <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
-                <Button variant="secondary" size="$3" height={40}>
-                  Apri il calendario
-                </Button>
-              </Link>
-            </Surface>
+            <YStack gap="$3">
+              {acceptedJobs(bookings).map((booking) => (
+                <AcceptedJobCard key={booking.id} booking={booking} />
+              ))}
+            </YStack>
           )}
         </YStack>
       </YStack>
@@ -144,9 +144,84 @@ export default function DashboardPage() {
   );
 }
 
-function upcomingBookingsCount(bookings: ProfessionalBooking[]): number {
-  const now = Date.now();
-  return bookings.filter((b) => (b.status === "PENDING" || b.status === "CONFIRMED") && new Date(b.scheduledAt).getTime() >= now).length;
+/**
+ * "Lavori accettati" (richiesta esplicita dell'utente): prenotazioni
+ * CONFIRMED (preventivo accettato dal cliente, o fascia diretta già
+ * confermata dal professionista) o COMPLETED (lavori passati) — non
+ * PENDING (prenotazione diretta da agenda pubblica ancora da confermare, non
+ * ancora davvero "accettata" da questo lato) né CANCELED/NO_SHOW.
+ */
+function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
+  return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");
+}
+
+function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
+  const date = new Date(booking.scheduledAt);
+  return (
+    <Surface gap="$2">
+      <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
+        <YStack gap="$1">
+          <Text fontWeight="700" color={brand.grafite}>
+            {date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {" · "}
+            {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+          </Text>
+          <Text fontFamily="$mono" fontSize={11} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}>
+            {booking.status === "COMPLETED" ? "Completato" : "Confermato"}
+          </Text>
+        </YStack>
+      </YStack>
+
+      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+        <Text fontWeight="600" color={brand.grafite}>
+          {booking.clientName ?? "Cliente"}
+        </Text>
+        {booking.clientPhone ? (
+          <a href={`tel:${booking.clientPhone}`} style={{ textDecoration: "none" }}>
+            <XStack alignItems="center" gap="$1">
+              <Icon name="phone" size={12} color={brand.cianografia} strokeWidth={1.5} />
+              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                {booking.clientPhone}
+              </Text>
+            </XStack>
+          </a>
+        ) : null}
+        {booking.clientEmail ? (
+          <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
+            <XStack alignItems="center" gap="$1">
+              <Icon name="mail" size={12} color={brand.cianografia} strokeWidth={1.5} />
+              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                {booking.clientEmail}
+              </Text>
+            </XStack>
+          </a>
+        ) : null}
+        {booking.address ? (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$2" color={brand.grafite70}>
+              {booking.address}
+            </Text>
+          </XStack>
+        ) : null}
+      </YStack>
+
+      {booking.items.length > 0 ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          {booking.items.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                {item.name}
+              </Text>
+              <Text fontSize="$2" color={brand.grafite} fontWeight="600">
+                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+      ) : null}
+    </Surface>
+  );
 }
 
 const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO"; label: string; description: string; priceEur: number }[] = [
@@ -296,6 +371,14 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
           </XStack>
           <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
+          {lead.guidedRequest.address ? (
+            <XStack alignItems="center" gap="$1">
+              <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$2" color={brand.grafite70}>
+                {lead.guidedRequest.address}
+              </Text>
+            </XStack>
+          ) : null}
         </YStack>
         {sent ? (
           <Text fontSize="$2" color={brand.verificato} fontWeight="600">
@@ -303,6 +386,20 @@ function LeadCard({ lead, token }: { lead: ProfessionalLead; token: string }) {
           </Text>
         ) : null}
       </YStack>
+
+      {lead.guidedRequest.photoUrls.length > 0 ? (
+        <XStack gap="$2" flexWrap="wrap">
+          {lead.guidedRequest.photoUrls.map((url) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={url}
+              src={url}
+              alt=""
+              style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}` }}
+            />
+          ))}
+        </XStack>
+      ) : null}
 
       {!sent && !showForm ? (
         <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>

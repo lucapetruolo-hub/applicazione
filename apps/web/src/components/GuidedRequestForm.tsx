@@ -58,6 +58,7 @@ export function GuidedRequestForm({
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
   const [city, setCity] = useState(initialCity);
+  const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
@@ -136,6 +137,7 @@ export function GuidedRequestForm({
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
         city: city.trim(),
+        address: address.trim() || undefined,
         isUrgent,
         photoUrls,
         professionalProfileId,
@@ -395,6 +397,27 @@ export function GuidedRequestForm({
               minChars={3}
             />
           </YStack>
+        </YStack>
+
+        <YStack gap="$2">
+          <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Via e numero civico: serve al professionista per sapere esattamente dove venire, una volta accettato il
+            preventivo. Non viene mostrato pubblicamente, solo a chi ha in mano la tua richiesta.
+          </Text>
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Es. Via delle Camelie 38"
+            style={{
+              padding: 12,
+              borderRadius: 4,
+              border: `1px solid ${brand.filetto}`,
+              fontSize: 15,
+              fontFamily: "inherit",
+              color: brand.grafite,
+            }}
+          />
         </YStack>
 
         {error ? (

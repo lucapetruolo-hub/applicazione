@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
@@ -102,6 +102,49 @@ export function BookingDetailPanel({
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
           </Text>
         </YStack>
+
+        {/* Dati del cliente utili al professionista per andare a svolgere il
+            lavoro (richiesta esplicita dell'utente): telefono/email come
+            link diretti tel:/mailto:, indirizzo preciso se indicato nella
+            richiesta guidata collegata (assente per le prenotazioni dirette
+            da agenda, che non hanno una GuidedRequest). */}
+        {booking.clientPhone || booking.clientEmail || booking.address ? (
+          <YStack gap="$2">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+              Contatti cliente
+            </Text>
+            <YStack gap="$1.5">
+              {booking.clientPhone ? (
+                <a href={`tel:${booking.clientPhone}`} style={{ textDecoration: "none" }}>
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                      {booking.clientPhone}
+                    </Text>
+                  </XStack>
+                </a>
+              ) : null}
+              {booking.clientEmail ? (
+                <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="mail" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                      {booking.clientEmail}
+                    </Text>
+                  </XStack>
+                </a>
+              ) : null}
+              {booking.address ? (
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
+                  <Text color={brand.grafite} fontSize="$3">
+                    {booking.address}
+                  </Text>
+                </XStack>
+              ) : null}
+            </YStack>
+          </YStack>
+        ) : null}
 
         {booking.items.length > 0 ? (
           <YStack gap="$2">

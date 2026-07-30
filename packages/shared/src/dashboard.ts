@@ -26,6 +26,10 @@ export type ProfessionalLead = {
     categoryLabel: string;
     description: string;
     city: string;
+    /** Via e numero civico indicati dal cliente, facoltativo. */
+    address: string | null;
+    /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
+    photoUrls: string[];
     isUrgent: boolean;
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;
@@ -33,11 +37,25 @@ export type ProfessionalLead = {
   };
 };
 
-/** Prenotazione lato professionista (agenda). */
+/**
+ * Prenotazione lato professionista (agenda + dashboard): una volta un
+ * preventivo accettato (o una fascia esatta prenotata direttamente), il
+ * professionista deve poter vedere i dati del cliente utili per andare a
+ * svolgere il lavoro (nome e cognome, telefono, email, indirizzo preciso se
+ * indicato nella richiesta). `clientPhone`/`clientEmail` possono essere
+ * `null` (account creato via Google senza telefono, o senza email se creato
+ * solo con telefono — non ancora un flusso reale ma il campo resta
+ * opzionale nello schema). `address` è `null` per le prenotazioni dirette
+ * dall'agenda pubblica (bookAgendaSlot), che non hanno una GuidedRequest
+ * collegata.
+ */
 export type ProfessionalBooking = {
   id: string;
   scheduledAt: string;
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
   clientName: string | null;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  address: string | null;
   items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
 };

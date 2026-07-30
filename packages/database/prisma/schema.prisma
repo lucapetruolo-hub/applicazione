@@ -299,6 +299,14 @@ model GuidedRequest {
   description String
   photoUrls   String[]
   city        String
+  // Indirizzo preciso (via e numero civico) del luogo dell'intervento,
+  // facoltativo: il cliente lo indica per far sapere al professionista dove
+  // andare a lavorare una volta accettato il preventivo. Sulla richiesta
+  // (non sul profilo cliente): un cliente può avere lavori in indirizzi
+  // diversi da una richiesta all'altra. Mai mostrato in ricerca/profilo
+  // pubblico — solo al professionista che ha in mano un preventivo/
+  // prenotazione collegati a questa richiesta.
+  address     String?
   isUrgent    Boolean             @default(false)
   status      GuidedRequestStatus @default(OPEN)
   createdAt   DateTime            @default(now())

@@ -425,6 +425,8 @@ export class ProfessionalsService {
         categoryLabel: lead.guidedRequest.category.label,
         description: lead.guidedRequest.description,
         city: lead.guidedRequest.city,
+        address: lead.guidedRequest.address,
+        photoUrls: lead.guidedRequest.photoUrls,
         isUrgent: lead.guidedRequest.isUrgent,
         // Valorizzati solo se la richiesta è nata da una fascia generica
         // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
@@ -445,7 +447,15 @@ export class ProfessionalsService {
     // separa prossime/storico, questo endpoint resta la lista grezza.
     const bookings = await this.prisma.booking.findMany({
       where: { professionalProfileId },
-      include: { client: true, quote: { include: { items: true } } },
+      include: {
+        client: true,
+        // guidedRequest solo se la prenotazione viene da un preventivo
+        // accettato (Booking.quoteId): porta l'indirizzo preciso indicato
+        // dal cliente nella richiesta. Le prenotazioni dirette da agenda
+        // (bookAgendaSlot) non hanno una Quote/GuidedRequest collegata,
+        // address resta null in quel caso.
+        quote: { include: { items: true, guidedRequest: { select: { address: true } } } },
+      },
       orderBy: { scheduledAt: "asc" },
     });
 
@@ -453,7 +463,14 @@ export class ProfessionalsService {
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
       status: booking.status,
-      clientName: booking.client.name,
+      // Nome e cognome: prima esponeva solo booking.client.name (nome di
+      // battesimo), non sufficiente per un professionista che deve
+      // presentarsi al lavoro sapendo con chi ha a che fare — richiesta
+      // esplicita dell'utente ("nome e cognome").
+      clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+      clientPhone: booking.client.phone,
+      clientEmail: booking.client.email,
+      address: booking.quote?.guidedRequest?.address ?? null,
       items: (booking.quote?.items ?? []).map((item) => ({
         id: item.id,
         name: item.name,
