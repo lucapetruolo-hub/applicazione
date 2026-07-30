@@ -57,7 +57,18 @@ export function SiteHeader() {
       >
         <XStack alignItems="center" gap="$6">
           <Link href="/" style={{ textDecoration: "none" }}>
-            <Logo size={26} />
+            {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark
+                "Professionisti" (~120px) più Accedi+bottone CTA a destra
+                sforavano la larghezza viewport sui telefoni più stretti
+                (bug reale segnalato dall'utente, scroll orizzontale sulla
+                homepage) — `variant="mark"` esiste già in Logo.web.tsx
+                proprio per questo caso ("per spazi stretti"). */}
+            <XStack display="none" $gtXs={{ display: "flex" }}>
+              <Logo size={26} />
+            </XStack>
+            <XStack $gtXs={{ display: "none" }}>
+              <Logo size={26} variant="mark" />
+            </XStack>
           </Link>
           <XStack alignItems="center" gap="$5">
             <MegaMenu />
@@ -76,7 +87,7 @@ export function SiteHeader() {
           </XStack>
         </XStack>
 
-        <XStack alignItems="center" gap="$4">
+        <XStack alignItems="center" gap="$4" $xs={{ gap: "$3" }}>
           {isLoading ? null : user ? (
             <AccountMenu />
           ) : (
@@ -90,7 +101,11 @@ export function SiteHeader() {
             </Link>
           )}
           <Link href="/preventivo" style={{ textDecoration: "none" }}>
-            <Button variant="primary" size="$3" height={40} paddingHorizontal="$4">
+            {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
+                SE, il più stretto tra i telefoni comuni) il bottone a piena
+                dimensione sforava ancora di qualche px anche dopo aver
+                ridotto il logo — stesso bug segnalato dall'utente. */}
+            <Button variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
               Richiedi preventivo
             </Button>
           </Link>

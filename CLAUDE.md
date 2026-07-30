@@ -1524,3 +1524,35 @@ professionista (`?ruolo=professionista`); i link esistenti che passano già
 `?ruolo=professionista` (footer, `/per-professionisti`, ecc.) continuano a
 saltare la schermata di scelta esattamente come prima — nessuna
 regressione verificata sui punti d'ingresso già in uso.
+
+**Header — overflow orizzontale da cellulare** — bug reale segnalato
+dall'utente con screenshot ("Richiedi un preventivo nella homepage vista
+da cellulare sfora troppo a destra"): sui telefoni più stretti (verificato
+da 320px, iPhone SE, in su) il contenuto dell'header (logo con wordmark
+"Professionisti" + hamburger `MegaMenu` + link "Accedi" + bottone
+"Richiedi preventivo") superava la larghezza del viewport, causando scroll
+orizzontale su tutta la homepage — non solo nell'header ma sull'intera
+pagina, perché nessun elemento lì dentro si restringeva sotto la propria
+larghezza di contenuto (`XStack` con `justifyContent="space-between"`,
+nessun `flexShrink`/wrap). Corretto in `apps/web/src/components/
+SiteHeader.tsx` con due interventi mirati, senza toccare il layout
+desktop:
+1. **Logo solo marchio sotto $xs** (breakpoint Tamagui ≤660px): due
+   `XStack` con `display`/`$gtXs` invertiti (stesso pattern già in uso
+   nello stesso file per "Come funziona"/"Prezzi" sotto `$gtMd`) mostrano
+   `<Logo variant="mark" />` (28×28, senza wordmark) sotto $xs e
+   `<Logo variant="full" />` sopra — `variant="mark"` esisteva già in
+   `Logo.web.tsx`/`Logo.tsx` proprio per "spazi stretti" (Fase 2 del
+   redesign) ma non era ancora usato da nessun punto del sito.
+2. **Padding/gap ridotti sotto $xs**: il bottone "Richiedi preventivo"
+   (`paddingHorizontal="$4"` → `$3` sotto `$xs`) e il gap tra "Accedi" e
+   il bottone (`$4` → `$3`) — a 320px il solo cambio del logo lasciava
+   ancora 6px di troppo.
+Verificato con Playwright (non solo lettura di codice): confrontato
+`document.documentElement.scrollWidth` vs `clientWidth` su 320/360/390/
+414/430/660/661px — zero overflow su tutte le larghezze, incluso dopo
+scroll fino in fondo alla pagina (la riga orizzontalmente scorrevole di
+`ProfessionalsShowcase` resta legittimamente scrollabile nel proprio
+contenitore, non contribuiva all'overflow di pagina). Screenshot di
+controllo su 320px e desktop (1280px, invariato: logo con wordmark,
+"Accedi" e bottone a piena dimensione). Zero errori console.
