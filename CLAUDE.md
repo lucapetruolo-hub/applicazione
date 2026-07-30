@@ -1495,3 +1495,32 @@ un'altra data" in `/dashboard`, e al cliente stesso nello stato "in attesa
 di conferma" finché il professionista non decide. Verificato end-to-end
 con l'API locale e Playwright: nota inserita dal cliente, salvata
 correttamente, visibile sulla dashboard del professionista.
+
+**Scelta cliente/professionista in fase di registrazione** — bug reale
+segnalato dall'utente: cliccando "Registrati" da `/accedi` (unico punto
+d'ingresso del sito che arriva a `/registrati` senza un ruolo già deciso
+nell'URL, a differenza dei link "Iscriviti gratis"/"Sei un
+professionista?" sparsi nel sito, che passano già `?ruolo=professionista`)
+si finiva sempre sulla registrazione cliente, senza possibilità di
+scegliere. `apps/web/src/app/registrati/page.tsx`: nuovo componente
+`RoleChoiceScreen` (due caselle cliccabili "Sono un cliente"/"Sono un
+professionista", icone `search`/`hard-hat` già presenti nel registro
+condiviso) mostrato quando il parametro `ruolo` nell'URL non è né
+`professionista` né il nuovo valore esplicito `cliente` (prima l'assenza
+del parametro significava implicitamente cliente, senza un modo di
+distinguere "nessuna scelta fatta" da "ha scelto cliente"). La scelta
+aggiorna l'URL (`router.replace`, `?ruolo=cliente`/`?ruolo=professionista`,
+preservando eventuali altri query param già presenti) invece di tenere lo
+stato solo in memoria, così il link resta condivisibile/ricaricabile.
+Bug dei Rules of Hooks evitato in fase di scrittura (auto-corretto prima
+di ogni verifica, stesso tipo di errore già documentato altrove in questo
+file per `/dashboard/agenda`): i sei `useState` di `RegistratiForm`
+restano tutti dichiarati incondizionatamente prima del `return` anticipato
+che mostra `RoleChoiceScreen`, mai dopo. Verificato: typecheck pulito,
+Playwright contro l'app locale — da `/accedi`, click su "Registrati" porta
+alla schermata di scelta; scegliendo "cliente" si atterra sul form
+cliente (`?ruolo=cliente`), scegliendo "professionista" sul form
+professionista (`?ruolo=professionista`); i link esistenti che passano già
+`?ruolo=professionista` (footer, `/per-professionisti`, ecc.) continuano a
+saltare la schermata di scelta esattamente come prima — nessuna
+regressione verificata sui punti d'ingresso già in uso.

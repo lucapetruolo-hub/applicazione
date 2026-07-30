@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, Field, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Button, Field, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -17,20 +17,124 @@ export default function RegistratiPage() {
   );
 }
 
+/**
+ * Scelta cliente/professionista prima del form vero e proprio — richiesta
+ * esplicita dell'utente: cliccando "Registrati" da /accedi (unico punto
+ * d'ingresso che arriva qui senza un ruolo già deciso, a differenza dei
+ * link "Iscriviti gratis"/"Sei un professionista?" sparsi nel sito che
+ * passano già `?ruolo=professionista`) si finiva sempre sulla
+ * registrazione cliente, senza poter scegliere. `ruolo=cliente` è un
+ * valore nuovo nell'URL (prima l'assenza del parametro significava
+ * implicitamente cliente): i link esistenti che passano già
+ * `ruolo=professionista` continuano a saltare questa schermata come prima.
+ */
+function RoleChoiceScreen({ onChoose }: { onChoose: (role: "cliente" | "professionista") => void }) {
+  return (
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={480} gap="$5">
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.cianografia}>
+            Registrati
+          </Text>
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Come vuoi registrarti?
+          </Text>
+        </YStack>
+
+        <YStack gap="$3">
+          <XStack
+            alignItems="center"
+            gap="$3"
+            padding="$4"
+            backgroundColor={brand.calce}
+            borderWidth={1}
+            borderColor={brand.filetto}
+            borderRadius="$4"
+            cursor="pointer"
+            onPress={() => onChoose("cliente")}
+            accessibilityRole="button"
+          >
+            <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
+              <Icon name="search" size={20} color={brand.cianografia} strokeWidth={1.5} />
+            </XStack>
+            <YStack flex={1} gap="$1">
+              <Text fontWeight="700" color={brand.grafite}>
+                Sono un cliente
+              </Text>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Cerco un professionista per un lavoro.
+              </Text>
+            </YStack>
+            <Icon name="chevron-right" size={18} color={brand.grafite70} />
+          </XStack>
+
+          <XStack
+            alignItems="center"
+            gap="$3"
+            padding="$4"
+            backgroundColor={brand.calce}
+            borderWidth={1}
+            borderColor={brand.filetto}
+            borderRadius="$4"
+            cursor="pointer"
+            onPress={() => onChoose("professionista")}
+            accessibilityRole="button"
+          >
+            <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
+              <Icon name="hard-hat" size={20} color={brand.cianografia} strokeWidth={1.5} />
+            </XStack>
+            <YStack flex={1} gap="$1">
+              <Text fontWeight="700" color={brand.grafite}>
+                Sono un professionista
+              </Text>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Offro i miei servizi e voglio ricevere richieste.
+              </Text>
+            </YStack>
+            <Icon name="chevron-right" size={18} color={brand.grafite70} />
+          </XStack>
+        </YStack>
+
+        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+          Hai già un account?{" "}
+          <Link href="/accedi" style={{ textDecoration: "none" }}>
+            <Text color={brand.cianografia} fontWeight="600">
+              Accedi
+            </Text>
+          </Link>
+        </Text>
+      </YStack>
+    </YStack>
+  );
+}
+
 function RegistratiForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
-  const isProfessional = searchParams.get("ruolo") === "professionista";
+  const roleParam = searchParams.get("ruolo");
+  const isProfessional = roleParam === "professionista";
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
 
+  // Tutti gli hook prima del return condizionale sotto (regola degli hook:
+  // stesso numero/ordine di hook ad ogni render).
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function chooseRole(choice: "cliente" | "professionista") {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("ruolo", choice);
+    router.replace(`/registrati?${params.toString()}`);
+  }
+
+  if (roleParam !== "professionista" && roleParam !== "cliente") {
+    return <RoleChoiceScreen onChoose={chooseRole} />;
+  }
 
   // Con Google Sign-In questa pagina può autenticare anche un account
   // professionista già esistente (es. cliccando "Iscriviti gratis" da
