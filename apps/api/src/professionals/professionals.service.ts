@@ -410,7 +410,7 @@ export class ProfessionalsService {
     const leads = await this.prisma.lead.findMany({
       where: { professionalProfileId },
       include: {
-        guidedRequest: { include: { category: true, quotes: { where: { professionalProfileId } } } },
+        guidedRequest: { include: { category: true, client: true, quotes: { where: { professionalProfileId } } } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -440,6 +440,11 @@ export class ProfessionalsService {
           categoryLabel: lead.guidedRequest.category.label,
           description: lead.guidedRequest.description,
           city: lead.guidedRequest.city,
+          // Nome e cognome del cliente (richiesta esplicita dell'utente,
+          // "nelle richieste ricevute deve esserci anche il nome"): stesso
+          // pattern già in uso in getMyBookings, join(" ") invece di solo
+          // client.name per includere anche il cognome.
+          clientName: [lead.guidedRequest.client.name, lead.guidedRequest.client.surname].filter(Boolean).join(" ") || null,
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           isUrgent: lead.guidedRequest.isUrgent,

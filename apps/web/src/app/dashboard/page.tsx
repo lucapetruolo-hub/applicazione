@@ -8,6 +8,7 @@ import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@prof
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
+import { ClientProfileModal } from "@/components/ClientProfileModal";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -339,6 +340,8 @@ function LeadCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmingDate, setIsConfirmingDate] = useState(false);
   const [isRejectingDate, setIsRejectingDate] = useState(false);
+  const [showClientProfile, setShowClientProfile] = useState(false);
+  const clientName = lead.guidedRequest.clientName ?? "Cliente";
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -446,8 +449,22 @@ function LeadCard({
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
         <YStack gap="$1" flex={1}>
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            {/* Nome del cliente, cliccabile: apre la scheda profilo minimale
+                (richiesta esplicita dell'utente). Nessuna pagina pubblica
+                per i clienti in questo marketplace (a differenza dei
+                professionisti, /professionista/[id]): la scheda è un
+                overlay, non una navigazione. */}
+            <Text
+              fontWeight="700"
+              color={brand.cianografia}
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setShowClientProfile(true)}
+            >
+              {clientName}
+            </Text>
             <Text fontWeight="700" color={brand.grafite}>
-              {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
+              · {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
             </Text>
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
           </XStack>
@@ -641,6 +658,8 @@ function LeadCard({
           </Button>
         </YStack>
       ) : null}
+
+      {showClientProfile ? <ClientProfileModal name={clientName} onClose={() => setShowClientProfile(false)} /> : null}
     </Surface>
   );
 }

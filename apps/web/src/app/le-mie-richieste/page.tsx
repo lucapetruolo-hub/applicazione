@@ -455,9 +455,14 @@ function QuoteCard({
 
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
-      <Text fontWeight="600" color={brand.grafite}>
-        {quote.businessName}
-      </Text>
+      {/* Nome del professionista cliccabile: apre il suo profilo pubblico
+          (richiesta esplicita dell'utente, stesso trattamento già in uso
+          nella sezione "Inviata a" più sopra in questa pagina). */}
+      <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+        <Text fontWeight="600" color={brand.cianografia}>
+          {quote.businessName}
+        </Text>
+      </Link>
       <Text fontSize="$3" color={brand.grafite70}>
         Data proposta: {formatQuoteDate(quote.estimatedStartDate)}
       </Text>
@@ -631,9 +636,11 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-        <Text fontWeight="600" color={brand.grafite}>
-          {booking.businessName}
-        </Text>
+        <Link href={`/professionista/${booking.professionalProfileId}`} style={{ textDecoration: "none" }}>
+          <Text fontWeight="600" color={brand.cianografia}>
+            {booking.businessName}
+          </Text>
+        </Link>
         <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
           {BOOKING_STATUS_LABEL[booking.status]}
         </Text>

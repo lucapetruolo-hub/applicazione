@@ -1556,3 +1556,39 @@ scroll fino in fondo alla pagina (la riga orizzontalmente scorrevole di
 contenitore, non contribuiva all'overflow di pagina). Screenshot di
 controllo su 320px e desktop (1280px, invariato: logo con wordmark,
 "Accedi" e bottone a piena dimensione). Zero errori console.
+
+**Nome cliccabile nelle richieste ricevute/inviate** — richiesta esplicita
+dell'utente: sia nelle richieste ricevute dal professionista (`/dashboard`)
+sia in quelle inviate dal cliente (`/le-mie-richieste`) deve comparire il
+nome della controparte, cliccabile per aprirne la scheda.
+- **Lato cliente** (professionista visto dal cliente): i professionisti
+  hanno già un profilo pubblico reale (`/professionista/[id]`), quindi il
+  nome diventa un link diretto lì. La sezione "Inviata a" lo era già; ora
+  anche `quote.businessName` in `QuoteCard` e `booking.businessName` in
+  `BookingRow` (entrambe in `apps/web/src/app/le-mie-richieste/page.tsx`)
+  sono link — entrambi i tipi (`ClientGuidedRequest.quotes[]` e
+  `ClientBooking`) avevano già `professionalProfileId` esposto, nessuna
+  modifica al backend necessaria qui.
+- **Lato professionista** (cliente visto dal professionista, `LeadCard` in
+  `/dashboard`): prima non veniva mostrato alcun nome. Il cliente **non**
+  ha un profilo pubblico in questo marketplace (solo i professionisti ne
+  hanno uno) — cliccare il nome apre invece un overlay leggero,
+  `ClientProfileModal` (nuovo, `apps/web/src/components/ClientProfileModal.tsx`,
+  stesso pattern di `BookingDetailPanel`/`PhotoLightbox`: `role="dialog"`,
+  chiusura con Escape/click sul backdrop). Mostra solo `Avatar` (iniziali) +
+  nome — **non** telefono/email/indirizzo: quella scelta di privacy era già
+  esplicita in CLAUDE.md §12 ("il professionista deve poter vedere i dati
+  di contatto" solo dopo l'accettazione del preventivo, vedi
+  `AcceptedJobCard`/`BookingDetailPanel`), non ribaltata qui — la scheda lo
+  segnala esplicitamente ("saranno visibili qui e in agenda non appena il
+  preventivo verrà accettato") invece di apparire vuota senza spiegazione.
+  Nuovo campo `ProfessionalLead.guidedRequest.clientName` (nome+cognome,
+  stesso `[name, surname].filter(Boolean).join(" ")` già in uso in
+  `getMyBookings`): `ProfessionalsService.getMyLeads` ora include
+  `guidedRequest.client` nella query Prisma.
+Verificato end-to-end con l'API locale e Playwright (non solo
+typecheck/lettura di codice): nome cliente visibile in una richiesta
+ricevuta reale, click apre la scheda con iniziali+nome corretti; preventivo
+inviato dal professionista, click sul nome dell'attività nel preventivo
+ricevuto lato cliente naviga correttamente a `/professionista/{id}`. Zero
+errori console in entrambi i flussi.
