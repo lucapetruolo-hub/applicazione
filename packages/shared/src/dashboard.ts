@@ -42,13 +42,17 @@ export type ProfessionalLead = {
     /**
      * Nome e cognome del cliente che ha inviato la richiesta (richiesta
      * esplicita dell'utente: "nelle richieste ricevute deve esserci anche
-     * il nome"). Mostrato già prima dell'invio di un preventivo — a
-     * differenza di telefono/email/indirizzo esatto, che restano visibili
-     * solo dopo l'accettazione (vedi ProfessionalBooking): il nome da solo
-     * non è un dato di contatto sensibile, serve solo a identificare chi
-     * ha scritto la richiesta.
+     * il nome").
      */
     clientName: string | null;
+    /**
+     * Telefono/email del cliente, visibili già dalla prima richiesta
+     * ricevuta — non solo dopo l'accettazione del preventivo (correzione
+     * esplicita dell'utente rispetto alla scelta precedente, che li
+     * mostrava solo su `ProfessionalBooking`/`AcceptedJobCard`).
+     */
+    clientPhone: string | null;
+    clientEmail: string | null;
     /** Via e numero civico indicati dal cliente, facoltativo. */
     address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */

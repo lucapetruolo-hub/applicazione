@@ -659,7 +659,14 @@ function LeadCard({
         </YStack>
       ) : null}
 
-      {showClientProfile ? <ClientProfileModal name={clientName} onClose={() => setShowClientProfile(false)} /> : null}
+      {showClientProfile ? (
+        <ClientProfileModal
+          name={clientName}
+          phone={lead.guidedRequest.clientPhone}
+          email={lead.guidedRequest.clientEmail}
+          onClose={() => setShowClientProfile(false)}
+        />
+      ) : null}
     </Surface>
   );
 }

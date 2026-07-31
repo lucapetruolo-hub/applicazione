@@ -1592,3 +1592,26 @@ ricevuta reale, click apre la scheda con iniziali+nome corretti; preventivo
 inviato dal professionista, click sul nome dell'attività nel preventivo
 ricevuto lato cliente naviga correttamente a `/professionista/{id}`. Zero
 errori console in entrambi i flussi.
+
+**Correzione — contatto cliente visibile dalla prima richiesta, non solo
+dopo l'accettazione**: decisione di privacy ribaltata su richiesta esplicita
+dell'utente ("il contatto deve essere visibile dalla prima richiesta, non
+da quando la accetta"). La scelta precedente (telefono/email mostrati solo
+su `ProfessionalBooking`/`AcceptedJobCard`, dopo l'accettazione del
+preventivo — vedi CLAUDE.md §12 "Indirizzo preciso della richiesta + dati
+di contatto del cliente") è quindi superata per telefono/email: un
+professionista deve poter contattare il cliente anche solo per chiarire i
+dettagli prima ancora di formulare un preventivo. `ProfessionalsService.
+getMyLeads` ora seleziona anche `client.phone`/`client.email` e li espone
+su `guidedRequest.clientPhone`/`clientEmail` (nuovi campi, `ProfessionalLead`
+in `packages/shared/src/dashboard.ts`) — stesso identificativo `Lead`, nessun
+nuovo endpoint. `ClientProfileModal.tsx` mostra ora telefono (link `tel:`)
+ed email (link `mailto:`) sotto nome/avatar, non più la nota "saranno
+visibili dopo l'accettazione". L'indirizzo preciso della richiesta
+(`GuidedRequest.address`) era già visibile da subito in `LeadCard` (è il
+luogo del lavoro, non un dato di contatto personale) — invariato.
+Verificato end-to-end con l'API locale e Playwright: richiesta guidata
+inviata senza alcun preventivo formulato → telefono/email del cliente già
+presenti nella risposta di `GET /professionals/me/leads` e visibili nella
+scheda cliente aperta dalla dashboard, prima di ogni invio di preventivo.
+Zero errori console.

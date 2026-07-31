@@ -1,23 +1,34 @@
 "use client";
 
 import { useEffect } from "react";
-import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
- * Scheda profilo minimale del cliente, aperta cliccando il suo nome in una
- * richiesta ricevuta ancora senza preventivo (`/dashboard`, `LeadCard`) —
- * richiesta esplicita dell'utente ("nelle richieste ricevute deve esserci
- * anche il nome, cliccando si aprirà la scheda profilo della persona").
- * Stesso pattern overlay di BookingDetailPanel/PhotoLightbox (role="dialog",
- * chiusura con Escape/click sul backdrop, nessuna libreria aggiunta).
+ * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
+ * ricevuta (`/dashboard`, `LeadCard`) — richiesta esplicita dell'utente
+ * ("nelle richieste ricevute deve esserci anche il nome, cliccando si
+ * aprirà la scheda profilo della persona"). Stesso pattern overlay di
+ * BookingDetailPanel/PhotoLightbox (role="dialog", chiusura con
+ * Escape/click sul backdrop, nessuna libreria aggiunta).
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * solo il nome. Telefono/email/indirizzo restano visibili solo dopo
- * l'accettazione del preventivo (ProfessionalBooking, AcceptedJobCard) —
- * decisione di privacy già presa in CLAUDE.md §12, non ribaltata qui.
+ * nome + contatti. Telefono/email sono visibili già dalla prima richiesta
+ * ricevuta, non solo dopo l'accettazione del preventivo — correzione
+ * esplicita dell'utente rispetto alla scelta iniziale (CLAUDE.md §12), che
+ * li mostrava solo su ProfessionalBooking/AcceptedJobCard.
  */
-export function ClientProfileModal({ name, onClose }: { name: string; onClose: () => void }) {
+export function ClientProfileModal({
+  name,
+  phone,
+  email,
+  onClose,
+}: {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  onClose: () => void;
+}) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -75,9 +86,34 @@ export function ClientProfileModal({ name, onClose }: { name: string; onClose: (
           </Text>
         </YStack>
 
-        <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-          Telefono, email e indirizzo saranno visibili qui e in agenda non appena il preventivo verrà accettato.
-        </Text>
+        {phone || email ? (
+          <YStack gap="$2" width="100%">
+            {phone ? (
+              <a href={`tel:${phone}`} style={{ textDecoration: "none" }}>
+                <XStack alignItems="center" justifyContent="center" gap="$2">
+                  <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                  <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                    {phone}
+                  </Text>
+                </XStack>
+              </a>
+            ) : null}
+            {email ? (
+              <a href={`mailto:${email}`} style={{ textDecoration: "none" }}>
+                <XStack alignItems="center" justifyContent="center" gap="$2">
+                  <Icon name="mail" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                  <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                    {email}
+                  </Text>
+                </XStack>
+              </a>
+            ) : null}
+          </YStack>
+        ) : (
+          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            Nessun contatto disponibile per questo cliente.
+          </Text>
+        )}
       </YStack>
     </div>
   );

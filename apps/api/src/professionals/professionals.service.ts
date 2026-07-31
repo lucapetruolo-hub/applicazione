@@ -445,6 +445,14 @@ export class ProfessionalsService {
           // pattern già in uso in getMyBookings, join(" ") invece di solo
           // client.name per includere anche il cognome.
           clientName: [lead.guidedRequest.client.name, lead.guidedRequest.client.surname].filter(Boolean).join(" ") || null,
+          // Telefono/email visibili già dalla prima richiesta ricevuta, non
+          // solo dopo l'accettazione del preventivo — correzione esplicita
+          // dell'utente rispetto alla scelta precedente (che li mostrava
+          // solo su ProfessionalBooking/AcceptedJobCard): un professionista
+          // deve poter contattare il cliente anche solo per chiarire i
+          // dettagli prima di formulare un preventivo.
+          clientPhone: lead.guidedRequest.client.phone,
+          clientEmail: lead.guidedRequest.client.email,
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           isUrgent: lead.guidedRequest.isUrgent,
