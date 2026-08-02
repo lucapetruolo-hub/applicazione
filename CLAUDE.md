@@ -1989,3 +1989,54 @@ possibilità di aggiungerne altre, totale calcolato dal vivo.
   salvata, cliente la vede in "Lavori accettati" e riceve la notifica.
   Screenshot di entrambi i pop-up e degli stati finali, zero errori
   console. Typecheck pulito su tutti i package.
+
+**Bug reale: fasce di disponibilità create su un giorno già passato,
+invisibili ovunque** — segnalato dall'utente ("clicco 'proponi altra data'
+e non vedono le disponibilità inserite dal professionista"). Riprodotto
+(non solo ipotizzato): la vista Settimana di `/dashboard/agenda` mostra di
+default l'intera settimana corrente (lunedì-domenica), che include giorni
+già trascorsi se oggi non è lunedì — il tasto "+ Aggiungi fascia oraria"
+restava comunque cliccabile su quelle colonne passate (solo il toggle
+"Chiudi/Riapri giorno" era già nascosto lì, non l'aggiunta fasce). Una
+fascia salvata con `date` nel passato non può più comparire da nessuna
+parte per costruzione: `getPublicAgenda`/`getMyAvailableSlots` filtrano
+sempre a partire da oggi — il professionista vedeva la fascia nel proprio
+editor (che non filtra per data) e pensava di averla impostata
+correttamente, ma restava un dato orfano invisibile sia nell'agenda
+pubblica del profilo sia nel flusso "Proponi altra data" del cliente.
+Corretto in `renderDayColumn` (`apps/web/src/app/dashboard/agenda/page.tsx`):
+il tasto "+" non viene più mostrato per un giorno con `isPast` vero (stessa
+variabile già usata per nascondere "Chiudi/Riapri"), sostituito da
+un'etichetta "Giorno passato" quando quella colonna non ha già fasce
+salvate — un giorno passato resta comunque visibile con le fasce
+storiche già presenti, semplicemente non se ne possono aggiungere di
+nuove. Nessuna validazione aggiunta lato server (schema Zod): avrebbe
+rifiutato in blocco anche il salvataggio di agende già contenenti fasce
+orfane preesistenti da questo bug, un rischio peggiore del problema che
+risolve — la UI è l'unico punto da cui si può creare una fascia nuova,
+quindi è l'unico punto che deve essere corretto. Verificato end-to-end con
+l'API locale e Playwright (non solo lettura di codice): cliccando il tasto
+"+" sulla prima colonna della vista Settimana di default (un giorno
+passato) prima del fix si otteneva una fascia con `date` nel passato,
+sistematicamente assente da `GET /professionals/:id/agenda`; dopo il fix
+le colonne passate mostrano "Giorno passato" (6 su 7 nel caso di test,
+essendo oggi domenica) e il tasto resta solo sull'unico giorno valido;
+una fascia aggiunta lì compare correttamente nell'agenda pubblica e nel
+`<select>` di "Proponi altra data" lato cliente. Zero errori console.
+
+**Badge notifiche: aggiunto un refresh periodico** — a seguito della
+segnalazione "i numeretti non compaiono ancora", verificato che la logica
+di base funziona correttamente (badge visibile subito dopo login/al
+caricamento della pagina, confermato di nuovo con Playwright), ma
+identificato un gap reale: `unreadCount` in `AuthContext` si aggiornava
+solo quando l'oggetto `user` cambiava (login, logout, `refreshUser`), mai
+mentre l'utente restava semplicemente con la scheda aperta — un
+professionista già sulla dashboard quando arriva un nuovo lead non vedeva
+comparire il numero finché non ricaricava la pagina o rifaceva il login,
+in contrasto con "notifiche quasi istantanee" già promesso in CLAUDE.md
+§8. Corretto con un `setInterval(refreshUnreadCount, 45_000)` in
+`AuthContext.tsx` mentre `user` è valorizzato, ripulito su logout/unmount
+— nessuna infrastruttura push/websocket in questo stack (notifiche reali
+via Expo Push/Resend/Twilio restano rimandate, CLAUDE.md §9), 45s è un
+compromesso pragmatico di polling senza sovraccaricare l'API né richiedere
+nuova infrastruttura.

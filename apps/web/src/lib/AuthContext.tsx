@@ -106,6 +106,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refreshUnreadCount]);
 
+  // Poll periodico mentre l'utente resta loggato con la scheda aperta: senza
+  // questo il badge si aggiornava solo al login/refresh della pagina — un
+  // professionista già sulla dashboard quando arriva un nuovo lead non
+  // vedeva comparire il numero finché non ricaricava. Non c'è
+  // un'infrastruttura push/websocket in questo stack (CLAUDE.md §9,
+  // notifiche reali ancora rimandate), 45s è un compromesso pragmatico
+  // "quasi istantaneo" (CLAUDE.md §8) senza sovraccaricare l'API.
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(refreshUnreadCount, 45_000);
+    return () => clearInterval(interval);
+  }, [user, refreshUnreadCount]);
+
   return (
     <AuthContext.Provider
       value={{ user, token, isLoading, login, logout, refreshUser, unreadCount, refreshUnreadCount, markNotificationsRead }}

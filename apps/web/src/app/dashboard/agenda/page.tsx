@@ -433,22 +433,38 @@ export default function DashboardAgendaPage() {
                 onEdit={() => startEditSlot(index)}
               />
             ))}
-            <XStack
-              height={34}
-              borderWidth={1.5}
-              borderStyle="dashed"
-              borderColor={brand.cianografia}
-              borderRadius="$2"
-              alignItems="center"
-              justifyContent="center"
-              cursor="pointer"
-              backgroundColor={editingKey === `new-${dateStr}` ? brand.cianografiaVelo : undefined}
-              onPress={() => startAddSlot(dayOfWeek, dateStr)}
-              accessibilityRole="button"
-              accessibilityLabel="Aggiungi fascia oraria"
-            >
-              <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
-            </XStack>
+            {/*
+              Un giorno già passato non può ricevere nuove fasce: una fascia
+              con `date` nel passato non compare mai più da nessuna parte
+              (getPublicAgenda/getMyAvailableSlots filtrano sempre da oggi in
+              poi) — bug reale segnalato dall'utente ("clicco proponi altra
+              data e non vedo le disponibilità"): la vista Settimana mostra
+              di default l'intera settimana corrente, che può includere
+              giorni già trascorsi se oggi non è lunedì, e il tasto "+" era
+              comunque cliccabile lì, creando fasce orfane senza alcun avviso.
+            */}
+            {!isPast ? (
+              <XStack
+                height={34}
+                borderWidth={1.5}
+                borderStyle="dashed"
+                borderColor={brand.cianografia}
+                borderRadius="$2"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                backgroundColor={editingKey === `new-${dateStr}` ? brand.cianografiaVelo : undefined}
+                onPress={() => startAddSlot(dayOfWeek, dateStr)}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi fascia oraria"
+              >
+                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
+              </XStack>
+            ) : daySlots.length === 0 ? (
+              <Text fontFamily="$mono" fontSize={9} fontWeight="600" letterSpacing={0.2} color={brand.grafite70}>
+                Giorno passato
+              </Text>
+            ) : null}
           </>
         )}
       </YStack>
