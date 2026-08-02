@@ -264,7 +264,12 @@ export class GuidedRequestsService {
     const dayOfWeek = date.getUTCDay();
 
     const [slot, exception] = await Promise.all([
-      this.prisma.availabilitySlot.findFirst({ where: { professionalProfileId, dayOfWeek, startTime, endTime } }),
+      // Corrisponde sia a una fascia legata a questa data esatta sia a una
+      // fascia ricorrente (date=null, comportamento storico) per lo stesso
+      // giorno della settimana — vedi slotAppliesOnDate (apps/api/src/common).
+      this.prisma.availabilitySlot.findFirst({
+        where: { professionalProfileId, startTime, endTime, OR: [{ date }, { date: null, dayOfWeek }] },
+      }),
       this.prisma.availabilityException.findUnique({
         where: { professionalProfileId_date: { professionalProfileId, date } },
       }),

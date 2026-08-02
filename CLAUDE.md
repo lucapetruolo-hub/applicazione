@@ -1768,3 +1768,76 @@ Playwright: preventivo accettato → prenotazione confermata → annullata dal
 cliente → ancora visibile in "Lavori accettati" con casella rossa e testo
 "Annullata" (colore bordo confermato via `getComputedStyle`). Zero errori
 console.
+
+**Fasce orario per data esatta, non più ricorrenti per sempre di default**
+— cambio di comportamento sostanziale, richiesta esplicita dell'utente
+dopo un chiarimento fatto con `AskUserQuestion` (due opzioni proposte: (a)
+rendere più visibile la nota già esistente sul comportamento ricorrente,
+oppure (b) cambiare il comportamento di default a "per data", con una
+spunta per renderlo ricorrente solo nel mese corrente — l'utente ha scelto
+la (b), un cambio architetturale, non solo di copy).
+
+Prima, ogni fascia aggiunta in `/dashboard/agenda` valeva per **ogni**
+occorrenza futura di quel giorno della settimana, indefinitamente (nessun
+modo di impostare un orario per una singola data). Ora il comportamento di
+default è l'opposto: una fascia aggiunta vale **solo** per la data esatta
+su cui si è cliccato "+"; una nuova spunta "Ripeti per tutti i \<giorno\>
+di \<mese\>" nel pop-up (`SlotEditorModal`, solo per una fascia nuova, mai
+in modifica di una già esistente) crea invece una fascia per ciascuna data
+del mese corrente con lo stesso giorno della settimana, invece di
+introdurre un concetto di ricorrenza indefinita bis.
+
+- **Schema**: `AvailabilitySlot.date DateTime?` (Prisma). `date` valorizzata
+  = fascia legata a quella data esatta (nuovo default). `date` null = 
+  comportamento storico (ricorrenza settimanale indefinita per
+  `dayOfWeek`) — non più creabile dalla UI, ma le fasce già esistenti
+  create prima di questa funzionalità continuano a funzionare esattamente
+  come prima: nessuna migrazione distruttiva dei dati.
+- **`packages/shared`**: `availabilitySlotSchema.date` (ISO opzionale).
+  `professionalAvailabilitySchema`'s overlap check riscritto da "raggruppa
+  per dayOfWeek" a un confronto a coppie basato su
+  `slotsShareAnOccurrence` (due fasce potrebbero cadere nella stessa data
+  di calendario: stessa data esatta, oppure una fascia esatta e una
+  ricorrente sullo stesso giorno della settimana) — necessario perché due
+  fasce ora possono confliggere anche senza condividere lo stesso
+  `dayOfWeek` "sulla carta" in modi che il vecchio raggruppamento non
+  avrebbe colto.
+- **`apps/api/src/common/availability.util.ts`** (nuovo): `slotAppliesOnDate`,
+  unico punto di verità per "questa fascia vale per questa data?", riusato
+  da `getMyAvailableSlots`, `getMyAvailability` (incluso il calcolo di
+  `hasUpcomingBooking`, ora anch'esso per-data quando la fascia è datata),
+  `getPublicAgenda`, `buildAvailabilityPreviews` (mini-agenda di ricerca).
+  Le query Prisma `findFirst` che prima cercavano solo per `dayOfWeek`
+  (`bookAgendaSlot`, `GuidedRequestsService.resolveGenericSlot`,
+  `QuotesService.resolveFreeExactSlot`) ora usano `OR: [{ date }, { date:
+  null, dayOfWeek }]` per corrispondere sia a una fascia datata sia a una
+  ricorrente storica.
+- **`apps/web/src/lib/calendarDates.ts`**: `slotAppliesOnDateStr`
+  (equivalente client-side, per l'evidenziazione "dal vivo" delle
+  colonne/sovrapposizioni senza round-trip al server) e
+  `datesInMonthForWeekday` (tutte le date del mese di calendario che
+  contiene una data ancora con lo stesso giorno della settimana — usata
+  dalla spunta "ripeti").
+- **`/dashboard/agenda`**: `editingKey` per una fascia nuova è passato da
+  `"new-<dayOfWeek>"` a `"new-<dateStr>"` (la colonna su cui si è cliccato
+  "+" determina ora la data esatta, non solo il giorno della settimana).
+  Il pop-up mostra la data completa ("Lunedì 10 agosto", non solo
+  "Lunedì") e, solo quando si crea una fascia nuova, la spunta "Ripeti per
+  tutti i lunedì di agosto". Testo informativo in cima alla pagina
+  aggiornato di conseguenza.
+
+Verificato end-to-end con l'API locale e Playwright (non solo
+typecheck): fascia aggiunta senza spuntare "Ripeti" → esattamente 1 fascia
+salvata con `date` valorizzata; fascia aggiunta con "Ripeti" spuntato (un
+mercoledì) → 5 fasce salvate, una per ciascun mercoledì di luglio 2026
+(1/8/15/22/29), giorni della settimana e date tutte distinte confermate
+via API; agenda pubblica (`GET /professionals/:id/agenda`) mostra la
+fascia SOLO sulla data esatta, non su altre date con lo stesso giorno
+della settimana (comportamento "per data", non ricorrente, confermato
+esplicitamente contro il vecchio comportamento); prenotazione diretta
+contro una fascia datata riuscita (201), un secondo tentativo sulla
+stessa fascia rifiutato (409, race condition ancora protetta dalla stessa
+transazione Serializable di prima). Screenshot della vista Settimana:
+"09:00–13:00" (senza ripeti) visibile solo su lunedì 27, "15:00–16:00"
+(con ripeti) visibile solo sul mercoledì di quella settimana (29), non
+sulle altre colonne. Zero errori console.

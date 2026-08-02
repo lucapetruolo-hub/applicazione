@@ -20,6 +20,7 @@ import {
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
+import { slotAppliesOnDate } from "../common/availability.util";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -196,7 +197,7 @@ export class ProfessionalsService {
 
         const dayOfWeek = date.getUTCDay();
         const times = profileSlots
-          .filter((slot) => slot.dayOfWeek === dayOfWeek)
+          .filter((slot) => slotAppliesOnDate(slot, date))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .filter((slot) => !isSlotBooked(profileBookings, dateStr, slot.startTime, slot.endTime))
           .slice(0, PREVIEW_MAX_TIMES_PER_DAY)
@@ -584,9 +585,8 @@ export class ProfessionalsService {
       const dateStr = date.toISOString().slice(0, 10);
       if (exceptionDates.has(dateStr)) continue;
 
-      const dayOfWeek = date.getUTCDay();
       const freeSlots = slots
-        .filter((slot) => slot.dayOfWeek === dayOfWeek)
+        .filter((slot) => slotAppliesOnDate(slot, date))
         .sort((a, b) => a.startTime.localeCompare(b.startTime))
         .filter((slot) => !isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime));
       for (const slot of freeSlots) {
@@ -637,13 +637,22 @@ export class ProfessionalsService {
     return {
       slots: slots.map((slot) => {
         const timeRange = `${slot.startTime}-${slot.endTime}`;
+        const slotDateStr = slot.date ? slot.date.toISOString().slice(0, 10) : null;
+        // Per una fascia legata a una data esatta, l'avviso "hai già un
+        // impegno futuro" ha senso solo per QUELLA data — a differenza delle
+        // fasce ricorrenti (date=null, comportamento storico), dove qualunque
+        // occorrenza del giorno della settimana nella finestra conta.
         const hasUpcomingBooking =
           slot.maxBookings > 1
-            ? upcomingGenericRequests.some(
-                (request) => request.preferredDate?.getUTCDay() === slot.dayOfWeek && request.preferredTimeSlot === timeRange,
-              )
+            ? upcomingGenericRequests.some((request) => {
+                if (request.preferredTimeSlot !== timeRange) return false;
+                const requestDateStr = request.preferredDate?.toISOString().slice(0, 10) ?? null;
+                return slotDateStr ? requestDateStr === slotDateStr : request.preferredDate?.getUTCDay() === slot.dayOfWeek;
+              })
             : upcomingBookings.some((booking) => {
-                if (booking.scheduledAt.getUTCDay() !== slot.dayOfWeek) return false;
+                const bookingDateStr = booking.scheduledAt.toISOString().slice(0, 10);
+                const dayMatches = slotDateStr ? bookingDateStr === slotDateStr : booking.scheduledAt.getUTCDay() === slot.dayOfWeek;
+                if (!dayMatches) return false;
                 const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
                 return bookingTime >= slot.startTime && bookingTime < slot.endTime;
               });
@@ -653,6 +662,7 @@ export class ProfessionalsService {
           startTime: slot.startTime,
           endTime: slot.endTime,
           maxBookings: slot.maxBookings,
+          date: slotDateStr,
           hasUpcomingBooking,
         };
       }),
@@ -683,6 +693,7 @@ export class ProfessionalsService {
           startTime: slot.startTime,
           endTime: slot.endTime,
           maxBookings: slot.maxBookings,
+          date: slot.date ? new Date(`${slot.date}T00:00:00.000Z`) : null,
         })),
       });
     }
@@ -779,7 +790,7 @@ export class ProfessionalsService {
       const daySlots = exceptionDates.has(dateStr)
         ? []
         : slots
-            .filter((slot) => slot.dayOfWeek === dayOfWeek)
+            .filter((slot) => slotAppliesOnDate(slot, date))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
               const bookedCount =
@@ -838,8 +849,16 @@ export class ProfessionalsService {
     const dayOfWeek = date.getUTCDay();
 
     const [matchingSlot, exception] = await Promise.all([
+      // Corrisponde sia a una fascia legata a questa data esatta sia a una
+      // fascia ricorrente (date=null, comportamento storico) per lo stesso
+      // giorno della settimana — vedi slotAppliesOnDate.
       this.prisma.availabilitySlot.findFirst({
-        where: { professionalProfileId, dayOfWeek, startTime: input.startTime, endTime: input.endTime },
+        where: {
+          professionalProfileId,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          OR: [{ date }, { date: null, dayOfWeek }],
+        },
       }),
       this.prisma.availabilityException.findUnique({
         where: { professionalProfileId_date: { professionalProfileId, date } },

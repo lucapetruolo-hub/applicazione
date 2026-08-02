@@ -164,6 +164,18 @@ model AvailabilitySlot {
   dayOfWeek             Int
   startTime             String
   endTime               String
+  // Se valorizzata, la fascia vale SOLO per questa data esatta (non
+  // ricorrente) — nuovo comportamento di default richiesto esplicitamente
+  // dall'utente: aggiungere una fascia da una colonna del calendario la
+  // lega a quella data specifica, non più a "ogni <dayOfWeek> per sempre".
+  // La spunta "ripeti per tutti i <giorno> del mese" nell'editor crea una
+  // riga per ciascuna data del mese corrente con lo stesso giorno della
+  // settimana, invece di introdurre un concetto di ricorrenza aperta.
+  // `date === null` resta il comportamento storico (ricorrenza settimanale
+  // indefinita per dayOfWeek) — non più creabile dalla UI, ma le fasce già
+  // esistenti create prima di questa funzionalità continuano a funzionare
+  // così: nessuna migrazione distruttiva dei dati esistenti.
+  date                  DateTime?
   // Capienza della fascia. 1 (default) = fascia "esatta": un solo impegno,
   // se bookableAgenda è attivo il cliente la prenota istantaneamente e
   // occupa l'intero orario. > 1 = fascia "generica" (es. "9–13, fino a 5

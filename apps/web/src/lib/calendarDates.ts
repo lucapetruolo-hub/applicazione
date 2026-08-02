@@ -93,6 +93,39 @@ export function weekDays(anchor: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDaysUtc(start, i));
 }
 
+/**
+ * True se una fascia (dayOfWeek + date opzionale) vale per `dateStr` — stessa
+ * logica di apps/api/src/common/availability.util.ts (slotAppliesOnDate),
+ * duplicata qui lato client per il calcolo "dal vivo" di /dashboard/agenda
+ * (evidenziare le fasce esistenti in una colonna, calcolare sovrapposizioni)
+ * senza un round-trip al server.
+ */
+export function slotAppliesOnDateStr(slot: { dayOfWeek: number; date?: string | null }, dateStr: string): boolean {
+  if (slot.date) return slot.date === dateStr;
+  return slot.dayOfWeek === parseIsoDate(dateStr).getUTCDay();
+}
+
+/**
+ * Tutte le date (ISO) del mese di calendario che contiene `anchorDateStr`
+ * che cadono sullo stesso giorno della settimana di quella data — usata
+ * dalla spunta "ripeti per tutti i <giorno> del mese" nell'editor di
+ * fascia oraria (richiesta esplicita dell'utente): crea una fascia per
+ * ciascuna, invece di introdurre un concetto di ricorrenza aperta.
+ */
+export function datesInMonthForWeekday(anchorDateStr: string): string[] {
+  const anchor = parseIsoDate(anchorDateStr);
+  const dayOfWeek = anchor.getUTCDay();
+  const firstOfMonth = startOfMonthUtc(anchor);
+  const firstOccurrenceOffset = (dayOfWeek - firstOfMonth.getUTCDay() + 7) % 7;
+  const results: string[] = [];
+  let current = addDaysUtc(firstOfMonth, firstOccurrenceOffset);
+  while (current.getUTCMonth() === firstOfMonth.getUTCMonth()) {
+    results.push(toIsoDate(current));
+    current = addDaysUtc(current, 7);
+  }
+  return results;
+}
+
 export function formatDayRangeLabel(start: Date, end: Date): string {
   const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
   const startLabel = start.getUTCDate();

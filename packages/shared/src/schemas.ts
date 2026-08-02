@@ -237,7 +237,13 @@ export const professionalProfileSelfSchema = professionalProfileSchema
   });
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
 
-/** Fascia oraria ricorrente (agenda settimanale), vedi packages/shared/src/availability.ts. */
+/**
+ * Fascia oraria, vedi packages/shared/src/availability.ts. `date`
+ * opzionale: se presente, la fascia vale SOLO per quella data esatta (nuovo
+ * comportamento di default, richiesta esplicita dell'utente); se assente,
+ * ricorrenza settimanale indefinita per `dayOfWeek` — comportamento storico,
+ * non più creabile dalla UI ma ancora supportato per le fasce già esistenti.
+ */
 export const availabilitySlotSchema = z
   .object({
     dayOfWeek: z.number().int().min(0).max(6),
@@ -245,6 +251,7 @@ export const availabilitySlotSchema = z
     endTime: timeSchema,
     /** 1 (esatta) o >1 (generica, richiede preventivo invece di prenotazione istantanea). */
     maxBookings: z.number().int().min(1).max(20).default(1),
+    date: isoDateSchema.optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: "L'orario di fine deve essere dopo l'orario di inizio.",
@@ -252,32 +259,36 @@ export const availabilitySlotSchema = z
   });
 export type AvailabilitySlotInput = z.infer<typeof availabilitySlotSchema>;
 
+/** True se due fasce potrebbero applicarsi nella stessa data di calendario (usata per il controllo di sovrapposizione). */
+function slotsShareAnOccurrence(a: AvailabilitySlotInput, b: AvailabilitySlotInput): boolean {
+  if (a.date && b.date) return a.date === b.date;
+  if (a.date && !b.date) return new Date(`${a.date}T00:00:00.000Z`).getUTCDay() === b.dayOfWeek;
+  if (!a.date && b.date) return new Date(`${b.date}T00:00:00.000Z`).getUTCDay() === a.dayOfWeek;
+  return a.dayOfWeek === b.dayOfWeek;
+}
+
 export const professionalAvailabilitySchema = z
   .object({
-    slots: z.array(availabilitySlotSchema).max(50).default([]),
+    slots: z.array(availabilitySlotSchema).max(200).default([]),
     /** Se true, un cliente può prenotare direttamente una fascia libera dell'agenda pubblica. */
     bookableAgenda: z.boolean().default(false),
   })
-  // Due fasce sullo stesso giorno non possono sovrapporsi (es. 09:00–13:00 e
-  // 10:00–11:00): fonte di verità unica condivisa da client (validazione
-  // immediata in /dashboard/agenda) e server (ZodValidationPipe), invece di
-  // duplicare la stessa logica in due punti che potrebbero disallinearsi.
+  // Due fasce non possono sovrapporsi se potrebbero cadere nella stessa
+  // data (es. due fasce dello stesso giorno esatto, o una fascia esatta e
+  // una ricorrente sullo stesso giorno della settimana): fonte di verità
+  // unica condivisa da client (validazione immediata in /dashboard/agenda)
+  // e server (ZodValidationPipe), invece di duplicare la stessa logica in
+  // due punti che potrebbero disallinearsi.
   .superRefine((data, ctx) => {
-    const byDay = new Map<number, { startTime: string; endTime: string }[]>();
-    for (const slot of data.slots) {
-      const list = byDay.get(slot.dayOfWeek) ?? [];
-      list.push(slot);
-      byDay.set(slot.dayOfWeek, list);
-    }
-    for (const daySlots of byDay.values()) {
-      const sorted = [...daySlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
-      for (let i = 1; i < sorted.length; i++) {
-        const current = sorted[i];
-        const previous = sorted[i - 1];
-        if (current && previous && current.startTime < previous.endTime) {
+    for (let i = 0; i < data.slots.length; i++) {
+      for (let j = i + 1; j < data.slots.length; j++) {
+        const a = data.slots[i]!;
+        const b = data.slots[j]!;
+        if (!slotsShareAnOccurrence(a, b)) continue;
+        if (a.startTime < b.endTime && b.startTime < a.endTime) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Due fasce orarie dello stesso giorno non possono sovrapporsi.",
+            message: "Due fasce orarie non possono sovrapporsi nello stesso giorno.",
             path: ["slots"],
           });
           return;

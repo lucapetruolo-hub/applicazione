@@ -9,9 +9,13 @@ import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, type CalendarView } from "@/components/calendar/CalendarShell";
 import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { LoadingState } from "@/components/LoadingState";
-import { todayUtc, toIsoDate } from "@/lib/calendarDates";
+import { datesInMonthForWeekday, monthLabel, parseIsoDate, slotAppliesOnDateStr, todayUtc, toIsoDate } from "@/lib/calendarDates";
 
-type SlotDraft = { id?: string; dayOfWeek: number; start: string; end: string; maxBookings: number; hasUpcomingBooking?: boolean };
+// `date` (ISO, YYYY-MM-DD) è ora il comportamento di default per una nuova
+// fascia (richiesta esplicita dell'utente: vale solo per quella data, non
+// più per ogni <dayOfWeek> per sempre) — `null`/assente solo per le fasce
+// ricorrenti create prima di questa funzionalità.
+type SlotDraft = { id?: string; dayOfWeek: number; date: string | null; start: string; end: string; maxBookings: number; hasUpcomingBooking?: boolean };
 type AgendaTab = "disponibilita" | "prenotazioni";
 
 // dayOfWeek segue date.getUTCDay(): 0=domenica...6=sabato, stessa convenzione
@@ -46,12 +50,17 @@ export default function DashboardAgendaPage() {
 
   const [view, setView] = useState<CalendarView>("week");
   const [currentDate, setCurrentDate] = useState(todayUtc());
-  // "new-<dayOfWeek>" mentre si aggiunge una fascia nuova, "edit-<index>"
-  // mentre se ne modifica una esistente — un solo editor inline alla volta.
+  // "new-<dateStr>" (ISO) mentre si aggiunge una fascia nuova sulla colonna
+  // di quella data esatta, "edit-<index>" mentre se ne modifica una
+  // esistente — un solo editor inline alla volta.
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draftStart, setDraftStart] = useState("09:00");
   const [draftEnd, setDraftEnd] = useState("13:00");
   const [draftMax, setDraftMax] = useState("1");
+  // Spunta "ripeti per tutti i <giorno> del mese" (richiesta esplicita
+  // dell'utente): solo per una fascia nuova, mai per una già esistente in
+  // modifica — resettata ad ogni apertura dell'editor.
+  const [repeatForMonth, setRepeatForMonth] = useState(false);
   const [exceptionBusyDate, setExceptionBusyDate] = useState<string | null>(null);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
@@ -78,6 +87,7 @@ export default function DashboardAgendaPage() {
           existing.slots.map((s) => ({
             id: s.id,
             dayOfWeek: s.dayOfWeek,
+            date: s.date,
             start: s.startTime,
             end: s.endTime,
             maxBookings: s.maxBookings,
@@ -199,12 +209,13 @@ export default function DashboardAgendaPage() {
     );
   }
 
-  function startAddSlot(dayOfWeek: number) {
+  function startAddSlot(dayOfWeek: number, dateStr: string) {
     setError(null);
-    setEditingKey(`new-${dayOfWeek}`);
+    setEditingKey(`new-${dateStr}`);
     setDraftStart("09:00");
     setDraftEnd("13:00");
     setDraftMax("1");
+    setRepeatForMonth(false);
   }
 
   function startEditSlot(index: number) {
@@ -215,6 +226,40 @@ export default function DashboardAgendaPage() {
     setDraftStart(slot.start);
     setDraftEnd(slot.end);
     setDraftMax(String(slot.maxBookings));
+    setRepeatForMonth(false);
+  }
+
+  /** dayOfWeek della fascia attualmente in modifica (nuova o esistente), o null se nessun editor è aperto. */
+  function editingDayOfWeek(): number | null {
+    if (!editingKey) return null;
+    if (editingKey.startsWith("new-")) return parseIsoDate(editingKey.slice(4)).getUTCDay();
+    const index = Number(editingKey.slice(5));
+    return slots[index]?.dayOfWeek ?? null;
+  }
+
+  /** Data ISO della fascia in modifica, se legata a una data esatta (null per una fascia ricorrente storica o nessun editor aperto). */
+  function editingDateStr(): string | null {
+    if (!editingKey) return null;
+    if (editingKey.startsWith("new-")) return editingKey.slice(4);
+    const index = Number(editingKey.slice(5));
+    return slots[index]?.date ?? null;
+  }
+
+  /**
+   * Fasce già salvate che potrebbero cadere nella stessa data di
+   * `targetDateStr` (se nota) o nello stesso `targetDayOfWeek` per sempre
+   * (fascia ricorrente storica, targetDateStr null) — stessa logica di
+   * slotsShareAnOccurrence in professionalAvailabilitySchema
+   * (packages/shared), calcolata qui lato client per il feedback "dal vivo".
+   */
+  function slotsSharingOccurrence(targetDateStr: string | null, targetDayOfWeek: number, excludeIndex: number | null): { slot: SlotDraft; index: number }[] {
+    return slots
+      .map((slot, index) => ({ slot, index }))
+      .filter(({ slot, index }) => {
+        if (index === excludeIndex) return false;
+        if (targetDateStr) return slotAppliesOnDateStr(slot, targetDateStr);
+        return slot.date ? parseIsoDate(slot.date).getUTCDay() === targetDayOfWeek : slot.dayOfWeek === targetDayOfWeek;
+      });
   }
 
   // Sovrapposizione controllata "dal vivo" mentre si scelgono gli orari,
@@ -226,44 +271,50 @@ export default function DashboardAgendaPage() {
     if (draftEnd <= draftStart) {
       return "L'orario di fine deve essere dopo l'orario di inizio.";
     }
-    const overlaps = slots.some(
-      (s, i) => s.dayOfWeek === dayOfWeek && i !== excludeIndex && slotsOverlap(draftStart, draftEnd, s.start, s.end),
-    );
+    const dateStr = editingDateStr();
+    const overlaps = slotsSharingOccurrence(dateStr, dayOfWeek, excludeIndex).some(({ slot }) => slotsOverlap(draftStart, draftEnd, slot.start, slot.end));
     return overlaps ? "Questa fascia si sovrappone a un'altra già impostata per questo giorno." : null;
-  }
-
-  /** dayOfWeek della fascia attualmente in modifica (nuova o esistente), o null se nessun editor è aperto. */
-  function editingDayOfWeek(): number | null {
-    if (!editingKey) return null;
-    if (editingKey.startsWith("new-")) return Number(editingKey.slice(4));
-    const index = Number(editingKey.slice(5));
-    return slots[index]?.dayOfWeek ?? null;
   }
 
   /** Indici delle fasce già salvate che la fascia in modifica sta sovrapponendo — per colorarle di rosso anche loro, non solo il riquadro in modifica. */
   function conflictingSlotIndexes(dayOfWeek: number, excludeIndex: number | null): Set<number> {
     const result = new Set<number>();
     if (draftEnd <= draftStart) return result;
-    slots.forEach((s, i) => {
-      if (s.dayOfWeek === dayOfWeek && i !== excludeIndex && slotsOverlap(draftStart, draftEnd, s.start, s.end)) {
-        result.add(i);
-      }
-    });
+    const dateStr = editingDateStr();
+    for (const { slot, index } of slotsSharingOccurrence(dateStr, dayOfWeek, excludeIndex)) {
+      if (slotsOverlap(draftStart, draftEnd, slot.start, slot.end)) result.add(index);
+    }
     return result;
   }
 
   function commitSlotEdit(dayOfWeek: number) {
     const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
-    const liveError = slotEditorLiveError(dayOfWeek, editIndex);
-    if (liveError) {
-      setError(liveError);
-      return;
-    }
     const maxBookings = Math.max(1, Math.min(20, Math.round(Number(draftMax)) || 1));
 
     if (editingKey?.startsWith("new-")) {
-      setSlots((prev) => [...prev, { dayOfWeek, start: draftStart, end: draftEnd, maxBookings }]);
+      const anchorDateStr = editingKey.slice(4);
+      // "Ripeti per tutti i <giorno> del mese" (richiesta esplicita
+      // dell'utente): una fascia per ciascuna data del mese corrente con lo
+      // stesso giorno della settimana, invece di una ricorrenza aperta.
+      const targetDates = repeatForMonth ? datesInMonthForWeekday(anchorDateStr) : [anchorDateStr];
+      for (const targetDateStr of targetDates) {
+        const overlaps = slotsSharingOccurrence(targetDateStr, dayOfWeek, null).some(({ slot }) => slotsOverlap(draftStart, draftEnd, slot.start, slot.end));
+        if (overlaps) {
+          setError(
+            targetDates.length > 1
+              ? `Questa fascia si sovrapporrebbe a un'altra già impostata il ${targetDateStr}.`
+              : "Questa fascia si sovrappone a un'altra già impostata per questo giorno.",
+          );
+          return;
+        }
+      }
+      setSlots((prev) => [...prev, ...targetDates.map((date) => ({ dayOfWeek, date, start: draftStart, end: draftEnd, maxBookings }))]);
     } else if (editIndex !== null) {
+      const liveError = slotEditorLiveError(dayOfWeek, editIndex);
+      if (liveError) {
+        setError(liveError);
+        return;
+      }
       setSlots((prev) => prev.map((s, i) => (i === editIndex ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
     }
     setEditingKey(null);
@@ -310,7 +361,13 @@ export default function DashboardAgendaPage() {
     try {
       await apiClient.upsertMyAvailability(
         token as string,
-        slots.map((slot) => ({ dayOfWeek: slot.dayOfWeek, startTime: slot.start, endTime: slot.end, maxBookings: slot.maxBookings })),
+        slots.map((slot) => ({
+          dayOfWeek: slot.dayOfWeek,
+          startTime: slot.start,
+          endTime: slot.end,
+          maxBookings: slot.maxBookings,
+          date: slot.date ?? undefined,
+        })),
         bookableAgenda,
       );
       setSaved(true);
@@ -333,13 +390,14 @@ export default function DashboardAgendaPage() {
     const isClosed = exceptionDates.includes(dateStr);
     const daySlots = slots
       .map((slot, index) => ({ slot, index }))
-      .filter(({ slot }) => slot.dayOfWeek === dayOfWeek)
+      .filter(({ slot }) => slotAppliesOnDateStr(slot, dateStr))
       .sort((a, b) => a.slot.start.localeCompare(b.slot.start));
     // Fasce già salvate colorate di rosso anche loro quando quella in
     // modifica ci si sovrappone (richiesta esplicita dell'utente), non
     // solo il riquadro dell'editor.
     const editIndexForThisDay = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
-    const isEditingThisDay = editingKey === `new-${dayOfWeek}` || (editIndexForThisDay !== null && slots[editIndexForThisDay]?.dayOfWeek === dayOfWeek);
+    const editingSlot = editIndexForThisDay !== null ? slots[editIndexForThisDay] : undefined;
+    const isEditingThisDay = editingKey === `new-${dateStr}` || (editingSlot !== undefined && slotAppliesOnDateStr(editingSlot, dateStr));
     const conflicts = isEditingThisDay ? conflictingSlotIndexes(dayOfWeek, editIndexForThisDay) : new Set<number>();
 
     return (
@@ -384,8 +442,8 @@ export default function DashboardAgendaPage() {
               alignItems="center"
               justifyContent="center"
               cursor="pointer"
-              backgroundColor={editingKey === `new-${dayOfWeek}` ? brand.cianografiaVelo : undefined}
-              onPress={() => startAddSlot(dayOfWeek)}
+              backgroundColor={editingKey === `new-${dateStr}` ? brand.cianografiaVelo : undefined}
+              onPress={() => startAddSlot(dayOfWeek, dateStr)}
               accessibilityRole="button"
               accessibilityLabel="Aggiungi fascia oraria"
             >
@@ -398,7 +456,6 @@ export default function DashboardAgendaPage() {
   }
 
   function renderMonthCell(date: Date) {
-    const dayOfWeek = date.getUTCDay();
     const dateStr = toIsoDate(date);
     if (exceptionDates.includes(dateStr)) {
       return (
@@ -407,7 +464,7 @@ export default function DashboardAgendaPage() {
         </Text>
       );
     }
-    const daySlots = slots.filter((s) => s.dayOfWeek === dayOfWeek);
+    const daySlots = slots.filter((s) => slotAppliesOnDateStr(s, dateStr));
     if (daySlots.length === 0) return null;
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
@@ -514,7 +571,7 @@ export default function DashboardAgendaPage() {
           </Text>
           <Text color={brand.grafite70}>
             {activeTab === "disponibilita"
-              ? "Imposta i giorni e le fasce orarie in cui sei disponibile: i clienti la vedranno sul tuo profilo pubblico. Ogni fascia si applica a tutti i giorni della settimana corrispondenti (es. una fascia aggiunta di lunedì vale per ogni lunedì) — per chiudere una singola data usa “Chiudi giorno”."
+              ? "Imposta i giorni e le fasce orarie in cui sei disponibile: i clienti la vedranno sul tuo profilo pubblico. Ogni fascia aggiunta vale solo per quella data — spunta “Ripeti” nel pop-up per applicarla a tutti gli stessi giorni della settimana nel mese corrente."
               : "Le tue prenotazioni reali: tocca un appuntamento per vederne i dettagli e confermarlo, completarlo o annullarlo."}
           </Text>
         </YStack>
@@ -676,7 +733,11 @@ export default function DashboardAgendaPage() {
           // all'altra (l'overlay blocca il resto della pagina), ma è una
           // garanzia a costo zero.
           key={editingKey}
-          dayLabel={WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!}
+          dayLabel={
+            editingDateStr()
+              ? `${WEEKDAY_FULL_LABELS[editingDayOfWeek()!]} ${parseIsoDate(editingDateStr()!).getUTCDate()} ${monthLabel(parseIsoDate(editingDateStr()!))}`
+              : WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!
+          }
           start={draftStart}
           end={draftEnd}
           maxBookings={draftMax}
@@ -686,6 +747,14 @@ export default function DashboardAgendaPage() {
           onMaxChange={setDraftMax}
           onSave={() => commitSlotEdit(editingDayOfWeek()!)}
           onCancel={() => setEditingKey(null)}
+          // Spunta "ripeti per tutti i <giorno> del mese" (richiesta esplicita
+          // dell'utente): solo mentre si crea una fascia nuova, mai in
+          // modifica di una già esistente.
+          isNew={editingKey.startsWith("new-")}
+          repeatForMonth={repeatForMonth}
+          onRepeatForMonthChange={setRepeatForMonth}
+          repeatWeekdayLabel={WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!}
+          repeatMonthLabel={editingDateStr() ? monthLabel(parseIsoDate(editingDateStr()!)) : ""}
           // La fascia si può eliminare solo modificando una già esistente,
           // non mentre se ne sta creando una nuova.
           onDelete={
@@ -779,6 +848,11 @@ function SlotEditorModal({
   onCancel,
   onDelete,
   hasUpcomingBooking,
+  isNew,
+  repeatForMonth,
+  onRepeatForMonthChange,
+  repeatWeekdayLabel,
+  repeatMonthLabel,
 }: {
   dayLabel: string;
   start: string;
@@ -795,6 +869,12 @@ function SlotEditorModal({
   onDelete?: () => void;
   /** Richiede una seconda conferma prima di eliminare, stesso pattern a due passaggi già in uso altrove nel progetto. */
   hasUpcomingBooking: boolean;
+  /** True mentre si crea una fascia nuova: solo in questo caso ha senso la spunta "ripeti". */
+  isNew: boolean;
+  repeatForMonth: boolean;
+  onRepeatForMonthChange: (v: boolean) => void;
+  repeatWeekdayLabel: string;
+  repeatMonthLabel: string;
 }) {
   // Eliminazione dal pop-up invece che da un tasto "×" sulla fascia: su
   // cellulare quella "×" si sovrapponeva al riquadro della fascia, poco
@@ -871,6 +951,38 @@ function SlotEditorModal({
             1 = fascia esatta (prenotazione diretta se attiva). Più di 1 = fascia generica, sempre a richiesta di preventivo.
           </Text>
         </YStack>
+
+        {isNew ? (
+          <XStack
+            alignItems="center"
+            gap="$3"
+            padding="$3"
+            backgroundColor={brand.gesso}
+            borderWidth={1}
+            borderColor={brand.filetto}
+            borderRadius="$3"
+            cursor="pointer"
+            onPress={() => onRepeatForMonthChange(!repeatForMonth)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: repeatForMonth }}
+          >
+            <YStack
+              width={22}
+              height={22}
+              borderRadius="$2"
+              borderWidth={2}
+              borderColor={repeatForMonth ? brand.cianografia : brand.filetto}
+              backgroundColor={repeatForMonth ? brand.cianografia : brand.calce}
+              alignItems="center"
+              justifyContent="center"
+            >
+              {repeatForMonth ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+            </YStack>
+            <Text flex={1} fontSize="$3" color={brand.grafite}>
+              Ripeti per tutti i {repeatWeekdayLabel.toLowerCase()} di {repeatMonthLabel.toLowerCase()}
+            </Text>
+          </XStack>
+        ) : null}
 
         {liveError ? (
           <XStack borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius="$2" paddingHorizontal="$3" paddingVertical="$2" gap="$2" alignItems="center">

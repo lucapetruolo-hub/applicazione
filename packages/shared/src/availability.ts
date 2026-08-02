@@ -18,12 +18,20 @@ export function weekdayLabel(dayOfWeek: number): string {
   return WEEKDAYS.find((d) => d.value === dayOfWeek)?.label ?? "";
 }
 
-/** Fascia oraria ricorrente impostata dal professionista in /dashboard/agenda. */
+/** Fascia oraria impostata dal professionista in /dashboard/agenda. */
 export type AvailabilitySlotItem = {
   id: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /**
+   * Data ISO (YYYY-MM-DD) esatta a cui questa fascia è legata — nuovo
+   * comportamento di default (richiesta esplicita dell'utente): una fascia
+   * aggiunta vale solo per quella data, non più per ogni `dayOfWeek` per
+   * sempre. `null`/assente solo per le fasce ricorrenti create prima di
+   * questa funzionalità (comportamento storico, non più creabile dalla UI).
+   */
+  date: string | null;
   /**
    * Capienza della fascia: 1 (default) = fascia esatta, un solo impegno
    * possibile. > 1 = fascia "generica" — più clienti possono inviare una
