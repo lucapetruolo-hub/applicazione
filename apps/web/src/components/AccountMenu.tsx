@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Text, YStack } from "@professionisti/ui";
+import { Avatar, Text, YStack } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuItems } from "@/lib/accountMenuItems";
 
@@ -36,6 +36,7 @@ export function AccountMenu() {
         accessibilityRole="button"
         accessibilityLabel={unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : "Il mio account"}
       >
+        <Avatar name={user.name ?? user.email ?? "?"} imageUrl={user.imageUrl} size={24} />
         <Text fontSize="$3" fontWeight="600" color="$color11">
           {user.name ?? user.phone ?? user.email}
         </Text>

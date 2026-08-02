@@ -104,6 +104,8 @@ export type CurrentUser = {
   birthDate: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
   hasPassword: boolean;
+  /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
+  imageUrl: string | null;
 };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -205,6 +207,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    /** Immagine profilo dell'account (cliente o professionista) — indipendente da uploadMyProfessionalImage. */
+    uploadMyAccountImage: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/auth/me/image", token, file, "image"),
 
     saveProfessional: (token: string, professionalProfileId: string) =>
       request<{ saved: boolean }>(`/saved-professionals/${professionalProfileId}`, {

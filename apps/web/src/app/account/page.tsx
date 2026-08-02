@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Camera, Trash2 } from "lucide-react";
+import { Avatar, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -72,6 +73,15 @@ export default function AccountPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Immagine profilo dell'account (richiesta esplicita dell'utente: prima
+  // solo i professionisti potevano caricarne una) — stesso pattern di
+  // /dashboard/profilo (ImageCropModal + Cloudinary), ma sull'utente invece
+  // che sul ProfessionalProfile.
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   function syncFieldsFromUser() {
     if (!user) return;
     setName(user.name ?? "");
@@ -82,6 +92,38 @@ export default function AccountPage() {
     setBirthYear(parsed.year);
     setEmail(user.email ?? "");
     setPhone(user.phone ?? "");
+  }
+
+  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImageError(null);
+    setCropImageSrc(URL.createObjectURL(file));
+  }
+
+  // Stesso motivo già documentato in /dashboard/profilo: revocare l'URL blob
+  // solo qui, non con un effetto legato al mount/unmount di ImageCropModal
+  // (React StrictMode in dev monta/smonta/rimonta ogni componente una
+  // volta, rompendo l'anteprima se la revoca fosse lì dentro).
+  function closeCropModal() {
+    if (cropImageSrc) URL.revokeObjectURL(cropImageSrc);
+    setCropImageSrc(null);
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    closeCropModal();
+    setImageError(null);
+    setIsUploadingImage(true);
+    try {
+      await apiClient.uploadMyAccountImage(token as string, blob);
+      await refreshUser();
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Errore durante il caricamento dell'immagine.");
+    } finally {
+      setIsUploadingImage(false);
+    }
   }
 
   function handleCancelProfile() {
@@ -213,6 +255,53 @@ export default function AccountPage() {
           </YStack>
 
           <YStack gap="$4">
+            <FieldRow label="Immagine profilo">
+              <XStack alignItems="center" gap="$3">
+                <YStack
+                  width={72}
+                  height={72}
+                  borderRadius={36}
+                  overflow="hidden"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor={brand.gesso}
+                >
+                  {user.imageUrl ? (
+                    <Avatar name={[user.name, user.surname].filter(Boolean).join(" ") || "?"} imageUrl={user.imageUrl} size={72} />
+                  ) : (
+                    <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
+                  )}
+                </YStack>
+                <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
+                  <Button
+                    variant="secondary"
+                    size="$2"
+                    height={36}
+                    disabled={isUploadingImage}
+                    opacity={isUploadingImage ? 0.6 : 1}
+                    onPress={() => imageInputRef.current?.click()}
+                  >
+                    {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
+                  </Button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={isUploadingImage}
+                    style={{ display: "none" }}
+                  />
+                  {imageError ? (
+                    <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                      {imageError}
+                    </Text>
+                  ) : null}
+                </YStack>
+              </XStack>
+            </FieldRow>
+
             <FieldRow label="Nome" required>
               <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
             </FieldRow>
@@ -420,6 +509,8 @@ export default function AccountPage() {
           ) : null}
         </YStack>
       </XStack>
+
+      {cropImageSrc ? <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} /> : null}
     </YStack>
   );
 }

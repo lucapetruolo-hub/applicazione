@@ -2040,3 +2040,32 @@ in contrasto con "notifiche quasi istantanee" già promesso in CLAUDE.md
 via Expo Push/Resend/Twilio restano rimandate, CLAUDE.md §9), 45s è un
 compromesso pragmatico di polling senza sovraccaricare l'API né richiedere
 nuova infrastruttura.
+
+**Immagine profilo anche per gli account cliente** — richiesta esplicita
+dell'utente: prima solo `ProfessionalProfile.imageUrl` esisteva, un
+account cliente non poteva caricarne una. Nuovo campo `User.imageUrl`
+(Prisma, facoltativo) + `POST /auth/me/image` (`AuthController`, JWT-guarded,
+`FileInterceptor`, stesso `CloudinaryService`/cartella "professionisti" già
+usata per l'immagine profilo professionista — non è un dato specifico del
+ruolo, è la stessa "immagine profilo" per qualunque account, non serve
+separarla). `GET/PATCH /auth/me` espongono ora `imageUrl` insieme agli
+altri campi. Sezione "Immagine profilo" in `/account` (stesso pattern
+avatar circolare 72px + `ImageCropModal` già usato in
+`/dashboard/profilo`: ritaglio quadrato/circolare lato client prima
+dell'upload, nessun componente duplicato). `AccountMenu` (header) mostra
+ora l'avatar (foto reale o iniziali su fondo cianografia-velo, componente
+`Avatar` di `packages/ui`, Fase 3) accanto al nome, non solo il testo —
+visibile su ogni pagina del sito essendo nell'header globale.
+Verificato end-to-end con l'API locale e Playwright: `imageUrl` null alla
+registrazione, avatar con iniziali "GC" visibile nell'header; percorso
+"non configurato" (nessuna `CLOUDINARY_*` in questo ambiente locale,
+stesso stato già documentato per l'immagine profilo professionista)
+verificato sia via API diretta (400 con messaggio chiaro) sia in UI
+(errore mostrato sotto al bottone "Carica immagine", form non bloccato,
+`imageUrl` resta `null`) — nessun crash. Typecheck pulito su tutti i
+package.
+- **Da fare prima del lancio**: stesso promemoria già presente per
+  l'immagine profilo professionista — servono le credenziali reali
+  (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`)
+  per attivare l'upload in produzione, nessuna variabile nuova richiesta
+  (stesso account Cloudinary).

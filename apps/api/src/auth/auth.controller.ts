@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Inject, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Inject, Patch, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
@@ -14,14 +15,19 @@ import {
 } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { PRISMA } from "../prisma/prisma.module";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
+
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
 @Controller("auth")
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly cloudinaryService: CloudinaryService,
     @Inject(PRISMA) private readonly prisma: PrismaClient,
   ) {}
 
@@ -51,16 +57,48 @@ export class AuthController {
   async me(@Req() req: AuthenticatedRequest) {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId } });
     if (!user) return null;
-    const { id, phone, email, name, surname, birthDate, role, passwordHash } = user;
-    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash) };
+    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl } = user;
+    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash), imageUrl };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch("me")
   async updateMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updateAccountSchema)) body: UpdateAccountInput) {
     const user = await this.authService.updateAccount(req.user.userId, body);
-    const { id, phone, email, name, surname, birthDate, role, passwordHash } = user;
-    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash) };
+    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl } = user;
+    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash), imageUrl };
+  }
+
+  /**
+   * Immagine profilo per l'account cliente (richiesta esplicita
+   * dell'utente: prima solo ProfessionalProfile.imageUrl esisteva) — stesso
+   * pattern di ProfessionalsController.uploadMyImage, stessa cartella
+   * Cloudinary condivisa ("professionisti"): non è un dato specifico del
+   * profilo professionale, è la stessa "immagine profilo" per qualunque
+   * ruolo, non serve separarla per cartella.
+   */
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(MulterExceptionFilter)
+  @Post("me/image")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith("image/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine."), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadMyImage(@Req() req: AuthenticatedRequest, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Nessuna immagine caricata.");
+    }
+    const imageUrl = await this.cloudinaryService.uploadImage(file, "professionisti");
+    await this.prisma.user.update({ where: { id: req.user.userId }, data: { imageUrl } });
+    return { imageUrl };
   }
 
   @UseGuards(JwtAuthGuard)
