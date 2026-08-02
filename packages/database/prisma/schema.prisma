@@ -470,6 +470,21 @@ model Booking {
   city             String?
   province         String?
 
+  // Importo finale esatto (richiesta esplicita dell'utente: "segnala lavoro
+  // terminato" apre una finestra dove inserire l'importo preciso seguendo le
+  // voci del preventivo, più eventuali voci aggiuntive) — valorizzato solo
+  // al completamento, somma di BookingFinalItem, denormalizzato qui per
+  // mostrarlo senza dover sempre fare la join. Le voci del preventivo
+  // (QuoteItem, range min/max) non vengono mai modificate: rappresentano
+  // l'offerta originale, l'importo finale è un dato separato.
+  finalAmountEurCents Int?
+  finalItems          BookingFinalItem[]
+
+  // Nota per il cliente quando il professionista annulla un intervento già
+  // confermato (richiesta esplicita dell'utente) — facoltativa, distinta
+  // dall'annullamento lato cliente (cancelForClient), che non ne raccoglie una.
+  cancellationNote String?
+
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -478,6 +493,21 @@ model Booking {
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
+}
+
+// Voce dell'importo finale di un lavoro completato (richiesta esplicita
+// dell'utente): segue le voci del preventivo originale ma con un prezzo
+// esatto invece di un range, più eventuali voci aggiunte in questa fase
+// (es. materiale extra non preventivato). Stesso pattern di QuoteItem.
+model BookingFinalItem {
+  id            String @id @default(uuid())
+  bookingId     String
+  name          String
+  priceEurCents Int
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_final_items")
 }
 
 model Review {

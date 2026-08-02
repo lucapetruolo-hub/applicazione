@@ -1915,3 +1915,77 @@ componente già ritorna `null` se `!user`).
   dell'ambiente di sviluppo già documentata altrove in questo file, non
   causata da questa feature). Typecheck pulito su tutti i package
   (`shared`, `database`, `api-client`, `api`, `web`, `mobile`).
+
+**"Lavoro terminato" con importo preciso + "Annulla intervento" con nota
+per il cliente** — richiesta esplicita dell'utente, in "Lavori accettati"
+(dashboard professionista): prima `AcceptedJobCard` era puramente
+informativa, zero azioni (segnare completato/annullare esisteva solo nel
+calendario "Prenotazioni" tramite `BookingDetailPanel`, un cambio di stato
+semplice senza dettagli). Chiarito con l'utente (mid-turn, non
+`AskUserQuestion` — l'utente ha risposto direttamente in chat prima che la
+domanda posta venisse considerata) che "lavoro terminato" non è un
+semplice cambio di stato: apre una finestra dove inserire l'importo
+preciso dell'intervento seguendo le voci del preventivo, con la
+possibilità di aggiungerne altre, totale calcolato dal vivo.
+- **Nuovo modello Prisma `BookingFinalItem`** (nome + prezzo esatto in
+  centesimi, cascade su eliminazione prenotazione) + `Booking.
+  finalAmountEurCents` (somma denormalizzata, per non dover sempre fare la
+  join) + `Booking.cancellationNote` (nota facoltativa). Le `QuoteItem`
+  originali (range min/max) non vengono mai toccate: restano l'offerta di
+  riferimento, l'importo finale è un dato separato — stesso principio già
+  seguito per non confondere preventivo e prenotazione altrove nel
+  progetto.
+- **`BookingsService.completeWithFinalAmount`**: accetta solo prenotazioni
+  `CONFIRMED` di cui il professionista è titolare, sostituisce per intero
+  le `BookingFinalItem` (stesso pattern delete+createMany di
+  `QuotesService.createOrUpdate`), calcola il totale server-side (mai
+  fidarsi di un totale inviato dal client) e porta lo stato a `COMPLETED`.
+  `BookingsService.cancelByProfessional`: stesso controllo di titolarità,
+  consentito su qualunque stato non ancora concluso, salva
+  `cancellationNote` (`trim() || null`) — distinto da `cancelForClient`
+  (nessuna nota lì: il cliente non deve spiegazioni al professionista) e
+  dal generico `updateStatus` usato dal calendario (resta invariato, per
+  le transizioni senza dettagli come `PENDING`→`CONFIRMED`). Entrambi i
+  nuovi metodi notificano il cliente (`JOB_COMPLETED`/
+  `BOOKING_CANCELED_BY_PROFESSIONAL`) tramite `NotificationsService`
+  (§13): il badge nell'header si aggiorna anche per questi due eventi,
+  non solo per lead/preventivi.
+- **`CompleteJobModal.tsx`** (nuovo, `apps/web/src/components`): una riga
+  per ogni voce del preventivo originale (nome fisso, range preventivato
+  mostrato come riferimento sotto) con un campo "Importo finale (€) *"
+  da compilare — tutte obbligatorie, un professionista non può lasciarne
+  una senza importo. Sotto, "+ Aggiungi voce" per costi extra non
+  preventivati (nome+importo entrambi liberi, tasto rimozione rosso
+  36×36, stesso pattern già in uso in `/dashboard/profilo` per le
+  prestazioni). Totale ricalcolato dal vivo ad ogni input. Overlay
+  `role="dialog"`, stesso pattern di `AcceptQuoteModal`/
+  `BookingDetailPanel`.
+- **`CancelBookingModal.tsx`** (nuovo): singola `textarea` "Nota per il
+  cliente (facoltativa)" — lasciata facoltativa (non obbligatoria):
+  l'utente non ha specificato il vincolo quando gli è stato chiesto
+  esplicitamente, si è preferito il default a minor attrito. Bordo/tasto
+  di conferma su `brand.urgenza` (variant `urgent`), coerente con la
+  regola di progetto "rosso solo su urgenza/distruttivo".
+- **Convenzione asterisco sui campi obbligatori** (richiesta esplicita
+  dell'utente, arrivata mentre si costruiva `CompleteJobModal`): ogni
+  campo obbligatorio ha ora un `*` nella label, con una riga di legenda
+  "* Campo obbligatorio." in fondo al modulo — applicata sia ai nuovi
+  moduli (`CompleteJobModal`) sia, per coerenza, a `AcceptQuoteModal`
+  (retrofit: prima diceva solo "Tutti i campi sono obbligatori tranne
+  quello facoltativo" in testo libero, senza indicare quali).
+- **Lato cliente** (`/le-mie-richieste`, `BookingRow`): importo finale
+  (voci + totale) mostrato per un lavoro `COMPLETED`, nota di
+  annullamento mostrata per un lavoro `CANCELED` — stesso blocco replicato
+  in `AcceptedJobCard` lato professionista, nessuna differenza di dati tra
+  le due viste.
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: preventivo a due voci (Manodopera, Materiali) accettato →
+  prenotazione confermata → "Lavoro terminato" con importi esatti diversi
+  dal range preventivato → prenotazione `COMPLETED` con
+  `finalAmountEurCents` corretto (somma esatta delle due voci), cliente
+  vede lo stesso totale in "Lavori accettati" e riceve la notifica
+  (badge); percorso parallelo con una seconda prenotazione → "Annulla
+  intervento" con nota → prenotazione `CANCELED` con `cancellationNote`
+  salvata, cliente la vede in "Lavori accettati" e riceve la notifica.
+  Screenshot di entrambi i pop-up e degli stati finali, zero errori
+  console. Typecheck pulito su tutti i package.

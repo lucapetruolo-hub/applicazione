@@ -110,6 +110,17 @@ export type ProfessionalBooking = {
   city: string | null;
   province: string | null;
   items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+  /**
+   * Importo finale esatto e relative voci, valorizzati solo dopo che il
+   * professionista ha segnalato il lavoro come terminato (richiesta
+   * esplicita dell'utente: una finestra dedicata raccoglie l'importo
+   * preciso seguendo le voci del preventivo, con possibilità di aggiungerne
+   * altre). `null`/`[]` finché il lavoro non è COMPLETED da questo percorso.
+   */
+  finalAmountEurCents: number | null;
+  finalItems: { id: string; name: string; priceEurCents: number }[];
+  /** Nota lasciata dal professionista quando annulla un intervento già confermato (facoltativa). */
+  cancellationNote: string | null;
 };
 
 /**

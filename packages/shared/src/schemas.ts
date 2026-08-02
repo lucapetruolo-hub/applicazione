@@ -180,6 +180,30 @@ export const acceptQuoteSchema = z.object({
 });
 export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
 
+/**
+ * Voce dell'importo finale di un lavoro completato (richiesta esplicita
+ * dell'utente): a differenza di quoteItemSchema qui il prezzo è un valore
+ * esatto, non un range — il professionista sta comunicando quanto ha
+ * effettivamente addebitato, non più stimando.
+ */
+export const bookingFinalItemSchema = z.object({
+  name: z.string().min(1, "Il nome della voce è obbligatorio.").max(120),
+  priceEurCents: z.number().int().nonnegative().max(100_000_00),
+});
+export type BookingFinalItemInput = z.infer<typeof bookingFinalItemSchema>;
+
+/** Il professionista segnala un lavoro come terminato, inserendo l'importo preciso (voci del preventivo + eventuali extra). */
+export const completeBookingSchema = z.object({
+  items: z.array(bookingFinalItemSchema).min(1, "Aggiungi almeno una voce.").max(20),
+});
+export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
+
+/** Il professionista annulla un intervento già confermato, con una nota facoltativa spiegata al cliente. */
+export const cancelBookingByProfessionalSchema = z.object({
+  note: z.string().max(1000).optional(),
+});
+export type CancelBookingByProfessionalInput = z.infer<typeof cancelBookingByProfessionalSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

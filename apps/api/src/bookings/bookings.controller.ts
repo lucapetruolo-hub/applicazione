@@ -1,6 +1,13 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
-import { acceptQuoteSchema, type AcceptQuoteInput } from "@professionisti/shared";
+import {
+  acceptQuoteSchema,
+  cancelBookingByProfessionalSchema,
+  completeBookingSchema,
+  type AcceptQuoteInput,
+  type CancelBookingByProfessionalInput,
+  type CompleteBookingInput,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { BookingsService } from "./bookings.service";
@@ -35,6 +42,24 @@ export class BookingsController {
   @Patch(":id/cancel")
   cancelMine(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.cancelForClient(req.user.userId, id);
+  }
+
+  /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso (voci del preventivo + eventuali extra). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/complete")
+  complete(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(completeBookingSchema)) body: CompleteBookingInput) {
+    return this.bookingsService.completeWithFinalAmount(req.user.userId, id, body);
+  }
+
+  /** Il professionista annulla un intervento già confermato, con una nota facoltativa per il cliente. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/cancel-by-professional")
+  cancelByProfessional(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(cancelBookingByProfessionalSchema)) body: CancelBookingByProfessionalInput,
+  ) {
+    return this.bookingsService.cancelByProfessional(req.user.userId, id, body);
   }
 
   @UseGuards(JwtAuthGuard)

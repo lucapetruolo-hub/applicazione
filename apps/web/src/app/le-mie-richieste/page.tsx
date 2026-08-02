@@ -801,6 +801,43 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
       </Text>
 
+      {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Importo finale
+          </Text>
+          {booking.finalItems.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                {item.name}
+              </Text>
+              <Text fontSize="$2" color={brand.grafite}>
+                €{(item.priceEurCents / 100).toFixed(2)}
+              </Text>
+            </XStack>
+          ))}
+          <XStack justifyContent="space-between" gap="$2">
+            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+              Totale
+            </Text>
+            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
+              €{(booking.finalAmountEurCents / 100).toFixed(2)}
+            </Text>
+          </XStack>
+        </YStack>
+      ) : null}
+
+      {booking.status === "CANCELED" && booking.cancellationNote ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Nota del professionista
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {booking.cancellationNote}
+          </Text>
+        </YStack>
+      ) : null}
+
       {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           {confirmingCancel ? (

@@ -1,11 +1,15 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { AcceptQuoteInput } from "@professionisti/shared";
+import type { AcceptQuoteInput, CancelBookingByProfessionalInput, CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class BookingsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Il cliente accetta un preventivo: crea la prenotazione, chiude la
@@ -82,6 +86,73 @@ export class BookingsService {
   }
 
   /**
+   * Il professionista segnala un "Lavoro accettato" come terminato,
+   * inserendo l'importo preciso — richiesta esplicita dell'utente: una
+   * finestra dedicata (non un semplice cambio di stato) dove seguire le
+   * voci del preventivo originale (QuoteItem, un range) ma con un prezzo
+   * esatto, più eventuali voci aggiuntive non preventivate. Le QuoteItem
+   * originali non vengono mai toccate: restano l'offerta di riferimento,
+   * l'importo finale è un dato separato (BookingFinalItem).
+   */
+  async completeWithFinalAmount(professionalUserId: string, bookingId: string, input: CompleteBookingInput) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "CONFIRMED") {
+      throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
+    }
+
+    const finalAmountEurCents = input.items.reduce((sum, item) => sum + item.priceEurCents, 0);
+
+    await this.prisma.$transaction([
+      this.prisma.bookingFinalItem.deleteMany({ where: { bookingId } }),
+      this.prisma.bookingFinalItem.createMany({
+        data: input.items.map((item) => ({ bookingId, name: item.name, priceEurCents: item.priceEurCents })),
+      }),
+      this.prisma.booking.update({ where: { id: bookingId }, data: { status: "COMPLETED", finalAmountEurCents } }),
+    ]);
+
+    await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", { bookingId, finalAmountEurCents });
+
+    return { bookingId, status: "COMPLETED" as const, finalAmountEurCents };
+  }
+
+  /**
+   * Il professionista annulla un intervento già confermato, con una nota
+   * facoltativa per il cliente (richiesta esplicita dell'utente) — distinto
+   * da cancelForClient (nessuna nota lì, il cliente non deve spiegazioni al
+   * professionista) e dal generico updateStatus (usato dal calendario, senza
+   * nota).
+   */
+  async cancelByProfessional(professionalUserId: string, bookingId: string, input: CancelBookingByProfessionalInput) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status === "COMPLETED" || booking.status === "CANCELED") {
+      throw new ForbiddenException("Questa prenotazione è già conclusa.");
+    }
+
+    const cancellationNote = input.note?.trim() || null;
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", cancellationNote } });
+
+    await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", { bookingId, cancellationNote });
+
+    return { bookingId, status: "CANCELED" as const };
+  }
+
+  /**
    * Il cliente annulla una propria prenotazione ancora attiva (PENDING o
    * CONFIRMED). Prima di questo endpoint un cliente che prenotava
    * direttamente una fascia dall'agenda pubblica (bookAgendaSlot) non aveva
@@ -104,7 +175,7 @@ export class BookingsService {
   async listForClient(clientId: string) {
     const bookings = await this.prisma.booking.findMany({
       where: { clientId },
-      include: { professionalProfile: true, review: true },
+      include: { professionalProfile: true, review: true, finalItems: true },
       orderBy: { scheduledAt: "desc" },
     });
 
@@ -115,6 +186,13 @@ export class BookingsService {
       businessName: booking.professionalProfile.businessName,
       professionalProfileId: booking.professionalProfileId,
       hasReview: booking.review !== null,
+      // Importo finale esatto (voci del preventivo + eventuali extra),
+      // valorizzato solo dopo che il professionista ha segnalato il lavoro
+      // come terminato — richiesta esplicita dell'utente.
+      finalAmountEurCents: booking.finalAmountEurCents,
+      finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
+      // Nota lasciata dal professionista se ha annullato l'intervento (facoltativa).
+      cancellationNote: booking.cancellationNote,
     }));
   }
 }

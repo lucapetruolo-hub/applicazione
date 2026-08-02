@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import {
   formatBookingAddress,
   formatServicePriceRange,
+  type CompleteBookingInput,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalLead,
@@ -16,6 +17,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -73,6 +76,11 @@ export default function DashboardPage() {
   function reloadLeads() {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads);
+  }
+
+  function reloadBookings() {
+    if (!token) return;
+    apiClient.myProfessionalBookings(token).then(setBookings);
   }
 
   // Aprire la dashboard segna come lette le notifiche in attesa (nuovo lead,
@@ -200,7 +208,7 @@ export default function DashboardPage() {
             ) : (
               <YStack gap="$3">
                 {acceptedJobs(bookings).map((booking) => (
-                  <AcceptedJobCard key={booking.id} booking={booking} />
+                  <AcceptedJobCard key={booking.id} booking={booking} token={token} onUpdated={reloadBookings} />
                 ))}
               </YStack>
             )}
@@ -226,13 +234,28 @@ function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
   return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED" || b.status === "CANCELED");
 }
 
-function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
+function AcceptedJobCard({ booking, token, onUpdated }: { booking: ProfessionalBooking; token: string; onUpdated: () => void }) {
   const date = new Date(booking.scheduledAt);
   // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
   // priorità su quello libero, quando presente — vedi formatBookingAddress.
   const structuredAddress = formatBookingAddress(booking);
   const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
   const isCanceled = booking.status === "CANCELED";
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  async function handleComplete(input: CompleteBookingInput) {
+    await apiClient.completeBooking(token, booking.id, input);
+    setShowCompleteModal(false);
+    onUpdated();
+  }
+
+  async function handleCancel(note: string | undefined) {
+    await apiClient.cancelBookingByProfessional(token, booking.id, { note });
+    setShowCancelModal(false);
+    onUpdated();
+  }
+
   return (
     <Surface gap="$2" borderColor={isCanceled ? brand.urgenza : undefined} borderWidth={isCanceled ? 1.5 : undefined} backgroundColor={isCanceled ? brand.urgenzaVelo : undefined}>
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
@@ -253,6 +276,18 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
             {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
           </Text>
         </YStack>
+        {booking.status === "CONFIRMED" ? (
+          <XStack gap="$2" flexWrap="wrap">
+            <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
+              Lavoro terminato
+            </Button>
+            <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
+              <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
+                Annulla intervento
+              </Text>
+            </Button>
+          </XStack>
+        ) : null}
       </YStack>
 
       <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
@@ -303,6 +338,48 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
           ))}
         </YStack>
       ) : null}
+
+      {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Importo finale
+          </Text>
+          {booking.finalItems.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                {item.name}
+              </Text>
+              <Text fontSize="$2" color={brand.grafite}>
+                €{(item.priceEurCents / 100).toFixed(2)}
+              </Text>
+            </XStack>
+          ))}
+          <XStack justifyContent="space-between" gap="$2">
+            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+              Totale
+            </Text>
+            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
+              €{(booking.finalAmountEurCents / 100).toFixed(2)}
+            </Text>
+          </XStack>
+        </YStack>
+      ) : null}
+
+      {isCanceled && booking.cancellationNote ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Nota lasciata al cliente
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {booking.cancellationNote}
+          </Text>
+        </YStack>
+      ) : null}
+
+      {showCompleteModal ? (
+        <CompleteJobModal quotedItems={booking.items} onClose={() => setShowCompleteModal(false)} onComplete={handleComplete} />
+      ) : null}
+      {showCancelModal ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancel} /> : null}
     </Surface>
   );
 }
@@ -758,7 +835,7 @@ function LeadCard({
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Note per il cliente (opzionale)"
+            placeholder="Note per il cliente"
             rows={2}
             style={{ ...smallInputStyle, resize: "vertical" }}
           />

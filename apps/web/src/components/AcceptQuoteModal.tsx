@@ -137,8 +137,7 @@ export function AcceptQuoteModal({
             Dove deve venire il professionista?
           </Text>
           <Text fontSize="$3" color={brand.grafite70}>
-            Questi dati servono al professionista per raggiungerti e contattarti. Tutti i campi sono obbligatori,
-            tranne quello facoltativo.
+            Questi dati servono al professionista per raggiungerti e contattarti. I campi con * sono obbligatori.
           </Text>
         </YStack>
 
@@ -168,11 +167,11 @@ export function AcceptQuoteModal({
           <>
             <YStack gap="$3" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
               <YStack flex={1} minWidth={220}>
-                <Field label="Nome" value={recipientName} onChangeText={setRecipientName} placeholder="Nome" error={errors.recipientName} />
+                <Field label="Nome *" value={recipientName} onChangeText={setRecipientName} placeholder="Nome" error={errors.recipientName} />
               </YStack>
               <YStack flex={1} minWidth={220}>
                 <Field
-                  label="Cognome"
+                  label="Cognome *"
                   value={recipientSurname}
                   onChangeText={setRecipientSurname}
                   placeholder="Cognome"
@@ -182,7 +181,7 @@ export function AcceptQuoteModal({
             </YStack>
 
             <Field
-              label="Numero di telefono"
+              label="Numero di telefono *"
               value={recipientPhone}
               onChangeText={setRecipientPhone}
               placeholder="Numero di telefono"
@@ -192,10 +191,10 @@ export function AcceptQuoteModal({
 
             <YStack gap="$3" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
               <YStack flex={2} minWidth={220}>
-                <Field label="Indirizzo" value={street} onChangeText={setStreet} placeholder="Via/piazza" error={errors.street} />
+                <Field label="Indirizzo *" value={street} onChangeText={setStreet} placeholder="Via/piazza" error={errors.street} />
               </YStack>
               <YStack flex={1} minWidth={140}>
-                <Field label="Numero civico" value={houseNumber} onChangeText={setHouseNumber} placeholder="Numero civico" error={errors.houseNumber} />
+                <Field label="Numero civico *" value={houseNumber} onChangeText={setHouseNumber} placeholder="Numero civico" error={errors.houseNumber} />
               </YStack>
             </YStack>
 
@@ -208,15 +207,19 @@ export function AcceptQuoteModal({
 
             <YStack gap="$3" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
               <YStack flex={1} minWidth={140}>
-                <Field label="CAP" value={postalCode} onChangeText={setPostalCode} placeholder="CAP" keyboardType="numeric" error={errors.postalCode} />
+                <Field label="CAP *" value={postalCode} onChangeText={setPostalCode} placeholder="CAP" keyboardType="numeric" error={errors.postalCode} />
               </YStack>
               <YStack flex={2} minWidth={200}>
-                <Field label="Città" value={city} onChangeText={setCity} placeholder="Città" error={errors.city} />
+                <Field label="Città *" value={city} onChangeText={setCity} placeholder="Città" error={errors.city} />
               </YStack>
               <YStack flex={1} minWidth={140}>
-                <Field label="Provincia" value={province} onChangeText={setProvince} placeholder="Es. Milano" error={errors.province} />
+                <Field label="Provincia *" value={province} onChangeText={setProvince} placeholder="Es. Milano" error={errors.province} />
               </YStack>
             </YStack>
+
+            <Text fontSize="$2" color={brand.grafite70}>
+              * Campo obbligatorio.
+            </Text>
 
             {saveError ? (
               <Text color={brand.urgenza} fontSize="$3">

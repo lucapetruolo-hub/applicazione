@@ -3,7 +3,9 @@ import type {
   AcceptQuoteInput,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
+  CancelBookingByProfessionalInput,
   ChangePasswordInput,
+  CompleteBookingInput,
   GuidedRequestInput,
   GuidedRequestUpdateInput,
   MyAvailability,
@@ -30,6 +32,11 @@ export type ClientBooking = {
   businessName: string;
   professionalProfileId: string;
   hasReview: boolean;
+  /** Importo finale esatto (voci del preventivo + eventuali extra), valorizzato solo a lavoro terminato. */
+  finalAmountEurCents: number | null;
+  finalItems: { id: string; name: string; priceEurCents: number }[];
+  /** Nota lasciata dal professionista se ha annullato l'intervento (facoltativa). */
+  cancellationNote: string | null;
 };
 
 export type ClientGuidedRequest = {
@@ -364,6 +371,22 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso. */
+    completeBooking: (token: string, bookingId: string, input: CompleteBookingInput) =>
+      request<{ bookingId: string; status: string; finalAmountEurCents: number }>(`/bookings/${bookingId}/complete`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Il professionista annulla un intervento già confermato, con una nota facoltativa per il cliente. */
+    cancelBookingByProfessional: (token: string, bookingId: string, input: CancelBookingByProfessionalInput) =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel-by-professional`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     myClientBookings: (token: string) =>

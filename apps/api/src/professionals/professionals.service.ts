@@ -498,6 +498,7 @@ export class ProfessionalsService {
         // (bookAgendaSlot) non hanno una Quote/GuidedRequest collegata,
         // address resta null in quel caso.
         quote: { include: { items: true, guidedRequest: { select: { address: true } } } },
+        finalItems: true,
       },
       orderBy: { scheduledAt: "asc" },
     });
@@ -535,6 +536,9 @@ export class ProfessionalsService {
         priceMinEurCents: item.priceMinEurCents,
         priceMaxEurCents: item.priceMaxEurCents,
       })),
+      finalAmountEurCents: booking.finalAmountEurCents,
+      finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
+      cancellationNote: booking.cancellationNote,
     }));
   }
 
