@@ -255,52 +255,62 @@ export default function AccountPage() {
           </YStack>
 
           <YStack gap="$4">
-            <FieldRow label="Immagine profilo">
-              <XStack alignItems="center" gap="$3">
-                <YStack
-                  width={72}
-                  height={72}
-                  borderRadius={36}
-                  overflow="hidden"
-                  borderWidth={1}
-                  borderColor={brand.filetto}
-                  alignItems="center"
-                  justifyContent="center"
-                  backgroundColor={brand.gesso}
-                >
-                  {user.imageUrl ? (
-                    <Avatar name={[user.name, user.surname].filter(Boolean).join(" ") || "?"} imageUrl={user.imageUrl} size={72} />
-                  ) : (
-                    <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
-                  )}
-                </YStack>
-                <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
-                  <Button
-                    variant="secondary"
-                    size="$2"
-                    height={36}
-                    disabled={isUploadingImage}
-                    opacity={isUploadingImage ? 0.6 : 1}
-                    onPress={() => imageInputRef.current?.click()}
+            {/*
+              Solo per i clienti: un professionista ha già la propria
+              immagine profilo (pubblica, ProfessionalProfile.imageUrl) in
+              /dashboard/profilo — mostrarla anche qui sarebbe ridondante e
+              fuorviante, perché questa (User.imageUrl) non è quella
+              mostrata pubblicamente sul profilo/nei risultati di ricerca.
+              Richiesta esplicita dell'utente.
+            */}
+            {user.role !== "PROFESSIONAL" ? (
+              <FieldRow label="Immagine profilo">
+                <XStack alignItems="center" gap="$3">
+                  <YStack
+                    width={72}
+                    height={72}
+                    borderRadius={36}
+                    overflow="hidden"
+                    borderWidth={1}
+                    borderColor={brand.filetto}
+                    alignItems="center"
+                    justifyContent="center"
+                    backgroundColor={brand.gesso}
                   >
-                    {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
-                  </Button>
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={isUploadingImage}
-                    style={{ display: "none" }}
-                  />
-                  {imageError ? (
-                    <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
-                      {imageError}
-                    </Text>
-                  ) : null}
-                </YStack>
-              </XStack>
-            </FieldRow>
+                    {user.imageUrl ? (
+                      <Avatar name={[user.name, user.surname].filter(Boolean).join(" ") || "?"} imageUrl={user.imageUrl} size={72} />
+                    ) : (
+                      <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
+                    )}
+                  </YStack>
+                  <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
+                    <Button
+                      variant="secondary"
+                      size="$2"
+                      height={36}
+                      disabled={isUploadingImage}
+                      opacity={isUploadingImage ? 0.6 : 1}
+                      onPress={() => imageInputRef.current?.click()}
+                    >
+                      {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
+                    </Button>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={isUploadingImage}
+                      style={{ display: "none" }}
+                    />
+                    {imageError ? (
+                      <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                        {imageError}
+                      </Text>
+                    ) : null}
+                  </YStack>
+                </XStack>
+              </FieldRow>
+            ) : null}
 
             <FieldRow label="Nome" required>
               <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />

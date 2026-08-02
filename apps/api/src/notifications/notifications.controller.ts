@@ -12,6 +12,12 @@ export class NotificationsController {
     return this.notificationsService.unreadCount(req.user.userId);
   }
 
+  /** Contenuto delle notifiche non lette (tipo/payload), per il popup "toast" — vedi NotificationsService.listUnread. */
+  @Get("unread")
+  listUnread(@Req() req: AuthenticatedRequest) {
+    return this.notificationsService.listUnread(req.user.userId);
+  }
+
   @Post("mark-all-read")
   markAllRead(@Req() req: AuthenticatedRequest) {
     return this.notificationsService.markAllRead(req.user.userId);

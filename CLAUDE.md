@@ -2069,3 +2069,104 @@ package.
   (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`)
   per attivare l'upload in produzione, nessuna variabile nuova richiesta
   (stesso account Cloudinary).
+- **Correzione**: nascosta di nuovo per i professionisti (richiesta
+  esplicita dell'utente) — un professionista ha già la propria immagine
+  profilo pubblica (`ProfessionalProfile.imageUrl`, editabile in
+  `/dashboard/profilo`); quella appena aggiunta qui (`User.imageUrl`) non è
+  mostrata da nessuna parte pubblicamente, mostrarla anche in
+  `/account` per un professionista sarebbe ridondante e fuorviante (farebbe
+  pensare che cambi l'immagine pubblica). La sezione "Immagine profilo" in
+  `/account` ora si nasconde con `user.role !== "PROFESSIONAL"`; l'endpoint
+  `POST /auth/me/image` resta comunque disponibile (usato dai clienti).
+
+**Popup "toast" per nuove notifiche + numeretto per sezione** — richiesta
+esplicita dell'utente: "quando si ricevono nuovi aggiornamenti fai
+visualizzare un piccolo popup dinamico in alto, es. 'Fantastico, hai
+ricevuto un nuovo preventivo' oppure 'Wow, hanno accettato un tuo
+preventivo'", seguita da "quando si clicca sulla dashboard... indica anche
+in quale sezione c'è stato l'aggiornamento con un numerico".
+- **Bug/lacuna reale scoperta durante l'implementazione**: nessuna
+  notifica veniva creata quando un cliente accetta un preventivo — il
+  professionista non aveva modo di saperlo se non controllando
+  manualmente. Nuovo tipo `QUOTE_ACCEPTED`, creato in
+  `BookingsService.createFromQuote` (richiede `professionalProfile.userId`,
+  aggiunto all'`include` della query `quote`) — proprio l'esempio "wow,
+  hanno accettato un tuo preventivo" citato dall'utente.
+- **`NotificationsService.listUnread`** (nuovo, `GET /notifications/unread`):
+  a differenza di `unreadCount` (solo il numero), restituisce le notifiche
+  non lette con `type`/`payload`/`createdAt` (limite 20) — serve al toast
+  per sapere COSA è successo, non solo quante cose.
+- **`apps/web/src/lib/notificationCopy.ts`**: mappa statica
+  `type → { icon, message }` con testo simpatico in italiano per ogni
+  evento (`NEW_LEAD`, `NEW_QUOTE`, `QUOTE_ACCEPTED`,
+  `QUOTE_DATE_PROPOSED/CONFIRMED/REJECTED`, `JOB_COMPLETED`,
+  `BOOKING_CANCELED_BY_PROFESSIONAL`) — ogni `type` corrisponde sempre allo
+  stesso ruolo destinatario, nessuna logica per ruolo necessaria.
+- **`AuthContext.tsx`** esteso con `toasts`/`dismissToast`/
+  `unreadNotifications`: `checkForNewNotifications` (stesso poll da 45s già
+  in uso per il badge) confronta le notifiche non lette con quelle già
+  viste in questa sessione (`Set` in un `useRef`, non re-render). Il primo
+  controllo dopo login stabilisce solo la "baseline" (nessun toast) —
+  altrimenti un professionista con 5 notifiche già in attesa da giorni
+  vedrebbe 5 popup tutti insieme al primo caricamento, non è quello che
+  "arriva ora" significa. Solo le notifiche viste per la prima volta DOPO
+  la baseline diventano un toast.
+- **`ToastStack.tsx`** (nuovo, montato una sola volta in `layout.tsx`
+  accanto a `SiteHeader`, non solo su dashboard/le-mie-richieste): pila in
+  alto al centro, ogni toast si chiude da solo dopo 6s o al click,
+  `position:"fixed"` non tipizzato in Tamagui (stesso limite già
+  documentato per l'header sticky) — risolto con un `<div>` grezzo,
+  contenuto Tamagui all'interno.
+- **Numeretto per sezione** (`Richieste ricevute`/`Lavori accettati` su
+  `/dashboard`, `Le mie richieste`/`Lavori accettati` su
+  `/le-mie-richieste`): `apps/web/src/lib/notificationSections.ts` mappa
+  ogni `type` alla sezione a cui appartiene (es. `NEW_LEAD`→Richieste
+  ricevute, `QUOTE_ACCEPTED`→Lavori accettati lato professionista;
+  `NEW_QUOTE`→Le mie richieste, `JOB_COMPLETED`→Lavori accettati lato
+  cliente). Badge rosso sul tab, stesso stile del badge nell'header.
+- **Race condition reale scoperta e corretta con Playwright** (non solo
+  ipotizzata): la prima versione calcolava il numeretto per sezione dal
+  conteggio "live" già mantenuto da `AuthContext` (`unreadNotifications`),
+  ma quello viene aggiornato dallo stesso poll usato per badge/toast — su
+  un caricamento diretto di `/dashboard` (link profondo, non navigazione
+  interna), l'effetto che segna tutto come letto (`markNotificationsRead`,
+  già presente) e l'effetto che aggiorna `unreadNotifications` partono
+  nello stesso istante, e l'ordine di arrivo delle risposte HTTP non è
+  garantito: se la `PATCH` di "segna come letto" vince, il numeretto per
+  sezione risultava sempre 0 anche se un attimo prima c'era davvero un
+  aggiornamento — riprodotto: su un `goto` diretto a `/dashboard` il badge
+  di sezione non appariva mai, mentre su navigazione interna (client-side,
+  dopo aver già visitato un'altra pagina) appariva quasi sempre per
+  puro caso di timing. Corretto rendendo la sequenza esplicita: sia
+  `/dashboard` che `/le-mie-richieste` ora recuperano l'elenco delle
+  notifiche non lette con una chiamata dedicata (`apiClient.
+  unreadNotifications`), calcolano lo snapshot per sezione, e SOLO DOPO
+  (`.finally`) chiamano `markNotificationsRead()` — mai in parallelo.
+  Verificato end-to-end con Playwright: caricamento diretto (`page.goto`)
+  di `/dashboard` con una richiesta non letta in attesa → badge "1" sul
+  tab "Richieste ricevute" sempre presente (ripetuto più volte), badge
+  dell'header comunque azzerato (il "segna come letto" avviene comunque,
+  solo dopo).
+- Verificato end-to-end con l'API locale e Playwright (non solo
+  typecheck): toast "🎉 Fantastico! Hai ricevuto una nuova richiesta."
+  comparso ~45s dopo l'arrivo di un nuovo lead mentre il professionista
+  era già sulla home (nessun reload), sparito da solo dopo ~6s; nessun
+  toast al primo caricamento nonostante 0 notifiche pregresse (baseline
+  corretta); badge di sezione "1" su "Richieste ricevute" verificato su
+  caricamento diretto della dashboard, ripetuto senza fallimenti. Zero
+  errori console in tutti i flussi. Typecheck pulito su tutti i package
+  (`shared`, `database`, `api-client`, `api`, `web`, `mobile`).
+
+**Data/fascia oraria richiesta visibile anche dopo l'invio** — richiesta
+esplicita dell'utente: quando la richiesta guidata parte da una fascia
+"generica" dell'agenda pubblica di un professionista (`preferredDate`/
+`preferredTimeSlot`), prima era visibile solo nel form al momento
+dell'invio (blocco "Fascia richiesta" in `GuidedRequestForm`), mai più
+dopo — bug di esposizione dati: `ClientGuidedRequest` portava già questi
+due campi ma `GuidedRequestCard` (`/le-mie-richieste`) non li rendeva mai.
+Aggiunta una riga con icona `calendar` (data+fascia, es. "mercoledì 5
+agosto · 09:00–13:00") accanto a indirizzo/foto già mostrati, visibile
+solo quando entrambi i campi sono valorizzati. Verificato end-to-end con
+l'API locale e Playwright: richiesta creata con `preferredDate`/
+`preferredTimeSlot` da una fascia generica → riga visibile correttamente
+in `/le-mie-richieste`, zero errori console.

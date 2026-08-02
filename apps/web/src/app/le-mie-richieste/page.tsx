@@ -13,6 +13,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { clientSectionCounts } from "@/lib/notificationSections";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -48,7 +49,18 @@ type ClientTab = "richieste" | "lavori";
  * dell'utente, stesso trattamento già applicato lato professionista in
  * /dashboard per la stessa ragione — visualizzazione più facile e ordinata).
  */
-function ClientTabButton({ active, onPress, children }: { active: boolean; onPress: () => void; children: React.ReactNode }) {
+function ClientTabButton({
+  active,
+  onPress,
+  badgeCount,
+  children,
+}: {
+  active: boolean;
+  onPress: () => void;
+  /** Numeretto degli aggiornamenti non letti di questa sezione (richiesta esplicita dell'utente). */
+  badgeCount?: number;
+  children: React.ReactNode;
+}) {
   return (
     <XStack
       alignItems="center"
@@ -64,6 +76,13 @@ function ClientTabButton({ active, onPress, children }: { active: boolean; onPre
       <Text fontWeight="700" color={active ? brand.cianografia : brand.grafite70}>
         {children}
       </Text>
+      {badgeCount ? (
+        <YStack backgroundColor="$red10" borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
+          <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
+            {badgeCount > 9 ? "9+" : badgeCount}
+          </Text>
+        </YStack>
+      ) : null}
     </XStack>
   );
 }
@@ -71,6 +90,11 @@ function ClientTabButton({ active, onPress, children }: { active: boolean; onPre
 export default function LeMieRichiestePage() {
   const { user, token, isLoading, markNotificationsRead } = useAuth();
   const [activeTab, setActiveTab] = useState<ClientTab>("richieste");
+  // Fotografia delle notifiche non lette al momento dell'arrivo, presa
+  // PRIMA di segnarle come lette — stessa race condition già documentata
+  // e corretta in /dashboard (vedi commento lì): non affidarsi al
+  // conteggio "live" di AuthContext per questo calcolo one-shot.
+  const [sectionSnapshot, setSectionSnapshot] = useState<{ richieste: number; lavori: number }>({ richieste: 0, lavori: 0 });
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +114,12 @@ export default function LeMieRichiestePage() {
   // segna come lette le notifiche in attesa (nuovo preventivo, conferma/
   // rifiuto della data proposta) e azzera il badge nell'header.
   useEffect(() => {
-    if (token) markNotificationsRead();
+    if (!token) return;
+    apiClient
+      .unreadNotifications(token)
+      .then((notifications) => setSectionSnapshot(clientSectionCounts(notifications)))
+      .catch(() => {})
+      .finally(() => markNotificationsRead());
   }, [token, markNotificationsRead]);
 
   // Il salvataggio dell'indirizzo (AcceptQuoteModal) gestisce da sé stato di
@@ -132,10 +161,10 @@ export default function LeMieRichiestePage() {
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
           <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
-            <ClientTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")}>
+            <ClientTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")} badgeCount={sectionSnapshot.richieste}>
               Le mie richieste{requests ? ` (${requests.length})` : ""}
             </ClientTabButton>
-            <ClientTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")}>
+            <ClientTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")} badgeCount={sectionSnapshot.lavori}>
               Lavori accettati{bookings ? ` (${bookings.length})` : ""}
             </ClientTabButton>
           </XStack>
@@ -409,6 +438,29 @@ function GuidedRequestCard({
                   <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
                   <Text fontSize="$2" color={brand.grafite70}>
                     {request.address}
+                  </Text>
+                </XStack>
+              ) : null}
+              {/*
+                Data/fascia oraria richiesta (solo se la richiesta parte da
+                una fascia "generica" dell'agenda pubblica del
+                professionista, vedi GuidedRequestForm) — prima visibile
+                solo nel form al momento dell'invio, mai più dopo: richiesta
+                esplicita dell'utente di vederla anche qui, a richiesta già
+                inviata.
+              */}
+              {request.preferredDate && request.preferredTimeSlot ? (
+                <XStack alignItems="center" gap="$1">
+                  <Icon name="calendar" size={12} color={brand.grafite70} strokeWidth={1.5} />
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    {new Date(`${request.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      timeZone: "UTC",
+                    })}
+                    {" · "}
+                    {request.preferredTimeSlot.replace("-", "–")}
                   </Text>
                 </XStack>
               ) : null}

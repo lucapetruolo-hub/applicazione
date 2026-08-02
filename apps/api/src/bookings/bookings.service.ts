@@ -21,7 +21,7 @@ export class BookingsService {
   async createFromQuote(clientId: string, quoteId: string, address: AcceptQuoteInput) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { guidedRequest: true, booking: true },
+      include: { guidedRequest: true, booking: true, professionalProfile: true },
     });
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
@@ -54,6 +54,14 @@ export class BookingsService {
 
     await this.prisma.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED" } });
     await this.prisma.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED" } });
+
+    // Il professionista deve sapere che il proprio preventivo è stato
+    // accettato — mancava del tutto (richiesta esplicita dell'utente, "wow
+    // hanno accettato un tuo preventivo" come esempio di popup atteso).
+    await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
+      bookingId: booking.id,
+      guidedRequestId: quote.guidedRequestId,
+    });
 
     return { bookingId: booking.id };
   }

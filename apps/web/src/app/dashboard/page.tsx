@@ -19,6 +19,7 @@ import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { professionalSectionCounts } from "@/lib/notificationSections";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -39,7 +40,18 @@ type DashboardTab = "richieste" | "lavori";
  * "A domicilio"/"Online" di SearchBar) invece di introdurre un nuovo
  * componente Tab condiviso solo per questa pagina.
  */
-function DashboardTabButton({ active, onPress, children }: { active: boolean; onPress: () => void; children: React.ReactNode }) {
+function DashboardTabButton({
+  active,
+  onPress,
+  badgeCount,
+  children,
+}: {
+  active: boolean;
+  onPress: () => void;
+  /** Numeretto degli aggiornamenti non letti di questa sezione (richiesta esplicita dell'utente). */
+  badgeCount?: number;
+  children: React.ReactNode;
+}) {
   return (
     <XStack
       alignItems="center"
@@ -55,6 +67,13 @@ function DashboardTabButton({ active, onPress, children }: { active: boolean; on
       <Text fontWeight="700" color={active ? brand.cianografia : brand.grafite70}>
         {children}
       </Text>
+      {badgeCount ? (
+        <YStack backgroundColor="$red10" borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
+          <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
+            {badgeCount > 9 ? "9+" : badgeCount}
+          </Text>
+        </YStack>
+      ) : null}
     </XStack>
   );
 }
@@ -62,6 +81,17 @@ function DashboardTabButton({ active, onPress, children }: { active: boolean; on
 export default function DashboardPage() {
   const { user, token, isLoading, markNotificationsRead } = useAuth();
   const [activeTab, setActiveTab] = useState<DashboardTab>("richieste");
+  // Fotografia delle notifiche non lette al momento dell'arrivo sulla
+  // pagina, presa PRIMA di segnarle come lette — evita una race condition
+  // reale: se si usasse invece il conteggio "live" di AuthContext
+  // (aggiornato dallo stesso poll usato per il badge/toast), la richiesta
+  // GET qui e la PATCH di markNotificationsRead partono nello stesso
+  // istante e l'ordine di arrivo delle risposte non è garantito — se la
+  // PATCH vince, la GET successiva del poll trova già tutto letto e il
+  // numeretto per sezione non compare mai, anche se un attimo prima
+  // c'era davvero un aggiornamento. Recuperata qui esplicitamente PRIMA
+  // di segnare come letto, la sequenza è sempre corretta.
+  const [sectionSnapshot, setSectionSnapshot] = useState<{ richieste: number; lavori: number }>({ richieste: 0, lavori: 0 });
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
@@ -87,8 +117,16 @@ export default function DashboardPage() {
   // risposta del cliente su una data proposta): il badge nell'header si
   // azzera qui, non con un click separato — coerente con la richiesta
   // dell'utente di vedere "un numeretto con le novità da visualizzare".
+  // L'elenco va recuperato ESPLICITAMENTE prima di segnarle come lette
+  // (vedi commento su sectionSnapshot) — mai affidarsi al conteggio "live"
+  // già in corso di poll altrove per questo calcolo one-shot.
   useEffect(() => {
-    if (token) markNotificationsRead();
+    if (!token) return;
+    apiClient
+      .unreadNotifications(token)
+      .then((notifications) => setSectionSnapshot(professionalSectionCounts(notifications)))
+      .catch(() => {})
+      .finally(() => markNotificationsRead());
   }, [token, markNotificationsRead]);
 
   useEffect(() => {
@@ -169,10 +207,10 @@ export default function DashboardPage() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
-          <DashboardTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")}>
+          <DashboardTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")} badgeCount={sectionSnapshot.richieste}>
             Richieste ricevute{leads ? ` (${leads.length})` : ""}
           </DashboardTabButton>
-          <DashboardTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")}>
+          <DashboardTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")} badgeCount={sectionSnapshot.lavori}>
             Lavori accettati{bookings ? ` (${acceptedJobs(bookings).length})` : ""}
           </DashboardTabButton>
         </XStack>

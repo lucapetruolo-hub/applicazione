@@ -446,6 +446,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     unreadNotificationsCount: (token: string) =>
       request<{ count: number }>("/notifications/unread-count", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    /** Contenuto delle notifiche non lette (tipo/payload), per il popup "toast" all'arrivo di un nuovo evento. */
+    unreadNotifications: (token: string) =>
+      request<{ id: string; type: string; payload: unknown; createdAt: string }[]>("/notifications/unread", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
     /** Segna tutte le notifiche dell'utente come lette — chiamato all'apertura di /dashboard o /le-mie-richieste. */
     markNotificationsRead: (token: string) =>
       request<void>("/notifications/mark-all-read", {

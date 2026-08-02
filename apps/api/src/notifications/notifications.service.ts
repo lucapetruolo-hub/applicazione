@@ -23,6 +23,23 @@ export class NotificationsService {
     return { count };
   }
 
+  /**
+   * Notifiche non lette più recenti, con tipo/payload — a differenza di
+   * `unreadCount` (solo il numero per il badge), serve al popup "toast"
+   * lato client (richiesta esplicita dell'utente: "Fantastico, hai
+   * ricevuto un nuovo preventivo") per sapere COSA è successo, non solo
+   * quante cose. Limitate a 20: qui non serve uno storico completo, solo
+   * abbastanza per rilevare gli eventi arrivati dall'ultimo controllo.
+   */
+  async listUnread(userId: string): Promise<{ id: string; type: string; payload: Prisma.JsonValue; createdAt: string }[]> {
+    const notifications = await this.prisma.notification.findMany({
+      where: { userId, readAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    return notifications.map((n) => ({ id: n.id, type: n.type, payload: n.payload, createdAt: n.createdAt.toISOString() }));
+  }
+
   async markAllRead(userId: string): Promise<void> {
     await this.prisma.notification.updateMany({ where: { userId, readAt: null }, data: { readAt: new Date() } });
   }

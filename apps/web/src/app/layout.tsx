@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ToastStack } from "@/components/ToastStack";
 import { SITE_URL } from "@/lib/siteUrl";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <a href="#main-content" className="skip-link">
             Vai al contenuto
           </a>
+          <ToastStack />
           <SiteHeader />
           <main id="main-content">{children}</main>
           <SiteFooter />
