@@ -1752,3 +1752,19 @@ richiesta visibile subito in `/le-mie-richieste` senza dover aprire
 "Modifica", click apre `PhotoLightbox`; copy del campo indirizzo in
 `/preventivo` verificata a schermo (nessun civico richiesto, avviso sul
 dettaglio richiesto in seguito). Zero errori console in tutti i flussi.
+
+**Prenotazione annullata resa visibile al professionista** — richiesta
+esplicita dell'utente: prima, quando un cliente annullava una prenotazione
+già confermata (`PATCH /bookings/:id/cancel`), spariva silenziosamente
+dalla sezione "Lavori accettati" (`acceptedJobs` filtrava solo CONFIRMED/
+COMPLETED) — il professionista non se ne accorgeva se non aprendo il
+calendario completo. `acceptedJobs` (`/dashboard`) include ora anche
+CANCELED (non NO_SHOW/PENDING, fuori scope di questa richiesta);
+`AcceptedJobCard` mostra la casella con bordo e sfondo rossi
+(`brand.urgenza`/`brand.urgenzaVelo`, stesso token semantico "rosso solo su
+urgenza/distruttivo" già in uso altrove) ed etichetta "Annullata" al posto
+di "Confermato"/"Completato". Verificato end-to-end con l'API locale e
+Playwright: preventivo accettato → prenotazione confermata → annullata dal
+cliente → ancora visibile in "Lavori accettati" con casella rossa e testo
+"Annullata" (colore bordo confermato via `getComputedStyle`). Zero errori
+console.

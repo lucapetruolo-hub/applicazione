@@ -208,12 +208,14 @@ export default function DashboardPage() {
 /**
  * "Lavori accettati" (richiesta esplicita dell'utente): prenotazioni
  * CONFIRMED (preventivo accettato dal cliente, o fascia diretta già
- * confermata dal professionista) o COMPLETED (lavori passati) — non
- * PENDING (prenotazione diretta da agenda pubblica ancora da confermare, non
- * ancora davvero "accettata" da questo lato) né CANCELED/NO_SHOW.
+ * confermata dal professionista), COMPLETED (lavori passati) o CANCELED —
+ * quest'ultima inclusa apposta (a differenza di PENDING/NO_SHOW, ancora
+ * escluse) per richiesta esplicita dell'utente: se un cliente annulla una
+ * prenotazione già confermata, il professionista deve accorgersene invece
+ * di vederla sparire silenziosamente dall'elenco.
  */
 function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
-  return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED");
+  return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED" || b.status === "CANCELED");
 }
 
 function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
@@ -222,8 +224,9 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
   // priorità su quello libero, quando presente — vedi formatBookingAddress.
   const structuredAddress = formatBookingAddress(booking);
   const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
+  const isCanceled = booking.status === "CANCELED";
   return (
-    <Surface gap="$2">
+    <Surface gap="$2" borderColor={isCanceled ? brand.urgenza : undefined} borderWidth={isCanceled ? 1.5 : undefined} backgroundColor={isCanceled ? brand.urgenzaVelo : undefined}>
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
         <YStack gap="$1">
           <Text fontWeight="700" color={brand.grafite}>
@@ -231,8 +234,15 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
             {" · "}
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
           </Text>
-          <Text fontFamily="$mono" fontSize={11} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}>
-            {booking.status === "COMPLETED" ? "Completato" : "Confermato"}
+          <Text
+            fontFamily="$mono"
+            fontSize={11}
+            fontWeight="700"
+            letterSpacing={0.5}
+            textTransform="uppercase"
+            color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
+          >
+            {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
           </Text>
         </YStack>
       </YStack>
