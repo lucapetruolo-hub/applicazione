@@ -142,50 +142,62 @@ export class GuidedRequestsService {
       orderBy: { createdAt: "desc" },
     });
 
-    return requests.map((request) => ({
-      id: request.id,
-      categorySlug: request.category.slug,
-      categoryLabel: request.category.label,
-      description: request.description,
-      city: request.city,
-      address: request.address,
-      // Necessarie qui (non solo lato professionista in ProfessionalLead)
-      // per permettere al cliente di modificare le foto già inviate in
-      // /le-mie-richieste — prima non erano esposte affatto lato cliente.
-      photoUrls: request.photoUrls,
-      isUrgent: request.isUrgent,
-      status: request.status,
-      createdAt: request.createdAt.toISOString(),
-      preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
-      preferredTimeSlot: request.preferredTimeSlot,
-      sentTo: request.leads.map((lead) => ({
-        id: lead.professionalProfileId,
-        businessName: lead.professionalProfile.businessName,
-        imageUrl: lead.professionalProfile.imageUrl,
-        categorySlug: lead.professionalProfile.category.slug,
-        categoryLabel: lead.professionalProfile.category.label,
-        city: lead.professionalProfile.city,
-        verified: lead.professionalProfile.verified,
-        declined: lead.status === "DECLINED",
-        declineNote: lead.declineNote,
-      })),
-      quotes: request.quotes.map((quote) => ({
-        id: quote.id,
-        professionalProfileId: quote.professionalProfileId,
-        businessName: quote.professionalProfile.businessName,
-        items: quote.items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          priceMinEurCents: item.priceMinEurCents,
-          priceMaxEurCents: item.priceMaxEurCents,
+    return requests.map((request) => {
+      // Il più recente tra l'aggiornamento della richiesta stessa (modifica
+      // descrizione/città/foto) e quello di un qualunque preventivo ricevuto
+      // (invio/modifica/accettazione/rifiuto) — "ultimo aggiornamento" per
+      // l'ordinamento richiesto dall'utente deve riflettere l'evento più
+      // recente sull'intera richiesta, non solo sulla riga stessa.
+      const latestQuoteUpdate = request.quotes.reduce(
+        (latest, quote) => (quote.updatedAt > latest ? quote.updatedAt : latest),
+        request.updatedAt,
+      );
+      return {
+        id: request.id,
+        categorySlug: request.category.slug,
+        categoryLabel: request.category.label,
+        description: request.description,
+        city: request.city,
+        address: request.address,
+        // Necessarie qui (non solo lato professionista in ProfessionalLead)
+        // per permettere al cliente di modificare le foto già inviate in
+        // /le-mie-richieste — prima non erano esposte affatto lato cliente.
+        photoUrls: request.photoUrls,
+        isUrgent: request.isUrgent,
+        status: request.status,
+        createdAt: request.createdAt.toISOString(),
+        updatedAt: latestQuoteUpdate.toISOString(),
+        preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
+        preferredTimeSlot: request.preferredTimeSlot,
+        sentTo: request.leads.map((lead) => ({
+          id: lead.professionalProfileId,
+          businessName: lead.professionalProfile.businessName,
+          imageUrl: lead.professionalProfile.imageUrl,
+          categorySlug: lead.professionalProfile.category.slug,
+          categoryLabel: lead.professionalProfile.category.label,
+          city: lead.professionalProfile.city,
+          verified: lead.professionalProfile.verified,
+          declined: lead.status === "DECLINED",
+          declineNote: lead.declineNote,
         })),
-        estimatedStartDate: quote.estimatedStartDate.toISOString(),
-        clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
-        clientProposedNote: quote.clientProposedNote,
-        notes: quote.notes,
-        status: quote.status,
-      })),
-    }));
+        quotes: request.quotes.map((quote) => ({
+          id: quote.id,
+          professionalProfileId: quote.professionalProfileId,
+          businessName: quote.professionalProfile.businessName,
+          items: quote.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            priceMinEurCents: item.priceMinEurCents,
+            priceMaxEurCents: item.priceMaxEurCents,
+          })),
+          estimatedStartDate: quote.estimatedStartDate.toISOString(),
+          clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+          clientProposedNote: quote.clientProposedNote,
+          notes: quote.notes,
+          status: quote.status,
+        })),
+      };
+    });
   }
 
   /**

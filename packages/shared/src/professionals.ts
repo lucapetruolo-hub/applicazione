@@ -106,6 +106,14 @@ export type ProfessionalSearchResult = {
 export type ProfessionalDetail = ProfessionalSearchResult & {
   bio: string | null;
   reviews: { id: string; rating: number; comment: string | null; photoUrls: string[]; createdAt: string }[];
+  /**
+   * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
+   * profilo pubblico — richiesta esplicita dell'utente: "un'idea dei lavori
+   * svolti" aprendo il profilo. Solo qui (non su ProfessionalSearchResult,
+   * dove appesantirebbe la risposta di ricerca senza essere mostrata nella
+   * card).
+   */
+  portfolioUrls: string[];
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

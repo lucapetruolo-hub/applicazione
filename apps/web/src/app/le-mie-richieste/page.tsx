@@ -14,6 +14,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { clientSectionCounts } from "@/lib/notificationSections";
+import { ListControls, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -43,6 +44,25 @@ const textareaStyle = {
 };
 
 type ClientTab = "richieste" | "lavori";
+
+/** Filtri per stato (richiesta esplicita dell'utente, stesso trattamento di /dashboard). */
+type RequestStatusFilter = "all" | ClientGuidedRequest["status"];
+const REQUEST_STATUS_OPTIONS: { value: RequestStatusFilter; label: string }[] = [
+  { value: "all", label: "Tutte" },
+  { value: "OPEN", label: STATUS_LABEL.OPEN },
+  { value: "MATCHED", label: STATUS_LABEL.MATCHED },
+  { value: "CLOSED", label: STATUS_LABEL.CLOSED },
+];
+
+type ClientBookingStatusFilter = "all" | ClientBooking["status"];
+const CLIENT_BOOKING_STATUS_OPTIONS: { value: ClientBookingStatusFilter; label: string }[] = [
+  { value: "all", label: "Tutti" },
+  { value: "PENDING", label: BOOKING_STATUS_LABEL.PENDING },
+  { value: "CONFIRMED", label: BOOKING_STATUS_LABEL.CONFIRMED },
+  { value: "COMPLETED", label: BOOKING_STATUS_LABEL.COMPLETED },
+  { value: "CANCELED", label: BOOKING_STATUS_LABEL.CANCELED },
+  { value: "NO_SHOW", label: BOOKING_STATUS_LABEL.NO_SHOW },
+];
 
 /**
  * Caselle "Le mie richieste"/"Lavori accettati" (richiesta esplicita
@@ -99,6 +119,15 @@ export default function LeMieRichiestePage() {
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Filtri/ordinamento/quantità visualizzata (richiesta esplicita
+  // dell'utente), stesso pattern client-side di /dashboard.
+  const [requestsStatusFilter, setRequestsStatusFilter] = useState<RequestStatusFilter>("all");
+  const [requestsSort, setRequestsSort] = useState<ListSortKey>("createdAt");
+  const [requestsPageSize, setRequestsPageSize] = useState(5);
+  const [clientBookingsStatusFilter, setClientBookingsStatusFilter] = useState<ClientBookingStatusFilter>("all");
+  const [clientBookingsSort, setClientBookingsSort] = useState<ListSortKey>("scheduledAt");
+  const [clientBookingsPageSize, setClientBookingsPageSize] = useState(5);
+
   function reload() {
     if (!token) return;
     apiClient
@@ -148,6 +177,23 @@ export default function LeMieRichiestePage() {
     );
   }
 
+  const visibleRequests = requests
+    ? sortListItems(
+        requests.filter((request) => requestsStatusFilter === "all" || request.status === requestsStatusFilter),
+        requestsSort,
+        { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt },
+      ).slice(0, requestsPageSize)
+    : null;
+
+  const filteredClientBookings = bookings
+    ? bookings.filter((booking) => clientBookingsStatusFilter === "all" || booking.status === clientBookingsStatusFilter)
+    : [];
+  const visibleClientBookings = sortListItems(filteredClientBookings, clientBookingsSort, {
+    createdAt: (b) => b.createdAt,
+    updatedAt: (b) => b.updatedAt,
+    scheduledAt: (b) => b.scheduledAt,
+  }).slice(0, clientBookingsPageSize);
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
@@ -171,6 +217,18 @@ export default function LeMieRichiestePage() {
 
           {activeTab === "richieste" ? (
             <YStack gap="$4">
+              {requests !== null && requests.length > 0 ? (
+                <ListControls
+                  statusValue={requestsStatusFilter}
+                  statusOptions={REQUEST_STATUS_OPTIONS}
+                  onStatusChange={setRequestsStatusFilter}
+                  sortValue={requestsSort}
+                  sortOptions={["createdAt", "updatedAt"]}
+                  onSortChange={setRequestsSort}
+                  pageSize={requestsPageSize}
+                  onPageSizeChange={setRequestsPageSize}
+                />
+              ) : null}
               {requests === null ? (
                 <LoadingState />
               ) : requests.length === 0 ? (
@@ -186,20 +244,36 @@ export default function LeMieRichiestePage() {
                     </Link>
                   }
                 />
+              ) : visibleRequests && visibleRequests.length === 0 ? (
+                <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
               ) : (
-                requests.map((request) => (
+                visibleRequests?.map((request) => (
                   <GuidedRequestCard key={request.id} request={request} token={token} onChanged={reload} onAcceptQuote={handleAcceptQuote} />
                 ))
               )}
             </YStack>
           ) : (
             <YStack gap="$4">
+              {bookings !== null && bookings.length > 0 ? (
+                <ListControls
+                  statusValue={clientBookingsStatusFilter}
+                  statusOptions={CLIENT_BOOKING_STATUS_OPTIONS}
+                  onStatusChange={setClientBookingsStatusFilter}
+                  sortValue={clientBookingsSort}
+                  sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
+                  onSortChange={setClientBookingsSort}
+                  pageSize={clientBookingsPageSize}
+                  onPageSizeChange={setClientBookingsPageSize}
+                />
+              ) : null}
               {bookings === null ? (
                 <LoadingState />
               ) : bookings.length === 0 ? (
                 <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
+              ) : visibleClientBookings.length === 0 ? (
+                <Text color={brand.grafite70}>Nessuna prenotazione corrisponde al filtro selezionato.</Text>
               ) : (
-                bookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
+                visibleClientBookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
               )}
             </YStack>
           )}

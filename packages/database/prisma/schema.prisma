@@ -95,6 +95,12 @@ model ProfessionalProfile {
   // card risultati e nel profilo pubblico come su miodottore.it.
   address         String?
   imageUrl        String?
+  // Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
+  // profilo pubblico — richiesta esplicita dell'utente: "in modo che gli
+  // utenti aprendo l'account del professionista possano avere un'idea dei
+  // lavori svolti". Stesso pattern/limite di GuidedRequest.photoUrls,
+  // stesso upload Cloudinary già in uso per l'immagine profilo.
+  portfolioUrls   String[] @default([])
   verified        Boolean  @default(false)
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
@@ -327,6 +333,10 @@ model GuidedRequest {
   isUrgent    Boolean             @default(false)
   status      GuidedRequestStatus @default(OPEN)
   createdAt   DateTime            @default(now())
+  // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
+  // (richiesta esplicita dell'utente) — Prisma la aggiorna da sola ad ogni
+  // update() (es. modifica descrizione/città/foto).
+  updatedAt   DateTime            @default(now()) @updatedAt
   // Valorizzati solo quando la richiesta parte da una fascia "generica"
   // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
   // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
@@ -374,6 +384,7 @@ model Lead {
   // richiesta (es. "non copro quella zona"), mostrata al cliente.
   declineNote           String?
   createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @default(now()) @updatedAt
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -419,6 +430,7 @@ model Quote {
   notes                 String?
   status                QuoteStatus @default(SENT)
   createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @default(now()) @updatedAt
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

@@ -20,6 +20,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { professionalSectionCounts } from "@/lib/notificationSections";
+import { ListControls, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -32,6 +33,43 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 type DashboardTab = "richieste" | "lavori";
+
+/**
+ * Filtri per stato nelle due liste (richiesta esplicita dell'utente: "in
+ * richieste ricevute e lavori accettati, crea una casella con filtri, dove
+ * cliccando su possono inserire i filtri come ad esempio preventivo
+ * inviato, preventivo accettato... e in lavori accettati filtri come:
+ * completati, annullati, da effettuare").
+ */
+type LeadStatusFilter = "all" | "pending" | "quoteSent" | "quoteAccepted" | "declined";
+const LEAD_STATUS_OPTIONS: { value: LeadStatusFilter; label: string }[] = [
+  { value: "all", label: "Tutte" },
+  { value: "pending", label: "In attesa di preventivo" },
+  { value: "quoteSent", label: "Preventivo inviato" },
+  { value: "quoteAccepted", label: "Preventivo accettato" },
+  { value: "declined", label: "Rifiutate" },
+];
+function leadMatchesStatus(lead: ProfessionalLead, filter: LeadStatusFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "declined") return lead.status === "DECLINED";
+  if (filter === "quoteAccepted") return lead.quote?.status === "ACCEPTED";
+  if (filter === "quoteSent") return lead.quote !== null && lead.status !== "DECLINED";
+  return lead.quote === null && lead.status !== "DECLINED";
+}
+
+type BookingStatusFilter = "all" | "toDo" | "completed" | "canceled";
+const BOOKING_STATUS_OPTIONS: { value: BookingStatusFilter; label: string }[] = [
+  { value: "all", label: "Tutti" },
+  { value: "toDo", label: "Da effettuare" },
+  { value: "completed", label: "Completati" },
+  { value: "canceled", label: "Annullati" },
+];
+function bookingMatchesStatus(booking: ProfessionalBooking, filter: BookingStatusFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "completed") return booking.status === "COMPLETED";
+  if (filter === "canceled") return booking.status === "CANCELED";
+  return booking.status === "CONFIRMED";
+}
 
 /**
  * Caselle "Richieste ricevute"/"Lavori accettati" (richiesta esplicita
@@ -102,6 +140,16 @@ export default function DashboardPage() {
   // LeadCard, non una chiamata per card.
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Filtri/ordinamento/quantità visualizzata per le due liste (richiesta
+  // esplicita dell'utente): tutto calcolato client-side, le liste sono già
+  // interamente scaricate a questa scala (vedi ListControls.tsx).
+  const [leadsStatusFilter, setLeadsStatusFilter] = useState<LeadStatusFilter>("all");
+  const [leadsSort, setLeadsSort] = useState<ListSortKey>("createdAt");
+  const [leadsPageSize, setLeadsPageSize] = useState(5);
+  const [bookingsStatusFilter, setBookingsStatusFilter] = useState<BookingStatusFilter>("all");
+  const [bookingsSort, setBookingsSort] = useState<ListSortKey>("scheduledAt");
+  const [bookingsPageSize, setBookingsPageSize] = useState(5);
 
   function reloadLeads() {
     if (!token) return;
@@ -190,6 +238,20 @@ export default function DashboardPage() {
     );
   }
 
+  const visibleLeads = leads
+    ? sortListItems(leads.filter((lead) => leadMatchesStatus(lead, leadsStatusFilter)), leadsSort, {
+        createdAt: (l) => l.createdAt,
+        updatedAt: (l) => l.updatedAt,
+      }).slice(0, leadsPageSize)
+    : null;
+
+  const filteredAcceptedJobs = bookings ? acceptedJobs(bookings).filter((b) => bookingMatchesStatus(b, bookingsStatusFilter)) : [];
+  const visibleBookings = sortListItems(filteredAcceptedJobs, bookingsSort, {
+    createdAt: (b) => b.createdAt,
+    updatedAt: (b) => b.updatedAt,
+    scheduledAt: (b) => b.scheduledAt,
+  }).slice(0, bookingsPageSize);
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={780} gap="$6">
@@ -217,12 +279,26 @@ export default function DashboardPage() {
 
         {activeTab === "richieste" ? (
           <YStack gap="$3">
+            {leads !== null && leads.length > 0 ? (
+              <ListControls
+                statusValue={leadsStatusFilter}
+                statusOptions={LEAD_STATUS_OPTIONS}
+                onStatusChange={setLeadsStatusFilter}
+                sortValue={leadsSort}
+                sortOptions={["createdAt", "updatedAt"]}
+                onSortChange={setLeadsSort}
+                pageSize={leadsPageSize}
+                onPageSizeChange={setLeadsPageSize}
+              />
+            ) : null}
             {leads === null ? (
               <LoadingState />
             ) : leads.length === 0 ? (
               <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
+            ) : visibleLeads && visibleLeads.length === 0 ? (
+              <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
             ) : (
-              leads.map((lead) => (
+              visibleLeads?.map((lead) => (
                 <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
               ))
             )}
@@ -239,13 +315,27 @@ export default function DashboardPage() {
             <Text fontSize="$2" color={brand.grafite70}>
               Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
             </Text>
+            {bookings !== null && acceptedJobs(bookings).length > 0 ? (
+              <ListControls
+                statusValue={bookingsStatusFilter}
+                statusOptions={BOOKING_STATUS_OPTIONS}
+                onStatusChange={setBookingsStatusFilter}
+                sortValue={bookingsSort}
+                sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
+                onSortChange={setBookingsSort}
+                pageSize={bookingsPageSize}
+                onPageSizeChange={setBookingsPageSize}
+              />
+            ) : null}
             {bookings === null ? (
               <LoadingState />
             ) : acceptedJobs(bookings).length === 0 ? (
               <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
+            ) : visibleBookings.length === 0 ? (
+              <Text color={brand.grafite70}>Nessun lavoro corrisponde al filtro selezionato.</Text>
             ) : (
               <YStack gap="$3">
-                {acceptedJobs(bookings).map((booking) => (
+                {visibleBookings.map((booking) => (
                   <AcceptedJobCard key={booking.id} booking={booking} token={token} onUpdated={reloadBookings} />
                 ))}
               </YStack>

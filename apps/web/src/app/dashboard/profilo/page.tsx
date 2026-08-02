@@ -10,6 +10,8 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 
+const MAX_PORTFOLIO_PHOTOS = 10;
+
 const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 
@@ -33,6 +35,11 @@ export default function DashboardProfiloPage() {
   const [remoteAvailable, setRemoteAvailable] = useState(false);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
+  // una galleria sul profilo pubblico — richiesta esplicita dell'utente:
+  // "un'idea dei lavori svolti". Distinte da imageUrl (la foto profilo
+  // singola sopra).
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +48,9 @@ export default function DashboardProfiloPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPortfolioPhoto, setIsUploadingPortfolioPhoto] = useState(false);
+  const [portfolioPhotoError, setPortfolioPhotoError] = useState<string | null>(null);
+  const portfolioPhotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -55,6 +65,7 @@ export default function DashboardProfiloPage() {
           setBio(profile.bio ?? "");
           setRemoteAvailable(profile.remoteAvailable);
           setImageUrl(profile.imageUrl);
+          setPortfolioUrls(profile.portfolioUrls);
           setServices(
             profile.services.map((service) => ({
               name: service.name,
@@ -151,6 +162,7 @@ export default function DashboardProfiloPage() {
         // inclusa qui nel primo salvataggio vero e proprio — vedi nota in
         // professionals.service.ts#updateMyImage.
         imageUrl: imageUrl ?? undefined,
+        portfolioUrls,
         services: cleanedServices.map((service) => ({
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
@@ -218,6 +230,27 @@ export default function DashboardProfiloPage() {
     } finally {
       setIsUploadingImage(false);
     }
+  }
+
+  async function handlePortfolioPhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPortfolioPhotoError(null);
+    setIsUploadingPortfolioPhoto(true);
+    try {
+      const result = await apiClient.uploadMyPortfolioPhoto(token as string, file);
+      setPortfolioUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_PORTFOLIO_PHOTOS));
+    } catch (err) {
+      setPortfolioPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingPortfolioPhoto(false);
+    }
+  }
+
+  function removePortfolioPhoto(url: string) {
+    setPortfolioUrls((prev) => prev.filter((u) => u !== url));
   }
 
   return (
@@ -489,6 +522,77 @@ export default function DashboardProfiloPage() {
           <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
             + Aggiungi prestazione
           </Button>
+        </YStack>
+
+        <YStack gap="$2">
+          <FieldLabel>{`Foto dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Foto reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di cosa
+            sai fare.
+          </Text>
+          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+            {portfolioUrls.map((url) => (
+              <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <YStack
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  width={22}
+                  height={22}
+                  borderRadius={11}
+                  backgroundColor="rgba(20,24,30,0.7)"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => removePortfolioPhoto(url)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rimuovi foto"
+                >
+                  <X size={13} strokeWidth={2} color="white" />
+                </YStack>
+              </YStack>
+            ))}
+            {portfolioUrls.length < MAX_PORTFOLIO_PHOTOS ? (
+              <YStack
+                width={88}
+                height={88}
+                borderRadius="$3"
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderStyle="dashed"
+                alignItems="center"
+                justifyContent="center"
+                gap="$1"
+                cursor="pointer"
+                opacity={isUploadingPortfolioPhoto ? 0.6 : 1}
+                onPress={() => !isUploadingPortfolioPhoto && portfolioPhotoInputRef.current?.click()}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi foto"
+              >
+                <Text fontSize="$7" color={brand.grafite70}>
+                  {isUploadingPortfolioPhoto ? "…" : "+"}
+                </Text>
+                <Text fontSize="$1" color={brand.grafite70}>
+                  Aggiungi
+                </Text>
+              </YStack>
+            ) : null}
+          </YStack>
+          <input
+            ref={portfolioPhotoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePortfolioPhotoChange}
+            disabled={isUploadingPortfolioPhoto}
+            style={{ display: "none" }}
+          />
+          {portfolioPhotoError ? (
+            <Text color={brand.urgenza} fontSize="$2">
+              {portfolioPhotoError}
+            </Text>
+          ) : null}
         </YStack>
 
         <YStack gap="$2">

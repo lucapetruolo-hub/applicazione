@@ -11,6 +11,8 @@ export type MyProfessionalProfile = {
   verified: boolean;
   remoteAvailable: boolean;
   imageUrl: string | null;
+  /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
+  portfolioUrls: string[];
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
 };
 
@@ -22,6 +24,13 @@ export type ProfessionalLead = {
   declineNote: string | null;
   priceEurCents: number;
   createdAt: string;
+  /**
+   * Ultimo aggiornamento rilevante per questo lead: il più recente tra
+   * `Lead.updatedAt` (es. rifiuto) e `Quote.updatedAt` (invio/modifica del
+   * preventivo) se esiste — usato per l'ordinamento "per ultimo
+   * aggiornamento" nelle liste (richiesta esplicita dell'utente).
+   */
+  updatedAt: string;
   /**
    * Preventivo eventualmente già inviato per questo lead (null se non ancora
    * inviato). `clientProposedDate` valorizzata solo quando status è
@@ -88,6 +97,9 @@ export type ProfessionalLead = {
 export type ProfessionalBooking = {
   id: string;
   scheduledAt: string;
+  /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
+  createdAt: string;
+  updatedAt: string;
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
   clientName: string | null;
   clientPhone: string | null;

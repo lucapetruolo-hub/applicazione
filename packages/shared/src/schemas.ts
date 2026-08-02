@@ -251,6 +251,10 @@ export const professionalProfileSchema = z.object({
   // ProfessionalProfile su cui persisterla subito, quindi l'URL resta in
   // stato locale finché non arriva qui, nel primo salvataggio vero e proprio.
   imageUrl: z.string().url().optional(),
+  // Foto reali di lavori svolti (fino a 10), richiesta esplicita
+  // dell'utente: "un'idea dei lavori svolti" aprendo il profilo pubblico —
+  // stesso pattern/limite di GuidedRequest.photoUrls.
+  portfolioUrls: z.array(z.string().url()).max(10).default([]),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

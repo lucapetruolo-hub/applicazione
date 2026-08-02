@@ -197,6 +197,8 @@ export class BookingsService {
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
+      createdAt: booking.createdAt.toISOString(),
+      updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,
       businessName: booking.professionalProfile.businessName,
       professionalProfileId: booking.professionalProfileId,

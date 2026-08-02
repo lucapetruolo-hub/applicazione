@@ -28,6 +28,9 @@ export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" |
 export type ClientBooking = {
   id: string;
   scheduledAt: string;
+  /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
+  createdAt: string;
+  updatedAt: string;
   status: BookingStatus;
   businessName: string;
   professionalProfileId: string;
@@ -52,6 +55,8 @@ export type ClientGuidedRequest = {
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;
+  /** Per l'ordinamento "per ultimo aggiornamento" nelle liste (richiesta esplicita dell'utente). */
+  updatedAt: string;
   /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
   preferredDate: string | null;
   preferredTimeSlot: string | null;
@@ -322,6 +327,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadMyProfessionalImage: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/professionals/me/image", token, file, "image"),
+
+    uploadMyPortfolioPhoto: (token: string, file: Blob) =>
+      uploadFile<{ imageUrl: string }>("/professionals/me/portfolio-photos", token, file, "image"),
 
     myLeads: (token: string) =>
       request<ProfessionalLead[]>("/professionals/me/leads", { headers: { Authorization: `Bearer ${token}` } }),

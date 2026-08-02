@@ -99,6 +99,35 @@ export class ProfessionalsController {
     return { imageUrl };
   }
 
+  // Una chiamata per foto (fino a 10, vedi professionalProfileSchema.portfolioUrls
+  // e la UI in /dashboard/profilo): stesso pattern di "me/image" e di
+  // GuidedRequestsController "photos" — ogni foto ha il proprio stato di
+  // caricamento/errore in UI, l'URL viene incluso nell'array solo al
+  // salvataggio vero e proprio del profilo (PUT /professionals/me), non
+  // persistito subito da questo endpoint.
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(MulterExceptionFilter)
+  @Post("me/portfolio-photos")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith("image/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine."), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadPortfolioPhoto(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Nessuna immagine caricata.");
+    }
+    const imageUrl = await this.cloudinaryService.uploadImage(file, "professionisti-portfolio");
+    return { imageUrl };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me/leads")
   getMyLeads(@Req() req: AuthenticatedRequest) {

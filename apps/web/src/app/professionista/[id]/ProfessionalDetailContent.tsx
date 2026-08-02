@@ -181,6 +181,37 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
 
+        {/* `?? []`: stessa cautela dell'agenda/recensioni sopra — un'API non
+            ancora allineata all'ultimo deploy potrebbe non includere ancora
+            portfolioUrls sul professionista. */}
+        {(professional.portfolioUrls ?? []).length > 0 ? (
+          <YStack gap="$3">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              Lavori svolti
+            </Text>
+            <XStack gap="$2" flexWrap="wrap">
+              {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
+                <YStack
+                  key={url}
+                  width={96}
+                  height={96}
+                  borderRadius="$3"
+                  overflow="hidden"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  cursor="pointer"
+                  onPress={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </YStack>
+              ))}
+            </XStack>
+          </YStack>
+        ) : null}
+
         {agenda && agenda.days.some((day) => day.slots.length > 0) ? (
           <YStack gap="$3">
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca

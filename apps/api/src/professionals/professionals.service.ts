@@ -261,6 +261,7 @@ export class ProfessionalsService {
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
       bio: profile.bio,
+      portfolioUrls: profile.portfolioUrls,
       reviews: reviews.map((review) => ({
         id: review.id,
         rating: review.rating,
@@ -290,6 +291,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
+      portfolioUrls: profile.portfolioUrls,
       services: mapServices(profile.services),
     };
   }
@@ -334,6 +336,7 @@ export class ProfessionalsService {
         // undefined = non inviata in questo salvataggio: Prisma la ignora e
         // lascia il valore esistente invariato, non la azzera.
         imageUrl: input.imageUrl,
+        portfolioUrls: input.portfolioUrls,
       },
       create: {
         userId,
@@ -347,6 +350,7 @@ export class ProfessionalsService {
         bio: input.bio,
         remoteAvailable: input.remoteAvailable,
         imageUrl: input.imageUrl,
+        portfolioUrls: input.portfolioUrls,
       },
       include: { category: true },
     });
@@ -380,6 +384,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
+      portfolioUrls: profile.portfolioUrls,
       services: mapServices(savedServices),
     };
   }
@@ -427,12 +432,18 @@ export class ProfessionalsService {
       // QuotesService.createOrUpdate aggiorna quello esistente invece di
       // crearne un secondo).
       const quote = lead.guidedRequest.quotes[0] ?? null;
+      // Il più recente tra l'aggiornamento del lead stesso (es. rifiuto) e
+      // quello del preventivo (invio/modifica) — "ultimo aggiornamento" per
+      // l'ordinamento richiesto dall'utente deve riflettere qualunque delle
+      // due cose sia successa più di recente.
+      const updatedAt = quote && quote.updatedAt > lead.updatedAt ? quote.updatedAt : lead.updatedAt;
       return {
         id: lead.id,
         status: lead.status,
         declineNote: lead.declineNote,
         priceEurCents: lead.priceEurCents,
         createdAt: lead.createdAt.toISOString(),
+        updatedAt: updatedAt.toISOString(),
         quote: quote
           ? {
               id: quote.id,
@@ -548,6 +559,8 @@ export class ProfessionalsService {
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
+      createdAt: booking.createdAt.toISOString(),
+      updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,
       // Nome e cognome: prima esponeva solo booking.client.name (nome di
       // battesimo), non sufficiente per un professionista che deve

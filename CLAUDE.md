@@ -2237,3 +2237,103 @@ o modificare un preventivo" (lato professionista).
   dashboard (cliente e professionista) con tutti e quattro gli stati
   visibili contemporaneamente, zero errori console. Typecheck pulito su
   tutti i package.
+
+**Galleria "lavori svolti" (fino a 10 foto) + filtri/ordinamento/quantità
+nelle quattro liste** — due richieste esplicite dell'utente nello stesso
+giro:
+
+1. **Galleria lavori svolti**: chiarimento esplicito dell'utente sul punto
+   "foto profilo" già in coda — non foto profilo multiple, ma foto reali di
+   lavori completati, "in modo che gli utenti aprendo l'account del
+   professionista possano avere un'idea dei lavori svolti". Nuovo campo
+   `ProfessionalProfile.portfolioUrls String[] @default([])` (Prisma),
+   distinto da `imageUrl` (la foto profilo singola). Stesso pattern/limite
+   già in uso per `GuidedRequest.photoUrls`/`Review.photoUrls`: upload una
+   foto alla volta (`POST /professionals/me/portfolio-photos`, stessa
+   integrazione Cloudinary, cartella `professionisti-portfolio`), l'URL
+   entra nell'array solo al salvataggio vero e proprio del profilo (`PUT
+   /professionals/me`), non persistito subito dall'endpoint di upload.
+   Sezione "Foto dei lavori svolti (fino a 10, opzionale)" in
+   `/dashboard/profilo` (stessa griglia miniatura+tasto "×" rosso+tasto "+"
+   già in uso per le foto della richiesta guidata). Sul profilo pubblico
+   (`ProfessionalDetailContent.tsx`), sezione "Lavori svolti" tra Prestazioni
+   e Agenda: griglia di miniature cliccabili che aprono `PhotoLightbox`
+   (stesso componente già usato per le foto delle recensioni), `?? []`
+   difensivo sul campo (stessa cautela già documentata per
+   `review.photoUrls`/agenda: web e API si deployano indipendentemente,
+   un'API non ancora aggiornata potrebbe non includere ancora il campo).
+2. **Filtri/ordinamento/quantità nelle quattro liste** — richiesta esplicita
+   dell'utente: "fai visualizzare un massimo di 5 eventi e poi con la
+   scelta possono essere aumentati a 10 o 20... dai la possibilità di
+   modificare l'ordine di visualizzazione ad esempio: per data di
+   intervento, per data di ricezione, per ultimo aggiornamento" — estende
+   ed assorbe una richiesta precedente rimasta in coda (filtri per stato in
+   "Richieste ricevute"/"Lavori accettati", con esempi già dati
+   dall'utente: "preventivo inviato, preventivo accettato" lato
+   professionista, "completati, annullati, da effettuare" lato lavori).
+   Nuovo componente condiviso `apps/web/src/components/ListControls.tsx`
+   (tre `<select>` nativi: Filtra/Ordina per/Mostra) e helper
+   `sortListItems` — usati identicamente dalle quattro liste (Richieste
+   ricevute e Lavori accettati in `/dashboard`; Le mie richieste e Lavori
+   accettati in `/le-mie-richieste`). Tutto calcolato **client-side**
+   (filtro, ordinamento, `slice(0, pageSize)`): niente nuovi query param
+   lato server, coerente con la scala di lancio già documentata (CLAUDE.md
+   §7, 1 città/poche categorie) — le liste sono già interamente scaricate
+   dagli endpoint esistenti.
+   - **`updatedAt`** aggiunto a `GuidedRequest`, `Lead`, `Quote` (Prisma,
+     `@default(now()) @updatedAt` — il default era necessario per una
+     `db push` additiva su tabelle già popolate, senza `--force-reset`).
+     `Booking` aveva già sia `createdAt` che `updatedAt`, nessuna
+     migrazione lì. "Ultimo aggiornamento" per una richiesta/lead riflette
+     il più recente tra l'evento sulla riga stessa e quello di un
+     eventuale preventivo collegato (`GuidedRequestsService.listForClient`,
+     `ProfessionalsService.getMyLeads`) — un preventivo accettato/rifiutato
+     conta come "aggiornamento" della richiesta anche se la riga
+     `GuidedRequest` in sé non è cambiata.
+   - **"Per data di intervento"** (`scheduledAt`) è cronologico
+     **ascendente** (il prossimo intervento in cima), stesso principio già
+     seguito in `ProfessionalsService.getMyBookings`; "per data di
+     ricezione"/"per ultimo aggiornamento" restano invece discendenti (il
+     più recente in cima). Disponibile solo per le due liste "Lavori
+     accettati" (hanno un `Booking.scheduledAt` reale) — le due liste
+     "richieste" offrono solo ricezione/ultimo aggiornamento, non avendo
+     una singola data di intervento certa finché non arriva un preventivo.
+   - **Filtri per stato**, valori distinti per lista:
+     "Richieste ricevute" (professionista) — Tutte / In attesa di
+     preventivo / Preventivo inviato / Preventivo accettato / Rifiutate;
+     "Lavori accettati" (professionista) — Tutti / Da effettuare /
+     Completati / Annullati; "Le mie richieste" (cliente) — Tutte / In
+     attesa di risposte / Inviata ai professionisti / Chiusa (riusa
+     `STATUS_LABEL` già esistente); "Lavori accettati" (cliente) — Tutti /
+     In attesa / Confermata / Completata / Annullata / Non presentato
+     (riusa `BOOKING_STATUS_LABEL` già esistente).
+   - **Quantità visibile**: 5/10/20, default 5 (richiesta esplicita
+     dell'utente). I contatori nelle etichette dei tab ("Richieste ricevute
+     (7)") restano sul totale non filtrato — solo l'elenco sotto rispetta
+     filtro/quantità — per non far sembrare sparite delle richieste che
+     esistono ma sono semplicemente fuori dalla pagina corrente.
+   - `ListControls` compare solo quando la lista ha almeno un elemento
+     (nessun controllo su una lista vuota); un messaggio dedicato
+     ("Nessuna richiesta corrisponde al filtro selezionato.") distingue
+     "lista vuota per davvero" da "lista svuotata dal filtro corrente".
+3. Verificato end-to-end con l'API locale (non solo typecheck) e
+   Playwright: upload foto lavori svolti senza credenziali Cloudinary in
+   locale → errore chiaro (400, stesso pattern "non configurato" già
+   verificato per l'immagine profilo), mai un crash; `portfolioUrls`
+   scritte direttamente sul DB di test → esposte correttamente sia da `GET
+   /professionals/:id` (pubblico) che da `GET /professionals/me`, e
+   round-trip corretto attraverso `PUT /professionals/me`; galleria "Lavori
+   svolti" visibile sul profilo pubblico con lightbox funzionante al click;
+   sezione upload visibile in `/dashboard/profilo` con le miniature
+   esistenti già mostrate. Sette richieste guidate create per un singolo
+   professionista/cliente di test: `updatedAt` presente su tutte e quattro
+   le risposte API (`guided-requests/me`, `professionals/me/leads`,
+   `professionals/me/bookings`, `bookings/me`); controllo "Mostra"
+   verificato a 5 di default sia lato professionista che lato cliente,
+   cambio a 10/20 riflesso subito in UI; filtro "Rifiutate" su
+   `/dashboard` narrows correttamente a una sola card con badge "Richiesta
+   rifiutata"; ordinamento "Data di ricezione" (default) verificato per
+   ordine decrescente su `/le-mie-richieste` con 7 richieste. Zero errori
+   console in tutti i controlli. Typecheck pulito su tutti i package
+   (`shared`, `database`, `api-client`, `api`, `web`, `mobile`), build di
+   produzione `apps/web` verde (24 route).
