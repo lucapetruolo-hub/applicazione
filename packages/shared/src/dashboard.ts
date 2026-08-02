@@ -33,6 +33,13 @@ export type ProfessionalLead = {
     clientProposedDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
+    /**
+     * Contenuto del preventivo già inviato (voci + note), per mostrarlo al
+     * professionista sulla propria dashboard invece del solo stato —
+     * richiesta esplicita dell'utente.
+     */
+    items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+    notes: string | null;
   } | null;
   guidedRequest: {
     id: string;

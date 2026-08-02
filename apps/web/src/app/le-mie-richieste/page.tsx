@@ -19,6 +19,7 @@ const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
 };
 
 const MAX_REVIEW_PHOTOS = 3;
+const MAX_REQUEST_PHOTOS = 3;
 
 const BOOKING_STATUS_LABEL: Record<ClientBooking["status"], string> = {
   PENDING: "In attesa",
@@ -164,6 +165,10 @@ function GuidedRequestCard({
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
   const [address, setAddress] = useState(request.address ?? "");
+  const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -172,14 +177,45 @@ function GuidedRequestCard({
   // Una richiesta CLOSED ha già portato a una prenotazione: non ha senso
   // modificarla o eliminarla a quel punto (stesso confine applicato lato
   // API in GuidedRequestsService).
-  const canEdit = request.status !== "CLOSED";
+  const canDelete = request.status !== "CLOSED";
+  // Non modificabile appena arriva un preventivo: cambiare descrizione/
+  // città/indirizzo/foto dopo che un professionista ha già risposto
+  // invaliderebbe silenziosamente il suo lavoro — richiesta esplicita
+  // dell'utente, stesso vincolo applicato lato API in GuidedRequestsService.
+  const hasQuote = request.quotes.length > 0;
+  const canEditDetails = canDelete && !hasQuote;
 
   function startEditing() {
     setDescription(request.description);
     setCity(request.city);
     setAddress(request.address ?? "");
+    setPhotoUrls(request.photoUrls);
+    setPhotoError(null);
     setError(null);
     setIsEditing(true);
+  }
+
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      // Stesso upload (Cloudinary, resize+compressione automatica) già
+      // usato in fase di creazione della richiesta (GuidedRequestForm).
+      const result = await apiClient.uploadGuidedRequestPhoto(token, file);
+      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
   async function handleSaveEdit() {
@@ -198,6 +234,7 @@ function GuidedRequestCard({
         description: description.trim(),
         city: city.trim(),
         address: address.trim() || undefined,
+        photoUrls,
       });
       setIsEditing(false);
       onChanged();
@@ -248,13 +285,79 @@ function GuidedRequestCard({
             placeholder="Indirizzo preciso (opzionale): via e numero civico"
             style={textareaStyle}
           />
+
+          <YStack gap="$1">
+            <Text fontSize="$2" color={brand.grafite70}>
+              Foto (opzionale, fino a {MAX_REQUEST_PHOTOS})
+            </Text>
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+              {photoUrls.map((url) => (
+                <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <YStack
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    width={18}
+                    height={18}
+                    borderRadius={9}
+                    backgroundColor="rgba(20,24,30,0.7)"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => removePhoto(url)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi foto"
+                  >
+                    <X size={11} strokeWidth={2} color="white" />
+                  </YStack>
+                </YStack>
+              ))}
+              {photoUrls.length < MAX_REQUEST_PHOTOS ? (
+                <YStack
+                  width={72}
+                  height={72}
+                  borderRadius="$3"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  borderStyle="dashed"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  opacity={isUploadingPhoto ? 0.6 : 1}
+                  onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aggiungi foto"
+                >
+                  <Text fontSize="$6" color={brand.grafite70}>
+                    {isUploadingPhoto ? "…" : "+"}
+                  </Text>
+                </YStack>
+              ) : null}
+            </YStack>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              disabled={isUploadingPhoto}
+              style={{ display: "none" }}
+            />
+            {photoError ? (
+              <Text color={brand.urgenza} fontSize="$2">
+                {photoError}
+              </Text>
+            ) : null}
+          </YStack>
+
           {error ? (
             <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
           <XStack gap="$2">
-            <Button variant="primary" size="$3" height={40} onPress={handleSaveEdit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+            <Button variant="primary" size="$3" height={40} onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isSaving ? 0.6 : 1}>
               {isSaving ? "Salvataggio..." : "Salva modifiche"}
             </Button>
             <Button variant="secondary" size="$3" height={40} onPress={() => setIsEditing(false)} disabled={isSaving}>
@@ -284,11 +387,17 @@ function GuidedRequestCard({
             </Text>
           </YStack>
 
-          {canEdit ? (
+          {canDelete ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
-              <Button variant="secondary" size="$2" height={36} onPress={startEditing}>
-                Modifica
-              </Button>
+              {canEditDetails ? (
+                <Button variant="secondary" size="$2" height={36} onPress={startEditing}>
+                  Modifica
+                </Button>
+              ) : (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Non modificabile: hai già ricevuto un preventivo.
+                </Text>
+              )}
               {confirmingDelete ? (
                 <>
                   <Text fontSize="$2" color={brand.urgenza}>

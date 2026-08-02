@@ -1615,3 +1615,72 @@ inviata senza alcun preventivo formulato → telefono/email del cliente già
 presenti nella risposta di `GET /professionals/me/leads` e visibili nella
 scheda cliente aperta dalla dashboard, prima di ogni invio di preventivo.
 Zero errori console.
+
+**Cinque correzioni/funzionalità, stesso giro (richieste esplicite
+dell'utente):**
+
+1. **Modifica foto della richiesta guidata** — `guidedRequestUpdateSchema`
+   (`packages/shared`) ha ora `photoUrls` opzionale (a differenza di
+   `guidedRequestSchema.photoUrls`, che ha `.default([])`): se assente nel
+   payload il set esistente non viene toccato, se presente lo sostituisce
+   per intero — stesso pattern "sostituzione per intero" già in uso per
+   prestazioni/voci di preventivo. `GuidedRequestsService.update` applica
+   la sostituzione solo se `input.photoUrls !== undefined`.
+   `GuidedRequestsService.listForClient` espone ora anche `photoUrls`
+   (mancava del tutto lato cliente, solo lato professionista in
+   `ProfessionalLead`). Form di modifica in `/le-mie-richieste`
+   (`GuidedRequestCard`) riusa lo stesso pattern miniatura+tasto "×"+tasto
+   "+" già presente in `GuidedRequestForm`/`LeadCard` (nessun nuovo
+   componente), stesso upload `POST /guided-requests/photos`.
+2. **Foto delle richieste ricevute ingrandibili** — le miniature in
+   `LeadCard` (`/dashboard`) erano statiche; ora cliccabili, aprono
+   `PhotoLightbox` (già esistente, usato per le foto delle recensioni):
+   nessun nuovo componente, solo il collegamento mancante.
+3. **Bug reale: orari disponibili assenti nell'invio preventivo** —
+   `ProfessionalsService.getMyAvailableSlots` filtrava
+   `AvailabilitySlot` con `maxBookings: 1`, escludendo del tutto un
+   professionista che avesse impostato la propria agenda solo con fasce a
+   capienza (`maxBookings > 1`, una funzionalità legittima e già
+   documentata in CLAUDE.md §11 per il fan-out delle richieste guidate) —
+   in quel caso l'elenco tornava vuoto e il form preventivo (`LeadCard`)
+   ricadeva silenziosamente sul vecchio `<input type="date">` libero,
+   dando l'impressione che l'agenda non fosse mai stata letta. Rimosso il
+   filtro `maxBookings: 1`: qui il professionista sta solo scegliendo
+   quando iniziare un lavoro già concordato (non sta consumando la
+   capienza di quella fascia, che riguarda semmai il fan-out delle
+   richieste guidate), quindi anche le fasce a capienza sono candidate
+   valide. Riprodotto e verificato con l'API locale prima e dopo il fix
+   (agenda composta solo da fasce a capienza → 0 risultati prima, 14 dopo).
+4. **Richiesta non più modificabile dopo il primo preventivo ricevuto** —
+   richiesta esplicita dell'utente: se un professionista ha già inviato un
+   preventivo basato su descrizione/città/indirizzo/foto della richiesta,
+   il cliente che le cambia dopo invaliderebbe silenziosamente quel
+   lavoro. `GuidedRequestsService.update` ora conta le `Quote` collegate
+   (di qualunque professionista, non solo di uno specifico — il fan-out
+   può aver raggiunto più professionisti) e rifiuta con 403 se almeno una
+   esiste. Lato UI, `GuidedRequestCard` separa `canDelete` (invariato,
+   solo `status !== CLOSED`) da un nuovo `canEditDetails` (`canDelete &&
+   quotes.length === 0`): il tasto "Modifica" sparisce a favore di una
+   nota ("Non modificabile: hai già ricevuto un preventivo."), "Elimina"
+   resta invariato (non era nello scope di questa richiesta).
+5. **Il professionista può rivedere il preventivo che ha inviato** —
+   prima `LeadCard` mostrava solo lo stato ("Preventivo inviato"), non il
+   contenuto. `ProfessionalLead.quote` (packages/shared) ha ora anche
+   `items`/`notes` (`ProfessionalsService.getMyLeads` include
+   `quotes.items` nella query Prisma); nuovo blocco "Il tuo preventivo" in
+   `LeadCard` con voci+prezzi, data di inizio e note, visibile ogni volta
+   che `lead.quote` esiste — indipendentemente dallo stato, quindi visibile
+   anche insieme al blocco "Il cliente ha proposto un'altra data" quando
+   presente.
+
+Verificato end-to-end con l'API locale e Playwright (non solo
+typecheck): agenda a sole fasce di capienza → 14 slot liberi restituiti e
+`<select>` popolato nel form preventivo in UI; preventivo inviato con voci
+reali → "Il tuo preventivo" visibile sulla dashboard del professionista con
+nome voce, prezzo e note; tentativo di modifica della richiesta dopo
+l'arrivo del preventivo → tasto "Modifica" sostituito dalla nota in UI e
+`PATCH /guided-requests/:id` rifiutato con 403 lato server; foto allegata a
+una richiesta → miniatura cliccabile in `LeadCard` che apre
+`PhotoLightbox`; `PATCH` con `photoUrls: []` su una richiesta senza
+preventivo ancora → foto rimosse correttamente. Zero errori console in
+tutti i flussi.

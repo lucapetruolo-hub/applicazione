@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -341,6 +342,7 @@ function LeadCard({
   const [isConfirmingDate, setIsConfirmingDate] = useState(false);
   const [isRejectingDate, setIsRejectingDate] = useState(false);
   const [showClientProfile, setShowClientProfile] = useState(false);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const clientName = lead.guidedRequest.clientName ?? "Cliente";
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
@@ -485,6 +487,43 @@ function LeadCard({
         ) : null}
       </YStack>
 
+      {/* Il preventivo già inviato, visibile al professionista che lo ha
+          mandato (richiesta esplicita dell'utente) — prima solo lo stato
+          era mostrato, non il contenuto effettivo. */}
+      {sent && lead.quote ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+            Il tuo preventivo
+          </Text>
+          {lead.quote.items.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$3" color={brand.grafite}>
+                {item.name}
+              </Text>
+              <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+              </Text>
+            </XStack>
+          ))}
+          <Text fontSize="$3" color={brand.grafite70}>
+            Data di inizio:{" "}
+            {new Date(lead.quote.estimatedStartDate).toLocaleDateString("it-IT", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              timeZone: "UTC",
+            })}
+            {" · "}
+            {new Date(lead.quote.estimatedStartDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
+          </Text>
+          {lead.quote.notes ? (
+            <Text fontSize="$3" color={brand.grafite70}>
+              {lead.quote.notes}
+            </Text>
+          ) : null}
+        </YStack>
+      ) : null}
+
       {lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate ? (
         <YStack
           gap="$2"
@@ -541,16 +580,24 @@ function LeadCard({
 
       {lead.guidedRequest.photoUrls.length > 0 ? (
         <XStack gap="$2" flexWrap="wrap">
-          {lead.guidedRequest.photoUrls.map((url) => (
+          {lead.guidedRequest.photoUrls.map((url, index) => (
+            // Cliccabile per aprirla a schermo intero (richiesta esplicita
+            // dell'utente, "vederla meglio"): stesso PhotoLightbox già usato
+            // per le foto delle recensioni, nessun nuovo componente.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={url}
               src={url}
               alt=""
-              style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}` }}
+              onClick={() => setOpenPhotoIndex(index)}
+              style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
             />
           ))}
         </XStack>
+      ) : null}
+
+      {openPhotoIndex !== null ? (
+        <PhotoLightbox photos={lead.guidedRequest.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
 
       {!sent && !showForm ? (

@@ -94,16 +94,21 @@ export const guidedRequestSchema = z
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 
 /**
- * Modifica di una richiesta già inviata (solo descrizione e città: la
- * categoria non è modificabile perché determina già a quali professionisti
- * è stata inoltrata la richiesta — cambiarla dopo il fan-out non avrebbe
- * senso). Consentita solo finché la richiesta non è `CLOSED` (vedi
- * GuidedRequestsService.update).
+ * Modifica di una richiesta già inviata (descrizione, città, indirizzo e
+ * foto: la categoria non è modificabile perché determina già a quali
+ * professionisti è stata inoltrata la richiesta — cambiarla dopo il
+ * fan-out non avrebbe senso). Consentita solo finché la richiesta non è
+ * `CLOSED` (vedi GuidedRequestsService.update). `photoUrls` opzionale
+ * (non `.default([])` come in guidedRequestSchema): se assente il set di
+ * foto esistente non viene toccato, se presente sostituisce l'intero set
+ * — stesso pattern "sostituzione per intero" già in uso per le prestazioni
+ * professionista e le voci di preventivo.
  */
 export const guidedRequestUpdateSchema = z.object({
   description: z.string().min(10).max(2000),
   city: z.string().min(2),
   address: z.string().max(200).optional(),
+  photoUrls: z.array(z.string().url()).max(3).optional(),
 });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 

@@ -410,7 +410,9 @@ export class ProfessionalsService {
     const leads = await this.prisma.lead.findMany({
       where: { professionalProfileId },
       include: {
-        guidedRequest: { include: { category: true, client: true, quotes: { where: { professionalProfileId } } } },
+        guidedRequest: {
+          include: { category: true, client: true, quotes: { where: { professionalProfileId }, include: { items: true } } },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -433,6 +435,17 @@ export class ProfessionalsService {
               estimatedStartDate: quote.estimatedStartDate.toISOString(),
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
               clientProposedNote: quote.clientProposedNote,
+              // Il preventivo già inviato, per mostrarlo al professionista
+              // sulla propria dashboard invece del solo stato — richiesta
+              // esplicita dell'utente ("dai la possibilità di vedere il
+              // preventivo inviato... allo stesso professionista").
+              items: quote.items.map((item) => ({
+                id: item.id,
+                name: item.name,
+                priceMinEurCents: item.priceMinEurCents,
+                priceMaxEurCents: item.priceMaxEurCents,
+              })),
+              notes: quote.notes,
             }
           : null,
         guidedRequest: {
@@ -510,12 +523,19 @@ export class ProfessionalsService {
   }
 
   /**
-   * Fasce esatte libere del professionista autenticato nei prossimi 14
-   * giorni (solo maxBookings=1, le fasce a capienza non c'entrano con una
-   * "data di inizio" puntuale): usata per far scegliere la data di un
-   * preventivo dentro l'agenda reale invece di una data libera scollegata.
-   * Ignora bookableAgenda apposta (quel flag governa solo la prenotazione
-   * diretta pubblica, qui il professionista guarda la propria agenda per
+   * Fasce libere del professionista autenticato nei prossimi 14 giorni,
+   * usate per far scegliere la data di un preventivo dentro l'agenda reale
+   * invece di una data libera scollegata. Include sia le fasce esatte
+   * (maxBookings=1) sia quelle a capienza (maxBookings>1) — bug reale
+   * segnalato dall'utente ("negli invii dei preventivi non escono gli
+   * orari disponibili già impostati nell'agenda personale"): il filtro
+   * `maxBookings: 1` escludeva del tutto un professionista che avesse
+   * impostato solo fasce a capienza (fasce che rappresentano comunque un
+   * orario di lavoro reale, solo pensate per il fan-out di richieste
+   * guidate — qui il professionista sta scegliendo quando iniziare un
+   * lavoro già concordato, non sta consumando quella capienza). Ignora
+   * bookableAgenda apposta (quel flag governa solo la prenotazione diretta
+   * pubblica, qui il professionista guarda la propria agenda per
    * pianificare, non per farsi prenotare da un cliente).
    */
   async getMyAvailableSlots(userId: string): Promise<ProfessionalAvailableSlot[]> {
@@ -526,7 +546,7 @@ export class ProfessionalsService {
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
     const [slots, bookings, exceptions] = await Promise.all([
-      this.prisma.availabilitySlot.findMany({ where: { professionalProfileId, maxBookings: 1 } }),
+      this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
       this.prisma.booking.findMany({
         where: {
           professionalProfileId,

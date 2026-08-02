@@ -39,6 +39,8 @@ export type ClientGuidedRequest = {
   city: string;
   /** Via e numero civico, facoltativo: dove il professionista dovrà andare a svolgere il lavoro. */
   address: string | null;
+  /** Foto caricate insieme alla richiesta (fino a 3), modificabili in /le-mie-richieste. */
+  photoUrls: string[];
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;
@@ -276,7 +278,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     updateGuidedRequest: (token: string, id: string, input: GuidedRequestUpdateInput) =>
-      request<{ id: string; description: string; city: string; address: string | null }>(`/guided-requests/${id}`, {
+      request<{ id: string; description: string; city: string; address: string | null; photoUrls: string[] }>(`/guided-requests/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

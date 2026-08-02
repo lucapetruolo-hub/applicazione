@@ -149,6 +149,10 @@ export class GuidedRequestsService {
       description: request.description,
       city: request.city,
       address: request.address,
+      // Necessarie qui (non solo lato professionista in ProfessionalLead)
+      // per permettere al cliente di modificare le foto già inviate in
+      // /le-mie-richieste — prima non erano esposte affatto lato cliente.
+      photoUrls: request.photoUrls,
       isUrgent: request.isUrgent,
       status: request.status,
       createdAt: request.createdAt.toISOString(),
@@ -183,19 +187,40 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Modifica di una richiesta già inviata: descrizione, città e indirizzo
-   * preciso (vedi guidedRequestUpdateSchema), non la categoria — determina
-   * già a chi è stata inoltrata la richiesta. Consentita finché non è
-   * CLOSED (una richiesta chiusa ha già portato a una prenotazione, non ha
-   * senso modificarla — stesso confine già usato per l'eliminazione).
+   * Modifica di una richiesta già inviata: descrizione, città, indirizzo
+   * preciso e foto (vedi guidedRequestUpdateSchema), non la categoria —
+   * determina già a chi è stata inoltrata la richiesta. Consentita finché
+   * non è CLOSED (una richiesta chiusa ha già portato a una prenotazione,
+   * non ha senso modificarla — stesso confine già usato per
+   * l'eliminazione). `photoUrls` sostituisce l'intero set solo se presente
+   * nel payload (richiesta esplicita dell'utente: "dai la possibilità di
+   * modificare anche le foto inviate") — se assente il set esistente resta
+   * intatto, coerente con `photoUrls` opzionale nello schema.
    */
   async update(clientId: string, id: string, input: GuidedRequestUpdateInput) {
     const request = await this.requireOwnEditableRequest(clientId, id, "modificare");
+    // Una volta che un professionista ha già inviato un preventivo basato
+    // su descrizione/città/indirizzo/foto della richiesta, cambiarli
+    // dopo invaliderebbe silenziosamente quel lavoro — richiesta esplicita
+    // dell'utente. La categoria non è modificabile per un motivo analogo
+    // (determina già a chi è stata inoltrata), ma quel vincolo era già
+    // presente da prima; questo è nuovo e riguarda l'intera richiesta non
+    // appena arriva anche un solo preventivo (il fan-out può aver
+    // raggiunto più professionisti, basta che uno solo abbia già risposto).
+    const quoteCount = await this.prisma.quote.count({ where: { guidedRequestId: request.id } });
+    if (quoteCount > 0) {
+      throw new ForbiddenException("Non puoi modificare la richiesta: un professionista ha già inviato un preventivo.");
+    }
     const updated = await this.prisma.guidedRequest.update({
       where: { id: request.id },
-      data: { description: input.description, city: input.city, address: input.address?.trim() || null },
+      data: {
+        description: input.description,
+        city: input.city,
+        address: input.address?.trim() || null,
+        ...(input.photoUrls !== undefined ? { photoUrls: input.photoUrls } : {}),
+      },
     });
-    return { id: updated.id, description: updated.description, city: updated.city, address: updated.address };
+    return { id: updated.id, description: updated.description, city: updated.city, address: updated.address, photoUrls: updated.photoUrls };
   }
 
   /**
