@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuItems } from "@/lib/accountMenuItems";
 
 export function AccountMenu() {
-  const { user, logout } = useAuth();
+  const { user, logout, unreadCount } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -34,11 +34,26 @@ export function AccountMenu() {
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel="Il mio account"
+        accessibilityLabel={unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : "Il mio account"}
       >
         <Text fontSize="$3" fontWeight="600" color="$color11">
           {user.name ?? user.phone ?? user.email}
         </Text>
+        {unreadCount > 0 ? (
+          <YStack
+            backgroundColor="$red10"
+            borderRadius={999}
+            minWidth={18}
+            height={18}
+            paddingHorizontal={4}
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </Text>
+          </YStack>
+        ) : null}
         <Text fontSize="$2" color="$color9">
           {isOpen ? "▲" : "▼"}
         </Text>

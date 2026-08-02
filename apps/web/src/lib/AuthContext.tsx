@@ -13,6 +13,11 @@ type AuthContextValue = {
   login: (token: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** Notifiche non lette (nuova richiesta/risposta/aggiornamento) — badge in AccountMenu, visibile solo al proprietario loggato. */
+  unreadCount: number;
+  refreshUnreadCount: () => Promise<void>;
+  /** Segna tutte le notifiche come lette e azzera il badge — chiamato all'apertura di /dashboard o /le-mie-richieste. */
+  markNotificationsRead: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -21,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadUser = useCallback(async (currentToken: string) => {
     try {
@@ -55,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     setUser(null);
     setToken(null);
+    setUnreadCount(0);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -64,7 +71,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadUser]);
 
-  return <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>{children}</AuthContext.Provider>;
+  const refreshUnreadCount = useCallback(async () => {
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!storedToken) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const { count } = await apiClient.unreadNotificationsCount(storedToken);
+      setUnreadCount(count);
+    } catch {
+      // Silenzioso: un badge che non si aggiorna per un errore di rete
+      // transitorio non deve bloccare o disturbare il resto dell'app.
+    }
+  }, []);
+
+  const markNotificationsRead = useCallback(async () => {
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!storedToken) return;
+    try {
+      await apiClient.markNotificationsRead(storedToken);
+      setUnreadCount(0);
+    } catch {
+      // Idem: un fallimento nel segnare come lette non deve rompere la pagina.
+    }
+  }, []);
+
+  // Aggiorna il conteggio ogni volta che l'utente (dis)connesso cambia, non solo al primo mount.
+  useEffect(() => {
+    if (user) {
+      refreshUnreadCount();
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user, refreshUnreadCount]);
+
+  return (
+    <AuthContext.Provider
+      value={{ user, token, isLoading, login, logout, refreshUser, unreadCount, refreshUnreadCount, markNotificationsRead }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

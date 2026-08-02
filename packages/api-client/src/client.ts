@@ -413,6 +413,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         body: JSON.stringify({ email, website }),
       }),
+
+    /** Conteggio notifiche non lette, per il numeretto badge nell'header (CLAUDE.md §13). */
+    unreadNotificationsCount: (token: string) =>
+      request<{ count: number }>("/notifications/unread-count", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Segna tutte le notifiche dell'utente come lette — chiamato all'apertura di /dashboard o /le-mie-richieste. */
+    markNotificationsRead: (token: string) =>
+      request<void>("/notifications/mark-all-read", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
   };
 }
 

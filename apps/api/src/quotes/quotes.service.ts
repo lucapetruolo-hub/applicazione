@@ -2,10 +2,14 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { ProposeQuoteDateInput, QuoteSelfInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class QuotesService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createOrUpdate(userId: string, input: QuoteSelfInput) {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
@@ -23,6 +27,7 @@ export class QuotesService {
           professionalProfileId: professionalProfile.id,
         },
       },
+      include: { guidedRequest: true },
     });
     if (!lead) {
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
@@ -59,6 +64,18 @@ export class QuotesService {
       })),
     });
 
+    // Solo al primo invio (non ad ogni modifica successiva): il cliente ha
+    // già visto il preventivo la prima volta, una modifica non è "novità"
+    // da badge — coerente con la stessa distinzione già fatta altrove nel
+    // progetto (es. isNewUser per l'auth Google).
+    if (!existingQuote) {
+      await this.notificationsService.notify(lead.guidedRequest.clientId, "NEW_QUOTE", {
+        guidedRequestId: lead.guidedRequestId,
+        quoteId: quote.id,
+        businessName: professionalProfile.businessName,
+      });
+    }
+
     return { id: quote.id, status: quote.status };
   }
 
@@ -74,7 +91,7 @@ export class QuotesService {
   async proposeDate(clientId: string, quoteId: string, input: ProposeQuoteDateInput) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { guidedRequest: true, booking: true },
+      include: { guidedRequest: true, booking: true, professionalProfile: true },
     });
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
@@ -91,6 +108,10 @@ export class QuotesService {
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
       data: { clientProposedDate: proposedDate, clientProposedNote: input.note?.trim() || null, status: "MODIFICATION_REQUESTED" },
+    });
+    await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
     });
     return {
       id: updated.id,
@@ -160,6 +181,10 @@ export class QuotesService {
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+      await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
+        guidedRequestId: quote.guidedRequestId,
+        quoteId: quote.id,
+      });
       return { bookingId: booking.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
@@ -175,7 +200,7 @@ export class QuotesService {
     if (!professionalProfile) {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
-    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId } });
+    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId }, include: { guidedRequest: true } });
     if (!quote || quote.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questo preventivo non è tuo.");
     }
@@ -185,6 +210,10 @@ export class QuotesService {
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
       data: { status: "SENT", clientProposedDate: null, clientProposedNote: null },
+    });
+    await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_REJECTED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
     });
     return { id: updated.id, status: updated.status };
   }

@@ -69,7 +69,7 @@ function ClientTabButton({ active, onPress, children }: { active: boolean; onPre
 }
 
 export default function LeMieRichiestePage() {
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, markNotificationsRead } = useAuth();
   const [activeTab, setActiveTab] = useState<ClientTab>("richieste");
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
@@ -85,6 +85,13 @@ export default function LeMieRichiestePage() {
   }
 
   useEffect(reload, [token]);
+
+  // Stesso principio della dashboard professionista: aprire questa pagina
+  // segna come lette le notifiche in attesa (nuovo preventivo, conferma/
+  // rifiuto della data proposta) e azzera il badge nell'header.
+  useEffect(() => {
+    if (token) markNotificationsRead();
+  }, [token, markNotificationsRead]);
 
   // Il salvataggio dell'indirizzo (AcceptQuoteModal) gestisce da sé stato di
   // caricamento ed errore; qui basta propagare la chiamata reale e

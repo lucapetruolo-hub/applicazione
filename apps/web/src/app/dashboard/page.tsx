@@ -57,7 +57,7 @@ function DashboardTabButton({ active, onPress, children }: { active: boolean; on
 }
 
 export default function DashboardPage() {
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, markNotificationsRead } = useAuth();
   const [activeTab, setActiveTab] = useState<DashboardTab>("richieste");
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
@@ -74,6 +74,14 @@ export default function DashboardPage() {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads);
   }
+
+  // Aprire la dashboard segna come lette le notifiche in attesa (nuovo lead,
+  // risposta del cliente su una data proposta): il badge nell'header si
+  // azzera qui, non con un click separato — coerente con la richiesta
+  // dell'utente di vedere "un numeretto con le novità da visualizzare".
+  useEffect(() => {
+    if (token) markNotificationsRead();
+  }, [token, markNotificationsRead]);
 
   useEffect(() => {
     if (!token) return;

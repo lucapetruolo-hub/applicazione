@@ -1859,3 +1859,59 @@ end-to-end con l'API locale e Playwright: richiesta senza indirizzo/foto
 rifiutata dal backend con 400; form blocca l'invio mostrando "Indica
 l'indirizzo."/"Aggiungi almeno una foto." finché entrambi non sono
 compilati. Zero errori console.
+
+**Numeretto di notifiche non lette nell'header** — richiesta esplicita
+dell'utente: "quando arriva una nuova richiesta o una risposta o un
+aggiornamento nella dashboard deve comparire un numeretto con le novità da
+visualizzare vicino al nome", chiarito subito dopo con "quello in alto a
+destra dopo aver effettuato il login che puo essere visualizzato solo dal
+proprietario logicamente" — badge accanto al nome in `AccountMenu`
+(header), mai visibile a nessuno tranne l'account loggato stesso (l'intero
+componente già ritorna `null` se `!user`).
+- **Riusato il modello Prisma `Notification` già esistente** (`userId`,
+  `channel`, `type`, `payload`, `readAt`) invece di introdurre un
+  meccanismo parallelo tipo `dashboardLastSeenAt`: era già scritto (mai
+  letto) da `GuidedRequestsService.create` per il fan-out lead (`NEW_LEAD`)
+  ma non aveva ancora né un endpoint di lettura né altri punti di
+  creazione — la base corretta su cui costruire, non uno scarto.
+- **`apps/api/src/notifications/`** (nuovo modulo): `NotificationsService.
+  notify(userId, type, payload)` è il punto unico di creazione di una
+  notifica (canale sempre `PUSH` — nessun invio reale, Expo Push/Resend/
+  Twilio restano rimandati, CLAUDE.md §9: solo la riga che alimenta il
+  conteggio non letti); `unreadCount`/`markAllRead` sono le due query dirette
+  dietro i nuovi endpoint `GET /notifications/unread-count` e
+  `POST /notifications/mark-all-read` (`NotificationsController`, JWT-guarded,
+  sempre sull'utente autenticato — mai un `userId` passato dal client).
+  `NotificationsModule` esporta il service, importato da `QuotesModule` per
+  i tre nuovi punti di creazione nel ciclo di vita del preventivo
+  (`QuotesService`): `createOrUpdate` notifica il cliente (`NEW_QUOTE`, solo
+  al primo invio — non ad ogni modifica successiva dello stesso preventivo,
+  il cliente l'ha già visto), `proposeDate` notifica il professionista
+  (`QUOTE_DATE_PROPOSED`), `confirmProposedDate`/`rejectProposedDate`
+  notificano il cliente (`QUOTE_DATE_CONFIRMED`/`QUOTE_DATE_REJECTED`).
+- **`AuthContext.tsx`** esteso con `unreadCount`/`refreshUnreadCount`/
+  `markNotificationsRead`: il conteggio si ricarica ogni volta che `user`
+  cambia (login/logout), fallisce in silenzio su errore di rete transitorio
+  (un badge che non si aggiorna non deve rompere il resto dell'app).
+  `AccountMenu.tsx` mostra un pallino rosso col numero (max "9+") accanto al
+  nome quando `unreadCount > 0`, con `accessibilityLabel` che lo annuncia
+  ("Il mio account, N novità da visualizzare").
+- **Azzeramento all'apertura della pagina pertinente**, non con un click
+  separato sul badge: `/dashboard` (professionista) e `/le-mie-richieste`
+  (cliente) chiamano `markNotificationsRead()` in un `useEffect` al mount —
+  stessa logica "aprire la pagina è la conferma di averla vista" già in uso
+  altrove nel progetto, nessun nuovo pattern di interazione da imparare.
+- **Nessuna migrazione Prisma necessaria**: il modello `Notification`
+  esisteva già con tutti i campi richiesti.
+- Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+  registrato cliente+professionista, richiesta guidata inviata → conteggio
+  non letti del professionista passa da 0 a 1 (`NEW_LEAD`), badge "1"
+  visibile nell'header dopo login, sparisce dopo aver visitato `/dashboard`
+  e resta a 0 al reload; professionista invia preventivo → conteggio non
+  letti del cliente passa a 1 (`NEW_QUOTE`), si azzera dopo aver visitato
+  `/le-mie-richieste`. Screenshot di entrambi gli stati (badge presente/
+  assente), zero errori console nuovi (l'unico errore di rete osservato,
+  `ERR_TUNNEL_CONNECTION_FAILED`, è la stessa limitazione di rete
+  dell'ambiente di sviluppo già documentata altrove in questo file, non
+  causata da questa feature). Typecheck pulito su tutti i package
+  (`shared`, `database`, `api-client`, `api`, `web`, `mobile`).
