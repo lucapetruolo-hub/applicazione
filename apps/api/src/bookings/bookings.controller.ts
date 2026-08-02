@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
+import { acceptQuoteSchema, type AcceptQuoteInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { BookingsService } from "./bookings.service";
@@ -12,8 +13,12 @@ export class BookingsController {
 
   @UseGuards(JwtAuthGuard)
   @Post("from-quote/:quoteId")
-  createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string) {
-    return this.bookingsService.createFromQuote(req.user.userId, quoteId);
+  createFromQuote(
+    @Req() req: AuthenticatedRequest,
+    @Param("quoteId") quoteId: string,
+    @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput,
+  ) {
+    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,5 +1,6 @@
 import type {
   PROFESSIONAL_CATEGORIES,
+  AcceptQuoteInput,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
   ChangePasswordInput,
@@ -322,10 +323,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    acceptQuote: (token: string, quoteId: string) =>
+    /** Accetta un preventivo: `input` è l'indirizzo di lavoro strutturato raccolto nella schermata di accettazione. */
+    acceptQuote: (token: string, quoteId: string, input: AcceptQuoteInput) =>
       request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     /** Il cliente propone una data diversa per un preventivo ricevuto, tra le fasce libere dell'agenda del professionista. */

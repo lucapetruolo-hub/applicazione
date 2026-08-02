@@ -513,6 +513,21 @@ export class ProfessionalsService {
       clientPhone: booking.client.phone,
       clientEmail: booking.client.email,
       address: booking.quote?.guidedRequest?.address ?? null,
+      // Indirizzo di lavoro strutturato, raccolto nella schermata di
+      // accettazione preventivo (richiesta esplicita dell'utente) — null
+      // per le prenotazioni dirette da agenda pubblica (bookAgendaSlot,
+      // che non passano da quella schermata) o per prenotazioni create
+      // prima di questa funzionalità. Quando presente sostituisce, in UI,
+      // il campo `address` libero sopra.
+      recipientName: booking.recipientName,
+      recipientSurname: booking.recipientSurname,
+      recipientPhone: booking.recipientPhone,
+      street: booking.street,
+      houseNumber: booking.houseNumber,
+      addressExtra: booking.addressExtra,
+      postalCode: booking.postalCode,
+      city: booking.city,
+      province: booking.province,
       items: (booking.quote?.items ?? []).map((item) => ({
         id: item.id,
         name: item.name,

@@ -438,6 +438,26 @@ model Booking {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
+  // Indirizzo di lavoro strutturato, raccolto in una schermata dedicata
+  // all'accettazione del preventivo (richiesta esplicita dell'utente: nome,
+  // cognome, telefono, indirizzo, civico, CAP, città, provincia in campi
+  // separati, tutti obbligatori tranne addressExtra). Nullable a livello DB
+  // perché le prenotazioni dirette da agenda pubblica (bookAgendaSlot) non
+  // passano da questa schermata; obbligatori lato Zod/API solo nel percorso
+  // di accettazione preventivo (acceptQuoteSchema). Sostituisce, per le
+  // prenotazioni create da questo momento in poi, il precedente indirizzo
+  // libero di GuidedRequest.address come fonte principale mostrata al
+  // professionista.
+  recipientName    String?
+  recipientSurname String?
+  recipientPhone   String?
+  street           String?
+  houseNumber      String?
+  addressExtra     String?
+  postalCode       String?
+  city             String?
+  province         String?
+
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

@@ -37,6 +37,31 @@ export function formatServicePriceRange(priceMinEurCents: number | null, priceMa
 }
 
 /**
+ * Compone in un'unica riga leggibile l'indirizzo strutturato raccolto nella
+ * schermata di accettazione preventivo (street/houseNumber/addressExtra/
+ * postalCode/city/province su ProfessionalBooking) — riusata sia da
+ * AcceptedJobCard che da BookingDetailPanel invece di duplicare la logica
+ * di composizione in entrambi i punti. Ritorna `null` se i campi
+ * strutturati non sono presenti (prenotazione diretta da agenda pubblica o
+ * creata prima di questa funzionalità).
+ */
+export function formatBookingAddress(booking: {
+  street: string | null;
+  houseNumber: string | null;
+  addressExtra: string | null;
+  postalCode: string | null;
+  city: string | null;
+  province: string | null;
+}): string | null {
+  if (!booking.street || !booking.houseNumber || !booking.postalCode || !booking.city || !booking.province) {
+    return null;
+  }
+  const line1 = `${booking.street} ${booking.houseNumber}${booking.addressExtra ? `, ${booking.addressExtra}` : ""}`;
+  const line2 = `${booking.postalCode} ${booking.city} (${booking.province})`;
+  return `${line1} — ${line2}`;
+}
+
+/**
  * Anteprima "prossimi orari liberi" mostrata nella mini-agenda della card di
  * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it: colonne
  * Oggi/Domani/... con pillole orario cliccabili). Solo fasce esatte

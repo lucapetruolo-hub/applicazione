@@ -1684,3 +1684,71 @@ una richiesta → miniatura cliccabile in `LeadCard` che apre
 `PhotoLightbox`; `PATCH` con `photoUrls: []` su una richiesta senza
 preventivo ancora → foto rimosse correttamente. Zero errori console in
 tutti i flussi.
+
+**Indirizzo di lavoro strutturato all'accettazione del preventivo, tab di
+navigazione, foto in anteprima** — tre richieste esplicite dell'utente,
+stesso giro:
+
+1. **Indirizzo libero alla richiesta, indirizzo strutturato solo
+   all'accettazione**: il campo indirizzo di `GuidedRequestForm`/modifica
+   richiesta resta un campo unico opzionale (nessun civico obbligatorio a
+   questo punto — corretto durante il giro dopo un chiarimento
+   dell'utente: "va bene anche solo l'indirizzo senza numero civico"), con
+   testo esplicativo che avvisa: l'indirizzo completo con tutti i dettagli
+   verrà richiesto solo se si accetta un preventivo. Nuovo schema
+   `acceptQuoteSchema` (`packages/shared`): `recipientName`,
+   `recipientSurname`, `recipientPhone`, `street`, `houseNumber`,
+   `addressExtra` (opzionale: scala/piano/interno/azienda), `postalCode`,
+   `city`, `province` — tutti obbligatori tranne `addressExtra`. Nuovi
+   campi omonimi su `Booking` (Prisma, nullable a livello DB: le
+   prenotazioni dirette da agenda pubblica non passano da questa
+   schermata). `POST /bookings/from-quote/:quoteId` accetta ora questo
+   payload (`BookingsService.createFromQuote`), lo salva sulla
+   prenotazione creata. Nuovo componente `apps/web/src/components/
+   AcceptQuoteModal.tsx` (stesso pattern overlay di ClientProfileModal/
+   BookingDetailPanel): otto campi in riquadri separati (`Field` di
+   `@professionisti/ui`), prefill da nome/cognome/telefono dell'account se
+   presenti ma sempre modificabili (chi riceve il professionista sul
+   lavoro può non coincidere con l'intestatario dell'account), validazione
+   client-side con messaggio "Campo obbligatorio." sotto ogni campo
+   mancante. Due pulsanti come richiesto: **"Salva"** (azione reale,
+   accetta il preventivo e salva l'indirizzo tramite
+   `apiClient.acceptQuote`) e **"Vai al pagamento"** — disabilitato finché
+   non si salva, poi mostra un messaggio onesto ("Il pagamento in
+   piattaforma non è ancora attivo: accordati con il professionista")
+   invece di un link finto: il pagamento in-app per il lavoro (distinto da
+   abbonamenti/boost/lead, già implementati) resta esplicitamente
+   rimandato (vedi CLAUDE.md §9) — architettura discussa con l'utente ma
+   non ancora implementata, dato il prezzo per range (manodopera/materiali)
+   invece di un importo fisso. `formatBookingAddress`
+   (`packages/shared/src/professionals.ts`) compone i campi strutturati in
+   un'unica riga leggibile, riusata sia da `AcceptedJobCard`
+   (`/dashboard`) che da `BookingDetailPanel` (agenda "Prenotazioni") al
+   posto del vecchio `address` libero quando presente — fallback al vecchio
+   campo per le prenotazioni create prima di questa funzionalità o dirette
+   da agenda pubblica.
+2. **Caselle "Richieste ricevute"/"Lavori accettati"** (richiesta esplicita
+   dell'utente, "il più facile e ordinata la visualizzazione"): sia
+   `/dashboard` (professionista) che `/le-mie-richieste` (cliente,
+   "Le mie richieste"/"Lavori accettati") ora mostrano un selettore a due
+   pillole con il conteggio tra parentesi invece di impilare entrambe le
+   sezioni una sotto l'altra — stesso pattern a pillola attiva/inattiva già
+   in uso per i tab "A domicilio"/"Online" di `SearchBar`. `BoostSection`
+   (dashboard professionista) resta sempre visibile sotto la sezione
+   attiva, non è parte del toggle.
+3. **Foto già visibili nell'anteprima delle richieste inviate**: prima
+   comparivano solo entrando in modifica. `GuidedRequestCard` (lato
+   cliente) mostra ora le miniature subito nella vista non-modifica,
+   cliccabili per aprirle a schermo intero — stesso `PhotoLightbox` già
+   collegato lato professionista in `LeadCard`.
+
+Verificato end-to-end con l'API locale e Playwright: form di accettazione
+con campi vuoti → errori di validazione mostrati, non invia nulla; campi
+compilati → preventivo accettato, `Booking` creato con tutti i campi
+strutturati, visibile su `/dashboard` (tab "Lavori accettati") con nome
+completo, telefono e indirizzo composto correttamente; tab professionista
+e cliente presenti e funzionanti con conteggi corretti; foto allegata a una
+richiesta visibile subito in `/le-mie-richieste` senza dover aprire
+"Modifica", click apre `PhotoLightbox`; copy del campo indirizzo in
+`/preventivo` verificata a schermo (nessun civico richiesto, avviso sul
+dettaglio richiesto in seguito). Zero errori console in tutti i flussi.

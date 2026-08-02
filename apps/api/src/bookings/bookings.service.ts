@@ -1,13 +1,20 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
+import type { AcceptQuoteInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
 @Injectable()
 export class BookingsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  /** Il cliente accetta un preventivo: crea la prenotazione e chiude la richiesta. */
-  async createFromQuote(clientId: string, quoteId: string) {
+  /**
+   * Il cliente accetta un preventivo: crea la prenotazione, chiude la
+   * richiesta e salva l'indirizzo di lavoro strutturato raccolto nella
+   * schermata di accettazione (richiesta esplicita dell'utente) — sostituisce,
+   * per le prenotazioni create da qui in avanti, l'indirizzo libero di
+   * GuidedRequest.address come fonte principale mostrata al professionista.
+   */
+  async createFromQuote(clientId: string, quoteId: string, address: AcceptQuoteInput) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: { guidedRequest: true, booking: true },
@@ -29,6 +36,15 @@ export class BookingsService {
         professionalProfileId: quote.professionalProfileId,
         scheduledAt: quote.estimatedStartDate,
         status: "CONFIRMED",
+        recipientName: address.recipientName.trim(),
+        recipientSurname: address.recipientSurname.trim(),
+        recipientPhone: address.recipientPhone.trim(),
+        street: address.street.trim(),
+        houseNumber: address.houseNumber.trim(),
+        addressExtra: address.addressExtra?.trim() || null,
+        postalCode: address.postalCode.trim(),
+        city: address.city.trim(),
+        province: address.province.trim(),
       },
     });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
@@ -46,6 +46,11 @@ export function BookingDetailPanel({
   }, [onClose]);
 
   const date = new Date(booking.scheduledAt);
+  // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
+  // priorità su quello libero, quando presente — vedi formatBookingAddress.
+  const structuredAddress = formatBookingAddress(booking);
+  const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
+  const recipientPhone = booking.recipientPhone ?? booking.clientPhone;
 
   return (
     <div
@@ -81,7 +86,7 @@ export function BookingDetailPanel({
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2">
           <YStack gap="$1">
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-              {booking.clientName ?? "Cliente"}
+              {recipientFullName ?? booking.clientName ?? "Cliente"}
             </Text>
             <Text fontFamily="$mono" fontSize={11} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={STATUS_COLOR[booking.status]}>
               {STATUS_LABEL[booking.status]}
@@ -108,18 +113,18 @@ export function BookingDetailPanel({
             link diretti tel:/mailto:, indirizzo preciso se indicato nella
             richiesta guidata collegata (assente per le prenotazioni dirette
             da agenda, che non hanno una GuidedRequest). */}
-        {booking.clientPhone || booking.clientEmail || booking.address ? (
+        {recipientPhone || booking.clientEmail || structuredAddress || booking.address ? (
           <YStack gap="$2">
             <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
               Contatti cliente
             </Text>
             <YStack gap="$1.5">
-              {booking.clientPhone ? (
-                <a href={`tel:${booking.clientPhone}`} style={{ textDecoration: "none" }}>
+              {recipientPhone ? (
+                <a href={`tel:${recipientPhone}`} style={{ textDecoration: "none" }}>
                   <XStack alignItems="center" gap="$2">
                     <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
                     <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
-                      {booking.clientPhone}
+                      {recipientPhone}
                     </Text>
                   </XStack>
                 </a>
@@ -134,11 +139,11 @@ export function BookingDetailPanel({
                   </XStack>
                 </a>
               ) : null}
-              {booking.address ? (
+              {structuredAddress ?? booking.address ? (
                 <XStack alignItems="center" gap="$2">
                   <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
                   <Text color={brand.grafite} fontSize="$3">
-                    {booking.address}
+                    {structuredAddress ?? booking.address}
                   </Text>
                 </XStack>
               ) : null}

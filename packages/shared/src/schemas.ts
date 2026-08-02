@@ -155,6 +155,30 @@ export const proposeQuoteDateSchema = z.object({
 });
 export type ProposeQuoteDateInput = z.infer<typeof proposeQuoteDateSchema>;
 
+/**
+ * Accettazione di un preventivo: oltre a creare la prenotazione, raccoglie
+ * l'indirizzo di lavoro in campi separati (richiesta esplicita dell'utente:
+ * "una schermata dove inserire dettagliatamente in riquadri diversi") —
+ * tutti obbligatori tranne `addressExtra` (scala/piano/interno/azienda).
+ * Nome/cognome/telefono sono ridondanti con l'account (`User.name`/
+ * `surname`/`phone`) ma raccolti di nuovo qui: la persona che riceve il
+ * professionista sul lavoro può non coincidere con l'intestatario
+ * dell'account, e l'account potrebbe non avere questi campi compilati —
+ * qui diventano obbligatori indipendentemente dallo stato del profilo.
+ */
+export const acceptQuoteSchema = z.object({
+  recipientName: z.string().min(1, "Il nome è obbligatorio.").max(120),
+  recipientSurname: z.string().min(1, "Il cognome è obbligatorio.").max(120),
+  recipientPhone: z.string().min(6, "Numero di telefono non valido.").max(20),
+  street: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
+  houseNumber: z.string().min(1, "Il numero civico è obbligatorio.").max(20),
+  addressExtra: z.string().max(200).optional(),
+  postalCode: z.string().min(1, "Il CAP è obbligatorio.").max(10),
+  city: z.string().min(1, "La città è obbligatoria.").max(120),
+  province: z.string().min(1, "La provincia è obbligatoria.").max(50),
+});
+export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

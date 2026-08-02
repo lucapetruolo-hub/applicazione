@@ -91,6 +91,24 @@ export type ProfessionalBooking = {
   clientPhone: string | null;
   clientEmail: string | null;
   address: string | null;
+  /**
+   * Indirizzo di lavoro strutturato, raccolto dal cliente nella schermata
+   * di accettazione preventivo (richiesta esplicita dell'utente: campi
+   * separati invece di un indirizzo libero). `null` per le prenotazioni
+   * dirette dall'agenda pubblica (bookAgendaSlot, non passano da quella
+   * schermata) o create prima di questa funzionalità — in quel caso resta
+   * valido solo il campo `address` sopra. Quando presente, sostituisce
+   * `address` come fonte principale da mostrare in UI.
+   */
+  recipientName: string | null;
+  recipientSurname: string | null;
+  recipientPhone: string | null;
+  street: string | null;
+  houseNumber: string | null;
+  addressExtra: string | null;
+  postalCode: string | null;
+  city: string | null;
+  province: string | null;
   items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
 };
 

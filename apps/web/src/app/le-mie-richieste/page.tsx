@@ -4,13 +4,15 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type AcceptQuoteInput } from "@professionisti/shared";
 import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
+import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -39,12 +41,39 @@ const textareaStyle = {
   resize: "vertical" as const,
 };
 
+type ClientTab = "richieste" | "lavori";
+
+/**
+ * Caselle "Le mie richieste"/"Lavori accettati" (richiesta esplicita
+ * dell'utente, stesso trattamento già applicato lato professionista in
+ * /dashboard per la stessa ragione — visualizzazione più facile e ordinata).
+ */
+function ClientTabButton({ active, onPress, children }: { active: boolean; onPress: () => void; children: React.ReactNode }) {
+  return (
+    <XStack
+      alignItems="center"
+      gap="$2"
+      paddingHorizontal="$4"
+      paddingVertical="$3"
+      borderRadius="$3"
+      backgroundColor={active ? brand.cianografiaVelo : "transparent"}
+      cursor="pointer"
+      onPress={onPress}
+      accessibilityRole="button"
+    >
+      <Text fontWeight="700" color={active ? brand.cianografia : brand.grafite70}>
+        {children}
+      </Text>
+    </XStack>
+  );
+}
+
 export default function LeMieRichiestePage() {
   const { user, token, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<ClientTab>("richieste");
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
@@ -57,18 +86,13 @@ export default function LeMieRichiestePage() {
 
   useEffect(reload, [token]);
 
-  async function handleAcceptQuote(quoteId: string) {
-    if (!token) return;
-    setAcceptingQuoteId(quoteId);
-    setError(null);
-    try {
-      await apiClient.acceptQuote(token, quoteId);
-      reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setAcceptingQuoteId(null);
-    }
+  // Il salvataggio dell'indirizzo (AcceptQuoteModal) gestisce da sé stato di
+  // caricamento ed errore; qui basta propagare la chiamata reale e
+  // ricaricare l'elenco al successo.
+  async function handleAcceptQuote(quoteId: string, input: AcceptQuoteInput) {
+    if (!token) throw new Error("Devi accedere per accettare un preventivo.");
+    await apiClient.acceptQuote(token, quoteId, input);
+    reload();
   }
 
   if (isLoading) return null;
@@ -93,55 +117,56 @@ export default function LeMieRichiestePage() {
       <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <AccountSidebar />
 
-        <YStack flex={1} minWidth={280} gap="$7">
-          <YStack gap="$4">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-              Le mie richieste
-            </Text>
+        <YStack flex={1} minWidth={280} gap="$5">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Le mie richieste
+          </Text>
 
-            {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-            {requests === null ? (
-              <LoadingState />
-            ) : requests.length === 0 ? (
-              <EmptyState
-                icon="file-text"
-                title="Nessuna richiesta inviata"
-                description="Non hai ancora inviato nessuna richiesta di preventivo."
-                action={
-                  <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                    <Text color={brand.cianografia} fontWeight="600">
-                      Richiedi il tuo primo preventivo
-                    </Text>
-                  </Link>
-                }
-              />
-            ) : (
-              requests.map((request) => (
-                <GuidedRequestCard
-                  key={request.id}
-                  request={request}
-                  token={token}
-                  onChanged={reload}
-                  acceptingQuoteId={acceptingQuoteId}
-                  onAcceptQuote={handleAcceptQuote}
+          <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
+            <ClientTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")}>
+              Le mie richieste{requests ? ` (${requests.length})` : ""}
+            </ClientTabButton>
+            <ClientTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")}>
+              Lavori accettati{bookings ? ` (${bookings.length})` : ""}
+            </ClientTabButton>
+          </XStack>
+
+          {activeTab === "richieste" ? (
+            <YStack gap="$4">
+              {requests === null ? (
+                <LoadingState />
+              ) : requests.length === 0 ? (
+                <EmptyState
+                  icon="file-text"
+                  title="Nessuna richiesta inviata"
+                  description="Non hai ancora inviato nessuna richiesta di preventivo."
+                  action={
+                    <Link href="/preventivo" style={{ textDecoration: "none" }}>
+                      <Text color={brand.cianografia} fontWeight="600">
+                        Richiedi il tuo primo preventivo
+                      </Text>
+                    </Link>
+                  }
                 />
-              ))
-            )}
-          </YStack>
-
-          <YStack gap="$4">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-              Le mie prenotazioni
-            </Text>
-            {bookings === null ? (
-              <LoadingState />
-            ) : bookings.length === 0 ? (
-              <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
-            ) : (
-              bookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
-            )}
-          </YStack>
+              ) : (
+                requests.map((request) => (
+                  <GuidedRequestCard key={request.id} request={request} token={token} onChanged={reload} onAcceptQuote={handleAcceptQuote} />
+                ))
+              )}
+            </YStack>
+          ) : (
+            <YStack gap="$4">
+              {bookings === null ? (
+                <LoadingState />
+              ) : bookings.length === 0 ? (
+                <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
+              ) : (
+                bookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
+              )}
+            </YStack>
+          )}
         </YStack>
       </XStack>
     </YStack>
@@ -152,14 +177,12 @@ function GuidedRequestCard({
   request,
   token,
   onChanged,
-  acceptingQuoteId,
   onAcceptQuote,
 }: {
   request: ClientGuidedRequest;
   token: string;
   onChanged: () => void;
-  acceptingQuoteId: string | null;
-  onAcceptQuote: (quoteId: string) => void;
+  onAcceptQuote: (quoteId: string, input: AcceptQuoteInput) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
@@ -173,6 +196,7 @@ function GuidedRequestCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
 
   // Una richiesta CLOSED ha già portato a una prenotazione: non ha senso
   // modificarla o eliminarla a quel punto (stesso confine applicato lato
@@ -282,7 +306,7 @@ function GuidedRequestCard({
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Indirizzo preciso (opzionale): via e numero civico"
+            placeholder="Indirizzo (opzionale, anche senza numero civico)"
             style={textareaStyle}
           />
 
@@ -387,6 +411,25 @@ function GuidedRequestCard({
             </Text>
           </YStack>
 
+          {/* Foto già allegate alla richiesta, visibili subito nell'anteprima
+              (richiesta esplicita dell'utente) invece di essere nascoste
+              finché non si entra in modifica. Cliccabili per ingrandirle,
+              stesso PhotoLightbox già usato lato professionista in LeadCard. */}
+          {request.photoUrls.length > 0 ? (
+            <XStack gap="$2" flexWrap="wrap">
+              {request.photoUrls.map((url, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={url}
+                  src={url}
+                  alt=""
+                  onClick={() => setOpenPhotoIndex(index)}
+                  style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
+                />
+              ))}
+            </XStack>
+          ) : null}
+
           {canDelete ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
               {canEditDetails ? (
@@ -468,14 +511,7 @@ function GuidedRequestCard({
             Preventivi ricevuti
           </Text>
           {request.quotes.map((quote) => (
-            <QuoteCard
-              key={quote.id}
-              quote={quote}
-              token={token}
-              onChanged={onChanged}
-              acceptingQuoteId={acceptingQuoteId}
-              onAcceptQuote={onAcceptQuote}
-            />
+            <QuoteCard key={quote.id} quote={quote} token={token} onChanged={onChanged} onAcceptQuote={onAcceptQuote} />
           ))}
         </YStack>
       ) : (
@@ -483,6 +519,10 @@ function GuidedRequestCard({
           Nessun preventivo ricevuto ancora.
         </Text>
       )}
+
+      {openPhotoIndex !== null ? (
+        <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
+      ) : null}
     </Surface>
   );
 }
@@ -504,14 +544,12 @@ function QuoteCard({
   quote,
   token,
   onChanged,
-  acceptingQuoteId,
   onAcceptQuote,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
   onChanged: () => void;
-  acceptingQuoteId: string | null;
-  onAcceptQuote: (quoteId: string) => void;
+  onAcceptQuote: (quoteId: string, input: AcceptQuoteInput) => Promise<void>;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -519,6 +557,7 @@ function QuoteCard({
   const [proposeNote, setProposeNote] = useState("");
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
 
   async function startChoosingDate() {
     setError(null);
@@ -591,15 +630,8 @@ function QuoteCard({
       {quote.status === "SENT" ? (
         <>
           <XStack gap="$2" flexWrap="wrap">
-            <Button
-              variant="primary"
-              size="$3"
-              height={40}
-              onPress={() => onAcceptQuote(quote.id)}
-              disabled={acceptingQuoteId === quote.id}
-              opacity={acceptingQuoteId === quote.id ? 0.6 : 1}
-            >
-              {acceptingQuoteId === quote.id ? "Conferma..." : "Accetta preventivo"}
+            <Button variant="primary" size="$3" height={40} onPress={() => setShowAcceptModal(true)}>
+              Accetta preventivo
             </Button>
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
@@ -671,6 +703,10 @@ function QuoteCard({
         <Text color={brand.urgenza} fontSize="$3">
           {error}
         </Text>
+      ) : null}
+
+      {showAcceptModal ? (
+        <AcceptQuoteModal onClose={() => setShowAcceptModal(false)} onAccept={(input) => onAcceptQuote(quote.id, input)} />
       ) : null}
     </YStack>
   );

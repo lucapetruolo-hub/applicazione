@@ -400,15 +400,16 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
+          <FieldLabel>Indirizzo (opzionale)</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
-            Via e numero civico: serve al professionista per sapere esattamente dove venire, una volta accettato il
-            preventivo. Non viene mostrato pubblicamente, solo a chi ha in mano la tua richiesta.
+            Basta indicare la via, anche senza numero civico: serve solo ad orientare il professionista. Non viene
+            mostrato pubblicamente, solo a chi ha in mano la tua richiesta. Se accetterai un preventivo, ti verrà
+            chiesto l&apos;indirizzo completo con tutti i dettagli.
           </Text>
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Es. Via delle Camelie 38"
+            placeholder="Indirizzo"
             style={{
               padding: 12,
               borderRadius: 4,

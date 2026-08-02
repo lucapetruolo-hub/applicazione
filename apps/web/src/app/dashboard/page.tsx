@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { formatServicePriceRange, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import {
+  formatBookingAddress,
+  formatServicePriceRange,
+  type ProfessionalAvailableSlot,
+  type ProfessionalBooking,
+  type ProfessionalLead,
+} from "@professionisti/shared";
 import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -21,8 +27,38 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
+type DashboardTab = "richieste" | "lavori";
+
+/**
+ * Caselle "Richieste ricevute"/"Lavori accettati" (richiesta esplicita
+ * dell'utente, "il piu facile e ordinata la visualizzazione"): stesso
+ * pattern a pillola attiva/inattiva già in uso altrove nel sito (es. tab
+ * "A domicilio"/"Online" di SearchBar) invece di introdurre un nuovo
+ * componente Tab condiviso solo per questa pagina.
+ */
+function DashboardTabButton({ active, onPress, children }: { active: boolean; onPress: () => void; children: React.ReactNode }) {
+  return (
+    <XStack
+      alignItems="center"
+      gap="$2"
+      paddingHorizontal="$4"
+      paddingVertical="$3"
+      borderRadius="$3"
+      backgroundColor={active ? brand.cianografiaVelo : "transparent"}
+      cursor="pointer"
+      onPress={onPress}
+      accessibilityRole="button"
+    >
+      <Text fontWeight="700" color={active ? brand.cianografia : brand.grafite70}>
+        {children}
+      </Text>
+    </XStack>
+  );
+}
+
 export default function DashboardPage() {
   const { user, token, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<DashboardTab>("richieste");
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
@@ -116,45 +152,54 @@ export default function DashboardPage() {
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        <YStack gap="$3">
-          <SectionTitle>Richieste ricevute</SectionTitle>
-          {leads === null ? (
-            <LoadingState />
-          ) : leads.length === 0 ? (
-            <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
-          ) : (
-            leads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
-            ))
-          )}
-        </YStack>
+        <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
+          <DashboardTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")}>
+            Richieste ricevute{leads ? ` (${leads.length})` : ""}
+          </DashboardTabButton>
+          <DashboardTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")}>
+            Lavori accettati{bookings ? ` (${acceptedJobs(bookings).length})` : ""}
+          </DashboardTabButton>
+        </XStack>
+
+        {activeTab === "richieste" ? (
+          <YStack gap="$3">
+            {leads === null ? (
+              <LoadingState />
+            ) : leads.length === 0 ? (
+              <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
+            ) : (
+              leads.map((lead) => (
+                <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
+              ))
+            )}
+          </YStack>
+        ) : (
+          <YStack gap="$3">
+            <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
+              <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
+                <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                  Apri il calendario completo
+                </Text>
+              </Link>
+            </YStack>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
+            </Text>
+            {bookings === null ? (
+              <LoadingState />
+            ) : acceptedJobs(bookings).length === 0 ? (
+              <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
+            ) : (
+              <YStack gap="$3">
+                {acceptedJobs(bookings).map((booking) => (
+                  <AcceptedJobCard key={booking.id} booking={booking} />
+                ))}
+              </YStack>
+            )}
+          </YStack>
+        )}
 
         <BoostSection token={token} />
-
-        <YStack gap="$3">
-          <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-            <SectionTitle>Lavori accettati</SectionTitle>
-            <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
-              <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
-                Apri il calendario completo
-              </Text>
-            </Link>
-          </YStack>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
-          </Text>
-          {bookings === null ? (
-            <LoadingState />
-          ) : acceptedJobs(bookings).length === 0 ? (
-            <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
-          ) : (
-            <YStack gap="$3">
-              {acceptedJobs(bookings).map((booking) => (
-                <AcceptedJobCard key={booking.id} booking={booking} />
-              ))}
-            </YStack>
-          )}
-        </YStack>
       </YStack>
     </YStack>
   );
@@ -173,6 +218,10 @@ function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
 
 function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
   const date = new Date(booking.scheduledAt);
+  // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
+  // priorità su quello libero, quando presente — vedi formatBookingAddress.
+  const structuredAddress = formatBookingAddress(booking);
+  const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
@@ -190,14 +239,14 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
 
       <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
         <Text fontWeight="600" color={brand.grafite}>
-          {booking.clientName ?? "Cliente"}
+          {recipientFullName ?? booking.clientName ?? "Cliente"}
         </Text>
-        {booking.clientPhone ? (
-          <a href={`tel:${booking.clientPhone}`} style={{ textDecoration: "none" }}>
+        {(booking.recipientPhone ?? booking.clientPhone) ? (
+          <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none" }}>
             <XStack alignItems="center" gap="$1">
               <Icon name="phone" size={12} color={brand.cianografia} strokeWidth={1.5} />
               <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                {booking.clientPhone}
+                {booking.recipientPhone ?? booking.clientPhone}
               </Text>
             </XStack>
           </a>
@@ -212,11 +261,11 @@ function AcceptedJobCard({ booking }: { booking: ProfessionalBooking }) {
             </XStack>
           </a>
         ) : null}
-        {booking.address ? (
+        {structuredAddress ?? booking.address ? (
           <XStack alignItems="center" gap="$1">
             <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize="$2" color={brand.grafite70}>
-              {booking.address}
+              {structuredAddress ?? booking.address}
             </Text>
           </XStack>
         ) : null}
