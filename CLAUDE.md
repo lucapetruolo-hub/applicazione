@@ -2170,3 +2170,70 @@ solo quando entrambi i campi sono valorizzati. Verificato end-to-end con
 l'API locale e Playwright: richiesta creata con `preferredDate`/
 `preferredTimeSlot` da una fascia generica → riga visibile correttamente
 in `/le-mie-richieste`, zero errori console.
+
+**Ciclo di vita completo lead→preventivo: rifiuto/ritiro ad ogni stadio** —
+tre richieste esplicite dell'utente nello stesso giro: (1) "al
+professionista dai la possibilità di rifiutare una richiesta di preventivo
+dove si aprirà un popup con note da inserire", (2) "quando un cliente
+riceve un preventivo, dai l'opzione per rifiutare il preventivo oltre ad
+accettarlo", (3) "nei preventivi inviati, dai la possibilità di annullare
+o modificare un preventivo" (lato professionista).
+- **Nuovo `LeadStatus.DECLINED`** + `Lead.declineNote` (facoltativo):
+  `ProfessionalsService.declineLead` (`PATCH /professionals/me/leads/:id/decline`)
+  — consentito solo se il professionista non ha già inviato un preventivo
+  per quella richiesta (a quel punto si ritira il preventivo, non si
+  rifiuta più il lead in sé). Notifica il cliente (`LEAD_DECLINED`).
+- **Nuovo `QuoteStatus.WITHDRAWN`** (distinto da `REJECTED`, già presente
+  nello schema ma mai realmente impostato da nessun percorso prima
+  d'ora): stesso stato finale "non più valido" di `REJECTED`, ma il
+  messaggio mostrato all'altra parte dev'essere diverso a seconda di chi
+  ha agito — `QuotesService.rejectByClient` (`POST /quotes/:id/reject`,
+  il cliente rifiuta l'intero preventivo, non solo una data proposta
+  — distinto da `rejectProposedDate`) e `QuotesService.
+  withdrawByProfessional` (`POST /quotes/:id/withdraw`, il professionista
+  ritira un preventivo prima che il cliente lo accetti). Notificano
+  rispettivamente il professionista (`QUOTE_REJECTED`) e il cliente
+  (`QUOTE_WITHDRAWN`).
+- **"Modifica preventivo"**: `QuotesService.createOrUpdate` ora rifiuta
+  (403) di aggiornare un preventivo il cui stato non è più `SENT` (prima
+  nessun controllo — un preventivo `ACCEPTED`/`REJECTED`/`WITHDRAWN`/
+  `MODIFICATION_REQUESTED` sarebbe stato silenziosamente riscrivibile,
+  confondendo il ciclo di vita gestito da altri endpoint). In
+  `/dashboard`, `LeadCard.startEditingQuote()` riapre il modulo invio
+  preventivo precompilato con voci/note/data esistenti — stesso modulo
+  già usato per il primo invio, nessun componente duplicato.
+- **`CancelBookingModal.tsx` reso parametrizzabile** (title/description/
+  notePlaceholder/confirmLabel/confirmingLabel, default invariati):
+  riusato tale e quale per il pop-up "Rifiuta richiesta" (stesso pattern
+  "nota facoltativa + conferma rossa" già corretto per l'uso originale,
+  invece di duplicare un intero componente quasi identico).
+- **`sentTo` (lato cliente)** espone ora `declined`/`declineNote` per
+  professionista: badge "Ha rifiutato" + nota, invece di lasciare il
+  cliente a chiedersi perché un professionista non risponde mai.
+- **Due bug reali scoperti e corretti durante la verifica** (non solo
+  ipotizzati, riprodotti con un test end-to-end contro l'API locale):
+  1. `QuotesService.rejectByClient` chiamava `notificationsService.notify`
+     passando `quote.professionalProfileId` invece dello `userId` del
+     professionista — `Notification.userId` referenzia `User`, non
+     `ProfessionalProfile`: la chiamata falliva con un errore 500
+     (violazione del vincolo di chiave esterna) invece di notificare.
+     Corretto includendo `professionalProfile` nella query e usando
+     `quote.professionalProfile.userId`.
+  2. `BookingsService.createFromQuote` non controllava mai lo stato del
+     preventivo prima di accettarlo — l'unica guardia era "non ha già una
+     prenotazione", quindi un preventivo già `REJECTED` (dallo stesso
+     cliente) o `WITHDRAWN` (dal professionista) restava comunque
+     accettabile. Corretto aggiungendo il controllo di stato.
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: rifiuto lead con nota → cliente vede "Ha rifiutato" +
+  nota, doppio rifiuto bloccato (403); cliente rifiuta un preventivo
+  ricevuto → professionista notificato, tentativo di accettarlo comunque
+  bloccato (403, bug #2 sopra riprodotto e poi confermato corretto);
+  professionista ritira un preventivo inviato → cliente vede "Il
+  professionista ha ritirato questo preventivo"; professionista modifica
+  un preventivo ancora `SENT` (voci/note aggiornate, stesso id, stato
+  resta `SENT`), poi tentativo di modificarlo dopo l'accettazione del
+  cliente correttamente bloccato (403). Screenshot di entrambe le
+  dashboard (cliente e professionista) con tutti e quattro gli stati
+  visibili contemporaneamente, zero errori console. Typecheck pulito su
+  tutti i package.

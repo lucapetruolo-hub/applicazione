@@ -6,9 +6,9 @@ import type { UnreadNotification } from "./AuthContext";
  * esplicita dell'utente: "indica anche in quale sezione c'è stato
  * l'aggiornamento"), non solo il totale nell'header.
  */
-const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED"]);
+const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED"]);
 const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED"]);
-const CLIENT_RICHIESTE_TYPES = new Set(["NEW_QUOTE", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED"]);
+const CLIENT_RICHIESTE_TYPES = new Set(["NEW_QUOTE", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED", "QUOTE_WITHDRAWN", "LEAD_DECLINED"]);
 const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL"]);
 
 function countByTypes(notifications: UnreadNotification[], types: Set<string>): number {

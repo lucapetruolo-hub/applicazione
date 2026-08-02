@@ -204,6 +204,12 @@ export const cancelBookingByProfessionalSchema = z.object({
 });
 export type CancelBookingByProfessionalInput = z.infer<typeof cancelBookingByProfessionalSchema>;
 
+/** Il professionista rifiuta una richiesta ricevuta prima di inviare un preventivo, con una nota facoltativa per il cliente. */
+export const declineLeadSchema = z.object({
+  note: z.string().max(1000).optional(),
+});
+export type DeclineLeadInput = z.infer<typeof declineLeadSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

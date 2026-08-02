@@ -35,4 +35,18 @@ export class QuotesController {
   rejectProposedDate(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.quotesService.rejectProposedDate(req.user.userId, id);
   }
+
+  /** Il cliente rifiuta interamente un preventivo ricevuto. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/reject")
+  reject(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.quotesService.rejectByClient(req.user.userId, id);
+  }
+
+  /** Il professionista ritira un preventivo già inviato. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/withdraw")
+  withdraw(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.quotesService.withdrawByProfessional(req.user.userId, id);
+  }
 }

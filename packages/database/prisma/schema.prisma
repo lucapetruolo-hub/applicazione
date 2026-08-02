@@ -357,6 +357,11 @@ enum LeadStatus {
   PENDING
   PAID
   CONVERTED
+  // Il professionista ha rifiutato la richiesta prima di inviare un
+  // preventivo (richiesta esplicita dell'utente: un pop-up con nota
+  // facoltativa per il cliente) — distinto dal ritiro di un preventivo già
+  // inviato (Quote.WITHDRAWN), che riguarda uno stadio successivo.
+  DECLINED
 }
 
 model Lead {
@@ -365,6 +370,9 @@ model Lead {
   professionalProfileId String
   priceEurCents         Int
   status                LeadStatus @default(PENDING)
+  // Nota facoltativa lasciata dal professionista quando rifiuta la
+  // richiesta (es. "non copro quella zona"), mostrata al cliente.
+  declineNote           String?
   createdAt             DateTime   @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
@@ -389,6 +397,11 @@ enum QuoteStatus {
   // del cliente: evita che due clienti "vincano" la stessa fascia solo
   // proponendola, la capienza va sempre validata di nuovo alla conferma.
   MODIFICATION_REQUESTED
+  // Il professionista ritira un preventivo già inviato (richiesta esplicita
+  // dell'utente) — distinto da REJECTED (che significa "il cliente lo ha
+  // rifiutato"): stesso stato finale ("non più valido"), ma il messaggio
+  // mostrato all'altra parte deve essere diverso a seconda di chi ha agito.
+  WITHDRAWN
 }
 
 model Quote {

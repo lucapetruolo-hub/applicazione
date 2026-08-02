@@ -17,7 +17,9 @@ export type MyProfessionalProfile = {
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
 export type ProfessionalLead = {
   id: string;
-  status: "PENDING" | "PAID" | "CONVERTED";
+  status: "PENDING" | "PAID" | "CONVERTED" | "DECLINED";
+  /** Nota lasciata dal professionista se ha rifiutato la richiesta (facoltativa). */
+  declineNote: string | null;
   priceEurCents: number;
   createdAt: string;
   /**
@@ -28,7 +30,7 @@ export type ProfessionalLead = {
    */
   quote: {
     id: string;
-    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
+    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
     estimatedStartDate: string;
     clientProposedDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */

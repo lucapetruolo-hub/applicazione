@@ -4,6 +4,7 @@ import {
   findComuneByName,
   type AvailabilitySlotInput,
   type BookAgendaSlotInput,
+  type DeclineLeadInput,
   type MyAvailability,
   type MyProfessionalProfile,
   type ProfessionalAgenda,
@@ -21,6 +22,7 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
+import { NotificationsService } from "../notifications/notifications.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -55,6 +57,7 @@ export class ProfessionalsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly geocodingService: GeocodingService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -427,6 +430,7 @@ export class ProfessionalsService {
       return {
         id: lead.id,
         status: lead.status,
+        declineNote: lead.declineNote,
         priceEurCents: lead.priceEurCents,
         createdAt: lead.createdAt.toISOString(),
         quote: quote
@@ -477,6 +481,44 @@ export class ProfessionalsService {
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
         },
       };
+    });
+  }
+
+  /**
+   * Il professionista rifiuta una richiesta ricevuta prima di inviare un
+   * preventivo (richiesta esplicita dell'utente: un pop-up con nota
+   * facoltativa per il cliente) — consentito solo se non ha già inviato un
+   * preventivo per questa richiesta (a quel punto si ritira il preventivo,
+   * non si rifiuta più il lead — vedi QuotesService.withdraw).
+   */
+  async declineLead(userId: string, leadId: string, input: DeclineLeadInput): Promise<void> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    const lead = await this.prisma.lead.findUnique({
+      where: { id: leadId },
+      include: { guidedRequest: true },
+    });
+    if (!lead || lead.professionalProfileId !== professionalProfileId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+    if (lead.status === "DECLINED") {
+      throw new ForbiddenException("Hai già rifiutato questa richiesta.");
+    }
+    const existingQuote = await this.prisma.quote.findFirst({
+      where: { guidedRequestId: lead.guidedRequestId, professionalProfileId },
+    });
+    if (existingQuote) {
+      throw new ForbiddenException("Hai già inviato un preventivo per questa richiesta: ritiralo invece di rifiutare il lead.");
+    }
+
+    await this.prisma.lead.update({
+      where: { id: leadId },
+      data: { status: "DECLINED", declineNote: input.note?.trim() || null },
+    });
+
+    await this.notificationsService.notify(lead.guidedRequest.clientId, "LEAD_DECLINED", {
+      guidedRequestId: lead.guidedRequestId,
+      professionalProfileId,
     });
   }
 

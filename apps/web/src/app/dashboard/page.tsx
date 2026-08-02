@@ -525,6 +525,9 @@ function LeadCard({
   const [isRejectingDate, setIsRejectingDate] = useState(false);
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const clientName = lead.guidedRequest.clientName ?? "Cliente";
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
@@ -628,6 +631,53 @@ function LeadCard({
     }
   }
 
+  // Riapre il modulo precompilato con il preventivo già inviato (richiesta
+  // esplicita dell'utente: "dai la possibilità di modificare un
+  // preventivo") — consentito solo mentre lo stato è SENT, stessa guardia
+  // applicata lato server in QuotesService.createOrUpdate.
+  function startEditingQuote() {
+    if (!lead.quote) return;
+    setItems(
+      lead.quote.items.map((item) => ({
+        name: item.name,
+        priceMin: item.priceMinEurCents != null ? (item.priceMinEurCents / 100).toString() : "",
+        priceMax: item.priceMaxEurCents != null ? (item.priceMaxEurCents / 100).toString() : "",
+      })),
+    );
+    setNotes(lead.quote.notes ?? "");
+    const quoteDate = lead.quote.estimatedStartDate.slice(0, 10);
+    const quoteTime = lead.quote.estimatedStartDate.slice(11, 16);
+    const matchingSlot = availableSlots.find((s) => s.date === quoteDate && s.startTime === quoteTime);
+    if (matchingSlot) {
+      setSelectedSlotKey(slotKey(matchingSlot));
+    } else {
+      setFallbackDate(quoteDate);
+    }
+    setError(null);
+    setShowForm(true);
+  }
+
+  async function handleDeclineLead(note: string | undefined) {
+    await apiClient.declineLead(token, lead.id, note);
+    setShowDeclineModal(false);
+    onChanged();
+  }
+
+  async function handleWithdrawQuote() {
+    if (!lead.quote) return;
+    setError(null);
+    setIsWithdrawing(true);
+    try {
+      await apiClient.withdrawQuote(token, lead.quote.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingWithdraw(false);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  }
+
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
@@ -662,12 +712,39 @@ function LeadCard({
             </XStack>
           ) : null}
         </YStack>
-        {sent && lead.quote?.status !== "MODIFICATION_REQUESTED" ? (
-          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-            {lead.quote?.status === "ACCEPTED" ? "Preventivo accettato" : "Preventivo inviato"}
+        {lead.status === "DECLINED" ? (
+          <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+            Richiesta rifiutata
+          </Text>
+        ) : sent && lead.quote?.status !== "MODIFICATION_REQUESTED" ? (
+          <Text
+            fontSize="$2"
+            fontWeight="600"
+            color={
+              lead.quote?.status === "REJECTED" || lead.quote?.status === "WITHDRAWN" ? brand.urgenza : brand.verificato
+            }
+          >
+            {lead.quote?.status === "ACCEPTED"
+              ? "Preventivo accettato"
+              : lead.quote?.status === "REJECTED"
+                ? "Preventivo rifiutato"
+                : lead.quote?.status === "WITHDRAWN"
+                  ? "Preventivo ritirato"
+                  : "Preventivo inviato"}
           </Text>
         ) : null}
       </YStack>
+
+      {lead.status === "DECLINED" && lead.declineNote ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Nota lasciata al cliente
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {lead.declineNote}
+          </Text>
+        </YStack>
+      ) : null}
 
       {/* Il preventivo già inviato, visibile al professionista che lo ha
           mandato (richiesta esplicita dell'utente) — prima solo lo stato
@@ -702,6 +779,38 @@ function LeadCard({
             <Text fontSize="$3" color={brand.grafite70}>
               {lead.quote.notes}
             </Text>
+          ) : null}
+
+          {lead.quote.status === "SENT" && !showForm ? (
+            <XStack gap="$2" flexWrap="wrap" paddingTop="$1" alignItems="center">
+              <Button variant="secondary" size="$2" height={36} onPress={startEditingQuote}>
+                Modifica preventivo
+              </Button>
+              {confirmingWithdraw ? (
+                <>
+                  <Text fontSize="$2" color={brand.urgenza}>
+                    Ritirare questo preventivo?
+                  </Text>
+                  <Button variant="urgent" size="$2" height={36} onPress={handleWithdrawQuote} disabled={isWithdrawing} opacity={isWithdrawing ? 0.6 : 1}>
+                    {isWithdrawing ? "Ritiro..." : "Conferma"}
+                  </Button>
+                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingWithdraw(false)}>
+                    Annulla
+                  </Button>
+                </>
+              ) : (
+                <Text
+                  color={brand.urgenza}
+                  fontWeight="600"
+                  fontSize="$2"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => setConfirmingWithdraw(true)}
+                >
+                  Ritira preventivo
+                </Text>
+              )}
+            </XStack>
           ) : null}
         </YStack>
       ) : null}
@@ -782,10 +891,34 @@ function LeadCard({
         <PhotoLightbox photos={lead.guidedRequest.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
 
-      {!sent && !showForm ? (
-        <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
-          Invia preventivo
-        </Button>
+      {!sent && !showForm && lead.status !== "DECLINED" ? (
+        <XStack gap="$3" alignItems="center" flexWrap="wrap">
+          <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
+            Invia preventivo
+          </Button>
+          <Text
+            color={brand.urgenza}
+            fontWeight="600"
+            fontSize="$3"
+            cursor="pointer"
+            accessibilityRole="button"
+            onPress={() => setShowDeclineModal(true)}
+          >
+            Rifiuta richiesta
+          </Text>
+        </XStack>
+      ) : null}
+
+      {showDeclineModal ? (
+        <CancelBookingModal
+          onClose={() => setShowDeclineModal(false)}
+          onCancel={handleDeclineLead}
+          title="Rifiuta richiesta"
+          description="Il cliente verrà avvisato che hai rifiutato la richiesta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
+          notePlaceholder="Es. Non copro quella zona."
+          confirmLabel="Conferma rifiuto"
+          confirmingLabel="Rifiuto..."
+        />
       ) : null}
 
       {showForm ? (

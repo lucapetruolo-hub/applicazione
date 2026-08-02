@@ -32,6 +32,13 @@ export class BookingsService {
     if (quote.booking) {
       throw new ForbiddenException("Questo preventivo è già stato accettato.");
     }
+    // Bug reale scoperto in verifica: mancava un controllo sullo stato del
+    // preventivo — un preventivo REJECTED (rifiutato dallo stesso cliente)
+    // o WITHDRAWN (ritirato dal professionista) restava comunque
+    // accettabile, perché l'unica guardia era "non ha già una booking".
+    if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
+      throw new ForbiddenException("Questo preventivo non è più disponibile.");
+    }
 
     const booking = await this.prisma.booking.create({
       data: {

@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -18,10 +19,12 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import {
   availabilityExceptionSchema,
   bookAgendaSlotSchema,
+  declineLeadSchema,
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
   type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
+  type DeclineLeadInput,
   type ProfessionalAvailabilityInput,
   type ProfessionalProfileSelfInput,
 } from "@professionisti/shared";
@@ -100,6 +103,13 @@ export class ProfessionalsController {
   @Get("me/leads")
   getMyLeads(@Req() req: AuthenticatedRequest) {
     return this.professionalsService.getMyLeads(req.user.userId);
+  }
+
+  /** Il professionista rifiuta una richiesta ricevuta, con una nota facoltativa per il cliente. */
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/leads/:id/decline")
+  declineLead(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(declineLeadSchema)) body: DeclineLeadInput) {
+    return this.professionalsService.declineLead(req.user.userId, id, body);
   }
 
   @UseGuards(JwtAuthGuard)

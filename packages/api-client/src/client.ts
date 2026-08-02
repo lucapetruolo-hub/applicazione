@@ -64,6 +64,10 @@ export type ClientGuidedRequest = {
     categoryLabel: string;
     city: string;
     verified: boolean;
+    /** True se questo professionista ha rifiutato la richiesta prima di inviare un preventivo. */
+    declined: boolean;
+    /** Nota facoltativa lasciata dal professionista con il rifiuto. */
+    declineNote: string | null;
   }[];
   quotes: {
     id: string;
@@ -76,7 +80,7 @@ export type ClientGuidedRequest = {
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
     notes: string | null;
-    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED";
+    status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
   }[];
 };
 
@@ -363,6 +367,28 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{ id: string; status: string }>(`/quotes/${quoteId}/reject-proposed-date`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il cliente rifiuta interamente un preventivo ricevuto (oltre ad accettarlo). */
+    rejectQuote: (token: string, quoteId: string) =>
+      request<{ id: string; status: string }>(`/quotes/${quoteId}/reject`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il professionista ritira un preventivo già inviato, prima che il cliente lo accetti. */
+    withdrawQuote: (token: string, quoteId: string) =>
+      request<{ id: string; status: string }>(`/quotes/${quoteId}/withdraw`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il professionista rifiuta una richiesta ricevuta prima di inviare un preventivo, con una nota facoltativa. */
+    declineLead: (token: string, leadId: string, note?: string) =>
+      request<void>(`/professionals/me/leads/${leadId}/decline`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
       }),
 
     updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>

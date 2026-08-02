@@ -166,6 +166,8 @@ export class GuidedRequestsService {
         categoryLabel: lead.professionalProfile.category.label,
         city: lead.professionalProfile.city,
         verified: lead.professionalProfile.verified,
+        declined: lead.status === "DECLINED",
+        declineNote: lead.declineNote,
       })),
       quotes: request.quotes.map((quote) => ({
         id: quote.id,

@@ -545,7 +545,14 @@ function GuidedRequestCard({
               href={`/professionista/${professional.id}`}
               style={{ textDecoration: "none", color: "inherit" }}
             >
-              <XStack gap="$3" alignItems="center" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
+              <XStack
+                gap="$3"
+                alignItems="center"
+                backgroundColor={brand.gesso}
+                borderRadius="$3"
+                padding="$3"
+                opacity={professional.declined ? 0.7 : 1}
+              >
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
                 <YStack gap="$1" flex={1}>
                   <XStack gap="$2" alignItems="center" flexWrap="wrap">
@@ -553,10 +560,26 @@ function GuidedRequestCard({
                       {professional.businessName}
                     </Text>
                     {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                    {/*
+                      Un professionista che ha rifiutato la richiesta prima
+                      di inviare un preventivo (richiesta esplicita
+                      dell'utente): il cliente prima non aveva modo di
+                      sapere perché quel professionista non rispondeva mai.
+                    */}
+                    {professional.declined ? (
+                      <Text fontFamily="$mono" fontSize={10} fontWeight="700" textTransform="uppercase" color={brand.urgenza}>
+                        Ha rifiutato
+                      </Text>
+                    ) : null}
                   </XStack>
                   <Text color={brand.grafite70} fontSize="$3">
                     {professional.categoryLabel} · {professional.city}
                   </Text>
+                  {professional.declined && professional.declineNote ? (
+                    <Text color={brand.grafite70} fontSize="$2">
+                      {professional.declineNote}
+                    </Text>
+                  ) : null}
                 </YStack>
               </XStack>
             </Link>
@@ -617,6 +640,8 @@ function QuoteCard({
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [confirmingReject, setConfirmingReject] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   async function startChoosingDate() {
     setError(null);
@@ -660,6 +685,24 @@ function QuoteCard({
     }
   }
 
+  // "Dai l'opzione per rifiutare il preventivo oltre ad accettarlo"
+  // (richiesta esplicita dell'utente) — distinto dal rifiuto di una
+  // singola data proposta (già esistente): qui il preventivo intero non va
+  // più bene.
+  async function handleRejectQuote() {
+    setError(null);
+    setIsRejecting(true);
+    try {
+      await apiClient.rejectQuote(token, quote.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingReject(false);
+    } finally {
+      setIsRejecting(false);
+    }
+  }
+
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       {/* Nome del professionista cliccabile: apre il suo profilo pubblico
@@ -688,7 +731,7 @@ function QuoteCard({
 
       {quote.status === "SENT" ? (
         <>
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="$2" flexWrap="wrap" alignItems="center">
             <Button variant="primary" size="$3" height={40} onPress={() => setShowAcceptModal(true)}>
               Accetta preventivo
             </Button>
@@ -696,6 +739,31 @@ function QuoteCard({
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
                 Proponi altra data
               </Button>
+            ) : null}
+            {!isChoosingDate && !confirmingReject ? (
+              <Text
+                color={brand.urgenza}
+                fontWeight="600"
+                fontSize="$3"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setConfirmingReject(true)}
+              >
+                Rifiuta preventivo
+              </Text>
+            ) : null}
+            {confirmingReject ? (
+              <>
+                <Text fontSize="$2" color={brand.urgenza}>
+                  Rifiutare questo preventivo?
+                </Text>
+                <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
+                  {isRejecting ? "Rifiuto..." : "Conferma"}
+                </Button>
+                <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
+                  Annulla
+                </Button>
+              </>
             ) : null}
           </XStack>
           {isChoosingDate ? (
@@ -755,6 +823,14 @@ function QuoteCard({
       ) : quote.status === "ACCEPTED" ? (
         <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Accettato
+        </Text>
+      ) : quote.status === "REJECTED" ? (
+        <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+          Hai rifiutato questo preventivo
+        </Text>
+      ) : quote.status === "WITHDRAWN" ? (
+        <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+          Il professionista ha ritirato questo preventivo
         </Text>
       ) : null}
 

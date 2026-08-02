@@ -36,6 +36,16 @@ export class QuotesService {
     const existingQuote = await this.prisma.quote.findFirst({
       where: { guidedRequestId: input.requestId, professionalProfileId: professionalProfile.id },
     });
+    // Modificabile solo finché il cliente non ha ancora agito (richiesta
+    // esplicita dell'utente: "Modifica preventivo" nella dashboard) — un
+    // preventivo già accettato/rifiutato/ritirato/con una data proposta in
+    // sospeso ha un ciclo di vita separato (rispettivamente: già prenotato,
+    // QuotesService.rejectByClient/withdrawByProfessional,
+    // proposeDate/confirmProposedDate/rejectProposedDate), riscriverlo qui
+    // sotto lo confonderebbe con l'altra parte.
+    if (existingQuote && existingQuote.status !== "SENT") {
+      throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
+    }
 
     const data = {
       estimatedStartDate: new Date(input.estimatedStartDate),
@@ -212,6 +222,72 @@ export class QuotesService {
       data: { status: "SENT", clientProposedDate: null, clientProposedNote: null },
     });
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_REJECTED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+    });
+    return { id: updated.id, status: updated.status };
+  }
+
+  /**
+   * Il cliente rifiuta interamente un preventivo ricevuto (richiesta
+   * esplicita dell'utente: "dai l'opzione per rifiutare oltre ad
+   * accettarlo") — distinto dal rifiuto di una singola data proposta
+   * (rejectProposedDate, che riguarda solo il sotto-flusso di modifica
+   * data): qui il preventivo stesso non va più bene, non solo la data.
+   */
+  async rejectByClient(clientId: string, quoteId: string) {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      include: { guidedRequest: true, booking: true, professionalProfile: true },
+    });
+    if (!quote) {
+      throw new NotFoundException("Preventivo non trovato.");
+    }
+    if (quote.guidedRequest.clientId !== clientId) {
+      throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
+    }
+    if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
+      throw new ForbiddenException("Questo preventivo non è più modificabile.");
+    }
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: { status: "REJECTED", clientProposedDate: null, clientProposedNote: null },
+    });
+    // Bug reale corretto durante la verifica: notify() richiede lo userId
+    // del destinatario, non il professionalProfileId (chiave esterna
+    // diversa) — passarlo per errore causava un 500 (violazione vincolo di
+    // chiave esterna su Notification.userId) invece di notificare.
+    await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_REJECTED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+    });
+    return { id: updated.id, status: updated.status };
+  }
+
+  /**
+   * Il professionista ritira un preventivo già inviato, prima che il
+   * cliente lo accetti (richiesta esplicita dell'utente) — stato distinto
+   * da REJECTED (quello significa "il cliente lo ha rifiutato") perché il
+   * messaggio mostrato all'altra parte dev'essere diverso a seconda di chi
+   * ha agito.
+   */
+  async withdrawByProfessional(professionalUserId: string, quoteId: string) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId }, include: { guidedRequest: true, booking: true } });
+    if (!quote || quote.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questo preventivo non è tuo.");
+    }
+    if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
+      throw new ForbiddenException("Questo preventivo non è più modificabile.");
+    }
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: { status: "WITHDRAWN", clientProposedDate: null, clientProposedNote: null },
+    });
+    await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_WITHDRAWN", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
     });

@@ -17,10 +17,29 @@ const textareaStyle = {
 /**
  * "Annulla intervento" (richiesta esplicita dell'utente): a differenza del
  * generico cambio di stato nel calendario, raccoglie una nota facoltativa
- * per il cliente che spieghi il motivo dell'annullamento — stesso pattern
- * overlay di AcceptQuoteModal/CompleteJobModal.
+ * per il destinatario che spieghi il motivo — stesso pattern overlay di
+ * AcceptQuoteModal/CompleteJobModal. Testi parametrizzabili (default
+ * invariati) per riuso in altri punti dove serve lo stesso pop-up "nota
+ * facoltativa + conferma rossa" — es. rifiuto di una richiesta ricevuta
+ * (`DashboardPage`), stesso pattern, destinatario e motivo diversi.
  */
-export function CancelBookingModal({ onClose, onCancel }: { onClose: () => void; onCancel: (note: string | undefined) => Promise<void> }) {
+export function CancelBookingModal({
+  onClose,
+  onCancel,
+  title = "Annulla intervento",
+  description = "Il cliente verrà avvisato dell'annullamento. Puoi lasciare una nota facoltativa per spiegargli il motivo.",
+  notePlaceholder = "Es. Imprevisto, ti ricontatterò per riprogrammare.",
+  confirmLabel = "Conferma annullamento",
+  confirmingLabel = "Annullamento...",
+}: {
+  onClose: () => void;
+  onCancel: (note: string | undefined) => Promise<void>;
+  title?: string;
+  description?: string;
+  notePlaceholder?: string;
+  confirmLabel?: string;
+  confirmingLabel?: string;
+}) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,7 +69,7 @@ export function CancelBookingModal({ onClose, onCancel }: { onClose: () => void;
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Annulla intervento"
+      aria-label={title}
       style={{
         position: "fixed",
         top: 0,
@@ -80,24 +99,18 @@ export function CancelBookingModal({ onClose, onCancel }: { onClose: () => void;
       >
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-            Annulla intervento
+            {title}
           </Text>
           <Text fontSize="$3" color={brand.grafite70}>
-            Il cliente verrà avvisato dell&apos;annullamento. Puoi lasciare una nota facoltativa per spiegargli il motivo.
+            {description}
           </Text>
         </YStack>
 
         <YStack gap="$2">
           <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.grafite70}>
-            Nota per il cliente (facoltativa)
+            Nota (facoltativa)
           </Text>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Es. Imprevisto, ti ricontatterò per riprogrammare."
-            rows={3}
-            style={textareaStyle}
-          />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
         </YStack>
 
         {error ? (
@@ -108,7 +121,7 @@ export function CancelBookingModal({ onClose, onCancel }: { onClose: () => void;
 
         <XStack gap="$2" flexWrap="wrap">
           <Button variant="urgent" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
-            {isSaving ? "Annullamento..." : "Conferma annullamento"}
+            {isSaving ? confirmingLabel : confirmLabel}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
             Torna indietro
