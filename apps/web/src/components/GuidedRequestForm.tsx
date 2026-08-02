@@ -130,6 +130,14 @@ export function GuidedRequestForm({
       setError("Indica la città in cui serve l'intervento.");
       return;
     }
+    if (!address.trim()) {
+      setError("Indica l'indirizzo.");
+      return;
+    }
+    if (photoUrls.length === 0) {
+      setError("Aggiungi almeno una foto.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -137,7 +145,7 @@ export function GuidedRequestForm({
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
         city: city.trim(),
-        address: address.trim() || undefined,
+        address: address.trim(),
         isUrgent,
         photoUrls,
         professionalProfileId,
@@ -313,7 +321,7 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Foto (opzionale, fino a {MAX_PHOTOS})</FieldLabel>
+          <FieldLabel>Foto (fino a {MAX_PHOTOS})</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
             Una foto aiuta il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
@@ -400,7 +408,7 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Indirizzo (opzionale)</FieldLabel>
+          <FieldLabel>Indirizzo</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
             Basta indicare la via, anche senza numero civico: serve solo ad orientare il professionista. Non viene
             mostrato pubblicamente, solo a chi ha in mano la tua richiesta. Se accetterai un preventivo, ti verrà

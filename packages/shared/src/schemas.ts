@@ -65,10 +65,11 @@ export const guidedRequestSchema = z
   .object({
     categorySlug: professionalCategorySlugSchema,
     description: z.string().min(10).max(2000),
-    photoUrls: z.array(z.string().url()).max(3).default([]),
+    /** Almeno una foto obbligatoria (richiesta esplicita dell'utente: "tutte le voci del richiedi un preventivo devono essere obbligatorie"). */
+    photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto.").max(3),
     city: z.string().min(2),
-    /** Via e numero civico, facoltativo: dove il professionista dovrà andare a svolgere il lavoro. */
-    address: z.string().max(200).optional(),
+    /** Via, obbligatorio (numero civico non richiesto qui: il dettaglio completo arriva solo all'accettazione del preventivo, vedi acceptQuoteSchema). */
+    address: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
     isUrgent: z.boolean().default(false),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.string().uuid().optional(),

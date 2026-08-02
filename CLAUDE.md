@@ -1841,3 +1841,21 @@ transazione Serializable di prima). Screenshot della vista Settimana:
 "09:00–13:00" (senza ripeti) visibile solo su lunedì 27, "15:00–16:00"
 (con ripeti) visibile solo sul mercoledì di quella settimana (29), non
 sulle altre colonne. Zero errori console.
+
+**Tutti i campi di "Richiedi un preventivo" obbligatori** — richiesta
+esplicita dell'utente: indirizzo e foto, prima entrambi facoltativi, sono
+ora obbligatori come categoria/descrizione/città (indirizzo: solo la via è
+richiesta qui, il numero civico resta rimandato alla schermata di
+accettazione preventivo — vedi voce sopra; foto: almeno una delle 3).
+`guidedRequestSchema` (`packages/shared`): `photoUrls` da
+`.max(3).default([])` a `.min(1, "Aggiungi almeno una foto.").max(3)`,
+`address` da `.optional()` a `.min(1, "L'indirizzo è obbligatorio.")` —
+`guidedRequestUpdateSchema` (modifica di una richiesta già inviata)
+**non** toccato, `photoUrls`/`address` restano opzionali lì per un motivo
+diverso (omesso nel payload = non li tocca, non "vuoto è accettabile").
+`GuidedRequestForm.handleSubmit` valida entrambi lato client prima
+dell'invio, stessi messaggi d'errore dello schema server-side. Verificato
+end-to-end con l'API locale e Playwright: richiesta senza indirizzo/foto
+rifiutata dal backend con 400; form blocca l'invio mostrando "Indica
+l'indirizzo."/"Aggiungi almeno una foto." finché entrambi non sono
+compilati. Zero errori console.
