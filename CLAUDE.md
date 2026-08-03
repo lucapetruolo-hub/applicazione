@@ -2337,3 +2337,45 @@ giro:
    console in tutti i controlli. Typecheck pulito su tutti i package
    (`shared`, `database`, `api-client`, `api`, `web`, `mobile`), build di
    produzione `apps/web` verde (24 route).
+
+**Paginazione vera per "Mostra"** — richiesta esplicita dell'utente: "su
+mostra ad esempio 5, se ce ne sono di più ad esempio andranno in altre
+pagine selezionabili". Prima `ListControls`/`sortListItems` tagliavano
+l'elenco a `pageSize` con `slice(0, pageSize)`: gli elementi oltre la
+quantità scelta sparivano semplicemente, senza alcun modo di raggiungerli
+— non era ancora paginazione, solo un limite. Nuovo componente
+`Pagination` (`apps/web/src/components/ListControls.tsx`): frecce
+precedente/successivo + un pulsante numerato per ogni pagina (stile a
+pillola, stessi token brand delle altre pillole/tab del sito), invisibile
+(ritorna `null`) quando c'è una sola pagina — coerente con lo stesso
+principio già seguito per `ListControls` stesso (non occupare spazio per
+un controllo inutile).
+- **Stato di pagina per lista** (`leadsPage`/`bookingsPage` in
+  `/dashboard`, `requestsPage`/`clientBookingsPage` in
+  `/le-mie-richieste`): `totalPages = Math.max(1, Math.ceil(lunghezza /
+  pageSize))`, `effectivePage = Math.min(page, totalPages)` — quest'ultimo
+  evita di restare bloccati su una pagina che non esiste più (es. pagina 3
+  aperta, poi si passa a "Mostra 20" e tutto entra in una sola pagina, o si
+  applica un filtro che restringe l'elenco).
+- **Cambiare filtro, ordinamento o quantità riporta sempre a pagina 1**
+  (`updateLeadsStatusFilter`/`updateLeadsSort`/`updateLeadsPageSize` e i
+  quattro equivalenti nelle altre liste, wrapper attorno ai setter di
+  stato passati a `ListControls`): restare su un numero di pagina fisso
+  dopo aver cambiato i criteri con cui l'elenco viene composto sarebbe
+  confuso (es. pagina 3 di un filtro può diventare vuota o mostrare
+  contenuto diverso sotto un filtro nuovo).
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: 9 richieste guidate create per un cliente/professionista di
+  test (sotto la soglia di rate limiting 10/min di `/guided-requests`,
+  CLAUDE.md §"Rate limiting" — 12 avrebbe fatto scattare un 429, riprodotto
+  e corretto durante la scrittura del test) → esattamente 2 pulsanti pagina
+  su entrambe le liste (`/le-mie-richieste` e `/dashboard`) con "Mostra 5"
+  di default; pagina 1 mostra le 5 più recenti (ordinamento "Data di
+  ricezione" discendente, verificato per contenuto esatto), pagina 2 le 4
+  rimanenti senza sovrapposizioni; "Pagina precedente" riporta
+  correttamente da pagina 2 a pagina 1; passando a "Mostra 20" tutte e 9
+  le richieste entrano in un'unica pagina e i pulsanti pagina spariscono;
+  tornando a "Mostra 5" i pulsanti ricompaiono (2). Stessa verifica
+  ripetuta lato professionista su `/dashboard` (tab "Richieste ricevute").
+  Zero errori console. Typecheck pulito su tutti i package, build di
+  produzione `apps/web` verde (24 route).

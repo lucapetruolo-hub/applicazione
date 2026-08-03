@@ -1,6 +1,6 @@
 "use client";
 
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const selectStyle = {
   padding: "8px 10px",
@@ -124,6 +124,77 @@ export function ListControls<S extends string>({
           ))}
         </select>
       </YStack>
+    </XStack>
+  );
+}
+
+/**
+ * Pagine selezionabili sotto una lista quando ce ne sono più di una a
+ * quantità "Mostra" corrente — richiesta esplicita dell'utente: "su mostra
+ * ad esempio 5, se ce ne sono di più ad esempio andranno in altre pagine
+ * selezionabili" (prima gli elementi oltre la quantità scelta sparivano
+ * semplicemente, senza modo di raggiungerli). `null` quando c'è una sola
+ * pagina, per non occupare spazio con un controllo inutile.
+ */
+export function Pagination({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (page: number) => void }) {
+  if (totalPages <= 1) return null;
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  return (
+    <XStack gap="$1" alignItems="center" flexWrap="wrap">
+      <XStack
+        width={28}
+        height={28}
+        borderRadius="$2"
+        borderWidth={1}
+        borderColor={brand.filetto}
+        alignItems="center"
+        justifyContent="center"
+        opacity={page === 1 ? 0.4 : 1}
+        cursor={page === 1 ? "default" : "pointer"}
+        onPress={() => page > 1 && onPageChange(page - 1)}
+        accessibilityRole="button"
+        accessibilityLabel="Pagina precedente"
+      >
+        <Icon name="chevron-left" size={14} color={brand.grafite} />
+      </XStack>
+      {pages.map((p) => (
+        <XStack
+          key={p}
+          width={28}
+          height={28}
+          borderRadius="$2"
+          alignItems="center"
+          justifyContent="center"
+          borderWidth={1}
+          borderColor={p === page ? brand.cianografia : brand.filetto}
+          backgroundColor={p === page ? brand.cianografiaVelo : "transparent"}
+          cursor="pointer"
+          onPress={() => onPageChange(p)}
+          accessibilityRole="button"
+          accessibilityLabel={`Pagina ${p}`}
+        >
+          <Text fontSize="$2" fontWeight={p === page ? "700" : "400"} color={p === page ? brand.cianografia : brand.grafite70}>
+            {p}
+          </Text>
+        </XStack>
+      ))}
+      <XStack
+        width={28}
+        height={28}
+        borderRadius="$2"
+        borderWidth={1}
+        borderColor={brand.filetto}
+        alignItems="center"
+        justifyContent="center"
+        opacity={page === totalPages ? 0.4 : 1}
+        cursor={page === totalPages ? "default" : "pointer"}
+        onPress={() => page < totalPages && onPageChange(page + 1)}
+        accessibilityRole="button"
+        accessibilityLabel="Pagina successiva"
+      >
+        <Icon name="chevron-right" size={14} color={brand.grafite} />
+      </XStack>
     </XStack>
   );
 }

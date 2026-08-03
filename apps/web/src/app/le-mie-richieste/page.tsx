@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { clientSectionCounts } from "@/lib/notificationSections";
-import { ListControls, sortListItems, type ListSortKey } from "@/components/ListControls";
+import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -124,9 +124,38 @@ export default function LeMieRichiestePage() {
   const [requestsStatusFilter, setRequestsStatusFilter] = useState<RequestStatusFilter>("all");
   const [requestsSort, setRequestsSort] = useState<ListSortKey>("createdAt");
   const [requestsPageSize, setRequestsPageSize] = useState(5);
+  const [requestsPage, setRequestsPage] = useState(1);
   const [clientBookingsStatusFilter, setClientBookingsStatusFilter] = useState<ClientBookingStatusFilter>("all");
   const [clientBookingsSort, setClientBookingsSort] = useState<ListSortKey>("scheduledAt");
   const [clientBookingsPageSize, setClientBookingsPageSize] = useState(5);
+  const [clientBookingsPage, setClientBookingsPage] = useState(1);
+
+  // Stesso principio di /dashboard: cambiare filtro/ordinamento/quantità
+  // riparte sempre da pagina 1.
+  function updateRequestsStatusFilter(value: RequestStatusFilter) {
+    setRequestsStatusFilter(value);
+    setRequestsPage(1);
+  }
+  function updateRequestsSort(value: ListSortKey) {
+    setRequestsSort(value);
+    setRequestsPage(1);
+  }
+  function updateRequestsPageSize(value: number) {
+    setRequestsPageSize(value);
+    setRequestsPage(1);
+  }
+  function updateClientBookingsStatusFilter(value: ClientBookingStatusFilter) {
+    setClientBookingsStatusFilter(value);
+    setClientBookingsPage(1);
+  }
+  function updateClientBookingsSort(value: ListSortKey) {
+    setClientBookingsSort(value);
+    setClientBookingsPage(1);
+  }
+  function updateClientBookingsPageSize(value: number) {
+    setClientBookingsPageSize(value);
+    setClientBookingsPage(1);
+  }
 
   function reload() {
     if (!token) return;
@@ -177,22 +206,31 @@ export default function LeMieRichiestePage() {
     );
   }
 
-  const visibleRequests = requests
+  const sortedRequests = requests
     ? sortListItems(
         requests.filter((request) => requestsStatusFilter === "all" || request.status === requestsStatusFilter),
         requestsSort,
         { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt },
-      ).slice(0, requestsPageSize)
+      )
     : null;
+  const requestsTotalPages = sortedRequests ? Math.max(1, Math.ceil(sortedRequests.length / requestsPageSize)) : 1;
+  const requestsEffectivePage = Math.min(requestsPage, requestsTotalPages);
+  const visibleRequests = sortedRequests?.slice((requestsEffectivePage - 1) * requestsPageSize, requestsEffectivePage * requestsPageSize) ?? null;
 
   const filteredClientBookings = bookings
     ? bookings.filter((booking) => clientBookingsStatusFilter === "all" || booking.status === clientBookingsStatusFilter)
     : [];
-  const visibleClientBookings = sortListItems(filteredClientBookings, clientBookingsSort, {
+  const sortedClientBookings = sortListItems(filteredClientBookings, clientBookingsSort, {
     createdAt: (b) => b.createdAt,
     updatedAt: (b) => b.updatedAt,
     scheduledAt: (b) => b.scheduledAt,
-  }).slice(0, clientBookingsPageSize);
+  });
+  const clientBookingsTotalPages = Math.max(1, Math.ceil(sortedClientBookings.length / clientBookingsPageSize));
+  const clientBookingsEffectivePage = Math.min(clientBookingsPage, clientBookingsTotalPages);
+  const visibleClientBookings = sortedClientBookings.slice(
+    (clientBookingsEffectivePage - 1) * clientBookingsPageSize,
+    clientBookingsEffectivePage * clientBookingsPageSize,
+  );
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
@@ -221,12 +259,12 @@ export default function LeMieRichiestePage() {
                 <ListControls
                   statusValue={requestsStatusFilter}
                   statusOptions={REQUEST_STATUS_OPTIONS}
-                  onStatusChange={setRequestsStatusFilter}
+                  onStatusChange={updateRequestsStatusFilter}
                   sortValue={requestsSort}
                   sortOptions={["createdAt", "updatedAt"]}
-                  onSortChange={setRequestsSort}
+                  onSortChange={updateRequestsSort}
                   pageSize={requestsPageSize}
-                  onPageSizeChange={setRequestsPageSize}
+                  onPageSizeChange={updateRequestsPageSize}
                 />
               ) : null}
               {requests === null ? (
@@ -251,6 +289,7 @@ export default function LeMieRichiestePage() {
                   <GuidedRequestCard key={request.id} request={request} token={token} onChanged={reload} onAcceptQuote={handleAcceptQuote} />
                 ))
               )}
+              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={setRequestsPage} />
             </YStack>
           ) : (
             <YStack gap="$4">
@@ -258,12 +297,12 @@ export default function LeMieRichiestePage() {
                 <ListControls
                   statusValue={clientBookingsStatusFilter}
                   statusOptions={CLIENT_BOOKING_STATUS_OPTIONS}
-                  onStatusChange={setClientBookingsStatusFilter}
+                  onStatusChange={updateClientBookingsStatusFilter}
                   sortValue={clientBookingsSort}
                   sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
-                  onSortChange={setClientBookingsSort}
+                  onSortChange={updateClientBookingsSort}
                   pageSize={clientBookingsPageSize}
-                  onPageSizeChange={setClientBookingsPageSize}
+                  onPageSizeChange={updateClientBookingsPageSize}
                 />
               ) : null}
               {bookings === null ? (
@@ -275,6 +314,7 @@ export default function LeMieRichiestePage() {
               ) : (
                 visibleClientBookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
               )}
+              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={setClientBookingsPage} />
             </YStack>
           )}
         </YStack>

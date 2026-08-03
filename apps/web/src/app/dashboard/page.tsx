@@ -20,7 +20,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { professionalSectionCounts } from "@/lib/notificationSections";
-import { ListControls, sortListItems, type ListSortKey } from "@/components/ListControls";
+import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -147,9 +147,40 @@ export default function DashboardPage() {
   const [leadsStatusFilter, setLeadsStatusFilter] = useState<LeadStatusFilter>("all");
   const [leadsSort, setLeadsSort] = useState<ListSortKey>("createdAt");
   const [leadsPageSize, setLeadsPageSize] = useState(5);
+  const [leadsPage, setLeadsPage] = useState(1);
   const [bookingsStatusFilter, setBookingsStatusFilter] = useState<BookingStatusFilter>("all");
   const [bookingsSort, setBookingsSort] = useState<ListSortKey>("scheduledAt");
   const [bookingsPageSize, setBookingsPageSize] = useState(5);
+  const [bookingsPage, setBookingsPage] = useState(1);
+
+  // Cambiare filtro/ordinamento/quantità riparte sempre da pagina 1 —
+  // restare su una pagina che potrebbe non esistere più nel nuovo elenco
+  // filtrato sarebbe confuso (richiesta esplicita dell'utente: "se ce ne
+  // sono di più andranno in altre pagine selezionabili").
+  function updateLeadsStatusFilter(value: LeadStatusFilter) {
+    setLeadsStatusFilter(value);
+    setLeadsPage(1);
+  }
+  function updateLeadsSort(value: ListSortKey) {
+    setLeadsSort(value);
+    setLeadsPage(1);
+  }
+  function updateLeadsPageSize(value: number) {
+    setLeadsPageSize(value);
+    setLeadsPage(1);
+  }
+  function updateBookingsStatusFilter(value: BookingStatusFilter) {
+    setBookingsStatusFilter(value);
+    setBookingsPage(1);
+  }
+  function updateBookingsSort(value: ListSortKey) {
+    setBookingsSort(value);
+    setBookingsPage(1);
+  }
+  function updateBookingsPageSize(value: number) {
+    setBookingsPageSize(value);
+    setBookingsPage(1);
+  }
 
   function reloadLeads() {
     if (!token) return;
@@ -238,19 +269,25 @@ export default function DashboardPage() {
     );
   }
 
-  const visibleLeads = leads
+  const sortedLeads = leads
     ? sortListItems(leads.filter((lead) => leadMatchesStatus(lead, leadsStatusFilter)), leadsSort, {
         createdAt: (l) => l.createdAt,
         updatedAt: (l) => l.updatedAt,
-      }).slice(0, leadsPageSize)
+      })
     : null;
+  const leadsTotalPages = sortedLeads ? Math.max(1, Math.ceil(sortedLeads.length / leadsPageSize)) : 1;
+  const leadsEffectivePage = Math.min(leadsPage, leadsTotalPages);
+  const visibleLeads = sortedLeads?.slice((leadsEffectivePage - 1) * leadsPageSize, leadsEffectivePage * leadsPageSize) ?? null;
 
   const filteredAcceptedJobs = bookings ? acceptedJobs(bookings).filter((b) => bookingMatchesStatus(b, bookingsStatusFilter)) : [];
-  const visibleBookings = sortListItems(filteredAcceptedJobs, bookingsSort, {
+  const sortedBookings = sortListItems(filteredAcceptedJobs, bookingsSort, {
     createdAt: (b) => b.createdAt,
     updatedAt: (b) => b.updatedAt,
     scheduledAt: (b) => b.scheduledAt,
-  }).slice(0, bookingsPageSize);
+  });
+  const bookingsTotalPages = Math.max(1, Math.ceil(sortedBookings.length / bookingsPageSize));
+  const bookingsEffectivePage = Math.min(bookingsPage, bookingsTotalPages);
+  const visibleBookings = sortedBookings.slice((bookingsEffectivePage - 1) * bookingsPageSize, bookingsEffectivePage * bookingsPageSize);
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
@@ -283,12 +320,12 @@ export default function DashboardPage() {
               <ListControls
                 statusValue={leadsStatusFilter}
                 statusOptions={LEAD_STATUS_OPTIONS}
-                onStatusChange={setLeadsStatusFilter}
+                onStatusChange={updateLeadsStatusFilter}
                 sortValue={leadsSort}
                 sortOptions={["createdAt", "updatedAt"]}
-                onSortChange={setLeadsSort}
+                onSortChange={updateLeadsSort}
                 pageSize={leadsPageSize}
-                onPageSizeChange={setLeadsPageSize}
+                onPageSizeChange={updateLeadsPageSize}
               />
             ) : null}
             {leads === null ? (
@@ -302,6 +339,7 @@ export default function DashboardPage() {
                 <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
               ))
             )}
+            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={setLeadsPage} />
           </YStack>
         ) : (
           <YStack gap="$3">
@@ -319,12 +357,12 @@ export default function DashboardPage() {
               <ListControls
                 statusValue={bookingsStatusFilter}
                 statusOptions={BOOKING_STATUS_OPTIONS}
-                onStatusChange={setBookingsStatusFilter}
+                onStatusChange={updateBookingsStatusFilter}
                 sortValue={bookingsSort}
                 sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
-                onSortChange={setBookingsSort}
+                onSortChange={updateBookingsSort}
                 pageSize={bookingsPageSize}
-                onPageSizeChange={setBookingsPageSize}
+                onPageSizeChange={updateBookingsPageSize}
               />
             ) : null}
             {bookings === null ? (
@@ -340,6 +378,7 @@ export default function DashboardPage() {
                 ))}
               </YStack>
             )}
+            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={setBookingsPage} />
           </YStack>
         )}
 
