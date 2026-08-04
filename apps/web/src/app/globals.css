@@ -97,3 +97,28 @@ a {
     repeating-linear-gradient(0deg, rgba(27, 77, 143, 0.07) 0px, rgba(27, 77, 143, 0.07) 1px, transparent 1px, transparent 32px),
     repeating-linear-gradient(90deg, rgba(27, 77, 143, 0.07) 0px, rgba(27, 77, 143, 0.07) 1px, transparent 1px, transparent 32px);
 }
+
+/* Riga categorie scorrevole in homepage (CategoryCarousel, richiesta
+   esplicita dell'utente: "si può scorrere a destra e sinistra sia con una
+   freccetta che scorrendo col dito"): scorrimento nativo del browser (touch
+   swipe già funzionante di suo), solo la scrollbar visiva viene nascosta —
+   le freccette restano il modo di scorrere via mouse. */
+.category-carousel-track {
+  scrollbar-width: none;
+}
+.category-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+/* Le freccette servono solo a chi non può scorrere col dito: su un
+   dispositivo touch-only (nessun hover reale) restano fuori, lo swipe
+   nativo basta ed evita di occupare spazio inutile ai lati della riga. */
+@media (hover: none) {
+  .category-carousel-arrow {
+    /* !important: la freccetta imposta display:flex in linea (per centrare
+       l'icona) — un inline style vince sempre su una regola esterna senza
+       !important, indipendentemente dalla media query, quindi qui serve
+       esplicitamente per nascondere davvero la freccetta su un dispositivo
+       touch-only. */
+    display: none !important;
+  }
+}

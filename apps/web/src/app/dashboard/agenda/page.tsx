@@ -9,7 +9,16 @@ import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, type CalendarView } from "@/components/calendar/CalendarShell";
 import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { LoadingState } from "@/components/LoadingState";
-import { datesInMonthForWeekday, monthLabel, parseIsoDate, slotAppliesOnDateStr, todayUtc, toIsoDate } from "@/lib/calendarDates";
+import {
+  datesInMonth,
+  datesInMonthForGivenWeekday,
+  datesInMonthForWeekday,
+  monthLabel,
+  parseIsoDate,
+  slotAppliesOnDateStr,
+  todayUtc,
+  toIsoDate,
+} from "@/lib/calendarDates";
 
 // `date` (ISO, YYYY-MM-DD) è ora il comportamento di default per una nuova
 // fascia (richiesta esplicita dell'utente: vale solo per quella data, non
@@ -62,6 +71,12 @@ export default function DashboardAgendaPage() {
   // modifica — resettata ad ogni apertura dell'editor.
   const [repeatForMonth, setRepeatForMonth] = useState(false);
   const [exceptionBusyDate, setExceptionBusyDate] = useState<string | null>(null);
+  // Eliminazione massiva delle fasce (richiesta esplicita dell'utente): un
+  // tasto "Modifica" apre una finestra dove scegliere l'ambito (giorni
+  // specifici, mese intero, giorni della settimana) più un orario preciso
+  // opzionale, poi "Elimina" rimuove in blocco — stesso stato locale delle
+  // altre modifiche, persistito solo al successivo "Salva agenda".
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
   // separate): mostra gli eventi reali invece delle regole di disponibilità
@@ -310,12 +325,47 @@ export default function DashboardAgendaPage() {
       }
       setSlots((prev) => [...prev, ...targetDates.map((date) => ({ dayOfWeek, date, start: draftStart, end: draftEnd, maxBookings }))]);
     } else if (editIndex !== null) {
-      const liveError = slotEditorLiveError(dayOfWeek, editIndex);
-      if (liveError) {
-        setError(liveError);
-        return;
+      const original = slots[editIndex];
+      if (!original) return;
+
+      // Spunta "Applica anche a tutti i <giorno> del mese" mentre si
+      // modifica una fascia già esistente (richiesta esplicita dell'utente:
+      // cambiare la capienza — o l'orario — da un giorno e propagarla a
+      // tutte le stesse occorrenze del mese, non solo a quel giorno). Solo
+      // per fasce legate a una data esatta (original.date): una fascia
+      // ricorrente storica non ha un mese su cui scoping ha senso, vale già
+      // per ogni occorrenza. Le fasce "gemelle" sono quelle con lo stesso
+      // giorno della settimana nel mese E lo stesso orario originale — cioè
+      // la stessa fascia ripetuta su più giorni, non qualunque altra fascia
+      // che capita di cadere lo stesso giorno.
+      if (repeatForMonth && original.date) {
+        const monthAnchor = parseIsoDate(original.date);
+        const targetDates = datesInMonthForGivenWeekday(monthAnchor, dayOfWeek);
+        const matchingIndexes = new Set(
+          slots
+            .map((s, i) => i)
+            .filter((i) => i === editIndex || (slots[i]!.date !== null && targetDates.includes(slots[i]!.date!) && slots[i]!.start === original.start && slots[i]!.end === original.end)),
+        );
+
+        for (const targetDateStr of targetDates) {
+          const overlaps = slotsSharingOccurrence(targetDateStr, dayOfWeek, null)
+            .filter(({ index }) => !matchingIndexes.has(index))
+            .some(({ slot }) => slotsOverlap(draftStart, draftEnd, slot.start, slot.end));
+          if (overlaps) {
+            setError(`Questa fascia si sovrapporrebbe a un'altra già impostata il ${targetDateStr}.`);
+            return;
+          }
+        }
+
+        setSlots((prev) => prev.map((s, i) => (matchingIndexes.has(i) ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
+      } else {
+        const liveError = slotEditorLiveError(dayOfWeek, editIndex);
+        if (liveError) {
+          setError(liveError);
+          return;
+        }
+        setSlots((prev) => prev.map((s, i) => (i === editIndex ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
       }
-      setSlots((prev) => prev.map((s, i) => (i === editIndex ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
     }
     setEditingKey(null);
     setError(null);
@@ -329,6 +379,13 @@ export default function DashboardAgendaPage() {
   function deleteSlot(index: number) {
     setSlots((prev) => prev.filter((_, i) => i !== index));
     setEditingKey(null);
+    setError(null);
+  }
+
+  /** Rimuove in blocco le fasce ai indici selezionati dalla finestra "Modifica" — stesso pattern di deleteSlot, solo su più indici insieme. */
+  function deleteBulkSlots(indexes: Set<number>) {
+    setSlots((prev) => prev.filter((_, i) => !indexes.has(i)));
+    setBulkModalOpen(false);
     setError(null);
   }
 
@@ -662,6 +719,18 @@ export default function DashboardAgendaPage() {
               </YStack>
             </YStack>
 
+            {/* Eliminazione massiva delle fasce (richiesta esplicita dell'utente):
+                giorni specifici, mese intero o giorni della settimana, più un
+                orario preciso opzionale. */}
+            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setBulkModalOpen(true)}>
+              <XStack alignItems="center" gap="$2">
+                <Icon name="pencil" size={15} color={brand.grafite} />
+                <Text color={brand.grafite} fontWeight="600">
+                  Modifica
+                </Text>
+              </XStack>
+            </Button>
+
             <CalendarShell
               view={view}
               onViewChange={setView}
@@ -763,10 +832,15 @@ export default function DashboardAgendaPage() {
           onMaxChange={setDraftMax}
           onSave={() => commitSlotEdit(editingDayOfWeek()!)}
           onCancel={() => setEditingKey(null)}
-          // Spunta "ripeti per tutti i <giorno> del mese" (richiesta esplicita
-          // dell'utente): solo mentre si crea una fascia nuova, mai in
-          // modifica di una già esistente.
           isNew={editingKey.startsWith("new-")}
+          // Spunta "ripeti"/"applica anche" per tutti i <giorno> del mese:
+          // creando una fascia nuova aggiunge una fascia per occorrenza,
+          // modificandone una esistente propaga invece lo stesso
+          // cambiamento (orario/capienza) alle fasce gemelle del mese —
+          // richiesta esplicita dell'utente. Mostrata solo quando la fascia
+          // è legata a una data esatta: una fascia ricorrente storica
+          // (editingDateStr() null) non ha un mese su cui scoping ha senso.
+          canRepeatForMonth={editingDateStr() !== null}
           repeatForMonth={repeatForMonth}
           onRepeatForMonthChange={setRepeatForMonth}
           repeatWeekdayLabel={WEEKDAY_FULL_LABELS[editingDayOfWeek()!]!}
@@ -779,6 +853,15 @@ export default function DashboardAgendaPage() {
           hasUpcomingBooking={
             editingKey.startsWith("edit-") ? (slots[Number(editingKey.slice(5))]?.hasUpcomingBooking ?? false) : false
           }
+        />
+      ) : null}
+
+      {bulkModalOpen ? (
+        <BulkDeleteAvailabilityModal
+          monthAnchor={currentDate}
+          slots={slots}
+          onDelete={deleteBulkSlots}
+          onClose={() => setBulkModalOpen(false)}
         />
       ) : null}
     </YStack>
@@ -865,6 +948,7 @@ function SlotEditorModal({
   onDelete,
   hasUpcomingBooking,
   isNew,
+  canRepeatForMonth,
   repeatForMonth,
   onRepeatForMonthChange,
   repeatWeekdayLabel,
@@ -885,8 +969,10 @@ function SlotEditorModal({
   onDelete?: () => void;
   /** Richiede una seconda conferma prima di eliminare, stesso pattern a due passaggi già in uso altrove nel progetto. */
   hasUpcomingBooking: boolean;
-  /** True mentre si crea una fascia nuova: solo in questo caso ha senso la spunta "ripeti". */
+  /** True mentre si crea una fascia nuova: cambia solo l'etichetta della spunta ("Ripeti" vs "Applica anche"). */
   isNew: boolean;
+  /** False per una fascia ricorrente storica (nessuna data esatta, niente mese su cui scoping ha senso). */
+  canRepeatForMonth: boolean;
   repeatForMonth: boolean;
   onRepeatForMonthChange: (v: boolean) => void;
   repeatWeekdayLabel: string;
@@ -968,7 +1054,7 @@ function SlotEditorModal({
           </Text>
         </YStack>
 
-        {isNew ? (
+        {canRepeatForMonth ? (
           <XStack
             alignItems="center"
             gap="$3"
@@ -994,10 +1080,25 @@ function SlotEditorModal({
             >
               {repeatForMonth ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
             </YStack>
+            {/* Creando una fascia nuova, la spunta ne aggiunge una per ogni
+                occorrenza del mese; modificandone una esistente (es. cambiando
+                la capienza), propaga invece lo stesso orario/capienza alle
+                fasce gemelle del mese — senza spunta, la modifica resta
+                sempre limitata a questo solo giorno (richiesta esplicita
+                dell'utente). */}
             <Text flex={1} fontSize="$3" color={brand.grafite}>
-              Ripeti per tutti i {repeatWeekdayLabel.toLowerCase()} di {repeatMonthLabel.toLowerCase()}
+              {isNew
+                ? `Ripeti per tutti i ${repeatWeekdayLabel.toLowerCase()} di ${repeatMonthLabel.toLowerCase()}`
+                : `Applica anche a tutti i ${repeatWeekdayLabel.toLowerCase()} di ${repeatMonthLabel.toLowerCase()}`}
             </Text>
           </XStack>
+        ) : null}
+        {!isNew ? (
+          <Text fontSize="$2" color={brand.grafite70}>
+            {canRepeatForMonth
+              ? "Senza spunta, la modifica riguarda solo questo giorno."
+              : "Questa fascia è ricorrente: la modifica si applica a ogni occorrenza futura."}
+          </Text>
         ) : null}
 
         {liveError ? (
@@ -1067,6 +1168,330 @@ function SlotEditorModal({
             )}
           </YStack>
         ) : null}
+      </YStack>
+    </div>
+  );
+}
+
+type BulkScope = "days" | "month" | "weekdays";
+
+/**
+ * Eliminazione massiva delle fasce di disponibilità (richiesta esplicita
+ * dell'utente): un'unica finestra per scegliere l'ambito — singoli giorni
+ * del mese visualizzato, il mese intero, oppure uno o più giorni della
+ * settimana (tutte le occorrenze nel mese) — più un orario preciso
+ * opzionale, poi "Elimina" rimuove in blocco le fasce corrispondenti
+ * dallo stato locale (persistite solo al successivo "Salva agenda", stesso
+ * pattern già in uso per l'eliminazione di una singola fascia da
+ * SlotEditorModal — nessun nuovo endpoint necessario, upsertMyAvailability
+ * sostituisce già l'intera lista ad ogni salvataggio).
+ */
+function BulkDeleteAvailabilityModal({
+  monthAnchor,
+  slots,
+  onDelete,
+  onClose,
+}: {
+  monthAnchor: Date;
+  slots: SlotDraft[];
+  onDelete: (indexes: Set<number>) => void;
+  onClose: () => void;
+}) {
+  const [scope, setScope] = useState<BulkScope>("days");
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
+  const [selectedWeekdays, setSelectedWeekdays] = useState<Set<number>>(new Set());
+  const [timeFilterEnabled, setTimeFilterEnabled] = useState(false);
+  const [timeStart, setTimeStart] = useState("09:00");
+  const [timeEnd, setTimeEnd] = useState("13:00");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const monthDates = datesInMonth(monthAnchor);
+
+  const targetDates: string[] =
+    scope === "month"
+      ? monthDates
+      : scope === "weekdays"
+        ? [...selectedWeekdays].flatMap((dayOfWeek) => datesInMonthForGivenWeekday(monthAnchor, dayOfWeek))
+        : [...selectedDates];
+
+  const matches = new Set<number>();
+  if (targetDates.length > 0) {
+    slots.forEach((slot, index) => {
+      const matchesDate = targetDates.some((d) => slotAppliesOnDateStr(slot, d));
+      if (!matchesDate) return;
+      if (timeFilterEnabled && (slot.start !== timeStart || slot.end !== timeEnd)) return;
+      matches.add(index);
+    });
+  }
+  const hasUpcoming = [...matches].some((i) => slots[i]?.hasUpcomingBooking);
+
+  function toggleDate(dateStr: string) {
+    setSelectedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) next.delete(dateStr);
+      else next.add(dateStr);
+      return next;
+    });
+  }
+
+  function toggleWeekday(dayOfWeek: number) {
+    setSelectedWeekdays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayOfWeek)) next.delete(dayOfWeek);
+      else next.add(dayOfWeek);
+      return next;
+    });
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Modifica disponibilità"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(20,24,30,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 16,
+        overflowY: "auto",
+      }}
+    >
+      <YStack
+        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        width="100%"
+        maxWidth={480}
+        backgroundColor={brand.calce}
+        borderRadius="$3"
+        borderWidth={1}
+        borderColor={brand.filetto}
+        padding="$5"
+        gap="$4"
+      >
+        <XStack justifyContent="space-between" alignItems="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            Modifica disponibilità
+          </Text>
+          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
+            ✕
+          </Text>
+        </XStack>
+
+        <Text color={brand.grafite70} fontSize="$3">
+          Scegli quali fasce di {monthLabel(monthAnchor).toLowerCase()} {monthAnchor.getUTCFullYear()} eliminare in blocco.
+        </Text>
+
+        <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden" alignSelf="flex-start" flexWrap="wrap">
+          {(
+            [
+              { value: "days" as const, label: "Giorni specifici" },
+              { value: "month" as const, label: "Mese intero" },
+              { value: "weekdays" as const, label: "Giorni della settimana" },
+            ]
+          ).map((tab, index) => {
+            const active = tab.value === scope;
+            return (
+              <XStack
+                key={tab.value}
+                paddingHorizontal="$3"
+                paddingVertical="$2"
+                backgroundColor={active ? brand.grafite : brand.calce}
+                borderLeftWidth={index === 0 ? 0 : 1}
+                borderLeftColor={brand.filetto}
+                cursor="pointer"
+                onPress={() => setScope(tab.value)}
+                accessibilityRole="button"
+              >
+                <Text fontSize="$2" fontWeight="700" color={active ? "white" : brand.grafite}>
+                  {tab.label}
+                </Text>
+              </XStack>
+            );
+          })}
+        </XStack>
+
+        {scope === "days" ? (
+          <YStack gap="$2">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+              Giorni del mese
+            </Text>
+            <XStack flexWrap="wrap" gap="$1.5">
+              {monthDates.map((d) => {
+                const active = selectedDates.has(d);
+                return (
+                  <XStack
+                    key={d}
+                    width={34}
+                    height={34}
+                    borderRadius="$2"
+                    borderWidth={1}
+                    borderColor={active ? brand.cianografia : brand.filetto}
+                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => toggleDate(d)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Giorno ${parseIsoDate(d).getUTCDate()}`}
+                  >
+                    <Text fontSize="$2" fontWeight={active ? "700" : "400"} color={active ? brand.cianografia : brand.grafite}>
+                      {parseIsoDate(d).getUTCDate()}
+                    </Text>
+                  </XStack>
+                );
+              })}
+            </XStack>
+          </YStack>
+        ) : null}
+
+        {scope === "weekdays" ? (
+          <YStack gap="$2">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+              Giorni della settimana
+            </Text>
+            <XStack flexWrap="wrap" gap="$2">
+              {WEEKDAY_FULL_LABELS.map((label, dayOfWeek) => {
+                const active = selectedWeekdays.has(dayOfWeek);
+                return (
+                  <XStack
+                    key={dayOfWeek}
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius="$2"
+                    borderWidth={1}
+                    borderColor={active ? brand.cianografia : brand.filetto}
+                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                    cursor="pointer"
+                    onPress={() => toggleWeekday(dayOfWeek)}
+                    accessibilityRole="button"
+                  >
+                    <Text fontSize="$2" fontWeight={active ? "700" : "400"} color={active ? brand.cianografia : brand.grafite}>
+                      {label}
+                    </Text>
+                  </XStack>
+                );
+              })}
+            </XStack>
+          </YStack>
+        ) : null}
+
+        {scope === "month" ? (
+          <Text color={brand.grafite70} fontSize="$3">
+            Verranno considerate tutte le fasce di {monthLabel(monthAnchor).toLowerCase()}, incluse quelle ricorrenti.
+          </Text>
+        ) : null}
+
+        <XStack
+          alignItems="center"
+          gap="$3"
+          padding="$3"
+          backgroundColor={brand.gesso}
+          borderWidth={1}
+          borderColor={brand.filetto}
+          borderRadius="$3"
+          cursor="pointer"
+          onPress={() => setTimeFilterEnabled((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: timeFilterEnabled }}
+        >
+          <YStack
+            width={22}
+            height={22}
+            borderRadius="$2"
+            borderWidth={2}
+            borderColor={timeFilterEnabled ? brand.cianografia : brand.filetto}
+            backgroundColor={timeFilterEnabled ? brand.cianografia : brand.calce}
+            alignItems="center"
+            justifyContent="center"
+          >
+            {timeFilterEnabled ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+          </YStack>
+          <Text flex={1} fontSize="$3" color={brand.grafite}>
+            Solo un orario preciso
+          </Text>
+        </XStack>
+        {timeFilterEnabled ? (
+          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} style={modalTimeInputStyle} />
+            <Text fontSize="$3" color={brand.grafite70}>
+              –
+            </Text>
+            <input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} style={modalTimeInputStyle} />
+          </XStack>
+        ) : null}
+
+        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <Text fontSize="$3" color={brand.grafite70}>
+            {matches.size} fasc{matches.size === 1 ? "ia" : "e"} corrispondent{matches.size === 1 ? "e" : "i"}.
+          </Text>
+          {confirmingDelete ? (
+            <YStack gap="$2">
+              {hasUpcoming ? (
+                <XStack
+                  borderWidth={1}
+                  borderColor={brand.urgenza}
+                  backgroundColor={brand.urgenzaVelo}
+                  borderRadius="$2"
+                  paddingHorizontal="$3"
+                  paddingVertical="$2"
+                  gap="$2"
+                  alignItems="center"
+                >
+                  <Icon name="bell-ring" size={14} color={brand.urgenza} />
+                  <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
+                    Alcune fasce selezionate hanno prenotazioni future. Eliminarle comunque?
+                  </Text>
+                </XStack>
+              ) : (
+                <Text color={brand.grafite70} fontSize="$3">
+                  Eliminare {matches.size} fasc{matches.size === 1 ? "ia" : "e"}?
+                </Text>
+              )}
+              <XStack gap="$3">
+                <Button variant="urgent" onPress={() => onDelete(matches)}>
+                  Conferma eliminazione
+                </Button>
+                <Button variant="ghost" onPress={() => setConfirmingDelete(false)}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : (
+            <XStack gap="$3">
+              <Button
+                variant="urgent"
+                disabled={matches.size === 0}
+                opacity={matches.size === 0 ? 0.5 : 1}
+                onPress={matches.size > 0 ? () => setConfirmingDelete(true) : undefined}
+              >
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="trash-2" size={15} color="white" />
+                  <Text color="white" fontWeight="700">
+                    Elimina
+                  </Text>
+                </XStack>
+              </Button>
+              <Button variant="ghost" onPress={onClose}>
+                Annulla
+              </Button>
+            </XStack>
+          )}
+        </YStack>
       </YStack>
     </div>
   );

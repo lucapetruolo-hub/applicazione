@@ -2379,3 +2379,141 @@ un controllo inutile).
   ripetuta lato professionista su `/dashboard` (tab "Richieste ricevute").
   Zero errori console. Typecheck pulito su tutti i package, build di
   produzione `apps/web` verde (24 route).
+
+**Login professionista → Dashboard, non la home** — richiesta esplicita
+dell'utente: "quando un professionista effettua l'accesso la pagina
+successiva che deve essere aperta è la Dashboard". `/accedi` mandava
+sempre a `redirectTo` (query param `?redirect=` o, in sua assenza, `"/"`)
+indipendentemente dal ruolo — un professionista senza un redirect
+esplicito in URL finiva sulla home invece che in Dashboard, a differenza
+di `/registrati` (già corretto in un giro precedente per lo stesso
+motivo). `AuthContext.login()` ora ritorna l'utente appena caricato
+(`CurrentUser | null`, prima `Promise<void>`) invece di aspettare un
+re-render per leggere `user` dal contesto — necessario perché subito dopo
+`await login(token)` bisogna già sapere il ruolo per decidere dove
+reindirizzare, nella stessa funzione. `/accedi` (sia login email+password
+sia Google) reindirizza ora a `/dashboard` se il ruolo è `PROFESSIONAL` e
+non è stato passato un `?redirect=` esplicito in URL (quest'ultimo vince
+sempre — es. "Accedi come professionista" da `/dashboard/profilo` con
+sessione scaduta deve tornare lì, non in Dashboard). Verificato end-to-end
+con l'API locale e Playwright: login email+password di un professionista
+senza redirect → atterra su `/dashboard`; stesso login con
+`?redirect=/dashboard/profilo` in URL → atterra lì invece, il redirect
+esplicito vince. Zero errori console, typecheck pulito.
+
+**Agenda — eliminazione massiva delle fasce + propagazione di una modifica
+a tutte le stesse settimane del mese** — due richieste esplicite
+dell'utente nello stesso giro:
+
+1. **Tasto "Modifica" in `/dashboard/agenda`** (calendario "Disponibilità"):
+   apre `BulkDeleteAvailabilityModal` per eliminare in blocco le fasce
+   corrispondenti a un ambito scelto — "Giorni specifici" (griglia di
+   caselle numerate per ogni giorno del mese visualizzato, multi-selezione),
+   "Mese intero" (tutte le fasce di quel mese, incluse quelle ricorrenti
+   storiche con `date` nullo) o "Giorni della settimana" (una casella per
+   Lunedì...Domenica, seleziona tutte le occorrenze di quei giorni nel
+   mese) — più un filtro opzionale "Solo un orario preciso" (due campi
+   orario, match esatto su inizio/fine) da combinare con qualunque ambito.
+   Un contatore live ("N fasce corrispondenti") aggiorna il conteggio ad
+   ogni cambio di selezione; "Elimina" richiede una seconda conferma
+   (stesso pattern a due passaggi già in uso altrove), con avviso
+   aggiuntivo se una delle fasce selezionate ha una prenotazione futura.
+   Nessun nuovo endpoint backend: la rimozione avviene sullo stato locale
+   `slots` (stesso pattern già in uso per l'eliminazione di una singola
+   fascia da `SlotEditorModal`), persistita solo al successivo "Salva
+   agenda" — `upsertMyAvailability` sostituisce già l'intera lista ad ogni
+   salvataggio. Nuovi helper condivisi in `calendarDates.ts`: `datesInMonth`
+   (tutte le date di un mese) e `datesInMonthForGivenWeekday` (le date di un
+   mese su un giorno della settimana scelto indipendentemente da una data di
+   ancoraggio) — `datesInMonthForWeekday` esistente riscritta per riusare
+   quest'ultimo invece di un calcolo a parte.
+2. **Propagare la modifica di una fascia esistente (es. capienza) a tutte
+   le stesse occorrenze del mese** — richiesta esplicita dell'utente:
+   "quando si modifica il numero massimo delle prenotazioni... dai la
+   possibilità di selezionare per tutti i giorni della settimana
+   selezionato del mese, altrimenti se non spuntata andrà a modificare
+   solo quel giorno". La spunta "Ripeti per tutti i \<giorno\> del mese"
+   in `SlotEditorModal` (prima visibile solo creando una fascia nuova,
+   dove aggiunge una fascia per occorrenza) è ora visibile anche
+   modificando una fascia già esistente legata a una data esatta
+   (etichetta diversa: "Applica anche a tutti i \<giorno\> del mese" —
+   nessuna spunta per le fasce ricorrenti storiche senza data, che non
+   hanno un mese su cui questo scoping abbia senso). Se spuntata,
+   `commitSlotEdit` propaga il nuovo orario/capienza a tutte le fasce
+   "gemelle" del mese: stesso giorno della settimana **e** stesso
+   orario originale della fascia in modifica (non qualunque altra fascia
+   che capita di cadere lo stesso giorno) — la ri-validazione di
+   sovrapposizione esclude le fasce del gruppo stesso dal controllo (si
+   stanno aggiornando insieme) ma verifica ancora contro eventuali altre
+   fasce indipendenti su quei giorni. Se non spuntata, comportamento
+   invariato: solo quella fascia viene modificata.
+   `CalendarShell.tsx`: le celle della vista Mese hanno ora un
+   `accessibilityLabel` descrittivo ("Vai al 2 Agosto 2026") — mancava del
+   tutto, un piccolo miglioramento di accessibilità emerso scrivendo il
+   test end-to-end (serviva un modo affidabile di navigare a un giorno
+   specifico senza contare i click "settimana successiva").
+   Nuove icone nel registro condiviso: `pencil` (tasto "Modifica"),
+   `trash-2` (tasto "Elimina" del pop-up di eliminazione massiva).
+3. Verificato end-to-end con l'API locale (non solo typecheck) e
+   Playwright: 5 fasce seminate in un mese (4 sullo stesso giorno della
+   settimana, 1 su un giorno diverso) → ambito "Giorni specifici" (2
+   selezionati) conta 2, "Mese intero" conta 5, "Giorni della settimana"
+   (il giorno comune) conta 4, aggiungendo il secondo giorno conta 5,
+   "Mese intero" + orario preciso 09:00–10:00 conta 1; eliminazione reale
+   di 2 fasce → stato locale sceso a 3, persistito correttamente via
+   `PUT /professionals/me/availability` dopo "Salva agenda" (verificato
+   che le date eliminate non sono più tra le fasce restituite dall'API).
+   Propagazione: 4 fasce seminate (3 sullo stesso giorno della settimana,
+   1 di controllo su un giorno diverso con lo stesso orario) → modifica
+   della capienza di una delle tre con la spunta attiva → le altre due
+   sullo stesso giorno della settimana aggiornate alla stessa capienza,
+   la fascia di controllo (giorno diverso) invariata — confermato via API
+   dopo il salvataggio. Zero errori console in tutti i controlli.
+   Typecheck pulito su tutti i package (`shared`, `database`,
+   `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione
+   `apps/web` verde (24 route).
+
+**Homepage — categorie in una riga scorrevole** — richiesta esplicita
+dell'utente: "nella homepage nelle categorie di cosa hai bisogno? deve
+esserci un elenco scorrevole su un'unica riga dove si può scorrere a
+destra e sinistra sia con una freccetta che scorrendo col dito". La
+griglia `flexWrap` precedente (le categorie andavano a capo su più righe)
+è sostituita da `apps/web/src/components/CategoryCarousel.tsx`: una riga
+`overflow-x: auto` (scroll touch nativo del browser, già funzionante di
+suo) con due freccette che chiamano `scrollBy` su un ref — nessuna
+libreria di carosello aggiunta, stesso principio "CSS puro per i
+componenti che Tamagui non rende bene" già seguito per
+`MegaMenu`/`ResultsListWithMap`/`CalendarShell`. Le freccette sono
+nascoste via CSS su un dispositivo touch-only (`@media (hover: none)`,
+`.category-carousel-arrow`, `globals.css`): lì lo swipe nativo basta,
+mostrarle occuperebbe solo spazio senza motivo. **Bug reale scoperto e
+corretto durante la verifica**: la regola `display: none` dentro quel
+`@media` non aveva alcun effetto — un inline style (`display: "flex"`,
+impostato nel componente per centrare l'icona) vince sempre su una
+regola esterna senza `!important`, indipendentemente dal fatto che la
+media query corrisponda; corretto aggiungendo `!important` alla sola
+regola dentro il blocco `@media`. Scrollbar visiva nascosta
+(`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`) sulla
+riga, lo scroll resta comunque possibile. Verificato con Playwright (non
+solo lettura di codice, e non sul primo tentativo: un primo giro di
+verifica aveva dato un falso negativo per un server di produzione rimasto
+attaccato alla porta da un avvio precedente non terminato correttamente,
+servendo ancora il build vecchio — individuato confrontando l'hash del
+CSS servito con quello effettivamente presente su disco dopo la build) —
+con `devices["iPhone 13"]` di Playwright (non un semplice
+`viewport`+`hasTouch`, che non basta a far corrispondere `(hover: none)`
+in Chromium): freccette visibili e funzionanti su desktop (click destro/
+sinistro cambia `scrollLeft`), freccette assenti su un profilo touch
+reale, riga scrollabile via swipe nativo su entrambi, nessun overflow
+orizzontale introdotto sulla pagina. Zero errori console. Typecheck
+pulito, build di produzione verde.
+
+**Nota per il prossimo giro (non implementato)**: richiesta esplicita
+dell'utente di sostituire le icone colorate delle categorie con foto
+reali (es. "qualcuno che lavora") nella stessa riga scorrevole, per dare
+un sentimento più genuino al cliente. Non implementato in questo giro:
+richiede una decisione sulla fonte delle foto (upload diretto
+dell'utente, servizio di stock photo da integrare — nessuno ancora
+approvato in tabella §2 — o generazione) prima di poter procedere, per
+non introdurre hotlink a immagini esterne non verificate o scelte a
+caso.

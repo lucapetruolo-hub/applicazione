@@ -20,7 +20,11 @@ export default function AccediPage() {
 function AccediForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") ?? "/";
+  // Un redirect esplicito in URL (es. "Accedi come professionista" da
+  // /dashboard/profilo) vince sempre; senza, un professionista va dritto
+  // in Dashboard invece che sulla home — richiesta esplicita dell'utente,
+  // sulla home non ha nulla da fare appena entrato.
+  const explicitRedirect = searchParams.get("redirect");
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -29,6 +33,11 @@ function AccediForm() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  function destinationAfterLogin(role: "CLIENT" | "PROFESSIONAL" | "ADMIN" | undefined) {
+    if (explicitRedirect) return explicitRedirect;
+    return role === "PROFESSIONAL" ? "/dashboard" : "/";
+  }
 
   async function handleLogin() {
     setError(null);
@@ -41,8 +50,8 @@ function AccediForm() {
     setIsSubmitting(true);
     try {
       const { token } = await apiClient.login(result.data.email, result.data.password);
-      await login(token);
-      router.push(redirectTo);
+      const currentUser = await login(token);
+      router.push(destinationAfterLogin(currentUser?.role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -55,8 +64,8 @@ function AccediForm() {
     setIsSubmitting(true);
     try {
       const { token } = await apiClient.verifyGoogle(idToken);
-      await login(token);
-      router.push(redirectTo);
+      const currentUser = await login(token);
+      router.push(destinationAfterLogin(currentUser?.role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {

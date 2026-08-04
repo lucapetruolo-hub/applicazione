@@ -325,6 +325,7 @@ function MonthGrid({
               cursor={onSelectDay ? "pointer" : undefined}
               onPress={onSelectDay ? () => onSelectDay(date) : undefined}
               accessibilityRole={onSelectDay ? "button" : undefined}
+              accessibilityLabel={onSelectDay ? `Vai al ${date.getUTCDate()} ${monthLabel(date)} ${date.getUTCFullYear()}` : undefined}
             >
               <XStack
                 width={22}

@@ -105,6 +105,29 @@ export function slotAppliesOnDateStr(slot: { dayOfWeek: number; date?: string | 
   return slot.dayOfWeek === parseIsoDate(dateStr).getUTCDay();
 }
 
+/** Tutte le date (ISO) del mese di calendario che contiene `monthAnchor`. */
+export function datesInMonth(monthAnchor: Date): string[] {
+  const firstOfMonth = startOfMonthUtc(monthAnchor);
+  const results: string[] = [];
+  let current = firstOfMonth;
+  while (current.getUTCMonth() === firstOfMonth.getUTCMonth()) {
+    results.push(toIsoDate(current));
+    current = addDaysUtc(current, 1);
+  }
+  return results;
+}
+
+/**
+ * Tutte le date (ISO) del mese di calendario che contiene `monthAnchor` che
+ * cadono su `dayOfWeek` (0=domenica...6=sabato) — a differenza di
+ * `datesInMonthForWeekday`, il giorno della settimana è scelto
+ * indipendentemente dalla data di ancoraggio (usata dalla selezione "giorni
+ * della settimana interi" nell'eliminazione massiva delle fasce).
+ */
+export function datesInMonthForGivenWeekday(monthAnchor: Date, dayOfWeek: number): string[] {
+  return datesInMonth(monthAnchor).filter((dateStr) => parseIsoDate(dateStr).getUTCDay() === dayOfWeek);
+}
+
 /**
  * Tutte le date (ISO) del mese di calendario che contiene `anchorDateStr`
  * che cadono sullo stesso giorno della settimana di quella data — usata
@@ -114,16 +137,7 @@ export function slotAppliesOnDateStr(slot: { dayOfWeek: number; date?: string | 
  */
 export function datesInMonthForWeekday(anchorDateStr: string): string[] {
   const anchor = parseIsoDate(anchorDateStr);
-  const dayOfWeek = anchor.getUTCDay();
-  const firstOfMonth = startOfMonthUtc(anchor);
-  const firstOccurrenceOffset = (dayOfWeek - firstOfMonth.getUTCDay() + 7) % 7;
-  const results: string[] = [];
-  let current = addDaysUtc(firstOfMonth, firstOccurrenceOffset);
-  while (current.getUTCMonth() === firstOfMonth.getUTCMonth()) {
-    results.push(toIsoDate(current));
-    current = addDaysUtc(current, 7);
-  }
-  return results;
+  return datesInMonthForGivenWeekday(anchor, anchor.getUTCDay());
 }
 
 export function formatDayRangeLabel(start: Date, end: Date): string {

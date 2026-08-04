@@ -42,6 +42,8 @@ import {
   Plus,
   Maximize2,
   Minimize2,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 export const ICONS = {
@@ -83,6 +85,8 @@ export const ICONS = {
   plus: Plus,
   "maximize-2": Maximize2,
   "minimize-2": Minimize2,
+  pencil: Pencil,
+  "trash-2": Trash2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

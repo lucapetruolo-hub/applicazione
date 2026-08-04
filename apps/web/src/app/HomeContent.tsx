@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { CategoryTile } from "@/components/CategoryTile";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeHero } from "@/components/HomeHero";
@@ -30,33 +31,31 @@ export default function HomeContent({ professionals }: { professionals: Professi
 
       <FadeInSection>
         <Section eyebrow="Categorie" title="Di cosa hai bisogno?" maxWidth={1080}>
-          <XStack flexWrap="wrap" gap="$3">
+          <CategoryCarousel>
             {PROFESSIONAL_CATEGORIES.map((c) => (
-              <CategoryTile
-                key={c.slug}
-                slug={c.slug}
-                label={c.label}
-                count={countBySlug.get(c.slug)}
-                onPress={() => router.push(`/cerca/${c.slug}`)}
-              />
+              <div key={c.slug} style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
+                <CategoryTile slug={c.slug} label={c.label} count={countBySlug.get(c.slug)} onPress={() => router.push(`/cerca/${c.slug}`)} />
+              </div>
             ))}
-            <Surface
-              width={152}
-              minHeight={132}
-              alignItems="center"
-              justifyContent="center"
-              gap="$2"
-              cursor="pointer"
-              onPress={() => router.push("/preventivo")}
-              accessibilityRole="button"
-              backgroundColor={brand.gesso}
-            >
-              <Icon name="sparkles" size={22} color={brand.cianografia} strokeWidth={1.5} />
-              <Text fontWeight="600" color={brand.cianografia} textAlign="center">
-                Altro servizio →
-              </Text>
-            </Surface>
-          </XStack>
+            <div style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
+              <Surface
+                width={152}
+                minHeight={132}
+                alignItems="center"
+                justifyContent="center"
+                gap="$2"
+                cursor="pointer"
+                onPress={() => router.push("/preventivo")}
+                accessibilityRole="button"
+                backgroundColor={brand.gesso}
+              >
+                <Icon name="sparkles" size={22} color={brand.cianografia} strokeWidth={1.5} />
+                <Text fontWeight="600" color={brand.cianografia} textAlign="center">
+                  Altro servizio →
+                </Text>
+              </Surface>
+            </div>
+          </CategoryCarousel>
         </Section>
       </FadeInSection>
 

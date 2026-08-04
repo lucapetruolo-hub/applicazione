@@ -14,7 +14,8 @@ type AuthContextValue = {
   user: CurrentUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (token: string) => Promise<void>;
+  /** Ritorna l'utente appena autenticato: usato per decidere subito dove reindirizzare in base al ruolo (es. professionista → /dashboard), senza aspettare un re-render. */
+  login: (token: string) => Promise<CurrentUser | null>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   /** Notifiche non lette (nuova richiesta/risposta/aggiornamento) — badge in AccountMenu, visibile solo al proprietario loggato. */
@@ -59,10 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = await apiClient.me(currentToken);
       setUser(currentUser);
       setToken(currentUser ? currentToken : null);
+      return currentUser;
     } catch {
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
       setUser(null);
       setToken(null);
+      return null;
     }
   }, []);
 
@@ -78,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (newToken: string) => {
       window.localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-      await loadUser(newToken);
+      return loadUser(newToken);
     },
     [loadUser],
   );
