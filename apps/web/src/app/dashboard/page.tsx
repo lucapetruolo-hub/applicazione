@@ -641,7 +641,23 @@ function LeadCard({
   // — ogni voce ha il proprio range di prezzo, non più due campi fissi
   // manodopera/materiali — richiesta esplicita dell'utente.
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
-  const [selectedSlotKey, setSelectedSlotKey] = useState(availableSlots[0] ? slotKey(availableSlots[0]) : "");
+  // Se la richiesta è nata da una fascia generica dell'agenda pubblica
+  // (preferredDate/preferredTimeSlot), preseleziona quella stessa fascia
+  // invece della prima disponibile qualsiasi — richiesta esplicita
+  // dell'utente: il professionista deve proporre l'orario che il cliente
+  // ha effettivamente richiesto, non uno scelto a caso dalla propria
+  // agenda. Ricade sulla prima fascia libera se quella richiesta non è
+  // (più) tra le fasce esatte libere (es. slot esatto già preso da un
+  // altro impegno nel frattempo).
+  const requestedSlotKey =
+    lead.guidedRequest.preferredDate && lead.guidedRequest.preferredTimeSlot
+      ? availableSlots.find(
+          (s) => s.date === lead.guidedRequest.preferredDate && `${s.startTime}-${s.endTime}` === lead.guidedRequest.preferredTimeSlot,
+        )
+      : undefined;
+  const [selectedSlotKey, setSelectedSlotKey] = useState(
+    requestedSlotKey ? slotKey(requestedSlotKey) : availableSlots[0] ? slotKey(availableSlots[0]) : "",
+  );
   // Ripiego se l'agenda non ha fasce esatte libere nei prossimi 14gg (es.
   // professionista che non l'ha ancora impostata): una data libera come
   // prima, per non bloccare comunque l'invio del preventivo.
@@ -837,6 +853,30 @@ function LeadCard({
               <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize="$2" color={brand.grafite70}>
                 {lead.guidedRequest.address}
+              </Text>
+            </XStack>
+          ) : null}
+          {/*
+            Data/fascia oraria richiesta dal cliente (solo se la richiesta
+            parte da una fascia "generica" dell'agenda pubblica) — bug reale
+            segnalato dall'utente: il backend la esponeva già
+            (guidedRequest.preferredDate/preferredTimeSlot) ma la card non la
+            mostrava mai, quindi il professionista non sapeva quale
+            orario riproporre nel proprio preventivo.
+          */}
+          {lead.guidedRequest.preferredDate && lead.guidedRequest.preferredTimeSlot ? (
+            <XStack alignItems="center" gap="$1">
+              <Icon name="calendar" size={12} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$2" color={brand.grafite70} fontWeight="600">
+                Orario richiesto:{" "}
+                {new Date(`${lead.guidedRequest.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  timeZone: "UTC",
+                })}
+                {" · "}
+                {lead.guidedRequest.preferredTimeSlot.replace("-", "–")}
               </Text>
             </XStack>
           ) : null}

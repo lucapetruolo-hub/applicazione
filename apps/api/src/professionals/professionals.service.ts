@@ -662,7 +662,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, profile, upcomingBookings, upcomingGenericRequests, exceptions] = await Promise.all([
+    const [slots, profile, upcomingBookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId },
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
@@ -680,12 +680,6 @@ export class ProfessionalsService {
         },
         select: { scheduledAt: true },
       }),
-      // Equivalente per le fasce generiche (maxBookings > 1): non nascono
-      // Booking ma GuidedRequest con preferredDate/preferredTimeSlot.
-      this.prisma.guidedRequest.findMany({
-        where: { professionalProfileId, preferredDate: { gte: startOfToday, lt: endWindow } },
-        select: { preferredDate: true, preferredTimeSlot: true },
-      }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday } },
         orderBy: { date: "asc" },
@@ -695,26 +689,24 @@ export class ProfessionalsService {
 
     return {
       slots: slots.map((slot) => {
-        const timeRange = `${slot.startTime}-${slot.endTime}`;
         const slotDateStr = slot.date ? slot.date.toISOString().slice(0, 10) : null;
         // Per una fascia legata a una data esatta, l'avviso "hai già un
         // impegno futuro" ha senso solo per QUELLA data — a differenza delle
         // fasce ricorrenti (date=null, comportamento storico), dove qualunque
         // occorrenza del giorno della settimana nella finestra conta.
-        const hasUpcomingBooking =
-          slot.maxBookings > 1
-            ? upcomingGenericRequests.some((request) => {
-                if (request.preferredTimeSlot !== timeRange) return false;
-                const requestDateStr = request.preferredDate?.toISOString().slice(0, 10) ?? null;
-                return slotDateStr ? requestDateStr === slotDateStr : request.preferredDate?.getUTCDay() === slot.dayOfWeek;
-              })
-            : upcomingBookings.some((booking) => {
-                const bookingDateStr = booking.scheduledAt.toISOString().slice(0, 10);
-                const dayMatches = slotDateStr ? bookingDateStr === slotDateStr : booking.scheduledAt.getUTCDay() === slot.dayOfWeek;
-                if (!dayMatches) return false;
-                const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
-                return bookingTime >= slot.startTime && bookingTime < slot.endTime;
-              });
+        //
+        // Stesso criterio per fasce esatte e generiche (richiesta esplicita
+        // dell'utente): conta solo una trattativa conclusa (Booking reale),
+        // non una richiesta di preventivo ancora senza risposta — altrimenti
+        // il professionista vedrebbe l'avviso "hai già un impegno" anche per
+        // richieste che potrebbe rifiutare o lasciare cadere.
+        const hasUpcomingBooking = upcomingBookings.some((booking) => {
+          const bookingDateStr = booking.scheduledAt.toISOString().slice(0, 10);
+          const dayMatches = slotDateStr ? bookingDateStr === slotDateStr : booking.scheduledAt.getUTCDay() === slot.dayOfWeek;
+          if (!dayMatches) return false;
+          const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
+          return bookingTime >= slot.startTime && bookingTime < slot.endTime;
+        });
         return {
           id: slot.id,
           dayOfWeek: slot.dayOfWeek,
@@ -809,7 +801,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, bookings, genericRequests, profile, exceptions] = await Promise.all([
+    const [slots, bookings, profile, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
       this.prisma.booking.findMany({
         where: {
@@ -818,15 +810,6 @@ export class ProfessionalsService {
           scheduledAt: { gte: startOfToday, lt: endWindow },
         },
         select: { scheduledAt: true },
-      }),
-      // Per le fasce generiche (maxBookings > 1) la "prenotazione" è una
-      // richiesta di preventivo con preferredDate/preferredTimeSlot, non un
-      // Booking — contata a parte, per data esatta (non per giorno della
-      // settimana come in getMyAvailability: qui serve sapere la capienza
-      // residua di QUEL giorno preciso, non solo se la ricorrenza è "usata").
-      this.prisma.guidedRequest.findMany({
-        where: { professionalProfileId, preferredDate: { gte: startOfToday, lt: endWindow } },
-        select: { preferredDate: true, preferredTimeSlot: true },
       }),
       this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
       this.prisma.availabilityException.findMany({
@@ -852,16 +835,15 @@ export class ProfessionalsService {
             .filter((slot) => slotAppliesOnDate(slot, date))
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
             .map((slot) => {
-              const bookedCount =
-                slot.maxBookings > 1
-                  ? genericRequests.filter(
-                      (request) =>
-                        request.preferredDate?.toISOString().slice(0, 10) === dateStr &&
-                        request.preferredTimeSlot === `${slot.startTime}-${slot.endTime}`,
-                    ).length
-                  : isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime)
-                    ? 1
-                    : 0;
+              // Sia per le fasce esatte che per quelle generiche, "prenotato"
+              // conta solo una trattativa conclusa (Booking reale, creato
+              // all'accettazione del preventivo) — non il semplice arrivo di
+              // una richiesta di preventivo (richiesta esplicita dell'utente:
+              // cliccare per richiedere non deve già "sbarrare" l'orario o
+              // consumare la capienza mostrata al cliente). Una prenotazione
+              // annullata non è nel set `bookings` (filtrato a monte su
+              // PENDING/CONFIRMED/COMPLETED), quindi libera la fascia da sola.
+              const bookedCount = countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime);
               return { startTime: slot.startTime, endTime: slot.endTime, maxBookings: slot.maxBookings, bookedCount };
             });
 
@@ -979,11 +961,28 @@ function parseIsoDateUtc(dateStr: string): Date {
   return date;
 }
 
-function isSlotBooked(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): boolean {
-  return bookings.some((booking) => {
+/**
+ * Quante prenotazioni reali (Booking, non semplici richieste) cadono in
+ * questa data+fascia — usata sia per le fasce esatte (capienza 1: il
+ * booleano `isSlotBooked` sotto ne è un caso particolare) sia per quelle
+ * generiche (capienza > 1, "N/M prenotazioni"). Richiesta esplicita
+ * dell'utente: il conteggio deve riflettere solo le trattative concluse
+ * (preventivo accettato → Booking creato), NON il semplice arrivo di una
+ * richiesta di preventivo — cliccare per richiedere non deve "sbarrare"
+ * l'orario, altrimenti la capienza si esaurirebbe con richieste mai
+ * andate a buon fine. Una prenotazione annullata (CANCELED/NO_SHOW, già
+ * esclusa dal filtro di stato a monte con cui `bookings` viene popolato)
+ * libera automaticamente la fascia, senza bisogno di logica dedicata.
+ */
+function countBookingsInSlot(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): number {
+  return bookings.filter((booking) => {
     const bookingDate = booking.scheduledAt.toISOString().slice(0, 10);
     if (bookingDate !== dateStr) return false;
     const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
     return bookingTime >= startTime && bookingTime < endTime;
-  });
+  }).length;
+}
+
+function isSlotBooked(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): boolean {
+  return countBookingsInSlot(bookings, dateStr, startTime, endTime) > 0;
 }

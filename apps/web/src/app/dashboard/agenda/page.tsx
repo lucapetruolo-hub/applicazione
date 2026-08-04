@@ -46,7 +46,11 @@ const BOOKING_STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
 export default function DashboardAgendaPage() {
   const { user, token, isLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<AgendaTab>("disponibilita");
+  // "Prenotazioni" di default all'apertura (richiesta esplicita dell'utente):
+  // è la vista con l'informazione più urgente al primo sguardo (gli
+  // appuntamenti reali), "Disponibilità" è configurazione che si tocca meno
+  // spesso una volta impostata.
+  const [activeTab, setActiveTab] = useState<AgendaTab>("prenotazioni");
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
   const [bookableAgenda, setBookableAgenda] = useState(false);
@@ -71,12 +75,18 @@ export default function DashboardAgendaPage() {
   // modifica — resettata ad ogni apertura dell'editor.
   const [repeatForMonth, setRepeatForMonth] = useState(false);
   const [exceptionBusyDate, setExceptionBusyDate] = useState<string | null>(null);
-  // Eliminazione massiva delle fasce (richiesta esplicita dell'utente): un
-  // tasto "Modifica" apre una finestra dove scegliere l'ambito (giorni
-  // specifici, mese intero, giorni della settimana) più un orario preciso
-  // opzionale, poi "Elimina" rimuove in blocco — stesso stato locale delle
-  // altre modifiche, persistito solo al successivo "Salva agenda".
-  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  // Eliminazione massiva delle fasce (richiesta esplicita dell'utente): il
+  // tasto "Modifica" NON apre una finestra separata — attiva invece una
+  // modalità di selezione direttamente sul calendario "Disponibilità" già
+  // esistente (funziona identica nelle viste Giorno/Settimana/Mese): un
+  // click su una fascia la seleziona/deseleziona, più due scorciatoie per
+  // selezionare in blocco un intero giorno o l'intero mese visualizzato.
+  // "Elimina" rimuove le fasce selezionate dallo stato locale, persistito
+  // solo al successivo "Salva agenda" — stesso principio già in uso per
+  // l'eliminazione di una singola fascia.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedSlotIndexes, setSelectedSlotIndexes] = useState<Set<number>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
   // separate): mostra gli eventi reali invece delle regole di disponibilità
@@ -382,10 +392,53 @@ export default function DashboardAgendaPage() {
     setError(null);
   }
 
-  /** Rimuove in blocco le fasce ai indici selezionati dalla finestra "Modifica" — stesso pattern di deleteSlot, solo su più indici insieme. */
-  function deleteBulkSlots(indexes: Set<number>) {
-    setSlots((prev) => prev.filter((_, i) => !indexes.has(i)));
-    setBulkModalOpen(false);
+  function toggleSelectionMode() {
+    setSelectionMode((v) => !v);
+    setSelectedSlotIndexes(new Set());
+    setConfirmingBulkDelete(false);
+  }
+
+  function toggleSlotSelection(index: number) {
+    setSelectedSlotIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  /** Seleziona/deseleziona in blocco tutte le fasce che valgono per `date` — scorciatoia "tutto il giorno" richiesta esplicitamente dall'utente. */
+  function toggleDaySelection(date: Date) {
+    const dateStr = toIsoDate(date);
+    const dayIndexes = slots.map((_, i) => i).filter((i) => slotAppliesOnDateStr(slots[i]!, dateStr));
+    if (dayIndexes.length === 0) return;
+    const allSelected = dayIndexes.every((i) => selectedSlotIndexes.has(i));
+    setSelectedSlotIndexes((prev) => {
+      const next = new Set(prev);
+      dayIndexes.forEach((i) => (allSelected ? next.delete(i) : next.add(i)));
+      return next;
+    });
+  }
+
+  /** Seleziona/deseleziona in blocco tutte le fasce del mese attualmente visualizzato — scorciatoia "tutto il mese" richiesta esplicitamente dall'utente. */
+  function toggleMonthSelection() {
+    const monthDates = datesInMonth(currentDate);
+    const monthIndexes = slots.map((_, i) => i).filter((i) => monthDates.some((d) => slotAppliesOnDateStr(slots[i]!, d)));
+    if (monthIndexes.length === 0) return;
+    const allSelected = monthIndexes.every((i) => selectedSlotIndexes.has(i));
+    setSelectedSlotIndexes((prev) => {
+      const next = new Set(prev);
+      monthIndexes.forEach((i) => (allSelected ? next.delete(i) : next.add(i)));
+      return next;
+    });
+  }
+
+  /** Rimuove in blocco le fasce selezionate — stesso pattern di deleteSlot, solo su più indici insieme. */
+  function deleteSelectedSlots() {
+    setSlots((prev) => prev.filter((_, i) => !selectedSlotIndexes.has(i)));
+    setSelectionMode(false);
+    setSelectedSlotIndexes(new Set());
+    setConfirmingBulkDelete(false);
     setError(null);
   }
 
@@ -456,6 +509,48 @@ export default function DashboardAgendaPage() {
     const editingSlot = editIndexForThisDay !== null ? slots[editIndexForThisDay] : undefined;
     const isEditingThisDay = editingKey === `new-${dateStr}` || (editingSlot !== undefined && slotAppliesOnDateStr(editingSlot, dateStr));
     const conflicts = isEditingThisDay ? conflictingSlotIndexes(dayOfWeek, editIndexForThisDay) : new Set<number>();
+
+    // Modalità selezione (tasto "Modifica", richiesta esplicita
+    // dell'utente): niente aggiunta/chiusura giorno, solo selezione delle
+    // fasce già presenti + scorciatoia "tutto il giorno" per questa colonna.
+    if (selectionMode) {
+      const allDaySelected = daySlots.length > 0 && daySlots.every(({ index }) => selectedSlotIndexes.has(index));
+      return (
+        <YStack gap="$2" minWidth={0}>
+          {daySlots.length > 0 ? (
+            <XStack
+              alignItems="center"
+              gap={5}
+              cursor="pointer"
+              onPress={() => toggleDaySelection(date)}
+              accessibilityRole="button"
+              accessibilityLabel={allDaySelected ? "Deseleziona giorno" : "Seleziona giorno"}
+            >
+              <SelectionCheckbox checked={allDaySelected} />
+              <Text
+                fontFamily="$mono"
+                fontSize={9}
+                fontWeight="700"
+                letterSpacing={0.2}
+                color={allDaySelected ? brand.cianografia : brand.grafite70}
+              >
+                {allDaySelected ? "Giorno selezionato" : "Seleziona giorno"}
+              </Text>
+            </XStack>
+          ) : null}
+          {daySlots.map(({ slot, index }) => (
+            <SlotChip
+              key={index}
+              slot={slot}
+              isConflicting={false}
+              isEditing={false}
+              isSelected={selectedSlotIndexes.has(index)}
+              onEdit={() => toggleSlotSelection(index)}
+            />
+          ))}
+        </YStack>
+      );
+    }
 
     return (
       <YStack gap="$2" minWidth={0}>
@@ -537,8 +632,25 @@ export default function DashboardAgendaPage() {
         </Text>
       );
     }
-    const daySlots = slots.filter((s) => slotAppliesOnDateStr(s, dateStr));
-    if (daySlots.length === 0) return null;
+    const daySlotsWithIndex = slots.map((s, i) => ({ s, i })).filter(({ s }) => slotAppliesOnDateStr(s, dateStr));
+    if (daySlotsWithIndex.length === 0) return null;
+    // In modalità selezione un click sulla cella seleziona/deseleziona
+    // l'intero giorno (vedi onSelectDay più sotto): un segno di spunta
+    // sostituisce i puntini quando tutte le fasce di quel giorno sono già
+    // selezionate, per capire a colpo d'occhio quali giorni sono scelti
+    // anche dalla vista Mese.
+    if (selectionMode) {
+      const allSelected = daySlotsWithIndex.every(({ i }) => selectedSlotIndexes.has(i));
+      return (
+        <XStack alignItems="center" gap={4}>
+          <SelectionCheckbox checked={allSelected} />
+          <Text fontFamily="$mono" fontSize={9} fontWeight="700" color={allSelected ? brand.cianografia : brand.grafite70}>
+            {daySlotsWithIndex.length}
+          </Text>
+        </XStack>
+      );
+    }
+    const daySlots = daySlotsWithIndex.map(({ s }) => s);
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
         {daySlots.slice(0, 4).map((s, i) => (
@@ -652,8 +764,8 @@ export default function DashboardAgendaPage() {
         <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden" alignSelf="flex-start">
           {(
             [
-              { value: "disponibilita" as const, label: "Disponibilità" },
               { value: "prenotazioni" as const, label: "Prenotazioni" },
+              { value: "disponibilita" as const, label: "Disponibilità" },
             ]
           ).map((tab, index) => {
             const active = tab.value === activeTab;
@@ -676,6 +788,38 @@ export default function DashboardAgendaPage() {
             );
           })}
         </XStack>
+
+        {/* Avviso ben leggibile se non è ancora stata impostata nessuna
+            disponibilità (richiesta esplicita dell'utente): visibile su
+            entrambe le schede, non solo su "Disponibilità" — l'agenda apre
+            ora di default su "Prenotazioni", dove altrimenti il
+            professionista potrebbe non capire perché non riceve
+            prenotazioni dirette. */}
+        {slots.length === 0 ? (
+          <XStack
+            alignItems="flex-start"
+            gap="$3"
+            padding="$4"
+            backgroundColor={brand.cianografiaVelo}
+            borderWidth={1}
+            borderColor={brand.cianografia}
+            borderRadius="$4"
+          >
+            <Icon name="calendar" size={20} color={brand.cianografia} strokeWidth={1.5} />
+            <YStack flex={1} gap="$2">
+              <Text fontWeight="700" color={brand.grafite}>
+                Non hai ancora impostato la tua disponibilità
+              </Text>
+              <Text fontSize="$3" color={brand.grafite70}>
+                Aggiungi i giorni e gli orari in cui sei disponibile: comparirà sul tuo profilo pubblico e i clienti
+                potranno prenotarti con molta più facilità.
+              </Text>
+              <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setActiveTab("disponibilita")}>
+                Aggiungi disponibilità
+              </Button>
+            </YStack>
+          </XStack>
+        ) : null}
 
         {activeTab === "disponibilita" ? (
           <>
@@ -719,17 +863,74 @@ export default function DashboardAgendaPage() {
               </YStack>
             </YStack>
 
-            {/* Eliminazione massiva delle fasce (richiesta esplicita dell'utente):
-                giorni specifici, mese intero o giorni della settimana, più un
-                orario preciso opzionale. */}
-            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setBulkModalOpen(true)}>
-              <XStack alignItems="center" gap="$2">
-                <Icon name="pencil" size={15} color={brand.grafite} />
-                <Text color={brand.grafite} fontWeight="600">
-                  Modifica
-                </Text>
-              </XStack>
-            </Button>
+            {/* Eliminazione massiva delle fasce (richiesta esplicita
+                dell'utente): "Modifica" non apre una finestra separata, attiva
+                una modalità di selezione direttamente sul calendario qui sotto
+                (funziona identica in Giorno/Settimana/Mese) — un click su una
+                fascia la seleziona, più le scorciatoie "tutto il giorno"
+                (nella colonna) e "tutto il mese" (qui). */}
+            <XStack alignItems="center" gap="$3" flexWrap="wrap">
+              <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={toggleSelectionMode}>
+                <XStack alignItems="center" gap="$2">
+                  <Icon name={selectionMode ? "x" : "pencil"} size={15} color={brand.grafite} />
+                  <Text color={brand.grafite} fontWeight="600">
+                    {selectionMode ? "Annulla" : "Modifica"}
+                  </Text>
+                </XStack>
+              </Button>
+              {selectionMode ? (
+                <>
+                  <Text
+                    fontFamily="$mono"
+                    fontSize={12}
+                    fontWeight="700"
+                    color={brand.cianografia}
+                    cursor="pointer"
+                    onPress={toggleMonthSelection}
+                    accessibilityRole="button"
+                  >
+                    Seleziona tutto il mese
+                  </Text>
+                  <Text fontSize="$3" color={brand.grafite70}>
+                    {selectedSlotIndexes.size} fasc{selectedSlotIndexes.size === 1 ? "ia" : "e"} selezionat
+                    {selectedSlotIndexes.size === 1 ? "a" : "e"}
+                  </Text>
+                </>
+              ) : null}
+            </XStack>
+
+            {selectionMode ? (
+              confirmingBulkDelete ? (
+                <XStack alignItems="center" gap="$3" flexWrap="wrap">
+                  <Text color={brand.grafite70} fontSize="$3">
+                    Eliminare {selectedSlotIndexes.size} fasc{selectedSlotIndexes.size === 1 ? "ia" : "e"}?
+                  </Text>
+                  <Button variant="urgent" size="$3" height={40} onPress={deleteSelectedSlots}>
+                    Conferma eliminazione
+                  </Button>
+                  <Button variant="ghost" size="$3" height={40} onPress={() => setConfirmingBulkDelete(false)}>
+                    Annulla
+                  </Button>
+                </XStack>
+              ) : (
+                <Button
+                  variant="urgent"
+                  size="$3"
+                  height={40}
+                  alignSelf="flex-start"
+                  disabled={selectedSlotIndexes.size === 0}
+                  opacity={selectedSlotIndexes.size === 0 ? 0.5 : 1}
+                  onPress={selectedSlotIndexes.size > 0 ? () => setConfirmingBulkDelete(true) : undefined}
+                >
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="trash-2" size={15} color="white" />
+                    <Text color="white" fontWeight="700">
+                      Elimina
+                    </Text>
+                  </XStack>
+                </Button>
+              )
+            ) : null}
 
             <CalendarShell
               view={view}
@@ -737,6 +938,10 @@ export default function DashboardAgendaPage() {
               currentDate={currentDate}
               onNavigate={setCurrentDate}
               onSelectDay={(date) => {
+                if (selectionMode) {
+                  toggleDaySelection(date);
+                  return;
+                }
                 setCurrentDate(date);
                 setView("day");
               }}
@@ -855,16 +1060,32 @@ export default function DashboardAgendaPage() {
           }
         />
       ) : null}
-
-      {bulkModalOpen ? (
-        <BulkDeleteAvailabilityModal
-          monthAnchor={currentDate}
-          slots={slots}
-          onDelete={deleteBulkSlots}
-          onClose={() => setBulkModalOpen(false)}
-        />
-      ) : null}
     </YStack>
+  );
+}
+
+/**
+ * Casellina di spunta (richiesta esplicita dell'utente): in modalità
+ * selezione, ogni fascia oraria e ogni "Seleziona giorno" mostrano ora un
+ * riquadro cliccabile riconoscibile invece del solo cambio di colore del
+ * testo/icona — segnale visivo più immediato che quell'elemento è
+ * selezionabile.
+ */
+function SelectionCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <XStack
+      width={14}
+      height={14}
+      flexShrink={0}
+      borderRadius={3}
+      borderWidth={1.5}
+      borderColor={brand.cianografia}
+      backgroundColor={checked ? brand.cianografia : brand.calce}
+      alignItems="center"
+      justifyContent="center"
+    >
+      {checked ? <Icon name="check" size={9} color="white" strokeWidth={3} /> : null}
+    </XStack>
   );
 }
 
@@ -872,6 +1093,7 @@ function SlotChip({
   slot,
   isConflicting,
   isEditing,
+  isSelected,
   onEdit,
 }: {
   slot: SlotDraft;
@@ -879,6 +1101,8 @@ function SlotChip({
   isConflicting: boolean;
   /** True mentre questa fascia è aperta nel pop-up di modifica: evidenziata per farla ritrovare facilmente quando si chiude. */
   isEditing: boolean;
+  /** True in modalità selezione (tasto "Modifica") quando questa fascia è tra quelle scelte per l'eliminazione in blocco. */
+  isSelected?: boolean;
   onEdit: () => void;
 }) {
   const isGeneric = slot.maxBookings > 1;
@@ -890,9 +1114,9 @@ function SlotChip({
   // chiaro, richiesta esplicita dell'utente.
   return (
     <XStack
-      borderWidth={isConflicting || isEditing ? 1.5 : 1}
-      borderStyle={isGeneric && !isConflicting ? "dashed" : "solid"}
-      borderColor={isConflicting ? brand.urgenza : isEditing ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
+      borderWidth={isConflicting || isEditing || isSelected ? 1.5 : 1}
+      borderStyle={isGeneric && !isConflicting && !isSelected ? "dashed" : "solid"}
+      borderColor={isConflicting ? brand.urgenza : isEditing || isSelected ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
       borderRadius="$2"
       paddingHorizontal="$1.5"
       paddingVertical={5}
@@ -900,13 +1124,17 @@ function SlotChip({
       gap={3}
       minWidth={0}
       cursor="pointer"
-      backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing ? brand.cianografiaVelo : brand.calce}
+      backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing || isSelected ? brand.cianografiaVelo : brand.calce}
       onPress={onEdit}
       accessibilityRole="button"
-      accessibilityLabel={`Modifica fascia ${slot.start}–${slot.end}`}
+      accessibilityLabel={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
     >
-      {slot.hasUpcomingBooking ? <Icon name="bell-ring" size={9} color={brand.urgenza} /> : null}
-      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric ? brand.ottone : brand.cianografia}>
+      {isSelected !== undefined ? (
+        <SelectionCheckbox checked={isSelected} />
+      ) : slot.hasUpcomingBooking ? (
+        <Icon name="bell-ring" size={9} color={brand.urgenza} />
+      ) : null}
+      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
         {slot.start}–{slot.end}
       </Text>
     </XStack>
@@ -1168,330 +1396,6 @@ function SlotEditorModal({
             )}
           </YStack>
         ) : null}
-      </YStack>
-    </div>
-  );
-}
-
-type BulkScope = "days" | "month" | "weekdays";
-
-/**
- * Eliminazione massiva delle fasce di disponibilità (richiesta esplicita
- * dell'utente): un'unica finestra per scegliere l'ambito — singoli giorni
- * del mese visualizzato, il mese intero, oppure uno o più giorni della
- * settimana (tutte le occorrenze nel mese) — più un orario preciso
- * opzionale, poi "Elimina" rimuove in blocco le fasce corrispondenti
- * dallo stato locale (persistite solo al successivo "Salva agenda", stesso
- * pattern già in uso per l'eliminazione di una singola fascia da
- * SlotEditorModal — nessun nuovo endpoint necessario, upsertMyAvailability
- * sostituisce già l'intera lista ad ogni salvataggio).
- */
-function BulkDeleteAvailabilityModal({
-  monthAnchor,
-  slots,
-  onDelete,
-  onClose,
-}: {
-  monthAnchor: Date;
-  slots: SlotDraft[];
-  onDelete: (indexes: Set<number>) => void;
-  onClose: () => void;
-}) {
-  const [scope, setScope] = useState<BulkScope>("days");
-  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-  const [selectedWeekdays, setSelectedWeekdays] = useState<Set<number>>(new Set());
-  const [timeFilterEnabled, setTimeFilterEnabled] = useState(false);
-  const [timeStart, setTimeStart] = useState("09:00");
-  const [timeEnd, setTimeEnd] = useState("13:00");
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  const monthDates = datesInMonth(monthAnchor);
-
-  const targetDates: string[] =
-    scope === "month"
-      ? monthDates
-      : scope === "weekdays"
-        ? [...selectedWeekdays].flatMap((dayOfWeek) => datesInMonthForGivenWeekday(monthAnchor, dayOfWeek))
-        : [...selectedDates];
-
-  const matches = new Set<number>();
-  if (targetDates.length > 0) {
-    slots.forEach((slot, index) => {
-      const matchesDate = targetDates.some((d) => slotAppliesOnDateStr(slot, d));
-      if (!matchesDate) return;
-      if (timeFilterEnabled && (slot.start !== timeStart || slot.end !== timeEnd)) return;
-      matches.add(index);
-    });
-  }
-  const hasUpcoming = [...matches].some((i) => slots[i]?.hasUpcomingBooking);
-
-  function toggleDate(dateStr: string) {
-    setSelectedDates((prev) => {
-      const next = new Set(prev);
-      if (next.has(dateStr)) next.delete(dateStr);
-      else next.add(dateStr);
-      return next;
-    });
-  }
-
-  function toggleWeekday(dayOfWeek: number) {
-    setSelectedWeekdays((prev) => {
-      const next = new Set(prev);
-      if (next.has(dayOfWeek)) next.delete(dayOfWeek);
-      else next.add(dayOfWeek);
-      return next;
-    });
-  }
-
-  return (
-    <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Modifica disponibilità"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(20,24,30,0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: 16,
-        overflowY: "auto",
-      }}
-    >
-      <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
-        width="100%"
-        maxWidth={480}
-        backgroundColor={brand.calce}
-        borderRadius="$3"
-        borderWidth={1}
-        borderColor={brand.filetto}
-        padding="$5"
-        gap="$4"
-      >
-        <XStack justifyContent="space-between" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-            Modifica disponibilità
-          </Text>
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
-            ✕
-          </Text>
-        </XStack>
-
-        <Text color={brand.grafite70} fontSize="$3">
-          Scegli quali fasce di {monthLabel(monthAnchor).toLowerCase()} {monthAnchor.getUTCFullYear()} eliminare in blocco.
-        </Text>
-
-        <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden" alignSelf="flex-start" flexWrap="wrap">
-          {(
-            [
-              { value: "days" as const, label: "Giorni specifici" },
-              { value: "month" as const, label: "Mese intero" },
-              { value: "weekdays" as const, label: "Giorni della settimana" },
-            ]
-          ).map((tab, index) => {
-            const active = tab.value === scope;
-            return (
-              <XStack
-                key={tab.value}
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                backgroundColor={active ? brand.grafite : brand.calce}
-                borderLeftWidth={index === 0 ? 0 : 1}
-                borderLeftColor={brand.filetto}
-                cursor="pointer"
-                onPress={() => setScope(tab.value)}
-                accessibilityRole="button"
-              >
-                <Text fontSize="$2" fontWeight="700" color={active ? "white" : brand.grafite}>
-                  {tab.label}
-                </Text>
-              </XStack>
-            );
-          })}
-        </XStack>
-
-        {scope === "days" ? (
-          <YStack gap="$2">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
-              Giorni del mese
-            </Text>
-            <XStack flexWrap="wrap" gap="$1.5">
-              {monthDates.map((d) => {
-                const active = selectedDates.has(d);
-                return (
-                  <XStack
-                    key={d}
-                    width={34}
-                    height={34}
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={active ? brand.cianografia : brand.filetto}
-                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    onPress={() => toggleDate(d)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Giorno ${parseIsoDate(d).getUTCDate()}`}
-                  >
-                    <Text fontSize="$2" fontWeight={active ? "700" : "400"} color={active ? brand.cianografia : brand.grafite}>
-                      {parseIsoDate(d).getUTCDate()}
-                    </Text>
-                  </XStack>
-                );
-              })}
-            </XStack>
-          </YStack>
-        ) : null}
-
-        {scope === "weekdays" ? (
-          <YStack gap="$2">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
-              Giorni della settimana
-            </Text>
-            <XStack flexWrap="wrap" gap="$2">
-              {WEEKDAY_FULL_LABELS.map((label, dayOfWeek) => {
-                const active = selectedWeekdays.has(dayOfWeek);
-                return (
-                  <XStack
-                    key={dayOfWeek}
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={active ? brand.cianografia : brand.filetto}
-                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                    cursor="pointer"
-                    onPress={() => toggleWeekday(dayOfWeek)}
-                    accessibilityRole="button"
-                  >
-                    <Text fontSize="$2" fontWeight={active ? "700" : "400"} color={active ? brand.cianografia : brand.grafite}>
-                      {label}
-                    </Text>
-                  </XStack>
-                );
-              })}
-            </XStack>
-          </YStack>
-        ) : null}
-
-        {scope === "month" ? (
-          <Text color={brand.grafite70} fontSize="$3">
-            Verranno considerate tutte le fasce di {monthLabel(monthAnchor).toLowerCase()}, incluse quelle ricorrenti.
-          </Text>
-        ) : null}
-
-        <XStack
-          alignItems="center"
-          gap="$3"
-          padding="$3"
-          backgroundColor={brand.gesso}
-          borderWidth={1}
-          borderColor={brand.filetto}
-          borderRadius="$3"
-          cursor="pointer"
-          onPress={() => setTimeFilterEnabled((v) => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: timeFilterEnabled }}
-        >
-          <YStack
-            width={22}
-            height={22}
-            borderRadius="$2"
-            borderWidth={2}
-            borderColor={timeFilterEnabled ? brand.cianografia : brand.filetto}
-            backgroundColor={timeFilterEnabled ? brand.cianografia : brand.calce}
-            alignItems="center"
-            justifyContent="center"
-          >
-            {timeFilterEnabled ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
-          </YStack>
-          <Text flex={1} fontSize="$3" color={brand.grafite}>
-            Solo un orario preciso
-          </Text>
-        </XStack>
-        {timeFilterEnabled ? (
-          <XStack gap="$2" alignItems="center" flexWrap="wrap">
-            <input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} style={modalTimeInputStyle} />
-            <Text fontSize="$3" color={brand.grafite70}>
-              –
-            </Text>
-            <input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} style={modalTimeInputStyle} />
-          </XStack>
-        ) : null}
-
-        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-          <Text fontSize="$3" color={brand.grafite70}>
-            {matches.size} fasc{matches.size === 1 ? "ia" : "e"} corrispondent{matches.size === 1 ? "e" : "i"}.
-          </Text>
-          {confirmingDelete ? (
-            <YStack gap="$2">
-              {hasUpcoming ? (
-                <XStack
-                  borderWidth={1}
-                  borderColor={brand.urgenza}
-                  backgroundColor={brand.urgenzaVelo}
-                  borderRadius="$2"
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  gap="$2"
-                  alignItems="center"
-                >
-                  <Icon name="bell-ring" size={14} color={brand.urgenza} />
-                  <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
-                    Alcune fasce selezionate hanno prenotazioni future. Eliminarle comunque?
-                  </Text>
-                </XStack>
-              ) : (
-                <Text color={brand.grafite70} fontSize="$3">
-                  Eliminare {matches.size} fasc{matches.size === 1 ? "ia" : "e"}?
-                </Text>
-              )}
-              <XStack gap="$3">
-                <Button variant="urgent" onPress={() => onDelete(matches)}>
-                  Conferma eliminazione
-                </Button>
-                <Button variant="ghost" onPress={() => setConfirmingDelete(false)}>
-                  Annulla
-                </Button>
-              </XStack>
-            </YStack>
-          ) : (
-            <XStack gap="$3">
-              <Button
-                variant="urgent"
-                disabled={matches.size === 0}
-                opacity={matches.size === 0 ? 0.5 : 1}
-                onPress={matches.size > 0 ? () => setConfirmingDelete(true) : undefined}
-              >
-                <XStack alignItems="center" gap="$2">
-                  <Icon name="trash-2" size={15} color="white" />
-                  <Text color="white" fontWeight="700">
-                    Elimina
-                  </Text>
-                </XStack>
-              </Button>
-              <Button variant="ghost" onPress={onClose}>
-                Annulla
-              </Button>
-            </XStack>
-          )}
-        </YStack>
       </YStack>
     </div>
   );

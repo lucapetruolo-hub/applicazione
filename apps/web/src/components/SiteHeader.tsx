@@ -100,15 +100,21 @@ export function SiteHeader() {
               </Text>
             </Link>
           )}
-          <Link href="/preventivo" style={{ textDecoration: "none" }}>
-            {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
-                SE, il più stretto tra i telefoni comuni) il bottone a piena
-                dimensione sforava ancora di qualche px anche dopo aver
-                ridotto il logo — stesso bug segnalato dall'utente. */}
-            <Button variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
-              Richiedi preventivo
-            </Button>
-          </Link>
+          {/* Nascosto per un account professionista già autenticato (richiesta
+              esplicita dell'utente): "Richiedi un preventivo" è un'azione da
+              cliente, non pertinente per chi gestisce il proprio profilo
+              professionale. */}
+          {user?.role !== "PROFESSIONAL" ? (
+            <Link href="/preventivo" style={{ textDecoration: "none" }}>
+              {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
+                  SE, il più stretto tra i telefoni comuni) il bottone a piena
+                  dimensione sforava ancora di qualche px anche dopo aver
+                  ridotto il logo — stesso bug segnalato dall'utente. */}
+              <Button variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
+                Richiedi preventivo
+              </Button>
+            </Link>
+          ) : null}
         </XStack>
       </XStack>
     </div>

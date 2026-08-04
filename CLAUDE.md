@@ -2516,4 +2516,131 @@ richiede una decisione sulla fonte delle foto (upload diretto
 dell'utente, servizio di stock photo da integrare — nessuno ancora
 approvato in tabella §2 — o generazione) prima di poter procedere, per
 non introdurre hotlink a immagini esterne non verificate o scelte a
+casuale.
+
+**Login professionista → Dashboard (giro precedente al carosello categorie,
+stesso principio già applicato a `/registrati`)**: `/accedi` mandava sempre
+a `redirectTo` (query param `?redirect=` o, in sua assenza, `"/"`)
+indipendentemente dal ruolo. `AuthContext.login()` ora ritorna l'utente
+appena caricato (`Promise<CurrentUser | null>`, prima `Promise<void>`) —
+necessario per poter decidere il redirect nella stessa funzione subito dopo
+`await login(token)`, senza aspettare un re-render per leggere `user` dal
+contesto. `/accedi` (sia login email+password sia Google) reindirizza ora a
+`/dashboard` se il ruolo è `PROFESSIONAL` e non è stato passato un
+`?redirect=` esplicito in URL (quest'ultimo vince sempre — es. "Accedi come
+professionista" da `/dashboard/profilo` con sessione scaduta deve tornare
+lì, non in Dashboard).
+
+**"Richiedi preventivo" nascosto in header per un professionista già
+autenticato** — richiesta esplicita dell'utente: quell'azione è pertinente
+solo per un cliente, non per chi gestisce il proprio profilo professionale.
+`SiteHeader.tsx` nasconde il bottone con `user?.role !== "PROFESSIONAL"`
+— il link omonimo in `SiteFooter.tsx` resta invariato (non è nello scope,
+il footer non è specifico del ruolo loggato).
+
+**Agenda — apertura di default su "Prenotazioni" + avviso disponibilità
+assente** — richiesta esplicita dell'utente: l'ordine dei tab è invertito
+("Prenotazioni" prima di "Disponibilità", `activeTab` iniziale
+`"prenotazioni"`) perché le prenotazioni sono l'informazione più
+urgente/time-sensitive quando si apre l'agenda. Se `slots.length === 0`,
+un banner (visibile su entrambi i tab) segnala "Non hai ancora impostato la
+tua disponibilità" con un bottone "Aggiungi disponibilità" che passa al tab
+"Disponibilità" — spiega perché un professionista senza fasce impostate
+riceve meno prenotazioni, invece di lasciarlo scoprirlo da solo.
+
+**Agenda — eliminazione in blocco delle fasce: modalità di selezione
+inline, non un pop-up separato** — richiesta esplicita dell'utente, arrivata
+in due passaggi. Prima versione: un pop-up (`BulkDeleteAvailabilityModal`)
+con ambiti "Giorni specifici"/"Mese intero"/"Giorni della settimana" +
+filtro opzionale per orario preciso. L'utente ha poi chiesto esplicitamente
+di **non aprire una schermata nuova**: il pop-up è stato rimosso del tutto
+e sostituito da una modalità di selezione diretta sullo stesso calendario
+"Disponibilità" già esistente (`CalendarShell`, Giorno/Settimana/Mese) —
+tasto "Modifica" nella toolbar attiva `selectionMode` (icona `pencil`→`x`,
+etichetta "Modifica"→"Annulla"), senza alcun `role="dialog"` aperto.
+- **Selezione a tre livelli, stesso stato (`selectedSlotIndexes: Set<number>`)**:
+  singola fascia (click su una `SlotChip` in Giorno/Settimana/Mese — in
+  modalità selezione il click seleziona invece di aprire `SlotEditorModal`),
+  giorno intero (`toggleDaySelection`, click sull'etichetta "Seleziona
+  giorno" sopra le fasce della colonna, oppure click sulla cella di un
+  giorno in vista Mese — lì il click NON naviga a Giorno come seconda
+  fascia normalmente farebbe, la modalità selezione intercetta il click),
+  mese intero (`toggleMonthSelection`, link testuale "Seleziona tutto il
+  mese" nella toolbar, scoped al mese di `currentDate`). "Elimina" richiede
+  una seconda conferma (stesso pattern a due passaggi già in uso altrove);
+  la rimozione avviene solo sullo stato locale `slots`, persistita al
+  successivo "Salva agenda" (`upsertMyAvailability` sostituisce già
+  l'intera lista, nessun nuovo endpoint necessario).
+- **Casellina di spunta su ogni elemento selezionabile** — richiesta
+  esplicita dell'utente ("deve esserci una casellina per capire che si può
+  cliccare"): nuovo componente locale `SelectionCheckbox` (riquadro 14×14,
+  bordo cianografia, sfondo cianografia piena + icona `check` bianca
+  quando selezionato, altrimenti vuoto) al posto delle sole icone
+  `plus`/`check`/`calendar` colorate usate nella prima stesura — più
+  riconoscibile come controllo cliccabile a colpo d'occhio. Usata in tre
+  punti: dentro `SlotChip` (fascia singola, Giorno/Settimana/Mese), prima
+  del testo "Seleziona giorno"/"Giorno selezionato" (colonna giorno in
+  Giorno/Settimana), al posto dell'icona `check`/`calendar` nella cella
+  Mese (accanto al conteggio fasce del giorno).
+- Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+  nessun `role="dialog"` presente dopo aver cliccato "Modifica"; selezione
+  di un giorno intero dalla vista Mese senza navigare a Giorno; selezione
+  di singole fasce dalla vista Settimana; "Seleziona tutto il mese" arriva
+  a selezionare tutte le fasce presenti; eliminazione reale delle fasce
+  selezionate seguita da "Salva agenda" → 0 fasce rimaste lato API;
+  screenshot di entrambi gli stati (casella vuota/casella selezionata,
+  blu piena con spunta bianca) su Giorno e su Mese. Zero errori console.
+  Typecheck pulito, build di produzione verde.
+
+**Fasce generiche (capienza): la capienza mostrata riflette trattative
+concluse, non semplici richieste in arrivo** — tre correzioni richieste
+esplicitamente dall'utente sullo stesso ciclo di vita ("cliccare per
+richiedere non deve già sbarrare l'orario", "quando si conclude la
+trattativa aggiorna l'agenda", "annullare una prenotazione deve liberare
+di nuovo la fascia"):
+1. **Bug reale corretto**: il backend esponeva già `guidedRequest.
+   preferredDate`/`preferredTimeSlot` sul Lead (`ProfessionalLead`,
+   `ProfessionalsService.getMyLeads`), ma `LeadCard` (`/dashboard`) non li
+   mostrava mai — il professionista non sapeva quale orario il cliente
+   avesse effettivamente richiesto cliccando una fascia generica
+   dell'agenda pubblica. Nuovo blocco "Orario richiesto: ..." (icona
+   `calendar`, stesso formato già usato in `/le-mie-richieste`) sotto
+   l'indirizzo nella card. `LeadCard` preseleziona ora anche quella stessa
+   fascia (se ancora libera nella propria agenda) come data di inizio del
+   preventivo, invece della prima fascia libera qualsiasi — il
+   professionista deve proporre l'orario richiesto, non uno a caso.
+2. **`bookedCount`/`hasUpcomingBooking` per le fasce generiche
+   (`maxBookings > 1`) ricalcolati da `Booking` reali, non più da
+   `GuidedRequest.preferredDate/preferredTimeSlot`** — richiesta esplicita:
+   il semplice arrivo di una richiesta di preventivo (il cliente che
+   clicca per richiedere) non deve "sbarrare" l'orario né consumare la
+   capienza mostrata pubblicamente; solo una trattativa conclusa
+   (preventivo accettato → `Booking` creato da `BookingsService.
+   createFromQuote`) deve farlo. `getPublicAgenda` e `getMyAvailability`
+   (`ProfessionalsService`) ora contano/verificano contro lo stesso array
+   `bookings` (status `PENDING`/`CONFIRMED`/`COMPLETED`, già filtrato a
+   monte) già usato per le fasce esatte, tramite il nuovo helper
+   `countBookingsInSlot` (generalizzazione di `isSlotBooked`, che ora è
+   solo `> 0` di quello). La query separata su `GuidedRequest` per le
+   fasce generiche è stata rimossa in entrambi i metodi: non serve più.
+   **Non toccato deliberatamente**: il conteggio di capienza dentro
+   `GuidedRequestsService.resolveGenericSlot` (quante richieste sono già
+   arrivate per quella fascia, usato per bloccare la N+1 con 409 "capienza
+   esaurita") resta basato su `GuidedRequest`, non su `Booking` — è un
+   meccanismo distinto e già testato (fan-out/anti-spam sulle richieste in
+   arrivo, non sulle trattative concluse), non nello scope di questa
+   richiesta e un suo cambiamento avrebbe rischiato di rompere un
+   comportamento già verificato.
+3. **Liberazione automatica alla cancellazione**: nessuna logica dedicata
+   necessaria — una prenotazione annullata (`CANCELED`/`NO_SHOW`) non è
+   mai nel set `bookings` filtrato a monte (`status: { in: ["PENDING",
+   "CONFIRMED", "COMPLETED"] }`), quindi esce da sola dal conteggio non
+   appena annullata, sia per le fasce esatte che per quelle generiche.
+Verificato end-to-end con l'API locale (non solo typecheck): fascia
+generica a capienza 3, richiesta guidata creata → `bookedCount` pubblico
+resta 0/3 (nessun consumo alla sola richiesta); professionista vede
+"Orario richiesto" sulla propria dashboard; preventivo inviato per
+quell'orario e accettato dal cliente → `bookedCount` sale a 1/3 solo ora;
+prenotazione annullata dal cliente → `bookedCount` torna a 0/3. Zero
+errori console, typecheck pulito su tutti i package.
 caso.
