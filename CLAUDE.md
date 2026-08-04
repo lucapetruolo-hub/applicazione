@@ -2643,4 +2643,217 @@ resta 0/3 (nessun consumo alla sola richiesta); professionista vede
 quell'orario e accettato dal cliente → `bookedCount` sale a 1/3 solo ora;
 prenotazione annullata dal cliente → `bookedCount` torna a 0/3. Zero
 errori console, typecheck pulito su tutti i package.
-caso.
+
+**Giro di correzioni/funzionalità — casellina selezione, header professionista,
+note prenotazione, freccette caroselli, "Proponi altra data", badge
+notifiche nei sottomenu, swipe agenda** (tutte richieste esplicite
+dell'utente nello stesso giro):
+
+1. **Casellina di spunta nella modalità selezione dell'agenda** —
+   ogni elemento selezionabile in modalità "Modifica" (calendario
+   "Disponibilità") mostra ora una `SelectionCheckbox` (riquadro 14×14,
+   bordo cianografia, sfondo pieno + icona `check` bianca quando
+   selezionato) al posto delle sole icone colorate poco riconoscibili
+   come controlli cliccabili: singola fascia oraria (`SlotChip`),
+   etichetta "Seleziona giorno"/"Giorno selezionato", conteggio fasce
+   nella cella della vista Mese.
+2. **Bug reale corretto: selezione "traslata" su altri giorni/mesi** —
+   segnalato dall'utente in tre passaggi ("cliccando un giorno seleziona
+   l'intera colonna", "'Seleziona tutto il mese' seleziona anche oltre il
+   mese visualizzato", "cliccando un orario non deve traslare negli altri
+   giorni"). Causa reale: una fascia ricorrente storica (`date: null`,
+   residuo del comportamento precedente al passaggio "per data esatta",
+   §11) vale per QUALUNQUE data con lo stesso giorno della settimana,
+   senza limite di tempo (`slotAppliesOnDateStr`) — la selezione multipla
+   avviene per indice di riga in `slots`, non per singola occorrenza:
+   selezionare quell'indice da "un giorno" o "un mese" lo faceva apparire
+   selezionato su OGNI cella con lo stesso giorno della settimana, in
+   qualunque vista e mese passato/futuro. Corretto su due livelli:
+   - `toggleDaySelection`/`toggleMonthSelection` (scorciatoie di gruppo,
+     `apps/web/src/app/dashboard/agenda/page.tsx`) escludono ora le fasce
+     con `date === null` dal calcolo — non hanno un confine temporale su
+     cui "un giorno"/"un mese" abbia senso. Stessa esclusione nel calcolo
+     "tutto selezionato" per il render delle etichette/celle.
+   - **Le fasce ricorrenti storiche non partecipano più alla selezione
+     multipla nemmeno con il click diretto sul singolo `SlotChip`**: unica
+     soluzione che rispetta i dati sottostanti senza introdurre una
+     materializzazione implicita (che avrebbe convertito silenziosamente
+     "per sempre" in un orizzonte finito, un data-loss reale). `SlotChip`
+     ha una nuova prop `isLegacyRecurring`: quando vera, il chip non ha
+     `onPress`/`role="button"`, mostra un'icona `calendar` al posto della
+     casellina e il testo "Fascia ricorrente HH:MM–HH:MM, non selezionabile
+     qui" — resta eliminabile solo uscendo da "Modifica" e cliccandola
+     normalmente (`SlotEditorModal` → "Elimina fascia", che avvisa già che
+     l'eliminazione riguarda ogni occorrenza).
+   Verificato con Playwright (non solo lettura di codice): selezione di
+   una fascia a data esatta non seleziona una fascia ricorrente storica
+   sullo stesso giorno come effetto collaterale; navigando su un giorno
+   diverso nessuna fascia lì appare selezionata; una fascia ricorrente
+   storica non è più raggiungibile con "Seleziona fascia" e non appare mai
+   selezionata su nessuna sua occorrenza futura.
+3. **Doppio Escape corretto in `BookingDetailPanel`** — bug reale trovato
+   durante l'implementazione del punto 6 sotto: sia `PhotoLightbox` che
+   `BookingDetailPanel` registrano un handler `keydown` sullo stesso
+   `document` per Escape; un solo tasto Escape chiudeva contemporaneamente
+   sia la foto a schermo intero sia il pannello sottostante, invece di
+   tornare al pannello. Corretto ignorando l'Escape nel pannello mentre
+   `openPhotoIndex !== null`.
+4. **Nome attività al posto del nome personale nell'header** — richiesta
+   esplicita dell'utente: un professionista è identificato dalla propria
+   attività, non dal nome dell'intestatario dell'account (un cliente vede
+   invece sempre il proprio nome come prima). `/auth/me`/`/auth/me` PATCH
+   (`AuthController.withBusinessName`) recuperano ora `ProfessionalProfile.
+   businessName`/`imageUrl` con una query dedicata solo per i professionisti
+   (`User` non ha questi campi, vivono su `ProfessionalProfile`, entità
+   separata) ed espongono `businessName`/`businessImageUrl` nel tipo
+   `CurrentUser`. `AccountMenu.tsx`: `displayName`/`displayImageUrl`
+   ricadono sul nome/immagine personale finché il professionista non ha
+   ancora creato il profilo (`businessName`/`businessImageUrl` restano
+   `null` in quel caso) — mai un'etichetta vuota. Stesso principio esteso
+   su richiesta esplicita successiva anche all'**icona in alto a destra**:
+   mostra la foto profilo pubblica (`ProfessionalProfile.imageUrl`) quando
+   disponibile, non le sole iniziali — `User.imageUrl` (immagine
+   dell'account) resta sempre `null` per un professionista, l'upload in
+   `/account` è disabilitato per quel ruolo (§12, "Immagine profilo anche
+   per gli account cliente").
+5. **Descrizione, foto e nota privata nel pannello prenotazione** —
+   richiesta esplicita dell'utente: cliccando una prenotazione nel
+   calendario "Prenotazioni" devono comparire anche "descrivi il lavoro" e
+   le foto della richiesta originale, più la possibilità di scrivere una
+   nota personale. Nuovo campo Prisma `Booking.professionalNote`
+   (nullable) — privato, mai visto dal cliente, modificabile
+   indipendentemente dallo stato della prenotazione, a differenza di
+   `cancellationNote` (quella è per il cliente). `ProfessionalBooking`
+   (packages/shared) espone ora `description`/`photoUrls` (dal
+   `GuidedRequest` collegato via `quote`, `null`/`[]` per le prenotazioni
+   dirette da agenda pubblica che non ne hanno una) e `professionalNote`.
+   Nuovo endpoint `PATCH /bookings/:id/note` (`BookingsService.
+   updateProfessionalNote`). `BookingDetailPanel.tsx`: sezioni "Descrizione
+   del lavoro"/"Foto del cliente" (miniature cliccabili → `PhotoLightbox`,
+   stesso componente già in uso altrove) e "Note personali (solo per te)"
+   con textarea + bottone "Salva nota" (visibile solo quando il testo
+   cambia rispetto al valore salvato). `key={booking.id}` sul punto di
+   montaggio in `/dashboard/agenda` garantisce uno stato fresco ad ogni
+   apertura di una prenotazione diversa.
+6. **Freccette sul carosello "Sulla piattaforma" (vetrina professionisti)**
+   — richiesta esplicita dell'utente: le freccette del carosello categorie
+   in homepage esistevano già (fase precedente), ma il carosello
+   `RealShowcase` (professionisti verificati in vetrina,
+   `ProfessionalsShowcase.tsx`) usava un semplice `overflow="scroll"` senza
+   alcun controllo visibile. Riusa lo stesso componente `CategoryCarousel`
+   (già generico, accetta `children`) invece di duplicare il codice delle
+   freccette — nessun nuovo componente. Ogni card avvolta in un
+   `<div style={{ flexShrink: 0 }}>` (stesso pattern già in uso in
+   `HomeContent.tsx` per le categorie), larghezza fissa (`width={220}`
+   invece di `minWidth`) per coerenza col contenitore flex.
+7. **Bug reale corretto: "Proponi altra data" non mostrava mai orari per
+   un professionista con sole fasce a capienza** — segnalato dall'utente
+   ("non compaiono le date disponibili"). Riprodotto e isolato: il filtro
+   client-side (`startChoosingDate`, `/le-mie-richieste`) escludeva
+   esplicitamente `slot.maxBookings !== 1`, quindi un professionista che
+   avesse impostato l'agenda solo con fasce generiche non offriva mai
+   nulla al cliente in questo flusso — stesso identico bug già corretto in
+   un giro precedente per `ProfessionalsService.getMyAvailableSlots` (lato
+   professionista, scelta della data di un preventivo): "si sta scegliendo
+   quando iniziare un lavoro già concordato, non consumando la capienza
+   pensata per il fan-out delle richieste guidate". Corretto con lo stesso
+   principio su entrambi i lati:
+   - Client: rimosso il filtro `maxBookings === 1`, resta solo `bookedCount
+     < maxBookings`.
+   - Server (`QuotesService.resolveFreeExactSlot`, usato da `proposeDate`):
+     rimosso `maxBookings: 1` dal filtro di ricerca della fascia; il
+     controllo "fascia già presa" passa da booleano a conteggio con soglia
+     `slot.maxBookings` (stesso principio di `countBookingsInSlot` già in
+     uso altrove per `bookedCount`).
+   - Server (`QuotesService.confirmProposedDate`): stesso cambio da
+     booleano a conteggio — qui `clientProposedDate` è solo un timestamp
+     esatto (nessun riferimento diretto alla `AvailabilitySlot` sottostante
+     salvato su `Quote`), la fascia corrispondente e la sua `maxBookings`
+     vengono recuperate con un bounds-check (`timeStr >= startTime &&
+     timeStr < endTime`) sulle fasce candidate del professionista per
+     quella data/giorno della settimana, stesso principio di
+     `slotAppliesOnDate`.
+   Verificato end-to-end con l'API locale e Playwright: professionista con
+   SOLO una fascia generica (capienza 3) → cliente propone una data su
+   quella fascia (select popolato, prima vuoto) → professionista conferma
+   → `Booking` creato correttamente rispettando la capienza residua.
+8. **Numeretto di notifiche anche nei sottomenu + evidenza nella lista** —
+   richiesta esplicita dell'utente: oltre al totale accanto al nome
+   nell'header, il numero deve comparire anche sulla singola voce del
+   menu a tendina che porta alla pagina con la novità (es. "Dashboard" per
+   un professionista, "Le mie visite" per un cliente), e la card/riga
+   specifica con l'aggiornamento nella lista dev'essere evidenziata, non
+   solo il conteggio aggregato del tab. Nuove funzioni in
+   `apps/web/src/lib/notificationSections.ts`:
+   - `accountMenuUnreadCounts(role, notifications)`: mappa `{href: count}`
+     per le voci di `AccountMenu` — tutte le notifiche di un ruolo
+     confluiscono oggi in un'unica pagina (`/dashboard` o
+     `/le-mie-richieste`, le stesse già coperte da
+     `professionalSectionCounts`/`clientSectionCounts`), quindi la mappa
+     ha una sola voce diversa da zero. `AccountMenu.tsx` mostra un badge
+     rosso (stesso stile del totale nell'header) accanto alla label di
+     ogni voce con `count > 0`.
+   - `unreadGuidedRequestIds`/`unreadBookingIds(notifications)`: estraggono
+     dal `payload` (mai `guidedRequestId` e `bookingId` insieme nello
+     stesso evento — vedi i punti di creazione in `NotificationsService`)
+     l'insieme di ID con un aggiornamento non letto. `/dashboard` e
+     `/le-mie-richieste` calcolano questi Set nello stesso `useEffect` che
+     già recupera lo snapshot per i numeretti di sezione (prima di
+     `markNotificationsRead`, stessa sequenza esplicita già in uso per
+     evitare la race condition documentata sopra in questo file) e li
+     passano come prop `isNew` a `LeadCard`/`AcceptedJobCard` (dashboard)
+     e `GuidedRequestCard`/`BookingRow` (le-mie-richieste): un `Badge
+     variant="nuovo"` ("Nuovo") accanto allo stato quando `isNew` è vero.
+   - `AuthContext.markNotificationsRead` svuota ora anche
+     `unreadNotifications` localmente (prima solo `unreadCount`, tramite
+     `setUnreadCount(0)`): senza, il badge per voce di menu sarebbe
+     rimasto "sporco" fino al prossimo poll da 45s dopo aver visitato la
+     pagina che le segna come lette.
+   Verificato con Playwright: badge numerico visibile sulla voce
+   "Dashboard" del menu dopo un nuovo lead, badge "Nuovo" sulla card
+   corrispondente nella lista.
+9. **Cliente avvisato quando il professionista modifica la data di un
+   preventivo già inviato** — richiesta esplicita dell'utente. Prima
+   `QuotesService.createOrUpdate` notificava il cliente solo al primo
+   invio (`NEW_QUOTE`), mai per le modifiche successive (voci, note, data)
+   — corretto per il solo caso in cui l'`estimatedStartDate` cambia
+   davvero: nuovo tipo `QUOTE_DATE_CHANGED` (confrontato per timestamp
+   esatto, `existingQuote.estimatedStartDate.getTime() !== data.
+   estimatedStartDate.getTime()`), notificato SOLO in quel caso — una
+   modifica che tocca solo voci/note non genera questa notifica, il
+   cliente non ha bisogno di saperlo se "quando" non cambia. Aggiunto al
+   copy del toast (`notificationCopy.ts`) e alla sezione "Le mie
+   richieste" lato cliente (`CLIENT_RICHIESTE_TYPES`,
+   `notificationSections.ts`). Verificato con l'API locale: modifica che
+   cambia la data → esattamente 1 notifica `QUOTE_DATE_CHANGED`; una
+   seconda modifica successiva che NON cambia la data (solo note) → nessuna
+   nuova notifica di questo tipo (resta a 1).
+10. **Foto profilo del cliente nella scheda aperta dal nome** — richiesta
+    esplicita dell'utente: `ClientProfileModal` (aperta cliccando il nome
+    cliente in una richiesta ricevuta, `/dashboard`) mostrava solo iniziali.
+    Nuovo campo `ProfessionalLead.guidedRequest.clientImageUrl`
+    (`User.imageUrl` del cliente, stesso campo già usato per l'avatar
+    dell'account cliente altrove) esposto da `ProfessionalsService.
+    getMyLeads` (già includeva `client` per intero nella query, nessuna
+    modifica alla query Prisma) e passato ad `Avatar` nel modal.
+11. **Swipe per navigare l'agenda** — richiesta esplicita dell'utente:
+    orizzontale (sinistra/destra) in vista Giorno/Settimana, verticale
+    (sù/giù) in vista Mese. `CalendarShell.tsx`: `onTouchStart`/
+    `onTouchEnd` (mai `onTouchMove`/`preventDefault` — lo scroll naturale
+    della pagina resta sempre intatto durante il gesto, valutato solo a
+    gesto concluso) su un `<div>` che avvolge la griglia, soglia 60px +
+    dominanza di un asse sull'altro (1.5×) per non scattare su un tap o su
+    uno scroll di pagina con una leggera componente diagonale. Riusa
+    `handlePrev`/`handleNext` già esistenti (stessa logica dei bottoni
+    freccia). Verificato con eventi `TouchEvent` sintetici via Playwright
+    (non solo lettura di codice): swipe orizzontale in vista Settimana
+    cambia settimana, swipe verticale verso l'alto in vista Mese avanza al
+    mese successivo.
+
+Verificato in blocco: typecheck pulito su tutti i package (`shared`,
+`database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (24 route). Sessione completa riavviata da
+zero a metà lavoro (container riciclato per inattività, working tree e
+dati Postgres sopravvissuti) — tutti i test end-to-end sopra rieseguiti
+con successo sull'ambiente ripristinato, non solo esistenti da una sessione
+precedente.

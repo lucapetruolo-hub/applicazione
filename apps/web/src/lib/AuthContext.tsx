@@ -124,6 +124,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiClient.markNotificationsRead(storedToken);
       setUnreadCount(0);
+      // Svuotato anche qui (non solo al prossimo poll da 45s): senza,
+      // il badge per voce di menu (AccountMenu) resterebbe "sporco" per
+      // fino a 45s dopo aver visitato la pagina che le segna come lette.
+      setUnreadNotifications([]);
     } catch {
       // Idem: un fallimento nel segnare come lette non deve rompere la pagina.
     }

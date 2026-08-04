@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, Text, XStack, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import {
   addDaysUtc,
@@ -70,6 +70,35 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
     if (view === "day") onNavigate(addDaysUtc(currentDate, 1));
     else if (view === "week") onNavigate(addDaysUtc(currentDate, 7));
     else onNavigate(addMonthsUtc(currentDate, 1));
+  }
+
+  // Navigazione a swipe (richiesta esplicita dell'utente): orizzontale
+  // (sinistra/destra) in Giorno/Settimana, verticale (sù/giù) in Mese —
+  // solo touchstart/touchend, mai touchmove/preventDefault: lo scroll
+  // naturale della pagina resta sempre intatto durante il gesto, valutato
+  // solo a fine gesto. Soglia di distanza (60px) + dominanza di un asse
+  // sull'altro (1.5×) per non scattare su un tap o su uno scroll di pagina
+  // con una leggera componente diagonale.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  function handleTouchStart(e: React.TouchEvent) {
+    const touch = e.touches[0];
+    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    const touch = e.changedTouches[0];
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (view === "month") {
+      if (Math.abs(deltaY) > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5) {
+        if (deltaY < 0) handleNext();
+        else handlePrev();
+      }
+    } else if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX < 0) handleNext();
+      else handlePrev();
+    }
   }
 
   let rangeLabel: string;
@@ -186,11 +215,13 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
         </XStack>
       </XStack>
 
-      {view === "month" ? (
-        <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
-      ) : (
-        <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />
-      )}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        {view === "month" ? (
+          <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
+        ) : (
+          <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />
+        )}
+      </div>
 
       <style jsx>{`
         :global(.cal-month-grid) {

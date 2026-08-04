@@ -482,6 +482,11 @@ export class ProfessionalsService {
           // dettagli prima di formulare un preventivo.
           clientPhone: lead.guidedRequest.client.phone,
           clientEmail: lead.guidedRequest.client.email,
+          // Richiesta esplicita dell'utente: mostrare la foto profilo del
+          // cliente (se presente) nella scheda aperta cliccando il nome
+          // (ClientProfileModal) — stesso campo User.imageUrl già usato
+          // per l'avatar dell'account cliente altrove nel sito.
+          clientImageUrl: lead.guidedRequest.client.imageUrl,
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           isUrgent: lead.guidedRequest.isUrgent,
@@ -547,10 +552,12 @@ export class ProfessionalsService {
         client: true,
         // guidedRequest solo se la prenotazione viene da un preventivo
         // accettato (Booking.quoteId): porta l'indirizzo preciso indicato
-        // dal cliente nella richiesta. Le prenotazioni dirette da agenda
+        // dal cliente nella richiesta, più descrizione e foto del lavoro
+        // (richiesta esplicita dell'utente, visibili al click su una
+        // prenotazione in agenda). Le prenotazioni dirette da agenda
         // (bookAgendaSlot) non hanno una Quote/GuidedRequest collegata,
-        // address resta null in quel caso.
-        quote: { include: { items: true, guidedRequest: { select: { address: true } } } },
+        // tutti questi campi restano null/[] in quel caso.
+        quote: { include: { items: true, guidedRequest: { select: { address: true, description: true, photoUrls: true } } } },
         finalItems: true,
       },
       orderBy: { scheduledAt: "asc" },
@@ -594,6 +601,9 @@ export class ProfessionalsService {
       finalAmountEurCents: booking.finalAmountEurCents,
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
       cancellationNote: booking.cancellationNote,
+      description: booking.quote?.guidedRequest?.description ?? null,
+      photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
+      professionalNote: booking.professionalNote,
     }));
   }
 

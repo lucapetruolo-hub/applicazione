@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
@@ -31,19 +32,35 @@ export function BookingDetailPanel({
   onClose,
   onAction,
   isActionPending,
+  onSaveNote,
+  isSavingNote,
 }: {
   booking: ProfessionalBooking;
   onClose: () => void;
   onAction: (status: "CONFIRMED" | "COMPLETED" | "CANCELED") => void;
   isActionPending: boolean;
+  /** Nota privata del professionista (mai vista dal cliente) — richiesta esplicita dell'utente. */
+  onSaveNote: (note: string) => void;
+  isSavingNote: boolean;
 }) {
+  // `key={booking.id}` sul punto di montaggio (agenda/page.tsx) garantisce
+  // uno stato fresco ad ogni apertura di una prenotazione diversa, stesso
+  // pattern già in uso per SlotEditorModal.
+  const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  const noteChanged = noteDraft !== (booking.professionalNote ?? "");
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      // Bug reale corretto: PhotoLightbox ha il proprio handler Escape
+      // sullo stesso `document` — senza questa guardia, un solo Escape
+      // chiudeva contemporaneamente sia la foto a schermo intero sia
+      // questo pannello sottostante, invece di tornare al pannello.
+      if (e.key === "Escape" && openPhotoIndex === null) onClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, openPhotoIndex]);
 
   const date = new Date(booking.scheduledAt);
   // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
@@ -171,6 +188,80 @@ export function BookingDetailPanel({
           </YStack>
         ) : null}
 
+        {/* Descrizione del lavoro e foto scritte/caricate dal cliente nella
+            richiesta guidata originale (richiesta esplicita dell'utente) —
+            assenti per le prenotazioni dirette da agenda pubblica, che non
+            hanno una GuidedRequest collegata. `?? []` difensivo: web e API
+            si deployano indipendentemente. */}
+        {booking.description ? (
+          <YStack gap="$1">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+              Descrizione del lavoro
+            </Text>
+            <Text color={brand.grafite} fontSize="$3">
+              {booking.description}
+            </Text>
+          </YStack>
+        ) : null}
+
+        {(booking.photoUrls ?? []).length > 0 ? (
+          <YStack gap="$2">
+            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+              Foto del cliente
+            </Text>
+            <XStack gap="$2" flexWrap="wrap">
+              {booking.photoUrls.map((url, index) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt=""
+                  onClick={() => setOpenPhotoIndex(index)}
+                  style={{ width: 64, height: 64, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                />
+              ))}
+            </XStack>
+          </YStack>
+        ) : null}
+
+        {/* Nota privata del professionista (richiesta esplicita dell'utente:
+            "eventuali note da ricordare") — mai vista dal cliente, a
+            differenza della nota di annullamento (CancelBookingModal). */}
+        <YStack gap="$2">
+          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            Note personali (solo per te)
+          </Text>
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
+            rows={3}
+            maxLength={2000}
+            style={{
+              width: "100%",
+              padding: 10,
+              borderRadius: 4,
+              border: `1px solid ${brand.filetto}`,
+              fontSize: 14,
+              fontFamily: "inherit",
+              color: brand.grafite,
+              resize: "vertical",
+            }}
+          />
+          {noteChanged ? (
+            <Button
+              variant="secondary"
+              size="$3"
+              height={36}
+              alignSelf="flex-start"
+              disabled={isSavingNote}
+              opacity={isSavingNote ? 0.6 : 1}
+              onPress={() => onSaveNote(noteDraft)}
+            >
+              {isSavingNote ? "Salvataggio..." : "Salva nota"}
+            </Button>
+          ) : null}
+        </YStack>
+
         <XStack gap="$2" flexWrap="wrap">
           {booking.status === "PENDING" ? (
             <Button variant="secondary" size="$3" height={40} disabled={isActionPending} opacity={isActionPending ? 0.6 : 1} onPress={() => onAction("CONFIRMED")}>
@@ -189,6 +280,10 @@ export function BookingDetailPanel({
           ) : null}
         </XStack>
       </YStack>
+
+      {openPhotoIndex !== null ? (
+        <PhotoLightbox photos={booking.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
+      ) : null}
     </div>
   );
 }

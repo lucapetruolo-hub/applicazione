@@ -4,9 +4,11 @@ import {
   acceptQuoteSchema,
   cancelBookingByProfessionalSchema,
   completeBookingSchema,
+  updateBookingNoteSchema,
   type AcceptQuoteInput,
   type CancelBookingByProfessionalInput,
   type CompleteBookingInput,
+  type UpdateBookingNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -60,6 +62,17 @@ export class BookingsController {
     @Body(new ZodValidationPipe(cancelBookingByProfessionalSchema)) body: CancelBookingByProfessionalInput,
   ) {
     return this.bookingsService.cancelByProfessional(req.user.userId, id, body);
+  }
+
+  /** Nota privata del professionista su una prenotazione (mai vista dal cliente), richiesta esplicita dell'utente. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/note")
+  updateNote(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateBookingNoteSchema)) body: UpdateBookingNoteInput,
+  ) {
+    return this.bookingsService.updateProfessionalNote(req.user.userId, id, body.note);
   }
 
   @UseGuards(JwtAuthGuard)

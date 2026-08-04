@@ -71,6 +71,8 @@ export type ProfessionalLead = {
      */
     clientPhone: string | null;
     clientEmail: string | null;
+    /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
+    clientImageUrl: string | null;
     /** Via e numero civico indicati dal cliente, facoltativo. */
     address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
@@ -135,6 +137,18 @@ export type ProfessionalBooking = {
   finalItems: { id: string; name: string; priceEurCents: number }[];
   /** Nota lasciata dal professionista quando annulla un intervento già confermato (facoltativa). */
   cancellationNote: string | null;
+  /**
+   * Descrizione del lavoro e foto scritte/caricate dal cliente nella
+   * richiesta guidata originale — richiesta esplicita dell'utente
+   * ("devono uscire scritte anche quello che il cliente ha scritto in
+   * descrivi il lavoro e le foto inserite" cliccando una prenotazione in
+   * agenda). `null`/`[]` per le prenotazioni dirette dall'agenda pubblica
+   * (bookAgendaSlot), che non hanno una GuidedRequest collegata.
+   */
+  description: string | null;
+  photoUrls: string[];
+  /** Nota privata del professionista (mai vista dal cliente), modificabile da BookingDetailPanel. */
+  professionalNote: string | null;
 };
 
 /**

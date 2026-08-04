@@ -22,11 +22,14 @@ export function ClientProfileModal({
   name,
   phone,
   email,
+  imageUrl,
   onClose,
 }: {
   name: string;
   phone: string | null;
   email: string | null;
+  /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
+  imageUrl?: string | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -75,7 +78,7 @@ export function ClientProfileModal({
           </Text>
         </XStack>
 
-        <Avatar name={name} size={72} />
+        <Avatar name={name} imageUrl={imageUrl ?? null} size={72} />
 
         <YStack gap="$1" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">

@@ -101,6 +101,29 @@ export class BookingsService {
   }
 
   /**
+   * Nota privata del professionista su una prenotazione (richiesta esplicita
+   * dell'utente: "eventuali note da ricordare") — mai vista dal cliente,
+   * modificabile indipendentemente dallo stato della prenotazione (anche
+   * conclusa: può ancora servire per ricordare qualcosa dopo il lavoro).
+   * Stringa vuota salvata come `null`.
+   */
+  async updateProfessionalNote(professionalUserId: string, bookingId: string, note: string) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+
+    const trimmed = note.trim();
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { professionalNote: trimmed || null } });
+    return { bookingId, professionalNote: trimmed || null };
+  }
+
+  /**
    * Il professionista segnala un "Lavoro accettato" come terminato,
    * inserendo l'importo preciso — richiesta esplicita dell'utente: una
    * finestra dedicata (non un semplice cambio di stato) dove seguire le

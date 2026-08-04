@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Avatar, Badge, Button, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { CategoryCarousel } from "@/components/CategoryCarousel";
 
 // Sotto questa soglia la vetrina non si pubblica: mostrare 3-4 profili reali
 // come se fossero "i professionisti in evidenza" darebbe comunque
@@ -23,30 +24,34 @@ function RealShowcase({ professionals }: { professionals: ProfessionalSearchResu
   const router = useRouter();
   return (
     <Section eyebrow="Sulla piattaforma" title="Professionisti verificati vicino a te" maxWidth={1200}>
-      <XStack width="100%" gap="$3" overflow="scroll" paddingBottom="$2">
+      {/* Freccette + scroll touch (richiesta esplicita dell'utente, stesso
+          componente già usato per il carosello categorie in homepage: chi
+          non sa che si può scorrere può cliccarci). */}
+      <CategoryCarousel>
         {professionals.slice(0, 10).map((pro) => (
-          <YStack
-            key={pro.id}
-            minWidth={220}
-            gap="$2"
-            padding="$3"
-            borderWidth={1}
-            borderColor={brand.filetto}
-            borderRadius="$4"
-            cursor="pointer"
-            onPress={() => router.push(`/professionista/${pro.id}`)}
-            accessibilityRole="button"
-          >
-            <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={40} />
-            <Text fontWeight="600">{pro.businessName}</Text>
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
-              {pro.categoryLabel} · {pro.city}
-            </Text>
-            {pro.rating !== null ? <Rating value={pro.rating} size={13} /> : null}
-            {pro.verified ? <Badge variant="verificato">Verificato</Badge> : null}
-          </YStack>
+          <div key={pro.id} style={{ flexShrink: 0 }}>
+            <YStack
+              width={220}
+              gap="$2"
+              padding="$3"
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="$4"
+              cursor="pointer"
+              onPress={() => router.push(`/professionista/${pro.id}`)}
+              accessibilityRole="button"
+            >
+              <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={40} />
+              <Text fontWeight="600">{pro.businessName}</Text>
+              <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
+                {pro.categoryLabel} · {pro.city}
+              </Text>
+              {pro.rating !== null ? <Rating value={pro.rating} size={13} /> : null}
+              {pro.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+            </YStack>
+          </div>
         ))}
-      </XStack>
+      </CategoryCarousel>
     </Section>
   );
 }

@@ -19,7 +19,7 @@ import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
-import { professionalSectionCounts } from "@/lib/notificationSections";
+import { professionalSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
@@ -130,6 +130,13 @@ export default function DashboardPage() {
   // c'era davvero un aggiornamento. Recuperata qui esplicitamente PRIMA
   // di segnare come letto, la sequenza è sempre corretta.
   const [sectionSnapshot, setSectionSnapshot] = useState<{ richieste: number; lavori: number }>({ richieste: 0, lavori: 0 });
+  // ID delle richieste/prenotazioni con un aggiornamento non letto (stesso
+  // snapshot di sectionSnapshot, recuperato una sola volta) — richiesta
+  // esplicita dell'utente: "rendilo evidente anche nella lista", non solo
+  // il numeretto sul tab. LeadCard/AcceptedJobCard mostrano un badge
+  // "Nuovo" quando il proprio id è tra questi.
+  const [newLeadRequestIds, setNewLeadRequestIds] = useState<Set<string>>(new Set());
+  const [newBookingIds, setNewBookingIds] = useState<Set<string>>(new Set());
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
@@ -203,7 +210,11 @@ export default function DashboardPage() {
     if (!token) return;
     apiClient
       .unreadNotifications(token)
-      .then((notifications) => setSectionSnapshot(professionalSectionCounts(notifications)))
+      .then((notifications) => {
+        setSectionSnapshot(professionalSectionCounts(notifications));
+        setNewLeadRequestIds(unreadGuidedRequestIds(notifications));
+        setNewBookingIds(unreadBookingIds(notifications));
+      })
       .catch(() => {})
       .finally(() => markNotificationsRead());
   }, [token, markNotificationsRead]);
@@ -336,7 +347,14 @@ export default function DashboardPage() {
               <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
             ) : (
               visibleLeads?.map((lead) => (
-                <LeadCard key={lead.id} lead={lead} token={token} availableSlots={availableSlots} onChanged={reloadLeads} />
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  token={token}
+                  availableSlots={availableSlots}
+                  onChanged={reloadLeads}
+                  isNew={newLeadRequestIds.has(lead.guidedRequest.id)}
+                />
               ))
             )}
             <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={setLeadsPage} />
@@ -374,7 +392,7 @@ export default function DashboardPage() {
             ) : (
               <YStack gap="$3">
                 {visibleBookings.map((booking) => (
-                  <AcceptedJobCard key={booking.id} booking={booking} token={token} onUpdated={reloadBookings} />
+                  <AcceptedJobCard key={booking.id} booking={booking} token={token} onUpdated={reloadBookings} isNew={newBookingIds.has(booking.id)} />
                 ))}
               </YStack>
             )}
@@ -401,7 +419,18 @@ function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
   return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED" || b.status === "CANCELED");
 }
 
-function AcceptedJobCard({ booking, token, onUpdated }: { booking: ProfessionalBooking; token: string; onUpdated: () => void }) {
+function AcceptedJobCard({
+  booking,
+  token,
+  onUpdated,
+  isNew,
+}: {
+  booking: ProfessionalBooking;
+  token: string;
+  onUpdated: () => void;
+  /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
+  isNew?: boolean;
+}) {
   const date = new Date(booking.scheduledAt);
   // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
   // priorità su quello libero, quando presente — vedi formatBookingAddress.
@@ -432,16 +461,19 @@ function AcceptedJobCard({ booking, token, onUpdated }: { booking: ProfessionalB
             {" · "}
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
           </Text>
-          <Text
-            fontFamily="$mono"
-            fontSize={11}
-            fontWeight="700"
-            letterSpacing={0.5}
-            textTransform="uppercase"
-            color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
-          >
-            {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
-          </Text>
+          <XStack alignItems="center" gap="$2">
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              fontWeight="700"
+              letterSpacing={0.5}
+              textTransform="uppercase"
+              color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
+            >
+              {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
+            </Text>
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </XStack>
         </YStack>
         {booking.status === "CONFIRMED" ? (
           <XStack gap="$2" flexWrap="wrap">
@@ -628,12 +660,15 @@ function LeadCard({
   token,
   availableSlots,
   onChanged,
+  isNew,
 }: {
   lead: ProfessionalLead;
   token: string;
   /** Fasce esatte libere della propria agenda (prossimi 14gg): usate per scegliere la data di inizio invece di una data libera. */
   availableSlots: ProfessionalAvailableSlot[];
   onChanged: () => void;
+  /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
+  isNew?: boolean;
 }) {
   const [showForm, setShowForm] = useState(false);
   // Una voce di default ("Manodopera") già pronta, il professionista può
@@ -846,6 +881,7 @@ function LeadCard({
               · {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
             </Text>
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
           <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
           {lead.guidedRequest.address ? (
@@ -1195,6 +1231,7 @@ function LeadCard({
           name={clientName}
           phone={lead.guidedRequest.clientPhone}
           email={lead.guidedRequest.clientEmail}
+          imageUrl={lead.guidedRequest.clientImageUrl}
           onClose={() => setShowClientProfile(false)}
         />
       ) : null}

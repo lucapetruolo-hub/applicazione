@@ -210,6 +210,18 @@ export const declineLeadSchema = z.object({
 });
 export type DeclineLeadInput = z.infer<typeof declineLeadSchema>;
 
+/**
+ * Nota privata del professionista su una prenotazione (richiesta esplicita
+ * dell'utente: "eventuali note da ricordare") — mai vista dal cliente, a
+ * differenza di cancelBookingByProfessionalSchema sopra. Stringa vuota
+ * salvata come `null` (nota rimossa), stesso pattern già in uso altrove
+ * per i campi testo facoltativi di questo modulo.
+ */
+export const updateBookingNoteSchema = z.object({
+  note: z.string().max(2000),
+});
+export type UpdateBookingNoteInput = z.infer<typeof updateBookingNoteSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

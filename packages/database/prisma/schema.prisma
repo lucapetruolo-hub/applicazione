@@ -515,6 +515,13 @@ model Booking {
   // dall'annullamento lato cliente (cancelForClient), che non ne raccoglie una.
   cancellationNote String?
 
+  // Nota privata del professionista per ricordare dettagli sulla
+  // prenotazione (es. "portare il pezzo di ricambio", richiesta esplicita
+  // dell'utente) — mai mostrata al cliente, a differenza di
+  // cancellationNote sopra. Modificabile liberamente finché la prenotazione
+  // esiste, indipendentemente dallo stato.
+  professionalNote String?
+
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

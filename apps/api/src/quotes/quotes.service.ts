@@ -84,6 +84,18 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
       });
+    } else if (existingQuote.estimatedStartDate.getTime() !== data.estimatedStartDate.getTime()) {
+      // Richiesta esplicita dell'utente: se il professionista modifica un
+      // preventivo già inviato cambiando la data/orario, il cliente deve
+      // saperlo — a differenza delle altre modifiche (voci, note), che
+      // restano silenziose perché non cambiano "quando" arriva il
+      // professionista, il dato che il cliente ha già visto e su cui può
+      // aver già preso decisioni.
+      await this.notificationsService.notify(lead.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
+        guidedRequestId: lead.guidedRequestId,
+        quoteId: quote.id,
+        businessName: professionalProfile.businessName,
+      });
     }
 
     return { id: quote.id, status: quote.status };
@@ -160,6 +172,22 @@ export class QuotesService {
     dayStart.setUTCHours(0, 0, 0, 0);
     const dayEnd = new Date(dayStart);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const timeStr = scheduledAt.toISOString().slice(11, 16);
+    const dayOfWeek = scheduledAt.getUTCDay();
+
+    // Fascia sottostante (per conoscere la capienza reale, maxBookings):
+    // il proposedDate è solo un timestamp esatto, non porta con sé
+    // start/endTime — recuperata qui con lo stesso bounds-check già in uso
+    // altrove (slotAppliesOnDate). Bug reale corretto insieme a
+    // resolveFreeExactSlot sopra: senza, confermare una proposta su una
+    // fascia a capienza (maxBookings > 1) sarebbe stato bloccato appena
+    // fosse esistita UNA sola prenotazione precedente sulla stessa
+    // fascia, anche con capienza ancora residua.
+    const candidateSlots = await this.prisma.availabilitySlot.findMany({
+      where: { professionalProfileId: professionalProfile.id, OR: [{ date: dayStart }, { date: null, dayOfWeek }] },
+    });
+    const matchingSlot = candidateSlots.find((s) => timeStr >= s.startTime && timeStr < s.endTime);
+    const maxBookings = matchingSlot?.maxBookings ?? 1;
 
     try {
       const booking = await this.prisma.$transaction(
@@ -172,8 +200,8 @@ export class QuotesService {
             },
             select: { scheduledAt: true },
           });
-          const slotTaken = existingBookings.some((b) => b.scheduledAt.getTime() === scheduledAt.getTime());
-          if (slotTaken) {
+          const bookedCount = existingBookings.filter((b) => b.scheduledAt.getTime() === scheduledAt.getTime()).length;
+          if (bookedCount >= maxBookings) {
             throw new ConflictException("Questa fascia non è più libera.");
           }
           const created = await tx.booking.create({
@@ -311,8 +339,14 @@ export class QuotesService {
       // Corrisponde sia a una fascia legata a questa data esatta sia a una
       // fascia ricorrente (date=null, comportamento storico) per lo stesso
       // giorno della settimana — vedi slotAppliesOnDate (apps/api/src/common).
+      // Nessun filtro su `maxBookings`: bug reale corretto (il cliente non
+      // vedeva mai date da proporre se il professionista aveva impostato
+      // l'agenda solo con fasce a capienza) — stessa scelta già fatta per
+      // ProfessionalsService.getMyAvailableSlots, qui si sta scegliendo
+      // quando iniziare un lavoro già concordato, non consumando la
+      // capienza pensata per il fan-out delle richieste guidate.
       this.prisma.availabilitySlot.findFirst({
-        where: { professionalProfileId, startTime, endTime, maxBookings: 1, OR: [{ date }, { date: null, dayOfWeek }] },
+        where: { professionalProfileId, startTime, endTime, OR: [{ date }, { date: null, dayOfWeek }] },
       }),
       this.prisma.availabilityException.findUnique({ where: { professionalProfileId_date: { professionalProfileId, date } } }),
     ]);
@@ -337,8 +371,12 @@ export class QuotesService {
     const [hoursStr, minutesStr] = startTime.split(":");
     const scheduledAt = new Date(date);
     scheduledAt.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
-    const slotTaken = existingBookings.some((b) => b.scheduledAt.getTime() === scheduledAt.getTime());
-    if (slotTaken) {
+    // Conteggio invece di un semplice booleano: una fascia a capienza
+    // (maxBookings > 1) può ospitare più prenotazioni sulla stessa
+    // data+ora, non solo una — stesso principio di countBookingsInSlot già
+    // in uso in ProfessionalsService per bookedCount.
+    const bookedCount = existingBookings.filter((b) => b.scheduledAt.getTime() === scheduledAt.getTime()).length;
+    if (bookedCount >= slot.maxBookings) {
       throw new ConflictException("Questa fascia è già stata prenotata.");
     }
 

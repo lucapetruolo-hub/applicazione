@@ -13,7 +13,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { clientSectionCounts } from "@/lib/notificationSections";
+import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
@@ -115,6 +115,11 @@ export default function LeMieRichiestePage() {
   // e corretta in /dashboard (vedi commento lì): non affidarsi al
   // conteggio "live" di AuthContext per questo calcolo one-shot.
   const [sectionSnapshot, setSectionSnapshot] = useState<{ richieste: number; lavori: number }>({ richieste: 0, lavori: 0 });
+  // Stesso snapshot di sectionSnapshot, per evidenziare la singola card/riga
+  // con l'aggiornamento (richiesta esplicita dell'utente: "rendilo evidente
+  // anche nella lista"), non solo il numeretto sul tab.
+  const [newRequestIds, setNewRequestIds] = useState<Set<string>>(new Set());
+  const [newClientBookingIds, setNewClientBookingIds] = useState<Set<string>>(new Set());
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -175,7 +180,11 @@ export default function LeMieRichiestePage() {
     if (!token) return;
     apiClient
       .unreadNotifications(token)
-      .then((notifications) => setSectionSnapshot(clientSectionCounts(notifications)))
+      .then((notifications) => {
+        setSectionSnapshot(clientSectionCounts(notifications));
+        setNewRequestIds(unreadGuidedRequestIds(notifications));
+        setNewClientBookingIds(unreadBookingIds(notifications));
+      })
       .catch(() => {})
       .finally(() => markNotificationsRead());
   }, [token, markNotificationsRead]);
@@ -286,7 +295,14 @@ export default function LeMieRichiestePage() {
                 <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
               ) : (
                 visibleRequests?.map((request) => (
-                  <GuidedRequestCard key={request.id} request={request} token={token} onChanged={reload} onAcceptQuote={handleAcceptQuote} />
+                  <GuidedRequestCard
+                    key={request.id}
+                    request={request}
+                    token={token}
+                    onChanged={reload}
+                    onAcceptQuote={handleAcceptQuote}
+                    isNew={newRequestIds.has(request.id)}
+                  />
                 ))
               )}
               <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={setRequestsPage} />
@@ -312,7 +328,9 @@ export default function LeMieRichiestePage() {
               ) : visibleClientBookings.length === 0 ? (
                 <Text color={brand.grafite70}>Nessuna prenotazione corrisponde al filtro selezionato.</Text>
               ) : (
-                visibleClientBookings.map((booking) => <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} />)
+                visibleClientBookings.map((booking) => (
+                  <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} isNew={newClientBookingIds.has(booking.id)} />
+                ))
               )}
               <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={setClientBookingsPage} />
             </YStack>
@@ -328,11 +346,14 @@ function GuidedRequestCard({
   token,
   onChanged,
   onAcceptQuote,
+  isNew,
 }: {
   request: ClientGuidedRequest;
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, input: AcceptQuoteInput) => Promise<void>;
+  /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
+  isNew?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
@@ -579,9 +600,12 @@ function GuidedRequestCard({
                 </XStack>
               ) : null}
             </YStack>
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
-              {STATUS_LABEL[request.status]}
-            </Text>
+            <YStack alignItems="flex-end" gap="$1">
+              <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
+                {STATUS_LABEL[request.status]}
+              </Text>
+              {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+            </YStack>
           </YStack>
 
           {/* Foto già allegate alla richiesta, visibili subito nell'anteprima
@@ -766,7 +790,15 @@ function QuoteCard({
         const slots: FreeSlot[] = [];
         for (const day of agenda.days) {
           for (const slot of day.slots) {
-            if (slot.maxBookings === 1 && slot.bookedCount < slot.maxBookings) {
+            // Bug reale corretto (segnalato dall'utente: "non compaiono le
+            // date disponibili"): il filtro escludeva del tutto le fasce a
+            // capienza (maxBookings > 1), lasciando la lista vuota per un
+            // professionista che avesse impostato l'agenda solo con quel
+            // tipo di fascia — stesso identico bug già corretto altrove in
+            // questa sessione per ProfessionalsService.getMyAvailableSlots
+            // ("scegliere quando iniziare un lavoro già concordato non
+            // consuma la capienza pensata per il fan-out delle richieste").
+            if (slot.bookedCount < slot.maxBookings) {
               slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
             }
           }
@@ -961,7 +993,18 @@ function QuoteCard({
   );
 }
 
-function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; token: string; onReviewed: () => void }) {
+function BookingRow({
+  booking,
+  token,
+  onReviewed,
+  isNew,
+}: {
+  booking: ClientBooking;
+  token: string;
+  onReviewed: () => void;
+  /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
+  isNew?: boolean;
+}) {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
@@ -1035,9 +1078,12 @@ function BookingRow({ booking, token, onReviewed }: { booking: ClientBooking; to
             {booking.businessName}
           </Text>
         </Link>
-        <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
-          {BOOKING_STATUS_LABEL[booking.status]}
-        </Text>
+        <XStack alignItems="center" gap="$2">
+          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
+            {BOOKING_STATUS_LABEL[booking.status]}
+          </Text>
+          {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+        </XStack>
       </YStack>
       <Text color={brand.grafite70} fontSize="$3">
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}

@@ -21,6 +21,7 @@ import type {
   QuoteSelfInput,
   ReviewInput,
   UpdateAccountInput,
+  UpdateBookingNoteInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -115,6 +116,10 @@ export type CurrentUser = {
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;
+  /** Nome attività (ProfessionalProfile.businessName), null per un account cliente o un professionista senza profilo ancora creato. */
+  businessName: string | null;
+  /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
+  businessImageUrl: string | null;
 };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -423,6 +428,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Il professionista annulla un intervento già confermato, con una nota facoltativa per il cliente. */
     cancelBookingByProfessional: (token: string, bookingId: string, input: CancelBookingByProfessionalInput) =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel-by-professional`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Nota privata del professionista su una prenotazione (mai vista dal cliente). */
+    updateBookingNote: (token: string, bookingId: string, input: UpdateBookingNoteInput) =>
+      request<{ bookingId: string; professionalNote: string | null }>(`/bookings/${bookingId}/note`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

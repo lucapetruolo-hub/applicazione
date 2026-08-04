@@ -98,6 +98,7 @@ export default function DashboardAgendaPage() {
   const [bookingCurrentDate, setBookingCurrentDate] = useState(todayUtc());
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
+  const [isSavingBookingNote, setIsSavingBookingNote] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -184,6 +185,23 @@ export default function DashboardAgendaPage() {
       setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsBookingActionPending(false);
+    }
+  }
+
+  // Nota privata del professionista (richiesta esplicita dell'utente:
+  // "eventuali note da ricordare") — mai vista dal cliente, salvata
+  // indipendentemente dallo stato della prenotazione.
+  async function handleSaveBookingNote(note: string) {
+    if (!token || !selectedBooking) return;
+    setIsSavingBookingNote(true);
+    try {
+      const result = await apiClient.updateBookingNote(token, selectedBooking.id, { note });
+      setBookings((prev) => (prev ? prev.map((b) => (b.id === selectedBooking.id ? { ...b, professionalNote: result.professionalNote } : b)) : prev));
+      setSelectedBooking((prev) => (prev ? { ...prev, professionalNote: result.professionalNote } : prev));
+    } catch (err) {
+      setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsSavingBookingNote(false);
     }
   }
 
@@ -407,10 +425,27 @@ export default function DashboardAgendaPage() {
     });
   }
 
-  /** Seleziona/deseleziona in blocco tutte le fasce che valgono per `date` — scorciatoia "tutto il giorno" richiesta esplicitamente dall'utente. */
+  /**
+   * Seleziona/deseleziona in blocco tutte le fasce che valgono per `date` —
+   * scorciatoia "tutto il giorno" richiesta esplicitamente dall'utente.
+   *
+   * Bug reale corretto: una fascia ricorrente storica (`date: null`, il
+   * comportamento precedente al cambio "per data esatta") vale per
+   * QUALUNQUE data con lo stesso giorno della settimana, senza limite di
+   * tempo (`slotAppliesOnDateStr`) — la selezione avviene per indice della
+   * riga, non per singola occorrenza: selezionare quell'indice da "un
+   * giorno" la faceva apparire selezionata su OGNI cella con lo stesso
+   * giorno della settimana, in qualunque vista e mese (sembrava selezionare
+   * "l'intera colonna" nella vista Mese, o "tutto" cambiando "Seleziona
+   * tutto il mese" di mese in mese). Le fasce ricorrenti storiche sono
+   * quindi escluse dagli scorciatoia di gruppo "giorno"/"mese" (restano
+   * comunque selezionabili una per una cliccando direttamente la fascia,
+   * SlotChip, comportamento diverso e già corretto): non hanno un confine
+   * temporale su cui "un giorno" o "un mese" abbia senso.
+   */
   function toggleDaySelection(date: Date) {
     const dateStr = toIsoDate(date);
-    const dayIndexes = slots.map((_, i) => i).filter((i) => slotAppliesOnDateStr(slots[i]!, dateStr));
+    const dayIndexes = slots.map((_, i) => i).filter((i) => slots[i]!.date !== null && slotAppliesOnDateStr(slots[i]!, dateStr));
     if (dayIndexes.length === 0) return;
     const allSelected = dayIndexes.every((i) => selectedSlotIndexes.has(i));
     setSelectedSlotIndexes((prev) => {
@@ -420,10 +455,17 @@ export default function DashboardAgendaPage() {
     });
   }
 
-  /** Seleziona/deseleziona in blocco tutte le fasce del mese attualmente visualizzato — scorciatoia "tutto il mese" richiesta esplicitamente dall'utente. */
+  /**
+   * Seleziona/deseleziona in blocco tutte le fasce del mese attualmente
+   * visualizzato — scorciatoia "tutto il mese" richiesta esplicitamente
+   * dall'utente. Stessa esclusione delle fasce ricorrenti storiche di
+   * `toggleDaySelection` sopra, stesso motivo: senza, "tutto il mese"
+   * finiva per selezionare anche occorrenze in mesi diversi da quello
+   * visualizzato.
+   */
   function toggleMonthSelection() {
     const monthDates = datesInMonth(currentDate);
-    const monthIndexes = slots.map((_, i) => i).filter((i) => monthDates.some((d) => slotAppliesOnDateStr(slots[i]!, d)));
+    const monthIndexes = slots.map((_, i) => i).filter((i) => slots[i]!.date !== null && monthDates.some((d) => slotAppliesOnDateStr(slots[i]!, d)));
     if (monthIndexes.length === 0) return;
     const allSelected = monthIndexes.every((i) => selectedSlotIndexes.has(i));
     setSelectedSlotIndexes((prev) => {
@@ -514,7 +556,13 @@ export default function DashboardAgendaPage() {
     // dell'utente): niente aggiunta/chiusura giorno, solo selezione delle
     // fasce già presenti + scorciatoia "tutto il giorno" per questa colonna.
     if (selectionMode) {
-      const allDaySelected = daySlots.length > 0 && daySlots.every(({ index }) => selectedSlotIndexes.has(index));
+      // Solo le fasce con `date` esatta partecipano allo scorciatoia "tutto
+      // il giorno" (stesso motivo di toggleDaySelection sopra) — altrimenti
+      // questa etichetta risulterebbe "Giorno selezionato" anche quando la
+      // selezione di gruppo non ha potuto includere una fascia ricorrente
+      // storica presente in questa colonna.
+      const daySelectableSlots = daySlots.filter(({ slot }) => slot.date !== null);
+      const allDaySelected = daySelectableSlots.length > 0 && daySelectableSlots.every(({ index }) => selectedSlotIndexes.has(index));
       return (
         <YStack gap="$2" minWidth={0}>
           {daySlots.length > 0 ? (
@@ -544,8 +592,20 @@ export default function DashboardAgendaPage() {
               slot={slot}
               isConflicting={false}
               isEditing={false}
-              isSelected={selectedSlotIndexes.has(index)}
-              onEdit={() => toggleSlotSelection(index)}
+              // Bug reale corretto (segnalato dall'utente: "cliccando un
+              // orario non deve traslare negli altri giorni"): una fascia
+              // ricorrente storica (date: null) rappresenta la STESSA riga
+              // in ogni sua occorrenza futura — selezionarla per indice la
+              // faceva apparire "già selezionata" anche su altre celle con
+              // lo stesso giorno della settimana, in qualunque mese. Le
+              // fasce ricorrenti restano quindi escluse dalla selezione
+              // multipla (isSelected/onEdit assenti, badge "Ricorrente" al
+              // loro posto) — eliminabili solo uscendo da questa modalità e
+              // cliccandole normalmente (SlotEditorModal → "Elimina fascia",
+              // che avvisa già che l'eliminazione riguarda ogni occorrenza).
+              isSelected={slot.date !== null ? selectedSlotIndexes.has(index) : undefined}
+              onEdit={slot.date !== null ? () => toggleSlotSelection(index) : () => {}}
+              isLegacyRecurring={slot.date === null}
             />
           ))}
         </YStack>
@@ -640,7 +700,14 @@ export default function DashboardAgendaPage() {
     // selezionate, per capire a colpo d'occhio quali giorni sono scelti
     // anche dalla vista Mese.
     if (selectionMode) {
-      const allSelected = daySlotsWithIndex.every(({ i }) => selectedSlotIndexes.has(i));
+      // Solo le fasce con `date` esatta (stesso motivo di toggleDaySelection):
+      // una fascia ricorrente storica ("date: null") non ha un confine
+      // temporale, selezionarla per "un giorno" la farebbe apparire
+      // selezionata su ogni cella con lo stesso giorno della settimana in
+      // qualunque mese — bug reale segnalato dall'utente ("clicco un giorno
+      // e seleziona l'intera colonna").
+      const selectableInThisCell = daySlotsWithIndex.filter(({ s }) => s.date !== null);
+      const allSelected = selectableInThisCell.length > 0 && selectableInThisCell.every(({ i }) => selectedSlotIndexes.has(i));
       return (
         <XStack alignItems="center" gap={4}>
           <SelectionCheckbox checked={allSelected} />
@@ -1008,10 +1075,13 @@ export default function DashboardAgendaPage() {
 
       {selectedBooking ? (
         <BookingDetailPanel
+          key={selectedBooking.id}
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
           onAction={handleBookingAction}
           isActionPending={isBookingActionPending}
+          onSaveNote={handleSaveBookingNote}
+          isSavingNote={isSavingBookingNote}
         />
       ) : null}
 
@@ -1095,6 +1165,7 @@ function SlotChip({
   isEditing,
   isSelected,
   onEdit,
+  isLegacyRecurring,
 }: {
   slot: SlotDraft;
   /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
@@ -1104,6 +1175,16 @@ function SlotChip({
   /** True in modalità selezione (tasto "Modifica") quando questa fascia è tra quelle scelte per l'eliminazione in blocco. */
   isSelected?: boolean;
   onEdit: () => void;
+  /**
+   * True in modalità selezione per una fascia ricorrente storica (`date:
+   * null`, comportamento precedente al passaggio "per data esatta"): non
+   * partecipa alla selezione multipla — bug reale corretto, selezionare
+   * quell'indice la faceva apparire "già selezionata" anche su altre celle
+   * con lo stesso giorno della settimana, in qualunque mese, perché è
+   * letteralmente la stessa riga in ogni sua occorrenza. Resta eliminabile
+   * uscendo da "Modifica" e cliccandola normalmente (SlotEditorModal).
+   */
+  isLegacyRecurring?: boolean;
 }) {
   const isGeneric = slot.maxBookings > 1;
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
@@ -1123,18 +1204,26 @@ function SlotChip({
       alignItems="center"
       gap={3}
       minWidth={0}
-      cursor="pointer"
+      cursor={isLegacyRecurring ? "default" : "pointer"}
       backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing || isSelected ? brand.cianografiaVelo : brand.calce}
-      onPress={onEdit}
-      accessibilityRole="button"
-      accessibilityLabel={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
+      onPress={isLegacyRecurring ? undefined : onEdit}
+      accessibilityRole={isLegacyRecurring ? undefined : "button"}
+      accessibilityLabel={
+        isLegacyRecurring
+          ? `Fascia ricorrente ${slot.start}–${slot.end}, non selezionabile qui`
+          : isSelected !== undefined
+            ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}`
+            : `Modifica fascia ${slot.start}–${slot.end}`
+      }
     >
-      {isSelected !== undefined ? (
+      {isLegacyRecurring ? (
+        <Icon name="calendar" size={9} color={brand.grafite70} />
+      ) : isSelected !== undefined ? (
         <SelectionCheckbox checked={isSelected} />
       ) : slot.hasUpcomingBooking ? (
         <Icon name="bell-ring" size={9} color={brand.urgenza} />
       ) : null}
-      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
+      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isLegacyRecurring ? brand.grafite70 : isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
         {slot.start}–{slot.end}
       </Text>
     </XStack>

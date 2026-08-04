@@ -57,16 +57,58 @@ export class AuthController {
   async me(@Req() req: AuthenticatedRequest) {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId } });
     if (!user) return null;
-    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl } = user;
-    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash), imageUrl };
+    return this.withBusinessName(user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch("me")
   async updateMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updateAccountSchema)) body: UpdateAccountInput) {
     const user = await this.authService.updateAccount(req.user.userId, body);
+    return this.withBusinessName(user);
+  }
+
+  /**
+   * Nome attività al posto del nome personale nell'header (AccountMenu),
+   * richiesta esplicita dell'utente: un professionista è identificato dalla
+   * propria attività, non dal nome dell'intestatario dell'account. `User`
+   * non ha un campo `businessName` (vive su `ProfessionalProfile`, entità
+   * separata) — recuperato qui con una query dedicata solo per i
+   * professionisti, invece di duplicare il campo su `User`.
+   */
+  private async withBusinessName(user: {
+    id: string;
+    phone: string | null;
+    email: string | null;
+    name: string | null;
+    surname: string | null;
+    birthDate: Date | null;
+    role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+    passwordHash: string | null;
+    imageUrl: string | null;
+  }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl } = user;
-    return { id, phone, email, name, surname, birthDate, role, hasPassword: Boolean(passwordHash), imageUrl };
+    const professionalProfile =
+      role === "PROFESSIONAL"
+        ? await this.prisma.professionalProfile.findUnique({ where: { userId: id }, select: { businessName: true, imageUrl: true } })
+        : null;
+    return {
+      id,
+      phone,
+      email,
+      name,
+      surname,
+      birthDate,
+      role,
+      hasPassword: Boolean(passwordHash),
+      imageUrl,
+      businessName: professionalProfile?.businessName ?? null,
+      // Immagine profilo pubblica del professionista, richiesta esplicita
+      // dell'utente: mostrata al posto delle iniziali nell'icona
+      // dell'header (AccountMenu) quando disponibile — `User.imageUrl`
+      // resta sempre null per un professionista (upload disabilitato in
+      // /account per quel ruolo, vedi nota altrove in CLAUDE.md).
+      businessImageUrl: professionalProfile?.imageUrl ?? null,
+    };
   }
 
   /**
