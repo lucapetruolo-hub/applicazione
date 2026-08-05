@@ -85,7 +85,16 @@ export default function DashboardAgendaPage() {
   // solo al successivo "Salva agenda" — stesso principio già in uso per
   // l'eliminazione di una singola fascia.
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedSlotIndexes, setSelectedSlotIndexes] = useState<Set<number>>(new Set());
+  // Chiave composita `${index}:${dateStr}` (indice della fascia in `slots` +
+  // data del calendario mostrata in quella cella), non il solo indice —
+  // bug reale corretto: una fascia ricorrente storica (`date: null`) vale
+  // per OGNI occorrenza futura del suo giorno della settimana
+  // (slotAppliesOnDateStr), quindi lo stesso indice viene renderizzato in
+  // celle diverse (settimane diverse, mesi diversi). Con la chiave sul solo
+  // indice, selezionarla in una cella la faceva risultare "selezionata"
+  // anche navigando altrove — mai toccata dall'utente. La data nella chiave
+  // rende ogni occorrenza renderizzata indipendente dalle altre.
+  const [selectedSlotKeys, setSelectedSlotKeys] = useState<Set<string>>(new Set());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
 
   // Secondo calendario, indipendente dal primo (vista/data di navigazione
@@ -412,15 +421,21 @@ export default function DashboardAgendaPage() {
 
   function toggleSelectionMode() {
     setSelectionMode((v) => !v);
-    setSelectedSlotIndexes(new Set());
+    setSelectedSlotKeys(new Set());
     setConfirmingBulkDelete(false);
   }
 
-  function toggleSlotSelection(index: number) {
-    setSelectedSlotIndexes((prev) => {
+  function slotKey(index: number, dateStr: string) {
+    return `${index}:${dateStr}`;
+  }
+
+  /** Click diretto su una singola occorrenza (SlotChip) — sempre per quella sola data mostrata in quella colonna/cella, mai per l'intera fascia ricorrente. */
+  function toggleSlotSelection(index: number, dateStr: string) {
+    const key = slotKey(index, dateStr);
+    setSelectedSlotKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -429,28 +444,24 @@ export default function DashboardAgendaPage() {
    * Seleziona/deseleziona in blocco tutte le fasce che valgono per `date` —
    * scorciatoia "tutto il giorno" richiesta esplicitamente dall'utente.
    *
-   * Bug reale corretto: una fascia ricorrente storica (`date: null`, il
-   * comportamento precedente al cambio "per data esatta") vale per
-   * QUALUNQUE data con lo stesso giorno della settimana, senza limite di
-   * tempo (`slotAppliesOnDateStr`) — la selezione avviene per indice della
-   * riga, non per singola occorrenza: selezionare quell'indice da "un
-   * giorno" la faceva apparire selezionata su OGNI cella con lo stesso
-   * giorno della settimana, in qualunque vista e mese (sembrava selezionare
-   * "l'intera colonna" nella vista Mese, o "tutto" cambiando "Seleziona
-   * tutto il mese" di mese in mese). Le fasce ricorrenti storiche sono
-   * quindi escluse dagli scorciatoia di gruppo "giorno"/"mese" (restano
-   * comunque selezionabili una per una cliccando direttamente la fascia,
-   * SlotChip, comportamento diverso e già corretto): non hanno un confine
-   * temporale su cui "un giorno" o "un mese" abbia senso.
+   * La chiave di selezione ora include sempre la data della cella
+   * (`slotKey`), non il solo indice della fascia: una fascia ricorrente
+   * storica (`date: null`) vale per ogni occorrenza futura del suo giorno
+   * della settimana, ma selezionarla "per un giorno" genera una chiave
+   * legata a QUELLA sola data — non risulta più selezionata navigando su
+   * un'altra settimana/mese con lo stesso giorno della settimana (bug
+   * reale corretto: prima la chiave era il solo indice, condiviso da ogni
+   * occorrenza).
    */
   function toggleDaySelection(date: Date) {
     const dateStr = toIsoDate(date);
-    const dayIndexes = slots.map((_, i) => i).filter((i) => slots[i]!.date !== null && slotAppliesOnDateStr(slots[i]!, dateStr));
+    const dayIndexes = slots.map((_, i) => i).filter((i) => slotAppliesOnDateStr(slots[i]!, dateStr));
     if (dayIndexes.length === 0) return;
-    const allSelected = dayIndexes.every((i) => selectedSlotIndexes.has(i));
-    setSelectedSlotIndexes((prev) => {
+    const keys = dayIndexes.map((i) => slotKey(i, dateStr));
+    const allSelected = keys.every((k) => selectedSlotKeys.has(k));
+    setSelectedSlotKeys((prev) => {
       const next = new Set(prev);
-      dayIndexes.forEach((i) => (allSelected ? next.delete(i) : next.add(i)));
+      keys.forEach((k) => (allSelected ? next.delete(k) : next.add(k)));
       return next;
     });
   }
@@ -458,28 +469,42 @@ export default function DashboardAgendaPage() {
   /**
    * Seleziona/deseleziona in blocco tutte le fasce del mese attualmente
    * visualizzato — scorciatoia "tutto il mese" richiesta esplicitamente
-   * dall'utente. Stessa esclusione delle fasce ricorrenti storiche di
-   * `toggleDaySelection` sopra, stesso motivo: senza, "tutto il mese"
-   * finiva per selezionare anche occorrenze in mesi diversi da quello
-   * visualizzato.
+   * dall'utente. Una chiave per occorrenza-data (non per indice) tiene la
+   * selezione scoped esattamente alle date del mese mostrato, anche per le
+   * fasce ricorrenti storiche che ricorrono più volte nello stesso mese.
    */
   function toggleMonthSelection() {
     const monthDates = datesInMonth(currentDate);
-    const monthIndexes = slots.map((_, i) => i).filter((i) => slots[i]!.date !== null && monthDates.some((d) => slotAppliesOnDateStr(slots[i]!, d)));
-    if (monthIndexes.length === 0) return;
-    const allSelected = monthIndexes.every((i) => selectedSlotIndexes.has(i));
-    setSelectedSlotIndexes((prev) => {
+    const keys: string[] = [];
+    slots.forEach((slot, i) => {
+      monthDates.forEach((d) => {
+        if (slotAppliesOnDateStr(slot, d)) keys.push(slotKey(i, d));
+      });
+    });
+    if (keys.length === 0) return;
+    const allSelected = keys.every((k) => selectedSlotKeys.has(k));
+    setSelectedSlotKeys((prev) => {
       const next = new Set(prev);
-      monthIndexes.forEach((i) => (allSelected ? next.delete(i) : next.add(i)));
+      keys.forEach((k) => (allSelected ? next.delete(k) : next.add(k)));
       return next;
     });
   }
 
-  /** Rimuove in blocco le fasce selezionate — stesso pattern di deleteSlot, solo su più indici insieme. */
+  /**
+   * Rimuove in blocco le fasce selezionate. Le chiavi selezionate sono per
+   * occorrenza (indice+data), ma un indice va comunque tolto da `slots` una
+   * sola volta: più occorrenze della stessa fascia ricorrente storica
+   * selezionate insieme (es. "tutto il mese" su una fascia settimanale)
+   * mappano allo stesso indice sottostante — eliminarlo rimuove l'intera
+   * riga (ogni occorrenza futura), non solo quelle scelte: è un vincolo del
+   * modello dati (nessun'eccezione per singola data su una fascia
+   * ricorrente), non un effetto collaterale di questo cambio.
+   */
   function deleteSelectedSlots() {
-    setSlots((prev) => prev.filter((_, i) => !selectedSlotIndexes.has(i)));
+    const selectedIndexes = new Set(Array.from(selectedSlotKeys).map((k) => Number(k.slice(0, k.indexOf(":")))));
+    setSlots((prev) => prev.filter((_, i) => !selectedIndexes.has(i)));
     setSelectionMode(false);
-    setSelectedSlotIndexes(new Set());
+    setSelectedSlotKeys(new Set());
     setConfirmingBulkDelete(false);
     setError(null);
   }
@@ -556,13 +581,12 @@ export default function DashboardAgendaPage() {
     // dell'utente): niente aggiunta/chiusura giorno, solo selezione delle
     // fasce già presenti + scorciatoia "tutto il giorno" per questa colonna.
     if (selectionMode) {
-      // Solo le fasce con `date` esatta partecipano allo scorciatoia "tutto
-      // il giorno" (stesso motivo di toggleDaySelection sopra) — altrimenti
-      // questa etichetta risulterebbe "Giorno selezionato" anche quando la
-      // selezione di gruppo non ha potuto includere una fascia ricorrente
-      // storica presente in questa colonna.
-      const daySelectableSlots = daySlots.filter(({ slot }) => slot.date !== null);
-      const allDaySelected = daySelectableSlots.length > 0 && daySelectableSlots.every(({ index }) => selectedSlotIndexes.has(index));
+      // Chiave per occorrenza (indice+data di questa colonna): tutte le
+      // fasce che compaiono in questa colonna partecipano ora allo
+      // scorciatoia "tutto il giorno", incluse le fasce ricorrenti
+      // storiche — la chiave le lega comunque solo a QUESTA data, non ad
+      // ogni occorrenza futura (vedi toggleDaySelection sopra).
+      const allDaySelected = daySlots.length > 0 && daySlots.every(({ index }) => selectedSlotKeys.has(slotKey(index, dateStr)));
       return (
         <YStack gap="$2" minWidth={0}>
           {daySlots.length > 0 ? (
@@ -592,24 +616,18 @@ export default function DashboardAgendaPage() {
               slot={slot}
               isConflicting={false}
               isEditing={false}
-              // Bug reale corretto: escludere del tutto le fasce
-              // ricorrenti storiche (date: null) dal click diretto aveva
-              // reso "Modifica" del tutto inutilizzabile per un
-              // professionista la cui agenda fosse composta solo da fasce
-              // di questo tipo (create prima del passaggio "per data
-              // esatta") — un problema più grave del bug che risolveva.
-              // Il click diretto su una singola fascia resta quindi sempre
-              // selezionabile (necessario per poterla eliminare): una
-              // fascia ricorrente selezionata da una cella può comparire
-              // "già selezionata" anche nelle sue altre occorrenze — è
-              // letteralmente la stessa riga, eliminarla rimuove ogni
-              // occorrenza, comportamento corretto anche se meno intuitivo.
-              // Solo le scorciatoie di gruppo "giorno"/"mese" restano
-              // limitate alle fasce con data esatta (vedi
-              // toggleDaySelection/toggleMonthSelection sopra): quelle sì
-              // "traslavano" in modo fuorviante su celle mai toccate.
-              isSelected={selectedSlotIndexes.has(index)}
-              onEdit={() => toggleSlotSelection(index)}
+              // Il click diretto seleziona sempre e solo l'occorrenza
+              // mostrata in questa colonna (chiave indice+data): per una
+              // fascia ricorrente storica, selezionarla qui non la fa
+              // risultare selezionata navigando su un'altra
+              // settimana/mese con lo stesso giorno della settimana — bug
+              // reale corretto (prima la chiave era il solo indice,
+              // condiviso da ogni occorrenza). Eliminarla rimuove comunque
+              // l'intera riga/ogni occorrenza futura: vincolo del modello
+              // dati (nessuna eccezione per singola data su una fascia
+              // ricorrente), non di questa selezione.
+              isSelected={selectedSlotKeys.has(slotKey(index, dateStr))}
+              onEdit={() => toggleSlotSelection(index, dateStr)}
             />
           ))}
         </YStack>
@@ -704,14 +722,14 @@ export default function DashboardAgendaPage() {
     // selezionate, per capire a colpo d'occhio quali giorni sono scelti
     // anche dalla vista Mese.
     if (selectionMode) {
-      // Solo le fasce con `date` esatta (stesso motivo di toggleDaySelection):
-      // una fascia ricorrente storica ("date: null") non ha un confine
-      // temporale, selezionarla per "un giorno" la farebbe apparire
-      // selezionata su ogni cella con lo stesso giorno della settimana in
-      // qualunque mese — bug reale segnalato dall'utente ("clicco un giorno
-      // e seleziona l'intera colonna").
-      const selectableInThisCell = daySlotsWithIndex.filter(({ s }) => s.date !== null);
-      const allSelected = selectableInThisCell.length > 0 && selectableInThisCell.every(({ i }) => selectedSlotIndexes.has(i));
+      // Chiave per occorrenza (indice+data di questa cella): ogni fascia
+      // che compare in questa cella, incluse le ricorrenti storiche, ora
+      // partecipa alla selezione — la chiave la lega solo a QUESTA data,
+      // non a ogni cella con lo stesso giorno della settimana in qualunque
+      // mese (bug reale corretto, segnalato dall'utente come "clicco un
+      // giorno e seleziona l'intera colonna" / "in mensile non si
+      // seleziona" con una chiave sul solo indice).
+      const allSelected = daySlotsWithIndex.length > 0 && daySlotsWithIndex.every(({ i }) => selectedSlotKeys.has(slotKey(i, dateStr)));
       return (
         <XStack alignItems="center" gap={4}>
           <SelectionCheckbox checked={allSelected} />
@@ -963,8 +981,8 @@ export default function DashboardAgendaPage() {
                     Seleziona tutto il mese
                   </Text>
                   <Text fontSize="$3" color={brand.grafite70}>
-                    {selectedSlotIndexes.size} fasc{selectedSlotIndexes.size === 1 ? "ia" : "e"} selezionat
-                    {selectedSlotIndexes.size === 1 ? "a" : "e"}
+                    {selectedSlotKeys.size} fasc{selectedSlotKeys.size === 1 ? "ia" : "e"} selezionat
+                    {selectedSlotKeys.size === 1 ? "a" : "e"}
                   </Text>
                 </>
               ) : null}
@@ -974,7 +992,7 @@ export default function DashboardAgendaPage() {
               confirmingBulkDelete ? (
                 <XStack alignItems="center" gap="$3" flexWrap="wrap">
                   <Text color={brand.grafite70} fontSize="$3">
-                    Eliminare {selectedSlotIndexes.size} fasc{selectedSlotIndexes.size === 1 ? "ia" : "e"}?
+                    Eliminare {selectedSlotKeys.size} fasc{selectedSlotKeys.size === 1 ? "ia" : "e"}?
                   </Text>
                   <Button variant="urgent" size="$3" height={40} onPress={deleteSelectedSlots}>
                     Conferma eliminazione
@@ -989,9 +1007,9 @@ export default function DashboardAgendaPage() {
                   size="$3"
                   height={40}
                   alignSelf="flex-start"
-                  disabled={selectedSlotIndexes.size === 0}
-                  opacity={selectedSlotIndexes.size === 0 ? 0.5 : 1}
-                  onPress={selectedSlotIndexes.size > 0 ? () => setConfirmingBulkDelete(true) : undefined}
+                  disabled={selectedSlotKeys.size === 0}
+                  opacity={selectedSlotKeys.size === 0 ? 0.5 : 1}
+                  onPress={selectedSlotKeys.size > 0 ? () => setConfirmingBulkDelete(true) : undefined}
                 >
                   <XStack alignItems="center" gap="$2">
                     <Icon name="trash-2" size={15} color="white" />

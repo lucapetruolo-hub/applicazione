@@ -2912,3 +2912,61 @@ del giro precedente (selezione isolata tra fasce esatte/generiche,
 casellina di spunta, selezione inline con scorciatoie di gruppo) — tutte
 ancora verdi. Zero errori console in tutti i flussi. Typecheck pulito su
 tutti i package, build di produzione `apps/web` verde (24 route).
+
+**Bug reale corretto: la selezione dell'agenda restava "sporca" cambiando
+settimana, e in vista Mese non selezionava nulla** — il fix precedente
+(sopra, punto 2) aveva ripristinato il click diretto sulle fasce ricorrenti
+storiche ma non aveva toccato la causa di fondo: `selectedSlotIndexes` era
+uno `Set<number>` chiavato sul solo **indice globale** della fascia
+nell'array `slots`. Per una fascia ricorrente storica (`date: null`, vale
+per ogni occorrenza futura del suo giorno della settimana via
+`slotAppliesOnDateStr`), quell'indice viene renderizzato in celle diverse
+(settimane diverse in vista Settimana, mesi diversi in vista Mese) — una
+volta selezionato in una cella, risultava "selezionato" ovunque quella
+stessa fascia comparisse, mai deselezionandosi navigando altrove
+(segnalato dall'utente: "selezionando un orario in visualizzazione
+settimana rimane flaggata anche quando cambio settimana"). In vista Mese il
+problema era complementare: quella cella non mostra singole fasce, solo un
+conteggio + una casella aggregata per giorno, il cui unico punto di
+click (`onSelectDay` → `toggleDaySelection`) escludeva esplicitamente le
+fasce ricorrenti storiche (`slot.date !== null`) — per un'agenda composta
+solo da fasce di questo tipo, `dayIndexes.length` era sempre 0 e il click
+non selezionava nulla ("nel mensile non si seleziona").
+
+Corretto sostituendo la chiave di selezione con una **chiave composita per
+occorrenza**, `${indice}:${dataISO}` (`selectedSlotKeys: Set<string>`,
+funzione `slotKey`, `apps/web/src/app/dashboard/agenda/page.tsx`): la
+stessa fascia ricorrente, mostrata in due celle diverse, genera ora due
+chiavi diverse — selezionarla in una non la fa comparire selezionata
+nell'altra. Questo rende sicuro includere anche le fasce ricorrenti
+storiche nelle scorciatoie di gruppo "Seleziona giorno"/"Seleziona tutto il
+mese" (`toggleDaySelection`/`toggleMonthSelection`), che prima le
+escludevano apposta per evitare il bug del "bleed" tra celle — l'esclusione
+non serve più con chiavi per occorrenza, quindi è stata rimossa: la vista
+Mese ora seleziona correttamente anche le fasce ricorrenti (una chiave per
+ogni occorrenza nel mese mostrato), risolvendo anche il secondo sintomo
+segnalato. `deleteSelectedSlots` mappa le chiavi selezionate agli indici
+sottostanti (deduplicati) prima di filtrare `slots`: eliminare una fascia
+ricorrente rimuove comunque l'intera riga (ogni occorrenza futura, non solo
+quelle scelte) — vincolo del modello dati invariato (nessuna eccezione per
+singola data su una fascia ricorrente), non un effetto collaterale di
+questo cambio.
+
+Verificato end-to-end con l'API locale e Playwright (non solo lettura di
+codice): fascia ricorrente storica selezionata in vista Settimana →
+navigando alla settimana successiva la stessa fascia (occorrenza diversa)
+risulta NON selezionata → tornando alla settimana originale la selezione
+precedente è ancora presente; click su una cella di vista Mese con una
+fascia ricorrente storica → selezione funzionante (conteggio +1),
+click di nuovo → deselezione, selezione+eliminazione+salvataggio → fascia
+rimossa correttamente lato API. Scorciatoie di gruppo riverificate con un
+mix di fasce esatte + una ricorrente su un giorno della settimana condiviso
++ una fascia di controllo su un altro giorno: "Seleziona giorno" conta
+solo le fasce di quella cella, "Seleziona tutto il mese" include ora
+correttamente ogni occorrenza della fascia ricorrente nel mese mostrato
+(comportamento nuovo e più completo di prima, reso possibile dalla chiave
+per occorrenza). Rieseguite le regressioni dei due giri precedenti
+(selezione diretta su fasce ricorrenti, swipe verticale disattivato in
+Mese, dettagli lavoro in "Lavori accettati") — tutte ancora verdi. Zero
+errori console in tutti i flussi. Typecheck pulito su tutti i package,
+build di produzione `apps/web` verde (24 route).
