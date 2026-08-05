@@ -22,11 +22,13 @@ import {
   declineLeadSchema,
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
+  updateEngagementRadiusSchema,
   type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
   type ProfessionalAvailabilityInput,
   type ProfessionalProfileSelfInput,
+  type UpdateEngagementRadiusInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -73,6 +75,16 @@ export class ProfessionalsController {
     @Body(new ZodValidationPipe(professionalProfileSelfSchema)) body: ProfessionalProfileSelfInput,
   ) {
     return this.professionalsService.upsertMyProfile(req.user.userId, body);
+  }
+
+  /** Raggio di ingaggio (standard/urgente, 1-25 km): salvato a parte dal resto del profilo, vedi EngagementRadiusMap. */
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/engagement-radius")
+  updateEngagementRadius(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(updateEngagementRadiusSchema)) body: UpdateEngagementRadiusInput,
+  ) {
+    return this.professionalsService.updateEngagementRadius(req.user.userId, body);
   }
 
   @UseGuards(JwtAuthGuard)

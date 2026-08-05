@@ -6,6 +6,9 @@ export type MyProfessionalProfile = {
   categoryLabel: string;
   city: string;
   address: string | null;
+  /** Posizione reale (geocodificata dal comune scelto, o dall'indirizzo preciso): usata per centrare la mappa del raggio di ingaggio. */
+  latitude: number;
+  longitude: number;
   bio: string | null;
   subTags: string[];
   verified: boolean;
@@ -14,6 +17,9 @@ export type MyProfessionalProfile = {
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
   portfolioUrls: string[];
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+  /** Raggio (km, 1-25) entro cui arrivano rispettivamente le richieste standard e quelle urgenti — vedi updateEngagementRadiusSchema. */
+  engagementRadiusKm: number;
+  urgentEngagementRadiusKm: number;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

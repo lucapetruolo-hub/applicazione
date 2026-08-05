@@ -18,6 +18,7 @@ import {
   type ProfessionalServiceItem,
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
+  type UpdateEngagementRadiusInput,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
@@ -286,6 +287,8 @@ export class ProfessionalsService {
       categoryLabel: profile.category.label,
       city: profile.city,
       address: profile.address,
+      latitude: profile.latitude,
+      longitude: profile.longitude,
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
@@ -293,6 +296,8 @@ export class ProfessionalsService {
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(profile.services),
+      engagementRadiusKm: profile.engagementRadiusKm,
+      urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
     };
   }
 
@@ -379,6 +384,8 @@ export class ProfessionalsService {
       categoryLabel: profile.category.label,
       city: profile.city,
       address: profile.address,
+      latitude: profile.latitude,
+      longitude: profile.longitude,
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
@@ -386,6 +393,8 @@ export class ProfessionalsService {
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(savedServices),
+      engagementRadiusKm: profile.engagementRadiusKm,
+      urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
     };
   }
 
@@ -403,6 +412,28 @@ export class ProfessionalsService {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
     if (!profile) return;
     await this.prisma.professionalProfile.update({ where: { userId }, data: { imageUrl } });
+  }
+
+  /**
+   * Aggiorna i due raggi di ingaggio (standard/urgente) del professionista
+   * autenticato — editabili separatamente dal resto del profilo
+   * (EngagementRadiusMap in /dashboard/profilo ha un proprio bottone
+   * "Salva"). Il range 1-25 km è già validato da updateEngagementRadiusSchema
+   * (ZodValidationPipe, stessa fonte di verità usata da ogni altro endpoint
+   * di questo modulo) prima che l'input arrivi qui — nessuna doppia
+   * validazione nel service.
+   */
+  async updateEngagementRadius(userId: string, input: UpdateEngagementRadiusInput): Promise<{ engagementRadiusKm: number; urgentEngagementRadiusKm: number }> {
+    await this.requireMyProfileId(userId);
+    const updated = await this.prisma.professionalProfile.update({
+      where: { userId },
+      data: {
+        engagementRadiusKm: input.engagementRadiusKm,
+        urgentEngagementRadiusKm: input.urgentEngagementRadiusKm,
+      },
+      select: { engagementRadiusKm: true, urgentEngagementRadiusKm: true },
+    });
+    return updated;
   }
 
   private async requireMyProfileId(userId: string): Promise<string> {

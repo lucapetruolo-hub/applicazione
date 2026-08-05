@@ -2970,3 +2970,107 @@ per occorrenza). Rieseguite le regressioni dei due giri precedenti
 Mese, dettagli lavoro in "Lavori accettati") — tutte ancora verdi. Zero
 errori console in tutti i flussi. Typecheck pulito su tutti i package,
 build di produzione `apps/web` verde (24 route).
+
+---
+
+## 13. Raggio di ingaggio del professionista (fan-out geografico)
+
+Richiesta esplicita dell'utente: ogni `ProfessionalProfile` può impostare
+due raggi indipendenti (km, max 25 ciascuno) entro cui riceve richieste dal
+fan-out delle richieste guidate — `engagementRadiusKm` per le richieste
+standard, `urgentEngagementRadiusKm` per quelle urgenti
+(`GuidedRequest.isUrgent`). Prima di questa funzionalità **non esisteva
+alcun filtro geografico per raggio** nel fan-out (né un `calculateDistanceKm`
+né una costante fissa da sostituire, contrariamente a quanto inizialmente
+presupposto): `GuidedRequestsService.create` filtrava solo per
+`categoryId` + uguaglianza esatta della stringa città — un professionista a
+Roma non riceveva mai una richiesta da un comune limitrofo con nome
+diverso, per quanto vicino. Questa lacuna è stata colmata insieme
+all'introduzione dei due raggi, non solo aggiunta come feature isolata.
+
+- **Schema** (`packages/database/prisma/schema.prisma`):
+  `ProfessionalProfile.engagementRadiusKm`/`urgentEngagementRadiusKm`
+  (`Float @default(25)`, così i profili esistenti restano al comportamento
+  più permissivo finché il professionista non li restringe esplicitamente).
+- **Validazione** — `updateEngagementRadiusSchema` (`packages/shared/src/
+  schemas.ts`, range 1-25 km su entrambi i campi, messaggi d'errore
+  espliciti) è l'unica fonte di verità, applicata dalla `ZodValidationPipe`
+  su `PATCH /professionals/me/engagement-radius`
+  (`ProfessionalsService.updateEngagementRadius`) — stesso pattern di
+  validazione già in uso per ogni altro endpoint del modulo, nessuna
+  doppia validazione nel service. Endpoint separato dal resto del profilo
+  (`PUT /professionals/me`) apposta: la mappa ha un proprio bottone
+  "Salva" indipendente dal form principale.
+- **Matching per raggio** — nuovo `apps/api/src/common/geo.util.ts`
+  (`calculateDistanceKm`, formula haversine, unico punto di verità).
+  `GuidedRequestsService.matchProfilesForFanOut` (privato, sostituisce il
+  vecchio filtro per stringa città nel fan-out generico — il percorso
+  "richiesta diretta a un professionista specifico" resta invariato,
+  nessun controllo di raggio lì): geocodifica la città della richiesta
+  con `findComuneByName` (stesso dataset ISTAT già usato per
+  geolocalizzare il professionista in `upsertMyProfile`, nessun nuovo
+  servizio di geocoding), poi calcola la distanza da ciascun candidato
+  della categoria e lo include solo se entro il raggio pertinente
+  (`urgentEngagementRadiusKm` se `isUrgent`, altrimenti
+  `engagementRadiusKm`) — un professionista con coordinate ancora a `0,0`
+  (comune non geocodificato) non entra mai nel fan-out, stessa convenzione
+  già usata da `ResultsMap.tsx` per escludere i puntini senza posizione.
+  Se il nome città della richiesta non è un comune riconosciuto dal
+  dataset (fallback), si ricade sul vecchio comportamento (match esatto
+  per stringa) invece di non inoltrare a nessuno — un fan-out perso
+  sarebbe un problema peggiore di un match meno preciso.
+- **Componente mappa — Leaflet isolato in un solo file** (richiesta
+  esplicita dell'utente, in vista della migrazione a Google Maps prevista
+  prima del lancio): `apps/web/src/components/EngagementRadiusMap.tsx`
+  contiene **solo** rendering Leaflet (`react-leaflet`, stessa libreria
+  già in uso per `ResultsMap.tsx` — nessuna libreria nuova introdotta) —
+  marker fisso sulla posizione del professionista + due `Circle`
+  sovrapposti (raggio in metri, conversione km×1000 fatta qui), colori
+  `brand.verificato` (verde, tratto pieno, standard) e `brand.ottone`
+  (ottone/dorato, tratteggiato, urgente) — riuso dei token brand esistenti
+  invece di colori arbitrari nuovi, scelta che coincide quasi
+  letteralmente con "forest green"/"brass" indicati come esempio. Zoom
+  iniziale calcolato una sola volta al montaggio sul raggio massimo
+  possibile (25 km, `L.latLng(...).toBounds(...)`) così i cerchi restano
+  sempre visibili senza dover re-inquadrare la mappa (instabile) ad ogni
+  trascinamento dello slider. Nessuno stato di form, nessuna chiamata API:
+  componente puramente di visualizzazione, controllato via props
+  (`latitude`, `longitude`, `engagementRadiusKm`, `urgentEngagementRadiusKm`).
+  **`apps/web/src/components/EngagementRadiusSection.tsx`** è il
+  componente "di business" separato (stato dei due slider, validazione
+  implicita via `min`/`max` HTML, salvataggio, messaggi di errore/successo):
+  non importa mai `leaflet`/`react-leaflet` direttamente, vede
+  `EngagementRadiusMap` tramite `next/dynamic({ssr:false})` (stesso motivo
+  già documentato altrove in questo file: Leaflet legge `window` al
+  caricamento del modulo) e gli passa solo i valori correnti come props —
+  la migrazione futura a Google Maps richiederà di riscrivere solo
+  `EngagementRadiusMap.tsx`, non questo file né i suoi chiamanti. Due
+  `<input type="range">` nativi (min 1, max 25, stesso pattern già in uso
+  in `ImageCropModal.tsx` per lo zoom, nessun componente Slider Tamagui
+  introdotto) aggiornano il cerchio corrispondente in tempo reale mentre
+  si trascina (prop controllata, nessun debounce). Montato in
+  `/dashboard/profilo` come sezione a parte (proprio bottone "Salva",
+  `Surface` distinta dal form principale) — visibile solo dopo il primo
+  salvataggio del profilo base (richiede `latitude`/`longitude` già
+  geocodificate, quindi non prima che il professionista abbia scelto una
+  città).
+- **`MyProfessionalProfile`** (`packages/shared/src/dashboard.ts`) esteso
+  con `latitude`/`longitude`/`engagementRadiusKm`/`urgentEngagementRadiusKm`
+  — servivano al frontend per centrare la mappa e precompilare gli
+  slider, non esposti prima d'ora da `GET /professionals/me`.
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: raggio fuori range (30 km, 0 km) rifiutato con 400 e
+  messaggio esplicito sia in isolamento sia insieme a un raggio valido;
+  salvataggio valido persistito e riletto correttamente da
+  `GET /professionals/me`; due professionisti nella stessa categoria/città
+  con raggi diversi (uno stretto 2 km, standard) — una richiesta
+  **standard** a ~14 km di distanza (comune limitrofo, non lo stesso nome
+  città) non arriva a chi ha il raggio stretto, la stessa richiesta
+  **urgente** (raggio largo 25 km sullo stesso profilo) sì, confermato sia
+  per assenza/presenza del lead sia per il prezzo del lead ricevuto
+  (standard vs urgente). UI: mappa Leaflet montata con marker + 2 cerchi
+  renderizzati, slider funzionanti con etichette live, salvataggio dalla UI
+  verificato end-to-end fino alla persistenza in DB. Zero errori console.
+  Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+  `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+  (24 route).

@@ -22,6 +22,7 @@ import type {
   ReviewInput,
   UpdateAccountInput,
   UpdateBookingNoteInput,
+  UpdateEngagementRadiusInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -326,6 +327,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     upsertMyProfessionalProfile: (token: string, input: ProfessionalProfileSelfInput) =>
       request<MyProfessionalProfile>("/professionals/me", {
         method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Raggio di ingaggio (standard/urgente, 1-25 km): salvato a parte dal resto del profilo, vedi EngagementRadiusMap. */
+    updateEngagementRadius: (token: string, input: UpdateEngagementRadiusInput) =>
+      request<{ engagementRadiusKm: number; urgentEngagementRadiusKm: number }>("/professionals/me/engagement-radius", {
+        method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),

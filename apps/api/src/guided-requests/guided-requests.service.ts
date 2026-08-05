@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, type PrismaClient } from "@professionisti/database";
-import type { GuidedRequestInput, GuidedRequestUpdateInput } from "@professionisti/shared";
+import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
+import { findComuneByName, type GuidedRequestInput, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { calculateDistanceKm } from "../common/geo.util";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
@@ -85,12 +86,13 @@ export class GuidedRequestsService {
 
     // Fan-out: se la richiesta parte dal profilo di un professionista specifico
     // va solo a lui, altrimenti a tutti i professionisti compatibili per
-    // categoria+città (CLAUDE.md §8).
+    // categoria + raggio di ingaggio (CLAUDE.md §8) — non più un match
+    // esatto sulla stringa città: ogni professionista imposta il proprio
+    // raggio (standard/urgente, vedi updateEngagementRadiusSchema),
+    // rispettato da matchProfilesForFanOut sotto.
     const matchingProfiles = input.professionalProfileId
       ? await this.prisma.professionalProfile.findMany({ where: { id: input.professionalProfileId } })
-      : await this.prisma.professionalProfile.findMany({
-          where: { categoryId: category.id, city: { equals: input.city, mode: "insensitive" } },
-        });
+      : await this.matchProfilesForFanOut(category.id, input.city, input.isUrgent);
 
     const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
 
@@ -247,6 +249,39 @@ export class GuidedRequestsService {
   async remove(clientId: string, id: string): Promise<void> {
     await this.requireOwnEditableRequest(clientId, id, "eliminare");
     await this.prisma.guidedRequest.delete({ where: { id } });
+  }
+
+  /**
+   * Professionisti compatibili col fan-out di una richiesta guidata:
+   * stessa categoria + entro il raggio di ingaggio del professionista
+   * candidato (engagementRadiusKm per le richieste standard,
+   * urgentEngagementRadiusKm per quelle urgenti — indipendenti tra loro,
+   * richiesta esplicita dell'utente), non più un match esatto sulla
+   * stringa città. La posizione della richiesta viene geocodificata dal
+   * nome del comune (`findComuneByName`, stesso dataset ISTAT già usato
+   * per geolocalizzare il professionista in upsertMyProfile — nessun nuovo
+   * servizio di geocoding introdotto). Se il comune non è riconosciuto
+   * (nome libero non presente nel dataset), si ricade sul comportamento
+   * storico (match esatto per stringa città) invece di non inoltrare la
+   * richiesta a nessuno: fallire in modo silenzioso qui costerebbe un
+   * intero fan-out perso, peggio del comportamento meno preciso che
+   * sostituisce.
+   */
+  private async matchProfilesForFanOut(categoryId: string, city: string, isUrgent: boolean): Promise<ProfessionalProfile[]> {
+    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId } });
+    const requestComune = findComuneByName(city);
+    if (!requestComune) {
+      return candidates.filter((profile) => profile.city.toLowerCase() === city.trim().toLowerCase());
+    }
+    return candidates.filter((profile) => {
+      // Professionista senza coordinate reali ancora (0,0 placeholder, vedi
+      // upsertMyProfile) — mai dentro un raggio, stessa convenzione già
+      // usata da ResultsMap.tsx per escludere i puntini senza posizione.
+      if (profile.latitude === 0 && profile.longitude === 0) return false;
+      const radiusKm = isUrgent ? profile.urgentEngagementRadiusKm : profile.engagementRadiusKm;
+      const distanceKm = calculateDistanceKm(requestComune.lat, requestComune.lon, profile.latitude, profile.longitude);
+      return distanceKm <= radiusKm;
+    });
   }
 
   private async requireOwnEditableRequest(clientId: string, id: string, action: string) {

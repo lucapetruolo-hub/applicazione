@@ -28,27 +28,27 @@ enum UserRole {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  role     UserRole @default(CLIENT)
+  id           String    @id @default(uuid())
+  role         UserRole  @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email        String? @unique
+  email        String?   @unique
   passwordHash String?
-  phone        String? @unique
-  googleId     String? @unique
+  phone        String?   @unique
+  googleId     String?   @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
-  name      String?
-  surname   String?
-  birthDate DateTime?
+  name         String?
+  surname      String?
+  birthDate    DateTime?
   // Immagine profilo, facoltativa — richiesta esplicita dell'utente: prima
   // solo ProfessionalProfile.imageUrl esisteva, i client non potevano
   // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
   // nessun nuovo servizio di storage.
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  imageUrl     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -81,58 +81,68 @@ model Category {
 // ---------------------------------------------------------------------------
 
 model ProfessionalProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  categoryId      String
-  subTags         String[]
-  businessName    String
-  city            String
-  latitude        Float
-  longitude       Float
-  bio             String?
+  id                       String   @id @default(uuid())
+  userId                   String   @unique
+  categoryId               String
+  subTags                  String[]
+  businessName             String
+  city                     String
+  latitude                 Float
+  longitude                Float
+  bio                      String?
   // Indirizzo del negozio/laboratorio (facoltativo: molti professionisti a
   // domicilio non ne hanno uno da mostrare pubblicamente), mostrato nella
   // card risultati e nel profilo pubblico come su miodottore.it.
-  address         String?
-  imageUrl        String?
+  address                  String?
+  imageUrl                 String?
   // Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
   // profilo pubblico — richiesta esplicita dell'utente: "in modo che gli
   // utenti aprendo l'account del professionista possano avere un'idea dei
   // lavori svolti". Stesso pattern/limite di GuidedRequest.photoUrls,
   // stesso upload Cloudinary già in uso per l'immagine profilo.
-  portfolioUrls   String[] @default([])
-  verified        Boolean  @default(false)
+  portfolioUrls            String[] @default([])
+  verified                 Boolean  @default(false)
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
   // escludere questi profili dalle sezioni pubbliche che dichiarano
   // esplicitamente di mostrare dati reali (redesign "Scheda Intervento"
   // §4.6: mai spacciare vetrine finte per vere, CLAUDE.md §10).
-  isDemo          Boolean  @default(false)
+  isDemo                   Boolean  @default(false)
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
-  remoteAvailable Boolean  @default(false)
+  remoteAvailable          Boolean  @default(false)
   // Se true, un cliente può prenotare direttamente una fascia libera
   // dell'agenda pubblica (crea subito un Booking, niente Quote). Se false
   // (default) l'agenda resta solo informativa: orari generali di
   // disponibilità, la prenotazione passa dal flusso preventivo/quote.
-  bookableAgenda  Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  bookableAgenda           Boolean  @default(false)
+  // Raggio (km, max 25) entro cui il professionista riceve richieste dal
+  // fan-out delle richieste guidate — richiesta esplicita dell'utente: due
+  // raggi indipendenti, uno per le richieste standard e uno per quelle
+  // urgenti (GuidedRequest.isUrgent), così un professionista può scegliere
+  // di coprire una zona più ampia solo per gli interventi urgenti (o
+  // viceversa) invece di un unico raggio fisso per tutti. Editabili in
+  // /dashboard/profilo (EngagementRadiusMap), usati da
+  // GuidedRequestsService per il filtro geografico del fan-out.
+  engagementRadiusKm       Float    @default(25)
+  urgentEngagementRadiusKm Float    @default(25)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
 
-  subscription     Subscription?
-  visibilityBoosts VisibilityBoost[]
-  leads            Lead[]
-  quotes           Quote[]
-  bookings         Booking[]
-  payments         Payment[]
-  savedBy          SavedProfessional[]
-  services         ProfessionalService[]
-  availabilitySlots AvailabilitySlot[]
+  subscription           Subscription?
+  visibilityBoosts       VisibilityBoost[]
+  leads                  Lead[]
+  quotes                 Quote[]
+  bookings               Booking[]
+  payments               Payment[]
+  savedBy                SavedProfessional[]
+  services               ProfessionalService[]
+  availabilitySlots      AvailabilitySlot[]
   availabilityExceptions AvailabilityException[]
-  guidedRequests   GuidedRequest[]
+  guidedRequests         GuidedRequest[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -170,7 +180,7 @@ model ProfessionalService {
 // ricorrente con le prenotazioni reali (Booking.scheduledAt) quando si
 // calcola l'agenda pubblica.
 model AvailabilitySlot {
-  id                    String   @id @default(uuid())
+  id                    String    @id @default(uuid())
   professionalProfileId String
   dayOfWeek             Int
   startTime             String
@@ -195,8 +205,8 @@ model AvailabilitySlot {
   // preferredDate/preferredTimeSlot) — più clienti possono richiedere nella
   // stessa finestra, il professionista sceglie poi con chi fissare
   // l'appuntamento reale.
-  maxBookings           Int      @default(1)
-  createdAt             DateTime @default(now())
+  maxBookings           Int       @default(1)
+  createdAt             DateTime  @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
@@ -291,11 +301,11 @@ enum VisibilityBoostStatus {
 }
 
 model VisibilityBoost {
-  id                    String                 @id @default(uuid())
+  id                    String                @id @default(uuid())
   professionalProfileId String
   type                  VisibilityBoostType
-  status                VisibilityBoostStatus  @default(ACTIVE)
-  startsAt              DateTime               @default(now())
+  status                VisibilityBoostStatus @default(ACTIVE)
+  startsAt              DateTime              @default(now())
   endsAt                DateTime?
   stripePaymentId       String?
 
@@ -316,12 +326,12 @@ enum GuidedRequestStatus {
 }
 
 model GuidedRequest {
-  id          String              @id @default(uuid())
-  clientId    String
-  categoryId  String
-  description String
-  photoUrls   String[]
-  city        String
+  id                    String              @id @default(uuid())
+  clientId              String
+  categoryId            String
+  description           String
+  photoUrls             String[]
+  city                  String
   // Indirizzo preciso (via e numero civico) del luogo dell'intervento,
   // facoltativo: il cliente lo indica per far sapere al professionista dove
   // andare a lavorare una volta accettato il preventivo. Sulla richiesta
@@ -329,14 +339,14 @@ model GuidedRequest {
   // diversi da una richiesta all'altra. Mai mostrato in ricerca/profilo
   // pubblico — solo al professionista che ha in mano un preventivo/
   // prenotazione collegati a questa richiesta.
-  address     String?
-  isUrgent    Boolean             @default(false)
-  status      GuidedRequestStatus @default(OPEN)
-  createdAt   DateTime            @default(now())
+  address               String?
+  isUrgent              Boolean             @default(false)
+  status                GuidedRequestStatus @default(OPEN)
+  createdAt             DateTime            @default(now())
   // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
   // (richiesta esplicita dell'utente) — Prisma la aggiorna da sola ad ogni
   // update() (es. modifica descrizione/città/foto).
-  updatedAt   DateTime            @default(now()) @updatedAt
+  updatedAt             DateTime            @default(now()) @updatedAt
   // Valorizzati solo quando la richiesta parte da una fascia "generica"
   // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
   // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
@@ -346,9 +356,9 @@ model GuidedRequest {
   // professionalProfileId denormalizzato (oltre al Lead che nasce comunque
   // dal fan-out) perché qui serve un riferimento diretto e univoco per
   // contare la capienza senza passare da un join su Lead.
-  preferredDate          DateTime?
-  preferredTimeSlot      String?
-  professionalProfileId  String?
+  preferredDate         DateTime?
+  preferredTimeSlot     String?
+  professionalProfileId String?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -447,7 +457,7 @@ model Quote {
 // servono, non solo manodopera+materiali (CLAUDE.md, richiesta esplicita
 // dell'utente). Stesso pattern range min/max di ProfessionalService.
 model QuoteItem {
-  id               String  @id @default(uuid())
+  id               String @id @default(uuid())
   quoteId          String
   name             String
   priceMinEurCents Int?
@@ -581,13 +591,13 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id                     String        @id @default(uuid())
-  professionalProfileId  String
-  type                   PaymentType
-  amountEurCents         Int
-  status                 PaymentStatus @default(PENDING)
-  stripePaymentIntentId  String?       @unique
-  createdAt              DateTime      @default(now())
+  id                    String        @id @default(uuid())
+  professionalProfileId String
+  type                  PaymentType
+  amountEurCents        Int
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?       @unique
+  createdAt             DateTime      @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
@@ -605,14 +615,14 @@ enum NotificationChannel {
 }
 
 model Notification {
-  id        String               @id @default(uuid())
+  id        String              @id @default(uuid())
   userId    String
   channel   NotificationChannel
   type      String
   payload   Json
   sentAt    DateTime?
   readAt    DateTime?
-  createdAt DateTime             @default(now())
+  createdAt DateTime            @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

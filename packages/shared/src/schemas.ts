@@ -222,6 +222,21 @@ export const updateBookingNoteSchema = z.object({
 });
 export type UpdateBookingNoteInput = z.infer<typeof updateBookingNoteSchema>;
 
+/**
+ * Raggio di ingaggio del professionista (km, indipendenti tra standard e
+ * urgente — richiesta esplicita dell'utente): usati da
+ * GuidedRequestsService per il filtro geografico del fan-out invece di una
+ * costante fissa uguale per tutti. Range 1-25 km validato qui (unica fonte
+ * di verità, stessa pipe ZodValidationPipe già in uso per ogni altro
+ * endpoint di questo modulo) — mai un raggio a 0 (nessuna copertura) né
+ * oltre i 25 km concordati.
+ */
+export const updateEngagementRadiusSchema = z.object({
+  engagementRadiusKm: z.number().min(1, "Il raggio deve essere almeno 1 km.").max(25, "Il raggio non può superare 25 km."),
+  urgentEngagementRadiusKm: z.number().min(1, "Il raggio urgente deve essere almeno 1 km.").max(25, "Il raggio urgente non può superare 25 km."),
+});
+export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusSchema>;
+
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
   bookingId: z.string().uuid(),

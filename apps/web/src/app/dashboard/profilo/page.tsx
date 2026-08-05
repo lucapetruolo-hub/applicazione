@@ -9,6 +9,7 @@ import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@profes
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -51,6 +52,15 @@ export default function DashboardProfiloPage() {
   const [isUploadingPortfolioPhoto, setIsUploadingPortfolioPhoto] = useState(false);
   const [portfolioPhotoError, setPortfolioPhotoError] = useState<string | null>(null);
   const portfolioPhotoInputRef = useRef<HTMLInputElement>(null);
+  // Posizione + raggi di ingaggio: sezione a parte (EngagementRadiusSection,
+  // proprio bottone "Salva"), non fa parte del form principale sopra. Serve
+  // una posizione reale già geocodificata (latitude/longitude diverse da
+  // 0,0) per avere senso su una mappa — un professionista che non ha ancora
+  // salvato il profilo principale non la vede, coerente con la guardia già
+  // in uso per il resto di questa pagina prima che esista un profilo.
+  const [engagementLocation, setEngagementLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [engagementRadiusKm, setEngagementRadiusKm] = useState(25);
+  const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(25);
 
   useEffect(() => {
     if (!token) return;
@@ -66,6 +76,14 @@ export default function DashboardProfiloPage() {
           setRemoteAvailable(profile.remoteAvailable);
           setImageUrl(profile.imageUrl);
           setPortfolioUrls(profile.portfolioUrls);
+          // 0,0 = comune non ancora geocodificato (stessa convenzione già
+          // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
+          // raggio di ingaggio centrata sull'oceano davanti all'Africa.
+          if (profile.latitude !== 0 || profile.longitude !== 0) {
+            setEngagementLocation({ latitude: profile.latitude, longitude: profile.longitude });
+          }
+          setEngagementRadiusKm(profile.engagementRadiusKm);
+          setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
           setServices(
             profile.services.map((service) => ({
               name: service.name,
@@ -254,7 +272,7 @@ export default function DashboardProfiloPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" gap="$5">
       <YStack width="100%" maxWidth={560} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
@@ -621,6 +639,21 @@ export default function DashboardProfiloPage() {
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}
         </Button>
       </YStack>
+
+      {/* Sezione a parte, proprio bottone "Salva": richiede una posizione
+          già geocodificata, quindi visibile solo dopo il primo salvataggio
+          del profilo principale (città scelta → coordinate reali). */}
+      {token && engagementLocation ? (
+        <YStack width="100%" maxWidth={560}>
+          <EngagementRadiusSection
+            token={token}
+            latitude={engagementLocation.latitude}
+            longitude={engagementLocation.longitude}
+            initialEngagementRadiusKm={engagementRadiusKm}
+            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
+          />
+        </YStack>
+      ) : null}
 
       {cropImageSrc ? (
         <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
