@@ -592,20 +592,24 @@ export default function DashboardAgendaPage() {
               slot={slot}
               isConflicting={false}
               isEditing={false}
-              // Bug reale corretto (segnalato dall'utente: "cliccando un
-              // orario non deve traslare negli altri giorni"): una fascia
-              // ricorrente storica (date: null) rappresenta la STESSA riga
-              // in ogni sua occorrenza futura — selezionarla per indice la
-              // faceva apparire "già selezionata" anche su altre celle con
-              // lo stesso giorno della settimana, in qualunque mese. Le
-              // fasce ricorrenti restano quindi escluse dalla selezione
-              // multipla (isSelected/onEdit assenti, badge "Ricorrente" al
-              // loro posto) — eliminabili solo uscendo da questa modalità e
-              // cliccandole normalmente (SlotEditorModal → "Elimina fascia",
-              // che avvisa già che l'eliminazione riguarda ogni occorrenza).
-              isSelected={slot.date !== null ? selectedSlotIndexes.has(index) : undefined}
-              onEdit={slot.date !== null ? () => toggleSlotSelection(index) : () => {}}
-              isLegacyRecurring={slot.date === null}
+              // Bug reale corretto: escludere del tutto le fasce
+              // ricorrenti storiche (date: null) dal click diretto aveva
+              // reso "Modifica" del tutto inutilizzabile per un
+              // professionista la cui agenda fosse composta solo da fasce
+              // di questo tipo (create prima del passaggio "per data
+              // esatta") — un problema più grave del bug che risolveva.
+              // Il click diretto su una singola fascia resta quindi sempre
+              // selezionabile (necessario per poterla eliminare): una
+              // fascia ricorrente selezionata da una cella può comparire
+              // "già selezionata" anche nelle sue altre occorrenze — è
+              // letteralmente la stessa riga, eliminarla rimuove ogni
+              // occorrenza, comportamento corretto anche se meno intuitivo.
+              // Solo le scorciatoie di gruppo "giorno"/"mese" restano
+              // limitate alle fasce con data esatta (vedi
+              // toggleDaySelection/toggleMonthSelection sopra): quelle sì
+              // "traslavano" in modo fuorviante su celle mai toccate.
+              isSelected={selectedSlotIndexes.has(index)}
+              onEdit={() => toggleSlotSelection(index)}
             />
           ))}
         </YStack>
@@ -1165,7 +1169,6 @@ function SlotChip({
   isEditing,
   isSelected,
   onEdit,
-  isLegacyRecurring,
 }: {
   slot: SlotDraft;
   /** True se la fascia in modifica altrove nello stesso giorno si sovrappone a questa — colorata di rosso anche lei, non solo il riquadro in modifica (richiesta esplicita dell'utente). */
@@ -1175,16 +1178,6 @@ function SlotChip({
   /** True in modalità selezione (tasto "Modifica") quando questa fascia è tra quelle scelte per l'eliminazione in blocco. */
   isSelected?: boolean;
   onEdit: () => void;
-  /**
-   * True in modalità selezione per una fascia ricorrente storica (`date:
-   * null`, comportamento precedente al passaggio "per data esatta"): non
-   * partecipa alla selezione multipla — bug reale corretto, selezionare
-   * quell'indice la faceva apparire "già selezionata" anche su altre celle
-   * con lo stesso giorno della settimana, in qualunque mese, perché è
-   * letteralmente la stessa riga in ogni sua occorrenza. Resta eliminabile
-   * uscendo da "Modifica" e cliccandola normalmente (SlotEditorModal).
-   */
-  isLegacyRecurring?: boolean;
 }) {
   const isGeneric = slot.maxBookings > 1;
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
@@ -1204,26 +1197,18 @@ function SlotChip({
       alignItems="center"
       gap={3}
       minWidth={0}
-      cursor={isLegacyRecurring ? "default" : "pointer"}
+      cursor="pointer"
       backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing || isSelected ? brand.cianografiaVelo : brand.calce}
-      onPress={isLegacyRecurring ? undefined : onEdit}
-      accessibilityRole={isLegacyRecurring ? undefined : "button"}
-      accessibilityLabel={
-        isLegacyRecurring
-          ? `Fascia ricorrente ${slot.start}–${slot.end}, non selezionabile qui`
-          : isSelected !== undefined
-            ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}`
-            : `Modifica fascia ${slot.start}–${slot.end}`
-      }
+      onPress={onEdit}
+      accessibilityRole="button"
+      accessibilityLabel={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
     >
-      {isLegacyRecurring ? (
-        <Icon name="calendar" size={9} color={brand.grafite70} />
-      ) : isSelected !== undefined ? (
+      {isSelected !== undefined ? (
         <SelectionCheckbox checked={isSelected} />
       ) : slot.hasUpcomingBooking ? (
         <Icon name="bell-ring" size={9} color={brand.urgenza} />
       ) : null}
-      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isLegacyRecurring ? brand.grafite70 : isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
+      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
         {slot.start}–{slot.end}
       </Text>
     </XStack>

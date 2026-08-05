@@ -73,29 +73,28 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
   }
 
   // Navigazione a swipe (richiesta esplicita dell'utente): orizzontale
-  // (sinistra/destra) in Giorno/Settimana, verticale (sù/giù) in Mese —
-  // solo touchstart/touchend, mai touchmove/preventDefault: lo scroll
-  // naturale della pagina resta sempre intatto durante il gesto, valutato
-  // solo a fine gesto. Soglia di distanza (60px) + dominanza di un asse
-  // sull'altro (1.5×) per non scattare su un tap o su uno scroll di pagina
-  // con una leggera componente diagonale.
+  // (sinistra/destra) in Giorno/Settimana — solo touchstart/touchend, mai
+  // touchmove/preventDefault: lo scroll naturale della pagina resta sempre
+  // intatto durante il gesto, valutato solo a fine gesto. Soglia di
+  // distanza (60px) + dominanza di un asse sull'altro (1.5×) per non
+  // scattare su un tap o su uno scroll di pagina con una leggera
+  // componente diagonale. Lo swipe verticale in Mese (sù/giù per cambiare
+  // mese) è stato rimosso su richiesta esplicita dell'utente: confliggeva
+  // con lo scroll verticale naturale della pagina in quella vista.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   function handleTouchStart(e: React.TouchEvent) {
+    if (view === "month") return;
     const touch = e.touches[0];
     touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
   }
   function handleTouchEnd(e: React.TouchEvent) {
+    if (view === "month") return;
     const start = touchStart.current;
     const touch = e.changedTouches[0];
     if (!start || !touch) return;
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
-    if (view === "month") {
-      if (Math.abs(deltaY) > 60 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5) {
-        if (deltaY < 0) handleNext();
-        else handlePrev();
-      }
-    } else if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
       if (deltaX < 0) handleNext();
       else handlePrev();
     }

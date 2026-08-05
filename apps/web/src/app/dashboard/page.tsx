@@ -439,6 +439,15 @@ function AcceptedJobCard({
   const isCanceled = booking.status === "CANCELED";
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // Descrizione/foto della richiesta originale e nota privata del
+  // professionista, richiesta esplicita dell'utente: già mostrate nel
+  // pannello di dettaglio del calendario "Prenotazioni", ora anche qui —
+  // stessi campi già esposti da ProfessionalBooking, nessuna chiamata API
+  // aggiuntiva.
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const noteChanged = noteDraft !== (booking.professionalNote ?? "");
 
   async function handleComplete(input: CompleteBookingInput) {
     await apiClient.completeBooking(token, booking.id, input);
@@ -450,6 +459,16 @@ function AcceptedJobCard({
     await apiClient.cancelBookingByProfessional(token, booking.id, { note });
     setShowCancelModal(false);
     onUpdated();
+  }
+
+  async function handleSaveNote() {
+    setIsSavingNote(true);
+    try {
+      await apiClient.updateBookingNote(token, booking.id, { note: noteDraft });
+      onUpdated();
+    } finally {
+      setIsSavingNote(false);
+    }
   }
 
   return (
@@ -523,6 +542,41 @@ function AcceptedJobCard({
         ) : null}
       </YStack>
 
+      {/* Descrizione del lavoro e foto scritte/caricate dal cliente nella
+          richiesta guidata originale — richiesta esplicita dell'utente,
+          visibili anche qui (non solo nel pannello di dettaglio del
+          calendario "Prenotazioni"). Assenti per le prenotazioni dirette da
+          agenda pubblica, che non hanno una GuidedRequest collegata. */}
+      {booking.description ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Descrizione del lavoro
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {booking.description}
+          </Text>
+        </YStack>
+      ) : null}
+
+      {(booking.photoUrls ?? []).length > 0 ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Foto del cliente
+          </Text>
+          <XStack gap="$2" flexWrap="wrap">
+            {booking.photoUrls.map((url, index) => (
+              <img
+                key={url}
+                src={url}
+                alt=""
+                onClick={() => setOpenPhotoIndex(index)}
+                style={{ width: 56, height: 56, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+              />
+            ))}
+          </XStack>
+        </YStack>
+      ) : null}
+
       {booking.items.length > 0 ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
           {booking.items.map((item) => (
@@ -575,10 +629,53 @@ function AcceptedJobCard({
         </YStack>
       ) : null}
 
+      {/* Nota privata del professionista (mai vista dal cliente) — stesso
+          campo/pattern già in uso in BookingDetailPanel (calendario
+          "Prenotazioni"), richiesta esplicita dell'utente di vederla anche
+          qui. */}
+      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+        <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+          Note personali (solo per te)
+        </Text>
+        <textarea
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
+          rows={2}
+          maxLength={2000}
+          style={{
+            width: "100%",
+            padding: 8,
+            borderRadius: 4,
+            border: `1px solid ${brand.filetto}`,
+            fontSize: 13,
+            fontFamily: "inherit",
+            color: brand.grafite,
+            resize: "vertical",
+          }}
+        />
+        {noteChanged ? (
+          <Button
+            variant="secondary"
+            size="$2"
+            height={32}
+            alignSelf="flex-start"
+            disabled={isSavingNote}
+            opacity={isSavingNote ? 0.6 : 1}
+            onPress={handleSaveNote}
+          >
+            {isSavingNote ? "Salvataggio..." : "Salva nota"}
+          </Button>
+        ) : null}
+      </YStack>
+
       {showCompleteModal ? (
         <CompleteJobModal quotedItems={booking.items} onClose={() => setShowCompleteModal(false)} onComplete={handleComplete} />
       ) : null}
       {showCancelModal ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancel} /> : null}
+      {openPhotoIndex !== null ? (
+        <PhotoLightbox photos={booking.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
+      ) : null}
     </Surface>
   );
 }

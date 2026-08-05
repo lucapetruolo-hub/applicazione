@@ -2857,3 +2857,58 @@ zero a metà lavoro (container riciclato per inattività, working tree e
 dati Postgres sopravvissuti) — tutti i test end-to-end sopra rieseguiti
 con successo sull'ambiente ripristinato, non solo esistenti da una sessione
 precedente.
+
+**Correzioni al giro precedente — swipe verticale Mese, selezione fasce
+ricorrenti, dettagli richiesta in "Lavori accettati"** (tutte richieste
+esplicite dell'utente, arrivate subito dopo aver verificato le funzionalità
+del giro sopra):
+
+1. **Swipe verticale disattivato in vista Mese** — lo swipe sù/giù per
+   cambiare mese (introdotto nel giro precedente) confliggeva con lo
+   scroll verticale naturale della pagina in quella vista; rimosso su
+   richiesta esplicita, lo swipe orizzontale in Giorno/Settimana resta
+   invariato. `CalendarShell.tsx`: `handleTouchStart`/`handleTouchEnd`
+   ritornano subito (no-op) quando `view === "month"`.
+2. **Bug reale corretto: "Modifica" non permetteva più di selezionare
+   alcuna fascia** — regressione introdotta dal fix precedente per il
+   "traslare" (§ sopra), che aveva escluso del tutto le fasce ricorrenti
+   storiche (`date: null`) dalla selezione tramite click diretto. Per un
+   professionista la cui agenda fosse composta SOLO da fasce di questo
+   tipo (creata prima del passaggio "per data esatta"), questo rendeva
+   l'intera modalità "Modifica" inutilizzabile — un problema più grave del
+   bug che risolveva. Corretto ripristinando la selezione diretta per
+   qualunque fascia (`SlotChip` non ha più la prop `isLegacyRecurring`,
+   rimossa): una fascia ricorrente selezionata da una cella può tornare a
+   comparire "già selezionata" anche nelle sue altre occorrenze quando si
+   naviga — accettato come comportamento corretto (è letteralmente la
+   stessa riga, eliminarla rimuove ogni occorrenza) piuttosto che
+   bloccare la selezione. Restano invece limitate alle fasce con data
+   esatta solo le scorciatoie di gruppo "giorno"/"mese"
+   (`toggleDaySelection`/`toggleMonthSelection`, non toccate in questo
+   giro): quelle sì "traslavano" in modo fuorviante su celle mai toccate
+   dall'utente, il problema originale resta corretto lì.
+3. **Descrizione del lavoro, foto del cliente e nota privata anche nella
+   sezione "Lavori accettati" della Dashboard** — richiesta esplicita
+   dell'utente: gli stessi tre blocchi già presenti in `BookingDetailPanel`
+   (calendario "Prenotazioni") ora compaiono anche in `AcceptedJobCard`
+   (`/dashboard`, tab "Lavori accettati"), stessi campi già esposti da
+   `ProfessionalBooking` (`description`, `photoUrls`, `professionalNote`),
+   nessuna chiamata API aggiuntiva. Miniature cliccabili aprono lo stesso
+   `PhotoLightbox` già in uso altrove; la nota si salva con lo stesso
+   endpoint `PATCH /bookings/:id/note` già esistente
+   (`apiClient.updateBookingNote`), bottone "Salva nota" visibile solo
+   quando il testo cambia rispetto al valore già salvato — stesso pattern
+   di `BookingDetailPanel`, nessun componente duplicato salvo la resa
+   inline nella card invece che in un overlay.
+
+Verificato end-to-end con l'API locale e Playwright: fascia ricorrente
+storica (unica presente nell'agenda di un professionista di prova)
+nuovamente selezionabile ed eliminabile tramite "Modifica"; swipe verticale
+sintetico sulla vista Mese non cambia più il mese visualizzato; preventivo
+accettato con descrizione+foto → entrambe visibili in "Lavori accettati",
+lightbox funzionante al click sulla miniatura, nota privata scritta e
+persistita correttamente dopo un reload. Rieseguite anche le regressioni
+del giro precedente (selezione isolata tra fasce esatte/generiche,
+casellina di spunta, selezione inline con scorciatoie di gruppo) — tutte
+ancora verdi. Zero errori console in tutti i flussi. Typecheck pulito su
+tutti i package, build di produzione `apps/web` verde (24 route).
