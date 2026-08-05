@@ -96,4 +96,10 @@ export class GuidedRequestsController {
   remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.guidedRequestsService.remove(req.user.userId, id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/status")
+  getStatus(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.guidedRequestsService.getStatus(req.user.userId, id);
+  }
 }

@@ -7,6 +7,7 @@ import type {
   ChangePasswordInput,
   CompleteBookingInput,
   GuidedRequestInput,
+  GuidedRequestStatusSummary,
   GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
@@ -317,6 +318,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    /** Stato aggregato (contattati/risposto/in attesa) di una richiesta guidata — CLAUDE.md §14. */
+    guidedRequestStatus: (token: string, id: string) =>
+      request<GuidedRequestStatusSummary>(`/guided-requests/${id}/status`, { headers: { Authorization: `Bearer ${token}` } }),
 
     uploadGuidedRequestPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),

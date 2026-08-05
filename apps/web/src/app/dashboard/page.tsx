@@ -41,20 +41,30 @@ type DashboardTab = "richieste" | "lavori";
  * inviato, preventivo accettato... e in lavori accettati filtri come:
  * completati, annullati, da effettuare").
  */
-type LeadStatusFilter = "all" | "pending" | "quoteSent" | "quoteAccepted" | "declined";
+type LeadStatusFilter = "all" | "pending" | "quoteSent" | "quoteAccepted" | "declined" | "expired";
 const LEAD_STATUS_OPTIONS: { value: LeadStatusFilter; label: string }[] = [
   { value: "all", label: "Tutte" },
   { value: "pending", label: "In attesa di preventivo" },
   { value: "quoteSent", label: "Preventivo inviato" },
   { value: "quoteAccepted", label: "Preventivo accettato" },
   { value: "declined", label: "Rifiutate" },
+  // Lead non scaduto per rifiuto attivo ma per timeout (CLAUDE.md §14) —
+  // filtro a parte: mescolarlo con "declined" mostrerebbe al
+  // professionista una nota di rifiuto che non esiste per queste.
+  { value: "expired", label: "Scadute" },
 ];
 function leadMatchesStatus(lead: ProfessionalLead, filter: LeadStatusFilter): boolean {
   if (filter === "all") return true;
   if (filter === "declined") return lead.status === "DECLINED";
+  if (filter === "expired") return lead.status === "EXPIRED";
   if (filter === "quoteAccepted") return lead.quote?.status === "ACCEPTED";
-  if (filter === "quoteSent") return lead.quote !== null && lead.status !== "DECLINED";
-  return lead.quote === null && lead.status !== "DECLINED";
+  if (filter === "quoteSent") return lead.quote !== null && lead.status !== "DECLINED" && lead.status !== "EXPIRED";
+  // "In attesa di preventivo": bug reale corretto (CLAUDE.md §14) — un
+  // Lead scaduto per timeout (nessuna risposta entro expiresAt) finiva qui
+  // insieme a quelli davvero ancora aperti, perché il controllo escludeva
+  // solo DECLINED. Un lead EXPIRED non è più azionabile, non deve
+  // comparire come "in attesa".
+  return lead.quote === null && lead.status !== "DECLINED" && lead.status !== "EXPIRED";
 }
 
 type BookingStatusFilter = "all" | "toDo" | "completed" | "canceled";
@@ -1018,6 +1028,10 @@ function LeadCard({
           <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
             Richiesta rifiutata
           </Text>
+        ) : lead.status === "EXPIRED" ? (
+          <Text fontSize="$2" color={brand.grafite70} fontWeight="600">
+            Richiesta scaduta
+          </Text>
         ) : sent && lead.quote?.status !== "MODIFICATION_REQUESTED" ? (
           <Text
             fontSize="$2"
@@ -1193,7 +1207,7 @@ function LeadCard({
         <PhotoLightbox photos={lead.guidedRequest.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
 
-      {!sent && !showForm && lead.status !== "DECLINED" ? (
+      {!sent && !showForm && lead.status !== "DECLINED" && lead.status !== "EXPIRED" ? (
         <XStack gap="$3" alignItems="center" flexWrap="wrap">
           <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
             Invia preventivo

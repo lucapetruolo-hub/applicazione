@@ -1,17 +1,57 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, type GuidedRequestInput, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { calculateDistanceKm } from "../common/geo.util";
+import { NotificationsService } from "../notifications/notifications.service";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
 const LEAD_PRICE_STANDARD_EUR_CENTS = 500;
 const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 
+// Selezione intelligente dei Lead (CLAUDE.md §14): quanti professionisti
+// contatta al massimo il fan-out iniziale di una singola richiesta guidata,
+// anche quando i candidati compatibili (categoria + raggio) sono di più —
+// richiesta esplicita dell'utente, per non sommergere il cliente di
+// preventivi concorrenti né i professionisti fuori selezione di
+// notifiche inutili. Stesso approccio già in uso per LEAD_PRICE_*
+// sopra: costante in cima al file, facile da modificare.
+const MAX_LEADS_PER_REQUEST = 3;
+
+// Scadenza del singolo Lead: passato questo tempo senza che il
+// professionista abbia inviato una Quote, il job schedulato lo marca
+// EXPIRED e pesca il prossimo candidato dalla coda di riserva (vedi
+// expandLeadQueue). Le urgenti scadono molto più in fretta: un allagamento
+// non può aspettare 4 ore una risposta.
+const URGENT_LEAD_EXPIRY_MINUTES = 20;
+const STANDARD_LEAD_EXPIRY_HOURS = 4;
+
+// Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
+// aperta senza nessuna Quote ricevuta, il job schedulato la chiude
+// (closedReason EXPIRED) invece di lasciarla appesa per sempre.
+const URGENT_REQUEST_EXPIRY_DAYS = 7;
+const STANDARD_REQUEST_EXPIRY_DAYS = 14;
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60_000);
+}
+function addHours(date: Date, hours: number): Date {
+  return addMinutes(date, hours * 60);
+}
+function addDays(date: Date, days: number): Date {
+  return addHours(date, days * 24);
+}
+
 @Injectable()
 export class GuidedRequestsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  private readonly logger = new Logger(GuidedRequestsService.name);
+
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(clientId: string, input: GuidedRequestInput) {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
@@ -94,22 +134,39 @@ export class GuidedRequestsService {
       ? await this.prisma.professionalProfile.findMany({ where: { id: input.professionalProfileId } })
       : await this.matchProfilesForFanOut(category.id, input.city, input.isUrgent);
 
-    const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
+    // Selezione intelligente (CLAUDE.md §14): sopra MAX_LEADS_PER_REQUEST
+    // candidati non li contatta tutti — sceglie i migliori per rating +
+    // 1 slot riservato a un professionista nuovo, il resto va in coda di
+    // riserva (pescata da expandLeadQueue quando un Lead scade/viene
+    // rifiutato). Una richiesta diretta a un professionista specifico non
+    // passa da qui: è già una scelta esplicita del cliente, nessuna
+    // selezione da fare.
+    const { selected: leadRecipients, reserve: reserveCandidateIds } = input.professionalProfileId
+      ? { selected: matchingProfiles, reserve: [] as string[] }
+      : await this.selectLeadCandidates(matchingProfiles);
 
-    if (matchingProfiles.length > 0) {
+    const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
+    const requestExpiresAt = this.computeRequestExpiry(input.isUrgent);
+
+    if (leadRecipients.length > 0) {
+      const leadExpiresAt = this.computeLeadExpiry(input.isUrgent);
       await this.prisma.lead.createMany({
-        data: matchingProfiles.map((profile) => ({
+        data: leadRecipients.map((profile) => ({
           guidedRequestId: guidedRequest.id,
           professionalProfileId: profile.id,
           priceEurCents: leadPriceEurCents,
+          expiresAt: leadExpiresAt,
         })),
         skipDuplicates: true,
       });
 
-      await this.prisma.guidedRequest.update({ where: { id: guidedRequest.id }, data: { status: "MATCHED" } });
+      await this.prisma.guidedRequest.update({
+        where: { id: guidedRequest.id },
+        data: { status: "MATCHED", reserveCandidateIds, expiresAt: requestExpiresAt },
+      });
 
       await this.prisma.notification.createMany({
-        data: matchingProfiles.map((profile) => ({
+        data: leadRecipients.map((profile) => ({
           userId: profile.userId,
           channel: "PUSH" as const,
           type: "NEW_LEAD",
@@ -121,11 +178,21 @@ export class GuidedRequestsService {
           },
         })),
       });
+    } else {
+      // Nessun candidato entro il raggio oggi: la richiesta resta OPEN, ma
+      // ha comunque una scadenza propria — un professionista compatibile
+      // che si iscrive più tardi (STEP 4, coinvolgimento a posteriori) la
+      // trova comunque ancora valida solo se non è scaduta nel frattempo.
+      await this.prisma.guidedRequest.update({ where: { id: guidedRequest.id }, data: { expiresAt: requestExpiresAt } });
     }
 
     return {
+      // Professionisti che hanno DAVVERO ricevuto un Lead (dopo la
+      // selezione), non solo i candidati compatibili trovati — questo
+      // numero prima coincideva sempre con matchingProfiles.length, ora che
+      // esiste un tetto (MAX_LEADS_PER_REQUEST) i due possono differire.
       guidedRequestId: guidedRequest.id,
-      matchedProfessionals: matchingProfiles.length,
+      matchedProfessionals: leadRecipients.length,
     };
   }
 
@@ -240,15 +307,70 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Eliminazione di una richiesta già inviata: cascata su Lead e Quote
-   * (onDelete: Cascade nello schema Prisma). Bloccata se CLOSED — a quel
-   * punto esiste una Booking che referenzia la Quote (Booking.quoteId non è
-   * in cascade), cancellarla romperebbe un lavoro già confermato, oltre a
-   * violare il vincolo di chiave esterna.
+   * Cancellazione lato cliente (CLAUDE.md §14) — CLOSED con closedReason
+   * CANCELED_BY_CLIENT, non più un hard delete come prima di
+   * GET /guided-requests/:id/status: una riga davvero cancellata non
+   * potrebbe più riportare alcuno stato dopo la cancellazione, e Lead/Quote
+   * (storico utile anche solo per debug) andrebbero persi con lei. Bloccata
+   * se già CLOSED — stessa guardia di prima (requireOwnEditableRequest).
+   * I Lead ancora PENDING vengono marcati EXPIRED (non DECLINED: non è
+   * stato un professionista a rifiutare) — nessuna notifica di scadenza in
+   * questo caso, è una scelta esplicita del cliente, non un timeout.
    */
   async remove(clientId: string, id: string): Promise<void> {
-    await this.requireOwnEditableRequest(clientId, id, "eliminare");
-    await this.prisma.guidedRequest.delete({ where: { id } });
+    const request = await this.requireOwnEditableRequest(clientId, id, "eliminare");
+    await this.prisma.lead.updateMany({
+      where: { guidedRequestId: request.id, status: "PENDING" },
+      data: { status: "EXPIRED" },
+    });
+    await this.prisma.guidedRequest.update({
+      where: { id: request.id },
+      data: { status: "CLOSED", closedReason: "CANCELED_BY_CLIENT" },
+    });
+  }
+
+  /**
+   * Stato aggregato di una richiesta guidata per il cliente (CLAUDE.md
+   * §14): solo tre numeri, mai l'identità dei professionisti contattati né
+   * dettagli interni (expiresAt, wasExpanded — quelli restano solo lato
+   * professionista/debug). "responded" conta chi ha inviato almeno un
+   * preventivo (qualunque stato attuale, anche se poi ritirato/rifiutato:
+   * la domanda è "ha risposto", non "il preventivo è ancora valido").
+   * Nessuna relazione diretta Lead→Quote nello schema: il conteggio passa
+   * per guidedRequestId, non serve nemmeno passare da Lead.
+   */
+  async getStatus(clientId: string, id: string): Promise<GuidedRequestStatusSummary> {
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id } });
+    if (!request) {
+      throw new NotFoundException("Richiesta non trovata.");
+    }
+    if (request.clientId !== clientId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+
+    const [totalContacted, responded, pending] = await Promise.all([
+      this.prisma.lead.count({ where: { guidedRequestId: id } }),
+      this.prisma.quote.count({ where: { guidedRequestId: id } }),
+      this.prisma.lead.count({ where: { guidedRequestId: id, status: "PENDING", expiresAt: { gt: new Date() } } }),
+    ]);
+
+    let statusMessage: string | null = null;
+    if (request.status === "CLOSED") {
+      if (request.closedReason === "EXPIRED") {
+        statusMessage = "Nessun professionista ha risposto in tempo: la richiesta è scaduta.";
+      } else if (request.closedReason === "CANCELED_BY_CLIENT") {
+        statusMessage = "Hai annullato questa richiesta.";
+      } else if (request.closedReason === "COMPLETED") {
+        statusMessage = "Richiesta conclusa: hai accettato un preventivo.";
+      }
+    } else if (pending === 0 && responded === 0) {
+      // Coda di riserva esaurita, nessuno ha risposto — richiesta esplicita
+      // dell'utente, testo esatto.
+      statusMessage =
+        "Al momento non ci sono professionisti disponibili nella tua zona per questa richiesta. La lasciamo attiva: appena un professionista compatibile si iscrive, gli arriverà automaticamente e riceverai il suo preventivo.";
+    }
+
+    return { totalContacted, responded, pending, statusMessage };
   }
 
   /**
@@ -282,6 +404,287 @@ export class GuidedRequestsService {
       const distanceKm = calculateDistanceKm(requestComune.lat, requestComune.lon, profile.latitude, profile.longitude);
       return distanceKm <= radiusKm;
     });
+  }
+
+  /**
+   * Coinvolge un professionista APPENA CREATO nelle richieste guidate
+   * ancora aperte e compatibili — CLAUDE.md §14, STEP 4. Solo per le
+   * richieste rimaste senza nessun Lead PENDING attivo (coda di riserva
+   * del fan-out originale esaurita): se c'è già qualcuno in corsa non ha
+   * senso aggiungerne un altro adesso, arriverà comunque se quelli
+   * scadono/vengono rifiutati tramite expandLeadQueue — solo che quella
+   * coda è stata "congelata" al momento del fan-out originale e non
+   * include chi non esisteva ancora, da qui questo secondo canale.
+   * Richieste dirette a un professionista specifico (professionalProfileId
+   * valorizzato) sono escluse: sono già una scelta esplicita del cliente,
+   * non fan-out generico.
+   */
+  async matchNewProfileToOpenRequests(profile: {
+    id: string;
+    userId: string;
+    categoryId: string;
+    latitude: number;
+    longitude: number;
+    engagementRadiusKm: number;
+    urgentEngagementRadiusKm: number;
+  }): Promise<void> {
+    // Comune non ancora geocodificato (0,0 placeholder) — stessa
+    // convenzione già usata in matchProfilesForFanOut, mai eleggibile.
+    if (profile.latitude === 0 && profile.longitude === 0) return;
+
+    const now = new Date();
+    const openRequests = await this.prisma.guidedRequest.findMany({
+      where: {
+        status: { in: ["OPEN", "MATCHED"] },
+        categoryId: profile.categoryId,
+        professionalProfileId: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      include: { category: true },
+    });
+
+    for (const request of openRequests) {
+      const activePendingLeads = await this.prisma.lead.count({
+        where: { guidedRequestId: request.id, status: "PENDING", expiresAt: { gt: now } },
+      });
+      if (activePendingLeads > 0) continue;
+
+      const requestComune = findComuneByName(request.city);
+      if (!requestComune) continue;
+      const radiusKm = request.isUrgent ? profile.urgentEngagementRadiusKm : profile.engagementRadiusKm;
+      const distanceKm = calculateDistanceKm(requestComune.lat, requestComune.lon, profile.latitude, profile.longitude);
+      if (distanceKm > radiusKm) continue;
+
+      await this.prisma.lead.create({
+        data: {
+          guidedRequestId: request.id,
+          professionalProfileId: profile.id,
+          priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
+          expiresAt: this.computeLeadExpiry(request.isUrgent),
+          wasExpanded: true,
+        },
+      });
+      await this.prisma.guidedRequest.update({ where: { id: request.id }, data: { status: "MATCHED" } });
+      await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
+        guidedRequestId: request.id,
+        category: request.category.label,
+        city: request.city,
+        isUrgent: request.isUrgent,
+      });
+    }
+  }
+
+  /**
+   * Sceglie chi riceve davvero un Lead tra i candidati compatibili
+   * (matchProfilesForFanOut) quando sono più di MAX_LEADS_PER_REQUEST —
+   * richiesta esplicita dell'utente. Priorità per rating decrescente
+   * (stesso rating già calcolato live da ProfessionalsService.search/
+   * getById dalle recensioni reali, mai un valore salvato — niente nuovo
+   * campo "punteggio di affidabilità": qui riusa lo stesso segnale che il
+   * sistema calcola già), ma con 1 slot sempre riservato a un
+   * professionista scelto a caso tra quelli senza recensioni ancora:
+   * altrimenti un professionista nuovo non riceverebbe mai un lead finché
+   * non ne accumula uno per vie traverse. I candidati non selezionati
+   * restano in `reserve`, in ordine di priorità: expandLeadQueue li pesca
+   * da lì quando un Lead scade o viene rifiutato.
+   */
+  private async selectLeadCandidates(candidates: ProfessionalProfile[]): Promise<{ selected: ProfessionalProfile[]; reserve: string[] }> {
+    if (candidates.length <= MAX_LEADS_PER_REQUEST) {
+      return { selected: candidates, reserve: [] };
+    }
+
+    const ratings = await this.getRatingsByProfile(candidates.map((c) => c.id));
+    const rated = candidates.filter((c) => ratings.has(c.id)).sort((a, b) => ratings.get(b.id)! - ratings.get(a.id)!);
+    const unrated = candidates.filter((c) => !ratings.has(c.id));
+
+    const selected: ProfessionalProfile[] = [];
+    if (unrated.length > 0) {
+      const randomIndex = Math.floor(Math.random() * unrated.length);
+      selected.push(...unrated.splice(randomIndex, 1));
+    }
+    selected.push(...rated.splice(0, MAX_LEADS_PER_REQUEST - selected.length));
+    // Se restano slot liberi (poche persone con rating, riserva "nuovo
+    // professionista" già usata) li riempie con altri senza recensioni.
+    selected.push(...unrated.splice(0, MAX_LEADS_PER_REQUEST - selected.length));
+
+    return { selected, reserve: [...rated, ...unrated].map((c) => c.id) };
+  }
+
+  /**
+   * Rating medio per gruppo di professionisti in un'unica query batch —
+   * stessa formula già in uso in ProfessionalsService.search/getById
+   * (CLAUDE.md: "il rating è sempre calcolato dalle recensioni reali, mai
+   * un valore statico"), riusata qui per selectLeadCandidates invece di
+   * introdurre un secondo modo di calcolarlo. Un professionista senza
+   * recensioni non compare nella mappa (non "zero", proprio assente):
+   * selectLeadCandidates lo riconosce così come "senza dati sufficienti".
+   */
+  private async getRatingsByProfile(profileIds: string[]): Promise<Map<string, number>> {
+    if (profileIds.length === 0) return new Map();
+    const bookings = await this.prisma.booking.findMany({
+      where: { professionalProfileId: { in: profileIds } },
+      include: { review: true },
+    });
+    const ratingsByProfile = new Map<string, number[]>();
+    for (const booking of bookings) {
+      if (!booking.review) continue;
+      const list = ratingsByProfile.get(booking.professionalProfileId) ?? [];
+      list.push(booking.review.rating);
+      ratingsByProfile.set(booking.professionalProfileId, list);
+    }
+    const result = new Map<string, number>();
+    for (const [profileId, values] of ratingsByProfile) {
+      result.set(profileId, Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10);
+    }
+    return result;
+  }
+
+  private computeLeadExpiry(isUrgent: boolean): Date {
+    return isUrgent ? addMinutes(new Date(), URGENT_LEAD_EXPIRY_MINUTES) : addHours(new Date(), STANDARD_LEAD_EXPIRY_HOURS);
+  }
+
+  private computeRequestExpiry(isUrgent: boolean): Date {
+    return isUrgent ? addDays(new Date(), URGENT_REQUEST_EXPIRY_DAYS) : addDays(new Date(), STANDARD_REQUEST_EXPIRY_DAYS);
+  }
+
+  /**
+   * Pesca il prossimo candidato dalla coda di riserva di una richiesta
+   * guidata (STEP 1 sopra) e gli crea un nuovo Lead — richiamata sia dal
+   * job schedulato (runExpiryCheck, Lead scaduto) sia subito da
+   * ProfessionalsService.declineLead (rifiuto esplicito: non ha senso far
+   * aspettare al cliente il prossimo giro del job quando si sa già ora che
+   * quel professionista non risponderà). Se la coda è vuota non fa nulla,
+   * come da richiesta esplicita dell'utente.
+   *
+   * Transazione Serializable (stesso principio già in uso per
+   * bookAgendaSlot/resolveGenericSlot altrove nel progetto): due
+   * espansioni concorrenti sulla stessa richiesta — es. due Lead scadono
+   * nello stesso istante nello stesso giro del job — non devono poter
+   * pescare due volte lo stesso candidato dalla coda o perderne uno.
+   */
+  async expandLeadQueue(guidedRequestId: string): Promise<void> {
+    type NotifyTarget = { userId: string; categoryLabel: string; city: string; isUrgent: boolean };
+    let notifyTarget: NotifyTarget | null;
+
+    try {
+      notifyTarget = await this.prisma.$transaction(
+        async (tx): Promise<NotifyTarget | null> => {
+          const request = await tx.guidedRequest.findUnique({ where: { id: guidedRequestId }, include: { category: true } });
+          if (!request || request.reserveCandidateIds.length === 0) return null;
+
+          const [nextCandidateId, ...remainingReserve] = request.reserveCandidateIds;
+          const candidate = await tx.professionalProfile.findUnique({ where: { id: nextCandidateId } });
+          if (!candidate) {
+            // Il candidato non esiste più (profilo eliminato nel
+            // frattempo): lo scarta e aggiorna comunque la coda, così non
+            // resta bloccato lì per sempre — il prossimo trigger proverà
+            // col candidato successivo.
+            await tx.guidedRequest.update({ where: { id: guidedRequestId }, data: { reserveCandidateIds: remainingReserve } });
+            return null;
+          }
+
+          await tx.lead.create({
+            data: {
+              guidedRequestId,
+              professionalProfileId: candidate.id,
+              priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
+              expiresAt: this.computeLeadExpiry(request.isUrgent),
+              wasExpanded: true,
+            },
+          });
+          await tx.guidedRequest.update({
+            where: { id: guidedRequestId },
+            data: { reserveCandidateIds: remainingReserve, status: "MATCHED" },
+          });
+
+          return { userId: candidate.userId, categoryLabel: request.category.label, city: request.city, isUrgent: request.isUrgent };
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        // Conflitto di serializzazione: un'altra espansione concorrente ha
+        // già consumato la coda in questo istante — non un errore da
+        // propagare, il prossimo trigger (job o decline) riproverà.
+        return;
+      }
+      throw err;
+    }
+
+    if (notifyTarget) {
+      await this.notificationsService.notify(notifyTarget.userId, "NEW_LEAD", {
+        guidedRequestId,
+        category: notifyTarget.categoryLabel,
+        city: notifyTarget.city,
+        isUrgent: notifyTarget.isUrgent,
+      });
+    }
+  }
+
+  /**
+   * Job schedulato (CLAUDE.md §14): ogni 5 minuti, in due passaggi
+   * indipendenti.
+   *
+   * 1. Lead scaduti — PENDING, expiresAt superato, e SENZA una Quote
+   *    collegata (un professionista che ha già risposto non va scaduto
+   *    solo perché Lead.status resta PENDING per sempre anche dopo l'invio
+   *    di un preventivo — nessuna colonna lo aggiorna, verificato in
+   *    QuotesService.createOrUpdate: bisogna escluderli esplicitamente qui
+   *    incrociando Quote per la stessa coppia guidedRequestId+
+   *    professionalProfileId, l'unico modo di sapere "ha risposto" visto
+   *    che Quote non ha una relazione diretta con Lead). Marcati EXPIRED,
+   *    poi espansi verso il prossimo candidato in coda.
+   * 2. Richieste guidate scadute — OPEN/MATCHED, expiresAt superato: i Lead
+   *    PENDING ancora aperti vengono marcati EXPIRED (senza espansione,
+   *    la richiesta stessa sta chiudendo), la richiesta passa a CLOSED con
+   *    closedReason EXPIRED, il cliente viene notificato.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async runExpiryCheck(): Promise<void> {
+    const now = new Date();
+
+    const expiredLeads = await this.prisma.lead.findMany({
+      where: { status: "PENDING", expiresAt: { lt: now } },
+    });
+    if (expiredLeads.length > 0) {
+      const respondedQuotes = await this.prisma.quote.findMany({
+        where: {
+          guidedRequestId: { in: expiredLeads.map((l) => l.guidedRequestId) },
+          professionalProfileId: { in: expiredLeads.map((l) => l.professionalProfileId) },
+        },
+        select: { guidedRequestId: true, professionalProfileId: true },
+      });
+      const respondedPairs = new Set(respondedQuotes.map((q) => `${q.guidedRequestId}:${q.professionalProfileId}`));
+      const leadsToExpire = expiredLeads.filter((l) => !respondedPairs.has(`${l.guidedRequestId}:${l.professionalProfileId}`));
+
+      for (const lead of leadsToExpire) {
+        await this.prisma.lead.update({ where: { id: lead.id }, data: { status: "EXPIRED" } });
+        await this.expandLeadQueue(lead.guidedRequestId);
+      }
+      if (leadsToExpire.length > 0) {
+        this.logger.log(`Scaduti ed espansi ${leadsToExpire.length} lead.`);
+      }
+    }
+
+    const expiredRequests = await this.prisma.guidedRequest.findMany({
+      where: { status: { in: ["OPEN", "MATCHED"] }, expiresAt: { lt: now } },
+    });
+    for (const request of expiredRequests) {
+      await this.prisma.lead.updateMany({
+        where: { guidedRequestId: request.id, status: "PENDING" },
+        data: { status: "EXPIRED" },
+      });
+      await this.prisma.guidedRequest.update({
+        where: { id: request.id },
+        data: { status: "CLOSED", closedReason: "EXPIRED" },
+      });
+      await this.notificationsService.notify(request.clientId, "GUIDED_REQUEST_EXPIRED", {
+        guidedRequestId: request.id,
+      });
+    }
+    if (expiredRequests.length > 0) {
+      this.logger.log(`Chiuse per scadenza ${expiredRequests.length} richieste guidate.`);
+    }
   }
 
   private async requireOwnEditableRequest(clientId: string, id: string, action: string) {

@@ -325,8 +325,20 @@ enum GuidedRequestStatus {
   CLOSED
 }
 
+// Perché la richiesta è passata a CLOSED — nullable, valorizzato solo in
+// quel momento: distingue nella UI/nell'endpoint di stato aggregato
+// (GuidedRequestsService.getStatus) "nessuno ha risposto in tempo" da
+// "il cliente ha annullato" da "si è conclusa con una prenotazione",
+// invece di un'unica etichetta generica "CLOSED" che oggi non dice il
+// motivo.
+enum GuidedRequestClosedReason {
+  EXPIRED
+  CANCELED_BY_CLIENT
+  COMPLETED
+}
+
 model GuidedRequest {
-  id                    String              @id @default(uuid())
+  id                    String                     @id @default(uuid())
   clientId              String
   categoryId            String
   description           String
@@ -340,13 +352,13 @@ model GuidedRequest {
   // pubblico — solo al professionista che ha in mano un preventivo/
   // prenotazione collegati a questa richiesta.
   address               String?
-  isUrgent              Boolean             @default(false)
-  status                GuidedRequestStatus @default(OPEN)
-  createdAt             DateTime            @default(now())
+  isUrgent              Boolean                    @default(false)
+  status                GuidedRequestStatus        @default(OPEN)
+  createdAt             DateTime                   @default(now())
   // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
   // (richiesta esplicita dell'utente) — Prisma la aggiorna da sola ad ogni
   // update() (es. modifica descrizione/città/foto).
-  updatedAt             DateTime            @default(now()) @updatedAt
+  updatedAt             DateTime                   @default(now()) @updatedAt
   // Valorizzati solo quando la richiesta parte da una fascia "generica"
   // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
   // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
@@ -359,6 +371,25 @@ model GuidedRequest {
   preferredDate         DateTime?
   preferredTimeSlot     String?
   professionalProfileId String?
+  // Scadenza della richiesta nel suo complesso (non del singolo Lead, vedi
+  // Lead.expiresAt sotto) — oltre questa data, se ancora OPEN/MATCHED senza
+  // esito, il job schedulato la chiude (closedReason EXPIRED). Nullable:
+  // le richieste create prima di questa funzionalità non ne hanno una e
+  // non scadono mai retroattivamente, stessa convenzione già usata per
+  // AvailabilitySlot.date (nullable = comportamento storico invariato).
+  expiresAt             DateTime?
+  // Perché è CLOSED — vedi GuidedRequestClosedReason sopra. Nullable finché
+  // la richiesta è aperta, e per le righe chiuse prima dell'introduzione di
+  // questo campo (nessun backfill retroattivo).
+  closedReason          GuidedRequestClosedReason?
+  // Coda ordinata (dal più al meno prioritario) dei ProfessionalProfile.id
+  // candidati NON selezionati al fan-out iniziale (oltre MAX_LEADS_PER_REQUEST,
+  // vedi GuidedRequestsService) — pescata in ordine da lì ad ogni scadenza/
+  // rifiuto di un Lead per creare il successivo. Array nativo Postgres,
+  // stesso pattern già in uso per liste ordinate in questo schema
+  // (photoUrls, portfolioUrls, subTags) invece di una tabella dedicata o
+  // di un campo Json: qui non serve altro che leggerla/consumarla in ordine.
+  reserveCandidateIds   String[]                   @default([])
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -382,6 +413,13 @@ enum LeadStatus {
   // facoltativa per il cliente) — distinto dal ritiro di un preventivo già
   // inviato (Quote.WITHDRAWN), che riguarda uno stadio successivo.
   DECLINED
+  // Il professionista non ha risposto entro expiresAt — distinto da
+  // DECLINED (rifiuto attivo, con nota per il cliente): qui semplicemente
+  // il tempo è scaduto, il cliente non deve leggere "ha rifiutato" per un
+  // professionista che magari non ha nemmeno visto la richiesta. Innesca
+  // l'espansione verso il prossimo candidato in coda (vedi
+  // GuidedRequest.reserveCandidateIds).
+  EXPIRED
 }
 
 model Lead {
@@ -393,6 +431,18 @@ model Lead {
   // Nota facoltativa lasciata dal professionista quando rifiuta la
   // richiesta (es. "non copro quella zona"), mostrata al cliente.
   declineNote           String?
+  // Scadenza del singolo Lead (non della GuidedRequest nel suo complesso,
+  // vedi GuidedRequest.expiresAt): passato questo momento senza una Quote
+  // collegata, il job schedulato lo marca EXPIRED e pesca il prossimo
+  // candidato dalla coda di riserva. Nullable per lo stesso motivo di
+  // GuidedRequest.expiresAt (righe esistenti create prima di questa
+  // funzionalità, mai retroattivamente scadute).
+  expiresAt             DateTime?
+  // True se questo Lead è nato da un'espansione (scadenza o rifiuto di un
+  // Lead precedente, o coinvolgimento di un professionista iscritto dopo),
+  // non dal fan-out iniziale — utile solo per capire a colpo d'occhio
+  // l'origine di un Lead in eventuali audit/debug, non usato oggi in UI.
+  wasExpanded           Boolean    @default(false)
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @default(now()) @updatedAt
 

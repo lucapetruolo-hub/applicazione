@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD, Reflector } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ScheduleModule } from "@nestjs/schedule";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
 import { PrismaModule } from "./prisma/prisma.module";
@@ -27,6 +28,15 @@ import { NotificationsModule } from "./notifications/notifications.module";
     // recensioni) hanno un limite più stretto via @Throttle sul singolo
     // controller — CLAUDE.md §10/AUDIT.md §6, punto rimandato alla Fase 6.
     ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 60 }]),
+    // Scadenza/espansione automatica dei Lead e delle richieste guidate
+    // (CLAUDE.md §14, GuidedRequestsService.runExpiryCheck): nessuna coda
+    // reale nello stack (Redis/BullMQ restano solo nella tabella §2, mai
+    // effettivamente collegati — vedi nota lì) — @nestjs/schedule gira un
+    // cron in-process, senza infrastruttura nuova da provisionare. Se in
+    // futuro l'API girerà su più istanze andrà rivista (rischio di doppia
+    // esecuzione), non un problema alla scala attuale (CLAUDE.md §7, singola
+    // città).
+    ScheduleModule.forRoot(),
     PrismaModule,
     CloudinaryModule,
     GeocodingModule,

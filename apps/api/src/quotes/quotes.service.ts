@@ -214,7 +214,7 @@ export class QuotesService {
             },
           });
           await tx.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED", estimatedStartDate: scheduledAt } });
-          await tx.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED" } });
+          await tx.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
           return created;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

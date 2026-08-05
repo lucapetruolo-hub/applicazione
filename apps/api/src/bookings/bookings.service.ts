@@ -60,7 +60,7 @@ export class BookingsService {
     });
 
     await this.prisma.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED" } });
-    await this.prisma.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED" } });
+    await this.prisma.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
 
     // Il professionista deve sapere che il proprio preventivo è stato
     // accettato — mancava del tutto (richiesta esplicita dell'utente, "wow

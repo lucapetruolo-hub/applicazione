@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type AcceptQuoteInput } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type AcceptQuoteInput, type GuidedRequestStatusSummary } from "@professionisti/shared";
 import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -368,6 +368,28 @@ function GuidedRequestCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  // Stato aggregato del fan-out (CLAUDE.md §14) — quanti professionisti
+  // sono stati contattati in totale (inclusi quelli da un'eventuale
+  // espansione), quanti hanno risposto, quanti sono ancora in attesa. Mai
+  // l'identità dei professionisti contattati: quella resta "Inviata a"
+  // sotto, calcolata lato client dai Lead effettivi.
+  const [statusSummary, setStatusSummary] = useState<GuidedRequestStatusSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .guidedRequestStatus(token, request.id)
+      .then((summary) => {
+        if (!cancelled) setStatusSummary(summary);
+      })
+      .catch(() => {
+        // Un fallimento qui non deve rompere il resto della card — la
+        // sezione "Inviata a" più sotto mostra comunque i dettagli.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, request.id]);
 
   // Una richiesta CLOSED ha già portato a una prenotazione: non ha senso
   // modificarla o eliminarla a quel punto (stesso confine applicato lato
@@ -607,6 +629,21 @@ function GuidedRequestCard({
               {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             </YStack>
           </YStack>
+
+          {statusSummary ? (
+            <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
+              {statusSummary.statusMessage ? (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  {statusSummary.statusMessage}
+                </Text>
+              ) : (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Contattati {statusSummary.totalContacted} · Risposto {statusSummary.responded} · In attesa{" "}
+                  {statusSummary.pending}
+                </Text>
+              )}
+            </YStack>
+          ) : null}
 
           {/* Foto già allegate alla richiesta, visibili subito nell'anteprima
               (richiesta esplicita dell'utente) invece di essere nascoste

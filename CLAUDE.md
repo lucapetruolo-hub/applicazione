@@ -3074,3 +3074,166 @@ all'introduzione dei due raggi, non solo aggiunta come feature isolata.
   Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
   `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
   (24 route).
+
+---
+
+## 14. Selezione intelligente dei Lead, espansione automatica, scadenza
+
+Richiesta esplicita dell'utente: il fan-out di una richiesta guidata non
+contatta più tutti i professionisti compatibili (categoria + raggio di
+ingaggio, §13) senza limite — sceglie i migliori, tiene una coda di
+riserva, espande automaticamente se non rispondono, e sia i singoli Lead
+che l'intera richiesta scadono da soli col tempo. Prima di implementare,
+l'utente ha chiarito esplicitamente il criterio guida: le cose che non
+esistevano ancora andavano aggiunte come funzionalità nuove, riusando solo
+ciò che nel progetto era già simile — non un mandato a introdurre
+infrastruttura o campi paralleli a quanto già presente.
+
+- **Selezione (`GuidedRequestsService.selectLeadCandidates`,
+  `matchProfilesForFanOut`)** — nuova costante `MAX_LEADS_PER_REQUEST = 3`
+  (stesso posto/stile di `LEAD_PRICE_STANDARD_EUR_CENTS`, non un
+  `RADIUS_KM` che non esisteva). Sopra il limite: 1 slot sempre riservato a
+  un professionista scelto a caso tra quelli **senza** recensioni ancora
+  (mai escluso a vita solo perché nuovo), il resto ai migliori per rating.
+  Nessun nuovo campo "punteggio di affidabilità" salvato: riusa lo stesso
+  rating già calcolato **live** dalle recensioni reali in
+  `ProfessionalsService.search`/`getById` (mai un valore statico, stesso
+  principio già documentato altrove in questo file) — è esattamente il
+  "qualcosa di già simile" da riusare invece di introdurre un secondo
+  segnale di qualità parallelo. I candidati non selezionati restano in
+  `GuidedRequest.reserveCandidateIds` (nuovo campo, `String[]`: stesso
+  pattern già in uso per liste ordinate come `photoUrls`/`subTags`, non una
+  tabella dedicata né un campo `Json` — nel progetto non se ne usa mai uno
+  per dati di dominio strutturati).
+- **Scadenza ed espansione** — nuovi campi `Lead.expiresAt`/`wasExpanded`
+  e `GuidedRequest.expiresAt`/`closedReason` (enum
+  `GuidedRequestClosedReason`: `EXPIRED`/`CANCELED_BY_CLIENT`/`COMPLETED`),
+  tutti nullable per compatibilità con le righe esistenti (stessa
+  convenzione già usata per `AvailabilitySlot.date`: nullable = "nessun
+  comportamento nuovo per i dati vecchi", non un dato mancante da temere).
+  Nuovo valore `EXPIRED` su `LeadStatus` (non riusato `DECLINED`: sono
+  semanticamente diversi, un lead scaduto non è un rifiuto attivo e non
+  deve mostrare al cliente una nota di rifiuto che non esiste).
+  `GuidedRequestsService.expandLeadQueue` pesca il prossimo candidato dalla
+  coda di riserva e gli crea un nuovo Lead (`wasExpanded: true`) — dentro
+  una transazione Postgres `Serializable` (stesso principio già in uso per
+  `bookAgendaSlot`/`resolveGenericSlot`: due espansioni concorrenti sulla
+  stessa richiesta non devono poter pescare due volte lo stesso candidato).
+  Richiamata subito da `ProfessionalsService.declineLead` (non serve
+  aspettare il job per un rifiuto esplicito — richiede che
+  `ProfessionalsModule` importi `GuidedRequestsModule`, nessuna dipendenza
+  circolare) e da un nuovo job schedulato.
+- **Nessun sistema di scheduling esisteva nel progetto** nonostante
+  Redis/BullMQ compaia nella tabella stack (§2) come scelta approvata:
+  verificato con una ricerca su tutto `apps/api`, zero import di
+  `bullmq`/`ioredis`/`@nestjs/schedule`, nessun `docker-compose`, nessuna
+  variabile Redis configurata — un'infrastruttura solo "promessa" (più
+  punti di CLAUDE.md rimandano promemoria automatici a "quando ci sarà
+  BullMQ", mai arrivato). Introdotto `@nestjs/schedule` (nuova dipendenza,
+  `ScheduleModule.forRoot()` in `AppModule`): un cron in-process, senza
+  Redis da provisionare, coerente con la scelta pragmatica "niente
+  infrastruttura nuova se non strettamente necessaria" già seguita altrove
+  nel progetto (Nominatim invece di Google Geocoding, ISTAT invece di
+  Google Places, ecc.) — se in futuro l'API girerà su più istanze andrà
+  rivisto (rischio di doppia esecuzione), non un problema alla scala
+  attuale (§7, singola città). Stesso problema di risoluzione moduli già
+  documentato per `@nestjs/throttler` riscontrato di nuovo installando
+  questo pacchetto (il pacchetto non risolve nel `node_modules` locale di
+  `apps/api` con `node-linker=hoisted`): risolto con lo stesso fix già
+  noto, `rm -rf apps/api/node_modules && pnpm install`.
+  `GuidedRequestsService.runExpiryCheck` (`@Cron(EVERY_5_MINUTES)`), due
+  passaggi indipendenti:
+  1. Lead `PENDING` con `expiresAt` superato **e senza una Quote
+     collegata** (bug potenziale evitato: `Lead.status` non viene mai
+     aggiornato quando un professionista invia un preventivo — resta
+     `PENDING` per sempre, verificato leggendo `QuotesService.
+     createOrUpdate` — quindi il controllo scadenza deve escludere
+     esplicitamente chi ha già risposto incrociando `Quote` per la stessa
+     coppia `guidedRequestId`+`professionalProfileId`, l'unico modo
+     disponibile: `Quote` non ha una relazione diretta con `Lead` nello
+     schema). Marcati `EXPIRED`, poi espansi.
+  2. `GuidedRequest` `OPEN`/`MATCHED` con `expiresAt` superato: i Lead
+     `PENDING` residui marcati `EXPIRED` (senza espansione, la richiesta
+     stessa sta chiudendo), la richiesta passa a `CLOSED` con
+     `closedReason: EXPIRED`, il cliente notificato
+     (`GUIDED_REQUEST_EXPIRED`, nuovo tipo in `notificationCopy.ts` e
+     `notificationSections.ts`).
+  Costanti: `URGENT_LEAD_EXPIRY_MINUTES = 20`, `STANDARD_LEAD_EXPIRY_HOURS
+  = 4`, `URGENT_REQUEST_EXPIRY_DAYS = 7`, `STANDARD_REQUEST_EXPIRY_DAYS =
+  14`.
+- **`GET /guided-requests/:id/status`** (nuovo endpoint, nuovo tipo
+  `GuidedRequestStatusSummary` in `packages/shared`): tre numeri
+  (`totalContacted`, `responded` — chiunque abbia inviato almeno un
+  preventivo, qualunque stato attuale anche se poi ritirato/rifiutato —
+  `pending`), mai l'identità dei professionisti contattati né dettagli
+  interni (`expiresAt`, `wasExpanded`). `statusMessage` sostituisce i
+  numeri in due casi: richiesta `CLOSED` (testo diverso per
+  `EXPIRED`/`CANCELED_BY_CLIENT`/`COMPLETED`, tramite `closedReason`) o
+  ancora aperta ma con coda di riserva esaurita e nessuna risposta — testo
+  esatto richiesto dall'utente. Nuovo blocco in `/le-mie-richieste`
+  (`GuidedRequestCard`) che lo mostra, fetch lazy per card.
+- **`closedReason: COMPLETED`** aggiunto nei **due** punti (non uno solo)
+  che chiudono una `GuidedRequest` creando una `Booking`:
+  `BookingsService.createFromQuote` e
+  `QuotesService.confirmProposedDate` — il secondo esisteva già ma non
+  era stato considerato nella richiesta originale, trovato leggendo il
+  codice.
+- **Cancellazione lato cliente convertita da hard delete a soft-close** —
+  `GuidedRequestsService.remove` (`DELETE /guided-requests/:id`, stessa
+  rotta, stesso contratto HTTP) non fa più `prisma.guidedRequest.delete()`
+  con cascata su `Lead`/`Quote`: imposta `status: CLOSED, closedReason:
+  CANCELED_BY_CLIENT` e marca i Lead `PENDING` residui `EXPIRED`. Cambio
+  di comportamento necessario, non opzionale: una riga davvero cancellata
+  non potrebbe più rispondere a `GET /guided-requests/:id/status` dopo la
+  cancellazione, e lo storico Lead/Quote andrebbe perso con lei. Nessuna
+  notifica di scadenza in questo caso (scelta esplicita del cliente, non
+  un timeout).
+- **Coinvolgimento di professionisti che si iscrivono dopo** — nessun
+  flusso di verifica admin esiste nel progetto da usare come innesco
+  (`ProfessionalProfile.verified` non viene mai impostato da nessuna
+  parte del codice, verificato con una ricerca su tutto `apps/api`, e non
+  governa oggi né la visibilità in ricerca né l'eleggibilità al fan-out):
+  l'evento reale "il professionista diventa eleggibile" coincide con la
+  **creazione del profilo**, coerente con come funziona già il resto del
+  sistema. `ProfessionalsService.upsertMyProfile` verifica se la riga
+  esisteva già PRIMA dell'upsert (che da solo non lo dice), e solo alla
+  primissima creazione chiama il nuovo
+  `GuidedRequestsService.matchNewProfileToOpenRequests`: cerca
+  `GuidedRequest` `OPEN`/`MATCHED` nella stessa categoria, entro il
+  raggio del nuovo profilo, **con la coda di riserva già esaurita**
+  (nessun Lead `PENDING` attivo — altrimenti c'è già qualcuno in corsa),
+  crea un Lead e notifica.
+- **Frontend** — `/dashboard` (`LeadCard`/filtri): bug reale corretto, il
+  filtro "In attesa di preventivo" trattava un Lead scaduto (`EXPIRED`)
+  come ancora in attesa (escludeva solo `DECLINED`) — un professionista
+  vedeva richieste non più azionabili tra quelle aperte. Nuovo filtro
+  "Scadute" a parte (mai unito a "Rifiutate": un lead scaduto non ha una
+  nota di rifiuto da mostrare), nuova etichetta "Richiesta scaduta" sulla
+  card, bottone "Invia preventivo" nascosto anche per `EXPIRED` (prima
+  solo per `DECLINED`).
+- Verificato end-to-end con l'API locale (non solo typecheck/build):
+  fan-out con 4 candidati compatibili → esattamente 3 Lead creati
+  (`matchedProfessionals`), rifiuto di uno dei tre → espansione immediata
+  verso il quarto candidato in coda (coda poi esaurita, 0 candidati
+  rimasti), stato aggregato (`totalContacted: 4, responded: 0, pending:
+  3`) coerente col mix rifiutato/attivi, cancellazione soft-close
+  (`204`) seguita da una lettura di stato ancora riuscita (`200`, "Hai
+  annullato questa richiesta.") con i Lead ancora presenti — non
+  cancellati per davvero. Percorso "nuovo professionista": un solo
+  candidato iniziale che rifiuta (coda vuota) → `statusMessage` "nessun
+  professionista disponibile" col testo esatto richiesto → un secondo
+  professionista compatibile si registra nella stessa categoria/zona →
+  riceve subito un Lead per la richiesta ancora aperta, stato aggiornato
+  di conseguenza. **Nota sull'ambiente di test**: la sessione ha
+  ripetutamente urtato contro il limite 5/min di `/auth/register` a causa
+  di rerun ravvicinati dello script di verifica (ogni run crea 3-5 nuovi
+  account) — non un problema del prodotto, un artefatto dell'ambiente di
+  sviluppo che ha richiesto alcune attese tra un tentativo e l'altro prima
+  di ottenere un run pulito; un primo bug reale nel test stesso (dati
+  "fantasma" accumulati da run falliti precedenti che falsavano la
+  selezione, non un bug del codice applicativo) è stato trovato e corretto
+  ripulendo il database e aggiungendo pulizia automatica degli account di
+  test a fine script. Zero errori applicativi in tutti i flussi.
+  Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+  `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+  (24 route).

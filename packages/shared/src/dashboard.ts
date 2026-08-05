@@ -25,7 +25,7 @@ export type MyProfessionalProfile = {
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
 export type ProfessionalLead = {
   id: string;
-  status: "PENDING" | "PAID" | "CONVERTED" | "DECLINED";
+  status: "PENDING" | "PAID" | "CONVERTED" | "DECLINED" | "EXPIRED";
   /** Nota lasciata dal professionista se ha rifiutato la richiesta (facoltativa). */
   declineNote: string | null;
   priceEurCents: number;
@@ -167,4 +167,22 @@ export type ProfessionalAvailableSlot = {
   date: string;
   startTime: string;
   endTime: string;
+};
+
+/**
+ * Stato aggregato di una richiesta guidata per il cliente (CLAUDE.md §14,
+ * GuidedRequestsService.getStatus) — solo numeri, mai identità dei
+ * professionisti contattati né dettagli interni (expiresAt, wasExpanded).
+ * `statusMessage` sostituisce i tre numeri in due casi: richiesta chiusa
+ * (spiega perché) o ancora aperta ma senza nessun professionista
+ * disponibile al momento.
+ */
+export type GuidedRequestStatusSummary = {
+  /** Lead creati in totale per questa richiesta, inclusi quelli nati da un'espansione (scadenza/rifiuto). */
+  totalContacted: number;
+  /** Professionisti che hanno inviato almeno un preventivo (qualunque stato, anche se poi ritirato/rifiutato). */
+  responded: number;
+  /** Lead ancora in attesa di risposta, non scaduti. */
+  pending: number;
+  statusMessage: string | null;
 };

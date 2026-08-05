@@ -1,11 +1,12 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { GuidedRequestsModule } from "../guided-requests/guided-requests.module";
 import { ProfessionalsController } from "./professionals.controller";
 import { ProfessionalsService } from "./professionals.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule],
+  imports: [AuthModule, NotificationsModule, GuidedRequestsModule],
   controllers: [ProfessionalsController],
   providers: [ProfessionalsService],
   exports: [ProfessionalsService],

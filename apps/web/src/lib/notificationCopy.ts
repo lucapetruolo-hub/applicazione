@@ -18,6 +18,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_REJECTED: { icon: "😕", message: "Il cliente ha rifiutato il tuo preventivo." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
+  GUIDED_REQUEST_EXPIRED: { icon: "⏱️", message: "La tua richiesta è scaduta senza risposte." },
 };
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };

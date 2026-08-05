@@ -24,6 +24,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { NotificationsService } from "../notifications/notifications.service";
+import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -59,6 +60,7 @@ export class ProfessionalsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly geocodingService: GeocodingService,
     private readonly notificationsService: NotificationsService,
+    private readonly guidedRequestsService: GuidedRequestsService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -326,6 +328,13 @@ export class ProfessionalsService {
       }
     }
 
+    // Serve saperlo PRIMA dell'upsert (che non lo dice da sé): solo alla
+    // primissima creazione del profilo va coinvolto nelle richieste guidate
+    // già aperte in zona (vedi matchNewProfileToOpenRequests più sotto) —
+    // un professionista che modifica il profilo esistente non deve
+    // riceverne di nuove ogni volta che salva.
+    const isFirstTimeCreation = (await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } })) === null;
+
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },
       update: {
@@ -376,6 +385,26 @@ export class ProfessionalsService {
       });
     }
     const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
+
+    // Coinvolgimento nei confronti delle richieste guidate già aperte in
+    // zona (CLAUDE.md §14, STEP 4) — solo alla primissima creazione del
+    // profilo: non esiste in questo progetto un vero flusso di verifica
+    // admin da usare come innesco (ProfessionalProfile.verified non è mai
+    // impostato da nessuna parte), quindi il momento reale in cui un
+    // professionista diventa eleggibile per ricerca/fan-out è proprio la
+    // creazione del profilo, coerente con come funziona già oggi il resto
+    // del sistema.
+    if (isFirstTimeCreation) {
+      await this.guidedRequestsService.matchNewProfileToOpenRequests({
+        id: profile.id,
+        userId,
+        categoryId: profile.categoryId,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        engagementRadiusKm: profile.engagementRadiusKm,
+        urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+      });
+    }
 
     return {
       id: profile.id,
@@ -567,6 +596,12 @@ export class ProfessionalsService {
       guidedRequestId: lead.guidedRequestId,
       professionalProfileId,
     });
+
+    // Espande subito verso il prossimo candidato in coda di riserva
+    // (CLAUDE.md §14) — non serve aspettare il prossimo giro del job
+    // schedulato quando si sa già ora che questo professionista non
+    // risponderà: no-op se la coda è vuota.
+    await this.guidedRequestsService.expandLeadQueue(lead.guidedRequestId);
   }
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
