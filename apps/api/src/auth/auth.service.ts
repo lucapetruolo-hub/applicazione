@@ -102,7 +102,22 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: !existingUser };
   }
 
-  async updateAccount(userId: string, data: { name?: string; surname?: string; birthDate?: string; email?: string; phone?: string }) {
+  async updateAccount(
+    userId: string,
+    data: {
+      name?: string;
+      surname?: string;
+      birthDate?: string;
+      email?: string;
+      phone?: string;
+      street?: string;
+      houseNumber?: string;
+      addressExtra?: string;
+      postalCode?: string;
+      city?: string;
+      province?: string;
+    },
+  ) {
     if (data.email) {
       const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
       if (existing && existing.id !== userId) {

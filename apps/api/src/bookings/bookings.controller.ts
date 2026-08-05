@@ -1,11 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Controller, Body, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import {
-  acceptQuoteSchema,
   cancelBookingByProfessionalSchema,
   completeBookingSchema,
   updateBookingNoteSchema,
-  type AcceptQuoteInput,
   type CancelBookingByProfessionalInput,
   type CompleteBookingInput,
   type UpdateBookingNoteInput,
@@ -22,12 +20,8 @@ export class BookingsController {
 
   @UseGuards(JwtAuthGuard)
   @Post("from-quote/:quoteId")
-  createFromQuote(
-    @Req() req: AuthenticatedRequest,
-    @Param("quoteId") quoteId: string,
-    @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput,
-  ) {
-    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body);
+  createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string) {
+    return this.bookingsService.createFromQuote(req.user.userId, quoteId);
   }
 
   @UseGuards(JwtAuthGuard)

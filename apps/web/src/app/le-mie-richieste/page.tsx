@@ -4,14 +4,13 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type AcceptQuoteInput, type GuidedRequestStatusSummary } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type GuidedRequestStatusSummary } from "@professionisti/shared";
 import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountSidebar } from "@/components/AccountSidebar";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
-import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
@@ -210,12 +209,14 @@ export default function LeMieRichiestePage() {
       .finally(() => markNotificationsRead());
   }, [token, markNotificationsRead]);
 
-  // Il salvataggio dell'indirizzo (AcceptQuoteModal) gestisce da sé stato di
+  // L'indirizzo di lavoro è già stato raccolto all'invio della richiesta
+  // (GuidedRequestForm) — accettare un preventivo non chiede più nulla,
+  // crea subito la prenotazione. QuoteCard gestisce da sé stato di
   // caricamento ed errore; qui basta propagare la chiamata reale e
   // ricaricare l'elenco al successo.
-  async function handleAcceptQuote(quoteId: string, input: AcceptQuoteInput) {
+  async function handleAcceptQuote(quoteId: string) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    await apiClient.acceptQuote(token, quoteId, input);
+    await apiClient.acceptQuote(token, quoteId);
     reload();
   }
 
@@ -374,7 +375,7 @@ function GuidedRequestCard({
   request: ClientGuidedRequest;
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string, input: AcceptQuoteInput) => Promise<void>;
+  onAcceptQuote: (quoteId: string) => Promise<void>;
   /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
 }) {
@@ -382,6 +383,13 @@ function GuidedRequestCard({
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
   const [address, setAddress] = useState(request.address ?? "");
+  const [recipientName, setRecipientName] = useState(request.recipientName ?? "");
+  const [recipientSurname, setRecipientSurname] = useState(request.recipientSurname ?? "");
+  const [recipientPhone, setRecipientPhone] = useState(request.recipientPhone ?? "");
+  const [houseNumber, setHouseNumber] = useState(request.houseNumber ?? "");
+  const [addressExtra, setAddressExtra] = useState(request.addressExtra ?? "");
+  const [postalCode, setPostalCode] = useState(request.postalCode ?? "");
+  const [province, setProvince] = useState(request.province ?? "");
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -429,6 +437,13 @@ function GuidedRequestCard({
     setDescription(request.description);
     setCity(request.city);
     setAddress(request.address ?? "");
+    setRecipientName(request.recipientName ?? "");
+    setRecipientSurname(request.recipientSurname ?? "");
+    setRecipientPhone(request.recipientPhone ?? "");
+    setHouseNumber(request.houseNumber ?? "");
+    setAddressExtra(request.addressExtra ?? "");
+    setPostalCode(request.postalCode ?? "");
+    setProvince(request.province ?? "");
     setPhotoUrls(request.photoUrls);
     setPhotoError(null);
     setError(null);
@@ -474,6 +489,13 @@ function GuidedRequestCard({
         description: description.trim(),
         city: city.trim(),
         address: address.trim() || undefined,
+        recipientName: recipientName.trim() || undefined,
+        recipientSurname: recipientSurname.trim() || undefined,
+        recipientPhone: recipientPhone.trim() || undefined,
+        houseNumber: houseNumber.trim() || undefined,
+        addressExtra: addressExtra.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+        province: province.trim() || undefined,
         photoUrls,
       });
       setIsEditing(false);
@@ -519,10 +541,37 @@ function GuidedRequestCard({
               minChars={3}
             />
           </YStack>
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Via/piazza" style={textareaStyle} />
+
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={1} minWidth={160}>
+              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={textareaStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={160}>
+              <input value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={textareaStyle} />
+            </YStack>
+          </XStack>
           <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Indirizzo (opzionale, anche senza numero civico)"
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="Numero di telefono"
+            style={textareaStyle}
+          />
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={1} minWidth={120}>
+              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={120}>
+              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={textareaStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={120}>
+              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={textareaStyle} />
+            </YStack>
+          </XStack>
+          <input
+            value={addressExtra}
+            onChange={(e) => setAddressExtra(e.target.value)}
+            placeholder="Scala, piano, interno (facoltativo)"
             style={textareaStyle}
           />
 
@@ -826,7 +875,7 @@ function QuoteCard({
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string, input: AcceptQuoteInput) => Promise<void>;
+  onAcceptQuote: (quoteId: string) => Promise<void>;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -834,9 +883,25 @@ function QuoteCard({
   const [proposeNote, setProposeNote] = useState("");
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+
+  // I dati per raggiungere il cliente (destinatario, indirizzo) sono già
+  // stati raccolti alla richiesta (GuidedRequestForm) — accettare crea
+  // subito la prenotazione, nessun modulo da compilare qui.
+  async function handleAccept() {
+    setError(null);
+    setIsAccepting(true);
+    try {
+      await onAcceptQuote(quote.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsAccepting(false);
+    }
+  }
 
   async function startChoosingDate() {
     setError(null);
@@ -935,8 +1000,8 @@ function QuoteCard({
       {quote.status === "SENT" ? (
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            <Button variant="primary" size="$3" height={40} onPress={() => setShowAcceptModal(true)}>
-              Accetta preventivo
+            <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
+              {isAccepting ? "Accettazione..." : "Accetta preventivo"}
             </Button>
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
@@ -1024,9 +1089,28 @@ function QuoteCard({
           ) : null}
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
-        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-          Accettato
-        </Text>
+        <YStack gap="$2">
+          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+            Accettato
+          </Text>
+          {showPaymentInfo ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Il pagamento in piattaforma non è ancora attivo: accordati direttamente con il professionista sulle
+              modalità di pagamento.
+            </Text>
+          ) : (
+            <Text
+              color={brand.cianografia}
+              fontWeight="600"
+              fontSize="$3"
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setShowPaymentInfo(true)}
+            >
+              Vai al pagamento
+            </Text>
+          )}
+        </YStack>
       ) : quote.status === "REJECTED" ? (
         <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
           Hai rifiutato questo preventivo
@@ -1041,10 +1125,6 @@ function QuoteCard({
         <Text color={brand.urgenza} fontSize="$3">
           {error}
         </Text>
-      ) : null}
-
-      {showAcceptModal ? (
-        <AcceptQuoteModal onClose={() => setShowAcceptModal(false)} onAccept={(input) => onAcceptQuote(quote.id, input)} />
       ) : null}
     </YStack>
   );

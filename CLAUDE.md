@@ -3627,3 +3627,117 @@ home) — 80 campioni totali, zero lampi rilevati; bottone confermato
 assente a stato stabile. Cliente autenticato e visitatore anonimo:
 bottone visibile correttamente in entrambi i casi (nessuna regressione).
 Zero errori console nuovi. Typecheck pulito su `apps/web`.
+
+**Dati di contatto/indirizzo raccolti alla richiesta, non più all'accettazione
++ indirizzo di default nell'account** — due richieste esplicite dell'utente,
+stesso giro:
+
+1. "Tutti i campi che chiedevi al cliente una volta che accettava un
+   preventivo... voglio che li inserisca subito appena [invia] un
+   preventivo (ad esempio numero di telefono indirizzo preciso e tutti gli
+   altri campi), ma verranno visualizzati al professionista tutti questi
+   dettagli specifici solo quando si è conclusa la trattativa e confermato
+   l'appuntamento" — i campi prima raccolti solo in `AcceptQuoteModal`
+   (nome/cognome/telefono del destinatario, via, civico, dettagli, CAP,
+   provincia) si spostano su `GuidedRequestForm` (`/preventivo`,
+   `/urgente`), obbligatori come gli altri campi della richiesta (tranne
+   `addressExtra`). La visibilità resta invariata rispetto a prima:
+   nascosti al professionista finché non crea una `Booking` da un
+   preventivo accettato.
+2. "Tutti quelli informazioni... possono essere inserite nella finestra
+   impostazioni dell'account, in modo che quando si richiede un preventivo
+   escano automaticamente compilate già nei campi" — nuovi campi
+   `User.street`/`houseNumber`/`addressExtra`/`postalCode`/`city`/
+   `province` (Prisma, tutti facoltativi), editabili in una nuova sezione
+   "Indirizzo" di `/account` (`updateAccountSchema` esteso, nessun
+   asterisco: mai obbligatori per usare l'account, stessa convenzione già
+   in uso per Cognome/Data di nascita). `GuidedRequestForm` li usa **solo
+   come prefill iniziale** (un `useEffect` con un `useRef` sentinella
+   "già applicato", eseguito appena `user` è disponibile — gli `useState`
+   sopra sono dichiarati prima che `user` sia noto, quindi il valore
+   iniziale da solo non basta, stesso motivo per cui `/account` sincronizza
+   i propri campi con un effetto dedicato invece che nell'inizializzatore
+   di `useState`): il form resta sempre modificabile per singola richiesta,
+   un cliente può avere lavori in indirizzi diversi da una richiesta
+   all'altra (principio già stabilito per `GuidedRequest.address` prima di
+   questa funzionalità).
+
+**Schema** (`packages/database`): `GuidedRequest` guadagna
+`recipientName`/`recipientSurname`/`recipientPhone`/`houseNumber`/
+`addressExtra`/`postalCode`/`province` (tutti `String?` a livello DB,
+obbligatori lato Zod alla creazione tranne `addressExtra` — stessa
+convenzione già in uso per `address`/via). `address` (via) e `city`
+esistevano già e restano gli stessi campi, non duplicati. `Booking`
+conserva gli stessi campi omonimi introdotti in un giro precedente
+(§"Indirizzo di lavoro strutturato"): quello schema non cambia, cambia
+solo **da dove** arrivano i valori.
+
+**Backend**:
+- `BookingsService.createFromQuote(clientId, quoteId)` non accetta più un
+  terzo argomento `AcceptQuoteInput` (rimosso da schema condiviso, era
+  usato solo qui): copia `recipientName`/`recipientSurname`/
+  `recipientPhone`/`street`(da `guidedRequest.address`)/`houseNumber`/
+  `addressExtra`/`postalCode`/`city`/`province` direttamente da
+  `quote.guidedRequest` al momento della creazione della `Booking`. Nessuna
+  validazione aggiuntiva necessaria qui: i campi sono già stati validati
+  (obbligatori) alla creazione della richiesta.
+- `ProfessionalsService.getMyLeads`: **non** espone i nuovi campi
+  strutturati sul `guidedRequest` del lead (solo `address`/`city` restano
+  visibili, come già prima) — verificato esplicitamente con un test che
+  controlla l'assenza delle chiavi (`!("recipientName" in ...)`), non solo
+  che il valore sia `null`, per essere sicuri che il backend non li
+  restituisca affatto prima della conferma.
+- `GuidedRequestsService.create`/`update`: persistono i nuovi campi;
+  `update` li accetta come opzionali (stesso pattern "sostituzione solo se
+  presente" già in uso per `photoUrls`), bloccato dallo stesso vincolo
+  preesistente "non modificabile dopo il primo preventivo ricevuto"
+  (`GuidedRequestsService.update`, nessun cambiamento a quella regola).
+- `GuidedRequestsService.listForClient` (il cliente vede la propria
+  richiesta): espone i nuovi campi per intero — sono i dati del cliente
+  stesso, nessun problema di privacy nel mostrarli a chi li ha inseriti.
+- `AuthController.withBusinessName`/`AuthService.updateAccount` estesi con
+  i sei campi indirizzo dell'account.
+
+**Frontend**:
+- `GuidedRequestForm.tsx`: il vecchio campo "Indirizzo" singolo (solo via)
+  è sostituito da un blocco "Chi riceverà il professionista" (nome,
+  cognome, telefono, via, civico, dettagli scala/piano/interno, CAP,
+  provincia) — tutti obbligatori tranne i dettagli. Stesso form riusato da
+  `/preventivo` e `/urgente`.
+- `apps/web/src/app/account/page.tsx`: nuova sezione "Indirizzo" (via,
+  civico, scala/piano/interno, CAP, città, provincia), nessun campo
+  obbligatorio.
+- **`AcceptQuoteModal.tsx` eliminato** (non un file "svuotato", rimosso per
+  intero: i dati che raccoglieva sono già disponibili prima
+  dell'accettazione). `QuoteCard` (`/le-mie-richieste`) accetta ora
+  direttamente con un click su "Accetta preventivo" — nessun overlay,
+  `apiClient.acceptQuote(token, quoteId)` non richiede più un body. Il
+  messaggio "Vai al pagamento" (pagamento in piattaforma non ancora
+  attivo, invariato da prima) resta disponibile come link testuale sotto
+  "Accettato" invece che dentro il vecchio modale.
+- Form di modifica di una richiesta già inviata (`GuidedRequestCard` in
+  `/le-mie-richieste`, visibile solo finché nessun preventivo è arrivato)
+  esteso con gli stessi campi, stesso schema `guidedRequestUpdateSchema`
+  già usato per `address`/`photoUrls`.
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+richiesta senza `recipientPhone` rifiutata con 400; richiesta completa
+accettata, fan-out riuscito; lato professionista (`GET
+/professionals/me/leads`) i campi strutturati sono **assenti** dalla
+risposta (non solo `null`) prima di ogni conferma, `address`/`city`
+restano visibili; lato cliente (`GET /guided-requests/me`) tutti i campi
+sono visibili; preventivo inviato e accettato **senza alcun body** nella
+richiesta HTTP → `Booking` con tutti i campi copiati correttamente dalla
+`GuidedRequest`, ora visibili al professionista (`GET
+/professionals/me/bookings`). UI: salvataggio indirizzo da `/account`
+persistito e verificato via API; form `/preventivo` aperto subito dopo
+mostra i campi già precompilati con i valori dell'account (nome, via,
+civico, CAP, provincia); invio reale dalla UI con payload catturato via
+`page.route` conferma i campi corretti nella richiesta; dashboard
+professionista **non** contiene in nessun punto del DOM il CAP o
+l'indirizzo completo prima della conferma; click su "Accetta preventivo"
+in `/le-mie-richieste` crea la prenotazione senza aprire alcun
+`role="dialog"`, "Vai al pagamento" mostra il messaggio corretto. Zero
+errori console in tutti i flussi. Typecheck pulito su tutti i package
+(`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build
+di produzione `apps/web` verde (24 route).

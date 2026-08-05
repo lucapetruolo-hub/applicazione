@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { AcceptQuoteInput, CancelBookingByProfessionalInput, CompleteBookingInput } from "@professionisti/shared";
+import type { CancelBookingByProfessionalInput, CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -15,12 +15,15 @@ export class BookingsService {
 
   /**
    * Il cliente accetta un preventivo: crea la prenotazione, chiude la
-   * richiesta e salva l'indirizzo di lavoro strutturato raccolto nella
-   * schermata di accettazione (richiesta esplicita dell'utente) — sostituisce,
-   * per le prenotazioni create da qui in avanti, l'indirizzo libero di
-   * GuidedRequest.address come fonte principale mostrata al professionista.
+   * richiesta e copia sulla prenotazione l'indirizzo di lavoro strutturato
+   * già raccolto sulla GuidedRequest fin dall'invio della richiesta
+   * (richiesta esplicita dell'utente: "voglio che li inserisca subito
+   * appena [invia] un preventivo... ma verranno visualizzati al
+   * professionista... solo quando si è conclusa la trattativa" — prima
+   * questi campi arrivavano da un input separato raccolto solo qui, in una
+   * schermata dedicata all'accettazione).
    */
-  async createFromQuote(clientId: string, quoteId: string, address: AcceptQuoteInput) {
+  async createFromQuote(clientId: string, quoteId: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: { guidedRequest: true, booking: true, professionalProfile: true },
@@ -42,6 +45,7 @@ export class BookingsService {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
 
+    const { guidedRequest } = quote;
     const booking = await this.prisma.booking.create({
       data: {
         quoteId: quote.id,
@@ -49,15 +53,15 @@ export class BookingsService {
         professionalProfileId: quote.professionalProfileId,
         scheduledAt: quote.estimatedStartDate,
         status: "CONFIRMED",
-        recipientName: address.recipientName.trim(),
-        recipientSurname: address.recipientSurname.trim(),
-        recipientPhone: address.recipientPhone.trim(),
-        street: address.street.trim(),
-        houseNumber: address.houseNumber.trim(),
-        addressExtra: address.addressExtra?.trim() || null,
-        postalCode: address.postalCode.trim(),
-        city: address.city.trim(),
-        province: address.province.trim(),
+        recipientName: guidedRequest.recipientName,
+        recipientSurname: guidedRequest.recipientSurname,
+        recipientPhone: guidedRequest.recipientPhone,
+        street: guidedRequest.address,
+        houseNumber: guidedRequest.houseNumber,
+        addressExtra: guidedRequest.addressExtra,
+        postalCode: guidedRequest.postalCode,
+        city: guidedRequest.city,
+        province: guidedRequest.province,
       },
     });
 

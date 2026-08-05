@@ -40,13 +40,25 @@ export const registerSchema = emailPasswordSchema.extend({
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
-/** Modifica dati anagrafici dal proprio account (CLAUDE.md §8 — impostazioni account). */
+/**
+ * Modifica dati anagrafici dal proprio account (CLAUDE.md §8 — impostazioni
+ * account). Campi indirizzo (street/houseNumber/addressExtra/postalCode/
+ * city/province) facoltativi anche qui — richiesta esplicita dell'utente:
+ * servono solo da prefill per GuidedRequestForm quando presenti, non sono
+ * mai obbligatori per usare l'account.
+ */
 export const updateAccountSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   surname: z.string().min(1).max(120).optional(),
   birthDate: z.string().date("Data non valida").optional(),
   email: z.string().email("Email non valida").optional(),
   phone: z.string().min(6).max(20).optional(),
+  street: z.string().max(200).optional(),
+  houseNumber: z.string().max(20).optional(),
+  addressExtra: z.string().max(200).optional(),
+  postalCode: z.string().max(10).optional(),
+  city: z.string().max(120).optional(),
+  province: z.string().max(50).optional(),
 });
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
@@ -76,8 +88,24 @@ export const guidedRequestSchema = z
      */
     photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto o un video.").max(5),
     city: z.string().min(2),
-    /** Via, obbligatorio (numero civico non richiesto qui: il dettaglio completo arriva solo all'accettazione del preventivo, vedi acceptQuoteSchema). */
+    /** Via, obbligatoria. */
     address: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
+    /**
+     * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
+     * richiesta (richiesta esplicita dell'utente, vedi doc su
+     * GuidedRequest nello schema Prisma) — tutti obbligatori tranne
+     * addressExtra, stessa regola già in uso per l'accettazione preventivo
+     * di cui questi campi prendono il posto. Restano invisibili al
+     * professionista finché non si conclude la trattativa (vedi
+     * ProfessionalsService.getMyLeads).
+     */
+    recipientName: z.string().min(1, "Il nome è obbligatorio.").max(120),
+    recipientSurname: z.string().min(1, "Il cognome è obbligatorio.").max(120),
+    recipientPhone: z.string().min(6, "Numero di telefono non valido.").max(20),
+    houseNumber: z.string().min(1, "Il numero civico è obbligatorio.").max(20),
+    addressExtra: z.string().max(200).optional(),
+    postalCode: z.string().min(1, "Il CAP è obbligatorio.").max(10),
+    province: z.string().min(1, "La provincia è obbligatoria.").max(50),
     isUrgent: z.boolean().default(false),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.string().uuid().optional(),
@@ -117,6 +145,13 @@ export const guidedRequestUpdateSchema = z.object({
   description: z.string().min(10).max(2000),
   city: z.string().min(2),
   address: z.string().max(200).optional(),
+  recipientName: z.string().max(120).optional(),
+  recipientSurname: z.string().max(120).optional(),
+  recipientPhone: z.string().max(20).optional(),
+  houseNumber: z.string().max(20).optional(),
+  addressExtra: z.string().max(200).optional(),
+  postalCode: z.string().max(10).optional(),
+  province: z.string().max(50).optional(),
   photoUrls: z.array(z.string().url()).max(5).optional(),
 });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
@@ -163,30 +198,6 @@ export const proposeQuoteDateSchema = z.object({
   note: z.string().max(1000).optional(),
 });
 export type ProposeQuoteDateInput = z.infer<typeof proposeQuoteDateSchema>;
-
-/**
- * Accettazione di un preventivo: oltre a creare la prenotazione, raccoglie
- * l'indirizzo di lavoro in campi separati (richiesta esplicita dell'utente:
- * "una schermata dove inserire dettagliatamente in riquadri diversi") —
- * tutti obbligatori tranne `addressExtra` (scala/piano/interno/azienda).
- * Nome/cognome/telefono sono ridondanti con l'account (`User.name`/
- * `surname`/`phone`) ma raccolti di nuovo qui: la persona che riceve il
- * professionista sul lavoro può non coincidere con l'intestatario
- * dell'account, e l'account potrebbe non avere questi campi compilati —
- * qui diventano obbligatori indipendentemente dallo stato del profilo.
- */
-export const acceptQuoteSchema = z.object({
-  recipientName: z.string().min(1, "Il nome è obbligatorio.").max(120),
-  recipientSurname: z.string().min(1, "Il cognome è obbligatorio.").max(120),
-  recipientPhone: z.string().min(6, "Numero di telefono non valido.").max(20),
-  street: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
-  houseNumber: z.string().min(1, "Il numero civico è obbligatorio.").max(20),
-  addressExtra: z.string().max(200).optional(),
-  postalCode: z.string().min(1, "Il CAP è obbligatorio.").max(10),
-  city: z.string().min(1, "La città è obbligatoria.").max(120),
-  province: z.string().min(1, "La provincia è obbligatoria.").max(50),
-});
-export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
 
 /**
  * Voce dell'importo finale di un lavoro completato (richiesta esplicita

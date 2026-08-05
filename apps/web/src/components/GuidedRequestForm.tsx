@@ -46,6 +46,16 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
   return `${dateLabel} · ${slot.startTime}–${slot.endTime} (${seatsLabel})`;
 }
 
+const fieldInputStyle = {
+  padding: 12,
+  borderRadius: 4,
+  border: `1px solid ${brand.filetto}`,
+  fontSize: 15,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  width: "100%",
+} as const;
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.grafite70}>
@@ -106,6 +116,27 @@ export function GuidedRequestForm({
       .catch(() => {});
   }, [professionalProfileId, preferredDate]);
 
+  // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
+  // sola volta appena `user` è disponibile: gli useState sopra sono
+  // dichiarati prima che `user` sia noto (il componente ritorna null
+  // mentre isLoading è vero, ma gli hook restano comunque eseguiti in
+  // ordine ad ogni render), quindi il valore iniziale da solo non basta —
+  // stesso motivo per cui /account sincronizza i propri campi con un
+  // effetto dedicato invece che nell'inizializzatore di useState.
+  useEffect(() => {
+    if (!user || prefilledFromAccountRef.current) return;
+    prefilledFromAccountRef.current = true;
+    setRecipientName(user.name ?? "");
+    setRecipientSurname(user.surname ?? "");
+    setRecipientPhone(user.phone ?? "");
+    setStreet(user.street ?? "");
+    setHouseNumber(user.houseNumber ?? "");
+    setAddressExtra(user.addressExtra ?? "");
+    setPostalCode(user.postalCode ?? "");
+    setProvince(user.province ?? "");
+    setCity((prev) => prev || user.city || "");
+  }, [user]);
+
   // Fascia effettivamente inviata: quella bloccata dall'URL ha sempre la
   // precedenza (non è mai in conflitto, il picker sotto non viene mostrato
   // in quel caso), altrimenti quella scelta nel nuovo selettore.
@@ -119,7 +150,24 @@ export function GuidedRequestForm({
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
   const [city, setCity] = useState(initialCity);
-  const [address, setAddress] = useState("");
+  const [street, setStreet] = useState("");
+  // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
+  // (richiesta esplicita dell'utente: "voglio che li inserisca subito
+  // appena [invia] un preventivo... ma verranno visualizzati al
+  // professionista... solo quando si è conclusa la trattativa") — prima
+  // raccolti solo alla schermata di accettazione preventivo. Prefillati
+  // dall'account (vedi useEffect sotto, "possono essere inserite nella
+  // finestra impostazioni dell'account, in modo che quando si richiede un
+  // preventivo escano automaticamente compilate già nei campi"), sempre
+  // modificabili qui per singola richiesta.
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientSurname, setRecipientSurname] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [addressExtra, setAddressExtra] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [province, setProvince] = useState("");
+  const prefilledFromAccountRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
@@ -191,8 +239,28 @@ export function GuidedRequestForm({
       setError("Indica la città in cui serve l'intervento.");
       return;
     }
-    if (!address.trim()) {
+    if (!street.trim()) {
       setError("Indica l'indirizzo.");
+      return;
+    }
+    if (!recipientName.trim() || !recipientSurname.trim()) {
+      setError("Indica nome e cognome di chi riceverà il professionista.");
+      return;
+    }
+    if (!recipientPhone.trim()) {
+      setError("Indica un numero di telefono.");
+      return;
+    }
+    if (!houseNumber.trim()) {
+      setError("Indica il numero civico.");
+      return;
+    }
+    if (!postalCode.trim()) {
+      setError("Indica il CAP.");
+      return;
+    }
+    if (!province.trim()) {
+      setError("Indica la provincia.");
       return;
     }
     if (photoUrls.length === 0) {
@@ -206,7 +274,14 @@ export function GuidedRequestForm({
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
         city: city.trim(),
-        address: address.trim(),
+        address: street.trim(),
+        recipientName: recipientName.trim(),
+        recipientSurname: recipientSurname.trim(),
+        recipientPhone: recipientPhone.trim(),
+        houseNumber: houseNumber.trim(),
+        addressExtra: addressExtra.trim() || undefined,
+        postalCode: postalCode.trim(),
+        province: province.trim(),
         isUrgent,
         photoUrls,
         professionalProfileId,
@@ -497,26 +572,55 @@ export function GuidedRequestForm({
           </YStack>
         </YStack>
 
-        <YStack gap="$2">
-          <FieldLabel>Indirizzo</FieldLabel>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Basta indicare la via, anche senza numero civico: serve solo ad orientare il professionista. Non viene
-            mostrato pubblicamente, solo a chi ha in mano la tua richiesta. Se accetterai un preventivo, ti verrà
-            chiesto l&apos;indirizzo completo con tutti i dettagli.
-          </Text>
+        <YStack gap="$3">
+          <YStack gap="$1">
+            <FieldLabel>Chi riceverà il professionista</FieldLabel>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Questi dati restano nascosti al professionista finché non accetterai un preventivo — pre-compilati dal
+              tuo account (modificabili qui anche tu, in {'"Il mio account"'}).
+            </Text>
+          </YStack>
+
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={1} minWidth={160}>
+              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={160}>
+              <input value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={fieldInputStyle} />
+            </YStack>
+          </XStack>
+
           <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Indirizzo"
-            style={{
-              padding: 12,
-              borderRadius: 4,
-              border: `1px solid ${brand.filetto}`,
-              fontSize: 15,
-              fontFamily: "inherit",
-              color: brand.grafite,
-            }}
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="Numero di telefono"
+            style={fieldInputStyle}
           />
+
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={2} minWidth={200}>
+              <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={fieldInputStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={120}>
+              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
+            </YStack>
+          </XStack>
+
+          <input
+            value={addressExtra}
+            onChange={(e) => setAddressExtra(e.target.value)}
+            placeholder="Scala, piano, interno (facoltativo)"
+            style={fieldInputStyle}
+          />
+
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={1} minWidth={100}>
+              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
+            </YStack>
+            <YStack flex={1} minWidth={140}>
+              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
+            </YStack>
+          </XStack>
         </YStack>
 
         {error ? (

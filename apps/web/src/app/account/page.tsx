@@ -57,6 +57,16 @@ export default function AccountPage() {
   const [birthYear, setBirthYear] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Indirizzo di default dell'account (richiesta esplicita dell'utente):
+  // usato solo per pre-compilare la richiesta di preventivo, mai
+  // obbligatorio qui — la richiesta guidata resta comunque modificabile
+  // per singola richiesta.
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [addressExtra, setAddressExtra] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [addressCity, setAddressCity] = useState("");
+  const [province, setProvince] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -92,6 +102,12 @@ export default function AccountPage() {
     setBirthYear(parsed.year);
     setEmail(user.email ?? "");
     setPhone(user.phone ?? "");
+    setStreet(user.street ?? "");
+    setHouseNumber(user.houseNumber ?? "");
+    setAddressExtra(user.addressExtra ?? "");
+    setPostalCode(user.postalCode ?? "");
+    setAddressCity(user.city ?? "");
+    setProvince(user.province ?? "");
   }
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
@@ -185,6 +201,12 @@ export default function AccountPage() {
         birthDate,
         email: email.trim(),
         phone: phone.trim() || undefined,
+        street: street.trim() || undefined,
+        houseNumber: houseNumber.trim() || undefined,
+        addressExtra: addressExtra.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+        city: addressCity.trim() || undefined,
+        province: province.trim() || undefined,
       });
       await refreshUser();
       setProfileSaved(true);
@@ -432,6 +454,49 @@ export default function AccountPage() {
 
             <FieldRow label="Email" required>
               <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+            </FieldRow>
+          </YStack>
+
+          <YStack height={1} backgroundColor={brand.filetto} />
+
+          <YStack gap="$4">
+            <YStack gap="$1">
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                Indirizzo
+              </Text>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Usato solo per pre-compilare i tuoi dati quando richiedi un preventivo — resta comunque modificabile
+                per ogni singola richiesta.
+              </Text>
+            </YStack>
+
+            <FieldRow label="Via">
+              <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={inputStyle} />
+            </FieldRow>
+
+            <FieldRow label="Numero civico">
+              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={{ ...inputStyle, maxWidth: 140 }} />
+            </FieldRow>
+
+            <FieldRow label="Scala, piano, interno">
+              <input
+                value={addressExtra}
+                onChange={(e) => setAddressExtra(e.target.value)}
+                placeholder="Es. Scala B, piano 3, interno 12"
+                style={inputStyle}
+              />
+            </FieldRow>
+
+            <FieldRow label="CAP">
+              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
+            </FieldRow>
+
+            <FieldRow label="Città">
+              <input value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
+            </FieldRow>
+
+            <FieldRow label="Provincia">
+              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
             </FieldRow>
           </YStack>
 

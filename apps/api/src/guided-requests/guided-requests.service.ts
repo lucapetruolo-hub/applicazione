@@ -110,6 +110,17 @@ export class GuidedRequestsService {
               photoUrls: input.photoUrls,
               city: input.city,
               address: input.address?.trim() || null,
+              // Destinatario + resto dell'indirizzo strutturato, raccolti
+              // fin dall'invio della richiesta (richiesta esplicita
+              // dell'utente) — mai esposti al professionista prima della
+              // conferma, vedi ProfessionalsService.getMyLeads.
+              recipientName: input.recipientName.trim(),
+              recipientSurname: input.recipientSurname.trim(),
+              recipientPhone: input.recipientPhone.trim(),
+              houseNumber: input.houseNumber.trim(),
+              addressExtra: input.addressExtra?.trim() || null,
+              postalCode: input.postalCode.trim(),
+              province: input.province.trim(),
               isUrgent: input.isUrgent,
               professionalProfileId: targetProfile?.id,
               preferredDate: resolvedSlot?.date,
@@ -234,6 +245,17 @@ export class GuidedRequestsService {
         description: request.description,
         city: request.city,
         address: request.address,
+        // Destinatario + resto dell'indirizzo strutturato: visibili qui
+        // perché è il cliente stesso a vederli (i propri dati), a
+        // differenza di ProfessionalLead.guidedRequest, che non li espone
+        // prima della conferma (richiesta esplicita dell'utente).
+        recipientName: request.recipientName,
+        recipientSurname: request.recipientSurname,
+        recipientPhone: request.recipientPhone,
+        houseNumber: request.houseNumber,
+        addressExtra: request.addressExtra,
+        postalCode: request.postalCode,
+        province: request.province,
         // Necessarie qui (non solo lato professionista in ProfessionalLead)
         // per permettere al cliente di modificare le foto già inviate in
         // /le-mie-richieste — prima non erano esposte affatto lato cliente.
@@ -306,10 +328,30 @@ export class GuidedRequestsService {
         description: input.description,
         city: input.city,
         address: input.address?.trim() || null,
+        ...(input.recipientName !== undefined ? { recipientName: input.recipientName.trim() || null } : {}),
+        ...(input.recipientSurname !== undefined ? { recipientSurname: input.recipientSurname.trim() || null } : {}),
+        ...(input.recipientPhone !== undefined ? { recipientPhone: input.recipientPhone.trim() || null } : {}),
+        ...(input.houseNumber !== undefined ? { houseNumber: input.houseNumber.trim() || null } : {}),
+        ...(input.addressExtra !== undefined ? { addressExtra: input.addressExtra.trim() || null } : {}),
+        ...(input.postalCode !== undefined ? { postalCode: input.postalCode.trim() || null } : {}),
+        ...(input.province !== undefined ? { province: input.province.trim() || null } : {}),
         ...(input.photoUrls !== undefined ? { photoUrls: input.photoUrls } : {}),
       },
     });
-    return { id: updated.id, description: updated.description, city: updated.city, address: updated.address, photoUrls: updated.photoUrls };
+    return {
+      id: updated.id,
+      description: updated.description,
+      city: updated.city,
+      address: updated.address,
+      recipientName: updated.recipientName,
+      recipientSurname: updated.recipientSurname,
+      recipientPhone: updated.recipientPhone,
+      houseNumber: updated.houseNumber,
+      addressExtra: updated.addressExtra,
+      postalCode: updated.postalCode,
+      province: updated.province,
+      photoUrls: updated.photoUrls,
+    };
   }
 
   /**

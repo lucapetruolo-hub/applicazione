@@ -1,6 +1,5 @@
 import type {
   PROFESSIONAL_CATEGORIES,
-  AcceptQuoteInput,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
   CancelBookingByProfessionalInput,
@@ -51,9 +50,22 @@ export type ClientGuidedRequest = {
   categoryLabel: string;
   description: string;
   city: string;
-  /** Via e numero civico, facoltativo: dove il professionista dovrà andare a svolgere il lavoro. */
+  /** Via, dove il professionista dovrà andare a svolgere il lavoro. */
   address: string | null;
-  /** Foto caricate insieme alla richiesta (fino a 3), modificabili in /le-mie-richieste. */
+  /**
+   * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
+   * richiesta (richiesta esplicita dell'utente) — visibili solo al
+   * cliente stesso qui: il professionista li vede solo dopo la conferma
+   * (vedi ProfessionalBooking, valorizzati lì al momento dell'accettazione).
+   */
+  recipientName: string | null;
+  recipientSurname: string | null;
+  recipientPhone: string | null;
+  houseNumber: string | null;
+  addressExtra: string | null;
+  postalCode: string | null;
+  province: string | null;
+  /** Foto caricate insieme alla richiesta (fino a 5), modificabili in /le-mie-richieste. */
   photoUrls: string[];
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
@@ -122,6 +134,17 @@ export type CurrentUser = {
   businessName: string | null;
   /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
   businessImageUrl: string | null;
+  /**
+   * Indirizzo di default dell'account (richiesta esplicita dell'utente:
+   * usato per pre-compilare GuidedRequestForm quando si invia una richiesta
+   * di preventivo, sempre modificabile per singola richiesta).
+   */
+  street: string | null;
+  houseNumber: string | null;
+  addressExtra: string | null;
+  postalCode: string | null;
+  city: string | null;
+  province: string | null;
 };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -307,7 +330,20 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<ClientGuidedRequest[]>("/guided-requests/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     updateGuidedRequest: (token: string, id: string, input: GuidedRequestUpdateInput) =>
-      request<{ id: string; description: string; city: string; address: string | null; photoUrls: string[] }>(`/guided-requests/${id}`, {
+      request<{
+        id: string;
+        description: string;
+        city: string;
+        address: string | null;
+        recipientName: string | null;
+        recipientSurname: string | null;
+        recipientPhone: string | null;
+        houseNumber: string | null;
+        addressExtra: string | null;
+        postalCode: string | null;
+        province: string | null;
+        photoUrls: string[];
+      }>(`/guided-requests/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
@@ -366,12 +402,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** Accetta un preventivo: `input` è l'indirizzo di lavoro strutturato raccolto nella schermata di accettazione. */
-    acceptQuote: (token: string, quoteId: string, input: AcceptQuoteInput) =>
+    /**
+     * Accetta un preventivo: crea la prenotazione. L'indirizzo di lavoro
+     * strutturato (destinatario, via, civico, CAP, provincia) non viene più
+     * raccolto qui — arriva dalla GuidedRequest, compilata fin dall'invio
+     * della richiesta (richiesta esplicita dell'utente).
+     */
+    acceptQuote: (token: string, quoteId: string) =>
       request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify(input),
       }),
 
     /** Il cliente propone una data diversa per un preventivo ricevuto, tra le fasce libere dell'agenda del professionista. */

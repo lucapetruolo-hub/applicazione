@@ -47,6 +47,20 @@ model User {
   // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
   // nessun nuovo servizio di storage.
   imageUrl     String?
+  // Indirizzo di default dell'account (richiesta esplicita dell'utente:
+  // "possono essere inserite nella finestra impostazioni dell'account, in
+  // modo che quando si richiede un preventivo escano automaticamente
+  // compilate già nei campi") — facoltativo, editabile in /account.
+  // GuidedRequestForm li usa solo come prefill iniziale del form, restano
+  // sempre modificabili per singola richiesta (un cliente può avere lavori
+  // in indirizzi diversi da una richiesta all'altra, stesso principio già
+  // documentato per GuidedRequest.address prima di questo campo).
+  street       String?
+  houseNumber  String?
+  addressExtra String?
+  postalCode   String?
+  city         String?
+  province     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
@@ -424,14 +438,33 @@ model GuidedRequest {
   description           String
   photoUrls             String[]
   city                  String
-  // Indirizzo preciso (via e numero civico) del luogo dell'intervento,
-  // facoltativo: il cliente lo indica per far sapere al professionista dove
-  // andare a lavorare una volta accettato il preventivo. Sulla richiesta
-  // (non sul profilo cliente): un cliente può avere lavori in indirizzi
-  // diversi da una richiesta all'altra. Mai mostrato in ricerca/profilo
-  // pubblico — solo al professionista che ha in mano un preventivo/
-  // prenotazione collegati a questa richiesta.
+  // Via (indirizzo del luogo dell'intervento), facoltativo a livello DB —
+  // obbligatorio lato Zod alla creazione (guidedRequestSchema). Sulla
+  // richiesta (non sul profilo cliente): un cliente può avere lavori in
+  // indirizzi diversi da una richiesta all'altra. Mai mostrato in
+  // ricerca/profilo pubblico — solo al professionista che ha in mano un
+  // preventivo/prenotazione collegati a questa richiesta.
   address               String?
+  // Destinatario + resto dell'indirizzo strutturato (numero civico,
+  // dettagli, CAP, provincia — city esiste già sopra), raccolti insieme al
+  // resto della richiesta fin dall'invio (richiesta esplicita dell'utente:
+  // "voglio che li inserisca subito appena [invia] un preventivo... ma
+  // verranno visualizzati al professionista... solo quando si è conclusa
+  // la trattativa e confermato l'appuntamento") — prima raccolti solo
+  // all'accettazione del preventivo (vedi Booking.recipientName e affini,
+  // ancora presenti lì: `BookingsService.createFromQuote` li copia da qui
+  // sul Booking al momento della creazione, non più da un input separato
+  // del cliente). Nascosti al professionista in ProfessionalLead
+  // (ProfessionalsService.getMyLeads) finché non esiste un Booking:
+  // restano visibili solo `address`/`city` sopra, come già prima di
+  // questo campo.
+  recipientName         String?
+  recipientSurname      String?
+  recipientPhone        String?
+  houseNumber           String?
+  addressExtra          String?
+  postalCode            String?
+  province              String?
   isUrgent              Boolean                    @default(false)
   status                GuidedRequestStatus        @default(OPEN)
   createdAt             DateTime                   @default(now())

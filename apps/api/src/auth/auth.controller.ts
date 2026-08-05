@@ -85,8 +85,14 @@ export class AuthController {
     role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
     passwordHash: string | null;
     imageUrl: string | null;
+    street: string | null;
+    houseNumber: string | null;
+    addressExtra: string | null;
+    postalCode: string | null;
+    city: string | null;
+    province: string | null;
   }) {
-    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl } = user;
+    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     const professionalProfile =
       role === "PROFESSIONAL"
         ? await this.prisma.professionalProfile.findUnique({ where: { userId: id }, select: { businessName: true, imageUrl: true } })
@@ -108,6 +114,12 @@ export class AuthController {
       // resta sempre null per un professionista (upload disabilitato in
       // /account per quel ruolo, vedi nota altrove in CLAUDE.md).
       businessImageUrl: professionalProfile?.imageUrl ?? null,
+      street,
+      houseNumber,
+      addressExtra,
+      postalCode,
+      city,
+      province,
     };
   }
 
