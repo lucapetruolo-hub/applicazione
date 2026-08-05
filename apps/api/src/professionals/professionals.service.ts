@@ -543,12 +543,18 @@ export class ProfessionalsService {
           // deve poter contattare il cliente anche solo per chiarire i
           // dettagli prima di formulare un preventivo.
           clientPhone: lead.guidedRequest.client.phone,
-          clientEmail: lead.guidedRequest.client.email,
+          // Mai l'email anonimizzata sintetica (deleted-{id}@deleted.invalid,
+          // scritta da AuthService.deleteAccount solo per liberare il
+          // vincolo unico) — quella non è un vero indirizzo del cliente, e
+          // mostrarla al professionista sarebbe fuorviante/rotta (link
+          // "mailto:" verso un dominio inventato).
+          clientEmail: lead.guidedRequest.client.deletedAt ? null : lead.guidedRequest.client.email,
           // Richiesta esplicita dell'utente: mostrare la foto profilo del
           // cliente (se presente) nella scheda aperta cliccando il nome
           // (ClientProfileModal) — stesso campo User.imageUrl già usato
           // per l'avatar dell'account cliente altrove nel sito.
           clientImageUrl: lead.guidedRequest.client.imageUrl,
+          clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           isUrgent: lead.guidedRequest.isUrgent,
@@ -649,7 +655,9 @@ export class ProfessionalsService {
       // esplicita dell'utente ("nome e cognome").
       clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
       clientPhone: booking.client.phone,
-      clientEmail: booking.client.email,
+      // Mai l'email anonimizzata sintetica — stesso motivo di getMyLeads sopra.
+      clientEmail: booking.client.deletedAt ? null : booking.client.email,
+      clientAccountDeleted: booking.client.deletedAt !== null,
       address: booking.quote?.guidedRequest?.address ?? null,
       // Indirizzo di lavoro strutturato, raccolto nella schermata di
       // accettazione preventivo (richiesta esplicita dell'utente) — null

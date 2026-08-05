@@ -37,6 +37,10 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ProfessionalsService } from "./professionals.service";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+// Un video pesa naturalmente molto di più di una foto compressa: limite
+// più permissivo solo per l'upload della galleria portfolio (richiesta
+// esplicita dell'utente: "dai la possibilità di caricare anche i video").
+const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
 
 @Controller("professionals")
 export class ProfessionalsController {
@@ -111,21 +115,23 @@ export class ProfessionalsController {
     return { imageUrl };
   }
 
-  // Una chiamata per foto (fino a 10, vedi professionalProfileSchema.portfolioUrls
+  // Una chiamata per foto/video (fino a 10, vedi professionalProfileSchema.portfolioUrls
   // e la UI in /dashboard/profilo): stesso pattern di "me/image" e di
-  // GuidedRequestsController "photos" — ogni foto ha il proprio stato di
+  // GuidedRequestsController "photos" — ogni elemento ha il proprio stato di
   // caricamento/errore in UI, l'URL viene incluso nell'array solo al
   // salvataggio vero e proprio del profilo (PUT /professionals/me), non
-  // persistito subito da questo endpoint.
+  // persistito subito da questo endpoint. Accetta anche video (richiesta
+  // esplicita dell'utente), limite di quantità invariato a 10 (già più
+  // permissivo dei 5 delle altre gallerie, nessun motivo di ridurlo).
   @UseGuards(JwtAuthGuard)
   @UseFilters(MulterExceptionFilter)
   @Post("me/portfolio-photos")
   @UseInterceptors(
     FileInterceptor("image", {
-      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+      limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
-        if (!file.mimetype.startsWith("image/")) {
-          callback(new BadRequestException("Il file caricato deve essere un'immagine."), false);
+        if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine o un video."), false);
           return;
         }
         callback(null, true);
@@ -134,9 +140,9 @@ export class ProfessionalsController {
   )
   async uploadPortfolioPhoto(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException("Nessuna immagine caricata.");
+      throw new BadRequestException("Nessuna immagine o video caricato.");
     }
-    const imageUrl = await this.cloudinaryService.uploadImage(file, "professionisti-portfolio");
+    const imageUrl = await this.cloudinaryService.uploadMedia(file, "professionisti-portfolio");
     return { imageUrl };
   }
 

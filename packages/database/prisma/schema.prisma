@@ -49,6 +49,17 @@ model User {
   imageUrl     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
+  // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
+  // prenotazioni/recensioni create da questo utente hanno FK dirette su
+  // User (onDelete: Cascade) — una vera delete le avrebbe cancellate con
+  // lui, ma il professionista deve poter continuare a vederle ("account
+  // eliminato" invece che scomparse nel nulla). `deletedAt` valorizzato +
+  // PII anonimizzata (email/telefono/googleId/nome/cognome/immagine/
+  // password) al posto della delete: la riga resta solo come ancora per le
+  // FK, il login torna impossibile (email non più corrispondente, password
+  // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
+  deletedAt    DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]

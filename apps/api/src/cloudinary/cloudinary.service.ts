@@ -53,4 +53,53 @@ export class CloudinaryService {
       throw new BadRequestException(`Caricamento immagine non riuscito: ${message}`);
     }
   }
+
+  /**
+   * Foto O video (richiesta esplicita dell'utente: "ovunque c'è la
+   * possibilità di caricare le foto... fai in modo da poter caricare anche
+   * i video") — usata dalle gallerie a più elementi (richiesta guidata,
+   * recensioni, portfolio professionista), non dai singoli avatar
+   * (`uploadImage` resta quella, un profilo non ha senso come video).
+   * `resource_type` scelto in base al mimetype del file invece di
+   * `"auto"`: esplicito è più prevedibile di lasciare che Cloudinary
+   * indovini, e ci serve comunque sapere già qui se applicare la
+   * trasformazione immagine (resize 800×800) o quella video (solo
+   * compressione, ridimensionare un video ha implicazioni diverse — durata,
+   * bitrate — che non è il caso di introdurre senza una richiesta esplicita
+   * in merito).
+   */
+  async uploadMedia(file: Express.Multer.File, folder: string): Promise<string> {
+    if (!this.isConfigured) {
+      throw new BadRequestException(
+        "Il caricamento non è ancora configurato su questo ambiente. Aggiungi CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET per attivarlo.",
+      );
+    }
+
+    const isVideo = file.mimetype.startsWith("video/");
+
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: isVideo ? "video" : "image",
+            transformation: isVideo
+              ? [{ quality: "auto" }]
+              : [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
+          },
+          (error, result) => {
+            if (error || !result) {
+              reject(error ?? new Error("Upload fallito."));
+              return;
+            }
+            resolve(result.secure_url);
+          },
+        );
+        uploadStream.end(file.buffer);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Errore sconosciuto.";
+      throw new BadRequestException(`Caricamento non riuscito: ${message}`);
+    }
+  }
 }

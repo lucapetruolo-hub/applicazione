@@ -29,10 +29,17 @@ export class QuotesService {
           professionalProfileId: professionalProfile.id,
         },
       },
-      include: { guidedRequest: true },
+      include: { guidedRequest: { include: { client: true } } },
     });
     if (!lead) {
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
+    }
+    // Richiesta esplicita dell'utente: se il cliente ha eliminato il
+    // proprio account nel frattempo, non si può più inviare o modificare un
+    // preventivo per questa richiesta — resta comunque visibile in
+    // dashboard ("traccia completa"), solo bloccata per nuove operazioni.
+    if (lead.guidedRequest.client.deletedAt) {
+      throw new ForbiddenException("Il cliente ha eliminato il proprio account: non puoi più inviare o modificare un preventivo per questa richiesta.");
     }
 
     const existingQuote = await this.prisma.quote.findFirst({

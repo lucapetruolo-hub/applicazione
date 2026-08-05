@@ -65,8 +65,16 @@ export const guidedRequestSchema = z
   .object({
     categorySlug: professionalCategorySlugSchema,
     description: z.string().min(10).max(2000),
-    /** Almeno una foto obbligatoria (richiesta esplicita dell'utente: "tutte le voci del richiedi un preventivo devono essere obbligatorie"). */
-    photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto.").max(3),
+    /**
+     * Almeno una foto (o video) obbligatoria (richiesta esplicita
+     * dell'utente: "tutte le voci del richiedi un preventivo devono essere
+     * obbligatorie"). Fino a 5 elementi, foto e video mescolabili
+     * liberamente (richiesta esplicita dell'utente: "aumenta il limite a 5"
+     * e "dai la possibilità di caricare anche i video") — lo stesso array
+     * di URL vale per entrambi i tipi di media, distinti solo dall'estensione
+     * del file (vedi isVideoUrl in apps/web).
+     */
+    photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto o un video.").max(5),
     city: z.string().min(2),
     /** Via, obbligatorio (numero civico non richiesto qui: il dettaglio completo arriva solo all'accettazione del preventivo, vedi acceptQuoteSchema). */
     address: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
@@ -109,7 +117,7 @@ export const guidedRequestUpdateSchema = z.object({
   description: z.string().min(10).max(2000),
   city: z.string().min(2),
   address: z.string().max(200).optional(),
-  photoUrls: z.array(z.string().url()).max(3).optional(),
+  photoUrls: z.array(z.string().url()).max(5).optional(),
 });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 
@@ -242,8 +250,8 @@ export const reviewSchema = z.object({
   bookingId: z.string().uuid(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(2000).optional(),
-  /** Foto del lavoro svolto, opzionali: mostrate poi nella sezione recensioni del professionista. */
-  photoUrls: z.array(z.string().url()).max(3).default([]),
+  /** Foto o video del lavoro svolto, opzionali (fino a 5): mostrati poi nella sezione recensioni del professionista. */
+  photoUrls: z.array(z.string().url()).max(5).default([]),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 

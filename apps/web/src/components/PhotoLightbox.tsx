@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { isVideoUrl } from "@/lib/media";
 
 /**
- * Overlay a schermo intero per aprire in grande le foto delle recensioni
- * (o di qualunque altra galleria a miniature nel sito): stesso pattern DOM
- * grezzo di ImageCropModal, nessuna libreria di lightbox aggiunta. Frecce
- * prev/next mostrate solo se ci sono più foto.
+ * Overlay a schermo intero per aprire in grande le foto (o i video, vedi
+ * isVideoUrl — richiesta esplicita dell'utente: "dai la possibilità di
+ * caricare anche i video") delle recensioni o di qualunque altra galleria a
+ * miniature nel sito: stesso pattern DOM grezzo di ImageCropModal, nessuna
+ * libreria di lightbox aggiunta. Frecce prev/next mostrate solo se ci sono
+ * più elementi.
  */
 export function PhotoLightbox({
   photos,
@@ -133,13 +136,26 @@ export function PhotoLightbox({
         </>
       ) : null}
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={photos[index]}
-        alt=""
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }}
-      />
+      {isVideoUrl(photos[index] ?? "") ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <video
+          key={photos[index]}
+          src={photos[index]}
+          controls
+          autoPlay
+          playsInline
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 8 }}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photos[index]}
+          alt=""
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }}
+        />
+      )}
     </div>
   );
 }

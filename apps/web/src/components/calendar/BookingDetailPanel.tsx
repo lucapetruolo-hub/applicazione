@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { MediaPreview } from "@/components/MediaPreview";
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
@@ -211,12 +212,11 @@ export function BookingDetailPanel({
             </Text>
             <XStack gap="$2" flexWrap="wrap">
               {booking.photoUrls.map((url, index) => (
-                <img
+                <MediaPreview
                   key={url}
-                  src={url}
-                  alt=""
+                  url={url}
                   onClick={() => setOpenPhotoIndex(index)}
-                  style={{ width: 64, height: 64, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                  style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
                 />
               ))}
             </XStack>

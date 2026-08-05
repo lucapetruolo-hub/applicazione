@@ -124,6 +124,7 @@ function AccediForm() {
             onChangeText={setPassword}
             placeholder="Password"
             secureTextEntry={!showPassword}
+            autoComplete="current-password"
             accessibilityLabel="Password"
             onSubmitEditing={handleLogin}
           />

@@ -123,6 +123,11 @@ function RegistratiForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Richiesta esplicita dell'utente: campo "Conferma password" oltre a
+  // nome/email/password, con il proprio toggle mostra/nascondi
+  // indipendente dal campo password principale.
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -154,6 +159,10 @@ function RegistratiForm() {
 
   async function handleRegister() {
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Le password non coincidono.");
+      return;
+    }
     const result = registerSchema.safeParse({
       email: email.trim(),
       password,
@@ -246,7 +255,32 @@ function RegistratiForm() {
             onChangeText={setPassword}
             placeholder="Password"
             secureTextEntry={!showPassword}
+            // "new-password" (non "password"/"current-password"): segnala
+            // al browser/gestore password del telefono che si sta creando
+            // una password nuova, non inserendone una esistente — bug
+            // reale segnalato dall'utente, senza questo hint il sistema
+            // del telefono chiedeva ripetutamente se salvarla.
+            autoComplete="new-password"
             accessibilityLabel="Password"
+          />
+          <Field
+            label="Conferma password"
+            rightElement={
+              <Text
+                cursor="pointer"
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
+              >
+                <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
+              </Text>
+            }
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Ripeti la password"
+            secureTextEntry={!showConfirmPassword}
+            autoComplete="new-password"
+            accessibilityLabel="Conferma password"
             onSubmitEditing={handleRegister}
           />
 

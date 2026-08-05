@@ -6,6 +6,7 @@ import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDeta
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { MediaPreview } from "@/components/MediaPreview";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -204,8 +205,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   accessibilityRole="button"
                   accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <MediaPreview url={url} />
                 </YStack>
               ))}
             </XStack>
@@ -375,8 +375,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         accessibilityRole="button"
                         accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} della recensione`}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <MediaPreview url={url} />
                       </YStack>
                     ))}
                   </XStack>

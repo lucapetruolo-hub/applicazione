@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { professionalSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
@@ -539,9 +540,21 @@ function AcceptedJobCard({
       </YStack>
 
       <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-        <Text fontWeight="600" color={brand.grafite}>
-          {recipientFullName ?? booking.clientName ?? "Cliente"}
-        </Text>
+        <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <Text fontWeight="600" color={brand.grafite}>
+            {recipientFullName ?? booking.clientName ?? "Cliente"}
+          </Text>
+          {booking.clientAccountDeleted ? (
+            // Richiesta esplicita dell'utente: il lavoro resta con traccia
+            // completa (nome del destinatario/contatti raccolti
+            // all'accettazione, indirizzo, voci, note — nessuno di questi
+            // viene dall'account cliente in sé) — solo un'indicazione che
+            // l'account che l'ha originata non esiste più.
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              · Account eliminato
+            </Text>
+          ) : null}
+        </XStack>
         {(booking.recipientPhone ?? booking.clientPhone) ? (
           <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none" }}>
             <XStack alignItems="center" gap="$1">
@@ -595,12 +608,11 @@ function AcceptedJobCard({
           </Text>
           <XStack gap="$2" flexWrap="wrap">
             {booking.photoUrls.map((url, index) => (
-              <img
+              <MediaPreview
                 key={url}
-                src={url}
-                alt=""
+                url={url}
                 onClick={() => setOpenPhotoIndex(index)}
-                style={{ width: 56, height: 56, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                style={{ width: 56, height: 56, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
               />
             ))}
           </XStack>
@@ -836,6 +848,7 @@ function LeadCard({
   const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const clientName = lead.guidedRequest.clientName ?? "Cliente";
+  const clientAccountDeleted = lead.guidedRequest.clientAccountDeleted;
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -995,15 +1008,24 @@ function LeadCard({
                 per i clienti in questo marketplace (a differenza dei
                 professionisti, /professionista/[id]): la scheda è un
                 overlay, non una navigazione. */}
-            <Text
-              fontWeight="700"
-              color={brand.cianografia}
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setShowClientProfile(true)}
-            >
-              {clientName}
-            </Text>
+            {clientAccountDeleted ? (
+              // Stesso stile neutro già in uso per un altro stato "non più
+              // azionabile" (Richiesta scaduta, sotto): niente Badge
+              // colorato, non è né un successo né un'urgenza.
+              <Text fontSize="$3" fontWeight="700" color={brand.grafite70}>
+                Account eliminato
+              </Text>
+            ) : (
+              <Text
+                fontWeight="700"
+                color={brand.cianografia}
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setShowClientProfile(true)}
+              >
+                {clientName}
+              </Text>
+            )}
             <Text fontWeight="700" color={brand.grafite}>
               · {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
             </Text>
@@ -1119,9 +1141,11 @@ function LeadCard({
 
           {lead.quote.status === "SENT" && !showForm ? (
             <XStack gap="$2" flexWrap="wrap" paddingTop="$1" alignItems="center">
-              <Button variant="secondary" size="$2" height={36} onPress={startEditingQuote}>
-                Modifica preventivo
-              </Button>
+              {!clientAccountDeleted ? (
+                <Button variant="secondary" size="$2" height={36} onPress={startEditingQuote}>
+                  Modifica preventivo
+                </Button>
+              ) : null}
               {confirmingWithdraw ? (
                 <>
                   <Text fontSize="$2" color={brand.urgenza}>
@@ -1211,13 +1235,11 @@ function LeadCard({
             // Cliccabile per aprirla a schermo intero (richiesta esplicita
             // dell'utente, "vederla meglio"): stesso PhotoLightbox già usato
             // per le foto delle recensioni, nessun nuovo componente.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <MediaPreview
               key={url}
-              src={url}
-              alt=""
+              url={url}
               onClick={() => setOpenPhotoIndex(index)}
-              style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
+              style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
             />
           ))}
         </XStack>
@@ -1228,21 +1250,31 @@ function LeadCard({
       ) : null}
 
       {!sent && !showForm && lead.status !== "DECLINED" && lead.status !== "EXPIRED" ? (
-        <XStack gap="$3" alignItems="center" flexWrap="wrap">
-          <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
-            Invia preventivo
-          </Button>
-          <Text
-            color={brand.urgenza}
-            fontWeight="600"
-            fontSize="$3"
-            cursor="pointer"
-            accessibilityRole="button"
-            onPress={() => setShowDeclineModal(true)}
-          >
-            Rifiuta richiesta
+        clientAccountDeleted ? (
+          // Richiesta esplicita dell'utente: nessuna nuova operazione su un
+          // preventivo il cui cliente ha eliminato l'account — non
+          // riceverebbe mai risposta. La richiesta resta comunque visibile
+          // ("traccia completa"), solo l'invio è bloccato.
+          <Text fontSize="$2" color={brand.grafite70}>
+            Il cliente ha eliminato il proprio account: non puoi più inviare un preventivo per questa richiesta.
           </Text>
-        </XStack>
+        ) : (
+          <XStack gap="$3" alignItems="center" flexWrap="wrap">
+            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
+              Invia preventivo
+            </Button>
+            <Text
+              color={brand.urgenza}
+              fontWeight="600"
+              fontSize="$3"
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setShowDeclineModal(true)}
+            >
+              Rifiuta richiesta
+            </Text>
+          </XStack>
+        )
       ) : null}
 
       {showDeclineModal ? (

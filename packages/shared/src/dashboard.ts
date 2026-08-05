@@ -79,6 +79,19 @@ export type ProfessionalLead = {
     clientEmail: string | null;
     /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
     clientImageUrl: string | null;
+    /**
+     * True se il cliente ha eliminato il proprio account (soft-delete,
+     * User.deletedAt) — richiesta esplicita dell'utente: la richiesta e il
+     * preventivo restano visibili ("traccia completa"), ma con
+     * un'indicazione "Account eliminato" al posto del nome, e senza più
+     * poter inviare/modificare un preventivo per questa richiesta
+     * (QuotesService.createOrUpdate lo rifiuta esplicitamente). `clientName`/
+     * `clientPhone`/`clientEmail`/`clientImageUrl` sono già `null` in
+     * questo caso (anonimizzati alla cancellazione), questo flag esiste
+     * solo per distinguere in UI "account eliminato" da "account senza
+     * questi dati compilati".
+     */
+    clientAccountDeleted: boolean;
     /** Via e numero civico indicati dal cliente, facoltativo. */
     address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
@@ -112,6 +125,8 @@ export type ProfessionalBooking = {
   clientName: string | null;
   clientPhone: string | null;
   clientEmail: string | null;
+  /** Stesso significato di ProfessionalLead.guidedRequest.clientAccountDeleted — vedi lì. */
+  clientAccountDeleted: boolean;
   address: string | null;
   /**
    * Indirizzo di lavoro strutturato, raccolto dal cliente nella schermata

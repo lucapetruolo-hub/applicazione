@@ -14,8 +14,11 @@ import {
 import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { MediaPreview } from "@/components/MediaPreview";
 
-const MAX_PHOTOS = 3;
+// Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
+// (aumentato da 3, stessa richiesta).
+const MAX_PHOTOS = 5;
 
 /** Fascia "generica" (a capienza) dell'agenda pubblica di un professionista, ancora libera — le sole selezionabili qui (le fasce esatte sono prenotazione diretta, un flusso separato). */
 type PickableAgendaSlot = { date: string; startTime: string; endTime: string; remaining: number };
@@ -193,7 +196,7 @@ export function GuidedRequestForm({
       return;
     }
     if (photoUrls.length === 0) {
-      setError("Aggiungi almeno una foto.");
+      setError("Aggiungi almeno una foto o un video.");
       return;
     }
 
@@ -409,15 +412,14 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Foto (fino a {MAX_PHOTOS})</FieldLabel>
+          <FieldLabel>Foto o video (fino a {MAX_PHOTOS})</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
-            Una foto aiuta il professionista a capire subito il lavoro e a darti un preventivo più preciso.
+            Una foto o un video aiutano il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
             {photoUrls.map((url) => (
               <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <MediaPreview url={url} />
                 <YStack
                   position="absolute"
                   top={4}
@@ -466,7 +468,7 @@ export function GuidedRequestForm({
           <input
             ref={photoInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             onChange={handlePhotoChange}
             disabled={isUploadingPhoto}
             style={{ display: "none" }}

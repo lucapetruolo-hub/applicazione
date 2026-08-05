@@ -13,6 +13,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { AcceptQuoteModal } from "@/components/AcceptQuoteModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { MediaPreview } from "@/components/MediaPreview";
 import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
@@ -22,8 +23,10 @@ const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   CLOSED: "Chiusa",
 };
 
-const MAX_REVIEW_PHOTOS = 3;
-const MAX_REQUEST_PHOTOS = 3;
+// Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
+// (aumentato da 3, stessa richiesta).
+const MAX_REVIEW_PHOTOS = 5;
+const MAX_REQUEST_PHOTOS = 5;
 
 const BOOKING_STATUS_LABEL: Record<ClientBooking["status"], string> = {
   PENDING: "In attesa",
@@ -525,13 +528,12 @@ function GuidedRequestCard({
 
           <YStack gap="$1">
             <Text fontSize="$2" color={brand.grafite70}>
-              Foto (opzionale, fino a {MAX_REQUEST_PHOTOS})
+              Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS})
             </Text>
             <YStack flexDirection="row" flexWrap="wrap" gap="$2">
               {photoUrls.map((url) => (
                 <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <MediaPreview url={url} />
                   <YStack
                     position="absolute"
                     top={2}
@@ -576,7 +578,7 @@ function GuidedRequestCard({
             <input
               ref={photoInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               onChange={handlePhotoChange}
               disabled={isUploadingPhoto}
               style={{ display: "none" }}
@@ -672,13 +674,11 @@ function GuidedRequestCard({
           {request.photoUrls.length > 0 ? (
             <XStack gap="$2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <MediaPreview
                   key={url}
-                  src={url}
-                  alt=""
+                  url={url}
                   onClick={() => setOpenPhotoIndex(index)}
-                  style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
+                  style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
                 />
               ))}
             </XStack>
@@ -1243,13 +1243,12 @@ function BookingRow({
 
             <YStack gap="$1">
               <Text fontSize="$2" color={brand.grafite70}>
-                Foto del lavoro svolto (opzionale, fino a {MAX_REVIEW_PHOTOS})
+                Foto o video del lavoro svolto (opzionale, fino a {MAX_REVIEW_PHOTOS})
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
                 {photoUrls.map((url) => (
                   <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <MediaPreview url={url} />
                     <YStack
                       position="absolute"
                       top={2}
@@ -1294,7 +1293,7 @@ function BookingRow({
               <input
                 ref={photoInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handlePhotoChange}
                 disabled={isUploadingPhoto}
                 style={{ display: "none" }}

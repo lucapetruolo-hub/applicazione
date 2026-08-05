@@ -316,11 +316,11 @@ export default function AccountPage() {
               <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
             </FieldRow>
 
-            <FieldRow label="Cognome" required>
+            <FieldRow label="Cognome">
               <input value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
             </FieldRow>
 
-            <FieldRow label="Data di nascita" required>
+            <FieldRow label="Data di nascita">
               <XStack gap="$2">
                 <input
                   value={birthDay}
@@ -355,6 +355,7 @@ export default function AccountPage() {
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="Password attuale"
+                      autoComplete="current-password"
                       style={inputStyle}
                     />
                   ) : null}
@@ -363,6 +364,7 @@ export default function AccountPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Nuova password (almeno 8 caratteri)"
+                    autoComplete="new-password"
                     style={inputStyle}
                   />
                   {passwordError ? (

@@ -3434,3 +3434,174 @@ con una risposta finta, Cloudinary non configurato in locale) →
 nel menu, richiesta accettata dal backend reale (schermata "Richiesta
 inviata!"). Zero errori console nuovi. Typecheck pulito su tutti i
 package, build di produzione `apps/web` verde (24 route).
+
+---
+
+## 16. Video nelle gallerie, correzioni form di autenticazione, soft-delete account cliente
+
+Quattro richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Video oltre alle foto, limite a 5** — "ovunque c'è la possibilità di
+caricare le foto... fai in modo da poter caricare anche i video e aumenta
+il limite a 5". Applicato alle tre gallerie a più elementi (richiesta
+guidata, recensioni, portfolio professionista) — non ai singoli avatar
+(immagine profilo account/professionista), dove un video non avrebbe senso
+e l'utente non li ha citati.
+- **Backend**: `CloudinaryService.uploadMedia` (nuovo, accanto a
+  `uploadImage` esistente, non sostituito — `uploadImage` resta in uso per
+  i due upload di avatar singolo): sceglie `resource_type: "video"` o
+  `"image"` in base al mimetype del file, trasformazione `quality: "auto"`
+  per i video (nessun resize: ridimensionare un video ha implicazioni di
+  durata/bitrate diverse da un'immagine, fuori scope senza una richiesta
+  esplicita in merito) contro il resize 800×800 già esistente per le foto.
+  `guided-requests.controller.ts`/`reviews.controller.ts`/
+  `professionals.controller.ts` (endpoint portfolio): `fileFilter` accetta
+  ora `image/*` **o** `video/*`, nuovo `MAX_MEDIA_SIZE_BYTES = 50MB` (contro
+  `MAX_IMAGE_SIZE_BYTES = 8MB`, un video pesa naturalmente di più) solo su
+  questi tre endpoint — gli upload di avatar singolo restano a 8MB/solo
+  immagine. Nome del campo/della risposta (`image`/`imageUrl`) invariato
+  per compatibilità con `uploadFile` in api-client (già generico, non
+  specifico alle immagini) e con tutti i chiamanti esistenti.
+- **Schema di validazione** (`packages/shared/src/schemas.ts`):
+  `guidedRequestSchema.photoUrls`/`guidedRequestUpdateSchema.photoUrls`/
+  `reviewSchema.photoUrls` da `.max(3)` a `.max(5)`. `portfolioUrls` (già
+  `.max(10)`, più permissivo) invariato — non ha senso ridurlo.
+- **Frontend**: `apps/web/src/lib/media.ts` (`isVideoUrl`, per estensione
+  del file) + `apps/web/src/components/MediaPreview.tsx` (nuovo,
+  sostituto drop-in di `<img>` nelle griglie di miniature: `<video muted
+  playsInline>` se l'URL è un video, altrimenti `<img>`, stesso
+  `objectFit: cover` di prima) — usato in tutti gli 8 punti che
+  renderizzavano foto di queste tre gallerie (`GuidedRequestForm`,
+  `le-mie-richieste` ×3, `dashboard` ×2, `BookingDetailPanel`,
+  `ProfessionalDetailContent` ×2, `dashboard/profilo` portfolio) più
+  `PhotoLightbox.tsx` (viewer a schermo intero: `<video controls autoPlay>`
+  per un video). `MAX_PHOTOS`/`MAX_REVIEW_PHOTOS`/`MAX_REQUEST_PHOTOS` da 3
+  a 5, `accept="image/*"` → `accept="image/*,video/*"` sui tre `<input
+  type="file">` corrispondenti, etichette "Foto" → "Foto o video" in UI.
+  Verificato end-to-end con l'API locale (non solo typecheck): 6 elementi
+  rifiutati (400) e 5 accettati su `guidedRequestSchema`/`reviewSchema`; un
+  file `video/mp4` accettato dal `fileFilter` (fallisce solo più avanti per
+  Cloudinary non configurato in locale, mai per il tipo). Typecheck pulito
+  su tutti i package, build di produzione `apps/web` verde (24 route).
+
+**Correzioni form di autenticazione** (segnalazioni esplicite dell'utente,
+stesso giro):
+1. **"Il sistema del telefono chiede sempre se salvare la password"
+   durante la registrazione** — bug reale: il campo password di
+   `/registrati` non aveva alcun `autoComplete`, lasciando al
+   browser/gestore password del telefono l'euristica meno affidabile per
+   capire se si tratta di una password nuova o esistente. Aggiunto
+   `autoComplete="new-password"` al campo password di `/registrati`
+   (`Field` di `@professionisti/ui` forwarda la prop a `Input`/react-native-
+   web, che la mappa all'attributo HTML nativo) e `autoComplete=
+   "current-password"` al campo password di `/accedi` — stessa correzione
+   anche sui due campi password (attuale/nuova) di `/account` (cambio
+   password), pur non citati esplicitamente, stesso bug potenziale con lo
+   stesso fix a costo zero.
+2. **Campo "Conferma password" in registrazione** — richiesta esplicita:
+   "chiedi nome, e-mail, password, conferma password". Nuovo stato
+   `confirmPassword` in `RegistratiForm`, validato prima dello schema zod
+   (`password !== confirmPassword` → "Le password non coincidono.", stesso
+   pattern client-side già in uso per altri controlli del form), proprio
+   toggle mostra/nascondi indipendente dal campo password principale.
+   Verificato con Playwright: 2 campi con `autoComplete="new-password"` in
+   `/registrati`, mismatch bloccato con il messaggio corretto, 1 campo con
+   `autoComplete="current-password"` in `/accedi`.
+
+**Asterischi solo sui campi realmente obbligatori in `/account`** —
+richiesta esplicita: "leva gli asterischi dai campi non obbligatori".
+`updateAccountSchema` (`packages/shared`) ha **tutti** i campi opzionali
+lato server; lato client (`handleSaveProfile`) solo Nome (min 2 caratteri)
+ed Email (non vuota) bloccano davvero il salvataggio se mancanti — Cognome
+e Data di nascita no. `FieldRow` in `/account/page.tsx` aveva `required`
+(che mostra l'asterisco) anche su questi ultimi due, contraddicendo il
+comportamento reale: rimosso da "Cognome" e "Data di nascita", lasciato su
+"Nome" ed "Email" (gli unici davvero bloccanti).
+
+**Soft-delete dell'account cliente — preservare recensioni/richieste/
+prenotazioni** — richiesta esplicita dell'utente: "quando un account viene
+eliminato devono rimanere le recensioni scritte da quell'account e deve
+rimanere nei vari preventivi ricevuti dal professionista... con una
+dicitura tipo 'account eliminato'... nei lavori terminati deve rimanere
+traccia completa". Prima di questo cambio, `DELETE /auth/me` cancellava
+fisicamente lo `User`, che aveva `onDelete: Cascade` su `GuidedRequest`
+(→ a cascata `Lead`/`Quote`/`QuoteItem`) e su `Booking` (→ a cascata
+`BookingFinalItem`/`Review`) — un cliente che eliminava l'account
+cancellava silenziosamente tutto lo storico del professionista con lui,
+comprese le recensioni che aveva scritto.
+- **Schema**: nuovo campo `User.deletedAt DateTime?`. `AuthService.
+  deleteAccount` non fa più `prisma.user.delete()`: se l'account è un
+  professionista, il suo `ProfessionalProfile` viene comunque cancellato
+  per davvero come prima (stesso comportamento pre-esistente, deliberato —
+  la richiesta dell'utente riguarda solo il lato cliente, non l'annuncio
+  pubblico di un professionista che chiude); poi lo `User` viene
+  aggiornato invece che cancellato: `deletedAt` valorizzato, PII
+  anonimizzata (`email` sostituita con `deleted-{id}@deleted.invalid` per
+  liberare il vincolo unico e permettere una nuova registrazione alla
+  stessa email vera, `phone`/`googleId`/`passwordHash`/`name`/`surname`/
+  `birthDate`/`imageUrl` azzerati). Login impossibile di conseguenza
+  (email non corrisponde più, password azzerata, googleId azzerato) senza
+  dover invalidare nulla esplicitamente. **Non modificato**: `JwtAuthGuard`
+  resta stateless (nessuna query DB ad ogni richiesta autenticata) — un
+  token JWT già emesso prima della cancellazione resta valido fino a
+  scadenza naturale (max 30gg); cambiarlo avrebbe richiesto una query DB
+  per ogni richiesta autenticata dell'intero sito, un cambio di
+  architettura/performance non richiesto esplicitamente e fuori scope per
+  questo giro.
+- **`ProfessionalLead.guidedRequest.clientAccountDeleted`/
+  `ProfessionalBooking.clientAccountDeleted`** (nuovi campi booleani,
+  `packages/shared/src/dashboard.ts`): calcolati da `client.deletedAt !==
+  null` in `ProfessionalsService.getMyLeads`/`getMyBookings`.
+  `clientName`/`clientPhone` restano `null` per un cliente eliminato
+  (naturale conseguenza dell'anonimizzazione) — bug reale trovato e
+  corretto durante la verifica: `clientEmail` esponeva invece l'email
+  sintetica `deleted-{id}@deleted.invalid` (scritta solo per liberare il
+  vincolo unico, non un vero indirizzo), corretto forzandolo a `null`
+  esplicitamente quando `client.deletedAt` è valorizzato, in entrambi i
+  metodi.
+- **Blocco "ulteriori operazioni sul preventivo"**: `QuotesService.
+  createOrUpdate` (invio di un nuovo preventivo o modifica di uno già
+  inviato) rifiuta ora con 403 ("Il cliente ha eliminato il proprio
+  account...") se `lead.guidedRequest.client.deletedAt` è valorizzato —
+  richiede di includere `client` nella query del `lead` (prima solo
+  `guidedRequest: true`). Deliberatamente **non bloccate**: ritiro di un
+  preventivo già inviato (`withdrawByProfessional`, pulizia della propria
+  coda, non richiede il cliente) e rifiuto di un lead
+  (`ProfessionalsService.declineLead`) — entrambe azioni del solo
+  professionista, non "operazioni sul preventivo" nel senso della
+  richiesta.
+- **Frontend** (`apps/web/src/app/dashboard/page.tsx`): `LeadCard` mostra
+  "Account eliminato" (testo neutro `brand.grafite70`, stesso stile già in
+  uso per un altro stato "non più azionabile", "Richiesta scaduta" —
+  niente `Badge` colorato, non è né un successo né un'urgenza) al posto
+  del nome cliente cliccabile; i bottoni "Invia preventivo" e "Modifica
+  preventivo" spariscono, sostituiti da una nota "Il cliente ha eliminato
+  il proprio account: non puoi più inviare un preventivo per questa
+  richiesta." (il bottone "Rifiuta richiesta" resta disponibile, non è
+  un'operazione bloccata). `AcceptedJobCard` (lavori accettati/terminati)
+  mostra "· Account eliminato" accanto al nome, senza nascondere nient'altro
+  — `recipientName`/`recipientSurname`/`recipientPhone` (raccolti
+  nella schermata di accettazione preventivo, non PII dell'account) e
+  `finalAmountEurCents`/`finalItems` restano visibili intatti, "traccia
+  completa" come richiesto.
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: ciclo completo richiesta→preventivo→accettazione→
+  completamento→recensione per un cliente di test, poi `DELETE /auth/me`
+  → login con le vecchie credenziali rifiutato (401) → lead/prenotazione
+  ancora presenti via `GET /professionals/me/leads`/`/bookings` con
+  `clientAccountDeleted: true`, `clientName`/`clientPhone`/`clientEmail`
+  tutti `null` → recensione ancora visibile su `GET /professionals/:id`
+  pubblico → tentativo di inviare un preventivo per una seconda richiesta
+  (mai risposta) dello stesso cliente eliminato rifiutato con 403 →
+  registrazione di un nuovo account con la stessa email originale riuscita
+  (email liberata correttamente). UI: Playwright conferma l'etichetta
+  "Account eliminato" e l'assenza del bottone "Invia preventivo" nella
+  dashboard del professionista. **Nota sull'ambiente di test**: la
+  verifica ha incontrato lo stesso problema di inquinamento dati da run
+  ripetuti già documentato altrove in questo file (professionisti/
+  richieste di test residue nella stessa città/categoria che si
+  affiancavano ai dati del test corrente, coinvolti automaticamente dal
+  meccanismo "nuovo professionista si iscrive → richieste aperte esistenti"
+  di CLAUDE.md §14) — non un bug applicativo, risolto ripulendo il
+  database e usando una città isolata per il test finale. Typecheck pulito
+  su tutti i package, build di produzione `apps/web` verde (24 route).

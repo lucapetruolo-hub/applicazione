@@ -9,6 +9,10 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ReviewsService } from "./reviews.service";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+// Un video pesa naturalmente molto di più di una foto compressa: limite
+// più permissivo solo per questo endpoint (richiesta esplicita
+// dell'utente: "dai la possibilità di caricare anche i video").
+const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
 
 @Controller("reviews")
 export class ReviewsController {
@@ -24,19 +28,19 @@ export class ReviewsController {
     return this.reviewsService.create(req.user.userId, body);
   }
 
-  // Una chiamata per foto (fino a 3, vedi reviewSchema.photoUrls), stesso
-  // pattern di GuidedRequestsController (`POST /guided-requests/photos`):
-  // stato di caricamento/errore per singola foto in UI invece di un unico
-  // upload multiplo che fallisce o riesce in blocco.
+  // Una chiamata per foto/video (fino a 5, vedi reviewSchema.photoUrls),
+  // stesso pattern di GuidedRequestsController (`POST /guided-requests/photos`):
+  // stato di caricamento/errore per singolo elemento in UI invece di un
+  // unico upload multiplo che fallisce o riesce in blocco.
   @UseGuards(JwtAuthGuard)
   @UseFilters(MulterExceptionFilter)
   @Post("photos")
   @UseInterceptors(
     FileInterceptor("image", {
-      limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+      limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
-        if (!file.mimetype.startsWith("image/")) {
-          callback(new BadRequestException("Il file caricato deve essere un'immagine."), false);
+        if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine o un video."), false);
           return;
         }
         callback(null, true);
@@ -45,9 +49,9 @@ export class ReviewsController {
   )
   async uploadPhoto(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException("Nessuna immagine caricata.");
+      throw new BadRequestException("Nessuna immagine o video caricato.");
     }
-    const imageUrl = await this.cloudinaryService.uploadImage(file, "reviews");
+    const imageUrl = await this.cloudinaryService.uploadMedia(file, "reviews");
     return { imageUrl };
   }
 }

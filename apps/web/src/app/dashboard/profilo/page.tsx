@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
+import { MediaPreview } from "@/components/MediaPreview";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -543,16 +544,15 @@ export default function DashboardProfiloPage() {
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>{`Foto dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
+          <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
-            Foto reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di cosa
-            sai fare.
+            Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
+            cosa sai fare.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
             {portfolioUrls.map((url) => (
               <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <MediaPreview url={url} />
                 <YStack
                   position="absolute"
                   top={4}
@@ -601,7 +601,7 @@ export default function DashboardProfiloPage() {
           <input
             ref={portfolioPhotoInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             onChange={handlePortfolioPhotoChange}
             disabled={isUploadingPortfolioPhoto}
             style={{ display: "none" }}

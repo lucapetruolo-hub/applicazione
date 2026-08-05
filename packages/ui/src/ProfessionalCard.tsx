@@ -130,7 +130,7 @@ export function ProfessionalCard({
                     <Text fontSize={14} color={brand.grafite70} flex={1}>
                       {service.name}
                     </Text>
-                    <Text fontSize={14} color={brand.grafite} fontWeight="600">
+                    <Text fontSize={14} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
                       {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
                     </Text>
                   </XStack>

@@ -143,8 +143,41 @@ export class AuthService {
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
 
+  /**
+   * Soft-delete (richiesta esplicita dell'utente): non cancella più
+   * fisicamente lo User, per non trascinare via in cascata le richieste
+   * guidate/lead/preventivi/prenotazioni/recensioni collegate — devono
+   * restare visibili al professionista con l'indicazione "Account
+   * eliminato" invece di sparire. Se l'account è un professionista, il suo
+   * ProfessionalProfile (profilo pubblico + agenda) resta invece
+   * cancellato per davvero, comportamento invariato rispetto a prima: solo
+   * i dati lato CLIENTE del richiedente vanno preservati, non l'annuncio
+   * pubblico di un professionista che ha smesso di operare.
+   */
   async deleteAccount(userId: string): Promise<void> {
-    await this.prisma.user.delete({ where: { id: userId } });
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
+    if (professionalProfile) {
+      await this.prisma.professionalProfile.delete({ where: { id: professionalProfile.id } });
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        // Libera email/telefono/googleId (unique) per permettere una nuova
+        // registrazione allo stesso indirizzo — l'email anonimizzata non
+        // può mai collidere con una vera perché non è un formato valido
+        // per la registrazione (contiene l'id).
+        email: `deleted-${userId}@deleted.invalid`,
+        phone: null,
+        googleId: null,
+        passwordHash: null,
+        name: null,
+        surname: null,
+        birthDate: null,
+        imageUrl: null,
+      },
+    });
   }
 
   private issueToken(userId: string): string {
