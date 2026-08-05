@@ -3,12 +3,14 @@ import type { PrismaClient } from "@professionisti/database";
 import type { AcceptQuoteInput, CancelBookingByProfessionalInput, CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 @Injectable()
 export class BookingsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {}
 
   /**
@@ -70,6 +72,10 @@ export class BookingsService {
       guidedRequestId: quote.guidedRequestId,
     });
 
+    // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
+    // diventato una prenotazione reale ("accettato" in questo dominio).
+    await this.professionalMetricsService.recordJobAccepted(quote.professionalProfileId);
+
     return { bookingId: booking.id };
   }
 
@@ -97,6 +103,20 @@ export class BookingsService {
     }
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status } });
+
+    // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
+    // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
+    // nessuno dei due (richiesta esplicita dell'utente), CONFIRMED è solo
+    // "attività" del professionista senza statistiche da aggiornare.
+    if (status === "COMPLETED") {
+      await this.professionalMetricsService.recordJobCompleted(professionalProfile.id);
+      await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, true);
+    } else if (status === "NO_SHOW") {
+      await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, false);
+    } else {
+      await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    }
+
     return { bookingId, status };
   }
 
@@ -120,6 +140,8 @@ export class BookingsService {
 
     const trimmed = note.trim();
     await this.prisma.booking.update({ where: { id: bookingId }, data: { professionalNote: trimmed || null } });
+    // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del professionista.
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
     return { bookingId, professionalNote: trimmed || null };
   }
 
@@ -158,6 +180,12 @@ export class BookingsService {
 
     await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", { bookingId, finalAmountEurCents });
 
+    // Metriche di affidabilità (CLAUDE.md §15, eventi 4+6): lavoro
+    // completato con importo esatto conta sia come lavoro concluso sia
+    // come appuntamento onorato.
+    await this.professionalMetricsService.recordJobCompleted(professionalProfile.id);
+    await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, true);
+
     return { bookingId, status: "COMPLETED" as const, finalAmountEurCents };
   }
 
@@ -186,6 +214,11 @@ export class BookingsService {
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", cancellationNote } });
 
     await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", { bookingId, cancellationNote });
+
+    // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del
+    // professionista — CANCELED non conta come appuntamento onorato/mancato
+    // (evento 6, deciso esplicitamente), ma resta comunque "attività".
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
 
     return { bookingId, status: "CANCELED" as const };
   }

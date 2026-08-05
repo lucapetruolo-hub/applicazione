@@ -4,6 +4,7 @@ import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 const BCRYPT_SALT_ROUNDS = 10;
 
@@ -16,8 +17,23 @@ export class AuthService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly jwt: JwtService,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
+  }
+
+  /**
+   * Metriche di affidabilità (CLAUDE.md §15, evento 7): un login conta come
+   * "attività" solo per un account professionista che ha già creato il
+   * proprio profilo (senza ProfessionalProfile non esiste ancora un
+   * professionalProfileId su cui agganciare la riga di metriche).
+   */
+  private async touchProfessionalActivity(userId: string, role: string): Promise<void> {
+    if (role !== "PROFESSIONAL") return;
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
+    if (profile) {
+      await this.professionalMetricsService.touchActivity(profile.id);
+    }
   }
 
   async register(email: string, password: string, name?: string, role: "CLIENT" | "PROFESSIONAL" = "CLIENT"): Promise<AuthResult> {
@@ -43,6 +59,7 @@ export class AuthService {
       throw new UnauthorizedException("Email o password non corretti.");
     }
 
+    await this.touchProfessionalActivity(user.id, user.role);
     return { token: this.issueToken(user.id), isNewUser: false };
   }
 
@@ -79,6 +96,9 @@ export class AuthService {
       await this.prisma.user.update({ where: { id: existingUser.id }, data: { googleId: payload.sub } });
     }
 
+    if (existingUser) {
+      await this.touchProfessionalActivity(user.id, user.role);
+    }
     return { token: this.issueToken(user.id), isNewUser: !existingUser };
   }
 

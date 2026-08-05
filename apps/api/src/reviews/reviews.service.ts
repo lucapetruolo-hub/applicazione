@@ -2,10 +2,14 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 import type { PrismaClient } from "@professionisti/database";
 import type { ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 @Injectable()
 export class ReviewsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
+  ) {}
 
   async create(clientId: string, input: ReviewInput) {
     const booking = await this.prisma.booking.findUnique({
@@ -30,6 +34,9 @@ export class ReviewsService {
     const review = await this.prisma.review.create({
       data: { bookingId: input.bookingId, rating: input.rating, comment: input.comment, photoUrls: input.photoUrls },
     });
+
+    // Metriche di affidabilità (CLAUDE.md §15, evento 5).
+    await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
 
     return { id: review.id };
   }

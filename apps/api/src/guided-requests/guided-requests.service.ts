@@ -5,6 +5,7 @@ import { findComuneByName, type GuidedRequestInput, type GuidedRequestStatusSumm
 import { PRISMA } from "../prisma/prisma.module";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
@@ -51,6 +52,7 @@ export class GuidedRequestsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {}
 
   async create(clientId: string, input: GuidedRequestInput) {
@@ -178,6 +180,10 @@ export class GuidedRequestsService {
           },
         })),
       });
+
+      // Metriche di affidabilità (CLAUDE.md §15, evento 1): ogni
+      // destinatario del fan-out ha appena "ricevuto una richiesta".
+      await Promise.all(leadRecipients.map((profile) => this.professionalMetricsService.recordRequestReceived(profile.id)));
     } else {
       // Nessun candidato entro il raggio oggi: la richiesta resta OPEN, ma
       // ha comunque una scadenza propria — un professionista compatibile
@@ -471,6 +477,8 @@ export class GuidedRequestsService {
         city: request.city,
         isUrgent: request.isUrgent,
       });
+      // Metriche di affidabilità (CLAUDE.md §15, evento 1).
+      await this.professionalMetricsService.recordRequestReceived(profile.id);
     }
   }
 
@@ -563,7 +571,7 @@ export class GuidedRequestsService {
    * pescare due volte lo stesso candidato dalla coda o perderne uno.
    */
   async expandLeadQueue(guidedRequestId: string): Promise<void> {
-    type NotifyTarget = { userId: string; categoryLabel: string; city: string; isUrgent: boolean };
+    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean };
     let notifyTarget: NotifyTarget | null;
 
     try {
@@ -597,7 +605,13 @@ export class GuidedRequestsService {
             data: { reserveCandidateIds: remainingReserve, status: "MATCHED" },
           });
 
-          return { userId: candidate.userId, categoryLabel: request.category.label, city: request.city, isUrgent: request.isUrgent };
+          return {
+            userId: candidate.userId,
+            professionalProfileId: candidate.id,
+            categoryLabel: request.category.label,
+            city: request.city,
+            isUrgent: request.isUrgent,
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
@@ -618,6 +632,8 @@ export class GuidedRequestsService {
         city: notifyTarget.city,
         isUrgent: notifyTarget.isUrgent,
       });
+      // Metriche di affidabilità (CLAUDE.md §15, evento 1).
+      await this.professionalMetricsService.recordRequestReceived(notifyTarget.professionalProfileId);
     }
   }
 

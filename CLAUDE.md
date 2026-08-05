@@ -3237,3 +3237,137 @@ infrastruttura o campi paralleli a quanto già presente.
   Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
   `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
   (24 route).
+
+---
+
+## 15. Metriche di affidabilità del professionista
+
+Richiesta esplicita dell'utente: tracciare metriche di affidabilità per
+ogni professionista **fin da ora**, anche con un solo professionista per
+categoria/zona — così esiste già uno storico quando ce ne sarà più di uno
+da confrontare. Istruzione esplicita che ha guidato ogni scelta di questa
+funzionalità: *"le cose che devono essere implementate e normale non ci
+siano e vanno aggiunte come nuove funzionalità a meno che non ci sia già
+qualcosa di simile"* — stesso principio già seguito per il fan-out
+intelligente dei lead (§14).
+
+**Schema** — nuovo modello Prisma `ProfessionalMetrics`, relazione 1:1 con
+`ProfessionalProfile` (`onDelete: Cascade`), **non creato alla creazione
+del profilo**: la riga nasce solo al primo evento rilevante (`upsert` in
+ogni metodo di `ProfessionalMetricsService`), coerente con "poco dato è
+meglio di un dato falso a zero". Nomi dei campi tradotti in camelCase/
+inglese per coerenza con il resto dello schema (l'utente li aveva
+specificati in italiano/snake_case nella richiesta): `avgResponseTimeMinutes`,
+`totalResponsesMeasured` (contatore di supporto per la media mobile, non
+richiesto esplicitamente ma necessario per calcolarla correttamente),
+`totalRequestsReceived`, `acceptedRequests`, `completedJobs`, `acceptedJobs`,
+`avgRating`, `reviewCount`, `honoredAppointments`, `totalAppointments`,
+`lastActivityAt` (default `now()`), `reliabilityScore` (nullable).
+
+**`apps/api/src/professional-metrics/professional-metrics.service.ts`** —
+punto unico di scrittura, un metodo per evento, richiamato esplicitamente
+dal service che compie l'azione (nessun trigger/middleware Prisma, stessa
+convenzione di tutto il progetto: es. `NotificationsService.notify()`).
+Ogni metodo fa `upsert` (crea la riga se non esiste) e ricalcola
+`reliabilityScore` alla fine (`refreshScore`, privato) — "esegui questa
+funzione ogni volta che uno dei campi sopra viene aggiornato", richiesta
+esplicita dell'utente.
+
+**I 7 eventi e dove sono agganciati esattamente** (richiesta esplicita
+dell'utente, STEP 5: riportare file per file dove ogni evento è cablato):
+
+1. **Richiesta ricevuta** (`recordRequestReceived`) — incrementa
+   `totalRequestsReceived`. Tre punti di creazione di un `Lead`, tutti in
+   `apps/api/src/guided-requests/guided-requests.service.ts`: fan-out
+   iniziale (`create()`), espansione dalla coda di riserva
+   (`expandLeadQueue()`), coinvolgimento di un professionista che si
+   iscrive dopo con una richiesta ancora aperta (`matchNewProfileToOpenRequests()`).
+2. **Prima risposta a un Lead** (`recordFirstResponse`) — media mobile di
+   `avgResponseTimeMinutes` (formula esatta richiesta dall'utente:
+   `nuova_media = ((vecchia_media × n) + nuovo_valore) / (n+1)`), minuti
+   trascorsi da `Lead.createdAt` a ora. Agganciato in
+   `apps/api/src/quotes/quotes.service.ts`, `createOrUpdate()`, solo sul
+   ramo `!existingQuote` (il primo preventivo inviato per quel lead, non
+   le modifiche successive).
+3. **Richiesta accettata / lavoro accettato** (`recordJobAccepted`) —
+   incrementa `acceptedRequests`+`acceptedJobs`. Tre punti dove un
+   preventivo diventa una `Booking` reale ("accettato" in questo
+   dominio): `apps/api/src/bookings/bookings.service.ts` `createFromQuote()`
+   (il cliente accetta dalla schermata preventivo) e
+   `apps/api/src/quotes/quotes.service.ts` `confirmProposedDate()` (il
+   professionista conferma una data proposta dal cliente).
+4. **Lavoro completato** (`recordJobCompleted`) — incrementa
+   `completedJobs`. Due punti in `apps/api/src/bookings/bookings.service.ts`:
+   `updateStatus()` quando lo stato passa a `COMPLETED` (calendario
+   "Prenotazioni") e `completeWithFinalAmount()` (pop-up "Lavoro
+   terminato" con importo preciso, `/dashboard`).
+5. **Recensione lasciata** (`recordReview`) — ricalcolo esatto (non media
+   mobile: il volume di recensioni resta basso) di `avgRating`,
+   incrementa `reviewCount`. Agganciato in
+   `apps/api/src/reviews/reviews.service.ts`, `create()`.
+6. **Appuntamento onorato/mancato** (`recordAppointmentOutcome`) — stessi
+   due punti dell'evento 4 (`BookingsService.updateStatus()` per
+   `COMPLETED`/`NO_SHOW`, `completeWithFinalAmount()` per `COMPLETED`):
+   `CANCELED` non conta né come onorato né come mancato (deciso
+   esplicitamente, un annullamento non è un appuntamento mancato).
+7. **Ultima attività** (`touchActivity`, nessun incremento, solo il
+   timestamp) — agganciato in cinque punti aggiuntivi rispetto agli eventi
+   sopra (che aggiornano `lastActivityAt` già come parte del loro upsert):
+   login professionista (`apps/api/src/auth/auth.service.ts`, `login()` e
+   `verifyGoogleToken()` sul ramo utente esistente — mai alla
+   registrazione, dove non esiste ancora un `ProfessionalProfile` a cui
+   agganciare la riga), modifica di un preventivo già inviato
+   (`QuotesService.createOrUpdate()`, ramo `existingQuote`), nota privata
+   su una prenotazione (`BookingsService.updateProfessionalNote()`),
+   annullamento di un intervento da parte del professionista
+   (`BookingsService.cancelByProfessional()`), rifiuto di un lead
+   (`ProfessionalsService.declineLead()`), aggiornamento dell'agenda
+   settimanale (`ProfessionalsService.upsertMyAvailability()`).
+
+**STEP 3 — `calculateReliabilityScore`** (funzione pura, esportata separata
+dal service per poterla testare senza un DB davanti): sotto
+`MIN_COMPLETED_JOBS_FOR_SCORE = 3` lavori completati il punteggio resta
+`null` — troppo pochi dati per essere affidabile, richiesta esplicita
+dell'utente. Formula esatta richiesta: `tasso_completamento × 0.3 +
+(valutazione_media/5) × 0.3 + tasso_risposta_normalizzato × 0.2 +
+tasso_puntualità × 0.2`, con `tasso_risposta_normalizzato = clamp(1 -
+tempo_medio/120, 0, 1)` (`RESPONSE_TIME_CEILING_MINUTES = 120`) e i tassi
+di completamento/puntualità a 0 quando il denominatore è 0 (nessuna
+divisione per zero).
+
+**STEP 4 — il punteggio non instrada ancora nulla**: nessun punto di
+`matchProfilesForFanOut`/`selectLeadCandidates` (§14, selezione dei Lead)
+legge `reliabilityScore` — verificato con una ricerca su tutto `apps/api`,
+l'unico file che lo referenzia è `professional-metrics.service.ts` stesso.
+Esplicitamente rimandato dall'utente a un punto futuro con più
+professionisti da confrontare per categoria/zona.
+
+**Wiring dei moduli**: `ProfessionalMetricsModule` (nuovo, esporta il
+solo `ProfessionalMetricsService`) importato direttamente da ogni modulo
+che ne ha bisogno — `GuidedRequestsModule`, `QuotesModule`,
+`BookingsModule`, `ReviewsModule`, `AuthModule`, `ProfessionalsModule` —
+mai instradato indirettamente tramite un altro service, per tenere le
+dipendenze esplicite (stessa convenzione già in uso per
+`NotificationsModule`).
+
+Verificato end-to-end con l'API locale (non solo typecheck/build): tre
+cicli completi richiesta→preventivo→accettazione→completamento→recensione
+per un professionista di test, con asserzioni dopo ogni ciclo (script
+self-cleaning, `DELETE /auth/me` su tutti gli account creati). Nessuna
+riga `ProfessionalMetrics` esiste prima del primo evento (confermato
+`null`); dopo il primo ciclo tutti e 6 i contatori/valori sono corretti
+(`totalRequestsReceived=1`, `totalResponsesMeasured=1`, `acceptedJobs=1`,
+`completedJobs=1`, `honoredAppointments/totalAppointments=1/1`,
+`avgRating=5, reviewCount=1`) e `reliabilityScore` resta `null`; dopo il
+secondo ciclo `avgRating` corretto a 4 (media di 5 e 3) e il punteggio
+resta ancora `null` (2 lavori completati, sotto soglia); dopo il terzo
+ciclo (soglia raggiunta) `reliabilityScore` calcolato a `0.94`, verificato
+a mano contro la formula esatta (completionRate=1, ratingComponent=0.8,
+responseRateNormalized≈1, punctualityRate=1 → 0.3+0.24+0.2+0.2=0.94,
+combaciante). Login professionista e aggiornamento agenda confermati
+aggiornare `lastActivityAt` (evento 7) con un `sleep` di oltre un secondo
+tra le chiamate per escludere coincidenze di timestamp. Typecheck pulito
+su tutti i package (`shared`, `database`, `api-client`, `ui`, `api`,
+`web`, `mobile`), build di produzione `apps/web` verde (24 route), avvio
+reale dell'API locale verificato senza errori di risoluzione del grafo
+delle dipendenze NestJS.

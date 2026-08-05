@@ -25,6 +25,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -61,6 +62,7 @@ export class ProfessionalsService {
     private readonly geocodingService: GeocodingService,
     private readonly notificationsService: NotificationsService,
     private readonly guidedRequestsService: GuidedRequestsService,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -602,6 +604,12 @@ export class ProfessionalsService {
     // schedulato quando si sa già ora che questo professionista non
     // risponderà: no-op se la coda è vuota.
     await this.guidedRequestsService.expandLeadQueue(lead.guidedRequestId);
+
+    // Metriche di affidabilità (CLAUDE.md §15, evento 7): un rifiuto
+    // esplicito è comunque un'azione del professionista, anche se non è la
+    // "prima risposta" misurata dall'evento 2 (quella è solo l'invio di un
+    // preventivo).
+    await this.professionalMetricsService.touchActivity(professionalProfileId);
   }
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
@@ -824,6 +832,9 @@ export class ProfessionalsService {
         })),
       });
     }
+    // Metriche di affidabilità (CLAUDE.md §15, evento 7): aggiornamento
+    // disponibilità è un'azione esplicita del professionista.
+    await this.professionalMetricsService.touchActivity(professionalProfileId);
     return this.getMyAvailability(userId);
   }
 

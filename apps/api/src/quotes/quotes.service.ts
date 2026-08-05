@@ -3,12 +3,14 @@ import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { ProposeQuoteDateInput, QuoteSelfInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
 @Injectable()
 export class QuotesService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {}
 
   async createOrUpdate(userId: string, input: QuoteSelfInput) {
@@ -84,6 +86,11 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
       });
+      // Metriche di affidabilità (CLAUDE.md §15, evento 2): prima risposta
+      // del professionista a QUESTO lead — minuti da quando gli è arrivato
+      // (Lead.createdAt), non dalla creazione della richiesta originale.
+      const responseMinutes = (Date.now() - lead.createdAt.getTime()) / 60_000;
+      await this.professionalMetricsService.recordFirstResponse(professionalProfile.id, responseMinutes);
     } else if (existingQuote.estimatedStartDate.getTime() !== data.estimatedStartDate.getTime()) {
       // Richiesta esplicita dell'utente: se il professionista modifica un
       // preventivo già inviato cambiando la data/orario, il cliente deve
@@ -96,6 +103,13 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
       });
+    }
+    if (existingQuote) {
+      // Metriche di affidabilità (CLAUDE.md §15, evento 7): modificare un
+      // preventivo già inviato (voci/note/data) resta un'azione del
+      // professionista ai fini di "ultima attività" — il primo invio è già
+      // coperto sopra da recordFirstResponse.
+      await this.professionalMetricsService.touchActivity(professionalProfile.id);
     }
 
     return { id: quote.id, status: quote.status };
@@ -223,6 +237,9 @@ export class QuotesService {
         guidedRequestId: quote.guidedRequestId,
         quoteId: quote.id,
       });
+      // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
+      // diventato una prenotazione reale ("accettato" in questo dominio).
+      await this.professionalMetricsService.recordJobAccepted(professionalProfile.id);
       return { bookingId: booking.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {

@@ -143,9 +143,78 @@ model ProfessionalProfile {
   availabilitySlots      AvailabilitySlot[]
   availabilityExceptions AvailabilityException[]
   guidedRequests         GuidedRequest[]
+  metrics                ProfessionalMetrics?
 
   @@index([categoryId, city])
   @@map("professional_profiles")
+}
+
+// Metriche di affidabilità (CLAUDE.md §15) — tabella collegata 1:1,
+// separata dai dati anagrafici del profilo: aggiornata ad ogni evento
+// operativo (richiesta ricevuta, prima risposta, lavoro accettato/
+// completato, recensione, appuntamento onorato/mancato), a differenza dei
+// campi di ProfessionalProfile che il professionista modifica lui stesso.
+// Creata alla prima occorrenza di uno di questi eventi (nessuna riga finché
+// non succede nulla), non alla creazione del profilo — un professionista
+// che si è appena iscritto senza ancora aver ricevuto nulla non ha
+// metriche da mostrare, `null`/riga assente è lo stato corretto, non "zero
+// finto". Nessun trigger/middleware Prisma: ogni aggiornamento è scritto
+// esplicitamente nel service che esegue l'azione corrispondente
+// (ProfessionalMetricsService, richiamato da lì), stessa convenzione già
+// in uso in tutto il progetto (es. NotificationsService.notify()).
+model ProfessionalMetrics {
+  id                     String   @id @default(uuid())
+  professionalProfileId  String   @unique
+  // Media mobile dei minuti trascorsi tra la ricezione di un Lead e il
+  // primo preventivo inviato per quello stesso Lead — misura la reattività
+  // DI QUESTO professionista, non l'età della richiesta originale (che può
+  // essere più vecchia se il Lead è nato da un'espansione, CLAUDE.md §14).
+  avgResponseTimeMinutes Float?
+  // Denominatore della media mobile sopra (il numero di prime-risposte già
+  // misurate) — non coincide con totalRequestsReceived: un professionista
+  // può ricevere Lead senza mai rispondere, quelli non contano nella media.
+  totalResponsesMeasured Int      @default(0)
+  // Lead ricevuti in totale (fan-out iniziale + espansione + coinvolgimento
+  // a posteriori, CLAUDE.md §14) — non "richieste create", quelle di per sé
+  // possono generare più Lead per più professionisti diversi.
+  totalRequestsReceived  Int      @default(0)
+  // Preventivi che sono diventati una Booking reale (Quote → Booking,
+  // "accettato" nel vocabolario di questo dominio — vedi
+  // BookingsService.createFromQuote/QuotesService.confirmProposedDate).
+  acceptedRequests       Int      @default(0)
+  // Bookings segnate COMPLETED (BookingsService.completeWithFinalAmount).
+  completedJobs          Int      @default(0)
+  // Bookings create da un preventivo accettato — stesso momento di
+  // acceptedRequests, campo distinto perché lo STEP 3 (formula del
+  // punteggio) li usa con significati diversi (tasso di completamento =
+  // completedJobs/acceptedJobs).
+  acceptedJobs           Int      @default(0)
+  // Media reale delle recensioni ricevute (ricalcolata da zero ad ogni
+  // nuova recensione, non una media mobile: il numero di recensioni per
+  // professionista resta basso abbastanza da non giustificare
+  // l'approssimazione, e una media esatta è più corretta).
+  avgRating              Float?
+  reviewCount            Int      @default(0)
+  // COMPLETED = onorato, NO_SHOW = mancato (BookingStatus) — CANCELED
+  // volutamente escluso da entrambi i contatori: un annullamento (da
+  // cliente o professionista) non è né un appuntamento onorato né uno
+  // mancato dal professionista, è un evento diverso.
+  honoredAppointments    Int      @default(0)
+  totalAppointments      Int      @default(0)
+  lastActivityAt         DateTime @default(now())
+  // Calcolato (STEP 3), non impostato manualmente — vedi
+  // calculateReliabilityScore in professional-metrics.service.ts. `null`
+  // finché completedJobs < 3 (troppo pochi dati per essere significativo,
+  // richiesta esplicita dell'utente). Deliberatamente NON usato oggi per
+  // ordinare o filtrare nulla (selectLeadCandidates in
+  // GuidedRequestsService riusa invece il rating live dalle recensioni,
+  // §14) — solo calcolato e salvato, in vista di un utilizzo futuro.
+  reliabilityScore       Float?
+  updatedAt              DateTime @default(now()) @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_metrics")
 }
 
 // Prestazioni offerte dal professionista con prezzo facoltativo (mostrate
