@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import {
@@ -199,6 +199,24 @@ export default function DashboardPage() {
     setBookingsPage(1);
   }
 
+  // Cambiare pagina deve riportare la vista in cima alla lista (richiesta
+  // esplicita dell'utente, stesso trattamento di /le-mie-richieste): senza,
+  // si resta scrollati in fondo sul controllo appena cliccato e la nuova
+  // pagina parte fuori dallo schermo. Un solo ref condiviso dalle due tab:
+  // solo una è montata alla volta.
+  const listTopRef = useRef<HTMLDivElement>(null);
+  function scrollToListTop() {
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function goToLeadsPage(page: number) {
+    setLeadsPage(page);
+    scrollToListTop();
+  }
+  function goToBookingsPage(page: number) {
+    setBookingsPage(page);
+    scrollToListTop();
+  }
+
   function reloadLeads() {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads);
@@ -336,7 +354,7 @@ export default function DashboardPage() {
         </XStack>
 
         {activeTab === "richieste" ? (
-          <YStack gap="$3">
+          <YStack ref={listTopRef} gap="$3">
             {leads !== null && leads.length > 0 ? (
               <ListControls
                 statusValue={leadsStatusFilter}
@@ -349,6 +367,7 @@ export default function DashboardPage() {
                 onPageSizeChange={updateLeadsPageSize}
               />
             ) : null}
+            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
             {leads === null ? (
               <LoadingState />
             ) : leads.length === 0 ? (
@@ -367,10 +386,10 @@ export default function DashboardPage() {
                 />
               ))
             )}
-            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={setLeadsPage} />
+            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
           </YStack>
         ) : (
-          <YStack gap="$3">
+          <YStack ref={listTopRef} gap="$3">
             <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
               <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
                 <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
@@ -393,6 +412,7 @@ export default function DashboardPage() {
                 onPageSizeChange={updateBookingsPageSize}
               />
             ) : null}
+            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
             {bookings === null ? (
               <LoadingState />
             ) : acceptedJobs(bookings).length === 0 ? (
@@ -406,7 +426,7 @@ export default function DashboardPage() {
                 ))}
               </YStack>
             )}
-            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={setBookingsPage} />
+            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
           </YStack>
         )}
 

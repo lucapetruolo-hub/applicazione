@@ -3371,3 +3371,66 @@ su tutti i package (`shared`, `database`, `api-client`, `ui`, `api`,
 `web`, `mobile`), build di produzione `apps/web` verde (24 route), avvio
 reale dell'API locale verificato senza errori di risoluzione del grafo
 delle dipendenze NestJS.
+
+**Paginazione: torna in cima alla lista al cambio pagina + controllo anche
+sopra** — richiesta esplicita dell'utente ("quando cambio pagina fammi
+tornare alla visualizzazione più sopra... dai il numero delle pagine anche
+nella parte superiore, non solo quella inferiore"). Applicata alle quattro
+liste che condividono `Pagination`/`ListControls` (`apps/web/src/components/
+ListControls.tsx`): "Le mie richieste"/"Lavori accettati" in
+`/le-mie-richieste` e "Richieste ricevute"/"Lavori accettati" in
+`/dashboard` — stesso trattamento su entrambe le pagine, non solo quella
+nominata dall'utente, essendo lo stesso componente riusato con lo stesso
+bug. `Pagination` stesso non è stato toccato (già generico, bastava
+montarlo due volte); in ciascuna delle quattro pagine: un `useRef`
+(`listTopRef`, condiviso dalle due tab di ciascuna pagina — solo una è
+montata alla volta) attaccato allo `YStack` che avvolge `ListControls` +
+lista, una seconda istanza di `<Pagination>` subito dopo `ListControls`
+(prima della lista, non solo dopo), e i quattro handler `onPageChange`
+(`goToRequestsPage`/`goToClientBookingsPage` in `/le-mie-richieste`,
+`goToLeadsPage`/`goToBookingsPage` in `/dashboard`) ora chiamano anche
+`listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })`
+oltre ad aggiornare lo stato di pagina. Verificato con Playwright (non
+solo lettura di codice): 2 controlli "Pagina 2" presenti su ciascuna delle
+quattro liste (sopra e sotto), click su quello in fondo dopo aver scrollato
+in fondo alla pagina riporta lo scroll verso l'alto (`window.scrollY`
+sceso da 2321 a 231 nel test). Zero errori console nuovi.
+
+**Orario preferito da agenda reale quando si richiede un preventivo a un
+professionista specifico** — richiesta esplicita dell'utente: cliccando
+"Richiedi un preventivo a [nome attività]" dal profilo pubblico (bottone
+generico, distinto dal click su una singola pillola di fascia generica
+già esistente, che porta già `data`/`fasciaOraria` bloccati in URL — quel
+percorso resta invariato), il form ora offre comunque un orario tra
+quelli realmente liberi nell'agenda del professionista, invece di non
+offrirne alcuno. `GuidedRequestForm.tsx`: quando `professionalProfileId`
+è presente ma l'URL non porta già `data`/`fasciaOraria`, un
+`useEffect` carica `GET /professionals/:id/agenda` (stesso endpoint
+pubblico già usato dal profilo, `apiClient.getProfessionalAgenda`,
+nessun nuovo endpoint) e `flattenPickableSlots` estrae solo le fasce
+**generiche** (capienza > 1) ancora libere (`bookedCount < maxBookings`)
+sui prossimi giorni della finestra dell'agenda — le fasce **esatte**
+(capienza 1) restano fuori: quelle sono prenotazione diretta istantanea
+(`bookAgendaSlot`, un flusso completamente separato senza `Quote`), non
+una richiesta di preventivo, offrirle qui avrebbe fatto fallire la
+validazione server-side (`resolveGenericSlot` rifiuta esplicitamente
+`maxBookings <= 1`). Nuovo `<select>` "Orario preferito (facoltativo)"
+con "Nessuna preferenza di orario" come opzione di default (il campo
+resta facoltativo, un professionista può non avere fasce generiche
+impostate) — mostrato solo quando esistono fasce selezionabili, nessun
+messaggio quando non ce ne sono (stesso principio "niente UI per
+un'informazione che non esiste" già seguito altrove). La fascia scelta
+alimenta le stesse variabili `preferredDate`/`preferredTimeSlot` già
+usate dal percorso "pillola cliccata sul profilo" (nessun campo nuovo
+nello schema/DB): quando l'URL le blocca già, questo nuovo picker non
+viene mai mostrato, le due sorgenti non si sovrappongono mai. Verificato
+end-to-end con l'API locale e Playwright (non solo typecheck): agenda
+seminata con una fascia generica (capienza 5) su 3 giorni consecutivi →
+`<select>` popolato con le 3 date reali e il conteggio posti liberi;
+selezione di una fascia → invio reale del form (upload foto intercettato
+con una risposta finta, Cloudinary non configurato in locale) →
+`POST /guided-requests` catturata via `page.route` conferma
+`preferredDate`/`preferredTimeSlot` esattamente uguali alla fascia scelta
+nel menu, richiesta accettata dal backend reale (schermata "Richiesta
+inviata!"). Zero errori console nuovi. Typecheck pulito su tutti i
+package, build di produzione `apps/web` verde (24 route).

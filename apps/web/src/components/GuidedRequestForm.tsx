@@ -1,15 +1,47 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug, type ProfessionalCategorySlug } from "@professionisti/shared";
+import {
+  ALL_ITALIAN_CITY_NAMES,
+  PROFESSIONAL_CATEGORIES,
+  isProfessionalCategorySlug,
+  type ProfessionalAgenda,
+  type ProfessionalCategorySlug,
+} from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
 const MAX_PHOTOS = 3;
+
+/** Fascia "generica" (a capienza) dell'agenda pubblica di un professionista, ancora libera — le sole selezionabili qui (le fasce esatte sono prenotazione diretta, un flusso separato). */
+type PickableAgendaSlot = { date: string; startTime: string; endTime: string; remaining: number };
+
+function flattenPickableSlots(agenda: ProfessionalAgenda): PickableAgendaSlot[] {
+  const result: PickableAgendaSlot[] = [];
+  for (const day of agenda.days) {
+    for (const slot of day.slots) {
+      if (slot.maxBookings > 1 && slot.bookedCount < slot.maxBookings) {
+        result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime, remaining: slot.maxBookings - slot.bookedCount });
+      }
+    }
+  }
+  return result;
+}
+
+function pickableSlotValue(slot: PickableAgendaSlot): string {
+  return `${slot.date}|${slot.startTime}-${slot.endTime}`;
+}
+
+function pickableSlotLabel(slot: PickableAgendaSlot): string {
+  const date = new Date(`${slot.date}T00:00:00Z`);
+  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const seatsLabel = slot.remaining === 1 ? "1 posto libero" : `${slot.remaining} posti liberi`;
+  return `${dateLabel} · ${slot.startTime}–${slot.endTime} (${seatsLabel})`;
+}
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
@@ -51,6 +83,32 @@ export function GuidedRequestForm({
   // di un professionista specifico.
   const preferredDate = searchParams.get("data") ?? undefined;
   const preferredTimeSlot = searchParams.get("fasciaOraria") ?? undefined;
+
+  // Quando si arriva dal profilo di un professionista SENZA una fascia già
+  // scelta (bottone generico "Richiedi un preventivo a [nome]", non il
+  // click su una singola pillola dell'agenda pubblica), offre comunque la
+  // possibilità di indicare un orario preferito tra quelli realmente
+  // liberi nella sua agenda — richiesta esplicita dell'utente. Solo le
+  // fasce "generiche" (capienza > 1) sono selezionabili qui: le fasce
+  // esatte sono prenotazione diretta istantanea, un flusso a parte
+  // (bookAgendaSlot) che non passa da una richiesta di preventivo.
+  const [pickableSlots, setPickableSlots] = useState<PickableAgendaSlot[]>([]);
+  const [selectedSlotValue, setSelectedSlotValue] = useState("");
+
+  useEffect(() => {
+    if (!professionalProfileId || preferredDate) return;
+    apiClient
+      .getProfessionalAgenda(professionalProfileId)
+      .then((agenda) => setPickableSlots(flattenPickableSlots(agenda)))
+      .catch(() => {});
+  }, [professionalProfileId, preferredDate]);
+
+  // Fascia effettivamente inviata: quella bloccata dall'URL ha sempre la
+  // precedenza (non è mai in conflitto, il picker sotto non viene mostrato
+  // in quel caso), altrimenti quella scelta nel nuovo selettore.
+  const [chosenDate, chosenTimeSlot] = selectedSlotValue ? (selectedSlotValue.split("|") as [string, string]) : [undefined, undefined];
+  const finalPreferredDate = preferredDate ?? chosenDate;
+  const finalPreferredTimeSlot = preferredTimeSlot ?? chosenTimeSlot;
 
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
@@ -149,8 +207,8 @@ export function GuidedRequestForm({
         isUrgent,
         photoUrls,
         professionalProfileId,
-        preferredDate,
-        preferredTimeSlot,
+        preferredDate: finalPreferredDate,
+        preferredTimeSlot: finalPreferredTimeSlot,
       });
       setResult({ matchedProfessionals: response.matchedProfessionals });
     } catch (err) {
@@ -298,6 +356,36 @@ export function GuidedRequestForm({
               Questa è una fascia a capienza limitata: la richiesta non prenota subito l&apos;orario, il professionista ti
               risponderà con un preventivo.
             </Text>
+          </YStack>
+        ) : null}
+
+        {!preferredDate && professionalProfileId && pickableSlots.length > 0 ? (
+          <YStack gap="$2">
+            <FieldLabel>Orario preferito (facoltativo)</FieldLabel>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Scegli un orario tra quelli liberi nell&apos;agenda del professionista, oppure lascia senza preferenza:
+              risponderà comunque con un preventivo.
+            </Text>
+            <select
+              value={selectedSlotValue}
+              onChange={(e) => setSelectedSlotValue(e.target.value)}
+              style={{
+                padding: 12,
+                borderRadius: 4,
+                border: `1px solid ${brand.filetto}`,
+                fontSize: 15,
+                fontFamily: "inherit",
+                backgroundColor: brand.calce,
+                color: brand.grafite,
+              }}
+            >
+              <option value="">Nessuna preferenza di orario</option>
+              {pickableSlots.map((slot) => (
+                <option key={pickableSlotValue(slot)} value={pickableSlotValue(slot)}>
+                  {pickableSlotLabel(slot)}
+                </option>
+              ))}
+            </select>
           </YStack>
         ) : null}
 

@@ -162,6 +162,24 @@ export default function LeMieRichiestePage() {
     setClientBookingsPage(1);
   }
 
+  // Cambiare pagina deve riportare la vista in cima alla lista (richiesta
+  // esplicita dell'utente): senza, si resta scrollati in fondo sul
+  // controllo appena cliccato e la nuova pagina di richieste/prenotazioni
+  // parte fuori dallo schermo, invisibile finché non si scrolla a mano.
+  // Un solo ref condiviso dalle due tab: solo una è montata alla volta.
+  const listTopRef = useRef<HTMLDivElement>(null);
+  function scrollToListTop() {
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function goToRequestsPage(page: number) {
+    setRequestsPage(page);
+    scrollToListTop();
+  }
+  function goToClientBookingsPage(page: number) {
+    setClientBookingsPage(page);
+    scrollToListTop();
+  }
+
   function reload() {
     if (!token) return;
     apiClient
@@ -263,7 +281,7 @@ export default function LeMieRichiestePage() {
           </XStack>
 
           {activeTab === "richieste" ? (
-            <YStack gap="$4">
+            <YStack ref={listTopRef} gap="$4">
               {requests !== null && requests.length > 0 ? (
                 <ListControls
                   statusValue={requestsStatusFilter}
@@ -276,6 +294,7 @@ export default function LeMieRichiestePage() {
                   onPageSizeChange={updateRequestsPageSize}
                 />
               ) : null}
+              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={goToRequestsPage} />
               {requests === null ? (
                 <LoadingState />
               ) : requests.length === 0 ? (
@@ -305,10 +324,10 @@ export default function LeMieRichiestePage() {
                   />
                 ))
               )}
-              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={setRequestsPage} />
+              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={goToRequestsPage} />
             </YStack>
           ) : (
-            <YStack gap="$4">
+            <YStack ref={listTopRef} gap="$4">
               {bookings !== null && bookings.length > 0 ? (
                 <ListControls
                   statusValue={clientBookingsStatusFilter}
@@ -321,6 +340,7 @@ export default function LeMieRichiestePage() {
                   onPageSizeChange={updateClientBookingsPageSize}
                 />
               ) : null}
+              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />
               {bookings === null ? (
                 <LoadingState />
               ) : bookings.length === 0 ? (
@@ -332,7 +352,7 @@ export default function LeMieRichiestePage() {
                   <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} isNew={newClientBookingIds.has(booking.id)} />
                 ))
               )}
-              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={setClientBookingsPage} />
+              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />
             </YStack>
           )}
         </YStack>
