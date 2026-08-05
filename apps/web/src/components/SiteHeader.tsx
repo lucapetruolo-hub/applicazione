@@ -103,8 +103,13 @@ export function SiteHeader() {
           {/* Nascosto per un account professionista già autenticato (richiesta
               esplicita dell'utente): "Richiedi un preventivo" è un'azione da
               cliente, non pertinente per chi gestisce il proprio profilo
-              professionale. */}
-          {user?.role !== "PROFESSIONAL" ? (
+              professionale. `isLoading` va controllato qui esplicitamente
+              (bug reale): mentre l'autenticazione è ancora in corso `user`
+              è `null`/`undefined`, quindi `user?.role !== "PROFESSIONAL"`
+              risultava vero per un istante anche per un professionista già
+              loggato, facendo comparire il bottone per un breve lampo ad
+              ogni caricamento di pagina prima di sparire. */}
+          {!isLoading && user?.role !== "PROFESSIONAL" ? (
             <Link href="/preventivo" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena

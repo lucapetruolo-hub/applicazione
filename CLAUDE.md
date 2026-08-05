@@ -3605,3 +3605,25 @@ comprese le recensioni che aveva scritto.
   di CLAUDE.md §14) — non un bug applicativo, risolto ripulendo il
   database e usando una città isolata per il test finale. Typecheck pulito
   su tutti i package, build di produzione `apps/web` verde (24 route).
+
+**Bug reale: lampo del bottone "Richiedi preventivo" per un account
+professionista già autenticato** — segnalato dall'utente ("ogni volta che
+si carica la pagina esce sempre per qualche istante in alto a destra
+richiedi preventivo"). `SiteHeader.tsx` nasconde già quel bottone con
+`user?.role !== "PROFESSIONAL"`, ma quella condizione non teneva conto di
+`isLoading` (lo stato di caricamento iniziale di `AuthContext`, già
+gestito correttamente qualche riga sopra per `AccountMenu`/"Accedi"):
+mentre l'autenticazione è ancora in corso `user` è `null`/`undefined`, e
+`undefined !== "PROFESSIONAL"` risulta vero — il bottone compariva quindi
+per l'istante tra il primo render e la risoluzione di `user`, anche per un
+professionista già loggato, sparendo solo quando `user.role` si
+stabilizzava. Corretto aggiungendo lo stesso controllo `!isLoading` già
+usato per l'altro ramo dell'header: `{!isLoading && user?.role !==
+"PROFESSIONAL" ? (...) : null}`. Verificato con Playwright (non solo
+lettura di codice): professionista autenticato, campionamento della
+visibilità del bottone ogni 30ms per 1,5s su ciascuna di 6
+pagine/navigazioni (home, dashboard, profilo, agenda, account, di nuovo
+home) — 80 campioni totali, zero lampi rilevati; bottone confermato
+assente a stato stabile. Cliente autenticato e visitatore anonimo:
+bottone visibile correttamente in entrambi i casi (nessuna regressione).
+Zero errori console nuovi. Typecheck pulito su `apps/web`.
