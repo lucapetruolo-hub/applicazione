@@ -161,6 +161,9 @@ export class QuotesService {
         clientProposedEndDate: proposedEndDate,
         clientProposedNote: input.note?.trim() || null,
         status: "MODIFICATION_REQUESTED",
+        // Una nuova trattativa riparte da capo: la nota della modifica
+        // precedente del professionista non è più pertinente.
+        professionalCounterNote: null,
       },
     });
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
@@ -310,6 +313,65 @@ export class QuotesService {
       quoteId: quote.id,
     });
     return { id: updated.id, status: updated.status };
+  }
+
+  /**
+   * Il professionista modifica direttamente l'orario proposto dal cliente
+   * durante la trattativa (invece di limitarsi a confermarlo o rifiutarlo)
+   * — richiesta esplicita dell'utente: "Modifica (in giallo), dove può
+   * modificare sia la data che l'orario... con una casella di testo dove
+   * si può scrivere qualcosa e inviare". Torna a SENT con la nuova data,
+   * proprio come un nuovo invio — il cliente può accettarla, proporne
+   * un'altra a sua volta o rifiutare l'intero preventivo. Stessa
+   * validazione contro l'agenda reale già usata per la proposta del
+   * cliente (resolveFreeExactSlot, mai fidarsi ciecamente dell'input).
+   */
+  async counterProposeDate(professionalUserId: string, quoteId: string, input: ProposeQuoteDateInput) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId }, include: { guidedRequest: true, booking: true } });
+    if (!quote || quote.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questo preventivo non è tuo.");
+    }
+    if (quote.status !== "MODIFICATION_REQUESTED") {
+      throw new ForbiddenException("Nessuna data proposta da modificare per questo preventivo.");
+    }
+    if (quote.booking) {
+      throw new ForbiddenException("Questo preventivo è già stato accettato.");
+    }
+
+    const { scheduledAt: estimatedStartDate, scheduledEndAt: estimatedEndDate } = await this.resolveFreeExactSlot(
+      professionalProfile.id,
+      input.date,
+      input.startTime,
+      input.endTime,
+    );
+
+    const updated = await this.prisma.quote.update({
+      where: { id: quote.id },
+      data: {
+        estimatedStartDate,
+        estimatedEndDate,
+        status: "SENT",
+        clientProposedDate: null,
+        clientProposedEndDate: null,
+        clientProposedNote: null,
+        professionalCounterNote: input.note?.trim() || null,
+      },
+    });
+    await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+    });
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    return {
+      id: updated.id,
+      status: updated.status,
+      estimatedStartDate: updated.estimatedStartDate.toISOString(),
+      estimatedEndDate: updated.estimatedEndDate?.toISOString() ?? null,
+    };
   }
 
   /**

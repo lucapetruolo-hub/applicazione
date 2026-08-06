@@ -311,6 +311,13 @@ export class GuidedRequestsService {
           // cioè è nata da una fascia generica dell'agenda pubblica) —
           // richiesta esplicita dell'utente, per evidenziarlo al cliente.
           timeChangedFromRequest: Boolean(requestedStart) && requestedStart!.getTime() !== quote.estimatedStartDate.getTime(),
+          // Nota lasciata dal professionista quando modifica direttamente
+          // l'orario proposto dal cliente durante la trattativa (richiesta
+          // esplicita dell'utente) — valorizzata solo appena dopo quella
+          // azione, resta finché il cliente non agisce di nuovo sul
+          // preventivo (non azzerata da qui, il ciclo di vita è dello
+          // stesso Quote.notes-like campo).
+          professionalCounterNote: quote.professionalCounterNote,
           notes: quote.notes,
           status: quote.status,
         })),

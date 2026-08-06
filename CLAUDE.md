@@ -3849,3 +3849,149 @@ range orario, telefono e indirizzo preciso del cliente tutti visibili dopo
 l'accettazione. Zero errori console in tutti i flussi. Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (24 route).
+
+---
+
+## 18. "Non presentato" + rimborso, trattativa data con "Modifica", dettagli completi in "Lavori accettati"
+
+Tre richieste esplicite dell'utente, stesso giro.
+
+**"Non presentato" + richiesta di rimborso (lato cliente)** — "dai la
+possibilità al cliente una volta che accetta un lavoro e terminate le
+trattative col professionista, successivamente alla data e l'orario
+prestabiliti di poter cliccare su non presentato, dove si aprirà una
+finestra che chiede di contattare 'nome'... oppure chiedere il rimborso."
+- **Nuovi campi additivi su `Booking`**: `refundRequested Boolean
+  @default(false)` + `refundRequestedAt DateTime?`. Deliberatamente **non**
+  riusato lo stato `NO_SHOW` già esistente sull'enum `BookingStatus`: quel
+  valore significa già "il cliente non si è presentato" (impostabile dal
+  professionista) — la direzione opposta, semanticamente diversa. Non tocca
+  `status`: il professionista può ancora segnare il lavoro
+  completato/annullato, resta libero di contestare la segnalazione.
+- **`BookingsService.reportProfessionalNoShow`** (`PATCH
+  /bookings/:id/report-no-show`, JWT): consentito solo su una prenotazione
+  propria `CONFIRMED`, solo dopo che `scheduledEndAt` (o `scheduledAt` se
+  l'ora di fine non è nota) è realmente passata — mai fidarsi del client su
+  questo controllo — e solo una volta. Notifica il professionista
+  (`BOOKING_NO_SHOW_REPORTED`, nuovo tipo in `notificationCopy.ts`/
+  aggiunto a `PROFESSIONAL_LAVORI_TYPES`).
+- **`BookingsService.listForClient`** espone ora anche
+  `professionalPhone`/`professionalEmail`/`professionalAddress` (dal
+  `ProfessionalProfile`/`User` del professionista) e `refundRequested` —
+  servono al popup per "Contatta" senza una chiamata separata.
+- **`ReportNoShowModal.tsx`** (nuovo, `apps/web/src/components`): stesso
+  pattern overlay di `ClientProfileModal`/`CancelBookingModal`. Due strade,
+  non un'azione automatica: "Contatta {professionista}" rivela
+  telefono/email/indirizzo (link `tel:`/`mailto:`), "Richiedi un rimborso"
+  chiama l'endpoint e mostra un messaggio onesto — nessun pagamento reale
+  da rimborsare in piattaforma (non ancora attivo, CLAUDE.md §9): "Abbiamo
+  avvisato... il rimborso va concordato direttamente con il
+  professionista", stesso principio già seguito per "Vai al pagamento".
+- **`/le-mie-richieste` (`BookingRow`)**: bottone testuale rosso "Non
+  presentato" visibile solo quando `status === "CONFIRMED"` e la fine
+  dell'appuntamento è già passata e non già segnalato; dopo la
+  segnalazione mostra un box rosso invece del bottone. Stesso banner
+  rosso lato professionista (`AcceptedJobCard`, `/dashboard`) quando
+  `refundRequested` è vero.
+
+**Trattativa data — "Modifica" al posto di limitarsi a
+confermare/rifiutare** — due richieste in sequenza: "quando gli arriva al
+professionista può... cliccare su Conferma (verde) Modifica (in giallo,
+dove può modificare sia la data che l'orario... già impostati sull'ultima
+data/orario proposti, con una casella di testo... e inviare) e Rifiuta (in
+rosso)"; poi, simmetricamente, "la stessa cosa il cliente può effettuare
+modifica, dove nel gruppo data ora ci sarà l'ultimo proposto e può anche
+solo scrivere qualcosa nella casella di testo... e fare invia".
+- **Lato cliente** (`/le-mie-richieste`, `QuoteCard`): il bottone
+  "Proponi altra data" è rinominato **"Modifica"** — comportamento
+  invariato (`startChoosingDate`/`handleProposeDate`, già esistenti), ma
+  ora precompilato sull'**ultima data/orario proposti** (il preventivo
+  attuale, `quote.estimatedStartDate`/`estimatedEndDate`) invece che sulla
+  prima fascia libera qualsiasi: il cliente può accettare implicitamente
+  la stessa fascia scrivendo solo una nota, senza dover ri-scegliere nulla.
+- **Lato professionista** (`/dashboard`, `LeadCard`, quando
+  `quote.status === "MODIFICATION_REQUESTED"`): tre bottoni invece di due
+  — **Conferma** (verde, `brand.verificato`, comportamento invariato:
+  `handleConfirmDate` crea la prenotazione), **Modifica** (giallo,
+  `brand.ottone`, nuovo) e **Rifiuta** (rosso, `variant="urgent"`,
+  comportamento invariato: `handleRejectDate`, torna alla data originale).
+  "Modifica" apre un modulo inline — `<select>` di fasce libere
+  dall'agenda reale (`availableSlots`, stesso prop già passato a
+  `LeadCard`), precompilato sulla fascia proposta dal cliente se ancora
+  libera, + textarea nota facoltativa + "Invia".
+- **Nuovo `QuotesService.counterProposeDate`** (`POST
+  /quotes/:id/counter-propose-date`, JWT): consentito solo su un
+  preventivo proprio `MODIFICATION_REQUESTED` senza prenotazione già
+  creata. Rivalida la fascia scelta contro l'agenda reale
+  (`resolveFreeExactSlot`, stessa cautela già in uso per
+  `proposeDate`/`bookAgendaSlot` — mai fidarsi ciecamente dell'input),
+  aggiorna `estimatedStartDate`/`estimatedEndDate`, torna a `SENT`,
+  azzera `clientProposedDate`/`clientProposedEndDate`/`clientProposedNote`
+  (la trattativa riparte con una nuova offerta), salva la nota in
+  `Quote.professionalCounterNote` (nuovo campo, distinto da `notes`: quello
+  sono le voci/dettagli del preventivo, mai sovrascritti da questo flusso)
+  e notifica il cliente (`QUOTE_DATE_CHANGED`, tipo già esistente — stesso
+  significato "il professionista ha cambiato la data del tuo preventivo").
+  `professionalCounterNote` azzerato quando il cliente propone di nuovo
+  (`proposeDate`, nuova trattativa da capo). Esposto lato cliente
+  (`GuidedRequestsService.listForClient`), mostrato in `QuoteCard` come
+  box evidenziato "Il professionista ti ha risposto: ..." quando lo stato
+  è tornato `SENT` con una nota presente.
+- **Correzione richiesta esplicitamente durante lo stesso giro**: "se non
+  è stato modificato il gruppo data ora non deve uscire 'ha proposto
+  un'altra data'" — un cliente che usa "Modifica" solo per scrivere una
+  nota, senza cambiare data/ora, non ha "proposto un'altra data" in senso
+  proprio. Nuovo helper `describeDateChangeKind` (`apps/web/src/app/
+  dashboard/page.tsx`, confronto su stringa "wall clock UTC", stessa
+  convenzione già in uso in tutto il modulo agenda) confronta
+  `quote.estimatedStartDate`/`EndDate` (la data attuale, prima della
+  proposta) con `quote.clientProposedDate`/`EndDate` (la proposta appena
+  arrivata) e distingue quattro casi — `none` ("Il cliente ti ha scritto
+  (stessa data: ...)"), `time` ("ha proposto un altro orario"), `date`
+  ("ha proposto un'altra data"), `both` ("ha proposto un'altra data e
+  orario") — nel banner mostrato al professionista. Stessa cautela non
+  applicata simmetricamente al banner `professionalCounterNote` lato
+  cliente (manca un confronto affidabile: `clientProposedDate` è già
+  azzerato al momento in cui il cliente lo vede) — quel banner resta
+  neutro ("Il professionista ti ha risposto:") apposta, per non rischiare
+  un'affermazione falsa sul cambio o meno di data/ora.
+
+**"Lavori accettati" (cliente) — tutti i dati utili, non solo quelli del
+professionista** — "oltre ai dati della persona [professionista] deve
+venire anche i dati del preventivo da lui inviato all'inizio come la
+descrizione dell'evento con il titolo, le foto e il preventivo accettato".
+`BookingsService.listForClient` include ora anche `quote.items` e
+`quote.guidedRequest.category` (join già presente lato professionista in
+`ProfessionalsService.getMyBookings`, mai esposta prima lato cliente) ed
+espone `categorySlug`/`categoryLabel` (il "titolo"), `description`,
+`photoUrls` (dalla `GuidedRequest` originale) e `quoteItems`/`quoteNotes`
+(le voci e note del preventivo accettato — il range concordato, distinto
+dall'importo finale esatto già mostrato a lavoro terminato in
+`finalItems`). `null`/`[]` per le prenotazioni dirette da agenda pubblica
+(`bookAgendaSlot`), che non hanno una `GuidedRequest`/`Quote` collegata.
+`BookingRow` (`/le-mie-richieste`, tab "Lavori accettati") mostra ora,
+sotto data/ora: categoria in grassetto come titolo, descrizione, foto in
+miniatura cliccabili (stesso `PhotoLightbox` già in uso altrove) e un
+blocco "Preventivo accettato" con voci+range di prezzo+note — sopra il
+blocco "Importo finale" già esistente (mostrato solo a lavoro `COMPLETED`).
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+segnalazione no-show rifiutata (403) prima della fine dell'appuntamento,
+forzando `scheduledEndAt` nel passato via query diretta (senza attendere
+un giorno reale) la segnalazione viene accettata, una seconda segnalazione
+sulla stessa prenotazione rifiutata, `/bookings/me` e
+`/professionals/me/bookings` riflettono `refundRequested: true` su
+entrambi i lati, notifica `BOOKING_NO_SHOW_REPORTED` ricevuta dal
+professionista. Cliente propone la stessa data/ora con solo una nota →
+lato professionista `estimatedStartDate === clientProposedDate` (nessun
+cambio reale, banner userà "none"); professionista usa "Modifica" su un
+orario diverso → preventivo torna `SENT` con la nuova data,
+`clientProposedDate` azzerato, `professionalCounterNote` visibile lato
+cliente con il testo corretto; tentativo di `counter-propose-date` senza
+una proposta in sospeso rifiutato (403). UI Playwright: card "Lavori
+accettati" con titolo categoria/descrizione/voce preventivo/nota tutti
+visibili; dashboard professionista con i tre bottoni Conferma/Modifica/
+Rifiuta, apertura di "Modifica" con `<select>` precompilato e textarea,
+invio che fa sparire il banner di trattativa (preventivo tornato `SENT`).
+Zero errori console in tutti i flussi. Typecheck pulito su tutti i package
+(`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`).

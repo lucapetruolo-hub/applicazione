@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",

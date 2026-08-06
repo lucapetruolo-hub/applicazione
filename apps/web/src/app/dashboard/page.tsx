@@ -47,6 +47,27 @@ function formatSentAt(iso: string): string {
   return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
+/**
+ * Cosa è cambiato tra due date/orari (richiesta esplicita dell'utente:
+ * "avverti sia se è cambiato l'orario, sia se è cambiata la data o
+ * entrambe"; e "se non è stato modificato il gruppo data ora non deve
+ * uscire 'ha proposto un'altra data'" — un cliente che usa "Modifica" solo
+ * per scrivere una nota, senza cambiare data/ora, non ha "proposto
+ * un'altra data"). Confronto su stringa "wall clock UTC" (stessa
+ * convenzione già in uso in tutto il modulo agenda), mai vero fuso orario.
+ */
+type DateChangeKind = "none" | "date" | "time" | "both";
+function describeDateChangeKind(oldStartIso: string, oldEndIso: string | null, newStartIso: string, newEndIso: string | null): DateChangeKind {
+  const dateChanged = oldStartIso.slice(0, 10) !== newStartIso.slice(0, 10);
+  const oldTime = `${oldStartIso.slice(11, 16)}-${oldEndIso?.slice(11, 16) ?? ""}`;
+  const newTime = `${newStartIso.slice(11, 16)}-${newEndIso?.slice(11, 16) ?? ""}`;
+  const timeChanged = oldTime !== newTime;
+  if (dateChanged && timeChanged) return "both";
+  if (dateChanged) return "date";
+  if (timeChanged) return "time";
+  return "none";
+}
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
@@ -700,6 +721,27 @@ function AcceptedJobCard({
         </YStack>
       ) : null}
 
+      {booking.refundRequested ? (
+        <YStack
+          gap="$1"
+          paddingTop="$1"
+          paddingHorizontal="$2"
+          paddingBottom="$2"
+          borderWidth={1}
+          borderColor={brand.urgenza}
+          backgroundColor={brand.urgenzaVelo}
+          borderRadius="$2"
+          marginTop="$1"
+        >
+          <Text fontSize="$2" fontWeight="700" color={brand.urgenza}>
+            Il cliente ha segnalato che non ti sei presentato
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Ha chiesto un rimborso. Contattalo per chiarire la situazione.
+          </Text>
+        </YStack>
+      ) : null}
+
       {/* Nota privata del professionista (mai vista dal cliente) — stesso
           campo/pattern già in uso in BookingDetailPanel (calendario
           "Prenotazioni"), richiesta esplicita dell'utente di vederla anche
@@ -871,6 +913,10 @@ function LeadCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmingDate, setIsConfirmingDate] = useState(false);
   const [isRejectingDate, setIsRejectingDate] = useState(false);
+  const [showCounterForm, setShowCounterForm] = useState(false);
+  const [counterSlotKey, setCounterSlotKey] = useState("");
+  const [counterNote, setCounterNote] = useState("");
+  const [isCountering, setIsCountering] = useState(false);
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
@@ -984,6 +1030,47 @@ function LeadCard({
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsRejectingDate(false);
+    }
+  }
+
+  // "Modifica" (richiesta esplicita dell'utente): invece di limitarsi a
+  // confermare o rifiutare la data proposta dal cliente, il professionista
+  // può modificarla direttamente — precompilata sull'ultima data/orario
+  // proposti, editabile tra le fasce libere della propria agenda, con una
+  // nota facoltativa.
+  function startCounterProposing() {
+    if (!lead.quote) return;
+    const proposedDate = lead.quote.clientProposedDate?.slice(0, 10);
+    const proposedTime = lead.quote.clientProposedDate?.slice(11, 16);
+    const matchingSlot = availableSlots.find((s) => s.date === proposedDate && s.startTime === proposedTime);
+    setCounterSlotKey(matchingSlot ? slotKey(matchingSlot) : availableSlots[0] ? slotKey(availableSlots[0]) : "");
+    setCounterNote("");
+    setError(null);
+    setShowCounterForm(true);
+  }
+
+  async function handleCounterPropose() {
+    if (!lead.quote) return;
+    const slot = availableSlots.find((s) => slotKey(s) === counterSlotKey);
+    if (!slot) {
+      setError("Scegli un orario dalla tua agenda.");
+      return;
+    }
+    setError(null);
+    setIsCountering(true);
+    try {
+      await apiClient.counterProposeQuoteDate(token, lead.quote.id, {
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        note: counterNote.trim() || undefined,
+      });
+      setShowCounterForm(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsCountering(false);
     }
   }
 
@@ -1216,35 +1303,106 @@ function LeadCard({
           padding="$3"
         >
           <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-            Il cliente ha proposto un&apos;altra data: {formatDateTimeRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+            {(() => {
+              const kind = describeDateChangeKind(
+                lead.quote.estimatedStartDate,
+                lead.quote.estimatedEndDate,
+                lead.quote.clientProposedDate,
+                lead.quote.clientProposedEndDate,
+              );
+              const range = formatDateTimeRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate);
+              if (kind === "none") return `Il cliente ti ha scritto (stessa data: ${range}):`;
+              if (kind === "time") return `Il cliente ha proposto un altro orario: ${range}`;
+              if (kind === "date") return `Il cliente ha proposto un'altra data: ${range}`;
+              return `Il cliente ha proposto un'altra data e orario: ${range}`;
+            })()}
           </Text>
           {lead.quote.clientProposedNote ? (
             <Text fontSize="$3" color={brand.grafite70}>
               {lead.quote.clientProposedNote}
             </Text>
           ) : null}
-          <XStack gap="$2">
-            <Button
-              variant="secondary"
-              size="$3"
-              height={40}
-              onPress={handleConfirmDate}
-              disabled={isConfirmingDate || isRejectingDate}
-              opacity={isConfirmingDate ? 0.6 : 1}
-            >
-              {isConfirmingDate ? "Conferma..." : "Conferma questa data"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="$3"
-              height={40}
-              onPress={handleRejectDate}
-              disabled={isConfirmingDate || isRejectingDate}
-              opacity={isRejectingDate ? 0.6 : 1}
-            >
-              {isRejectingDate ? "Rifiuto..." : "Rifiuta"}
-            </Button>
-          </XStack>
+          {!showCounterForm ? (
+            <XStack gap="$2" flexWrap="wrap">
+              <Button
+                backgroundColor={brand.verificato}
+                borderWidth={0}
+                color="white"
+                size="$3"
+                height={40}
+                onPress={handleConfirmDate}
+                disabled={isConfirmingDate || isRejectingDate}
+                opacity={isConfirmingDate ? 0.6 : 1}
+              >
+                {isConfirmingDate ? "Conferma..." : "Conferma"}
+              </Button>
+              <Button
+                backgroundColor={brand.ottone}
+                borderWidth={0}
+                color="white"
+                size="$3"
+                height={40}
+                onPress={startCounterProposing}
+                disabled={isConfirmingDate || isRejectingDate}
+              >
+                Modifica
+              </Button>
+              <Button
+                variant="urgent"
+                size="$3"
+                height={40}
+                onPress={handleRejectDate}
+                disabled={isConfirmingDate || isRejectingDate}
+                opacity={isRejectingDate ? 0.6 : 1}
+              >
+                {isRejectingDate ? "Rifiuto..." : "Rifiuta"}
+              </Button>
+            </XStack>
+          ) : (
+            <YStack gap="$2" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+              {availableSlots.length > 0 ? (
+                <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
+                  {availableSlots.map((slot) => {
+                    const key = slotKey(slot);
+                    const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}`;
+                    return (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Nessun orario libero nella tua agenda al momento.
+                </Text>
+              )}
+              <textarea
+                value={counterNote}
+                onChange={(e) => setCounterNote(e.target.value)}
+                placeholder="Scrivi qualcosa al cliente (opzionale)"
+                rows={2}
+                style={{ ...smallInputStyle, width: "100%", resize: "vertical" as const }}
+              />
+              <XStack gap="$2">
+                <Button
+                  backgroundColor={brand.ottone}
+                  borderWidth={0}
+                  color="white"
+                  size="$3"
+                  height={40}
+                  onPress={handleCounterPropose}
+                  disabled={isCountering}
+                  opacity={isCountering ? 0.6 : 1}
+                >
+                  {isCountering ? "Invio..." : "Invia"}
+                </Button>
+                <Button variant="ghost" size="$3" height={40} onPress={() => setShowCounterForm(false)} disabled={isCountering}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          )}
         </YStack>
       ) : null}
 

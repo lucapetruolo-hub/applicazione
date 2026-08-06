@@ -177,6 +177,13 @@ export type ProfessionalBooking = {
   photoUrls: string[];
   /** Nota privata del professionista (mai vista dal cliente), modificabile da BookingDetailPanel. */
   professionalNote: string | null;
+  /**
+   * Il cliente ha segnalato che il professionista non si è presentato
+   * all'appuntamento e ha chiesto un rimborso (richiesta esplicita
+   * dell'utente) — non cambia `status`, il professionista può ancora
+   * segnare il lavoro come completato/annullato in seguito.
+   */
+  refundRequested: boolean;
 };
 
 /**

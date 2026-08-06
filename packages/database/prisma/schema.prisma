@@ -589,30 +589,39 @@ enum QuoteStatus {
 }
 
 model Quote {
-  id                    String      @id @default(uuid())
-  guidedRequestId       String
-  professionalProfileId String
-  estimatedStartDate    DateTime
+  id                      String      @id @default(uuid())
+  guidedRequestId         String
+  professionalProfileId   String
+  estimatedStartDate      DateTime
   // Fine della fascia scelta dall'agenda del professionista (richiesta
   // esplicita dell'utente: "non visualizzare solo il primo orario ma
   // tutta la fascia d'orario") — nullable: null quando la data è stata
   // indicata a mano (nessuna agenda impostata, vecchio input libero) o per
   // i preventivi creati prima di questa funzionalità, casi in cui non
   // esiste una fascia con fine nota.
-  estimatedEndDate      DateTime?
+  estimatedEndDate        DateTime?
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
-  clientProposedDate    DateTime?
+  clientProposedDate      DateTime?
   // Fine della fascia proposta dal cliente, stesso motivo di estimatedEndDate.
-  clientProposedEndDate DateTime?
+  clientProposedEndDate   DateTime?
   // Dettagli facoltativi scritti dal cliente insieme alla data proposta
   // (es. "posso solo dopo le 17" o "meglio se venite con il furgone"),
   // mostrati al professionista quando deve confermare/rifiutare.
-  clientProposedNote    String?
-  notes                 String?
-  status                QuoteStatus @default(SENT)
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @default(now()) @updatedAt
+  clientProposedNote      String?
+  // Nota lasciata dal professionista quando modifica direttamente
+  // l'orario proposto dal cliente durante la trattativa (invece di
+  // confermarlo o rifiutarlo semplicemente) — richiesta esplicita
+  // dell'utente: "Modifica (in giallo)... con una casella di testo dove si
+  // può scrivere qualcosa e inviare". Distinta da `notes` (voci/dettagli
+  // del preventivo, mai sovrascritti da questo flusso). Azzerata quando il
+  // cliente propone una nuova data (negoziazione ripartita da capo) o
+  // quando il professionista modifica di nuovo (sostituita).
+  professionalCounterNote String?
+  notes                   String?
+  status                  QuoteStatus @default(SENT)
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @default(now()) @updatedAt
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -710,6 +719,18 @@ model Booking {
   // cancellationNote sopra. Modificabile liberamente finché la prenotazione
   // esiste, indipendentemente dallo stato.
   professionalNote String?
+
+  // Il cliente segnala che il professionista non si è presentato
+  // all'appuntamento (dopo la data/ora prevista) e chiede un rimborso —
+  // richiesta esplicita dell'utente. Puramente informativo/di notifica:
+  // nessun pagamento reale da rimborsare in piattaforma (non ancora
+  // attivo, CLAUDE.md §9) — il rimborso vero va concordato direttamente
+  // con il professionista nel frattempo, stesso principio già seguito per
+  // "Vai al pagamento". Non tocca `status`: quello resta CONFIRMED finché
+  // il professionista stesso non lo segna completato/annullato, il
+  // professionista può ancora contestare la segnalazione.
+  refundRequested   Boolean   @default(false)
+  refundRequestedAt DateTime?
 
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)

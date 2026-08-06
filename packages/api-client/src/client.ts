@@ -39,11 +39,30 @@ export type ClientBooking = {
   businessName: string;
   professionalProfileId: string;
   hasReview: boolean;
+  /**
+   * Titolo/categoria, descrizione e foto della richiesta guidata originale
+   * — richiesta esplicita dell'utente ("i dati del preventivo da lui
+   * inviato all'inizio come la descrizione dell'evento con il titolo, le
+   * foto"). `null`/`[]` per le prenotazioni dirette da agenda pubblica.
+   */
+  categorySlug: string | null;
+  categoryLabel: string | null;
+  description: string | null;
+  photoUrls: string[];
+  /** Voci e note del preventivo accettato (range concordato, distinto da finalItems sotto). */
+  quoteItems: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+  quoteNotes: string | null;
   /** Importo finale esatto (voci del preventivo + eventuali extra), valorizzato solo a lavoro terminato. */
   finalAmountEurCents: number | null;
   finalItems: { id: string; name: string; priceEurCents: number }[];
   /** Nota lasciata dal professionista se ha annullato l'intervento (facoltativa). */
   cancellationNote: string | null;
+  /** Dati di contatto del professionista, per il popup "Non presentato" (contatta oppure chiedi il rimborso). */
+  professionalPhone: string | null;
+  professionalEmail: string | null;
+  professionalAddress: string | null;
+  /** Vero se il cliente ha già segnalato un no-show per questa prenotazione. */
+  refundRequested: boolean;
 };
 
 export type ClientGuidedRequest = {
@@ -108,6 +127,8 @@ export type ClientGuidedRequest = {
     clientProposedNote: string | null;
     /** True se il professionista ha inviato il preventivo con un orario diverso da quello che il cliente aveva effettivamente richiesto (richiesta esplicita dell'utente, evidenziato in UI). */
     timeChangedFromRequest: boolean;
+    /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
+    professionalCounterNote: string | null;
     notes: string | null;
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
   }[];
@@ -445,6 +466,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Il professionista modifica direttamente l'orario proposto dal cliente (invece di confermarlo/rifiutarlo), con una nota facoltativa. */
+    counterProposeQuoteDate: (token: string, quoteId: string, input: ProposeQuoteDateInput) =>
+      request<{ id: string; status: string; estimatedStartDate: string; estimatedEndDate: string | null }>(`/quotes/${quoteId}/counter-propose-date`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
     /** Il cliente rifiuta interamente un preventivo ricevuto (oltre ad accettarlo). */
     rejectQuote: (token: string, quoteId: string) =>
       request<{ id: string; status: string }>(`/quotes/${quoteId}/reject`, {
@@ -506,6 +535,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     myClientBookings: (token: string) =>
       request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Il cliente segnala che il professionista non si è presentato e chiede un rimborso. */
+    reportBookingNoShow: (token: string, bookingId: string) =>
+      request<{ bookingId: string; refundRequested: boolean; refundRequestedAt: string }>(`/bookings/${bookingId}/report-no-show`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
 
     createReview: (token: string, input: ReviewInput) =>
       request<{ id: string }>("/reviews", {

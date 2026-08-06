@@ -247,11 +247,61 @@ export class BookingsService {
     return { bookingId, status: "CANCELED" as const };
   }
 
+  /**
+   * Il cliente segnala che il professionista non si è presentato
+   * all'appuntamento e chiede un rimborso (richiesta esplicita
+   * dell'utente) — consentito solo su una prenotazione CONFIRMED propria,
+   * e solo dopo che la data/ora prevista è realmente passata (mai fidarsi
+   * del client per questo controllo). Non tocca `status`: il
+   * professionista può ancora segnarla completata/annullarla, questa è
+   * solo una segnalazione + notifica, nessun pagamento reale da
+   * rimborsare in piattaforma (non ancora attivo, CLAUDE.md §9).
+   */
+  async reportProfessionalNoShow(clientId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: true },
+    });
+    if (!booking || booking.clientId !== clientId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "CONFIRMED") {
+      throw new ForbiddenException("Solo un lavoro confermato può essere segnalato come non presentato.");
+    }
+    const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
+    if (referenceEnd.getTime() > Date.now()) {
+      throw new ForbiddenException("L'appuntamento non è ancora terminato.");
+    }
+    if (booking.refundRequested) {
+      throw new ForbiddenException("Hai già segnalato questo appuntamento.");
+    }
+
+    const refundRequestedAt = new Date();
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { refundRequested: true, refundRequestedAt } });
+
+    await this.notificationsService.notify(booking.professionalProfile.userId, "BOOKING_NO_SHOW_REPORTED", {
+      bookingId,
+    });
+
+    return { bookingId, refundRequested: true, refundRequestedAt: refundRequestedAt.toISOString() };
+  }
+
   /** Prenotazioni del cliente autenticato, per proporre la recensione a lavoro completato. */
   async listForClient(clientId: string) {
     const bookings = await this.prisma.booking.findMany({
       where: { clientId },
-      include: { professionalProfile: true, review: true, finalItems: true },
+      include: {
+        professionalProfile: { include: { user: true } },
+        review: true,
+        finalItems: true,
+        // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
+        // anche i dati della richiesta guidata originale (titolo/categoria,
+        // descrizione, foto) e del preventivo accettato (voci/note) — non
+        // solo i dati del professionista. Assente per le prenotazioni
+        // dirette da agenda pubblica (bookAgendaSlot), che non hanno una
+        // Quote/GuidedRequest collegata.
+        quote: { include: { items: true, guidedRequest: { include: { category: true } } } },
+      },
       orderBy: { scheduledAt: "desc" },
     });
 
@@ -269,6 +319,24 @@ export class BookingsService {
       businessName: booking.professionalProfile.businessName,
       professionalProfileId: booking.professionalProfileId,
       hasReview: booking.review !== null,
+      // Titolo/categoria, descrizione e foto della richiesta guidata
+      // originale — richiesta esplicita dell'utente ("i dati del
+      // preventivo da lui inviato all'inizio come la descrizione
+      // dell'evento con il titolo, le foto"). `null`/`[]` per le
+      // prenotazioni dirette da agenda pubblica, senza GuidedRequest.
+      categorySlug: booking.quote?.guidedRequest.category.slug ?? null,
+      categoryLabel: booking.quote?.guidedRequest.category.label ?? null,
+      description: booking.quote?.guidedRequest.description ?? null,
+      photoUrls: booking.quote?.guidedRequest.photoUrls ?? [],
+      // Voci e note del preventivo accettato (il range concordato prima
+      // dell'importo finale esatto, quest'ultimo in finalItems sopra).
+      quoteItems: (booking.quote?.items ?? []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        priceMinEurCents: item.priceMinEurCents,
+        priceMaxEurCents: item.priceMaxEurCents,
+      })),
+      quoteNotes: booking.quote?.notes ?? null,
       // Importo finale esatto (voci del preventivo + eventuali extra),
       // valorizzato solo dopo che il professionista ha segnalato il lavoro
       // come terminato — richiesta esplicita dell'utente.
@@ -276,6 +344,13 @@ export class BookingsService {
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
       // Nota lasciata dal professionista se ha annullato l'intervento (facoltativa).
       cancellationNote: booking.cancellationNote,
+      // Dati di contatto del professionista, per il popup "Non presentato"
+      // (contatta oppure chiedi il rimborso) — richiesta esplicita
+      // dell'utente, visibili solo qui, non prima nel ciclo di vita.
+      professionalPhone: booking.professionalProfile.user.phone,
+      professionalEmail: booking.professionalProfile.user.email,
+      professionalAddress: booking.professionalProfile.address,
+      refundRequested: booking.refundRequested,
     }));
   }
 }

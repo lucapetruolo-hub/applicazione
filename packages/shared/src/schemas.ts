@@ -208,6 +208,17 @@ export const proposeQuoteDateSchema = z.object({
 export type ProposeQuoteDateInput = z.infer<typeof proposeQuoteDateSchema>;
 
 /**
+ * Il professionista, ricevuta una data alternativa proposta dal cliente
+ * (MODIFICATION_REQUESTED), modifica direttamente l'orario invece di
+ * limitarsi a confermare o rifiutare — richiesta esplicita dell'utente
+ * ("Modifica... dove può modificare sia la data che l'orario... con una
+ * casella di testo dove si può scrivere qualcosa e inviare"). Stessa
+ * struttura di proposeQuoteDateSchema.
+ */
+export const counterProposeQuoteDateSchema = proposeQuoteDateSchema;
+export type CounterProposeQuoteDateInput = z.infer<typeof counterProposeQuoteDateSchema>;
+
+/**
  * Voce dell'importo finale di un lavoro completato (richiesta esplicita
  * dell'utente): a differenza di quoteItemSchema qui il prezzo è un valore
  * esatto, non un range — il professionista sta comunicando quanto ha

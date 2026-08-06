@@ -74,4 +74,11 @@ export class BookingsController {
   listMine(@Req() req: AuthenticatedRequest) {
     return this.bookingsService.listForClient(req.user.userId);
   }
+
+  /** Il cliente segnala che il professionista non si è presentato all'appuntamento e chiede un rimborso. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/report-no-show")
+  reportNoShow(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.reportProfessionalNoShow(req.user.userId, id);
+  }
 }

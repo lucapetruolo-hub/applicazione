@@ -697,6 +697,10 @@ export class ProfessionalsService {
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
       professionalNote: booking.professionalNote,
+      // Il cliente ha segnalato che non ti sei presentato e ha chiesto un
+      // rimborso — richiesta esplicita dell'utente, mai un cambio di
+      // `status` automatico (il professionista può ancora contestarlo).
+      refundRequested: booking.refundRequested,
     }));
   }
 

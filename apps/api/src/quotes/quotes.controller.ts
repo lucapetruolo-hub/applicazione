@@ -1,5 +1,12 @@
 import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
-import { proposeQuoteDateSchema, quoteSelfSchema, type ProposeQuoteDateInput, type QuoteSelfInput } from "@professionisti/shared";
+import {
+  counterProposeQuoteDateSchema,
+  proposeQuoteDateSchema,
+  quoteSelfSchema,
+  type CounterProposeQuoteDateInput,
+  type ProposeQuoteDateInput,
+  type QuoteSelfInput,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { QuotesService } from "./quotes.service";
@@ -34,6 +41,17 @@ export class QuotesController {
   @Post(":id/reject-proposed-date")
   rejectProposedDate(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.quotesService.rejectProposedDate(req.user.userId, id);
+  }
+
+  /** Il professionista modifica direttamente l'orario proposto dal cliente, invece di confermarlo/rifiutarlo semplicemente. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/counter-propose-date")
+  counterProposeDate(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(counterProposeQuoteDateSchema)) body: CounterProposeQuoteDateInput,
+  ) {
+    return this.quotesService.counterProposeDate(req.user.userId, id, body);
   }
 
   /** Il cliente rifiuta interamente un preventivo ricevuto. */

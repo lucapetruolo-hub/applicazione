@@ -13,6 +13,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { ReportNoShowModal } from "@/components/ReportNoShowModal";
 import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
@@ -954,7 +955,16 @@ function QuoteCard({
           }
         }
         setFreeSlots(slots);
-        if (slots[0]) setSelectedSlotKey(`${slots[0].date}|${slots[0].startTime}|${slots[0].endTime}`);
+        // Precompilato sull'ultima data/orario proposti (il preventivo
+        // attuale), non sulla prima fascia libera qualsiasi — richiesta
+        // esplicita dell'utente ("nel gruppo data ora ci sarà l'ultimo
+        // proposto"): il cliente può anche solo scrivere una nota senza
+        // cambiare nulla.
+        const currentDate = quote.estimatedStartDate.slice(0, 10);
+        const currentTime = quote.estimatedStartDate.slice(11, 16);
+        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentTime);
+        const initial = matching ?? slots[0];
+        if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
       }
@@ -1027,6 +1037,21 @@ function QuoteCard({
           </Text>
         </YStack>
       ) : null}
+      {/* Il professionista ha modificato direttamente l'orario durante la
+          trattativa ("Modifica", invece di limitarsi a confermare/rifiutare
+          la data proposta) — richiesta esplicita dell'utente. La "Data
+          proposta" sopra riflette già il nuovo orario, qui solo l'eventuale
+          messaggio lasciato. */}
+      {quote.status === "SENT" && quote.professionalCounterNote ? (
+        <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Il professionista ti ha risposto:
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {quote.professionalCounterNote}
+          </Text>
+        </YStack>
+      ) : null}
       <YStack gap="$1">
         {quote.items.map((item) => (
           <Text key={item.id} color={brand.grafite70} fontSize="$3">
@@ -1048,7 +1073,7 @@ function QuoteCard({
             </Button>
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
-                Proponi altra data
+                Modifica
               </Button>
             ) : null}
             {!isChoosingDate && !confirmingReject ? (
@@ -1198,6 +1223,8 @@ function BookingRow({
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [openRequestPhotoIndex, setOpenRequestPhotoIndex] = useState<number | null>(null);
 
   async function handleCancelBooking() {
     setCancelError(null);
@@ -1251,6 +1278,13 @@ function BookingRow({
     setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
+  // "Non presentato" (richiesta esplicita dell'utente): disponibile solo
+  // dopo che l'appuntamento CONFIRMED è realmente terminato (mai prima —
+  // non ha senso segnalare una mancata presentazione a un orario ancora
+  // da venire), e solo una volta per prenotazione.
+  const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
+  const noShowEligible = booking.status === "CONFIRMED" && new Date(referenceEnd).getTime() <= Date.now() && !booking.refundRequested;
+
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
@@ -1275,6 +1309,68 @@ function BookingRow({
             quando l'ora di fine è nota. */}
         {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
+
+      {/* Dati della richiesta guidata originale (titolo/categoria,
+          descrizione, foto) — richiesta esplicita dell'utente: "oltre ai
+          dati della persona [professionista] deve venire anche i dati del
+          preventivo da lui inviato all'inizio come la descrizione
+          dell'evento con il titolo, le foto". Assente per le prenotazioni
+          dirette da agenda pubblica (nessuna GuidedRequest collegata). */}
+      {booking.categoryLabel || booking.description || booking.photoUrls.length > 0 ? (
+        <YStack gap="$2" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {booking.categoryLabel ? (
+            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+              {booking.categoryLabel}
+            </Text>
+          ) : null}
+          {booking.description ? (
+            <Text fontSize="$3" color={brand.grafite70}>
+              {booking.description}
+            </Text>
+          ) : null}
+          {booking.photoUrls.length > 0 ? (
+            <XStack gap="$2" flexWrap="wrap">
+              {booking.photoUrls.map((url, index) => (
+                <MediaPreview
+                  key={url}
+                  url={url}
+                  onClick={() => setOpenRequestPhotoIndex(index)}
+                  style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
+                />
+              ))}
+            </XStack>
+          ) : null}
+        </YStack>
+      ) : null}
+
+      {openRequestPhotoIndex !== null ? (
+        <PhotoLightbox photos={booking.photoUrls} initialIndex={openRequestPhotoIndex} onClose={() => setOpenRequestPhotoIndex(null)} />
+      ) : null}
+
+      {/* Preventivo accettato (le voci concordate, distinte dall'importo
+          finale esatto mostrato più sotto a lavoro terminato). */}
+      {booking.quoteItems.length > 0 ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Preventivo accettato
+          </Text>
+          {booking.quoteItems.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                {item.name}
+              </Text>
+              <Text fontSize="$2" color={brand.grafite}>
+                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+              </Text>
+            </XStack>
+          ))}
+          {booking.quoteNotes ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              {booking.quoteNotes}
+            </Text>
+          ) : null}
+        </YStack>
+      ) : null}
 
       {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
@@ -1345,6 +1441,44 @@ function BookingRow({
         <Text color={brand.urgenza} fontSize="$3">
           {cancelError}
         </Text>
+      ) : null}
+
+      {noShowEligible ? (
+        <Text
+          color={brand.urgenza}
+          fontWeight="600"
+          fontSize="$3"
+          cursor="pointer"
+          accessibilityRole="button"
+          onPress={() => setShowNoShowModal(true)}
+        >
+          Non presentato
+        </Text>
+      ) : null}
+
+      {booking.status === "CONFIRMED" && booking.refundRequested ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.urgenza}>
+            Hai segnalato la mancata presentazione
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Abbiamo avvisato {booking.businessName}. Contattalo direttamente per accordarvi su un rimborso.
+          </Text>
+        </YStack>
+      ) : null}
+
+      {showNoShowModal ? (
+        <ReportNoShowModal
+          businessName={booking.businessName}
+          phone={booking.professionalPhone}
+          email={booking.professionalEmail}
+          address={booking.professionalAddress}
+          onClose={() => setShowNoShowModal(false)}
+          onRequestRefund={async () => {
+            await apiClient.reportBookingNoShow(token, booking.id);
+            onReviewed();
+          }}
+        />
       ) : null}
 
       {booking.status === "COMPLETED" && !booking.hasReview ? (
