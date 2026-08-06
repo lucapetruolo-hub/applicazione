@@ -3741,3 +3741,111 @@ in `/le-mie-richieste` crea la prenotazione senza aprire alcun
 errori console in tutti i flussi. Typecheck pulito su tutti i package
 (`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build
 di produzione `apps/web` verde (24 route).
+
+**Salvataggio dati destinatario come predefiniti dell'account** — richiesta
+esplicita dell'utente: "quando un cliente immette i dati durante il
+preventivo se non sono ancora presenti in impostazioni account dopo il
+salva chiedi se vuole che diventino i dati predefiniti così da salvarli in
+impostazioni account". `GuidedRequestForm.tsx`: al momento del prefill
+(stesso `useEffect` che precompila i campi dall'account), calcola
+`accountMissingFields` — vero se anche uno solo tra nome/cognome/telefono/
+via/civico/CAP/città/provincia dell'account era vuoto — senza confrontare
+i valori poi effettivamente digitati dal cliente (la condizione riguarda
+solo "l'account non li aveva ancora", non "il cliente li ha cambiati").
+Solo in quel caso, dopo l'invio riuscito della richiesta, la schermata
+"Richiesta inviata!" mostra un riquadro con "Vuoi salvare questi dati come
+predefiniti nel tuo account?" e due bottoni ("Sì, salva" →
+`apiClient.updateAccount` con i valori appena inseriti nel form, seguito da
+`refreshUser()`; "No, grazie" → nasconde il riquadro senza altra azione).
+Verificato: typecheck pulito, build verde.
+
+## 17. Fascia oraria completa nei preventivi + segnalazione orario modificato
+
+Tre richieste esplicite dell'utente, stesso giro:
+
+1. "Quando si accetta un preventivo non visualizzare solo il primo orario
+   ma tutta la fascia d'orario" — `Quote.estimatedStartDate` era sempre
+   stato un singolo istante (solo l'inizio), anche quando la scelta
+   veniva da una fascia agenda con un `endTime` noto e scartato al
+   momento dell'invio del preventivo. Nuovi campi Prisma
+   `Quote.estimatedEndDate`/`clientProposedEndDate` e
+   `Booking.scheduledEndAt` (tutti nullable: null per date indicate a
+   mano senza agenda, o per righe precedenti a questa funzionalità — in
+   quel caso resta il solo inizio, come prima). `LeadCard.handleSendQuote`
+   (`/dashboard`) calcola ora anche `estimatedEndDate` dalla fascia scelta
+   (`slot.endTime`) e lo invia insieme a `estimatedStartDate`.
+   `QuotesService.resolveFreeExactSlot` (usato da `proposeDate`) ritorna
+   ora sia inizio che fine della fascia proposta dal cliente
+   (`clientProposedEndDate`, salvata sul preventivo). Ogni punto che
+   mostra la data di un preventivo/prenotazione (dashboard "Il tuo
+   preventivo"/"Il cliente ha proposto un'altra data", `/le-mie-richieste`
+   "Data proposta"/"In attesa di conferma", righe lavori accettati su
+   entrambi i lati, `BookingDetailPanel` del calendario) mostra ora
+   `HH:MM–HH:MM` invece del solo orario di inizio, tramite due helper
+   locali per file (`formatDateTimeRange`/`formatSentAt` in
+   `dashboard/page.tsx`, `formatQuoteDateRange`/`formatSentAt` in
+   `le-mie-richieste/page.tsx`) — nessun pacchetto di date aggiunto, stessa
+   convenzione "wall clock UTC" già in uso per le fasce agenda.
+2. "Nei preventivi inviati... inserisci in automatico anche la data di
+   invio preventivo con l'orario visibile sia dal cliente che dal
+   professionista" — `Quote.createdAt` esisteva già nello schema (mai
+   esposto): ora restituito come `quote.sentAt` sia da
+   `ProfessionalsService.getMyLeads` che da
+   `GuidedRequestsService.listForClient`, mostrato come "Inviato il ..."
+   (data+ora reali nel fuso del browser, a differenza delle fasce agenda
+   che sono sempre "wall clock UTC") in entrambe le viste.
+3. "Se al preventivo ricevuto il professionista modifica l'orario inserito
+   dal cliente evidenzialo quando viene restituito al cliente... e la
+   stessa cosa se la modifica il cliente rendilo evidenziato al
+   professionista" — comportamento simmetrico:
+   - **Professionista → cliente**: nuovo campo calcolato
+     `quote.timeChangedFromRequest` (`GuidedRequestsService.listForClient`,
+     via il nuovo helper privato `preferredStartDate` che combina
+     `GuidedRequest.preferredDate`+`preferredTimeSlot` nell'istante di
+     inizio effettivamente richiesto) — vero solo quando la richiesta
+     porta un orario preferito (nata da una fascia generica dell'agenda
+     pubblica) *e* il professionista ha inviato il preventivo con un
+     `estimatedStartDate` diverso. `QuoteCard` (`/le-mie-richieste`)
+     mostra in quel caso un riquadro ottone "Il professionista ha
+     proposto un orario diverso da quello richiesto (HH:MM–HH:MM)."
+   - **Cliente → professionista**: il blocco "Il cliente ha proposto
+     un'altra data" in `LeadCard` (`/dashboard`) era già visivamente
+     evidenziato (bordo+sfondo ottone, testo in grassetto) fin dalla sua
+     introduzione — nessun cambiamento necessario oltre a mostrarci ora
+     anche la fascia completa.
+   - **Bug reale scoperto e corretto durante la verifica** (segnalato
+     dall'utente in un messaggio successivo, non ipotizzato):
+     "quando si accetta un lavoro al termine delle trattative, il
+     professionista non visualizza tutti i dettagli... come indirizzo
+     preciso e numero di telefono". Causa: `QuotesService.
+     confirmProposedDate` (il percorso di accettazione che segue una
+     trattativa sulla data — distinto da `BookingsService.
+     createFromQuote`, il percorso di accettazione diretta) creava la
+     `Booking` senza copiare `recipientName`/`recipientSurname`/
+     `recipientPhone`/`street`/`houseNumber`/`addressExtra`/`postalCode`/
+     `city`/`province` dalla `GuidedRequest` collegata — l'unico dei due
+     percorsi di creazione prenotazione rimasto non aggiornato quando
+     questi campi erano stati spostati dalla schermata di accettazione
+     alla richiesta stessa (vedi sezione precedente di questo file).
+     Corretto allineando `confirmProposedDate` allo stesso pattern di
+     copia già usato in `createFromQuote`.
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+fascia scelta dall'agenda (09:00–10:00) → `estimatedEndDate` presente e
+corretto sia lato professionista che cliente, `sentAt` un timestamp reale
+recente coerente su entrambi i lati, `scheduledEndAt` presente e corretto
+sulla prenotazione dopo l'accettazione diretta; percorso trattativa (cliente
+propone 14:00–15:30, professionista conferma) → `clientProposedEndDate`
+presente prima della conferma, prenotazione risultante con
+`recipientName`/`recipientSurname`/`recipientPhone`/`street`/`houseNumber`/
+`postalCode`/`province` tutti presenti (bug fix confermato) e
+`scheduledEndAt` coerente con la fascia confermata; richiesta con orario
+preferito (09:00–13:00) + preventivo su orario diverso (15:00–16:00) →
+`timeChangedFromRequest` vero; stesso scenario con orario coincidente →
+`timeChangedFromRequest` falso. UI: range orario visibile in
+`/le-mie-richieste` ("16:00–17:00"), "Inviato il" presente, riquadro di
+avviso "orario diverso da quello richiesto" visibile con la fascia
+originale citata; dashboard professionista (tab "Lavori accettati") con
+range orario, telefono e indirizzo preciso del cliente tutti visibili dopo
+l'accettazione. Zero errori console in tutti i flussi. Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (24 route).

@@ -837,7 +837,14 @@ function GuidedRequestCard({
             Preventivi ricevuti
           </Text>
           {request.quotes.map((quote) => (
-            <QuoteCard key={quote.id} quote={quote} token={token} onChanged={onChanged} onAcceptQuote={onAcceptQuote} />
+            <QuoteCard
+              key={quote.id}
+              quote={quote}
+              token={token}
+              onChanged={onChanged}
+              onAcceptQuote={onAcceptQuote}
+              requestedTimeSlot={request.preferredTimeSlot}
+            />
           ))}
         </YStack>
       ) : (
@@ -858,6 +865,24 @@ function formatQuoteDate(iso: string): string {
   return `${date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })} · ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}`;
 }
 
+/**
+ * Data + fascia oraria completa ("lunedì 5 agosto · 09:00–13:00") —
+ * richiesta esplicita dell'utente: "non visualizzare solo il primo orario
+ * ma tutta la fascia d'orario". Mostra solo l'inizio se la fine non è nota
+ * (preventivi/proposte precedenti a questa funzionalità).
+ */
+function formatQuoteDateRange(startIso: string, endIso: string | null): string {
+  if (!endIso) return formatQuoteDate(startIso);
+  const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  return `${formatQuoteDate(startIso)}–${endLabel}`;
+}
+
+/** Data+ora di invio di un preventivo (timestamp reale, fuso orario del browser). */
+function formatSentAt(iso: string): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 type FreeSlot = { date: string; startTime: string; endTime: string };
 
 /**
@@ -871,11 +896,14 @@ function QuoteCard({
   token,
   onChanged,
   onAcceptQuote,
+  requestedTimeSlot,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string) => Promise<void>;
+  /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
+  requestedTimeSlot: string | null;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -982,8 +1010,23 @@ function QuoteCard({
         </Text>
       </Link>
       <Text fontSize="$3" color={brand.grafite70}>
-        Data proposta: {formatQuoteDate(quote.estimatedStartDate)}
+        Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
       </Text>
+      <Text fontSize="$2" color={brand.grafite70}>
+        Inviato il {formatSentAt(quote.sentAt)}
+      </Text>
+      {/* Il professionista ha inviato il preventivo con un orario diverso
+          da quello effettivamente richiesto dal cliente (richiesta
+          esplicita dell'utente: "evidenzialo... per farglielo notare") —
+          solo quando la richiesta portava un orario preferito, cioè è
+          nata da una fascia generica dell'agenda pubblica. */}
+      {quote.timeChangedFromRequest && requestedTimeSlot ? (
+        <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Il professionista ha proposto un orario diverso da quello richiesto ({requestedTimeSlot.replace("-", "–")}).
+          </Text>
+        </YStack>
+      ) : null}
       <YStack gap="$1">
         {quote.items.map((item) => (
           <Text key={item.id} color={brand.grafite70} fontSize="$3">
@@ -1080,7 +1123,8 @@ function QuoteCard({
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.ottone} fontWeight="600">
-            In attesa di conferma del professionista per il {quote.clientProposedDate ? formatQuoteDate(quote.clientProposedDate) : ""}
+            In attesa di conferma del professionista per il{" "}
+            {quote.clientProposedDate ? formatQuoteDateRange(quote.clientProposedDate, quote.clientProposedEndDate) : ""}
           </Text>
           {quote.clientProposedNote ? (
             <Text fontSize="$2" color={brand.grafite70}>
@@ -1224,6 +1268,12 @@ function BookingRow({
       </YStack>
       <Text color={brand.grafite70} fontSize="$3">
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+        {" · "}
+        {new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+        {/* Fascia completa (richiesta esplicita dell'utente: "non
+            visualizzare solo il primo orario ma tutta la fascia d'orario"),
+            quando l'ora di fine è nota. */}
+        {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
 
       {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (

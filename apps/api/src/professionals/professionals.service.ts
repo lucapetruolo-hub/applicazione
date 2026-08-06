@@ -510,8 +510,16 @@ export class ProfessionalsService {
           ? {
               id: quote.id,
               status: quote.status,
+              // Data+ora di invio (richiesta esplicita dell'utente,
+              // visibile sia al cliente che al professionista): già
+              // esistente sullo schema (Quote.createdAt), qui solo esposta.
+              sentAt: quote.createdAt.toISOString(),
               estimatedStartDate: quote.estimatedStartDate.toISOString(),
+              // Fine della fascia (richiesta esplicita dell'utente: mostrare
+              // tutta la fascia oraria, non solo l'inizio) — null se non nota.
+              estimatedEndDate: quote.estimatedEndDate?.toISOString() ?? null,
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+              clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
               clientProposedNote: quote.clientProposedNote,
               // Il preventivo già inviato, per mostrarlo al professionista
               // sulla propria dashboard invece del solo stato — richiesta
@@ -646,6 +654,9 @@ export class ProfessionalsService {
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
+      // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
+      // la fascia oraria, non solo l'inizio) — null se non nota.
+      scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

@@ -25,6 +25,28 @@ import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/com
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
+/**
+ * Data + fascia oraria di una fascia agenda ("lunedì 5 agosto · 09:00–13:00"),
+ * mostra solo l'inizio se la fine non è nota (richiesta esplicita
+ * dell'utente: "non visualizzare solo il primo orario ma tutta la fascia
+ * d'orario" — ma resta un fallback per i preventivi/proposte precedenti a
+ * questa funzionalità, senza `endIso`).
+ */
+function formatDateTimeRange(startIso: string, endIso: string | null): string {
+  const start = new Date(startIso);
+  const dateLabel = start.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const startLabel = start.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  if (!endIso) return `${dateLabel} · ${startLabel}`;
+  const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  return `${dateLabel} · ${startLabel}–${endLabel}`;
+}
+
+/** Data+ora di invio di un preventivo (timestamp reale, fuso orario del browser — non la data pura "wall clock UTC" delle fasce agenda). */
+function formatSentAt(iso: string): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
@@ -463,6 +485,7 @@ function AcceptedJobCard({
   isNew?: boolean;
 }) {
   const date = new Date(booking.scheduledAt);
+  const endDate = booking.scheduledEndAt ? new Date(booking.scheduledEndAt) : null;
   // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
   // priorità su quello libero, quando presente — vedi formatBookingAddress.
   const structuredAddress = formatBookingAddress(booking);
@@ -510,6 +533,12 @@ function AcceptedJobCard({
             {date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             {" · "}
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            {/* Fascia completa (richiesta esplicita dell'utente: "non
+                visualizzare solo il primo orario ma tutta la fascia
+                d'orario"), quando l'ora di fine è nota — null per date
+                indicate a mano o prenotazioni precedenti a questa
+                funzionalità, in quel caso resta solo l'inizio come prima. */}
+            {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
           </Text>
           <XStack alignItems="center" gap="$2">
             <Text
@@ -891,6 +920,11 @@ function LeadCard({
     }
 
     let estimatedStartDate: string;
+    // Fine della fascia scelta (richiesta esplicita dell'utente: mostrare
+    // tutta la fascia oraria, non solo l'inizio) — nota solo quando la data
+    // viene da una fascia reale dell'agenda, non dall'input libero di
+    // fallback (nessun concetto di "fine" per una data indicata a mano).
+    let estimatedEndDate: string | undefined;
     if (availableSlots.length > 0) {
       const slot = availableSlots.find((s) => slotKey(s) === selectedSlotKey);
       if (!slot) {
@@ -898,6 +932,7 @@ function LeadCard({
         return;
       }
       estimatedStartDate = new Date(`${slot.date}T${slot.startTime}:00.000Z`).toISOString();
+      estimatedEndDate = new Date(`${slot.date}T${slot.endTime}:00.000Z`).toISOString();
     } else {
       if (!fallbackDate) {
         setError("Indica una data di inizio stimata.");
@@ -912,6 +947,7 @@ function LeadCard({
         requestId: lead.guidedRequest.id,
         items: parsedItems,
         estimatedStartDate,
+        estimatedEndDate,
         notes: notes.trim() || undefined,
       });
       setShowForm(false);
@@ -1123,15 +1159,10 @@ function LeadCard({
             </XStack>
           ))}
           <Text fontSize="$3" color={brand.grafite70}>
-            Data di inizio:{" "}
-            {new Date(lead.quote.estimatedStartDate).toLocaleDateString("it-IT", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              timeZone: "UTC",
-            })}
-            {" · "}
-            {new Date(lead.quote.estimatedStartDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
+            Data di inizio: {formatDateTimeRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Inviato il {formatSentAt(lead.quote.sentAt)}
           </Text>
           {lead.quote.notes ? (
             <Text fontSize="$3" color={brand.grafite70}>
@@ -1185,19 +1216,7 @@ function LeadCard({
           padding="$3"
         >
           <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-            Il cliente ha proposto un&apos;altra data:{" "}
-            {new Date(lead.quote.clientProposedDate).toLocaleDateString("it-IT", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              timeZone: "UTC",
-            })}
-            {" · "}
-            {new Date(lead.quote.clientProposedDate).toLocaleTimeString("it-IT", {
-              hour: "2-digit",
-              minute: "2-digit",
-              timeZone: "UTC",
-            })}
+            Il cliente ha proposto un&apos;altra data: {formatDateTimeRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
           </Text>
           {lead.quote.clientProposedNote ? (
             <Text fontSize="$3" color={brand.grafite70}>

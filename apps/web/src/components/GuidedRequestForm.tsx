@@ -84,7 +84,7 @@ export function GuidedRequestForm({
   descriptionPlaceholder,
 }: GuidedRequestFormProps) {
   const searchParams = useSearchParams();
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, refreshUser } = useAuth();
 
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
@@ -135,6 +135,14 @@ export function GuidedRequestForm({
     setPostalCode(user.postalCode ?? "");
     setProvince(user.province ?? "");
     setCity((prev) => prev || user.city || "");
+    // Richiesta esplicita dell'utente: "se non sono ancora presenti in
+    // impostazioni account dopo il salva chiedi se vuole che diventino i
+    // dati predefiniti" — memorizza se l'account NON aveva già questi dati
+    // (non se il cliente li ha poi modificati nel form), per proporre il
+    // salvataggio come predefiniti solo dopo l'invio riuscito.
+    setAccountMissingFields(
+      !user.name || !user.surname || !user.phone || !user.street || !user.houseNumber || !user.postalCode || !user.city || !user.province,
+    );
   }, [user]);
 
   // Fascia effettivamente inviata: quella bloccata dall'URL ha sempre la
@@ -168,6 +176,15 @@ export function GuidedRequestForm({
   const [postalCode, setPostalCode] = useState("");
   const [province, setProvince] = useState("");
   const prefilledFromAccountRef = useRef(false);
+  // True se, al momento del prefill, l'account non aveva ancora questi dati
+  // — richiesta esplicita dell'utente: dopo l'invio riuscito, in quel caso
+  // si propone di salvare i dati appena inseriti come predefiniti
+  // dell'account (così non andranno reinseriti la prossima volta).
+  const [accountMissingFields, setAccountMissingFields] = useState(false);
+  const [savingDefaults, setSavingDefaults] = useState(false);
+  const [defaultsSaved, setDefaultsSaved] = useState(false);
+  const [defaultsDeclined, setDefaultsDeclined] = useState(false);
+  const [defaultsError, setDefaultsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
@@ -217,12 +234,81 @@ export function GuidedRequestForm({
               ? `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? " disponibili ora" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
           </Text>
+          {accountMissingFields && !defaultsDeclined ? (
+            <YStack
+              width="100%"
+              gap="$2"
+              padding="$4"
+              backgroundColor={brand.calce}
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="$3"
+            >
+              {defaultsSaved ? (
+                <Text color={brand.verificato} fontWeight="600" fontSize="$3">
+                  Dati salvati come predefiniti nel tuo account.
+                </Text>
+              ) : (
+                <>
+                  <Text fontSize="$3" color={brand.grafite}>
+                    Vuoi salvare questi dati (nome, telefono, indirizzo) come predefiniti nel tuo account, per non
+                    doverli reinserire la prossima volta?
+                  </Text>
+                  {defaultsError ? (
+                    <Text color={brand.urgenza} fontSize="$2">
+                      {defaultsError}
+                    </Text>
+                  ) : null}
+                  <XStack gap="$2" flexWrap="wrap">
+                    <Button
+                      variant="secondary"
+                      size="$2"
+                      height={36}
+                      onPress={handleSaveAsDefaults}
+                      disabled={savingDefaults}
+                      opacity={savingDefaults ? 0.6 : 1}
+                    >
+                      {savingDefaults ? "Salvataggio..." : "Sì, salva"}
+                    </Button>
+                    <Button variant="ghost" size="$2" height={36} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
+                      No, grazie
+                    </Button>
+                  </XStack>
+                </>
+              )}
+            </YStack>
+          ) : null}
           <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
             <Button variant="primary">Vai alle mie richieste</Button>
           </Link>
         </YStack>
       </YStack>
     );
+  }
+
+  async function handleSaveAsDefaults() {
+    if (!token) return;
+    setSavingDefaults(true);
+    setDefaultsError(null);
+    try {
+      await apiClient.updateAccount(token, {
+        name: recipientName.trim() || undefined,
+        surname: recipientSurname.trim() || undefined,
+        phone: recipientPhone.trim() || undefined,
+        street: street.trim() || undefined,
+        houseNumber: houseNumber.trim() || undefined,
+        addressExtra: addressExtra.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+        city: city.trim() || undefined,
+        province: province.trim() || undefined,
+      });
+      await refreshUser();
+      setDefaultsSaved(true);
+    } catch (err) {
+      setDefaultsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setSavingDefaults(false);
+    }
   }
 
   async function handleSubmit() {

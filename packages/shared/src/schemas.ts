@@ -175,6 +175,14 @@ export const quoteSchema = z.object({
   professionalProfileId: z.string().uuid(),
   items: z.array(quoteItemSchema).min(1).max(20),
   estimatedStartDate: z.string().datetime(),
+  /**
+   * Fine della fascia scelta dall'agenda del professionista (richiesta
+   * esplicita dell'utente: "non visualizzare solo il primo orario ma
+   * tutta la fascia d'orario") — facoltativa: assente quando la data è
+   * indicata a mano senza un'agenda impostata (nessuna fascia con fine
+   * nota da cui derivarla).
+   */
+  estimatedEndDate: z.string().datetime().optional(),
   notes: z.string().max(2000).optional(),
 });
 export type QuoteInput = z.infer<typeof quoteSchema>;

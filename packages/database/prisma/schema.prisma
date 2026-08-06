@@ -593,9 +593,18 @@ model Quote {
   guidedRequestId       String
   professionalProfileId String
   estimatedStartDate    DateTime
+  // Fine della fascia scelta dall'agenda del professionista (richiesta
+  // esplicita dell'utente: "non visualizzare solo il primo orario ma
+  // tutta la fascia d'orario") — nullable: null quando la data è stata
+  // indicata a mano (nessuna agenda impostata, vecchio input libero) o per
+  // i preventivi creati prima di questa funzionalità, casi in cui non
+  // esiste una fascia con fine nota.
+  estimatedEndDate      DateTime?
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate    DateTime?
+  // Fine della fascia proposta dal cliente, stesso motivo di estimatedEndDate.
+  clientProposedEndDate DateTime?
   // Dettagli facoltativi scritti dal cliente insieme alla data proposta
   // (es. "posso solo dopo le 17" o "meglio se venite con il furgone"),
   // mostrati al professionista quando deve confermare/rifiutare.
@@ -649,6 +658,13 @@ model Booking {
   clientId              String
   professionalProfileId String
   scheduledAt           DateTime
+  // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
+  // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
+  // clientProposedEndDate al momento della creazione — null per le
+  // prenotazioni dirette da agenda pubblica (bookAgendaSlot, che già
+  // conosce la fascia esatta ma non passa da questo campo) o per date
+  // indicate a mano senza agenda impostata.
+  scheduledEndAt        DateTime?
   status                BookingStatus @default(PENDING)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt

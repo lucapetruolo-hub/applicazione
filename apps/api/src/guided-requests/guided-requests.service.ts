@@ -238,6 +238,13 @@ export class GuidedRequestsService {
         (latest, quote) => (quote.updatedAt > latest ? quote.updatedAt : latest),
         request.updatedAt,
       );
+      // Se la richiesta è nata da una fascia generica dell'agenda pubblica
+      // (preferredDate/preferredTimeSlot), l'orario che il cliente aveva
+      // effettivamente chiesto — usato sotto per segnalare al cliente se il
+      // professionista ha inviato il preventivo con un orario diverso da
+      // quello richiesto (richiesta esplicita dell'utente: "evidenzialo
+      // quando viene restituito al cliente per farglielo notare").
+      const requestedStart = this.preferredStartDate(request.preferredDate, request.preferredTimeSlot);
       return {
         id: request.id,
         categorySlug: request.category.slug,
@@ -287,9 +294,23 @@ export class GuidedRequestsService {
             priceMinEurCents: item.priceMinEurCents,
             priceMaxEurCents: item.priceMaxEurCents,
           })),
+          // Data+ora di invio (richiesta esplicita dell'utente, visibile
+          // sia al cliente che al professionista) — già esistente sullo
+          // schema (Quote.createdAt), qui solo esposta.
+          sentAt: quote.createdAt.toISOString(),
           estimatedStartDate: quote.estimatedStartDate.toISOString(),
+          // Fine della fascia (richiesta esplicita dell'utente: mostrare
+          // tutta la fascia oraria, non solo l'inizio) — null se non nota.
+          estimatedEndDate: quote.estimatedEndDate?.toISOString() ?? null,
           clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
+          clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
           clientProposedNote: quote.clientProposedNote,
+          // True se il professionista ha inviato il preventivo con un
+          // orario diverso da quello che il cliente aveva effettivamente
+          // richiesto (solo quando la richiesta porta un orario preferito,
+          // cioè è nata da una fascia generica dell'agenda pubblica) —
+          // richiesta esplicita dell'utente, per evidenziarlo al cliente.
+          timeChangedFromRequest: Boolean(requestedStart) && requestedStart!.getTime() !== quote.estimatedStartDate.getTime(),
           notes: quote.notes,
           status: quote.status,
         })),
@@ -595,6 +616,17 @@ export class GuidedRequestsService {
 
   private computeRequestExpiry(isUrgent: boolean): Date {
     return isUrgent ? addDays(new Date(), URGENT_REQUEST_EXPIRY_DAYS) : addDays(new Date(), STANDARD_REQUEST_EXPIRY_DAYS);
+  }
+
+  /** Combina preferredDate (data pura, mezzanotte UTC) + preferredTimeSlot ("HH:MM-HH:MM") nell'orario di inizio esatto originariamente richiesto — null se la richiesta non ne porta uno. */
+  private preferredStartDate(preferredDate: Date | null, preferredTimeSlot: string | null): Date | null {
+    if (!preferredDate || !preferredTimeSlot) return null;
+    const [startTime] = preferredTimeSlot.split("-");
+    if (!startTime) return null;
+    const [hoursStr, minutesStr] = startTime.split(":");
+    const result = new Date(preferredDate);
+    result.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
+    return result;
   }
 
   /**

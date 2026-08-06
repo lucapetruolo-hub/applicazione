@@ -52,6 +52,7 @@ export class BookingsService {
         clientId,
         professionalProfileId: quote.professionalProfileId,
         scheduledAt: quote.estimatedStartDate,
+        scheduledEndAt: quote.estimatedEndDate,
         status: "CONFIRMED",
         recipientName: guidedRequest.recipientName,
         recipientSurname: guidedRequest.recipientSurname,
@@ -257,6 +258,11 @@ export class BookingsService {
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
+      // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
+      // la fascia oraria, non solo l'inizio) — null per prenotazioni senza
+      // una fascia con fine nota (data indicata a mano, o create prima di
+      // questa funzionalità).
+      scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
       createdAt: booking.createdAt.toISOString(),
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,

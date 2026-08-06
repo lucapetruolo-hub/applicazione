@@ -58,6 +58,7 @@ export class QuotesService {
 
     const data = {
       estimatedStartDate: new Date(input.estimatedStartDate),
+      estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,
     };
 
@@ -146,11 +147,21 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo non è più modificabile.");
     }
 
-    const proposedDate = await this.resolveFreeExactSlot(quote.professionalProfileId, input.date, input.startTime, input.endTime);
+    const { scheduledAt: proposedDate, scheduledEndAt: proposedEndDate } = await this.resolveFreeExactSlot(
+      quote.professionalProfileId,
+      input.date,
+      input.startTime,
+      input.endTime,
+    );
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
-      data: { clientProposedDate: proposedDate, clientProposedNote: input.note?.trim() || null, status: "MODIFICATION_REQUESTED" },
+      data: {
+        clientProposedDate: proposedDate,
+        clientProposedEndDate: proposedEndDate,
+        clientProposedNote: input.note?.trim() || null,
+        status: "MODIFICATION_REQUESTED",
+      },
     });
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
       guidedRequestId: quote.guidedRequestId,
@@ -160,6 +171,7 @@ export class QuotesService {
       id: updated.id,
       status: updated.status,
       clientProposedDate: updated.clientProposedDate?.toISOString() ?? null,
+      clientProposedEndDate: updated.clientProposedEndDate?.toISOString() ?? null,
       clientProposedNote: updated.clientProposedNote,
     };
   }
@@ -231,10 +243,30 @@ export class QuotesService {
               clientId: quote.guidedRequest.clientId,
               professionalProfileId: professionalProfile.id,
               scheduledAt,
+              scheduledEndAt: quote.clientProposedEndDate,
               status: "CONFIRMED",
+              // Bug reale segnalato dall'utente: questo secondo percorso di
+              // creazione della prenotazione (accettazione dopo una
+              // trattativa sulla data, distinto da
+              // BookingsService.createFromQuote) non copiava affatto
+              // destinatario/indirizzo dalla GuidedRequest — il
+              // professionista restava senza indirizzo preciso e telefono
+              // per andare a svolgere il lavoro.
+              recipientName: quote.guidedRequest.recipientName,
+              recipientSurname: quote.guidedRequest.recipientSurname,
+              recipientPhone: quote.guidedRequest.recipientPhone,
+              street: quote.guidedRequest.address,
+              houseNumber: quote.guidedRequest.houseNumber,
+              addressExtra: quote.guidedRequest.addressExtra,
+              postalCode: quote.guidedRequest.postalCode,
+              city: quote.guidedRequest.city,
+              province: quote.guidedRequest.province,
             },
           });
-          await tx.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED", estimatedStartDate: scheduledAt } });
+          await tx.quote.update({
+            where: { id: quote.id },
+            data: { status: "ACCEPTED", estimatedStartDate: scheduledAt, estimatedEndDate: quote.clientProposedEndDate },
+          });
           await tx.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
           return created;
         },
@@ -352,7 +384,12 @@ export class QuotesService {
    * stessa cautela già applicata a bookAgendaSlot/resolveGenericSlot in
    * altri servizi, non fidarsi mai ciecamente di quanto inviato dal client.
    */
-  private async resolveFreeExactSlot(professionalProfileId: string, dateStr: string, startTime: string, endTime: string): Promise<Date> {
+  private async resolveFreeExactSlot(
+    professionalProfileId: string,
+    dateStr: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<{ scheduledAt: Date; scheduledEndAt: Date }> {
     const date = new Date(`${dateStr}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) {
       throw new BadRequestException("Data non valida.");
@@ -395,6 +432,9 @@ export class QuotesService {
     const [hoursStr, minutesStr] = startTime.split(":");
     const scheduledAt = new Date(date);
     scheduledAt.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
+    const [endHoursStr, endMinutesStr] = endTime.split(":");
+    const scheduledEndAt = new Date(date);
+    scheduledEndAt.setUTCHours(Number(endHoursStr), Number(endMinutesStr), 0, 0);
     // Conteggio invece di un semplice booleano: una fascia a capienza
     // (maxBookings > 1) può ospitare più prenotazioni sulla stessa
     // data+ora, non solo una — stesso principio di countBookingsInSlot già
@@ -404,6 +444,6 @@ export class QuotesService {
       throw new ConflictException("Questa fascia è già stata prenotata.");
     }
 
-    return scheduledAt;
+    return { scheduledAt, scheduledEndAt };
   }
 }

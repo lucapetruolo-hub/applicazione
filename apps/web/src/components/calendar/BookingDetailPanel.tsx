@@ -64,6 +64,7 @@ export function BookingDetailPanel({
   }, [onClose, openPhotoIndex]);
 
   const date = new Date(booking.scheduledAt);
+  const endDate = booking.scheduledEndAt ? new Date(booking.scheduledEndAt) : null;
   // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
   // priorità su quello libero, quando presente — vedi formatBookingAddress.
   const structuredAddress = formatBookingAddress(booking);
@@ -123,6 +124,10 @@ export function BookingDetailPanel({
             {date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             {" · "}
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            {/* Fascia completa (richiesta esplicita dell'utente: "non
+                visualizzare solo il primo orario ma tutta la fascia
+                d'orario"), quando l'ora di fine è nota. */}
+            {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
           </Text>
         </YStack>
 

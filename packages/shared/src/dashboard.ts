@@ -46,8 +46,13 @@ export type ProfessionalLead = {
   quote: {
     id: string;
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
+    /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
+    sentAt: string;
     estimatedStartDate: string;
+    /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
+    estimatedEndDate: string | null;
     clientProposedDate: string | null;
+    clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
     /**
@@ -118,6 +123,8 @@ export type ProfessionalLead = {
 export type ProfessionalBooking = {
   id: string;
   scheduledAt: string;
+  /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
+  scheduledEndAt: string | null;
   /** Per l'ordinamento "per data di ricezione"/"per ultimo aggiornamento" nelle liste. */
   createdAt: string;
   updatedAt: string;
