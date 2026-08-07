@@ -4356,25 +4356,25 @@ arrotondati del pannello), il resto del pannello (ricerca inclusa) non è
 più tagliato. Verificato con Playwright: menu "Cosa cerchi"/"Città" ora
 interamente visibile sopra il resto della pagina.
 
-**"Preventivo"/"Richiesta urgente" nella barra di ricerca della home** —
-richiesta esplicita dell'utente: due scorciatoie sulla destra della riga
-dei tab "A domicilio"/"Online" (`SearchBar.tsx`, `packages/ui`), verso i
-due flussi di richiesta guidata già esistenti. Nuove prop opzionali
-`onQuoteRequest`/`onUrgentRequest` (callback, non un `href`: `packages/ui`
-resta agnostico dal routing, stesso principio già seguito per `onSearch` —
-web usa `router.push`, un'eventuale integrazione mobile userebbe la
-navigazione nativa) — assenti di default, quindi nessun cambio visivo per
-gli altri chiamanti di `SearchBar` (`SearchHeader` nelle pagine risultati,
-home di `apps/mobile`) che non le passano. "Richiesta urgente" **scritta
-diversamente** per segnalare l'urgenza (richiesta esplicita): colore
-`brand.urgenza`, peso 800, icona `zap` — stesso token semantico "rosso
-solo su urgenza" già in uso ovunque nel prodotto, deliberatamente **senza**
-`textTransform="uppercase"` (la Fase "Vicinato", §19, aveva eliminato ogni
-occorrenza rimasta in tutto il monorepo per allontanarsi dal registro
-"documento tecnico" freddo del brief precedente — reintrodurla qui per
-questo solo bottone avrebbe contraddetto quel lavoro). `HomeHero.tsx`
-passa `() => router.push("/preventivo")`/`() => router.push("/urgente")`.
+**"Preventivo"/"Richiesta urgente" nella home, fuori dal pannello verde** —
+richiesta esplicita dell'utente, poi corretta di posizione nello stesso
+giro: un primo tentativo le aveva messe come scorciatoie testuali sulla
+destra della riga dei tab "A domicilio"/"Online", dentro `SearchBar.tsx`
+(`packages/ui`, nuove prop `onQuoteRequest`/`onUrgentRequest`) — l'utente
+ha chiesto di **farle uscire completamente dal riquadro verde** e
+mostrarle "appena sotto come due grossi pulsanti". Le due prop sono state
+rimosse da `SearchBar.tsx` (tornata alla sola riga dei tab, nessun
+residuo): non hanno senso lì una volta spostate fuori dal componente.
+`HomeHero.tsx` renderizza ora due `Button` (varianti già esistenti
+`primary`/`urgent`, CLAUDE.md §10 Fase 3) affiancati sotto l'intero
+pannello verde (non più dentro), stessa larghezza massima del pannello,
+`flexWrap` per impilarsi su mobile: "Richiedi preventivo" (icona
+`file-text`) e "Richiesta urgente" (icona `zap`, `variant="urgent"` —
+stesso token semantico "rosso solo su urgenza" già in uso ovunque nel
+prodotto, la resa "grosso pulsante rosso" comunica l'urgenza meglio del
+precedente link testuale). Stesso routing di prima (`router.push
+("/preventivo")`/`("/urgente")`), solo posizione e resa cambiate.
 Verificato con Playwright (desktop e mobile 390px, zero overflow): click
-su "Preventivo" → `/preventivo`, click su "Richiesta urgente" → `/urgente`,
-zero errori console. Typecheck pulito su `packages/ui`/`apps/web`/
-`apps/mobile`, build di produzione `apps/web` verde.
+su "Richiedi preventivo" → `/preventivo`, click su "Richiesta urgente" →
+`/urgente`, zero errori console. Typecheck pulito su `packages/ui`/
+`apps/web`/`apps/mobile`, build di produzione `apps/web` verde.

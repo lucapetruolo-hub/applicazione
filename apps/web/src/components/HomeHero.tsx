@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
-import { Eyebrow, SearchBar, Text, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Button, Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 
@@ -88,8 +88,6 @@ export function HomeHero() {
               onSearch={handleSearch}
               professionalSuggestions={professionalSuggestions}
               citySuggestions={ALL_ITALIAN_CITY_NAMES}
-              onQuoteRequest={() => router.push("/preventivo")}
-              onUrgentRequest={() => router.push("/urgente")}
             />
           </YStack>
 
@@ -98,6 +96,29 @@ export function HomeHero() {
           </Text>
         </YStack>
       </YStack>
+
+      {/* Fuori dal pannello verde, non più dentro SearchBar (richiesta
+          esplicita dell'utente: "far uscire completamente da quel riquadro
+          verde... metterla appena sotto come due grossi pulsanti") — stesso
+          routing di prima, solo posizione e resa diverse. */}
+      <XStack gap="$3" flexWrap="wrap" justifyContent="center" marginTop="$5" width="100%" maxWidth={1160}>
+        <Button variant="primary" onPress={() => router.push("/preventivo")}>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="file-text" size={18} color="white" />
+            <Text color="white" fontWeight="700" fontSize="$4">
+              Richiedi preventivo
+            </Text>
+          </XStack>
+        </Button>
+        <Button variant="urgent" onPress={() => router.push("/urgente")}>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="zap" size={18} color="white" />
+            <Text color="white" fontWeight="700" fontSize="$4">
+              Richiesta urgente
+            </Text>
+          </XStack>
+        </Button>
+      </XStack>
     </YStack>
   );
 }

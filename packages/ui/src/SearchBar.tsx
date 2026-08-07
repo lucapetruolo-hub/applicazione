@@ -26,17 +26,6 @@ export type SearchBarProps = {
   professionalSuggestions?: ProfessionalSuggestion[];
   /** Suggerimenti mostrati mentre si scrive nel campo "Città". */
   citySuggestions?: string[];
-  /**
-   * Scorciatoie "Preventivo"/"Richiesta urgente" mostrate sulla destra della
-   * riga dei tab A domicilio/Online — richiesta esplicita dell'utente,
-   * homepage. Callback invece di un `href`: `packages/ui` resta agnostico
-   * dal routing (Next.js `Link` su web, deep link su mobile), stesso
-   * principio già seguito per `onSearch`. Assenti di default: nessun cambio
-   * visivo per i chiamanti esistenti (SearchHeader, home mobile) che non li
-   * passano.
-   */
-  onQuoteRequest?: () => void;
-  onUrgentRequest?: () => void;
 };
 
 const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
@@ -51,8 +40,6 @@ export function SearchBar({
   initialMode = "domicilio",
   professionalSuggestions = [],
   citySuggestions = [],
-  onQuoteRequest,
-  onUrgentRequest,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -83,71 +70,30 @@ export function SearchBar({
       shadowOffset={{ width: 0, height: 0 }}
       shadowOpacity={1}
     >
-      <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-        <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
-          {MODE_TABS.map((tab) => {
-            const active = tab.key === mode;
-            return (
-              <XStack
-                key={tab.key}
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                borderRadius="$10"
-                backgroundColor={active ? brand.cianografia : "transparent"}
-                cursor="pointer"
-                alignItems="center"
-                gap="$2"
-                onPress={() => setMode(tab.key)}
-                accessibilityRole="button"
-                accessibilityLabel={tab.label}
-              >
-                <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-                <Text fontSize="$3" fontWeight="600" color={active ? "white" : brand.grafite70}>
-                  {tab.label}
-                </Text>
-              </XStack>
-            );
-          })}
-        </XStack>
-
-        {onQuoteRequest || onUrgentRequest ? (
-          <XStack gap="$3" alignItems="center">
-            {onQuoteRequest ? (
-              <XStack
-                cursor="pointer"
-                alignItems="center"
-                gap="$1.5"
-                onPress={onQuoteRequest}
-                accessibilityRole="button"
-                accessibilityLabel="Richiedi un preventivo"
-              >
-                <Icon name="file-text" size={14} color={brand.grafite70} />
-                <Text fontSize="$3" fontWeight="600" color={brand.grafite70}>
-                  Preventivo
-                </Text>
-              </XStack>
-            ) : null}
-            {onUrgentRequest ? (
-              // Scritto differente per far capire subito che è un'urgenza
-              // (richiesta esplicita dell'utente): colore/peso distinti dal
-              // link "Preventivo" accanto, stesso token semantico "rosso
-              // solo su urgenza/distruttivo" già in uso ovunque nel prodotto.
-              <XStack
-                cursor="pointer"
-                alignItems="center"
-                gap="$1.5"
-                onPress={onUrgentRequest}
-                accessibilityRole="button"
-                accessibilityLabel="Richiesta urgente"
-              >
-                <Icon name="zap" size={14} color={brand.urgenza} />
-                <Text fontSize="$3" fontWeight="800" color={brand.urgenza}>
-                  Richiesta urgente
-                </Text>
-              </XStack>
-            ) : null}
-          </XStack>
-        ) : null}
+      <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
+        {MODE_TABS.map((tab) => {
+          const active = tab.key === mode;
+          return (
+            <XStack
+              key={tab.key}
+              paddingHorizontal="$3"
+              paddingVertical="$2"
+              borderRadius="$10"
+              backgroundColor={active ? brand.cianografia : "transparent"}
+              cursor="pointer"
+              alignItems="center"
+              gap="$2"
+              onPress={() => setMode(tab.key)}
+              accessibilityRole="button"
+              accessibilityLabel={tab.label}
+            >
+              <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
+              <Text fontSize="$3" fontWeight="600" color={active ? "white" : brand.grafite70}>
+                {tab.label}
+              </Text>
+            </XStack>
+          );
+        })}
       </XStack>
 
       <YStack gap="$3" $gtSm={{ flexDirection: "row", alignItems: "flex-start" }}>
