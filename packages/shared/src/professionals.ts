@@ -64,6 +64,8 @@ export function formatBookingAddress(booking: {
 /** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
 export type ProfessionalAvailabilityPreviewSlot = {
   time: string;
+  /** Fine della fascia (es. "10:00"): mostrata insieme a `time` come intervallo completo, non solo l'inizio. */
+  endTime: string;
   available: boolean;
 };
 
@@ -77,6 +79,11 @@ export type ProfessionalAvailabilityPreviewSlot = {
  * professionista ha impostato la capienza per quella fascia 1 o più di 1".
  * Calcolata lato server in un'unica query batch per l'intera pagina di
  * risultati (mai una query per professionista, vedi ProfessionalsService.search).
+ * 14 giorni totali (stesso orizzonte di `getPublicAgenda`), non solo i 4
+ * mostrati di default: la UI pagina in finestre da 4 colonne con frecce
+ * avanti/indietro, richiesta esplicita dell'utente ("dare la possibilità
+ * di navigare anche ai giorni successivi") — nessuna richiesta di rete
+ * aggiuntiva per scorrere in avanti.
  */
 export type ProfessionalAvailabilityPreviewDay = {
   /** Data ISO (yyyy-mm-dd). */

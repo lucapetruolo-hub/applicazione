@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
@@ -15,6 +17,8 @@ export type ProfessionalCardService = {
 /** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
 export type ProfessionalCardAvailabilitySlot = {
   time: string;
+  /** Fine della fascia: mostrata insieme a `time` come intervallo completo, non solo l'inizio. */
+  endTime: string;
   available: boolean;
 };
 
@@ -33,7 +37,8 @@ export type ProfessionalCardNextAvailableSlot = {
   time: string;
 };
 
-const AGENDA_COLUMN_WIDTH = 58;
+const AGENDA_COLUMN_WIDTH = 78;
+const AGENDA_VISIBLE_DAYS = 4;
 
 // Duplicata (non importata da @professionisti/shared): packages/ui non
 // dipende dal resto del monorepo, resta un design system consumabile da solo
@@ -88,12 +93,25 @@ export function ProfessionalCard({
   icon,
 }: ProfessionalCardProps) {
   const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
-  const hasAvailableInWindow = availabilityPreview?.some((day) => day.times.some((slot) => slot.available)) ?? false;
-  // Unione di tutti gli orari configurati su almeno un giorno della finestra,
-  // ordinata: righe della griglia. Un giorno senza quell'orario mostra "-".
+
+  // Finestra di AGENDA_VISIBLE_DAYS colonne che scorre sui giorni già
+  // scaricati (fino a 14, vedi ProfessionalsService.buildAvailabilityPreviews)
+  // — richiesta esplicita dell'utente di poter navigare anche ai giorni
+  // successivi senza una richiesta di rete per pagina.
+  const [windowOffset, setWindowOffset] = useState(0);
+  const totalDays = availabilityPreview?.length ?? 0;
+  const maxOffset = Math.max(0, totalDays - AGENDA_VISIBLE_DAYS);
+  const offset = Math.min(windowOffset, maxOffset);
+  const visibleDays = (availabilityPreview ?? []).slice(offset, offset + AGENDA_VISIBLE_DAYS);
+  const hasAvailableInWindow = visibleDays.some((day) => day.times.some((slot) => slot.available));
+  // Unione di tutti gli orari configurati su almeno un giorno della finestra
+  // visibile, ordinata: righe della griglia. Un giorno senza quell'orario
+  // mostra "-".
   const timeRows = hasAvailableInWindow
-    ? Array.from(new Set((availabilityPreview ?? []).flatMap((day) => day.times.map((slot) => slot.time)))).sort()
+    ? Array.from(new Set(visibleDays.flatMap((day) => day.times.map((slot) => slot.time)))).sort()
     : [];
+  const canGoBack = offset > 0;
+  const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
 
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
@@ -168,7 +186,7 @@ export function ProfessionalCard({
         {availabilityPreview && availabilityPreview.length > 0 ? (
           <YStack
             gap="$2"
-            minWidth={AGENDA_COLUMN_WIDTH * availabilityPreview.length}
+            minWidth={AGENDA_COLUMN_WIDTH * visibleDays.length}
             paddingLeft="$4"
             borderLeftWidth={1}
             borderLeftColor={brand.filetto}
@@ -176,11 +194,59 @@ export function ProfessionalCard({
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
             // (borderLeftWidth resta 0 solo se non c'è spazio, gestito dal wrap).
           >
-            <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
-              Prossima disponibilità
-            </Text>
+            <XStack alignItems="center" justifyContent="space-between" gap="$2">
+              <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
+                Prossima disponibilità
+              </Text>
+              {totalDays > AGENDA_VISIBLE_DAYS ? (
+                <XStack gap="$1" alignItems="center">
+                  <XStack
+                    width={20}
+                    height={20}
+                    borderRadius="$10"
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={canGoBack ? 1 : 0.3}
+                    cursor={canGoBack ? "pointer" : undefined}
+                    accessibilityRole={canGoBack ? "button" : undefined}
+                    accessibilityLabel="Giorni precedenti"
+                    onPress={
+                      canGoBack
+                        ? (e: unknown) => {
+                            (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+                            setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
+                          }
+                        : undefined
+                    }
+                  >
+                    <Icon name="chevron-left" size={14} color={brand.grafite70} />
+                  </XStack>
+                  <XStack
+                    width={20}
+                    height={20}
+                    borderRadius="$10"
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={canGoForward ? 1 : 0.3}
+                    cursor={canGoForward ? "pointer" : undefined}
+                    accessibilityRole={canGoForward ? "button" : undefined}
+                    accessibilityLabel="Giorni successivi"
+                    onPress={
+                      canGoForward
+                        ? (e: unknown) => {
+                            (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+                            setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
+                          }
+                        : undefined
+                    }
+                  >
+                    <Icon name="chevron-right" size={14} color={brand.grafite70} />
+                  </XStack>
+                </XStack>
+              ) : null}
+            </XStack>
             <XStack>
-              {availabilityPreview.map((day) => (
+              {visibleDays.map((day) => (
                 <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
                   <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
                     {day.label}
@@ -196,7 +262,7 @@ export function ProfessionalCard({
               <YStack gap="$1">
                 {timeRows.map((time) => (
                   <XStack key={time}>
-                    {availabilityPreview.map((day) => {
+                    {visibleDays.map((day) => {
                       const slot = day.times.find((s) => s.time === time);
                       if (!slot) {
                         return (
@@ -207,11 +273,18 @@ export function ProfessionalCard({
                           </XStack>
                         );
                       }
+                      const range = `${slot.time}–${slot.endTime}`;
                       if (!slot.available) {
                         return (
                           <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
-                            <Text fontFamily="$mono" fontSize={11} color={brand.grafite70} textDecorationLine="line-through">
-                              {time}
+                            <Text
+                              fontFamily="$mono"
+                              fontSize={10}
+                              color={brand.grafite70}
+                              textDecorationLine="line-through"
+                              textAlign="center"
+                            >
+                              {range}
                             </Text>
                           </XStack>
                         );
@@ -225,19 +298,19 @@ export function ProfessionalCard({
                           paddingVertical={3}
                           cursor={onSlotPress ? "pointer" : undefined}
                           accessibilityRole={onSlotPress ? "button" : undefined}
-                          accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${time} il ${day.label}` : undefined}
+                          accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
                           onPress={
                             onSlotPress
                               ? (e: unknown) => {
                                   (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                                  onSlotPress(day.date, time);
+                                  onSlotPress(day.date, slot.time);
                                 }
                               : undefined
                           }
                         >
-                          <XStack paddingHorizontal="$2" paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                            <Text fontFamily="$mono" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
-                              {time}
+                          <XStack paddingHorizontal="$1.5" paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                            <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                              {range}
                             </Text>
                           </XStack>
                         </XStack>
@@ -246,7 +319,7 @@ export function ProfessionalCard({
                   </XStack>
                 ))}
               </YStack>
-            ) : nextAvailableSlot ? (
+            ) : offset === 0 && nextAvailableSlot ? (
               <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
                 <YStack gap={2}>
                   <Text fontSize={11.5} color={brand.grafite70}>
@@ -279,7 +352,15 @@ export function ProfessionalCard({
                   </Text>
                 </XStack>
               </YStack>
-            ) : null}
+            ) : (
+              // Pagina raggiunta navigando in avanti/indietro, senza nulla di
+              // libero: le frecce restano sopra per continuare a scorrere,
+              // niente CTA "prossimo disponibile" qui (quella riguarda solo
+              // la finestra iniziale).
+              <Text fontSize={12} color={brand.grafite70} paddingVertical="$2">
+                Nessun orario libero in questi giorni.
+              </Text>
+            )}
           </YStack>
         ) : null}
       </XStack>

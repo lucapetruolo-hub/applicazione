@@ -40,34 +40,48 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // Ogni fascia (esatta o generica) apre sempre la richiesta di preventivo
   // precompilata — richiesta esplicita dell'utente: nessuna prenotazione
   // istantanea da qui, a prescindere dalla capienza impostata dal
-  // professionista. `windowDays` sono le prime AGENDA_PREVIEW_DAYS colonne;
-  // `nextAvailableSlot` è cercato nel resto dei 14 giorni già scaricati solo
-  // se la finestra visibile non ha nulla di libero.
+  // professionista. `allDays` sono tutti i giorni già scaricati (14,
+  // getPublicAgenda): la griglia ne mostra AGENDA_PREVIEW_DAYS alla volta,
+  // con frecce avanti/indietro per scorrere senza una richiesta di rete
+  // aggiuntiva (richiesta esplicita dell'utente). `nextAvailableSlot` è
+  // cercato una sola volta sull'intera finestra di 14 giorni, usato solo
+  // come scorciatoia quando la primissima finestra (offset 0) è vuota.
   const agendaPreview = useMemo(() => {
     if (!agenda) return null;
-    const windowDays = agenda.days.slice(0, AGENDA_PREVIEW_DAYS).map((day, offset) => ({
+    const allDays = agenda.days.map((day, offset) => ({
       date: day.date,
       label: agendaDayLabel(offset, day.dayOfWeek),
       dateLabel: agendaDateLabel(day.date),
       slots: day.slots,
     }));
-    const hasAvailableInWindow = windowDays.some((day) => day.slots.some((slot) => slot.bookedCount < slot.maxBookings));
-    const timeRows = hasAvailableInWindow
-      ? Array.from(new Set(windowDays.flatMap((day) => day.slots.map((slot) => slot.startTime)))).sort()
-      : [];
+    const initialHasAvailable = allDays
+      .slice(0, AGENDA_PREVIEW_DAYS)
+      .some((day) => day.slots.some((slot) => slot.bookedCount < slot.maxBookings));
     let nextAvailableSlot: { date: string; dateLabel: string; startTime: string; endTime: string } | null = null;
-    if (!hasAvailableInWindow) {
-      outer: for (const day of agenda.days) {
+    if (!initialHasAvailable) {
+      outer: for (const day of allDays) {
         for (const slot of [...day.slots].sort((a, b) => a.startTime.localeCompare(b.startTime))) {
           if (slot.bookedCount < slot.maxBookings) {
-            nextAvailableSlot = { date: day.date, dateLabel: agendaDateLabel(day.date), startTime: slot.startTime, endTime: slot.endTime };
+            nextAvailableSlot = { date: day.date, dateLabel: day.dateLabel, startTime: slot.startTime, endTime: slot.endTime };
             break outer;
           }
         }
       }
     }
-    return { windowDays, hasAvailableInWindow, timeRows, nextAvailableSlot };
+    return { allDays, initialHasAvailable, nextAvailableSlot };
   }, [agenda]);
+
+  const [agendaWindowOffset, setAgendaWindowOffset] = useState(0);
+  const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
+  const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
+  const agendaOffset = Math.min(agendaWindowOffset, maxAgendaOffset);
+  const agendaWindowDays = agendaPreview?.allDays.slice(agendaOffset, agendaOffset + AGENDA_PREVIEW_DAYS) ?? [];
+  const agendaHasAvailableInWindow = agendaWindowDays.some((day) => day.slots.some((slot) => slot.bookedCount < slot.maxBookings));
+  const agendaTimeRows = agendaHasAvailableInWindow
+    ? Array.from(new Set(agendaWindowDays.flatMap((day) => day.slots.map((slot) => slot.startTime)))).sort()
+    : [];
+  const agendaCanGoBack = agendaOffset > 0;
+  const agendaCanGoForward = agendaOffset + AGENDA_PREVIEW_DAYS < totalAgendaDays;
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
@@ -230,7 +244,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
 
-        {agendaPreview && (agendaPreview.hasAvailableInWindow || agendaPreview.nextAvailableSlot) ? (
+        {agendaPreview && (agendaPreview.initialHasAvailable || agendaPreview.nextAvailableSlot) ? (
           <YStack gap="$3">
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
                 (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
@@ -242,51 +256,92 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
 
-            <XStack>
-              {agendaPreview.windowDays.map((day) => (
-                <YStack key={day.date} width={72} alignItems="center" gap={2}>
-                  <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
-                    {day.label}
-                  </Text>
-                  <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
-                    {day.dateLabel}
-                  </Text>
-                </YStack>
-              ))}
+            <XStack alignItems="center" justifyContent="space-between" gap="$2">
+              <XStack>
+                {agendaWindowDays.map((day) => (
+                  <YStack key={day.date} width={90} alignItems="center" gap={2}>
+                    <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                      {day.label}
+                    </Text>
+                    <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
+                      {day.dateLabel}
+                    </Text>
+                  </YStack>
+                ))}
+              </XStack>
+              {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
+                <XStack gap="$1" alignItems="center">
+                  <XStack
+                    width={28}
+                    height={28}
+                    borderRadius="$10"
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={agendaCanGoBack ? 1 : 0.3}
+                    cursor={agendaCanGoBack ? "pointer" : undefined}
+                    accessibilityRole={agendaCanGoBack ? "button" : undefined}
+                    accessibilityLabel="Giorni precedenti"
+                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
+                  >
+                    <Icon name="chevron-left" size={16} color={brand.grafite70} />
+                  </XStack>
+                  <XStack
+                    width={28}
+                    height={28}
+                    borderRadius="$10"
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={agendaCanGoForward ? 1 : 0.3}
+                    cursor={agendaCanGoForward ? "pointer" : undefined}
+                    accessibilityRole={agendaCanGoForward ? "button" : undefined}
+                    accessibilityLabel="Giorni successivi"
+                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
+                  >
+                    <Icon name="chevron-right" size={16} color={brand.grafite70} />
+                  </XStack>
+                </XStack>
+              ) : null}
             </XStack>
 
-            {agendaPreview.hasAvailableInWindow ? (
+            {agendaHasAvailableInWindow ? (
               <YStack gap="$1.5">
-                {agendaPreview.timeRows.map((time) => (
+                {agendaTimeRows.map((time) => (
                   <XStack key={time}>
-                    {agendaPreview.windowDays.map((day) => {
+                    {agendaWindowDays.map((day) => {
                       const slot = day.slots.find((s) => s.startTime === time);
                       if (!slot) {
                         return (
-                          <XStack key={day.date} width={72} alignItems="center" justifyContent="center" paddingVertical={4}>
+                          <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={4}>
                             <Text fontSize={13} color={brand.filetto}>
                               -
                             </Text>
                           </XStack>
                         );
                       }
+                      const range = `${slot.startTime}–${slot.endTime}`;
                       const isFull = slot.bookedCount >= slot.maxBookings;
                       if (isFull) {
                         return (
-                          <XStack key={day.date} width={72} alignItems="center" justifyContent="center" paddingVertical={4}>
-                            <Text fontFamily="$mono" fontSize={12} color={brand.grafite70} textDecorationLine="line-through">
-                              {slot.startTime}
+                          <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={4}>
+                            <Text
+                              fontFamily="$mono"
+                              fontSize={11.5}
+                              color={brand.grafite70}
+                              textDecorationLine="line-through"
+                              textAlign="center"
+                            >
+                              {range}
                             </Text>
                           </XStack>
                         );
                       }
                       const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}`;
                       return (
-                        <XStack key={day.date} width={72} alignItems="center" justifyContent="center" paddingVertical={3}>
+                        <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={3}>
                           <Link href={href} style={{ textDecoration: "none" }}>
                             <XStack paddingHorizontal="$2" paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontFamily="$mono" fontSize={12} fontWeight="700" color={brand.cianografiaScuro}>
-                                {slot.startTime}
+                              <Text fontFamily="$mono" fontSize={11.5} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                                {range}
                               </Text>
                             </XStack>
                           </Link>
@@ -296,14 +351,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </XStack>
                 ))}
               </YStack>
-            ) : agendaPreview.nextAvailableSlot ? (
+            ) : agendaOffset === 0 && agendaPreview.nextAvailableSlot ? (
               <YStack gap="$2" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
                 <YStack gap={2}>
                   <Text fontSize={12} color={brand.grafite70}>
                     Prossimo giorno disponibile:
                   </Text>
                   <Text fontSize={14} fontWeight="700" color={brand.grafite}>
-                    {agendaPreview.nextAvailableSlot.dateLabel}, {agendaPreview.nextAvailableSlot.startTime}
+                    {agendaPreview.nextAvailableSlot.dateLabel}, {agendaPreview.nextAvailableSlot.startTime}–
+                    {agendaPreview.nextAvailableSlot.endTime}
                   </Text>
                 </YStack>
                 <Link
@@ -317,7 +373,11 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </XStack>
                 </Link>
               </YStack>
-            ) : null}
+            ) : (
+              <Text fontSize="$2" color={brand.grafite70}>
+                Nessun orario libero in questi giorni.
+              </Text>
+            )}
           </YStack>
         ) : null}
 

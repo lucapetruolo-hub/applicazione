@@ -46,14 +46,21 @@ function formatDateLabel(date: Date): string {
   return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
 }
 
-// Colonne della griglia mostrata in card (Oggi + 3 giorni) — richiesta
-// esplicita dell'utente, riferimento miodottore.it: "una visualizzazione
-// agenda" con colonne giorno consecutive, non i soli giorni con qualcosa da
-// mostrare (a differenza del comportamento precedente, che saltava i giorni
-// vuoti: qui un giorno vuoto resta in griglia con "-" su ogni riga, esattamente
-// come nel riferimento). Se la finestra non ha alcun orario libero si cerca
-// il prossimo disponibile fino a PREVIEW_SEARCH_DAYS più avanti.
+// Colonne della griglia mostrata in card (Oggi + 3 giorni di default) —
+// richiesta esplicita dell'utente, riferimento miodottore.it: "una
+// visualizzazione agenda" con colonne giorno consecutive, non i soli giorni
+// con qualcosa da mostrare (a differenza del comportamento precedente, che
+// saltava i giorni vuoti: qui un giorno vuoto resta in griglia con "-" su
+// ogni riga, esattamente come nel riferimento). Se la finestra iniziale non
+// ha alcun orario libero si cerca il prossimo disponibile fino a
+// PREVIEW_SEARCH_DAYS più avanti. PREVIEW_TOTAL_DAYS è quanti giorni vengono
+// effettivamente restituiti al client (stesso orizzonte di getPublicAgenda,
+// 14 giorni): la UI pagina in finestre da PREVIEW_MAX_DAYS colonne con
+// frecce avanti/indietro sui dati già scaricati, senza una richiesta di rete
+// per ogni pagina — richiesta esplicita dell'utente ("dare la possibilità
+// di navigare anche ai giorni successivi").
 const PREVIEW_MAX_DAYS = 4;
+const PREVIEW_TOTAL_DAYS = 14;
 const PREVIEW_SEARCH_DAYS = 30;
 
 function mapServices(
@@ -211,14 +218,18 @@ export class ProfessionalsService {
       const profileBookings = bookingsByProfile.get(profileId) ?? [];
       const exceptionDates = exceptionDatesByProfile.get(profileId);
 
-      // Colonne fisse Oggi + 3 giorni successivi (riferimento
-      // miodottore.it): ogni giorno resta in griglia con "-" dove il
-      // professionista non ha nulla, non viene saltato come in
-      // precedenza — a differenza del comportamento pre-esistente che
-      // elencava solo i primi giorni con qualcosa di libero.
+      // PREVIEW_TOTAL_DAYS colonne totali (14, stesso orizzonte di
+      // getPublicAgenda) restituite al client, non solo le PREVIEW_MAX_DAYS
+      // (4) mostrate di default: la UI pagina in avanti sui dati già
+      // scaricati (richiesta esplicita dell'utente). Ogni giorno resta in
+      // griglia con "-" dove il professionista non ha nulla, non viene
+      // saltato — a differenza del comportamento pre-esistente che elencava
+      // solo i primi giorni con qualcosa di libero. `hasAvailableInWindow`
+      // guarda però solo alla finestra iniziale (i primi PREVIEW_MAX_DAYS):
+      // decide se mostrare subito la griglia o il fallback "prossimo giorno
+      // disponibile", il resto dei giorni serve solo alla navigazione.
       const days: ProfessionalAvailabilityPreviewDay[] = [];
-      let hasAvailableInWindow = false;
-      for (let offset = 0; offset < PREVIEW_MAX_DAYS; offset++) {
+      for (let offset = 0; offset < PREVIEW_TOTAL_DAYS; offset++) {
         const date = new Date(startOfToday);
         date.setUTCDate(date.getUTCDate() + offset);
         const dateStr = date.toISOString().slice(0, 10);
@@ -240,11 +251,12 @@ export class ProfessionalsService {
             // quella fascia consuma la capienza non deve essere più
             // prenotabile" (richiesta esplicita dell'utente).
             const available = countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime) < slot.maxBookings;
-            if (available) hasAvailableInWindow = true;
-            return { time: slot.startTime, available };
+            return { time: slot.startTime, endTime: slot.endTime, available };
           });
         days.push({ date: dateStr, label, dateLabel, times });
       }
+
+      const hasAvailableInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.available));
 
       let nextAvailableSlot: ProfessionalNextAvailableSlot | null = null;
       if (!hasAvailableInWindow) {

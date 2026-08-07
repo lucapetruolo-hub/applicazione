@@ -4378,3 +4378,57 @@ Verificato con Playwright (desktop e mobile 390px, zero overflow): click
 su "Richiedi preventivo" → `/preventivo`, click su "Richiesta urgente" →
 `/urgente`, zero errori console. Typecheck pulito su `packages/ui`/
 `apps/web`/`apps/mobile`, build di produzione `apps/web` verde.
+
+**Griglia agenda — fascia oraria completa + navigazione ai giorni
+successivi** — due richieste esplicite dell'utente sulla stessa griglia
+Oggi+3 giorni introdotta in §20: (1) ogni cella deve mostrare l'intera
+fascia ("09:00–10:00"), non solo l'orario di inizio; (2) deve essere
+possibile scorrere anche ai giorni successivi, non restare bloccati sui
+primi 4.
+- **Fascia completa**: `ProfessionalAvailabilityPreviewSlot`
+  (`packages/shared/src/professionals.ts`) guadagna `endTime`, valorizzato
+  da `ProfessionalsService.buildAvailabilityPreviews` insieme a `time`
+  (già disponibile su `slot.endTime` a monte, nessuna query aggiuntiva).
+  Sul profilo pubblico l'agenda completa (`getPublicAgenda`) aveva già
+  `endTime` per costruzione (`ProfessionalAgendaSlot`): lì è bastato
+  cambiare la resa testuale da `slot.startTime` a
+  `` `${slot.startTime}–${slot.endTime}` ``.
+- **Navigazione**: la card di ricerca mostrava solo i primi 4 giorni e mai
+  altro. `buildAvailabilityPreviews` ora restituisce `PREVIEW_TOTAL_DAYS =
+  14` colonne totali per profilo (stesso orizzonte di `getPublicAgenda`),
+  non solo le `PREVIEW_MAX_DAYS = 4` mostrate di default — la UI pagina in
+  finestre da 4 colonne sui dati già scaricati, senza una richiesta di
+  rete per ogni pagina avanti/indietro. `hasAvailableInWindow`/
+  `nextAvailableSlot` (decidono se mostrare la griglia o il riquadro
+  "prossimo giorno disponibile" al primo caricamento) restano calcolati
+  solo sui primi 4 giorni, invariato — i restanti 10 servono solo alla
+  navigazione manuale.
+  - `ProfessionalCard.tsx` (`packages/ui`): nuovo stato locale
+    `windowOffset` (`useState`, richiede di marcare il file `"use
+    client"` — non lo era ancora, stesso bug di build già documentato per
+    `SearchBar.tsx`/`Autocomplete.tsx` in Fase 5 secondo giro, qui
+    prevenuto aggiungendo la direttiva preventivamente). Frecce
+    `chevron-left`/`chevron-right` accanto a "Prossima disponibilità",
+    disabilitate (opacità 0.3, non cliccabili) ai due estremi; mostrate
+    solo se il professionista ha più di 4 giorni di dati (sempre vero ora
+    che se ne scaricano 14, ma il controllo resta per sicurezza). Se la
+    pagina raggiunta navigando non ha nulla di libero, niente riquadro
+    "prossimo disponibile" (quello vale solo per la primissima finestra,
+    offset 0): un testo neutro "Nessun orario libero in questi giorni."
+    con le frecce che restano utilizzabili per continuare a scorrere.
+  - `ProfessionalDetailContent.tsx` (profilo pubblico): stesso principio,
+    stato `agendaWindowOffset` — qui però senza bisogno di query
+    aggiuntive dato che `getPublicAgenda` scarica già tutti i 14 giorni in
+    un colpo solo lato pagina profilo (`agendaPreview.allDays`, calcolato
+    una volta con `useMemo` da `agenda`, la finestra visibile è poi uno
+    `slice` dipendente dallo stato di navigazione).
+- Verificato con l'API locale (non solo typecheck) e Playwright: risposta
+  di `GET /professionals/search` con 14 giorni per profilo e `endTime` su
+  ogni slot; card di ricerca con range "09:00–13:00" visibile, click sulla
+  freccia avanti sposta la finestra a "Mar–Ven" (11–14 Ago) mostrando
+  "Nessun orario libero in questi giorni." per un professionista con
+  disponibilità solo più avanti nel mese; stesso comportamento verificato
+  sul profilo pubblico (range mostrato, frecce funzionanti, click su una
+  pillola libera naviga comunque a `/preventivo?...&fasciaOraria=09:00-10:00`
+  corretto). Typecheck pulito su tutti i package (`shared`, `api`, `ui`,
+  `web`, `mobile`), build di produzione `apps/web` verde.
