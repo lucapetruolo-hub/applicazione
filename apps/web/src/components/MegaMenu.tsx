@@ -147,7 +147,7 @@ export function MegaMenu() {
           font-size: 14px;
           font-weight: 600;
           font-family: var(--font-body), sans-serif;
-          color: #14181e;
+          color: #2b2420;
           padding: 8px 0;
         }
         .mega-chevron {
@@ -163,9 +163,9 @@ export function MegaMenu() {
           left: -24px;
           width: 640px;
           background: #ffffff;
-          border: 1px solid #d6dad5;
-          border-radius: 8px;
-          box-shadow: 0 8px 24px rgba(20, 24, 30, 0.1);
+          border: none;
+          border-radius: 24px;
+          box-shadow: 0 10px 24px -14px rgba(43, 32, 19, 0.05);
           overflow: hidden;
           animation: mega-fade ${motionFast} ${motionEasing};
           z-index: 50;
@@ -192,30 +192,28 @@ export function MegaMenu() {
           gap: 4px;
         }
         .mega-column-title {
-          font-family: var(--font-mono), monospace;
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: #4a525e;
+          font-family: var(--font-body), sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          color: #6e6459;
           margin-bottom: 8px;
         }
         .mega-item {
           display: flex;
           align-items: flex-start;
           gap: 10px;
-          padding: 8px 6px;
-          border-radius: 4px;
+          padding: 8px 10px;
+          border-radius: 14px;
           text-decoration: none;
           color: inherit;
         }
         .mega-item:hover {
-          background: #f1f3f0;
+          background: #dcf3e7;
         }
         .mega-item-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #1b4d8f;
+          color: #189a63;
         }
         .mega-item-text {
           display: flex;
@@ -224,15 +222,15 @@ export function MegaMenu() {
         .mega-item-name {
           font-size: 14px;
           font-weight: 600;
-          color: #14181e;
+          color: #2b2420;
         }
         .mega-item-desc {
           font-size: 12px;
-          color: #4a525e;
+          color: #6e6459;
         }
         .mega-footer {
           display: block;
-          background: #14181e;
+          background: #189a63;
           color: #ffffff;
           padding: 14px 24px;
           font-size: 14px;
@@ -240,7 +238,7 @@ export function MegaMenu() {
           text-decoration: none;
         }
         .mega-footer:hover {
-          background: #1f242c;
+          background: #0e7a4c;
         }
 
         .mega-mobile-trigger {
@@ -261,14 +259,14 @@ export function MegaMenu() {
         .mega-burger span {
           display: block;
           height: 2px;
-          background: #14181e;
+          background: #2b2420;
           border-radius: 1px;
         }
 
         .mega-drawer-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(20, 24, 30, 0.4);
+          background: rgba(43, 32, 19, 0.45);
           z-index: 100;
           display: flex;
           justify-content: flex-end;
@@ -295,7 +293,7 @@ export function MegaMenu() {
           justify-content: space-between;
           align-items: center;
           padding: 20px;
-          border-bottom: 1px solid #d6dad5;
+          border-bottom: 1px solid #f0dcc0;
           font-weight: 700;
           font-size: 16px;
         }
@@ -304,7 +302,7 @@ export function MegaMenu() {
           border: none;
           font-size: 24px;
           cursor: pointer;
-          color: #4a525e;
+          color: #6e6459;
           line-height: 1;
         }
         .mega-drawer-body {
@@ -313,7 +311,7 @@ export function MegaMenu() {
           padding: 12px 20px;
         }
         .mega-accordion {
-          border-bottom: 1px solid #f1f3f0;
+          border-bottom: 1px solid #fdefe1;
           padding: 12px 0;
         }
         .mega-accordion summary {
@@ -331,20 +329,20 @@ export function MegaMenu() {
           gap: 10px;
           padding: 10px 4px 10px 8px;
           text-decoration: none;
-          color: #14181e;
+          color: #2b2420;
           font-size: 14px;
         }
         .mega-drawer-cta {
           padding: 16px 20px;
-          border-top: 1px solid #d6dad5;
+          border-top: 1px solid #f0dcc0;
         }
         .mega-drawer-cta a {
           display: block;
           text-align: center;
-          background: #1b4d8f;
+          background: #189a63;
           color: white;
           padding: 12px;
-          border-radius: 4px;
+          border-radius: 14px;
           text-decoration: none;
           font-weight: 600;
         }

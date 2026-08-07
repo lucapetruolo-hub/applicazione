@@ -117,7 +117,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
                 {professional.boosted ? <Badge variant="pro">In evidenza</Badge> : null}
               </XStack>
-              <Text fontFamily="$mono" fontSize={13} textTransform="uppercase" color={brand.grafite70}>
+              <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
                 {professional.categoryLabel} · {professional.city}
               </Text>
               {professional.rating !== null ? (
@@ -230,7 +230,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 .filter((day) => day.slots.length > 0)
                 .map((day) => (
                   <XStack key={day.date} gap="$3" alignItems="flex-start" flexWrap="wrap">
-                    <Text fontFamily="$mono" fontSize={12} textTransform="uppercase" color={brand.grafite70} width={110} flexShrink={0}>
+                    <Text fontFamily="$body" fontWeight="700" fontSize={12} color={brand.grafite70} width={110} flexShrink={0}>
                       {/* Data UTC (vedi getPublicAgenda lato API): formattata così com'è, senza conversione di
                           fuso — coerente con come scheduledAt viene già trattato nel resto del progetto. */}
                       {new Date(`${day.date}T00:00:00Z`).toLocaleDateString("it-IT", {

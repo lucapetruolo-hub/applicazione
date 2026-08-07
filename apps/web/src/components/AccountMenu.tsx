@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { getAccountMenuItems } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
@@ -58,12 +58,12 @@ export function AccountMenu() {
         accessibilityLabel={unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : "Il mio account"}
       >
         <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
-        <Text fontSize="$3" fontWeight="600" color="$color11">
+        <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
           {displayName}
         </Text>
         {unreadCount > 0 ? (
           <YStack
-            backgroundColor="$red10"
+            backgroundColor={brand.urgenza}
             borderRadius={999}
             minWidth={18}
             height={18}
@@ -76,7 +76,7 @@ export function AccountMenu() {
             </Text>
           </YStack>
         ) : null}
-        <Text fontSize="$2" color="$color9">
+        <Text fontSize="$2" color={brand.grafite70}>
           {isOpen ? "▲" : "▼"}
         </Text>
       </YStack>
@@ -88,15 +88,14 @@ export function AccountMenu() {
           right={0}
           marginTop="$2"
           minWidth={220}
-          backgroundColor="white"
-          borderWidth={1}
-          borderColor="$borderColor"
-          borderRadius="$4"
+          backgroundColor={brand.calce}
+          borderRadius={radiusDoc}
           overflow="hidden"
           zIndex={1000}
-          shadowColor="$shadowColor"
-          shadowRadius={12}
-          shadowOpacity={0.15}
+          shadowColor="rgba(43,32,19,0.05)"
+          shadowRadius={20}
+          shadowOffset={{ width: 0, height: 8 }}
+          shadowOpacity={1}
         >
           {items.map((item) => {
             const itemUnreadCount = menuUnreadCounts[item.href] ?? 0;
@@ -108,9 +107,9 @@ export function AccountMenu() {
                   alignItems="center"
                   justifyContent="space-between"
                   gap="$2"
-                  hoverStyle={{ backgroundColor: "$color3" }}
+                  hoverStyle={{ backgroundColor: brand.gesso }}
                 >
-                  <Text fontSize="$3" color="$color12">
+                  <Text fontSize="$3" color={brand.grafite}>
                     {item.label}
                   </Text>
                   {itemUnreadCount > 0 ? (
@@ -132,12 +131,12 @@ export function AccountMenu() {
               </Link>
             );
           })}
-          <YStack borderTopWidth={1} borderTopColor="$borderColor">
+          <YStack borderTopWidth={1} borderTopColor={brand.filetto}>
             <YStack
               paddingHorizontal="$4"
               paddingVertical="$3"
               cursor="pointer"
-              hoverStyle={{ backgroundColor: "$color3" }}
+              hoverStyle={{ backgroundColor: brand.gesso }}
               onPress={() => {
                 setIsOpen(false);
                 logout();
@@ -145,7 +144,7 @@ export function AccountMenu() {
               accessibilityRole="button"
               accessibilityLabel="Esci dal tuo account"
             >
-              <Text fontSize="$3" color="$red10" fontWeight="600">
+              <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
                 Esci
               </Text>
             </YStack>

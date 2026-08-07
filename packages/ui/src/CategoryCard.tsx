@@ -20,7 +20,7 @@ export function CategoryCard({ icon, label, onPress }: CategoryCardProps) {
       justifyContent="center"
       onPress={onPress}
       pressStyle={{ scale: 0.97 }}
-      hoverStyle={{ borderColor: "$blue8" }}
+      hoverStyle={{ borderColor: brand.cianografia }}
       cursor="pointer"
     >
       <YStack alignItems="center" gap="$2">

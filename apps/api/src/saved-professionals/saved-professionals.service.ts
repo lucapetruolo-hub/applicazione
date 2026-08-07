@@ -70,6 +70,7 @@ export class SavedProfessionalsService {
         // La mini-agenda esiste solo nei risultati di ricerca (CLAUDE.md §12):
         // non vale la query batch aggiuntiva per una lista personale corta.
         availabilityPreview: [],
+        createdAt: profile.createdAt.toISOString(),
       } satisfies ProfessionalSearchResult;
     });
   }

@@ -5,7 +5,7 @@ import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
-import { brand } from "./tokens";
+import { brand, radiusDoc } from "./tokens";
 
 export type ProfessionalSuggestion = {
   id: string;
@@ -60,7 +60,16 @@ export function SearchBar({
   }
 
   return (
-    <YStack gap="$3" backgroundColor={brand.calce} padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.filetto}>
+    <YStack
+      gap="$3"
+      backgroundColor={brand.calce}
+      padding="$3"
+      borderRadius={radiusDoc}
+      shadowColor="rgba(43,32,19,0.03)"
+      shadowRadius={10}
+      shadowOffset={{ width: 0, height: 3 }}
+      shadowOpacity={1}
+    >
       <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
         {MODE_TABS.map((tab) => {
           const active = tab.key === mode;

@@ -28,7 +28,7 @@ const MAX_RADIUS_KM = 25;
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );

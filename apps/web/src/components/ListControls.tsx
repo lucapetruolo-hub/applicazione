@@ -55,7 +55,7 @@ export function sortListItems<T>(
 
 function ControlLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$mono" fontSize={10} fontWeight="500" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );

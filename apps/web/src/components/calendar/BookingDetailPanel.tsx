@@ -107,7 +107,7 @@ export function BookingDetailPanel({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               {recipientFullName ?? booking.clientName ?? "Cliente"}
             </Text>
-            <Text fontFamily="$mono" fontSize={11} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={STATUS_COLOR[booking.status]}>
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={STATUS_COLOR[booking.status]}>
               {STATUS_LABEL[booking.status]}
             </Text>
           </YStack>
@@ -117,7 +117,7 @@ export function BookingDetailPanel({
         </XStack>
 
         <YStack gap="$1">
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Data e ora
           </Text>
           <Text color={brand.grafite} fontSize="$4">
@@ -138,7 +138,7 @@ export function BookingDetailPanel({
             da agenda, che non hanno una GuidedRequest). */}
         {recipientPhone || booking.clientEmail || structuredAddress || booking.address ? (
           <YStack gap="$2">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Contatti cliente
             </Text>
             <YStack gap="$1.5">
@@ -176,7 +176,7 @@ export function BookingDetailPanel({
 
         {booking.items.length > 0 ? (
           <YStack gap="$2">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Preventivo
             </Text>
             <YStack gap="$1">
@@ -201,7 +201,7 @@ export function BookingDetailPanel({
             si deployano indipendentemente. */}
         {booking.description ? (
           <YStack gap="$1">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Descrizione del lavoro
             </Text>
             <Text color={brand.grafite} fontSize="$3">
@@ -212,7 +212,7 @@ export function BookingDetailPanel({
 
         {(booking.photoUrls ?? []).length > 0 ? (
           <YStack gap="$2">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Foto del cliente
             </Text>
             <XStack gap="$2" flexWrap="wrap">
@@ -232,7 +232,7 @@ export function BookingDetailPanel({
             "eventuali note da ricordare") — mai vista dal cliente, a
             differenza della nota di annullamento (CancelBookingModal). */}
         <YStack gap="$2">
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Note personali (solo per te)
           </Text>
           <textarea

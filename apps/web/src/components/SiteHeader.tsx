@@ -8,9 +8,10 @@ import { AccountMenu } from "./AccountMenu";
 import { MegaMenu } from "./MegaMenu";
 
 /**
- * Header sticky (brief redesign §4.1): bordo inferiore hairline visibile
- * solo dopo 8px di scroll, per non avere una linea netta già sulla hero
- * (che ha il suo sfondo `--gesso` distinto dal bianco dell'header).
+ * Header sticky (brief "Vicinato", CLAUDE.md §19): niente più hairline —
+ * un'ombra morbida compare solo dopo 8px di scroll, coerente con il resto
+ * del sito che segnala la profondità con `shadowVicinato` invece di un
+ * bordo netto.
  *
  * `MegaMenu` è un'unica istanza, mai duplicata: mostra da sola il trigger
  * "Servizi" desktop o l'hamburger mobile a seconda della larghezza,
@@ -41,10 +42,10 @@ export function SiteHeader() {
         top: 0,
         zIndex: 40,
         width: "100%",
-        backgroundColor: "rgba(255,255,255,0.9)",
+        backgroundColor: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(8px)",
-        borderBottom: `1px solid ${scrolled ? "#D6DAD5" : "transparent"}`,
-        transition: `border-color ${motionFast} ${motionEasing}`,
+        boxShadow: scrolled ? "0 1px 1px rgba(43,32,19,0.02), 0 4px 10px -8px rgba(43,32,19,0.05)" : "none",
+        transition: `box-shadow ${motionFast} ${motionEasing}`,
       }}
     >
       <XStack
@@ -74,12 +75,12 @@ export function SiteHeader() {
             <MegaMenu />
             <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
               <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color="$color12">
+                <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
                   Come funziona
                 </Text>
               </Link>
               <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color="$color12">
+                <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
                   Prezzi
                 </Text>
               </Link>

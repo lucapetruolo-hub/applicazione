@@ -17,11 +17,9 @@ export function AccountSidebar() {
   return (
     <YStack width={220} gap="$1" flexShrink={0}>
       <Text
-        fontFamily="$mono"
-        fontSize={11}
-        fontWeight="500"
-        letterSpacing={0.6}
-        textTransform="uppercase"
+        fontFamily="$body"
+        fontSize={12}
+        fontWeight="700"
         color={brand.grafite70}
         paddingHorizontal="$3"
         paddingBottom="$2"

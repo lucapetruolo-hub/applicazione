@@ -1,4 +1,5 @@
 import { Text, XStack } from "tamagui";
+import { brand } from "./tokens";
 
 export type EyebrowProps = {
   children: string;
@@ -6,19 +7,18 @@ export type EyebrowProps = {
 };
 
 /**
- * Etichetta mono uppercase preceduta da un filetto orizzontale di 24px —
- * introduce ogni sezione, come le intestazioni di campo su un modulo
- * (brief redesign "Scheda Intervento" §1.3). Un solo pattern per tutto il
- * sito: mai testo introduttivo scritto ad-hoc altrove.
+ * Pillola introduttiva di sezione — sostituisce il filetto+mono maiuscolo
+ * di "Scheda Intervento" (CLAUDE.md §19, brief "Vicinato"): un'etichetta
+ * da modulo tecnico non si addice più al registro del sito. Un solo
+ * pattern per tutto il sito: mai testo introduttivo scritto ad-hoc altrove.
  */
 export function Eyebrow({ children, tone = "light" }: EyebrowProps) {
-  const textColor = tone === "dark" ? "white" : "$cianografia";
-  const lineColor = tone === "dark" ? "rgba(255,255,255,0.4)" : "$cianografia";
+  const bg = tone === "dark" ? "rgba(255,255,255,0.16)" : brand.cianografiaVelo;
+  const textColor = tone === "dark" ? "white" : brand.cianografiaScuro;
 
   return (
-    <XStack alignItems="center" gap="$2">
-      <XStack width={24} height={1} backgroundColor={lineColor} />
-      <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.9} textTransform="uppercase" color={textColor}>
+    <XStack alignSelf="flex-start" backgroundColor={bg} paddingHorizontal="$3" paddingVertical={6} borderRadius={999}>
+      <Text fontFamily="$body" fontSize={12.5} fontWeight="700" color={textColor}>
         {children}
       </Text>
     </XStack>

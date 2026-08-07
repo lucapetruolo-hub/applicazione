@@ -111,7 +111,7 @@ export function ProfessionalCard({
               {remoteAvailable ? (
                 <XStack gap="$1" alignItems="center">
                   <Icon name="video" size={13} color={brand.cianografia} strokeWidth={1.5} />
-                  <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
+                  <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
                     Online
                   </Text>
                 </XStack>
@@ -151,13 +151,13 @@ export function ProfessionalCard({
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
             // (borderLeftWidth resta 0 solo se non c'è spazio, gestito dal wrap).
           >
-            <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
               Prossima disponibilità
             </Text>
             <XStack gap="$3">
               {availabilityPreview.map((day) => (
                 <YStack key={day.date} gap="$1.5" alignItems="center" minWidth={0}>
-                  <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" textTransform="uppercase" color={brand.grafite}>
+                  <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
                     {day.label}
                   </Text>
                   {day.times.map((time) => (

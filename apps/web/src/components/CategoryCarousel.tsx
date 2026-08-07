@@ -10,13 +10,14 @@ const arrowStyle = {
   width: 40,
   height: 40,
   borderRadius: 20,
-  border: `1px solid ${brand.filetto}`,
+  border: "none",
   backgroundColor: brand.calce,
+  boxShadow: "0 1px 1px rgba(43,32,19,0.02), 0 4px 10px -8px rgba(43,32,19,0.05)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
-  transition: `border-color ${motionFast} ${motionEasing}`,
+  transition: `transform ${motionFast} ${motionEasing}`,
 } as const;
 
 /**

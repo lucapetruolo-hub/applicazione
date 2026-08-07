@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 
 export type MapBounds = { north: number; south: number; east: number; west: number };
@@ -152,7 +153,7 @@ export function ResultsMap({
               {selected.rating !== null ? (
                 <>
                   {" · "}
-                  <Star size={12} strokeWidth={1.5} color="#B4893A" fill="#B4893A" style={{ verticalAlign: "-1px" }} />{" "}
+                  <Star size={12} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} style={{ verticalAlign: "-1px" }} />{" "}
                   {selected.rating.toFixed(1)}
                 </>
               ) : (
@@ -218,11 +219,11 @@ export function ResultsMap({
           flex-shrink: 0;
           font-size: 11px;
           font-weight: 600;
-          color: #1e5eff;
+          color: #3d6b3e;
         }
         .map-banner-subtitle {
           font-size: 13px;
-          color: #667085;
+          color: #6e6459;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -233,7 +234,7 @@ export function ResultsMap({
           height: 30px;
           border-radius: 50%;
           border: none;
-          background: #f1f5f9;
+          background: #dcf3e7;
           cursor: pointer;
           display: flex;
           align-items: center;

@@ -110,6 +110,7 @@ export class ProfessionalsService {
         services: mapServices(profile.services),
         subTags: profile.subTags,
         availabilityPreview: previewsByProfileId.get(profile.id) ?? [],
+        createdAt: profile.createdAt.toISOString(),
       } satisfies ProfessionalSearchResult;
     });
 
@@ -265,6 +266,7 @@ export class ProfessionalsService {
       // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
+      createdAt: profile.createdAt.toISOString(),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
       reviews: reviews.map((review) => ({

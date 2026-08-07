@@ -653,7 +653,7 @@ export default function DashboardAgendaPage() {
         ) : null}
 
         {isClosed ? (
-          <Text fontFamily="$mono" fontSize={11} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={brand.urgenza}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.urgenza}>
             Chiuso
           </Text>
         ) : (
@@ -709,7 +709,7 @@ export default function DashboardAgendaPage() {
     const dateStr = toIsoDate(date);
     if (exceptionDates.includes(dateStr)) {
       return (
-        <Text fontFamily="$mono" fontSize={9} fontWeight="700" letterSpacing={0.3} textTransform="uppercase" color={brand.urgenza}>
+        <Text fontFamily="$body" fontSize={9} fontWeight="700" color={brand.urgenza}>
           Chiuso
         </Text>
       );
@@ -1352,7 +1352,7 @@ function SlotEditorModal({
         </XStack>
 
         <YStack gap="$2">
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Orario
           </Text>
           <XStack gap="$2" alignItems="center" flexWrap="wrap">
@@ -1365,7 +1365,7 @@ function SlotEditorModal({
         </YStack>
 
         <YStack gap="$2">
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Numero massimo di prenotazioni
           </Text>
           <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={modalMaxInputStyle} />

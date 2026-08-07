@@ -18,12 +18,17 @@ export type BadgeProps = {
   children: ReactNode;
 };
 
-/** Etichetta di stato — brief §3, quattro varianti fisse, nessun colore libero. */
+/**
+ * Etichetta di stato — quattro varianti fisse, nessun colore libero. Pillola
+ * piena (non più mono maiuscolo hairline, brief "Vicinato" CLAUDE.md §19):
+ * il mono resta solo per cifre tabulari altrove, qui basta il colore
+ * semantico a dare peso.
+ */
 export function Badge({ variant, children }: BadgeProps) {
   const { bg, fg } = VARIANT_STYLE[variant];
   return (
-    <XStack paddingHorizontal="$2" paddingVertical={3} borderRadius="$2" backgroundColor={bg} alignSelf="flex-start">
-      <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.5} textTransform="uppercase" color={fg}>
+    <XStack paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={bg} alignSelf="flex-start">
+      <Text fontFamily="$body" fontSize={12} fontWeight="700" color={fg}>
         {children}
       </Text>
     </XStack>

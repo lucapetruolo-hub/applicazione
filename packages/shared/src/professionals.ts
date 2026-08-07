@@ -100,6 +100,14 @@ export type ProfessionalSearchResult = {
   subTags: string[];
   /** Vuota se il professionista non ha attivato bookableAgenda o non ha fasce esatte libere nei prossimi giorni. */
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
+  /**
+   * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
+   * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"
+   * (richiesta esplicita dell'utente, carosello in stile miodottore.it),
+   * non incide sul ranking di ricerca vero e proprio (boost→rating→
+   * recensioni, invariato).
+   */
+  createdAt: string;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

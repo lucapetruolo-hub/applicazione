@@ -6,7 +6,7 @@ export const contentType = "image/png";
 // Apple richiede un PNG raster (l'icon.svg in questa stessa cartella copre
 // invece favicon/icona tab, dove Next.js accetta SVG direttamente) — generato
 // con next/og invece di un file binario committato a mano, stesso mark del
-// logo (blu cianografia + glifo bianco a due tratti, vedi packages/ui/src/Logo.tsx).
+// logo (verde smeraldo + glifo bianco a due tratti, vedi packages/ui/src/Logo.tsx).
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -17,8 +17,8 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#1B4D8F",
-          borderRadius: 38,
+          background: "#189A63",
+          borderRadius: 46,
         }}
       >
         <svg width="108" height="108" viewBox="0 0 28 28">

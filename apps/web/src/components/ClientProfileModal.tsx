@@ -84,7 +84,7 @@ export function ClientProfileModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
             {name}
           </Text>
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" letterSpacing={0.5} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Cliente
           </Text>
         </YStack>

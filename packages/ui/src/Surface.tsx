@@ -2,27 +2,31 @@ import { YStack, styled } from "tamagui";
 import { brand, radiusDoc } from "./tokens";
 
 /**
- * Superficie bianca a bordo hairline, radius 4, senza ombra — il "Card" del
- * brief redesign (brief §3), rinominato `Surface` per non collidere col
- * `Card` di Tamagui, già re-esportato da questo package e ancora in uso da
- * pagine non ancora riscritte nel nuovo linguaggio visivo: un `Card`
- * ridefinito con lo stesso nome le avrebbe cambiate senza controllo.
+ * Superficie bianca, radius morbido, ombra soffice al posto del bordo
+ * hairline (brief "Vicinato", CLAUDE.md §19 — sostituisce il bordo sottile
+ * di "Scheda Intervento": angoli quasi nulli + filetto era linguaggio da
+ * documento tecnico, qui l'ombra dà profondità senza sembrare freddo). Il
+ * "Card" del brief redesign, rinominato `Surface` per non collidere col
+ * `Card` di Tamagui, già re-esportato da questo package.
  */
 export const Surface = styled(YStack, {
   name: "Surface",
   backgroundColor: brand.calce,
-  borderWidth: 1,
-  borderColor: brand.filetto,
+  borderWidth: 0,
   borderRadius: radiusDoc,
   padding: "$4",
+  shadowColor: "rgba(43,32,19,0.03)",
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 1,
 
   variants: {
-    /** Superficie flottante (dropdown, modali): unica ombra ammessa dal brief. */
+    /** Superficie flottante (dropdown, modali): ombra più marcata. */
     floating: {
       true: {
-        shadowColor: "rgba(20,24,30,0.06)",
-        shadowRadius: 2,
-        shadowOffset: { width: 0, height: 1 },
+        shadowColor: "rgba(43,32,19,0.06)",
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 1,
       },
     },

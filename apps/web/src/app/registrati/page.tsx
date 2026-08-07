@@ -33,7 +33,7 @@ function RoleChoiceScreen({ onChoose }: { onChoose: (role: "cliente" | "professi
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={480} gap="$5">
         <YStack gap="$2">
-          <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.cianografia}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
             Registrati
           </Text>
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
@@ -204,7 +204,7 @@ function RegistratiForm() {
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={420} gap="$5">
         <YStack gap="$2">
-          <Text fontFamily="$mono" fontSize={11} fontWeight="500" letterSpacing={0.8} textTransform="uppercase" color={brand.cianografia}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
             {isProfessional ? "Professionisti" : "Registrati"}
           </Text>
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
@@ -220,7 +220,7 @@ function RegistratiForm() {
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               oppure
             </Text>
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />

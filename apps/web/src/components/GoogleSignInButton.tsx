@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Button, Text, XStack } from "@professionisti/ui";
+import { Button, Text, XStack, brand } from "@professionisti/ui";
 
 declare global {
   interface Window {
@@ -104,17 +104,17 @@ export function GoogleSignInButton({ onCredential }: { onCredential: (idToken: s
 
       <Button
         onPress={handlePress}
-        backgroundColor="$color4"
-        hoverStyle={{ backgroundColor: "$color5" }}
-        pressStyle={{ backgroundColor: "$color6" }}
-        color="$color12"
+        backgroundColor={brand.gesso}
+        hoverStyle={{ backgroundColor: brand.filetto }}
+        pressStyle={{ backgroundColor: brand.filetto }}
+        color={brand.grafite}
         size="$5"
         borderRadius={999}
         width="100%"
       >
         <XStack alignItems="center" justifyContent="center" gap="$3">
           <GoogleIcon />
-          <Text fontSize="$4" fontWeight="600" color="$color12">
+          <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
             Continua con Google
           </Text>
         </XStack>

@@ -46,7 +46,7 @@ export function CategoryContent({
       <XStack flexWrap="wrap" gap="$2">
         {category.subTags.map((tag) => (
           <YStack key={tag} paddingHorizontal="$3" paddingVertical="$2" backgroundColor={brand.gesso} borderRadius="$10">
-            <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               {tag.replace(/-/g, " ")}
             </Text>
           </YStack>

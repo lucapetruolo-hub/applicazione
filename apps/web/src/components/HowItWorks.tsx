@@ -34,22 +34,16 @@ export function HowItWorks() {
         {STEPS.map((step, index) => (
           <YStack key={step.number} flex={1} gap="$3" position="relative">
             <YStack flexDirection="row" alignItems="center" gap="$3">
-              <Text fontFamily="$mono" fontSize={13} fontWeight="500" color={brand.cianografia}>
-                {step.number}
-              </Text>
+              <YStack width={32} height={32} borderRadius={16} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
+                <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+                  {index + 1}
+                </Text>
+              </YStack>
               {index < STEPS.length - 1 ? (
-                <YStack
-                  flex={1}
-                  height={1}
-                  borderStyle="dashed"
-                  borderTopWidth={1}
-                  borderColor={brand.filetto}
-                  display="none"
-                  $gtMd={{ display: "flex" }}
-                />
+                <YStack flex={1} height={2} borderRadius={1} backgroundColor={brand.filetto} display="none" $gtMd={{ display: "flex" }} />
               ) : null}
             </YStack>
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+            <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color={brand.grafite}>
               {step.title}
             </Text>
             <Text fontSize="$4" color={brand.grafite70}>

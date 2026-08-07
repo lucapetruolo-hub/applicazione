@@ -160,7 +160,7 @@ function DashboardTabButton({
         {children}
       </Text>
       {badgeCount ? (
-        <YStack backgroundColor="$red10" borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
+        <YStack backgroundColor={brand.urgenza} borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
           <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
             {badgeCount > 9 ? "9+" : badgeCount}
           </Text>
@@ -563,11 +563,9 @@ function AcceptedJobCard({
           </Text>
           <XStack alignItems="center" gap="$2">
             <Text
-              fontFamily="$mono"
-              fontSize={11}
+              fontFamily="$body"
+              fontSize={13}
               fontWeight="700"
-              letterSpacing={0.5}
-              textTransform="uppercase"
               color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
             >
               {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
@@ -1232,7 +1230,7 @@ function LeadCard({
           era mostrato, non il contenuto effettivo. */}
       {sent && lead.quote ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
             Il tuo preventivo
           </Text>
           {lead.quote.items.map((item) => (

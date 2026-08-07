@@ -100,7 +100,7 @@ function ClientTabButton({
         {children}
       </Text>
       {badgeCount ? (
-        <YStack backgroundColor="$red10" borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
+        <YStack backgroundColor={brand.urgenza} borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
           <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
             {badgeCount > 9 ? "9+" : badgeCount}
           </Text>
@@ -695,7 +695,7 @@ function GuidedRequestCard({
               ) : null}
             </YStack>
             <YStack alignItems="flex-end" gap="$1">
-              <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
+              <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
                 {STATUS_LABEL[request.status]}
               </Text>
               {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
@@ -781,7 +781,7 @@ function GuidedRequestCard({
 
       {request.sentTo.length > 0 ? (
         <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
             Inviata a
           </Text>
           {request.sentTo.map((professional) => (
@@ -812,7 +812,7 @@ function GuidedRequestCard({
                       sapere perché quel professionista non rispondeva mai.
                     */}
                     {professional.declined ? (
-                      <Text fontFamily="$mono" fontSize={10} fontWeight="700" textTransform="uppercase" color={brand.urgenza}>
+                      <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
                         Ha rifiutato
                       </Text>
                     ) : null}
@@ -834,7 +834,7 @@ function GuidedRequestCard({
 
       {request.quotes.length > 0 ? (
         <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-          <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
             Preventivi ricevuti
           </Text>
           {request.quotes.map((quote) => (
@@ -1294,7 +1294,7 @@ function BookingRow({
           </Text>
         </Link>
         <XStack alignItems="center" gap="$2">
-          <Text fontFamily="$mono" fontSize={11} textTransform="uppercase" color={brand.cianografia} fontWeight="600">
+          <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
             {BOOKING_STATUS_LABEL[booking.status]}
           </Text>
           {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
-import { SearchBar, YStack, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { SearchBar, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 
@@ -24,7 +24,7 @@ export function SearchHeader({
   }
 
   return (
-    <YStack width="100%" backgroundColor="$blue2" paddingVertical="$5" paddingHorizontal="$4" alignItems="center">
+    <YStack width="100%" backgroundColor={brand.cianografiaVelo} paddingVertical="$5" paddingHorizontal="$4" alignItems="center">
       <YStack width="100%" maxWidth={680}>
         <SearchBar
           onSearch={handleSearch}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
-import { Button, H1, H2, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, H1, H2, Paragraph, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -45,7 +45,7 @@ export default function AdminPage() {
           <H1 size="$7" textAlign="center">
             Accesso riservato
           </H1>
-          <Paragraph color="$color10" textAlign="center">
+          <Paragraph color={brand.grafite70} textAlign="center">
             Questa pagina è visibile solo agli amministratori.
           </Paragraph>
         </YStack>
@@ -58,7 +58,7 @@ export default function AdminPage() {
       <YStack width="100%" maxWidth={800} gap="$6">
         <H1 size="$8">Utenti registrati</H1>
 
-        {error ? <Text color="$red10">{error}</Text> : null}
+        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {data === null && !error ? (
           <LoadingState />
@@ -79,9 +79,9 @@ function UserGroup({ title, rows, showBusiness }: { title: string; rows: AdminUs
     <YStack gap="$3">
       <H2 size="$6">{title}</H2>
       {rows.length === 0 ? (
-        <Text color="$color9">Nessuno finora.</Text>
+        <Text color={brand.grafite70}>Nessuno finora.</Text>
       ) : (
-        <YStack borderWidth={1} borderColor="$borderColor" borderRadius="$4" overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
           {rows.map((row, index) => (
             <YStack
               key={row.email ?? index}
@@ -92,16 +92,16 @@ function UserGroup({ title, rows, showBusiness }: { title: string; rows: AdminUs
               gap="$2"
               paddingHorizontal="$3"
               paddingVertical="$3"
-              backgroundColor={index % 2 === 0 ? "transparent" : "$color2"}
+              backgroundColor={index % 2 === 0 ? "transparent" : brand.gesso}
             >
               <YStack gap="$1" minWidth={200}>
                 <Text fontWeight="600">{row.email ?? "—"}</Text>
-                <Text fontSize="$2" color="$color10">
+                <Text fontSize="$2" color={brand.grafite70}>
                   {[row.name, row.surname].filter(Boolean).join(" ") || "—"}
                   {showBusiness && row.businessName ? ` · ${row.businessName}` : ""}
                 </Text>
               </YStack>
-              <Text fontSize="$2" color="$color9">
+              <Text fontSize="$2" color={brand.grafite70}>
                 {new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
               </Text>
             </YStack>

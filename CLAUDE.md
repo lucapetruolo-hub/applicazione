@@ -3995,3 +3995,236 @@ Rifiuta, apertura di "Modifica" con `<select>` precompilato e textarea,
 invio che fa sparire il banner di trattativa (preventivo tornato `SENT`).
 Zero errori console in tutti i flussi. Typecheck pulito su tutti i package
 (`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`).
+
+---
+
+## 19. Rebrand "Vicinato" — sostituzione del brief "Scheda Intervento"
+
+Richiesta esplicita dell'utente, in qualità di valutazione UX/UI sul sito
+reale (screenshot Playwright, non solo lettura di codice): la home risultava
+"troppo fredda, manca di empatia e contatto umano" — conseguenza diretta e
+prevedibile del brief "Scheda Intervento" originale (§10: griglia
+cianografica blu, hairline, mono maiuscolo, palette grigio/blu fredda).
+Dopo aver mostrato quattro anteprime statiche a confronto (home attuale +
+tre concept: Portineria/Vicinato/Giornale di Casa, ispirati esplicitamente
+"ai migliori siti sulla stessa tematica" su richiesta dell'utente, senza
+vincolo di continuità con colori/stile del sito esistente), l'utente ha
+scelto **Vicinato** (pesca + verde smeraldo saturo, tipografia arrotondata
+amichevole, blocchi di colore pieno) e ha chiesto esplicitamente: **tutte
+le pagine del sito**, non solo la home — "cambia totalmente tutte le
+pagine nel nuovo stile, niente deve rimanere nel vecchio stile". Le foto
+professionali reali sono state esplicitamente rimandate a un giro
+successivo.
+
+**Leva principale — pochi file, effetto su tutto il sito**: il sito era già
+ben centralizzato dal redesign "Scheda Intervento" precedente — la quasi
+totalità delle pagine referenzia i colori tramite `brand.*`
+(`packages/ui/src/tokens.ts`), mai hex letterali. Ricolorare i **valori**
+di quell'oggetto (stessi nomi di chiave, mai rinominati/rimossi — la
+stessa regola additiva già documentata nei commenti del file) ripropaga
+automaticamente il nuovo stile su ~50 file senza doverli riscrivere uno
+per uno, lo stesso meccanismo già sfruttato nel redesign originale:
+- `gesso` (sfondo pagina): da grigio chiarissimo a pesca `#FDEFE1`.
+- `calce` (sfondo card): bianco pieno, invariato.
+- `grafite`/`grafite70` (testo): da grigio/blu freddo a inchiostro caldo
+  `#2B2420`/`#6E6459`.
+- `cianografia`/`cianografiaScuro`/`cianografiaVelo` (accento primario,
+  bottoni/link/focus): da blu a verde smeraldo `#189A63`/`#0E7A4C`/
+  `#DCF3E7`.
+- `verificato`: verde foresta `#3D6B3E`, deliberatamente distinto dal
+  verde smeraldo dei CTA per restare leggibile come stato semantico a sé.
+- `urgenza`/`urgenzaVelo`: **invariati** (rosso resta rosso — cambiarlo
+  avrebbe confuso una convenzione universale).
+- `ottone`: invariato concettualmente (accento dorato per pagamento/boost).
+- `radiusDoc`/`radiusDocLg`: da 4/8 ("documento tecnico") a 20/32, molto
+  più morbidi.
+- Nuovo `shadowVicinato` (stringa CSS box-shadow, per i pochi punti
+  web-only che non passano da `Surface`).
+
+**Font**: `apps/web/src/app/fonts.ts` sostituisce Archivo con **Fredoka**
+(`next/font/google`, pesi 500/600/700 — max disponibile 700, contro l'800
+di Archivo: alcuni `fontWeight="800"` sparsi nel codice restano non
+patchati uno per uno, rischio visivo basso, il browser ricade sul peso più
+vicino disponibile). Stessa CSS variable `--font-display`, nessuna
+modifica a `packages/ui/config.ts` (già generico). Corpo/mono (Inter
+Tight/IBM Plex Mono) invariati.
+
+**Primitivi condivisi** (letti da ogni pagina, non solo home):
+- `Button.tsx`: nessuna modifica strutturale, eredita `brand.cianografia`
+  ricolorato + `radiusDoc` più morbido — ogni bottone `variant="primary"`
+  del sito diventa verde smeraldo pillolato automaticamente.
+- `Surface.tsx`: **bordo hairline rimosso** (`borderWidth: 0`, prima 1px
+  `brand.filetto`) in favore di un'ombra soffice — "angoli quasi nulli +
+  filetto" era esattamente il linguaggio da documento tecnico che l'utente
+  ha giudicato freddo. Ogni componente che usa `Surface` (card
+  professionista, pop-up, pannelli agenda, pricing card) eredita il cambio
+  senza essere toccato.
+- `Badge.tsx`: da pillola hairline + mono maiuscolo a pillola piena
+  arrotondata, testo `$body` grassetto.
+- `Eyebrow.tsx`: da hairline + mono maiuscolo a pillola colorata piena
+  (`cianografiaVelo`/testo `cianografiaScuro`, o traslucido su sfondo
+  scuro) — stesso principio di `Badge.tsx`.
+- `Chip.tsx`: nessuna modifica necessaria (già una pillola colorata, non
+  parte del problema "freddo").
+- `Section.tsx`: nessuna modifica necessaria (il pattern `.bp-grid` non è
+  più referenziato da nessun componente dopo la riscrittura di
+  `HomeHero.tsx`, vedi sotto).
+
+**Sweep mono-maiuscolo → registro caldo** (scoperto durante la verifica
+visiva, non previsto nel piano iniziale): ricolorare i token non basta a
+togliere la sensazione "documento tecnico" se le micro-etichette restano
+in IBM Plex Mono maiuscolo con `letterSpacing` — lo stesso identico
+pattern (`fontFamily="$mono" ... textTransform="uppercase"`) risultava
+duplicato inline in **37 punti su 18 file** in tutto il sito (label di
+campo, stato prenotazione, intestazioni di sezione in pop-up/pannelli),
+mai centralizzato in un componente condiviso. Convertiti in blocco
+(script mirato sul pattern esatto, poi 5 casi multi-riga corretti a mano)
+a `fontFamily="$body" fontWeight="700"`, stessa dimensione o leggermente
+maggiore per compensare la minor densità del mono. **Lasciato invariato**
+il mono per cifre tabulari vere (prezzi, orari `HH:MM`, km, conteggi) —
+uso già sanzionato esplicitamente in §10 Fase 1 ("mono mantenuto solo per
+cifre tabulari"), coerente con la convenzione originale, non un residuo da
+correggere. Toccati anche due componenti "su misura" con lo stesso pattern
+non catturato dal filtro puramente testuale: il selettore vista
+Giorno/Settimana/Mese di `CalendarShell.tsx` (da segmented control con
+hairline verticali tra le voci a pillola piena senza divisori, stesso
+principio di `SearchBar.tsx`) e `SearchBar.tsx` stesso, che aveva un
+bordo hairline residuo (`borderWidth={1} borderColor={brand.filetto}`)
+mai notato prima perché visivamente sottile — rimosso in favore della
+stessa ombra soffice di `Surface`.
+
+**Componenti home riscritti** (i più "su misura" per l'estetica blueprint,
+non recuperabili solo ricolorando token): `HomeHero.tsx` (pannello verde
+pieno arrotondato con `SearchBar` incorporata, via il pattern `.bp-grid`
+— la barra di ricerca resta la funzione primaria della home, non
+sostituita da un form di richiesta guidata, decisione già presa e
+documentata in una correzione precedente), `CategoryTile.tsx`/
+`CategoryCarousel.tsx` (hover a sollevamento+rotazione invece che
+cambio-colore-bordo, coerente con `Surface` senza più bordo),
+`QualitySection.tsx` (pannello scuro caldo, eredita automaticamente),
+`HowItWorks.tsx` (numeri "01/02/03" mono sostituiti da badge circolari
+pieni, linea di collegamento tratteggiata → solida arrotondata),
+`ProCtaSection.tsx` (da cianografia a smeraldo pieno, `Eyebrow tone="dark"`
+al posto dell'eyebrow hairline inline), `SiteHeader.tsx` (ombra morbida
+al posto dell'hairline sotto scroll), `SiteFooter.tsx` (titoli colonna da
+mono maiuscolo a `$body` grassetto, hairline superiori rimossi),
+`MegaMenu.tsx` (pannello desktop senza bordo, solo ombra; titoli colonna
+idem sweep sopra), `Logo.tsx`/`Logo.web.tsx` (raggio del marchio 6→9,
+colore già ereditato da `brand.cianografia`).
+
+**Carosello "Nuovi professionisti", stile miodottore.it** (richiesta
+esplicita dell'utente, arrivata a metà turno mentre un agente Explore era
+già in corsa sulla ricerca del design system): `ProfessionalsShowcase.tsx`
+(`RealShowcase`) ora ordina una copia locale dei professionisti per
+`createdAt` decrescente — **mai** l'ordinamento condiviso di
+`ProfessionalsService.search()` (boost→rating→recensioni, leva di
+monetizzazione, invariato) — e mostra `Badge variant="nuovo"` per i
+profili creati negli ultimi 30 giorni. Nuovo campo `createdAt` aggiunto a
+`ProfessionalSearchResult` (`packages/shared`) ed esposto dai tre soli
+punti che costruiscono quel tipo (`ProfessionalsService.search`/`getById`,
+`SavedProfessionalsService.listForUser`) — verificato con una ricerca
+mirata che non ce ne fossero altri. Soglia `MIN_PROFESSIONALS_TO_SHOWCASE
+= 12` invariata: sotto soglia mostra ancora `WaitlistBlock` (mai una
+vetrina finta), confermato che l'ambiente locale ha ≥12 professionisti non
+demo e infatti mostra `RealShowcase` con badge "Nuovo" e ordine corretto.
+
+**Foto stock temporanee nel solo carosello vetrina** — richiesta esplicita
+dell'utente ("nel frattempo metti immagini finte"), chiarita con
+`AskUserQuestion` prima di procedere per il conflitto diretto con il
+principio "mai dati/immagini finte" seguito ovunque nel resto del prodotto
+(`Avatar.tsx`: "foto vera o iniziali, mai altro"; `WaitlistBlock`: mai una
+vetrina finta sotto soglia). L'utente ha scelto esplicitamente **foto
+stock di persone** (non illustrazioni astratte) **solo nel carosello
+vetrina della home**, con l'intesa esplicita che vengano rimosse prima del
+lancio ufficiale — annotato come TODO commentato direttamente nel codice
+(`ProfessionalsShowcase.tsx`), stesso pattern "Da fare prima del lancio"
+già in uso per Stripe/Cloudinary. Implementato con **randomuser.me**
+(servizio pubblico pensato apposta per foto placeholder di persone in
+demo/prototipi — non hotlink di contenuto arbitrario non verificato,
+distinzione esplicitamente rilevante dato che CLAUDE.md aveva già
+segnalato la cautela su questo punto per le icone categoria in una nota
+precedente): assegnazione deterministica per id professionista (hash
+stabile su 10 foto), così lo stesso profilo mostra sempre la stessa foto
+invece di "mischiarsi" ad ogni reload. **Deliberatamente non toccato**
+`Avatar.tsx` (rimane "foto vera o iniziali, mai altro" ovunque nel resto
+del sito — ricerca, profilo pubblico, dashboard): il fallback finto è
+iniettato solo dentro `RealShowcase` passando un `imageUrl` calcolato
+all'`Avatar` esistente, nessuna modifica al componente condiviso.
+
+**Correzione post-verifica: ombre troppo marcate (due giri)** — segnalato
+dall'utente dopo la prima passata ("troppo scure le varie ombre, ad
+esempio delle card dei professionisti dopo la ricerca e del carosello
+sulla home con la lista"), poi di nuovo ("ancora meno ombra") dopo il
+primo correttivo. Causa reale del primo sintomo: l'ombra di `Surface`
+(originale `shadowRadius: 14`, offset verticale 6, opacità α~0.14) si
+estendeva abbastanza da sovrapporsi visivamente con la card successiva in
+una lista fitta (`ResultsListWithMap.tsx`, gap `$3`), leggendosi come una
+riga scura continua tra le card invece che come una profondità soffice
+isolata. Corretto in due passate successive su tutti i punti che
+condividono lo stesso tono d'ombra (`Surface.tsx` — default e variante
+`floating`, `SearchBar.tsx`, `SiteHeader.tsx` sticky, `CategoryCarousel.tsx`,
+`ProfessionalsShowcase.tsx`, `AccountMenu.tsx` dropdown, `MegaMenu.tsx`
+pannello, `tokens.ts` → `shadowVicinato`): opacità e raggio ridotti
+progressivamente fino a un'ombra "appena percettibile" (default `Surface`
+finale: α 0.03, `shadowRadius` 6, offset verticale 1 — da 0.14/14/6
+originali) invece di un alone marcato, verificato via screenshot
+Playwright dopo ciascuna delle due correzioni sulla stessa pagina di
+risultati ricerca.
+
+**Altri residui "vecchio stile" trovati durante la verifica pagina per
+pagina** (non previsti nel piano iniziale, scoperti solo con screenshot
+reali, non con la sola lettura di codice):
+- `/per-professionisti` non era mai stato toccato da nessuna fase del
+  redesign precedente: usava ancora `H1`/`H2`/`Paragraph` e token Tamagui
+  stock (`$blue2`, `$blue10`, `$color4`/`$color9`, `$red10`) — la pagina
+  più vistosamente "vecchio stile" del sito, un hero blu chiaro e bottoni
+  blu stock in un sito ormai verde smeraldo ovunque. Riscritta sui
+  primitivi condivisi (`Surface` per le pricing card, `Button
+  variant="primary"/"secondary"`, `brand.*`).
+- `SearchHeader.tsx` (header di `/cerca`/`/cerca/[categoria]`, la barra di
+  ricerca sopra i risultati): sfondo `$blue2` residuo, mai convertito
+  in `brand.cianografiaVelo` — visibile come una sottile tinta blu-grigia
+  dietro la `SearchBar`, in contrasto con lo sfondo pesca del resto della
+  pagina.
+- `AccountMenu.tsx`, `SiteHeader.tsx` (link "Come funziona"/"Prezzi"),
+  `GoogleSignInButton.tsx`, `/admin`, `/admin/promuovi`: token Tamagui
+  stock (`$color9`-`$color12`, `$red10`, `$green10`, `$borderColor`)
+  sparsi, mai convertiti. `GoogleSignInButton.tsx` mantenuto
+  deliberatamente **neutro** (non verde): un bottone "Continua con Google"
+  colorato con l'accento del brand violerebbe le linee guida di branding
+  di Google, ricolorato su `brand.gesso`/`brand.filetto`/`brand.grafite`
+  invece che sui token grigi Tamagui stock, restando comunque neutro.
+  `/admin`/`/admin/promuovi` (nessun link in UI, solo URL diretto, §9):
+  stesso trattamento a bassa priorità ma comunque applicato per coerenza,
+  nessuna riscrittura strutturale.
+- `CategoryCard.tsx` (usata solo da `apps/mobile/app/index.tsx`, non da
+  `apps/web`): un solo hover `borderColor: "$blue8"` residuo, corretto a
+  `brand.cianografia` — unico punto toccato in questo giro che ha effetto
+  visibile su mobile, il resto delle schermate mobile restano
+  placeholder "in arrivo" fuori scope (§3).
+- **Deliberatamente non toccati**: `CategoryChips.tsx`, `IconFeature.tsx`,
+  `TestimonialCard.tsx`, `Hero.tsx` (`packages/ui`) — verificato con una
+  ricerca su tutto `apps/web`/`apps/mobile` che non sono importati da
+  nessun punto del prodotto: primitivi orfani pre-redesign, zero impatto
+  visivo, non rientrano nel principio "niente deve rimanere nel vecchio
+  stile" perché non renderizzano mai da nessuna parte.
+
+**Verificato**: typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+verde (24 route) dopo ogni giro di correzioni. Sessione locale end-to-end
+(Postgres+API+web) con screenshot Playwright desktop (1440px) e mobile
+(390px) su home, `/cerca`, `/cerca/idraulico`, `/professionista/[id]`,
+`/accedi`, `/registrati`, `/per-professionisti`, `/preventivo`, `/urgente`,
+`/dashboard`, `/dashboard/profilo`, `/dashboard/agenda`, `/account`,
+`/le-mie-richieste`, `/professionisti-salvati` (autenticato con JWT reale
+via `localStorage`, account professionista e cliente di test creati e poi
+eliminati con `DELETE /auth/me` a fine verifica): zero overflow
+orizzontale, zero errori console reali (gli unici osservati — tile
+OpenStreetMap, script Google Identity, foto randomuser.me — sono la stessa
+limitazione di rete dell'ambiente di sviluppo già documentata altrove in
+questo file, non causata da questo rebrand). Header sticky verificato non
+duplicato (un artefatto noto di Chromium con `position: sticky` nelle
+screenshot `fullPage`, non un bug reale — confermato con uno screenshot
+solo-viewport allo scroll iniziale). Zero occorrenze rimaste di
+`textTransform="uppercase"` in tutto il monorepo (`apps/web` e
+`packages/ui`), zero hex letterali fuori dai token nei punti verificati.

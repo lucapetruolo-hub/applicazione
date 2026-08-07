@@ -25,7 +25,7 @@ function FieldRow({ label, required, children }: { label: string; required?: boo
   return (
     <XStack flexDirection="column" $gtSm={{ flexDirection: "row", alignItems: "center" }} gap="$2">
       <YStack width={200} flexShrink={0}>
-        <Text fontFamily="$mono" fontSize={12} fontWeight="600" textTransform="uppercase" color={brand.grafite70}>
+        <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite70}>
           {label}
           {required ? " *" : ""}
         </Text>

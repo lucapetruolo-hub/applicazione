@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, H1, Paragraph, Text, YStack } from "@professionisti/ui";
+import { Button, H1, Paragraph, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 
 // Pagina di bootstrap per il PRIMO admin: nessun controllo di login qui
@@ -39,7 +39,7 @@ export default function AdminPromuoviPage() {
       <YStack width="100%" maxWidth={420} gap="$4">
         <YStack gap="$1">
           <H1 size="$7">Promuovi ad admin</H1>
-          <Paragraph color="$color10">
+          <Paragraph color={brand.grafite70}>
             Inserisci l&apos;email dell&apos;account da promuovere e il codice configurato in
             <Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text> su Railway.
           </Paragraph>
@@ -52,7 +52,7 @@ export default function AdminPromuoviPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tuo@esempio.it"
             type="email"
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
+            style={{ padding: 12, borderRadius: 16, border: `1px solid ${brand.filetto}`, fontSize: 15 }}
           />
         </YStack>
 
@@ -63,17 +63,17 @@ export default function AdminPromuoviPage() {
             onChange={(e) => setSecret(e.target.value)}
             placeholder="ADMIN_BOOTSTRAP_SECRET"
             type="password"
-            style={{ padding: 12, borderRadius: 8, border: "1px solid #d0d5dd", fontSize: 15 }}
+            style={{ padding: 12, borderRadius: 16, border: `1px solid ${brand.filetto}`, fontSize: 15 }}
           />
         </YStack>
 
         {error ? (
-          <Text color="$red10" fontSize="$3">
+          <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
         {result ? (
-          <Text color="$green10" fontSize="$3">
+          <Text color={brand.verificato} fontSize="$3">
             {result.email} è ora {result.role}. Puoi accedere e aprire /admin.
           </Text>
         ) : null}

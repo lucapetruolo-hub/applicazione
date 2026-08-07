@@ -18,7 +18,7 @@ export type LogoProps = {
 function Mark({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28">
-      <rect width={28} height={28} rx={6} fill={brand.cianografia} />
+      <rect width={28} height={28} rx={9} fill={brand.cianografia} />
       <line x1={9} y1={7} x2={9} y2={21} stroke="white" strokeWidth={2.2} strokeLinecap="round" />
       <line x1={9} y1={21} x2={21} y2={21} stroke="white" strokeWidth={2.2} strokeLinecap="round" />
     </svg>

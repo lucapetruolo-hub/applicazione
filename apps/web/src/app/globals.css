@@ -10,8 +10,8 @@ body {
 
 body {
   font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #ffffff;
-  color: #111827;
+  background-color: #fdefe1;
+  color: #2b2420;
 }
 
 a {
@@ -25,10 +25,10 @@ a {
   top: -48px;
   left: 8px;
   z-index: 1000;
-  background: #14181e;
+  background: #189a63;
   color: #ffffff;
   padding: 12px 16px;
-  border-radius: 4px;
+  border-radius: 14px;
   font-weight: 600;
   text-decoration: none;
   transition: top 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -78,24 +78,6 @@ a {
 }
 .loading-pulse {
   animation: loading-pulse 1.4s ease-in-out infinite;
-}
-
-/* Pattern a griglia cianografica (brief redesign "Scheda Intervento" §1.4):
-   solo su hero e sezione CTA finale, mai su tutta la pagina. Web-only per
-   costruzione (CSS puro) — applicata come classe da apps/web sulle sezioni
-   con tone="blueprint" di <Section>, non generata dal componente stesso
-   (che resta portabile su React Native, vedi Section.tsx). */
-.bp-grid {
-  position: relative;
-}
-.bp-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(0deg, rgba(27, 77, 143, 0.07) 0px, rgba(27, 77, 143, 0.07) 1px, transparent 1px, transparent 32px),
-    repeating-linear-gradient(90deg, rgba(27, 77, 143, 0.07) 0px, rgba(27, 77, 143, 0.07) 1px, transparent 1px, transparent 32px);
 }
 
 /* Riga categorie scorrevole in homepage (CategoryCarousel, richiesta

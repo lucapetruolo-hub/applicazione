@@ -11,7 +11,7 @@ import { Text, brand } from "@professionisti/ui";
  */
 export function LoadingState({ label = "Caricamento" }: { label?: string }) {
   return (
-    <Text fontFamily="$mono" fontSize={12} textTransform="uppercase" letterSpacing={0.6} color={brand.grafite70} className="loading-pulse">
+    <Text fontFamily="$body" fontWeight="700" fontSize={12} color={brand.grafite70} className="loading-pulse">
       {label}...
     </Text>
   );

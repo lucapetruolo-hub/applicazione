@@ -8,7 +8,7 @@ const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
-    <Text fontFamily="$mono" fontSize={11} fontWeight="600" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -30,7 +30,7 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // linkare pagine che non esistono ancora.
 export function SiteFooter() {
   return (
-    <YStack width="100%" backgroundColor={brand.gesso} borderTopWidth={1} borderTopColor={brand.filetto} alignItems="center">
+    <YStack width="100%" backgroundColor={brand.gesso} alignItems="center">
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
         <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
           <YStack gap="$3" maxWidth={280}>
@@ -65,9 +65,9 @@ export function SiteFooter() {
           </YStack>
         </XStack>
 
-        <XStack alignItems="center" gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$5">
+        <XStack alignItems="center" gap="$2" paddingTop="$5">
           <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-          <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
             © {new Date().getFullYear()} Professionisti · Tutti i diritti riservati.
           </Text>
         </XStack>

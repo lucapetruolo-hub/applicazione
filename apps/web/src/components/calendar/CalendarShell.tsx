@@ -113,28 +113,25 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
   const content = (
     <YStack gap="$3">
       <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-        <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden">
-          {VIEW_LABELS.map((item, index) => {
+        <XStack backgroundColor={brand.gesso} borderRadius={999} padding="$1" gap="$1">
+          {VIEW_LABELS.map((item) => {
             const active = item.value === view;
             return (
               <XStack
                 key={item.value}
                 paddingHorizontal="$3"
                 paddingVertical="$2"
-                backgroundColor={active ? brand.cianografia : brand.calce}
-                borderLeftWidth={index === 0 ? 0 : 1}
-                borderLeftColor={brand.filetto}
+                borderRadius={999}
+                backgroundColor={active ? brand.cianografia : "transparent"}
                 cursor="pointer"
                 onPress={() => onViewChange(item.value)}
                 accessibilityRole="button"
                 style={{ transition: `background-color ${motionFast} ${motionEasing}` }}
               >
                 <Text
-                  fontFamily="$mono"
-                  fontSize={11}
+                  fontFamily="$body"
+                  fontSize={13}
                   fontWeight="700"
-                  letterSpacing={0.5}
-                  textTransform="uppercase"
                   color={active ? "white" : brand.grafite70}
                 >
                   {item.label}
@@ -157,7 +154,7 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
             onPress={() => onNavigate(today)}
             accessibilityRole="button"
           >
-            <Text fontFamily="$mono" fontSize={11} fontWeight="600" textTransform="uppercase" color={brand.grafite}>
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite}>
               Oggi
             </Text>
           </XStack>
@@ -284,7 +281,7 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
               alignItems="center"
               gap="$1"
             >
-              <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
                 {weekdayShortLabel(date)}
               </Text>
               <XStack
@@ -329,7 +326,7 @@ function MonthGrid({
       <XStack borderWidth={1} borderColor={brand.filetto} borderBottomWidth={0} borderTopLeftRadius="$2" borderTopRightRadius="$2" overflow="hidden">
         {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map((label) => (
           <YStack key={label} flex={1} paddingVertical="$2" alignItems="center" backgroundColor={brand.gesso}>
-            <Text fontFamily="$mono" fontSize={10.5} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
               {label}
             </Text>
           </YStack>
