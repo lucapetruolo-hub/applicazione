@@ -165,7 +165,7 @@ export function MegaMenu() {
           background: #ffffff;
           border: none;
           border-radius: 24px;
-          box-shadow: 0 8px 18px -14px rgba(43, 32, 19, 0.03);
+          box-shadow: 0 4px 12px rgba(43, 32, 19, 0.02);
           overflow: hidden;
           animation: mega-fade ${motionFast} ${motionEasing};
           z-index: 50;

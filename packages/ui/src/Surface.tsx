@@ -15,18 +15,24 @@ export const Surface = styled(YStack, {
   borderWidth: 0,
   borderRadius: radiusDoc,
   padding: "$4",
-  shadowColor: "rgba(43,32,19,0.015)",
-  shadowRadius: 4,
-  shadowOffset: { width: 0, height: 1 },
+  // Nessuna ombra di default (richiesta esplicita dell'utente, quattro giri
+  // di "ancora meno ombra"): il contrasto bianco-su-pesca basta a
+  // distinguere una card in flusso normale, un'ombra qui era ridondante.
+  shadowColor: "rgba(43,32,19,0)",
+  shadowRadius: 0,
+  shadowOffset: { width: 0, height: 0 },
   shadowOpacity: 1,
 
   variants: {
-    /** Superficie flottante (dropdown, modali): ombra più marcata. */
+    /** Superficie flottante (dropdown, modali): unico caso che tiene un
+     * accenno di ombra, appena percettibile — separarsi dal contenuto
+     * sottostante resta utile solo quando la superficie è sollevata sopra
+     * altro contenuto, non quando è semplicemente una card nel flusso. */
     floating: {
       true: {
-        shadowColor: "rgba(43,32,19,0.03)",
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 3 },
+        shadowColor: "rgba(43,32,19,0.015)",
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 1,
       },
     },

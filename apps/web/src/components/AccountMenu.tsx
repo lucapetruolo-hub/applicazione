@@ -92,7 +92,7 @@ export function AccountMenu() {
           borderRadius={radiusDoc}
           overflow="hidden"
           zIndex={1000}
-          shadowColor="rgba(43,32,19,0.03)"
+          shadowColor="rgba(43,32,19,0.02)"
           shadowRadius={20}
           shadowOffset={{ width: 0, height: 8 }}
           shadowOpacity={1}

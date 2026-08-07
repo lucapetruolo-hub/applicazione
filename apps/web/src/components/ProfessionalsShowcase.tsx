@@ -83,7 +83,7 @@ function RealShowcase({ professionals }: { professionals: ProfessionalSearchResu
               cursor="pointer"
               onPress={() => router.push(`/professionista/${pro.id}`)}
               accessibilityRole="button"
-              style={{ boxShadow: "0 1px 1px rgba(43,32,19,0.01), 0 3px 8px -8px rgba(43,32,19,0.03)" }}
+              style={{ boxShadow: "none" }}
             >
               <XStack justifyContent="space-between" alignItems="flex-start">
                 <Avatar name={pro.businessName} imageUrl={pro.imageUrl ?? fakeShowcasePhoto(pro.id)} size={64} />

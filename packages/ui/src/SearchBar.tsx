@@ -65,9 +65,9 @@ export function SearchBar({
       backgroundColor={brand.calce}
       padding="$3"
       borderRadius={radiusDoc}
-      shadowColor="rgba(43,32,19,0.02)"
-      shadowRadius={10}
-      shadowOffset={{ width: 0, height: 3 }}
+      shadowColor="rgba(43,32,19,0)"
+      shadowRadius={0}
+      shadowOffset={{ width: 0, height: 0 }}
       shadowOpacity={1}
     >
       <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">

@@ -36,7 +36,7 @@ export const brand = {
 // Ombra soffice unica, usata al posto del filetto hairline sui pannelli
 // (Surface, Button, Badge, Chip) — stringa CSS grezza (non token Tamagui)
 // per gli stessi punti web-only che già scrivono `boxShadow` a mano.
-export const shadowVicinato = "0 1px 1px rgba(43,32,19,0.01), 0 3px 8px -8px rgba(43,32,19,0.03)";
+export const shadowVicinato = "0 1px 4px rgba(43,32,19,0.015)";
 
 // Angoli morbidi e amichevoli ("Vicinato"), non più il raggio quasi nullo
 // da documento tecnico di "Scheda Intervento". Letterali semplici (non

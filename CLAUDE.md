@@ -4151,26 +4151,29 @@ del sito — ricerca, profilo pubblico, dashboard): il fallback finto è
 iniettato solo dentro `RealShowcase` passando un `imageUrl` calcolato
 all'`Avatar` esistente, nessuna modifica al componente condiviso.
 
-**Correzione post-verifica: ombre troppo marcate (tre giri)** — segnalato
-dall'utente dopo la prima passata ("troppo scure le varie ombre, ad
-esempio delle card dei professionisti dopo la ricerca e del carosello
-sulla home con la lista"), poi due volte di seguito ("ancora meno ombra")
-dopo ogni correttivo. Causa reale del primo sintomo: l'ombra di `Surface`
-(originale `shadowRadius: 14`, offset verticale 6, opacità α~0.14) si
-estendeva abbastanza da sovrapporsi visivamente con la card successiva in
-una lista fitta (`ResultsListWithMap.tsx`, gap `$3`), leggendosi come una
-riga scura continua tra le card invece che come una profondità soffice
-isolata. Corretto in tre passate successive su tutti i punti che
-condividono lo stesso tono d'ombra (`Surface.tsx` — default e variante
-`floating`, `SearchBar.tsx`, `SiteHeader.tsx` sticky, `CategoryCarousel.tsx`,
-`ProfessionalsShowcase.tsx`, `AccountMenu.tsx` dropdown, `MegaMenu.tsx`
-pannello, `tokens.ts` → `shadowVicinato`): opacità e raggio ridotti
-progressivamente ad ogni giro fino a un'ombra praticamente impercettibile
-(default `Surface` finale: α 0.015, `shadowRadius` 4, offset verticale 1 —
-da 0.14/14/6 originali), le card si distinguono ormai quasi solo per il
-contrasto bianco-su-pesca, non più per un alone. Verificato via screenshot
-Playwright dopo ciascuna delle tre correzioni sulla stessa pagina di
-risultati ricerca.
+**Correzione post-verifica: ombre troppo marcate (quattro giri, fino a
+zero)** — segnalato dall'utente dopo la prima passata ("troppo scure le
+varie ombre, ad esempio delle card dei professionisti dopo la ricerca e
+del carosello sulla home con la lista"), poi tre volte di seguito ("ancora
+meno ombra"/"ancora meno") dopo ogni correttivo. Causa reale del primo
+sintomo: l'ombra di `Surface` (originale `shadowRadius: 14`, offset
+verticale 6, opacità α~0.14) si estendeva abbastanza da sovrapporsi
+visivamente con la card successiva in una lista fitta
+(`ResultsListWithMap.tsx`, gap `$3`), leggendosi come una riga scura
+continua tra le card invece che come una profondità soffice isolata. Dopo
+due giri di solo attenuare l'opacità/raggio, il quarto giro ha cambiato
+approccio: **nessuna ombra di default** per ogni superficie "in flusso"
+(card in lista, hero, header, caroselli) — `Surface.tsx` default,
+`SearchBar.tsx`, `CategoryCarousel.tsx` (frecce), `ProfessionalsShowcase.tsx`
+(card vetrina) hanno `shadowRadius`/`boxShadow` azzerati del tutto,
+contando solo sul contrasto bianco-su-pesca per separare gli elementi.
+Un accenno di ombra (α 0.015–0.02, raggio 4–6) resta **solo** dove
+un'ombra ha una funzione reale — una superficie sollevata sopra altro
+contenuto, non semplicemente una card nel flusso normale: `Surface`
+variante `floating` (dropdown/modali), `AccountMenu.tsx` dropdown,
+`MegaMenu.tsx` pannello, `SiteHeader.tsx` sticky solo mentre `scrolled`.
+Verificato via screenshot Playwright dopo ciascuna delle quattro
+correzioni sulla stessa pagina di risultati ricerca.
 
 **Altri residui "vecchio stile" trovati durante la verifica pagina per
 pagina** (non previsti nel piano iniziale, scoperti solo con screenshot
