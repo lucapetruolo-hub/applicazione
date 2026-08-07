@@ -160,6 +160,7 @@ export function ResultsListWithMap({
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}
+              nextAvailableSlot={pro.nextAvailableSlot}
               onPress={() => router.push(`/professionista/${pro.id}`)}
               onSlotPress={() => router.push(`/professionista/${pro.id}#agenda`)}
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}

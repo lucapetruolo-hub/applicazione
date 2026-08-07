@@ -322,11 +322,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     getMyAvailability: (token: string) =>
       request<MyAvailability>("/professionals/me/availability", { headers: { Authorization: `Bearer ${token}` } }),
 
-    upsertMyAvailability: (token: string, slots: AvailabilitySlotInput[], bookableAgenda: boolean) =>
+    upsertMyAvailability: (token: string, slots: AvailabilitySlotInput[]) =>
       request<MyAvailability>("/professionals/me/availability", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ slots, bookableAgenda }),
+        body: JSON.stringify({ slots }),
       }),
 
     addAvailabilityException: (token: string, date: string) =>

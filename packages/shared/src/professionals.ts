@@ -61,13 +61,20 @@ export function formatBookingAddress(booking: {
   return `${line1} — ${line2}`;
 }
 
+/** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
+export type ProfessionalAvailabilityPreviewSlot = {
+  time: string;
+  available: boolean;
+};
+
 /**
- * Anteprima "prossimi orari liberi" mostrata nella mini-agenda della card di
- * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it: colonne
- * Oggi/Domani/... con pillole orario cliccabili). Solo fasce esatte
- * (maxBookings=1, prenotazione istantanea se bookableAgenda è attivo) — le
- * fasce generiche richiedono comunque un preventivo, non hanno senso come
- * pillola "cliccabile" in una mini-agenda pensata per la prenotazione rapida.
+ * Anteprima "agenda" mostrata nella card di ricerca (richiesta esplicita
+ * dell'utente, riferimento miodottore.it: colonne Oggi/Domani/... con una
+ * riga per ogni orario configurato, "-" dove il professionista non ha
+ * nulla, orario barrato dove la capienza è già esaurita). Ogni fascia
+ * configurata dal professionista, a prescindere dalla capienza (1 o più) —
+ * "devono comparire da subito gli orari disponibili a prescindere se il
+ * professionista ha impostato la capienza per quella fascia 1 o più di 1".
  * Calcolata lato server in un'unica query batch per l'intera pagina di
  * risultati (mai una query per professionista, vedi ProfessionalsService.search).
  */
@@ -76,8 +83,23 @@ export type ProfessionalAvailabilityPreviewDay = {
   date: string;
   /** Etichetta già pronta per la UI: "Oggi", "Domani" o il giorno della settimana abbreviato. */
   label: string;
-  /** Fino a 3 orari liberi, ordinati. */
-  times: string[];
+  /** Es. "7 Ago", per la seconda riga dell'intestazione colonna. */
+  dateLabel: string;
+  /** Ogni orario configurato quel giorno, ordinato — vuoto se il professionista non ha nulla quel giorno. */
+  times: ProfessionalAvailabilityPreviewSlot[];
+};
+
+/**
+ * Mostrato al posto della griglia quando i giorni in `availabilityPreview`
+ * non hanno alcun orario libero (tutto "-"/al completo): il primo
+ * orario libero oltre la finestra visibile, cercato più avanti nel tempo.
+ * `null` se il professionista non ha alcuna disponibilità futura da
+ * mostrare (nessuna fascia configurata, o tutte già esaurite per sempre).
+ */
+export type ProfessionalNextAvailableSlot = {
+  date: string;
+  dateLabel: string;
+  time: string;
 };
 
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
@@ -98,8 +120,10 @@ export type ProfessionalSearchResult = {
   imageUrl: string | null;
   services: ProfessionalServiceItem[];
   subTags: string[];
-  /** Vuota se il professionista non ha attivato bookableAgenda o non ha fasce esatte libere nei prossimi giorni. */
+  /** Vuota se il professionista non ha alcuna fascia configurata nei prossimi giorni. */
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
+  /** Presente solo quando availabilityPreview non ha nessun orario libero. */
+  nextAvailableSlot: ProfessionalNextAvailableSlot | null;
   /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"

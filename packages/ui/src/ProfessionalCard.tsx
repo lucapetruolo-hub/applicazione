@@ -3,7 +3,7 @@ import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
 import { Surface } from "./Surface";
-import { brand } from "./tokens";
+import { brand, radiusDoc } from "./tokens";
 
 export type ProfessionalCardService = {
   id: string;
@@ -12,12 +12,28 @@ export type ProfessionalCardService = {
   priceMaxEurCents: number | null;
 };
 
-/** Un giorno della mini-agenda ("Oggi"/"Domani"/...) con gli orari liberi entro il limite mostrato dalla card. */
+/** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
+export type ProfessionalCardAvailabilitySlot = {
+  time: string;
+  available: boolean;
+};
+
+/** Un giorno della mini-agenda ("Oggi"/"Domani"/...): ogni fascia configurata, libera o al completo. */
 export type ProfessionalCardAvailabilityDay = {
   date: string;
   label: string;
-  times: string[];
+  dateLabel: string;
+  times: ProfessionalCardAvailabilitySlot[];
 };
+
+/** Mostrato al posto della griglia quando nessun giorno della finestra ha orari liberi. */
+export type ProfessionalCardNextAvailableSlot = {
+  date: string;
+  dateLabel: string;
+  time: string;
+};
+
+const AGENDA_COLUMN_WIDTH = 58;
 
 // Duplicata (non importata da @professionisti/shared): packages/ui non
 // dipende dal resto del monorepo, resta un design system consumabile da solo
@@ -44,11 +60,13 @@ export type ProfessionalCardProps = {
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
   services?: ProfessionalCardService[];
-  /** Prossimi orari liberi (fasce esatte), fino a 4 giorni × 3 orari — vuoto/assente nasconde la mini-agenda. */
+  /** Griglia agenda (Oggi + 3 giorni), ogni fascia configurata a prescindere dalla capienza — vuoto/assente nasconde la mini-agenda. */
   availabilityPreview?: ProfessionalCardAvailabilityDay[];
+  /** Mostrato al posto della griglia quando nessun giorno della finestra ha orari liberi. */
+  nextAvailableSlot?: ProfessionalCardNextAvailableSlot | null;
   onPress?: () => void;
-  /** Click su una singola pillola orario della mini-agenda: non deve propagare al click della card intera. */
-  onSlotPress?: (day: ProfessionalCardAvailabilityDay, time: string) => void;
+  /** Click su una singola cella orario libera (o sul bottone "Mostra orari disponibili"): non deve propagare al click della card intera. Naviga sempre al profilo, non prenota mai direttamente da qui. */
+  onSlotPress?: (date: string, time: string) => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
 };
@@ -64,11 +82,18 @@ export function ProfessionalCard({
   remoteAvailable,
   services,
   availabilityPreview,
+  nextAvailableSlot,
   onPress,
   onSlotPress,
   icon,
 }: ProfessionalCardProps) {
   const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
+  const hasAvailableInWindow = availabilityPreview?.some((day) => day.times.some((slot) => slot.available)) ?? false;
+  // Unione di tutti gli orari configurati su almeno un giorno della finestra,
+  // ordinata: righe della griglia. Un giorno senza quell'orario mostra "-".
+  const timeRows = hasAvailableInWindow
+    ? Array.from(new Set((availabilityPreview ?? []).flatMap((day) => day.times.map((slot) => slot.time)))).sort()
+    : [];
 
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
@@ -112,7 +137,7 @@ export function ProfessionalCard({
                 <XStack gap="$1" alignItems="center">
                   <Icon name="video" size={13} color={brand.cianografia} strokeWidth={1.5} />
                   <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
-                    Online
+                    Offre consulenza online
                   </Text>
                 </XStack>
               ) : null}
@@ -143,7 +168,7 @@ export function ProfessionalCard({
         {availabilityPreview && availabilityPreview.length > 0 ? (
           <YStack
             gap="$2"
-            minWidth={200}
+            minWidth={AGENDA_COLUMN_WIDTH * availabilityPreview.length}
             paddingLeft="$4"
             borderLeftWidth={1}
             borderLeftColor={brand.filetto}
@@ -154,41 +179,107 @@ export function ProfessionalCard({
             <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
               Prossima disponibilità
             </Text>
-            <XStack gap="$3">
+            <XStack>
               {availabilityPreview.map((day) => (
-                <YStack key={day.date} gap="$1.5" alignItems="center" minWidth={0}>
+                <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
                   <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
                     {day.label}
                   </Text>
-                  {day.times.map((time) => (
-                    <XStack
-                      key={time}
-                      paddingHorizontal="$2"
-                      paddingVertical={4}
-                      borderRadius="$2"
-                      borderWidth={1}
-                      borderColor={brand.verificato}
-                      backgroundColor="#E6F4EC"
-                      cursor={onSlotPress ? "pointer" : undefined}
-                      accessibilityRole={onSlotPress ? "button" : undefined}
-                      accessibilityLabel={onSlotPress ? `Orario libero ${time} il ${day.label}` : undefined}
-                      onPress={
-                        onSlotPress
-                          ? (e: unknown) => {
-                              (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                              onSlotPress(day, time);
-                            }
-                          : undefined
-                      }
-                    >
-                      <Text fontFamily="$mono" fontSize={11.5} fontWeight="700" color={brand.verificato}>
-                        {time}
-                      </Text>
-                    </XStack>
-                  ))}
+                  <Text fontFamily="$mono" fontSize={9.5} color={brand.grafite70}>
+                    {day.dateLabel}
+                  </Text>
                 </YStack>
               ))}
             </XStack>
+
+            {hasAvailableInWindow ? (
+              <YStack gap="$1">
+                {timeRows.map((time) => (
+                  <XStack key={time}>
+                    {availabilityPreview.map((day) => {
+                      const slot = day.times.find((s) => s.time === time);
+                      if (!slot) {
+                        return (
+                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
+                            <Text fontSize={12} color={brand.filetto}>
+                              -
+                            </Text>
+                          </XStack>
+                        );
+                      }
+                      if (!slot.available) {
+                        return (
+                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
+                            <Text fontFamily="$mono" fontSize={11} color={brand.grafite70} textDecorationLine="line-through">
+                              {time}
+                            </Text>
+                          </XStack>
+                        );
+                      }
+                      return (
+                        <XStack
+                          key={day.date}
+                          width={AGENDA_COLUMN_WIDTH}
+                          alignItems="center"
+                          justifyContent="center"
+                          paddingVertical={3}
+                          cursor={onSlotPress ? "pointer" : undefined}
+                          accessibilityRole={onSlotPress ? "button" : undefined}
+                          accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${time} il ${day.label}` : undefined}
+                          onPress={
+                            onSlotPress
+                              ? (e: unknown) => {
+                                  (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+                                  onSlotPress(day.date, time);
+                                }
+                              : undefined
+                          }
+                        >
+                          <XStack paddingHorizontal="$2" paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                            <Text fontFamily="$mono" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
+                              {time}
+                            </Text>
+                          </XStack>
+                        </XStack>
+                      );
+                    })}
+                  </XStack>
+                ))}
+              </YStack>
+            ) : nextAvailableSlot ? (
+              <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
+                <YStack gap={2}>
+                  <Text fontSize={11.5} color={brand.grafite70}>
+                    Prossimo giorno disponibile:
+                  </Text>
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                    {nextAvailableSlot.dateLabel}, {nextAvailableSlot.time}
+                  </Text>
+                </YStack>
+                <XStack
+                  alignSelf="flex-start"
+                  paddingHorizontal="$3"
+                  paddingVertical={6}
+                  borderRadius="$10"
+                  backgroundColor={brand.cianografia}
+                  cursor={onSlotPress ? "pointer" : undefined}
+                  accessibilityRole={onSlotPress ? "button" : undefined}
+                  accessibilityLabel={onSlotPress ? "Mostra orari disponibili" : undefined}
+                  onPress={
+                    onSlotPress
+                      ? (e: unknown) => {
+                          (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+                          onSlotPress(nextAvailableSlot.date, nextAvailableSlot.time);
+                        }
+                      : undefined
+                  }
+                >
+                  <Text fontFamily="$body" fontSize={12} fontWeight="700" color="#FFFFFF">
+                    Mostra orari disponibili →
+                  </Text>
+                </XStack>
+              </YStack>
+            ) : null}
           </YStack>
         ) : null}
       </XStack>

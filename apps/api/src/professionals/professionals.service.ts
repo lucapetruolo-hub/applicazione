@@ -10,6 +10,7 @@ import {
   type ProfessionalAgenda,
   type ProfessionalAgendaDay,
   type ProfessionalAvailabilityPreviewDay,
+  type ProfessionalNextAvailableSlot,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalDetail,
@@ -39,10 +40,21 @@ export type ProfessionalSearchParams = {
 // date.getUTCDay(): 0=domenica...6=sabato — stessa convenzione già usata in
 // tutto il modulo agenda (vedi CLAUDE.md §11).
 const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
-const PREVIEW_WINDOW_DAYS = 9;
+function formatDateLabel(date: Date): string {
+  return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
+}
+
+// Colonne della griglia mostrata in card (Oggi + 3 giorni) — richiesta
+// esplicita dell'utente, riferimento miodottore.it: "una visualizzazione
+// agenda" con colonne giorno consecutive, non i soli giorni con qualcosa da
+// mostrare (a differenza del comportamento precedente, che saltava i giorni
+// vuoti: qui un giorno vuoto resta in griglia con "-" su ogni riga, esattamente
+// come nel riferimento). Se la finestra non ha alcun orario libero si cerca
+// il prossimo disponibile fino a PREVIEW_SEARCH_DAYS più avanti.
 const PREVIEW_MAX_DAYS = 4;
-const PREVIEW_MAX_TIMES_PER_DAY = 3;
+const PREVIEW_SEARCH_DAYS = 30;
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
@@ -91,6 +103,7 @@ export class ProfessionalsService {
       const reviewCount = reviews.length;
       const rating =
         reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
+      const preview = previewsByProfileId.get(profile.id);
 
       return {
         id: profile.id,
@@ -109,7 +122,8 @@ export class ProfessionalsService {
         imageUrl: profile.imageUrl,
         services: mapServices(profile.services),
         subTags: profile.subTags,
-        availabilityPreview: previewsByProfileId.get(profile.id) ?? [],
+        availabilityPreview: preview?.days ?? [],
+        nextAvailableSlot: preview?.nextAvailableSlot ?? null,
         createdAt: profile.createdAt.toISOString(),
       } satisfies ProfessionalSearchResult;
     });
@@ -135,42 +149,42 @@ export class ProfessionalsService {
    * essere alto e questa funzione gira dentro l'endpoint di ricerca, dove un
    * N+1 sarebbe un problema di scala reale, non solo teorico.
    */
-  private async buildAvailabilityPreviews(profileIds: string[]): Promise<Map<string, ProfessionalAvailabilityPreviewDay[]>> {
-    const result = new Map<string, ProfessionalAvailabilityPreviewDay[]>();
+  private async buildAvailabilityPreviews(
+    profileIds: string[],
+  ): Promise<Map<string, { days: ProfessionalAvailabilityPreviewDay[]; nextAvailableSlot: ProfessionalNextAvailableSlot | null }>> {
+    const result = new Map<
+      string,
+      { days: ProfessionalAvailabilityPreviewDay[]; nextAvailableSlot: ProfessionalNextAvailableSlot | null }
+    >();
     if (profileIds.length === 0) return result;
 
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
-    const endWindow = new Date(startOfToday);
-    endWindow.setUTCDate(endWindow.getUTCDate() + PREVIEW_WINDOW_DAYS);
+    const searchEnd = new Date(startOfToday);
+    searchEnd.setUTCDate(searchEnd.getUTCDate() + PREVIEW_SEARCH_DAYS);
 
-    const [profiles, slots, bookings, exceptions] = await Promise.all([
-      this.prisma.professionalProfile.findMany({
-        where: { id: { in: profileIds }, bookableAgenda: true },
-        select: { id: true },
-      }),
-      // Solo fasce esatte (maxBookings=1): le fasce generiche richiedono
-      // comunque un preventivo, non sono "prenotabili" con un click sulla
-      // pillola della mini-agenda.
+    const [slots, bookings, exceptions] = await Promise.all([
+      // Ogni fascia, a prescindere dalla capienza (richiesta esplicita
+      // dell'utente: "devono comparire da subito gli orari disponibili a
+      // prescindere se il professionista ha impostato la capienza per
+      // quella fascia 1 o più di 1") — non più filtrate a maxBookings: 1
+      // né gated dietro un opt-in del professionista.
       this.prisma.availabilitySlot.findMany({
-        where: { professionalProfileId: { in: profileIds }, maxBookings: 1 },
+        where: { professionalProfileId: { in: profileIds } },
       }),
       this.prisma.booking.findMany({
         where: {
           professionalProfileId: { in: profileIds },
           status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-          scheduledAt: { gte: startOfToday, lt: endWindow },
+          scheduledAt: { gte: startOfToday, lt: searchEnd },
         },
         select: { professionalProfileId: true, scheduledAt: true },
       }),
       this.prisma.availabilityException.findMany({
-        where: { professionalProfileId: { in: profileIds }, date: { gte: startOfToday, lt: endWindow } },
+        where: { professionalProfileId: { in: profileIds }, date: { gte: startOfToday, lt: searchEnd } },
         select: { professionalProfileId: true, date: true },
       }),
     ]);
-
-    const bookableProfileIds = new Set(profiles.map((profile) => profile.id));
-    if (bookableProfileIds.size === 0) return result;
 
     const slotsByProfile = new Map<string, typeof slots>();
     for (const slot of slots) {
@@ -191,33 +205,68 @@ export class ProfessionalsService {
       exceptionDatesByProfile.set(exception.professionalProfileId, set);
     }
 
-    for (const profileId of bookableProfileIds) {
+    for (const profileId of profileIds) {
       const profileSlots = slotsByProfile.get(profileId);
       if (!profileSlots || profileSlots.length === 0) continue;
       const profileBookings = bookingsByProfile.get(profileId) ?? [];
       const exceptionDates = exceptionDatesByProfile.get(profileId);
 
+      // Colonne fisse Oggi + 3 giorni successivi (riferimento
+      // miodottore.it): ogni giorno resta in griglia con "-" dove il
+      // professionista non ha nulla, non viene saltato come in
+      // precedenza — a differenza del comportamento pre-esistente che
+      // elencava solo i primi giorni con qualcosa di libero.
       const days: ProfessionalAvailabilityPreviewDay[] = [];
-      for (let offset = 0; offset < PREVIEW_WINDOW_DAYS && days.length < PREVIEW_MAX_DAYS; offset++) {
+      let hasAvailableInWindow = false;
+      for (let offset = 0; offset < PREVIEW_MAX_DAYS; offset++) {
         const date = new Date(startOfToday);
         date.setUTCDate(date.getUTCDate() + offset);
         const dateStr = date.toISOString().slice(0, 10);
-        if (exceptionDates?.has(dateStr)) continue;
-
         const dayOfWeek = date.getUTCDay();
+        const label = offset === 0 ? "Oggi" : offset === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[dayOfWeek]!;
+        const dateLabel = formatDateLabel(date);
+
+        if (exceptionDates?.has(dateStr)) {
+          days.push({ date: dateStr, label, dateLabel, times: [] });
+          continue;
+        }
+
         const times = profileSlots
           .filter((slot) => slotAppliesOnDate(slot, date))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
-          .filter((slot) => !isSlotBooked(profileBookings, dateStr, slot.startTime, slot.endTime))
-          .slice(0, PREVIEW_MAX_TIMES_PER_DAY)
-          .map((slot) => slot.startTime);
-        if (times.length === 0) continue;
-
-        const label = offset === 0 ? "Oggi" : offset === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[dayOfWeek]!;
-        days.push({ date: dateStr, label, times });
+          .map((slot) => {
+            // Una fascia resta prenotabile finché ha capienza residua, non
+            // solo finché è del tutto libera — coerente con "una volta che
+            // quella fascia consuma la capienza non deve essere più
+            // prenotabile" (richiesta esplicita dell'utente).
+            const available = countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime) < slot.maxBookings;
+            if (available) hasAvailableInWindow = true;
+            return { time: slot.startTime, available };
+          });
+        days.push({ date: dateStr, label, dateLabel, times });
       }
 
-      if (days.length > 0) result.set(profileId, days);
+      let nextAvailableSlot: ProfessionalNextAvailableSlot | null = null;
+      if (!hasAvailableInWindow) {
+        for (let offset = PREVIEW_MAX_DAYS; offset < PREVIEW_SEARCH_DAYS && !nextAvailableSlot; offset++) {
+          const date = new Date(startOfToday);
+          date.setUTCDate(date.getUTCDate() + offset);
+          const dateStr = date.toISOString().slice(0, 10);
+          if (exceptionDates?.has(dateStr)) continue;
+
+          const freeSlot = profileSlots
+            .filter((slot) => slotAppliesOnDate(slot, date))
+            .sort((a, b) => a.startTime.localeCompare(b.startTime))
+            .find((slot) => countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime) < slot.maxBookings);
+          if (freeSlot) {
+            nextAvailableSlot = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
+          }
+        }
+      }
+
+      if (hasAvailableInWindow || nextAvailableSlot) {
+        result.set(profileId, { days, nextAvailableSlot });
+      }
     }
 
     return result;
@@ -266,6 +315,7 @@ export class ProfessionalsService {
       // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
+      nextAvailableSlot: null,
       createdAt: profile.createdAt.toISOString(),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
@@ -771,12 +821,11 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, profile, upcomingBookings, exceptions] = await Promise.all([
+    const [slots, upcomingBookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId },
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       }),
-      this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
       // Stessa finestra di getPublicAgenda (14 giorni): serve solo a segnalare
       // in UI "questa fascia ha già una prenotazione futura", non a bloccare
       // nulla lato server — un professionista resta libero di modificare la
@@ -826,12 +875,11 @@ export class ProfessionalsService {
           hasUpcomingBooking,
         };
       }),
-      bookableAgenda: profile.bookableAgenda,
       exceptionDates: exceptions.map((exception) => exception.date.toISOString().slice(0, 10)),
     };
   }
 
-  async upsertMyAvailability(userId: string, slots: AvailabilitySlotInput[], bookableAgenda: boolean): Promise<MyAvailability> {
+  async upsertMyAvailability(userId: string, slots: AvailabilitySlotInput[]): Promise<MyAvailability> {
     const professionalProfileId = await this.requireMyProfileId(userId);
 
     // Lista sostituita per intero ad ogni salvataggio, stesso pattern già
@@ -841,10 +889,7 @@ export class ProfessionalsService {
     // di non-sovrapposizione tra fasce dello stesso giorno vive a monte, nello
     // zod schema condiviso (professionalAvailabilitySchema in packages/shared,
     // applicato da ZodValidationPipe) — stessa regola usata anche lato client.
-    await Promise.all([
-      this.prisma.availabilitySlot.deleteMany({ where: { professionalProfileId } }),
-      this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { bookableAgenda } }),
-    ]);
+    await this.prisma.availabilitySlot.deleteMany({ where: { professionalProfileId } });
     if (slots.length) {
       await this.prisma.availabilitySlot.createMany({
         data: slots.map((slot) => ({
@@ -913,7 +958,7 @@ export class ProfessionalsService {
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + 14);
 
-    const [slots, bookings, profile, exceptions] = await Promise.all([
+    const [slots, bookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
       this.prisma.booking.findMany({
         where: {
@@ -923,7 +968,6 @@ export class ProfessionalsService {
         },
         select: { scheduledAt: true },
       }),
-      this.prisma.professionalProfile.findUniqueOrThrow({ where: { id: professionalProfileId }, select: { bookableAgenda: true } }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
         select: { date: true },
@@ -961,17 +1005,20 @@ export class ProfessionalsService {
 
       days.push({ date: dateStr, dayOfWeek, slots: daySlots });
     }
-    return { bookableAgenda: profile.bookableAgenda, days };
+    return { days };
   }
 
   /**
-   * Prenotazione diretta di una fascia dell'agenda pubblica: solo se il
-   * professionista ha attivato `bookableAgenda` (checkbox in
-   * /dashboard/agenda, "dà l'opzione al cliente di potersi prenotare",
-   * altrimenti l'agenda resta solo informativa). Rivalida server-side che la
-   * fascia esista davvero nella disponibilità ricorrente, non sia già
-   * occupata e non cada in un giorno di chiusura, invece di fidarsi
-   * ciecamente di quanto inviato dal client.
+   * Prenotazione diretta di una fascia esatta (maxBookings=1) dell'agenda
+   * pubblica — richiesta esplicita dell'utente: rimosso il precedente
+   * opt-in `bookableAgenda` ("permetti ai clienti di prenotare
+   * direttamente"), la prenotazione diretta è ora sempre disponibile per
+   * ogni fascia esatta, senza bisogno che il professionista lo attivi.
+   * Le fasce a capienza (maxBookings>1) restano sul percorso "richiesta di
+   * preventivo" (`GuidedRequestsService.resolveGenericSlot`), invariato.
+   * Rivalida server-side che la fascia esista davvero nella disponibilità
+   * ricorrente, non sia già occupata e non cada in un giorno di chiusura,
+   * invece di fidarsi ciecamente di quanto inviato dal client.
    *
    * Il controllo "libera?" e la creazione della prenotazione avvengono dentro
    * un'unica transazione Serializable: senza, due clienti che toccano la
@@ -989,13 +1036,10 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { bookableAgenda: true },
+      select: { id: true },
     });
     if (!profile) {
       throw new NotFoundException("Professionista non trovato.");
-    }
-    if (!profile.bookableAgenda) {
-      throw new ForbiddenException("Questo professionista non permette la prenotazione diretta dall'agenda.");
     }
 
     const date = parseIsoDateUtc(input.date);

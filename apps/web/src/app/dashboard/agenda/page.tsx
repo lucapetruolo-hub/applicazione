@@ -53,7 +53,6 @@ export default function DashboardAgendaPage() {
   const [activeTab, setActiveTab] = useState<AgendaTab>("prenotazioni");
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
-  const [bookableAgenda, setBookableAgenda] = useState(false);
   const [exceptionDates, setExceptionDates] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(true);
   const [profileMissing, setProfileMissing] = useState(false);
@@ -129,7 +128,6 @@ export default function DashboardAgendaPage() {
             hasUpcomingBooking: s.hasUpcomingBooking,
           })),
         );
-        setBookableAgenda(Boolean(existing.bookableAgenda));
         setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
       })
       .catch((err) => {
@@ -545,7 +543,6 @@ export default function DashboardAgendaPage() {
           maxBookings: slot.maxBookings,
           date: slot.date ?? undefined,
         })),
-        bookableAgenda,
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -912,46 +909,6 @@ export default function DashboardAgendaPage() {
 
         {activeTab === "disponibilita" ? (
           <>
-            <YStack
-              flexDirection="row"
-              alignItems="center"
-              gap="$3"
-              padding="$3"
-              backgroundColor={brand.calce}
-              borderWidth={1}
-              borderColor={brand.filetto}
-              borderRadius="$4"
-              cursor="pointer"
-              onPress={() => setBookableAgenda((v) => !v)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: bookableAgenda }}
-            >
-              <YStack
-                width={22}
-                height={22}
-                borderRadius="$2"
-                borderWidth={2}
-                borderColor={bookableAgenda ? brand.cianografia : brand.filetto}
-                backgroundColor={bookableAgenda ? brand.cianografia : brand.calce}
-                alignItems="center"
-                justifyContent="center"
-              >
-                {bookableAgenda ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
-              </YStack>
-              <YStack flex={1} gap="$1">
-                <YStack flexDirection="row" gap="$2" alignItems="center">
-                  <Icon name="receipt-text" size={16} strokeWidth={1.5} color={brand.grafite} />
-                  <Text fontWeight="600" color={brand.grafite}>
-                    Permetti ai clienti di prenotare direttamente le fasce esatte
-                  </Text>
-                </YStack>
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Vale solo per le fasce con capienza 1 (esatte). Le fasce generiche (capienza &gt; 1) portano sempre a
-                  una richiesta di preventivo, indipendentemente da questa opzione.
-                </Text>
-              </YStack>
-            </YStack>
-
             {/* Eliminazione massiva delle fasce (richiesta esplicita
                 dell'utente): "Modifica" non apre una finestra separata, attiva
                 una modalità di selezione direttamente sul calendario qui sotto

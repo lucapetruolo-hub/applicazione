@@ -70,16 +70,14 @@ export type ProfessionalAgendaDay = {
   slots: ProfessionalAgendaSlot[];
 };
 
-/** Risposta di GET /professionals/:id/agenda: giorni + se le fasce libere sono prenotabili direttamente. */
+/** Risposta di GET /professionals/:id/agenda. */
 export type ProfessionalAgenda = {
-  bookableAgenda: boolean;
   days: ProfessionalAgendaDay[];
 };
 
 /** Risposta di GET/PUT /professionals/me/availability. */
 export type MyAvailability = {
   slots: AvailabilitySlotItem[];
-  bookableAgenda: boolean;
   /** Date ISO (YYYY-MM-DD) da oggi in poi in cui il professionista ha chiuso per quel giorno (ferie, festività, imprevisto). */
   exceptionDates: string[];
 };

@@ -4232,3 +4232,149 @@ screenshot `fullPage`, non un bug reale — confermato con uno screenshot
 solo-viewport allo scroll iniziale). Zero occorrenze rimaste di
 `textTransform="uppercase"` in tutto il monorepo (`apps/web` e
 `packages/ui`), zero hex letterali fuori dai token nei punti verificati.
+
+---
+
+## 20. Prenotazione diretta rimossa — ogni fascia apre sempre una richiesta di preventivo, griglia agenda in stile miodottore.it
+
+Richiesta esplicita dell'utente: **nessuna prenotazione istantanea da
+ricerca/profilo pubblico**, a prescindere dalla capienza impostata dal
+professionista su una fascia (prima solo le fasce "esatte", `maxBookings ===
+1`, si prenotavano da sole con `POST /professionals/:id/agenda/book`; quelle
+"generiche", `maxBookings > 1`, aprivano già una richiesta di preventivo).
+Contestualmente, la vecchia spunta "Permetti ai clienti di prenotare
+direttamente le fasce esatte" (`ProfessionalProfile.bookableAgenda`) non ha
+più senso — rimossa insieme al meccanismo che governava.
+
+- **Schema**: `ProfessionalProfile.bookableAgenda` rimosso (Prisma,
+  `prisma db push --accept-data-loss` in locale — 155 righe non-null perse,
+  accettabile: il campo non ha più alcun consumatore). `bookAgendaSlotSchema`/
+  `BookAgendaSlotInput` (packages/shared) e l'endpoint `POST
+  /professionals/:id/agenda/book` (`ProfessionalsService.bookAgendaSlot`)
+  **restano nel backend** (rifiutano ancora esplicitamente le fasce
+  generiche con 403, comportamento invariato) ma non hanno più alcun
+  chiamante lato frontend — lasciati dormienti invece di rimossi del tutto:
+  cancellarli avrebbe richiesto toccare anche tutti i punti che già gestiscono
+  correttamente una `Booking` senza `Quote` collegata (creata storicamente
+  da questo stesso percorso, es. `formatBookingAddress`,
+  `clientAccountDeleted`), un rischio non giustificato da questa richiesta.
+- **`ProfessionalDetailContent.tsx`** (profilo pubblico): rimossi
+  `handleBookSlot`/`bookingSlot`/`bookingError`/`bookingSuccess` e la
+  chiamata a `apiClient.bookAgendaSlot` — ogni fascia libera, esatta o
+  generica, è ora un link a `/preventivo?...&data=...&fasciaOraria=...`
+  (stesso pattern già in uso solo per le generiche). Rimossa anche la nota
+  "Accedi come cliente per prenotare direttamente da questi orari": non più
+  pertinente, `GuidedRequestForm` gestisce già da sé il caso "non loggato"
+  (redirect a `/accedi?redirect=...`).
+
+**Griglia agenda in stile miodottore.it** — sia nella card di ricerca
+(`ProfessionalCard`, `packages/ui`) sia nella sezione "Agenda" del profilo
+pubblico, l'anteprima "prossimi orari liberi" (fino a 3 per giorno, giorni
+senza nulla di libero saltati) è sostituita da una vera griglia
+Oggi+3 giorni: ogni fascia **configurata** in quei giorni compare come riga
+(non solo quelle libere), con tre stati — pillola verde cliccabile (libera,
+apre la richiesta di preventivo), orario barrato grigio (capienza esaurita,
+non cliccabile), "-" (il professionista non ha nulla quel giorno a
+quell'orario). "Una volta che quella fascia consuma la capienza non deve
+essere più prenotabile" (richiesta esplicita) vale ora uniformemente per
+qualunque capienza, non solo per le fasce esatte.
+- **`ProfessionalAvailabilityPreviewSlot`** (nuovo tipo,
+  `packages/shared/src/professionals.ts`): `{ time, available }`.
+  `ProfessionalAvailabilityPreviewDay.times` passa da `string[]` a
+  `ProfessionalAvailabilityPreviewSlot[]`, nuovo campo `dateLabel` (es.
+  "7 Ago", seconda riga dell'intestazione colonna).
+- **`ProfessionalNextAvailableSlot`** (nuovo tipo) + campo
+  `ProfessionalSearchResult.nextAvailableSlot`: quando **nessun** giorno
+  della finestra visibile ha un orario libero (anche se ne mostra alcuni
+  barrati, o anche se non ne ha proprio nessuno configurato), la UI mostra
+  al suo posto un riquadro "Prossimo giorno disponibile: 12 Ago, 15:00" +
+  pillola "Mostra orari disponibili →" — cercato dal backend fino a
+  `PREVIEW_SEARCH_DAYS = 30` giorni avanti, non solo nella finestra di 4
+  mostrata. Sulla card di ricerca la pillola naviga come ogni altro slot
+  (`/professionista/{id}#agenda`); sul profilo pubblico naviga direttamente
+  a `/preventivo` con quella data/fascia precompilate (l'agenda completa a
+  14 giorni è già scaricata lì, nessuna ricerca aggiuntiva necessaria: il
+  "prossimo libero" per il profilo è calcolato client-side scorrendo
+  `agenda.days` già in memoria, un calcolo separato da quello backend usato
+  per la sola card di ricerca).
+- **`ProfessionalsService.buildAvailabilityPreviews`** riscritta: finestra
+  fissa a `PREVIEW_MAX_DAYS = 4` colonne (non più "salta i giorni vuoti,
+  fermati al terzo giorno con qualcosa"), ogni fascia esposta con lo stato
+  `available` calcolato da `countBookingsInSlot(...) < slot.maxBookings`
+  (generalizzazione già esistente, mai stata limitata a `maxBookings: 1`),
+  più la ricerca del `nextAvailableSlot` quando la finestra è vuota. Un
+  profilo entra nella mappa dei risultati solo se ha qualcosa da mostrare
+  (`hasAvailableInWindow || nextAvailableSlot`) — un professionista senza
+  agenda, o con agenda sempre esaurita per sempre, non mostra alcuna
+  mini-agenda, come già prima.
+- **Bug reale corretto durante la verifica** (non solo lettura di codice):
+  sul profilo pubblico, il blocco "Agenda" restava condizionato a
+  `windowDays.some(day => day.slots.length > 0)` — per un professionista
+  con `nextAvailableSlot` ma **zero** fasce configurate nei primi 4 giorni
+  (tutte oltre), quella condizione era falsa e l'intera sezione spariva,
+  fallback compreso. Corretto in `agendaPreview.hasAvailableInWindow ||
+  agendaPreview.nextAvailableSlot` (stesso criterio già usato dal backend
+  per includere/escludere un profilo dalla ricerca) — riprodotto e
+  verificato con Playwright su un professionista reale con questa
+  combinazione di dati.
+- **Badge "Online" rinominato** — richiesta esplicita dell'utente: il testo
+  "Online" sul badge di `ProfessionalCard` (professionista con
+  `remoteAvailable`) poteva far pensare a uno stato di presenza in tempo
+  reale ("è online ora"); cambiato in "Offre consulenza online", stesso
+  significato già documentato altrove in questo file (consulenza da
+  remoto, non presenza istantanea).
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+`GET /professionals/search` restituisce `availabilityPreview` a 4 colonne
+fisse con stato `available` per fascia e `nextAvailableSlot` quando
+pertinente; click su una pillola libera (capienza 1, prima si prenotava da
+sola) in `/cerca/idraulico` e sul profilo pubblico apre entrambi
+`/preventivo?...&data=...&fasciaOraria=...`, mai una prenotazione diretta;
+riquadro "Prossimo giorno disponibile" verificato su entrambe le
+superfici, click sulla pillola "Mostra orari disponibili" naviga
+correttamente. Typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+verde (24 route).
+
+**Ombra della tendina "Il mio account" azzerata** — richiesta esplicita
+dell'utente, correzione allo stato descritto in §19 ("quattro giri", dove
+`AccountMenu.tsx` era rimasta tra i pochi elementi con un accenno di ombra
+residuo per essere un vero overlay flottante): azzerata anche lì
+(`shadowColor="rgba(43,32,19,0)"`, `shadowRadius={0}`), stessa coerenza
+"nessuna ombra" ormai applicata a tutte le altre superfici del sito.
+
+**Menu a discesa homepage tagliato dal pannello hero** — bug reale
+segnalato dall'utente ("il menu a tendina... va a finire sotto qualche
+altra grafica e non viene visualizzata per intero"): `HomeHero.tsx`
+(rebrand "Vicinato", §19) applicava `overflow="hidden"` all'intero
+pannello verde per ritagliare le due macchie decorative di sfondo — stesso
+identico bug già corretto una volta in `packages/ui/Hero.tsx` (§10, Fase
+1) e qui ricomparso nel nuovo hero, che non condivide codice con quello
+vecchio. Corretto con lo stesso principio: le macchie decorative hanno ora
+un proprio wrapper assoluto con `overflow="hidden"` (stessi bordi
+arrotondati del pannello), il resto del pannello (ricerca inclusa) non è
+più tagliato. Verificato con Playwright: menu "Cosa cerchi"/"Città" ora
+interamente visibile sopra il resto della pagina.
+
+**"Preventivo"/"Richiesta urgente" nella barra di ricerca della home** —
+richiesta esplicita dell'utente: due scorciatoie sulla destra della riga
+dei tab "A domicilio"/"Online" (`SearchBar.tsx`, `packages/ui`), verso i
+due flussi di richiesta guidata già esistenti. Nuove prop opzionali
+`onQuoteRequest`/`onUrgentRequest` (callback, non un `href`: `packages/ui`
+resta agnostico dal routing, stesso principio già seguito per `onSearch` —
+web usa `router.push`, un'eventuale integrazione mobile userebbe la
+navigazione nativa) — assenti di default, quindi nessun cambio visivo per
+gli altri chiamanti di `SearchBar` (`SearchHeader` nelle pagine risultati,
+home di `apps/mobile`) che non le passano. "Richiesta urgente" **scritta
+diversamente** per segnalare l'urgenza (richiesta esplicita): colore
+`brand.urgenza`, peso 800, icona `zap` — stesso token semantico "rosso
+solo su urgenza" già in uso ovunque nel prodotto, deliberatamente **senza**
+`textTransform="uppercase"` (la Fase "Vicinato", §19, aveva eliminato ogni
+occorrenza rimasta in tutto il monorepo per allontanarsi dal registro
+"documento tecnico" freddo del brief precedente — reintrodurla qui per
+questo solo bottone avrebbe contraddetto quel lavoro). `HomeHero.tsx`
+passa `() => router.push("/preventivo")`/`() => router.push("/urgente")`.
+Verificato con Playwright (desktop e mobile 390px, zero overflow): click
+su "Preventivo" → `/preventivo`, click su "Richiesta urgente" → `/urgente`,
+zero errori console. Typecheck pulito su `packages/ui`/`apps/web`/
+`apps/mobile`, build di produzione `apps/web` verde.

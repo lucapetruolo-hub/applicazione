@@ -370,8 +370,6 @@ function slotsShareAnOccurrence(a: AvailabilitySlotInput, b: AvailabilitySlotInp
 export const professionalAvailabilitySchema = z
   .object({
     slots: z.array(availabilitySlotSchema).max(200).default([]),
-    /** Se true, un cliente può prenotare direttamente una fascia libera dell'agenda pubblica. */
-    bookableAgenda: z.boolean().default(false),
   })
   // Due fasce non possono sovrapporsi se potrebbero cadere nella stessa
   // data (es. due fasce dello stesso giorno esatto, o una fascia esatta e
@@ -404,7 +402,7 @@ export const availabilityExceptionSchema = z.object({
 });
 export type AvailabilityExceptionInput = z.infer<typeof availabilityExceptionSchema>;
 
-/** Prenotazione diretta di una fascia dell'agenda pubblica (solo se bookableAgenda è true). */
+/** Prenotazione diretta di una fascia esatta (maxBookings=1) dell'agenda pubblica. */
 export const bookAgendaSlotSchema = z.object({
   date: isoDateSchema,
   startTime: timeSchema,

@@ -183,7 +183,7 @@ export class ProfessionalsController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(professionalAvailabilitySchema)) body: ProfessionalAvailabilityInput,
   ) {
-    return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots, body.bookableAgenda);
+    return this.professionalsService.upsertMyAvailability(req.user.userId, body.slots);
   }
 
   @UseGuards(JwtAuthGuard)

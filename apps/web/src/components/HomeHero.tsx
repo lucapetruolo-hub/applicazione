@@ -36,27 +36,33 @@ export function HomeHero() {
         paddingHorizontal="$5"
         alignItems="center"
         position="relative"
-        overflow="hidden"
       >
-        <YStack
-          position="absolute"
-          top={-140}
-          left={-80}
-          width={340}
-          height={340}
-          borderRadius={999}
-          backgroundColor="rgba(255,255,255,0.12)"
-        />
-        <YStack
-          position="absolute"
-          bottom={-110}
-          right={-40}
-          width={230}
-          height={230}
-          borderRadius={999}
-          backgroundColor={brand.ottone}
-          opacity={0.22}
-        />
+        {/* Le due macchie decorative hanno il proprio wrapper "overflow:hidden"
+            invece di applicarlo all'intero pannello: un overflow:hidden sul
+            pannello tagliava anche il menu a discesa di SearchBar (stesso bug
+            già documentato per Hero.tsx in packages/ui, qui riapparso nel
+            nuovo hero "Vicinato" — CLAUDE.md §10). */}
+        <YStack position="absolute" top={0} left={0} right={0} bottom={0} borderRadius={40} overflow="hidden" pointerEvents="none">
+          <YStack
+            position="absolute"
+            top={-140}
+            left={-80}
+            width={340}
+            height={340}
+            borderRadius={999}
+            backgroundColor="rgba(255,255,255,0.12)"
+          />
+          <YStack
+            position="absolute"
+            bottom={-110}
+            right={-40}
+            width={230}
+            height={230}
+            borderRadius={999}
+            backgroundColor={brand.ottone}
+            opacity={0.22}
+          />
+        </YStack>
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">👋 Qualcuno del quartiere ti aiuta oggi</Eyebrow>
@@ -82,6 +88,8 @@ export function HomeHero() {
               onSearch={handleSearch}
               professionalSuggestions={professionalSuggestions}
               citySuggestions={ALL_ITALIAN_CITY_NAMES}
+              onQuoteRequest={() => router.push("/preventivo")}
+              onUrgentRequest={() => router.push("/urgente")}
             />
           </YStack>
 

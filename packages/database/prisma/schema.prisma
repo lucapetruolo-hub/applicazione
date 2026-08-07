@@ -136,11 +136,6 @@ model ProfessionalProfile {
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
   remoteAvailable          Boolean  @default(false)
-  // Se true, un cliente può prenotare direttamente una fascia libera
-  // dell'agenda pubblica (crea subito un Booking, niente Quote). Se false
-  // (default) l'agenda resta solo informativa: orari generali di
-  // disponibilità, la prenotazione passa dal flusso preventivo/quote.
-  bookableAgenda           Boolean  @default(false)
   // Raggio (km, max 25) entro cui il professionista riceve richieste dal
   // fan-out delle richieste guidate — richiesta esplicita dell'utente: due
   // raggi indipendenti, uno per le richieste standard e uno per quelle
@@ -292,8 +287,8 @@ model AvailabilitySlot {
   // così: nessuna migrazione distruttiva dei dati esistenti.
   date                  DateTime?
   // Capienza della fascia. 1 (default) = fascia "esatta": un solo impegno,
-  // se bookableAgenda è attivo il cliente la prenota istantaneamente e
-  // occupa l'intero orario. > 1 = fascia "generica" (es. "9–13, fino a 5
+  // il cliente la prenota istantaneamente e occupa l'intero orario. > 1 =
+  // fascia "generica" (es. "9–13, fino a 5
   // richieste"): un click non prenota nulla, apre una richiesta di
   // preventivo precompilata con quella data/fascia (GuidedRequest.
   // preferredDate/preferredTimeSlot) — più clienti possono richiedere nella
