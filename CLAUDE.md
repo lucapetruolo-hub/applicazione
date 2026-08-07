@@ -4151,24 +4151,25 @@ del sito — ricerca, profilo pubblico, dashboard): il fallback finto è
 iniettato solo dentro `RealShowcase` passando un `imageUrl` calcolato
 all'`Avatar` esistente, nessuna modifica al componente condiviso.
 
-**Correzione post-verifica: ombre troppo marcate (due giri)** — segnalato
+**Correzione post-verifica: ombre troppo marcate (tre giri)** — segnalato
 dall'utente dopo la prima passata ("troppo scure le varie ombre, ad
 esempio delle card dei professionisti dopo la ricerca e del carosello
-sulla home con la lista"), poi di nuovo ("ancora meno ombra") dopo il
-primo correttivo. Causa reale del primo sintomo: l'ombra di `Surface`
+sulla home con la lista"), poi due volte di seguito ("ancora meno ombra")
+dopo ogni correttivo. Causa reale del primo sintomo: l'ombra di `Surface`
 (originale `shadowRadius: 14`, offset verticale 6, opacità α~0.14) si
 estendeva abbastanza da sovrapporsi visivamente con la card successiva in
 una lista fitta (`ResultsListWithMap.tsx`, gap `$3`), leggendosi come una
 riga scura continua tra le card invece che come una profondità soffice
-isolata. Corretto in due passate successive su tutti i punti che
+isolata. Corretto in tre passate successive su tutti i punti che
 condividono lo stesso tono d'ombra (`Surface.tsx` — default e variante
 `floating`, `SearchBar.tsx`, `SiteHeader.tsx` sticky, `CategoryCarousel.tsx`,
 `ProfessionalsShowcase.tsx`, `AccountMenu.tsx` dropdown, `MegaMenu.tsx`
 pannello, `tokens.ts` → `shadowVicinato`): opacità e raggio ridotti
-progressivamente fino a un'ombra "appena percettibile" (default `Surface`
-finale: α 0.03, `shadowRadius` 6, offset verticale 1 — da 0.14/14/6
-originali) invece di un alone marcato, verificato via screenshot
-Playwright dopo ciascuna delle due correzioni sulla stessa pagina di
+progressivamente ad ogni giro fino a un'ombra praticamente impercettibile
+(default `Surface` finale: α 0.015, `shadowRadius` 4, offset verticale 1 —
+da 0.14/14/6 originali), le card si distinguono ormai quasi solo per il
+contrasto bianco-su-pesca, non più per un alone. Verificato via screenshot
+Playwright dopo ciascuna delle tre correzioni sulla stessa pagina di
 risultati ricerca.
 
 **Altri residui "vecchio stile" trovati durante la verifica pagina per

@@ -12,7 +12,7 @@ const arrowStyle = {
   borderRadius: 20,
   border: "none",
   backgroundColor: brand.calce,
-  boxShadow: "0 1px 1px rgba(43,32,19,0.02), 0 4px 10px -8px rgba(43,32,19,0.05)",
+  boxShadow: "0 1px 1px rgba(43,32,19,0.01), 0 3px 8px -8px rgba(43,32,19,0.03)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

@@ -15,8 +15,8 @@ export const Surface = styled(YStack, {
   borderWidth: 0,
   borderRadius: radiusDoc,
   padding: "$4",
-  shadowColor: "rgba(43,32,19,0.03)",
-  shadowRadius: 6,
+  shadowColor: "rgba(43,32,19,0.015)",
+  shadowRadius: 4,
   shadowOffset: { width: 0, height: 1 },
   shadowOpacity: 1,
 
@@ -24,9 +24,9 @@ export const Surface = styled(YStack, {
     /** Superficie flottante (dropdown, modali): ombra più marcata. */
     floating: {
       true: {
-        shadowColor: "rgba(43,32,19,0.06)",
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 5 },
+        shadowColor: "rgba(43,32,19,0.03)",
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 1,
       },
     },

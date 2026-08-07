@@ -44,7 +44,7 @@ export function SiteHeader() {
         width: "100%",
         backgroundColor: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(8px)",
-        boxShadow: scrolled ? "0 1px 1px rgba(43,32,19,0.02), 0 4px 10px -8px rgba(43,32,19,0.05)" : "none",
+        boxShadow: scrolled ? "0 1px 1px rgba(43,32,19,0.01), 0 3px 8px -8px rgba(43,32,19,0.03)" : "none",
         transition: `box-shadow ${motionFast} ${motionEasing}`,
       }}
     >
