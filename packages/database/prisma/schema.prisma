@@ -656,6 +656,15 @@ enum BookingStatus {
   NO_SHOW
 }
 
+// Chi ha annullato la prenotazione — richiesta esplicita dell'utente:
+// "Lavori accettati" deve far capire non solo che è stata annullata ma
+// anche da chi (cliente o professionista), non solo dal messaggio
+// "Annullata" da solo.
+enum BookingCanceledBy {
+  CLIENT
+  PROFESSIONAL
+}
+
 model Booking {
   id                    String        @id @default(uuid())
   quoteId               String?       @unique
@@ -707,6 +716,14 @@ model Booking {
   // confermato (richiesta esplicita dell'utente) — facoltativa, distinta
   // dall'annullamento lato cliente (cancelForClient), che non ne raccoglie una.
   cancellationNote String?
+
+  // Chi ha annullato — richiesta esplicita dell'utente: "Lavori accettati"
+  // deve far capire da chi è stata annullata, non solo che lo è stata.
+  // Null finché non CANCELED, o per righe annullate prima di questo campo.
+  // Valorizzato in tutti e tre i percorsi che possono portare a CANCELED:
+  // cancelForClient (CLIENT), cancelByProfessional e updateStatus quando lo
+  // stato passa a CANCELED dal calendario (PROFESSIONAL in entrambi i casi).
+  canceledBy BookingCanceledBy?
 
   // Nota privata del professionista per ricordare dettagli sulla
   // prenotazione (es. "portare il pezzo di ricambio", richiesta esplicita

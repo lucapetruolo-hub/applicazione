@@ -4432,3 +4432,41 @@ primi 4.
   pillola libera naviga comunque a `/preventivo?...&fasciaOraria=09:00-10:00`
   corretto). Typecheck pulito su tutti i package (`shared`, `api`, `ui`,
   `web`, `mobile`), build di produzione `apps/web` verde.
+
+**Chi ha annullato, mostrato accanto a "Annullata" in Lavori accettati** —
+richiesta esplicita dell'utente: prima l'etichetta rossa "Annullata" non
+distingueva se ad annullare fosse stato il cliente o il professionista.
+Nuovo campo Prisma `Booking.canceledBy` (enum `BookingCanceledBy`,
+`CLIENT`/`PROFESSIONAL`, nullable — `null` per righe annullate prima di
+questo campo). Valorizzato nei tre percorsi che possono portare una
+prenotazione a `CANCELED`: `BookingsService.cancelForClient` (`CLIENT`),
+`BookingsService.cancelByProfessional` (`PROFESSIONAL`, invariato anche
+`cancellationNote`) e `BookingsService.updateStatus` quando lo stato
+richiesto è `CANCELED` (usato dal calendario "Prenotazioni" —
+`PROFESSIONAL`, essendo un metodo chiamabile solo dal professionista,
+stessa guardia già esistente su `professionalProfile`). Esposto su
+`ProfessionalBooking` (`getMyBookings`) e sul tipo `ClientBooking`
+(`BookingsService.listForClient`, in `packages/api-client`, non
+`packages/shared` — stessa collocazione già in uso per quel tipo).
+Lato UI: `AcceptedJobCard` (`/dashboard`, dove "PROFESSIONAL" equivale a
+"tu" da questo punto di vista) mostra "Annullata dal cliente"/"Annullata
+da te"; `BookingRow` (`/le-mie-richieste`, dove invece "CLIENT" è "tu")
+mostra "Annullata dal professionista"/"Annullata da te" — stesso
+`canceledBy`, etichetta diversa a seconda di chi guarda. La riga di stato
+di `BookingRow` non era mai stata colorata di rosso per `CANCELED` (solo
+`AcceptedJobCard` lo era): corretto nello stesso giro per coerenza, visto
+che ora porta un'informazione più specifica ("chi") che merita lo stesso
+rilievo visivo già usato altrove per gli stati distruttivi.
+`prisma db push` applicato in locale (campo nuovo, nessuna perdita dati).
+Verificato end-to-end con l'API locale (non solo typecheck), script
+dedicato con cliente+professionista di test e richiesta diretta al
+professionista specifico (`professionalProfileId`, evita la selezione dei
+lead per rating che nell'ambiente di test — pieno di professionisti "Idraulico"/
+"Roma" residui da sessioni precedenti — avrebbe potuto smistare il lead a
+un altro professionista): richiesta → preventivo → accettazione →
+annullamento lato cliente (`canceledBy: "CLIENT"` confermato su entrambe
+le viste, `GET /bookings/me` e `GET /professionals/me/bookings`) e, su una
+seconda prenotazione, annullamento lato professionista con nota
+(`canceledBy: "PROFESSIONAL"` confermato su entrambe le viste). Account di
+test ripuliti a fine script (`DELETE /auth/me`). Typecheck pulito su tutti
+i package (`shared`, `database`, `api-client`, `api`, `web`, `mobile`).

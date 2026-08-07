@@ -568,7 +568,16 @@ function AcceptedJobCard({
               fontWeight="700"
               color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
             >
-              {isCanceled ? "Annullata" : booking.status === "COMPLETED" ? "Completato" : "Confermato"}
+              {isCanceled
+                ? `Annullata${
+                    // Da questa vista (dashboard professionista) "PROFESSIONAL" è "tu" —
+                    // richiesta esplicita dell'utente: far capire chi ha annullato, non
+                    // solo che è stata annullata. `null` per righe da prima di questo campo.
+                    booking.canceledBy === "CLIENT" ? " dal cliente" : booking.canceledBy === "PROFESSIONAL" ? " da te" : ""
+                  }`
+                : booking.status === "COMPLETED"
+                  ? "Completato"
+                  : "Confermato"}
             </Text>
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>

@@ -1294,8 +1294,13 @@ function BookingRow({
           </Text>
         </Link>
         <XStack alignItems="center" gap="$2">
-          <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
-            {BOOKING_STATUS_LABEL[booking.status]}
+          <Text fontFamily="$body" fontSize={11} color={booking.status === "CANCELED" ? brand.urgenza : brand.cianografia} fontWeight="700">
+            {booking.status === "CANCELED"
+              ? // Da questa vista (cliente) "CLIENT" è "tu" — richiesta esplicita
+                // dell'utente: far capire chi ha annullato, non solo che è stata
+                // annullata. `null` per righe da prima di questo campo.
+                `Annullata${booking.canceledBy === "PROFESSIONAL" ? " dal professionista" : booking.canceledBy === "CLIENT" ? " da te" : ""}`
+              : BOOKING_STATUS_LABEL[booking.status]}
           </Text>
           {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
         </XStack>

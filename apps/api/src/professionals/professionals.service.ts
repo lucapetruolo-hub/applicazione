@@ -758,6 +758,9 @@ export class ProfessionalsService {
       finalAmountEurCents: booking.finalAmountEurCents,
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
       cancellationNote: booking.cancellationNote,
+      // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
+      // all'etichetta "Annullata".
+      canceledBy: booking.canceledBy,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
       professionalNote: booking.professionalNote,

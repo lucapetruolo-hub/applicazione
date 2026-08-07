@@ -107,7 +107,13 @@ export class BookingsService {
       throw new ForbiddenException("Questa prenotazione è già conclusa.");
     }
 
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { status } });
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      // canceledBy: questo metodo è chiamato solo dal professionista (guardia
+      // sopra su professionalProfile) — CANCELED da qui è sempre PROFESSIONAL,
+      // stesso valore già usato da cancelByProfessional.
+      data: { status, ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}) },
+    });
 
     // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
     // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
@@ -216,7 +222,10 @@ export class BookingsService {
     }
 
     const cancellationNote = input.note?.trim() || null;
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", cancellationNote } });
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL" },
+    });
 
     await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", { bookingId, cancellationNote });
 
@@ -243,7 +252,7 @@ export class BookingsService {
       throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
     }
 
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED" } });
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
     return { bookingId, status: "CANCELED" as const };
   }
 
@@ -344,6 +353,9 @@ export class BookingsService {
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
       // Nota lasciata dal professionista se ha annullato l'intervento (facoltativa).
       cancellationNote: booking.cancellationNote,
+      // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
+      // all'etichetta "Annullata".
+      canceledBy: booking.canceledBy,
       // Dati di contatto del professionista, per il popup "Non presentato"
       // (contatta oppure chiedi il rimborso) — richiesta esplicita
       // dell'utente, visibili solo qui, non prima nel ciclo di vita.

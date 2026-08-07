@@ -57,6 +57,8 @@ export type ClientBooking = {
   finalItems: { id: string; name: string; priceEurCents: number }[];
   /** Nota lasciata dal professionista se ha annullato l'intervento (facoltativa). */
   cancellationNote: string | null;
+  /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
+  canceledBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Dati di contatto del professionista, per il popup "Non presentato" (contatta oppure chiedi il rimborso). */
   professionalPhone: string | null;
   professionalEmail: string | null;
