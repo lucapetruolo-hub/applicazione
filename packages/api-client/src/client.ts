@@ -21,6 +21,7 @@ import type {
   QuoteSelfInput,
   ReviewInput,
   UpdateAccountInput,
+  UpdateBookingMeetingLinkInput,
   UpdateBookingNoteInput,
   UpdateEngagementRadiusInput,
 } from "@professionisti/shared";
@@ -65,6 +66,8 @@ export type ClientBooking = {
   professionalAddress: string | null;
   /** Vero se il cliente ha già segnalato un no-show per questa prenotazione. */
   refundRequested: boolean;
+  /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
+  meetingLink: string | null;
 };
 
 export type ClientGuidedRequest = {
@@ -251,10 +254,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ email, password }),
       }),
 
-    verifyGoogle: (idToken: string, role?: "CLIENT" | "PROFESSIONAL") =>
+    /**
+     * `createIfMissing` (default true): /accedi lo passa esplicitamente a
+     * `false` per non iscrivere silenziosamente un account nuovo su
+     * un'email mai registrata — vedi googleVerifySchema.
+     */
+    verifyGoogle: (idToken: string, role?: "CLIENT" | "PROFESSIONAL", createIfMissing?: boolean) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken, role }),
+        body: JSON.stringify({ idToken, role, createIfMissing }),
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
@@ -530,6 +538,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Nota privata del professionista su una prenotazione (mai vista dal cliente). */
     updateBookingNote: (token: string, bookingId: string, input: UpdateBookingNoteInput) =>
       request<{ bookingId: string; professionalNote: string | null }>(`/bookings/${bookingId}/note`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Link per una consulenza video (Meet/Zoom/ecc.) su una prenotazione, visibile al cliente. */
+    updateBookingMeetingLink: (token: string, bookingId: string, input: UpdateBookingMeetingLinkInput) =>
+      request<{ bookingId: string; meetingLink: string | null }>(`/bookings/${bookingId}/meeting-link`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

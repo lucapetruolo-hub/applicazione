@@ -13,6 +13,17 @@ export const googleVerifySchema = z.object({
   idToken: z.string().min(10),
   /** Usato solo se l'account Google non esiste ancora (nuova registrazione): un login su un account esistente non cambia mai il ruolo. */
   role: z.enum(["CLIENT", "PROFESSIONAL"]).optional(),
+  /**
+   * Se `false` (usato da /accedi), un token Google senza un account
+   * esistente non ne crea uno nuovo: l'endpoint rifiuta con un errore
+   * invece di iscrivere silenziosamente un cliente — bug reale segnalato
+   * dall'utente, prima "Accedi con Google" su un'email mai registrata
+   * creava comunque un account CLIENT invece di rimandare alla scelta
+   * cliente/professionista su /registrati. Default `true` (comportamento
+   * storico, usato da /registrati: lì "non esiste ancora" è proprio il
+   * caso normale di una nuova registrazione).
+   */
+  createIfMissing: z.boolean().default(true),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -259,6 +270,25 @@ export const updateBookingNoteSchema = z.object({
   note: z.string().max(2000),
 });
 export type UpdateBookingNoteInput = z.infer<typeof updateBookingNoteSchema>;
+
+/**
+ * Link per una consulenza video (Meet, Zoom, ecc.), facoltativo — richiesta
+ * esplicita dell'utente per la "consulenza online" (CLAUDE.md §1). Nessuna
+ * integrazione reale con un servizio di videochiamata: il professionista
+ * incolla qui il link della propria riunione, come per una nota testuale.
+ * Stringa vuota salvata come `null` (link rimosso), stesso pattern di
+ * updateBookingNoteSchema sopra. Validazione URL leggera solo quando non
+ * vuoto (mai bloccare la rimozione).
+ */
+export const updateBookingMeetingLinkSchema = z.object({
+  meetingLink: z
+    .string()
+    .max(500)
+    .refine((value) => value.trim() === "" || /^https?:\/\//i.test(value.trim()), {
+      message: "Il link deve iniziare con http:// o https://",
+    }),
+});
+export type UpdateBookingMeetingLinkInput = z.infer<typeof updateBookingMeetingLinkSchema>;
 
 /**
  * Raggio di ingaggio del professionista (km, indipendenti tra standard e

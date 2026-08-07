@@ -49,7 +49,7 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("google/verify")
   async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput) {
-    return this.authService.verifyGoogleToken(body.idToken, body.role);
+    return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import {
+  buildWhatsAppLink,
   formatBookingAddress,
   formatServicePriceRange,
   type CompleteBookingInput,
@@ -523,6 +524,10 @@ function AcceptedJobCard({
   const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const noteChanged = noteDraft !== (booking.professionalNote ?? "");
+  const [meetingLinkDraft, setMeetingLinkDraft] = useState(booking.meetingLink ?? "");
+  const [isSavingMeetingLink, setIsSavingMeetingLink] = useState(false);
+  const meetingLinkChanged = meetingLinkDraft !== (booking.meetingLink ?? "");
+  const whatsAppLink = buildWhatsAppLink(booking.recipientPhone ?? booking.clientPhone);
 
   async function handleComplete(input: CompleteBookingInput) {
     await apiClient.completeBooking(token, booking.id, input);
@@ -543,6 +548,16 @@ function AcceptedJobCard({
       onUpdated();
     } finally {
       setIsSavingNote(false);
+    }
+  }
+
+  async function handleSaveMeetingLink() {
+    setIsSavingMeetingLink(true);
+    try {
+      await apiClient.updateBookingMeetingLink(token, booking.id, { meetingLink: meetingLinkDraft });
+      onUpdated();
+    } finally {
+      setIsSavingMeetingLink(false);
     }
   }
 
@@ -613,14 +628,26 @@ function AcceptedJobCard({
           ) : null}
         </XStack>
         {(booking.recipientPhone ?? booking.clientPhone) ? (
-          <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none" }}>
-            <XStack alignItems="center" gap="$1">
-              <Icon name="phone" size={12} color={brand.cianografia} strokeWidth={1.5} />
-              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                {booking.recipientPhone ?? booking.clientPhone}
-              </Text>
-            </XStack>
-          </a>
+          <XStack alignItems="center" gap="$3" flexWrap="wrap">
+            <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none" }}>
+              <XStack alignItems="center" gap="$1">
+                <Icon name="phone" size={12} color={brand.cianografia} strokeWidth={1.5} />
+                <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                  {booking.recipientPhone ?? booking.clientPhone}
+                </Text>
+              </XStack>
+            </a>
+            {whatsAppLink ? (
+              <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <XStack alignItems="center" gap="$1">
+                  <Icon name="message-circle" size={12} color={brand.verificato} strokeWidth={1.5} />
+                  <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+                    WhatsApp
+                  </Text>
+                </XStack>
+              </a>
+            ) : null}
+          </XStack>
         ) : null}
         {booking.clientEmail ? (
           <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
@@ -748,6 +775,42 @@ function AcceptedJobCard({
           </Text>
         </YStack>
       ) : null}
+
+      {/* Link consulenza video (Meet/Zoom/ecc.), visibile al cliente —
+          richiesta esplicita dell'utente, stesso campo di
+          BookingDetailPanel. */}
+      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+        <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+          Link videochiamata (visibile al cliente)
+        </Text>
+        <input
+          value={meetingLinkDraft}
+          onChange={(e) => setMeetingLinkDraft(e.target.value)}
+          placeholder="https://meet.google.com/..."
+          style={{
+            width: "100%",
+            padding: 8,
+            borderRadius: 4,
+            border: `1px solid ${brand.filetto}`,
+            fontSize: 13,
+            fontFamily: "inherit",
+            color: brand.grafite,
+          }}
+        />
+        {meetingLinkChanged ? (
+          <Button
+            variant="secondary"
+            size="$2"
+            height={32}
+            alignSelf="flex-start"
+            disabled={isSavingMeetingLink}
+            opacity={isSavingMeetingLink ? 0.6 : 1}
+            onPress={handleSaveMeetingLink}
+          >
+            {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
+          </Button>
+        ) : null}
+      </YStack>
 
       {/* Nota privata del professionista (mai vista dal cliente) — stesso
           campo/pattern già in uso in BookingDetailPanel (calendario

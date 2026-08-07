@@ -28,7 +28,14 @@ export default function RegistratiPage() {
  * implicitamente cliente): i link esistenti che passano già
  * `ruolo=professionista` continuano a saltare questa schermata come prima.
  */
-function RoleChoiceScreen({ onChoose }: { onChoose: (role: "cliente" | "professionista") => void }) {
+function RoleChoiceScreen({
+  onChoose,
+  noAccountFound,
+}: {
+  onChoose: (role: "cliente" | "professionista") => void;
+  /** Vero se si arriva qui da "Accedi con Google" su un'email senza account (vedi /accedi). */
+  noAccountFound?: boolean;
+}) {
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={480} gap="$5">
@@ -40,6 +47,14 @@ function RoleChoiceScreen({ onChoose }: { onChoose: (role: "cliente" | "professi
             Come vuoi registrarti?
           </Text>
         </YStack>
+
+        {noAccountFound ? (
+          <YStack padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
+            <Text fontSize="$3" color={brand.urgenza}>
+              Nessun account trovato con questa email. Scegli come registrarti per continuare.
+            </Text>
+          </YStack>
+        ) : null}
 
         <YStack gap="$3">
           <XStack
@@ -138,7 +153,7 @@ function RegistratiForm() {
   }
 
   if (roleParam !== "professionista" && roleParam !== "cliente") {
-    return <RoleChoiceScreen onChoose={chooseRole} />;
+    return <RoleChoiceScreen onChoose={chooseRole} noAccountFound={searchParams.get("motivo") === "nessun-account"} />;
   }
 
   // Con Google Sign-In questa pagina può autenticare anche un account

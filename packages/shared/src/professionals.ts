@@ -37,6 +37,27 @@ export function formatServicePriceRange(priceMinEurCents: number | null, priceMa
 }
 
 /**
+ * Costruisce un link `wa.me` da un numero di telefono già raccolto
+ * (nessuna API WhatsApp Business, nessuna nuova integrazione — richiesta
+ * esplicita dell'utente di poter chiamare su WhatsApp riusando lo stesso
+ * numero già mostrato come link `tel:`). `wa.me` richiede solo cifre più
+ * prefisso internazionale, senza `+`/spazi/trattini: un numero italiano
+ * salvato come "+39 333 1234567" o "333 1234567" diventa entrambi
+ * "393331234567" — se il numero non ha già un prefisso internazionale
+ * (non inizia con "00"/"+"), si assume "39" (Italia, unico mercato di
+ * lancio, CLAUDE.md §7). Ritorna `null` se il numero, ripulito, è vuoto.
+ */
+export function buildWhatsAppLink(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const trimmed = phone.trim();
+  const hasExplicitCountryCode = trimmed.startsWith("+") || trimmed.startsWith("00");
+  const digits = trimmed.replace(/\D/g, "").replace(/^0+/, hasExplicitCountryCode ? "" : "");
+  if (!digits) return null;
+  const withCountryCode = hasExplicitCountryCode || digits.startsWith("39") ? digits : `39${digits}`;
+  return `https://wa.me/${withCountryCode}`;
+}
+
+/**
  * Compone in un'unica riga leggibile l'indirizzo strutturato raccolto nella
  * schermata di accettazione preventivo (street/houseNumber/addressExtra/
  * postalCode/city/province su ProfessionalBooking) — riusata sia da

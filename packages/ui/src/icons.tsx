@@ -43,6 +43,7 @@ import {
   Minimize2,
   Pencil,
   Trash2,
+  MessageCircle,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -86,6 +87,7 @@ export const ICONS = {
   "minimize-2": Minimize2,
   pencil: Pencil,
   "trash-2": Trash2,
+  "message-circle": MessageCircle,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -157,6 +157,30 @@ export class BookingsService {
   }
 
   /**
+   * Link per una consulenza video (Meet, Zoom, ecc.) su una prenotazione —
+   * richiesta esplicita dell'utente per la consulenza online (CLAUDE.md
+   * §1). Stesso pattern di updateProfessionalNote (stringa vuota = rimosso,
+   * validazione URL già applicata lato Zod prima di arrivare qui), ma
+   * visibile al cliente (a differenza della nota privata).
+   */
+  async updateMeetingLink(professionalUserId: string, bookingId: string, meetingLink: string) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+
+    const trimmed = meetingLink.trim();
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { meetingLink: trimmed || null } });
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    return { bookingId, meetingLink: trimmed || null };
+  }
+
+  /**
    * Il professionista segnala un "Lavoro accettato" come terminato,
    * inserendo l'importo preciso — richiesta esplicita dell'utente: una
    * finestra dedicata (non un semplice cambio di stato) dove seguire le
@@ -363,6 +387,9 @@ export class BookingsService {
       professionalEmail: booking.professionalProfile.user.email,
       professionalAddress: booking.professionalProfile.address,
       refundRequested: booking.refundRequested,
+      // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
+      // professionista — richiesta esplicita dell'utente.
+      meetingLink: booking.meetingLink,
     }));
   }
 }

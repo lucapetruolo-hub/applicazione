@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -35,6 +35,8 @@ export function BookingDetailPanel({
   isActionPending,
   onSaveNote,
   isSavingNote,
+  onSaveMeetingLink,
+  isSavingMeetingLink,
 }: {
   booking: ProfessionalBooking;
   onClose: () => void;
@@ -43,13 +45,18 @@ export function BookingDetailPanel({
   /** Nota privata del professionista (mai vista dal cliente) — richiesta esplicita dell'utente. */
   onSaveNote: (note: string) => void;
   isSavingNote: boolean;
+  /** Link della consulenza video (Meet/Zoom/ecc.), visibile al cliente — richiesta esplicita dell'utente. */
+  onSaveMeetingLink: (meetingLink: string) => void;
+  isSavingMeetingLink: boolean;
 }) {
   // `key={booking.id}` sul punto di montaggio (agenda/page.tsx) garantisce
   // uno stato fresco ad ogni apertura di una prenotazione diversa, stesso
   // pattern già in uso per SlotEditorModal.
   const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
+  const [meetingLinkDraft, setMeetingLinkDraft] = useState(booking.meetingLink ?? "");
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const noteChanged = noteDraft !== (booking.professionalNote ?? "");
+  const meetingLinkChanged = meetingLinkDraft !== (booking.meetingLink ?? "");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -70,6 +77,7 @@ export function BookingDetailPanel({
   const structuredAddress = formatBookingAddress(booking);
   const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
   const recipientPhone = booking.recipientPhone ?? booking.clientPhone;
+  const whatsAppLink = buildWhatsAppLink(recipientPhone);
 
   return (
     <div
@@ -143,14 +151,26 @@ export function BookingDetailPanel({
             </Text>
             <YStack gap="$1.5">
               {recipientPhone ? (
-                <a href={`tel:${recipientPhone}`} style={{ textDecoration: "none" }}>
-                  <XStack alignItems="center" gap="$2">
-                    <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                    <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
-                      {recipientPhone}
-                    </Text>
-                  </XStack>
-                </a>
+                <XStack alignItems="center" gap="$3" flexWrap="wrap">
+                  <a href={`tel:${recipientPhone}`} style={{ textDecoration: "none" }}>
+                    <XStack alignItems="center" gap="$2">
+                      <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                      <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                        {recipientPhone}
+                      </Text>
+                    </XStack>
+                  </a>
+                  {whatsAppLink ? (
+                    <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                      <XStack alignItems="center" gap="$1.5">
+                        <Icon name="message-circle" size={14} color={brand.verificato} strokeWidth={1.5} />
+                        <Text color={brand.verificato} fontSize="$3" fontWeight="600">
+                          WhatsApp
+                        </Text>
+                      </XStack>
+                    </a>
+                  ) : null}
+                </XStack>
               ) : null}
               {booking.clientEmail ? (
                 <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
@@ -227,6 +247,45 @@ export function BookingDetailPanel({
             </XStack>
           </YStack>
         ) : null}
+
+        {/* Link consulenza video (Meet/Zoom/ecc.), richiesta esplicita
+            dell'utente — a differenza della nota sotto, questo È visibile al
+            cliente (in /le-mie-richieste). */}
+        <YStack gap="$2">
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            Link videochiamata (visibile al cliente)
+          </Text>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="video" size={14} color={brand.grafite70} strokeWidth={1.5} />
+            <input
+              value={meetingLinkDraft}
+              onChange={(e) => setMeetingLinkDraft(e.target.value)}
+              placeholder="https://meet.google.com/..."
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 4,
+                border: `1px solid ${brand.filetto}`,
+                fontSize: 14,
+                fontFamily: "inherit",
+                color: brand.grafite,
+              }}
+            />
+          </XStack>
+          {meetingLinkChanged ? (
+            <Button
+              variant="secondary"
+              size="$3"
+              height={36}
+              alignSelf="flex-start"
+              disabled={isSavingMeetingLink}
+              opacity={isSavingMeetingLink ? 0.6 : 1}
+              onPress={() => onSaveMeetingLink(meetingLinkDraft)}
+            >
+              {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
+            </Button>
+          ) : null}
+        </YStack>
 
         {/* Nota privata del professionista (richiesta esplicita dell'utente:
             "eventuali note da ricordare") — mai vista dal cliente, a

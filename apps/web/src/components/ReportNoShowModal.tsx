@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildWhatsAppLink } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
@@ -33,6 +34,7 @@ export function ReportNoShowModal({
   const [view, setView] = useState<"choice" | "contact" | "refundSent">("choice");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const whatsAppLink = buildWhatsAppLink(phone);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -123,14 +125,26 @@ export function ReportNoShowModal({
           <>
             <YStack gap="$2">
               {phone ? (
-                <a href={`tel:${phone}`} style={{ textDecoration: "none" }}>
-                  <XStack alignItems="center" gap="$2">
-                    <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                    <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
-                      {phone}
-                    </Text>
-                  </XStack>
-                </a>
+                <XStack alignItems="center" gap="$4" flexWrap="wrap">
+                  <a href={`tel:${phone}`} style={{ textDecoration: "none" }}>
+                    <XStack alignItems="center" gap="$2">
+                      <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
+                      <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                        {phone}
+                      </Text>
+                    </XStack>
+                  </a>
+                  {whatsAppLink ? (
+                    <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                      <XStack alignItems="center" gap="$2">
+                        <Icon name="message-circle" size={14} color={brand.verificato} strokeWidth={1.5} />
+                        <Text color={brand.verificato} fontSize="$3" fontWeight="600">
+                          WhatsApp
+                        </Text>
+                      </XStack>
+                    </a>
+                  ) : null}
+                </XStack>
               ) : null}
               {email ? (
                 <a href={`mailto:${email}`} style={{ textDecoration: "none" }}>

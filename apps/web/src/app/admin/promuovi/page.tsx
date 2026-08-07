@@ -52,6 +52,12 @@ export default function AdminPromuoviPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tuo@esempio.it"
             type="email"
+            name="email"
+            // Mancava del tutto (bug reale segnalato dall'utente: le email
+            // usate per promuovere un account ad admin non restavano mai
+            // salvate/suggerite dal browser) — stesso principio già
+            // applicato al campo email di /accedi.
+            autoComplete="email"
             style={{ padding: 12, borderRadius: 16, border: `1px solid ${brand.filetto}`, fontSize: 15 }}
           />
         </YStack>

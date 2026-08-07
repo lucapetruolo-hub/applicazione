@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
@@ -63,7 +63,7 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: false };
   }
 
-  async verifyGoogleToken(idToken: string, role?: "CLIENT" | "PROFESSIONAL"): Promise<AuthResult> {
+  async verifyGoogleToken(idToken: string, role?: "CLIENT" | "PROFESSIONAL", createIfMissing = true): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
@@ -85,6 +85,15 @@ export class AuthService {
     const existingUser = await this.prisma.user.findFirst({
       where: { OR: [{ googleId: payload.sub }, { email: payload.email }] },
     });
+
+    // Bug reale segnalato dall'utente: "Accedi con Google" su un'email mai
+    // registrata creava comunque silenziosamente un account CLIENT, invece
+    // di far capire che non esiste ancora nessun account e rimandare alla
+    // scelta cliente/professionista su /registrati (dove createIfMissing
+    // resta true, il default: lì "non esiste ancora" è il caso normale).
+    if (!existingUser && !createIfMissing) {
+      throw new NotFoundException("Nessun account trovato con questa email.");
+    }
 
     const user =
       existingUser ??

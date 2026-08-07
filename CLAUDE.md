@@ -4470,3 +4470,172 @@ seconda prenotazione, annullamento lato professionista con nota
 (`canceledBy: "PROFESSIONAL"` confermato su entrambe le viste). Account di
 test ripuliti a fine script (`DELETE /auth/me`). Typecheck pulito su tutti
 i package (`shared`, `database`, `api-client`, `api`, `web`, `mobile`).
+
+**Bug reale: "Accedi con Google" su un'email mai registrata iscriveva
+silenziosamente un account cliente** — segnalato dall'utente: "quando faccio
+su accedi e poi con google, se non è presente nessun account con quella
+email viene iscritto automaticamente come cliente, mentre avevamo detto che
+doveva dire che non è presente nessun account con questa e-mail e lo
+portasse sulla pagina di registrazione dove c'è la scelta di cliente o
+professionista". Causa reale: `AuthService.verifyGoogleToken` creava sempre
+un nuovo `User` (ruolo default `CLIENT`) quando nessun account esistente
+corrispondeva al token Google, indipendentemente dal fatto che la chiamata
+arrivasse da `/accedi` (dove la creazione automatica è sbagliata: un login
+non deve mai decidere il ruolo al posto dell'utente) o da `/registrati`
+(dove è corretta: l'utente ha già scelto cliente/professionista sulla
+schermata di scelta ruolo, §16). Nessun modo di distinguere i due casi
+esisteva prima d'ora nello schema della richiesta.
+- **`googleVerifySchema`** (`packages/shared`): nuovo campo
+  `createIfMissing` (booleano, **default `true`**) — il default preserva
+  esattamente il comportamento storico per `/registrati`, che continua a
+  chiamare `apiClient.verifyGoogle(idToken, role)` con soli due argomenti
+  (il terzo, omesso, diventa `undefined`, eliminato da `JSON.stringify` e
+  quindi assente dal body: Zod applica il default `true` sull'assenza della
+  chiave, non sul valore `undefined` esplicito — comportamento verificato
+  con uno script diretto sullo schema compilato, non solo assunto).
+  `/accedi` passa invece esplicitamente `false`.
+- **`AuthService.verifyGoogleToken`** (nuovo terzo parametro
+  `createIfMissing = true`): se non esiste già un account (né per
+  `googleId` né per `email`) **e** `createIfMissing` è `false`, lancia
+  `NotFoundException("Nessun account trovato con questa email.")` invece di
+  creare l'account — stesso messaggio esatto riusato lato frontend per
+  distinguere questo caso specifico da un errore generico (nessun codice
+  HTTP strutturato propagato oltre il messaggio dal client HTTP interno di
+  `packages/api-client`, quindi il match è sulla stringa del messaggio,
+  tenuta identica tra backend e frontend).
+- **`apps/web/src/app/accedi/page.tsx`**: `handleGoogleCredential` chiama
+  `apiClient.verifyGoogle(idToken, undefined, false)`; nel `catch`,
+  `err.message === "Nessun account trovato con questa email."` fa
+  `router.push("/registrati?motivo=nessun-account")` invece di mostrare un
+  errore generico — nuovo parametro URL, distinto da `?ruolo=`, che non
+  determina il ruolo ma solo se mostrare un banner esplicativo.
+- **`apps/web/src/app/registrati/page.tsx`**: `RoleChoiceScreen` (la
+  schermata di scelta cliente/professionista già esistente, mostrata
+  quando `?ruolo=` non è presente/valido) guadagna una prop opzionale
+  `noAccountFound`, letta da `searchParams.get("motivo") ===
+  "nessun-account"`: mostra un banner rosso "Nessun account trovato con
+  questa email. Scegli come registrarti per continuare." sopra le due
+  caselle di scelta — la scelta stessa (cliccare "cliente"/"professionista")
+  resta identica a prima, nessun comportamento nuovo oltre al banner.
+- **`/registrati` non toccato altrove**: la sua chiamata Google
+  (`apiClient.verifyGoogle(idToken, role)`, due argomenti) e la logica
+  `afterAuth(isNewUser)` restano esattamente come prima — il fix è
+  interamente scoped a `/accedi` e al parametro opzionale nello schema
+  condiviso.
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+non essendo possibile ottenere un vero token Google in questo ambiente
+(stessa limitazione di rete già documentata altrove in questo file per lo
+script Google Identity), la verifica UI stub-a `window.google` prima del
+caricamento pagina (intercettando anche la richiesta verso
+`accounts.google.com/gsi/client` per far scattare comunque l'`onload` reale
+del componente) e intercetta la risposta di `POST /auth/google/verify` per
+simulare sia il caso "account inesistente" (404 col messaggio esatto) sia
+il caso "account esistente" (200 con un token JWT reale, ottenuto
+registrando davvero un utente via API) — stesso principio già usato in
+un giro precedente per `isNewUser` su `/registrati`. Risultati: (1) email
+sconosciuta → redirect a `/registrati?motivo=nessun-account`, banner
+visibile, schermata di scelta ruolo ancora mostrata (nessuna creazione
+account); (2) account esistente → login riuscito, token persistito in
+`localStorage`, redirect alla home (nessun blocco falso-positivo per un
+utente legittimo); (3) verificato a livello di schema (non solo per
+lettura di codice) che la chiamata di `/registrati` continua a risolvere
+`createIfMissing: true` mentre quella di `/accedi` risolve `false`, nessuna
+regressione sul flusso di registrazione esistente. Zero errori console
+(a parte il 404 atteso della richiesta mockata). Typecheck pulito su tutti
+i package (`shared`, `api`, `api-client`, `web`).
+
+**Email non salvata dal browser su `/accedi` e `/admin/promuovi`** —
+segnalato dall'utente insieme al bug sopra: "quando voglio accedere alla
+pagina per admin, non rimangono salvate le mail con cui vi si può
+accedere". Causa: il campo Email di `/accedi` non aveva alcun
+`autoComplete` (il campo Password aveva già `autoComplete="current-
+password"`, ma un gestore credenziali salva la coppia solo se **entrambi**
+i campi sono correttamente etichettati); `/admin/promuovi` usa `<input>`
+HTML grezzi (non il componente `Field`) senza alcun attributo
+`autoComplete`/`name`. Corretto aggiungendo `autoComplete="username"` al
+campo Email di `/accedi` (valore standard per l'identificativo di un form
+di login, abbinato a `current-password` già presente) e
+`autoComplete="email"` + `name="email"` all'`<input type="email">` di
+`/admin/promuovi`. Verificato con Playwright: attributo `autocomplete`
+presente e con il valore atteso su entrambi i campi.
+
+**Link videochiamata (Meet/Zoom/ecc.) + chiamata WhatsApp diretta** —
+richiesta esplicita dell'utente ("procediamo con il link meet e whatsapp"),
+seguita a una discussione preliminare su come sviluppare la sezione
+"consulenza online" già prevista in CLAUDE.md §1
+(`ProfessionalProfile.remoteAvailable`): niente integrazione reale con
+Google Meet/Calendar né con l'API Business di WhatsApp (nessuna delle due
+è nello stack approvato, §2, e introdurle avrebbe richiesto credenziali/
+costi non discussi) — entrambe implementate come link semplici, riusando
+dati già raccolti.
+- **`Booking.meetingLink String?`** (nuovo campo Prisma, nullable): il
+  professionista incolla qui il link della propria videochiamata (Meet,
+  Zoom o qualunque altro servizio — nessun vincolo di piattaforma,
+  a differenza di un'integrazione reale). Impostabile su **qualunque**
+  prenotazione, non solo quelle di un professionista con `remoteAvailable`
+  attivo: anche un lavoro tipicamente in presenza può iniziare con una
+  videochiamata di sopralluogo. `updateBookingMeetingLinkSchema`
+  (`packages/shared`): stringa vuota = link rimosso (stesso pattern di
+  `updateBookingNoteSchema`), validazione leggera `http(s)://` solo se non
+  vuota. `PATCH /bookings/:id/meeting-link`
+  (`BookingsService.updateMeetingLink`): stessa guardia di titolarità già
+  in uso per `updateProfessionalNote` (solo il professionista titolare
+  della prenotazione può modificarlo). Esposto su `ProfessionalBooking`
+  (dashboard professionista) e `ClientBooking` (`packages/api-client`,
+  lato cliente) — **visibile ad entrambi**, a differenza di
+  `professionalNote` che resta privata: è il cliente che deve poter
+  cliccare il link.
+- **`BookingDetailPanel.tsx`** (calendario "Prenotazioni") e
+  `AcceptedJobCard` (`/dashboard`, tab "Lavori accettati"): stesso pattern
+  editor+bottone "Salva link" già in uso per la nota privata (stato locale,
+  bottone visibile solo se il valore è cambiato), ma con etichetta "Link
+  videochiamata (visibile al cliente)" per non confonderlo con la nota
+  privata sopra/sotto. `BookingRow` (`/le-mie-richieste`, tab "Lavori
+  accettati"): se `meetingLink` è presente, un link cliccabile "Partecipa
+  alla videochiamata" (icona `video`, già nel registro icone) subito sotto
+  data/ora — nessun editor lato cliente, è di sola lettura.
+- **`buildWhatsAppLink`** (nuovo helper puro,
+  `packages/shared/src/professionals.ts`): costruisce un link `wa.me` da un
+  numero di telefono già raccolto altrove nel prodotto (nessuna nuova
+  richiesta di dato, nessuna API WhatsApp Business) — ripulisce il numero
+  da spazi/trattini/`+`, assume il prefisso `39` (Italia, unico mercato di
+  lancio, CLAUDE.md §7) se il numero non ne ha già uno esplicito (`+`/`00`
+  in testa). Ritorna `null` per un numero vuoto/assente, mai un link rotto.
+  Nuova icona condivisa `message-circle` (`packages/ui/src/icons.tsx`/
+  `icons.web.tsx`, lucide `MessageCircle`) per il bottone, colorata
+  `brand.verificato` (verde, distinto dalla cianografia del telefono/email)
+  per distinguerlo visivamente come azione "diretta" alternativa alla
+  chiamata.
+- **Punti in cui il bottone WhatsApp è comparso accanto al numero di
+  telefono già esistente** (mai un punto nuovo isolato — sempre affiancato
+  a un link `tel:` già presente): `BookingDetailPanel.tsx` (contatto
+  cliente, calendario "Prenotazioni"), `AcceptedJobCard`
+  (`/dashboard`, contatto cliente in "Lavori accettati"),
+  `ReportNoShowModal.tsx` (contatto professionista, popup "Non presentato"
+  lato cliente), `ClientProfileModal.tsx` (scheda cliente aperta dal nome
+  in una richiesta ricevuta, `/dashboard`). Non aggiunto dove il numero non
+  compare già (es. `LeadCard`, che mostra solo indirizzo/orario prima
+  dell'accettazione — il telefono del cliente lì è già visibile altrove,
+  vedi §12 "contatto visibile dalla prima richiesta", ma quel punto non
+  aveva un link `tel:` da affiancare in questo giro, fuori scope senza una
+  richiesta esplicita di aggiungerlo lì).
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+script dedicato con professionista+cliente di test e richiesta diretta al
+professionista specifico (stesso accorgimento anti-lotteria-lead già
+documentato sopra in questo file) — richiesta → preventivo → accettazione
+→ `meetingLink` null di default (chiave presente, non assente, su
+entrambe le viste) → professionista imposta un link → visibile
+immediatamente sia al cliente (`GET /bookings/me`) sia al professionista
+stesso (`GET /professionals/me/bookings`) → cancellazione (stringa vuota)
+→ torna `null` → link non-URL rifiutato con 400 → tentativo di modificare
+il link su una prenotazione di un altro professionista rifiutato (403/404,
+guardia di titolarità confermata). `buildWhatsAppLink` verificato con 7
+casi (prefisso esplicito `+39`/`0039`, nessun prefisso, numero vuoto/nullo)
+tutti corretti. UI Playwright (token JWT iniettato in `localStorage`):
+bottone WhatsApp nella dashboard professionista con `href` `wa.me`
+corretto dal numero del cliente, campo link videochiamata precompilato con
+il valore salvato; lato cliente, link "Partecipa alla videochiamata" con
+`href` corretto verso il link Meet impostato dal professionista. Account
+di test ripuliti a fine script (`DELETE /auth/me`). Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (24 route).

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { buildWhatsAppLink } from "@professionisti/shared";
 import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
@@ -32,6 +33,8 @@ export function ClientProfileModal({
   imageUrl?: string | null;
   onClose: () => void;
 }) {
+  const whatsAppLink = buildWhatsAppLink(phone);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -97,6 +100,16 @@ export function ClientProfileModal({
                   <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
                   <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
                     {phone}
+                  </Text>
+                </XStack>
+              </a>
+            ) : null}
+            {whatsAppLink ? (
+              <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <XStack alignItems="center" justifyContent="center" gap="$2">
+                  <Icon name="message-circle" size={14} color={brand.verificato} strokeWidth={1.5} />
+                  <Text color={brand.verificato} fontSize="$3" fontWeight="600">
+                    WhatsApp
                   </Text>
                 </XStack>
               </a>

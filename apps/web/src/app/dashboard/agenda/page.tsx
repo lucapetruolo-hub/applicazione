@@ -107,6 +107,7 @@ export default function DashboardAgendaPage() {
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
   const [isSavingBookingNote, setIsSavingBookingNote] = useState(false);
+  const [isSavingMeetingLink, setIsSavingMeetingLink] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -209,6 +210,22 @@ export default function DashboardAgendaPage() {
       setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSavingBookingNote(false);
+    }
+  }
+
+  // Link consulenza video (Meet/Zoom/ecc., richiesta esplicita dell'utente)
+  // — a differenza della nota sopra, questo è visibile al cliente.
+  async function handleSaveMeetingLink(meetingLink: string) {
+    if (!token || !selectedBooking) return;
+    setIsSavingMeetingLink(true);
+    try {
+      const result = await apiClient.updateBookingMeetingLink(token, selectedBooking.id, { meetingLink });
+      setBookings((prev) => (prev ? prev.map((b) => (b.id === selectedBooking.id ? { ...b, meetingLink: result.meetingLink } : b)) : prev));
+      setSelectedBooking((prev) => (prev ? { ...prev, meetingLink: result.meetingLink } : prev));
+    } catch (err) {
+      setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsSavingMeetingLink(false);
     }
   }
 
@@ -1061,6 +1078,8 @@ export default function DashboardAgendaPage() {
           isActionPending={isBookingActionPending}
           onSaveNote={handleSaveBookingNote}
           isSavingNote={isSavingBookingNote}
+          onSaveMeetingLink={handleSaveMeetingLink}
+          isSavingMeetingLink={isSavingMeetingLink}
         />
       ) : null}
 

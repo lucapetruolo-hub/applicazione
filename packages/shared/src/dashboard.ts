@@ -186,6 +186,12 @@ export type ProfessionalBooking = {
    * segnare il lavoro come completato/annullato in seguito.
    */
   refundRequested: boolean;
+  /**
+   * Link per una consulenza video (Meet, Zoom, ecc.), facoltativo —
+   * richiesta esplicita dell'utente per la consulenza online (CLAUDE.md
+   * §1). Impostato dal professionista stesso, visibile anche al cliente.
+   */
+  meetingLink: string | null;
 };
 
 /**

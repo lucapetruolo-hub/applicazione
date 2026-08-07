@@ -768,6 +768,9 @@ export class ProfessionalsService {
       // rimborso — richiesta esplicita dell'utente, mai un cambio di
       // `status` automatico (il professionista può ancora contestarlo).
       refundRequested: booking.refundRequested,
+      // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
+      // professionista stesso — richiesta esplicita dell'utente.
+      meetingLink: booking.meetingLink,
     }));
   }
 

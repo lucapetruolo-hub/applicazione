@@ -732,6 +732,19 @@ model Booking {
   // esiste, indipendentemente dallo stato.
   professionalNote String?
 
+  // Link per una consulenza video (es. Google Meet), facoltativo — richiesta
+  // esplicita dell'utente per la "consulenza online" già prevista in
+  // CLAUDE.md §1 (ProfessionalProfile.remoteAvailable). Impostabile dal
+  // professionista su qualunque prenotazione (nessun vincolo su
+  // remoteAvailable: anche un lavoro tipicamente in presenza può iniziare
+  // con una videochiamata di sopralluogo), mostrato al cliente come link
+  // cliccabile quando presente. Nessuna integrazione reale con Google
+  // Meet/Calendar: il professionista incolla qui il link della propria
+  // videochiamata (Meet, Zoom, ecc. — nessun vincolo di piattaforma),
+  // stesso principio pragmatico già seguito per WhatsApp (nessuna API,
+  // solo un link wa.me costruito dal numero già raccolto).
+  meetingLink String?
+
   // Il cliente segnala che il professionista non si è presentato
   // all'appuntamento (dopo la data/ora prevista) e chiede un rimborso —
   // richiesta esplicita dell'utente. Puramente informativo/di notifica:

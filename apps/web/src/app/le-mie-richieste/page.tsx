@@ -1315,6 +1315,19 @@ function BookingRow({
         {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
 
+      {/* Link consulenza video (Meet/Zoom/ecc.), impostato dal
+          professionista — richiesta esplicita dell'utente. */}
+      {booking.meetingLink ? (
+        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="video" size={14} color={brand.cianografia} strokeWidth={1.5} />
+            <Text fontSize="$3" color={brand.cianografia} fontWeight="600">
+              Partecipa alla videochiamata
+            </Text>
+          </XStack>
+        </a>
+      ) : null}
+
       {/* Dati della richiesta guidata originale (titolo/categoria,
           descrizione, foto) — richiesta esplicita dell'utente: "oltre ai
           dati della persona [professionista] deve venire anche i dati del

@@ -3,9 +3,11 @@ import { z } from "zod";
 import {
   cancelBookingByProfessionalSchema,
   completeBookingSchema,
+  updateBookingMeetingLinkSchema,
   updateBookingNoteSchema,
   type CancelBookingByProfessionalInput,
   type CompleteBookingInput,
+  type UpdateBookingMeetingLinkInput,
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -67,6 +69,17 @@ export class BookingsController {
     @Body(new ZodValidationPipe(updateBookingNoteSchema)) body: UpdateBookingNoteInput,
   ) {
     return this.bookingsService.updateProfessionalNote(req.user.userId, id, body.note);
+  }
+
+  /** Link per una consulenza video (Meet, Zoom, ecc.) — richiesta esplicita dell'utente, visibile al cliente. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/meeting-link")
+  updateMeetingLink(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateBookingMeetingLinkSchema)) body: UpdateBookingMeetingLinkInput,
+  ) {
+    return this.bookingsService.updateMeetingLink(req.user.userId, id, body.meetingLink);
   }
 
   @UseGuards(JwtAuthGuard)

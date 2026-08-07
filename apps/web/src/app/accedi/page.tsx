@@ -63,10 +63,20 @@ function AccediForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const { token } = await apiClient.verifyGoogle(idToken);
+      // createIfMissing=false: da questa pagina "Accedi con Google" non deve
+      // mai iscrivere silenziosamente un account nuovo su un'email mai
+      // registrata (bug reale segnalato dall'utente) — se non esiste ancora
+      // nessun account, l'API rifiuta esplicitamente (vedi catch sotto) e si
+      // rimanda alla scelta cliente/professionista su /registrati, dove
+      // createIfMissing resta true (comportamento di default).
+      const { token } = await apiClient.verifyGoogle(idToken, undefined, false);
       const currentUser = await login(token);
       router.push(destinationAfterLogin(currentUser?.role));
     } catch (err) {
+      if (err instanceof Error && err.message === "Nessun account trovato con questa email.") {
+        router.push("/registrati?motivo=nessun-account");
+        return;
+      }
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSubmitting(false);
@@ -105,6 +115,14 @@ function AccediForm() {
             placeholder="nome@esempio.it"
             keyboardType="email-address"
             autoCapitalize="none"
+            // Mancava del tutto (bug reale segnalato dall'utente: l'email
+            // con cui si accede, incluso un account admin, non restava mai
+            // salvata/suggerita dal browser/gestore password) — "username"
+            // è il valore standard per il campo identificativo di un form
+            // di login, abbinato a "current-password" già presente sotto:
+            // senza entrambi il browser non riconosce la coppia come
+            // credenziali da salvare.
+            autoComplete="username"
             accessibilityLabel="Email"
             onSubmitEditing={handleLogin}
           />
