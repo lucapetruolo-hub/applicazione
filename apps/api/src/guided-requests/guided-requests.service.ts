@@ -129,13 +129,13 @@ export class GuidedRequestsService {
               // fin dall'invio della richiesta (richiesta esplicita
               // dell'utente) — mai esposti al professionista prima della
               // conferma, vedi ProfessionalsService.getMyLeads.
-              recipientName: input.recipientName.trim(),
-              recipientSurname: input.recipientSurname.trim(),
-              recipientPhone: input.recipientPhone.trim(),
-              houseNumber: input.houseNumber.trim(),
+              recipientName: input.recipientName?.trim() || null,
+              recipientSurname: input.recipientSurname?.trim() || null,
+              recipientPhone: input.recipientPhone?.trim() || null,
+              houseNumber: input.houseNumber?.trim() || null,
               addressExtra: input.addressExtra?.trim() || null,
-              postalCode: input.postalCode.trim(),
-              province: input.province.trim(),
+              postalCode: input.postalCode?.trim() || null,
+              province: input.province?.trim() || null,
               isUrgent: input.isUrgent,
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,

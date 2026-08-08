@@ -99,24 +99,26 @@ export const guidedRequestSchema = z
      */
     photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto o un video.").max(5),
     city: z.string().min(2),
-    /** Via, obbligatoria. */
-    address: z.string().min(1, "L'indirizzo è obbligatorio.").max(200),
     /**
-     * Destinatario + resto dell'indirizzo strutturato, raccolti fin dalla
-     * richiesta (richiesta esplicita dell'utente, vedi doc su
-     * GuidedRequest nello schema Prisma) — tutti obbligatori tranne
-     * addressExtra, stessa regola già in uso per l'accettazione preventivo
-     * di cui questi campi prendono il posto. Restano invisibili al
-     * professionista finché non si conclude la trattativa (vedi
-     * ProfessionalsService.getMyLeads).
+     * Via + destinatario + resto dell'indirizzo strutturato: obbligatori
+     * solo per un intervento "a domicilio" (`serviceMode === "HOME"`),
+     * facoltativi per "online" — richiesta esplicita dell'utente: una
+     * consulenza online non richiede di sapere dove passare, l'intero
+     * blocco "Chi riceverà il professionista" resta nascosto in quel caso
+     * lato UI (`GuidedRequestForm`). Obbligatorietà condizionale applicata
+     * sotto con `.superRefine` invece che qui, per poter dare un messaggio
+     * per campo identico a prima quando `serviceMode` è "HOME". Restano
+     * comunque invisibili al professionista finché non si conclude la
+     * trattativa (vedi ProfessionalsService.getMyLeads).
      */
-    recipientName: z.string().min(1, "Il nome è obbligatorio.").max(120),
-    recipientSurname: z.string().min(1, "Il cognome è obbligatorio.").max(120),
-    recipientPhone: z.string().min(6, "Numero di telefono non valido.").max(20),
-    houseNumber: z.string().min(1, "Il numero civico è obbligatorio.").max(20),
+    address: z.string().max(200).optional(),
+    recipientName: z.string().max(120).optional(),
+    recipientSurname: z.string().max(120).optional(),
+    recipientPhone: z.string().max(20).optional(),
+    houseNumber: z.string().max(20).optional(),
     addressExtra: z.string().max(200).optional(),
-    postalCode: z.string().min(1, "Il CAP è obbligatorio.").max(10),
-    province: z.string().min(1, "La provincia è obbligatoria.").max(50),
+    postalCode: z.string().max(10).optional(),
+    province: z.string().max(50).optional(),
     isUrgent: z.boolean().default(false),
     /**
      * Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
@@ -144,6 +146,22 @@ export const guidedRequestSchema = z
   .refine((data) => !data.preferredDate || Boolean(data.professionalProfileId), {
     message: "Una fascia oraria preferita richiede un professionista specifico.",
     path: ["professionalProfileId"],
+  })
+  // Indirizzo/destinatario obbligatori solo per un intervento "a domicilio"
+  // (vedi commento sui singoli campi sopra) — stessi messaggi già in uso
+  // prima che questi campi diventassero facoltativi.
+  .superRefine((data, ctx) => {
+    if (data.serviceMode !== "HOME") return;
+    if (!data.address?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "L'indirizzo è obbligatorio.", path: ["address"] });
+    if (!data.recipientName?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il nome è obbligatorio.", path: ["recipientName"] });
+    if (!data.recipientSurname?.trim())
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il cognome è obbligatorio.", path: ["recipientSurname"] });
+    if (!data.recipientPhone || data.recipientPhone.trim().length < 6)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Numero di telefono non valido.", path: ["recipientPhone"] });
+    if (!data.houseNumber?.trim())
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il numero civico è obbligatorio.", path: ["houseNumber"] });
+    if (!data.postalCode?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il CAP è obbligatorio.", path: ["postalCode"] });
+    if (!data.province?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La provincia è obbligatoria.", path: ["province"] });
   });
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 

@@ -352,29 +352,35 @@ export function GuidedRequestForm({
       setError("Indica la città in cui serve l'intervento.");
       return;
     }
-    if (!street.trim()) {
-      setError("Indica l'indirizzo.");
-      return;
-    }
-    if (!recipientName.trim() || !recipientSurname.trim()) {
-      setError("Indica nome e cognome di chi riceverà il professionista.");
-      return;
-    }
-    if (!recipientPhone.trim()) {
-      setError("Indica un numero di telefono.");
-      return;
-    }
-    if (!houseNumber.trim()) {
-      setError("Indica il numero civico.");
-      return;
-    }
-    if (!postalCode.trim()) {
-      setError("Indica il CAP.");
-      return;
-    }
-    if (!province.trim()) {
-      setError("Indica la provincia.");
-      return;
+    // Indirizzo/destinatario obbligatori solo per un intervento a
+    // domicilio (richiesta esplicita dell'utente) — per una consulenza
+    // online il blocco intero è nascosto sopra, nessuna validazione da
+    // applicare qui.
+    if (serviceMode === "HOME") {
+      if (!street.trim()) {
+        setError("Indica l'indirizzo.");
+        return;
+      }
+      if (!recipientName.trim() || !recipientSurname.trim()) {
+        setError("Indica nome e cognome di chi riceverà il professionista.");
+        return;
+      }
+      if (!recipientPhone.trim()) {
+        setError("Indica un numero di telefono.");
+        return;
+      }
+      if (!houseNumber.trim()) {
+        setError("Indica il numero civico.");
+        return;
+      }
+      if (!postalCode.trim()) {
+        setError("Indica il CAP.");
+        return;
+      }
+      if (!province.trim()) {
+        setError("Indica la provincia.");
+        return;
+      }
     }
     if (photoUrls.length === 0) {
       setError("Aggiungi almeno una foto o un video.");
@@ -387,14 +393,14 @@ export function GuidedRequestForm({
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
         city: city.trim(),
-        address: street.trim(),
-        recipientName: recipientName.trim(),
-        recipientSurname: recipientSurname.trim(),
-        recipientPhone: recipientPhone.trim(),
-        houseNumber: houseNumber.trim(),
+        address: street.trim() || undefined,
+        recipientName: recipientName.trim() || undefined,
+        recipientSurname: recipientSurname.trim() || undefined,
+        recipientPhone: recipientPhone.trim() || undefined,
+        houseNumber: houseNumber.trim() || undefined,
         addressExtra: addressExtra.trim() || undefined,
-        postalCode: postalCode.trim(),
-        province: province.trim(),
+        postalCode: postalCode.trim() || undefined,
+        province: province.trim() || undefined,
         isUrgent,
         serviceMode: serviceMode as "HOME" | "ONLINE",
         photoUrls,
@@ -525,7 +531,22 @@ export function GuidedRequestForm({
 
         <YStack gap="$2">
           <FieldLabel>Tipo di intervento</FieldLabel>
-          <XStack flexWrap="wrap" gap="$2">
+          {/* Resa a interruttore/toggle (richiesta esplicita dell'utente),
+              non più due caselle indipendenti: un'unica pista con le due
+              opzioni affiancate, quella attiva evidenziata piena — stesso
+              principio già in uso per i tab "A domicilio"/"Online" di
+              SearchBar (packages/ui), qui applicato inline perché questo
+              toggle controlla anche la visibilità del blocco destinatario
+              sotto, non solo un filtro di ricerca. */}
+          <XStack
+            gap="$1"
+            padding={4}
+            borderRadius="$10"
+            backgroundColor={brand.gesso}
+            alignSelf="flex-start"
+            borderWidth={1}
+            borderColor={brand.filetto}
+          >
             {(
               [
                 { value: "HOME", label: "A domicilio", icon: "house" },
@@ -540,16 +561,15 @@ export function GuidedRequestForm({
                   gap="$2"
                   paddingHorizontal="$3"
                   paddingVertical="$2"
-                  borderRadius="$2"
-                  borderWidth={1}
-                  borderColor={active ? brand.cianografia : brand.filetto}
-                  backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                  borderRadius="$10"
+                  backgroundColor={active ? brand.cianografia : "transparent"}
                   cursor="pointer"
                   onPress={() => setServiceMode(option.value)}
                   accessibilityRole="button"
+                  accessibilityLabel={option.label}
                 >
-                  <Icon name={option.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
-                  <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                  <Icon name={option.icon} size={15} color={active ? "white" : brand.grafite70} />
+                  <Text color={active ? "white" : brand.grafite70} fontWeight="600">
                     {option.label}
                   </Text>
                 </XStack>
@@ -719,58 +739,76 @@ export function GuidedRequestForm({
               minChars={3}
             />
           </YStack>
-        </YStack>
-
-        <YStack gap="$3">
-          <YStack gap="$1">
-            <FieldLabel>Chi riceverà il professionista</FieldLabel>
+          {serviceMode === "ONLINE" ? (
+            // Richiesta esplicita dell'utente: per una consulenza online il
+            // blocco indirizzo/destinatario sotto resta nascosto (non serve
+            // sapere dove passare) — questa nota spiega perché e indica come
+            // recuperarlo se il cliente pensa che, oltre alla consulenza da
+            // remoto, servirà anche vedere il lavoro di persona.
             <Text fontSize="$2" color={brand.grafite70}>
-              Questi dati restano nascosti al professionista finché non accetterai un preventivo — pre-compilati dal
-              tuo account (modificabili qui anche tu, in {'"Il mio account"'}).
+              Per una consulenza online non è necessario indicare l&apos;indirizzo. Se pensi che il problema possa
+              richiedere anche un intervento sul posto, seleziona {'"A domicilio"'} qui sopra per inserirlo.
             </Text>
-          </YStack>
-
-          <XStack gap="$2" flexWrap="wrap">
-            <YStack flex={1} minWidth={160}>
-              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
-            </YStack>
-            <YStack flex={1} minWidth={160}>
-              <input value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={fieldInputStyle} />
-            </YStack>
-          </XStack>
-
-          <input
-            value={recipientPhone}
-            onChange={(e) => setRecipientPhone(e.target.value)}
-            placeholder="Numero di telefono"
-            style={fieldInputStyle}
-          />
-
-          <XStack gap="$2" flexWrap="wrap">
-            <YStack flex={2} minWidth={200}>
-              <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={fieldInputStyle} />
-            </YStack>
-            <YStack flex={1} minWidth={120}>
-              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
-            </YStack>
-          </XStack>
-
-          <input
-            value={addressExtra}
-            onChange={(e) => setAddressExtra(e.target.value)}
-            placeholder="Scala, piano, interno (facoltativo)"
-            style={fieldInputStyle}
-          />
-
-          <XStack gap="$2" flexWrap="wrap">
-            <YStack flex={1} minWidth={100}>
-              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
-            </YStack>
-            <YStack flex={1} minWidth={140}>
-              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
-            </YStack>
-          </XStack>
+          ) : null}
         </YStack>
+
+        {serviceMode === "HOME" ? (
+          <YStack gap="$3">
+            <YStack gap="$1">
+              <FieldLabel>Chi riceverà il professionista</FieldLabel>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Questi dati restano nascosti al professionista finché non accetterai un preventivo — pre-compilati dal
+                tuo account (modificabili qui anche tu, in {'"Il mio account"'}).
+              </Text>
+            </YStack>
+
+            <XStack gap="$2" flexWrap="wrap">
+              <YStack flex={1} minWidth={160}>
+                <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
+              </YStack>
+              <YStack flex={1} minWidth={160}>
+                <input
+                  value={recipientSurname}
+                  onChange={(e) => setRecipientSurname(e.target.value)}
+                  placeholder="Cognome"
+                  style={fieldInputStyle}
+                />
+              </YStack>
+            </XStack>
+
+            <input
+              value={recipientPhone}
+              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="Numero di telefono"
+              style={fieldInputStyle}
+            />
+
+            <XStack gap="$2" flexWrap="wrap">
+              <YStack flex={2} minWidth={200}>
+                <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={fieldInputStyle} />
+              </YStack>
+              <YStack flex={1} minWidth={120}>
+                <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
+              </YStack>
+            </XStack>
+
+            <input
+              value={addressExtra}
+              onChange={(e) => setAddressExtra(e.target.value)}
+              placeholder="Scala, piano, interno (facoltativo)"
+              style={fieldInputStyle}
+            />
+
+            <XStack gap="$2" flexWrap="wrap">
+              <YStack flex={1} minWidth={100}>
+                <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
+              </YStack>
+              <YStack flex={1} minWidth={140}>
+                <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
+              </YStack>
+            </XStack>
+          </YStack>
+        ) : null}
 
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">

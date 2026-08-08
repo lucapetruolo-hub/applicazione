@@ -5495,3 +5495,49 @@ funziona → FAQ); zero overflow orizzontale desktop (1440px) e mobile
 (iPhone 13); zero errori console. Typecheck pulito su tutti i package
 (`shared`, `api`, `api-client`, `web`), build di produzione `apps/web`
 verde (24 route).
+
+---
+
+## 25. Tipo di intervento come toggle nella richiesta di preventivo
+
+Richiesta esplicita dell'utente: la selezione "A domicilio"/"Online" in
+`GuidedRequestForm` (`/preventivo`, `/urgente`) diventa uno vero e proprio
+toggle (pista unica con le due opzioni affiancate, quella attiva evidenziata
+piena — stesso principio visivo dei tab `SearchBar`, applicato qui inline
+perché questo controllo governa anche la visibilità di un intero blocco di
+campi sotto, non solo un filtro). Quando si seleziona "Online", il blocco
+"Chi riceverà il professionista" (nome, cognome, telefono, via, civico, CAP,
+provincia) sparisce del tutto: una consulenza da remoto non richiede di
+sapere dove passare. Sotto il campo Città compare invece una nota che spiega
+perché l'indirizzo non è richiesto e come recuperarlo se serve comunque
+("torna su 'A domicilio' per inserirlo").
+
+- **Schema** (`packages/shared/src/schemas.ts`, `guidedRequestSchema`):
+  `address`/`recipientName`/`recipientSurname`/`recipientPhone`/
+  `houseNumber`/`postalCode`/`province` passano da obbligatori a opzionali
+  a livello di tipo, con un nuovo `.superRefine` che li richiede (stessi
+  messaggi di errore di prima) solo quando `serviceMode === "HOME"` — per
+  `"ONLINE"` restano tutti facoltativi. Nessuna migrazione Prisma
+  necessaria: questi campi su `GuidedRequest` erano già `String?` (erano
+  solo la validazione Zod a renderli obbligatori).
+  `GuidedRequestsService.create` aggiornato per gestire i campi
+  potenzialmente assenti (`input.recipientName?.trim() || null`, ecc.)
+  invece di assumerli sempre presenti.
+- **`GuidedRequestForm.tsx`**: il blocco destinatario è ora avvolto in
+  `{serviceMode === "HOME" ? (...) : null}`; validazione lato client nello
+  stesso `handleSubmit` applicata solo quando `serviceMode === "HOME"`. La
+  richiesta prefilla comunque questi campi dai dati dell'account non
+  appena disponibili (comportamento preesistente, invariato): per un
+  account che ha già nome/telefono salvati, una richiesta "Online" può
+  quindi comunque portare quei valori nel payload anche se il blocco non è
+  mai stato mostrato — dato reale dell'account, non un'invenzione, non un
+  problema.
+- Verificato end-to-end con l'API locale e Playwright (non solo
+  typecheck): blocco destinatario nascosto subito dopo aver selezionato
+  "Online" (e quando nessuna modalità è ancora scelta), nota esplicativa
+  visibile, blocco che ricompare selezionando "A domicilio"; invio reale
+  di una richiesta in modalità "Online" senza compilare alcun campo del
+  blocco destinatario riuscito (schermata "Richiesta inviata!", payload
+  catturato via `page.route` con `address`/`recipientPhone` assenti).
+  Typecheck pulito su tutti i package (`shared`, `api`, `api-client`,
+  `web`), build di produzione `apps/web` verde (24 route).
