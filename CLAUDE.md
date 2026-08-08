@@ -5086,3 +5086,30 @@ preventivo ritirato nella propria cronologia (`GET /guided-requests/me`),
 un secondo tentativo di eliminazione sullo stesso lead già eliminato
 rifiutato. Typecheck pulito su `apps/api`/`apps/web`, build di produzione
 `apps/web` verde (24 route).
+
+**Frecce agenda, terza correzione: riga propria sopra i giorni** —
+richiesta esplicita dell'utente, ancora insoddisfatto delle due correzioni
+precedenti (`flexWrap` sulla riga condivisa, poi la riduzione a
+`AGENDA_COLUMN_WIDTH`): "mettile appena sopra i giorni della settimana sul
+lato destro senza sforare i bordi del cellulare". Le frecce condividevano
+ancora la stessa riga delle intestazioni giorno (`justifyContent="space-
+between"` + `flexWrap="wrap"`): su schermi stretti finivano a capo SOTTO
+le intestazioni invece che in una posizione prevedibile, e restavano
+comunque soggette alla stessa competizione di spazio di quella riga.
+Risolto spostandole in una riga propria, indipendente, subito sopra il
+blocco intestazioni giorno — `justifyContent="flex-end"` (allineate a
+destra, come richiesto), nessun `flexWrap` necessario: un blocco fisso di
+soli ~88px (40+8+40) allineato a destra non compete mai per lo spazio con
+le 4 colonne da 78px l'una della griglia sottostante (312px), quindi non
+sfora mai il bordo del telefono a prescindere dalla larghezza — stesso
+principio "due righe indipendenti invece di una condivisa" già
+documentato altrove in questo file per situazioni simili. Verificato con
+Playwright: freccia "Giorni successivi" interamente dentro il viewport a
+390px (`x:332` di `390`, prima proprio quella tagliata a metà nello
+screenshot originale dell'utente), zero overflow di pagina prima/dopo il
+click, screenshot di conferma con le frecce visibili sopra "Mer/Gio/Ven/
+Sab" allineate a destra. Nessuna regressione su griglia (360px/375px
+ancora senza overflow, invariato rispetto alla correzione precedente) né
+su desktop (1280px, frecce a destra sopra le intestazioni, come da
+screenshot di controllo). Typecheck pulito, build di produzione
+`apps/web` verde.

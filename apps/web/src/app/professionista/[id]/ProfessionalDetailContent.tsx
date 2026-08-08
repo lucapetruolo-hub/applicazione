@@ -266,57 +266,62 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
 
-            <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-              <XStack flexShrink={0}>
-                {agendaWindowDays.map((day) => (
-                  <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
-                    <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
-                      {day.label}
-                    </Text>
-                    <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
-                      {day.dateLabel}
-                    </Text>
-                  </YStack>
-                ))}
-              </XStack>
-              {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
-                // Frecce ingrandite (richiesta esplicita dell'utente) — stessa
-                // resa già in uso per le frecce del carosello categorie
-                // (CategoryCarousel.tsx: 40×40, cerchio pieno brand.calce,
-                // nessun bordo/ombra), qui riusata per coerenza visiva.
-                <XStack gap="$2" alignItems="center">
-                  <XStack
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    backgroundColor={brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    opacity={agendaCanGoBack ? 1 : 0.3}
-                    cursor={agendaCanGoBack ? "pointer" : undefined}
-                    accessibilityRole={agendaCanGoBack ? "button" : undefined}
-                    accessibilityLabel="Giorni precedenti"
-                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
-                  >
-                    <Icon name="chevron-left" size={20} color={brand.grafite} />
-                  </XStack>
-                  <XStack
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    backgroundColor={brand.calce}
-                    alignItems="center"
-                    justifyContent="center"
-                    opacity={agendaCanGoForward ? 1 : 0.3}
-                    cursor={agendaCanGoForward ? "pointer" : undefined}
-                    accessibilityRole={agendaCanGoForward ? "button" : undefined}
-                    accessibilityLabel="Giorni successivi"
-                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
-                  >
-                    <Icon name="chevron-right" size={20} color={brand.grafite} />
-                  </XStack>
+            {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
+              // Frecce su una riga propria, sopra le intestazioni giorno e
+              // allineate a destra (richiesta esplicita dell'utente: prima
+              // condividevano la riga con le intestazioni ed erano soggette
+              // allo stesso `flexWrap` di quel blocco, finendo sotto o
+              // troppo vicine al bordo su schermi stretti). Un blocco fisso
+              // di soli ~88px allineato a destra non compete mai per lo
+              // spazio con le 4 colonne della griglia sottostante, quindi
+              // non sfora mai il bordo del telefono. Stessa resa già in uso
+              // per le frecce del carosello categorie (CategoryCarousel.tsx:
+              // 40×40, cerchio pieno brand.calce, nessun bordo/ombra).
+              <XStack justifyContent="flex-end" gap="$2" alignItems="center">
+                <XStack
+                  width={40}
+                  height={40}
+                  borderRadius={20}
+                  backgroundColor={brand.calce}
+                  alignItems="center"
+                  justifyContent="center"
+                  opacity={agendaCanGoBack ? 1 : 0.3}
+                  cursor={agendaCanGoBack ? "pointer" : undefined}
+                  accessibilityRole={agendaCanGoBack ? "button" : undefined}
+                  accessibilityLabel="Giorni precedenti"
+                  onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
+                >
+                  <Icon name="chevron-left" size={20} color={brand.grafite} />
                 </XStack>
-              ) : null}
+                <XStack
+                  width={40}
+                  height={40}
+                  borderRadius={20}
+                  backgroundColor={brand.calce}
+                  alignItems="center"
+                  justifyContent="center"
+                  opacity={agendaCanGoForward ? 1 : 0.3}
+                  cursor={agendaCanGoForward ? "pointer" : undefined}
+                  accessibilityRole={agendaCanGoForward ? "button" : undefined}
+                  accessibilityLabel="Giorni successivi"
+                  onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
+                >
+                  <Icon name="chevron-right" size={20} color={brand.grafite} />
+                </XStack>
+              </XStack>
+            ) : null}
+
+            <XStack>
+              {agendaWindowDays.map((day) => (
+                <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
+                  <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                    {day.label}
+                  </Text>
+                  <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
+                    {day.dateLabel}
+                  </Text>
+                </YStack>
+              ))}
             </XStack>
 
             {agendaHasAvailableInWindow ? (
