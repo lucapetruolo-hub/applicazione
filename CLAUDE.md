@@ -5974,3 +5974,80 @@ overflow di pagina 130px. Dopo: overflow 0px su viewport 390px,
 screenshot di controllo con tab impilate e "Contatta/Cronologia" andato a
 capo sotto gli altri due bottoni, nessuna riga che sfora il bordo destro.
 Typecheck pulito, build di produzione `apps/web` verde (24 route).
+
+## 37. Città facoltativa in "Richiedi un preventivo" per un intervento online
+
+Richiesta esplicita dell'utente, con screenshot: "in questa schermata la
+città poiché si è selezionato online non dev'essere obbligatoria. Nella
+spiegazione poco sotto, deve esserci scritto che non è obbligatorio
+inserire la città, ma se pensi che sia necessario anche un intervento sul
+posto successivo puoi iniziare la ricerca nella zona dell'intervento".
+Prima di questo giro il campo Città di `GuidedRequestForm` (`/preventivo`,
+`/urgente`) era sempre obbligatorio, a prescindere dalla modalità scelta
+("A domicilio"/"Online") — a differenza di indirizzo/destinatario, già resi
+facoltativi per l'online in un giro precedente (CLAUDE.md §25).
+
+- **`packages/shared/src/schemas.ts`**: `guidedRequestSchema.city` da
+  `z.string().min(2)` a `z.string().optional()`, con l'obbligo spostato
+  nella stessa `.superRefine` già usata per indirizzo/destinatario (solo
+  quando `serviceMode === "HOME"`) — stesso principio, stesso punto del
+  codice, nessuna logica parallela. `guidedRequestUpdateSchema` (modifica
+  di una richiesta già inviata) ha ricevuto lo stesso trattamento: città
+  opzionale col vincolo condizionato a un `serviceMode === "HOME"`
+  eventualmente presente nel payload di modifica (il form di modifica non
+  permette di cambiare modalità, quindi in pratica questo vincolo lì non
+  scatta mai — la modalità resta quella fissata alla creazione).
+- **`apps/api/src/guided-requests/guided-requests.service.ts`**:
+  - `GuidedRequest.city` resta una colonna **non-nullable** a livello DB
+    (nessuna migrazione Prisma): città assente/vuota viene salvata come
+    stringa vuota (`input.city?.trim() ?? ""`), stessa convenzione già in
+    uso in questo modello per altri campi opzionali.
+  - `matchProfilesForFanOut` (il fan-out generico per categoria+città) non
+    aveva alcun comportamento definito per una città vuota — prima di
+    questo fix sarebbe ricaduto silenziosamente su un match a stringa
+    vuota (`profile.city.toLowerCase() === ""`), zero risultati per
+    costruzione. Corretto con un ramo esplicito: città vuota → match sui
+    soli professionisti con `remoteAvailable: true` (chi offre consulenza
+    da remoto), ignorando del tutto il raggio di ingaggio geografico (non
+    c'è una zona da cui calcolare una distanza). Città valorizzata →
+    comportamento invariato (raggio via `findComuneByName`/haversine,
+    CLAUDE.md §13).
+- **`apps/web/src/components/GuidedRequestForm.tsx`**: il controllo
+  bloccante `if (!city.trim())` in `handleSubmit` si applica ora solo
+  dentro il ramo `serviceMode === "HOME"` (stesso spostamento già fatto
+  per indirizzo/destinatario). Label del campo diventa "Città
+  (facoltativa)" quando la modalità è "Online"; la nota esplicativa sotto
+  l'`Autocomplete` città (prima parlava dell'indirizzo, argomento non
+  pertinente a questo campo) è stata riscritta col testo richiesto
+  dall'utente: la città non è obbligatoria per una consulenza online, ma
+  compilarla resta utile se in un secondo momento può servire un
+  intervento sul posto, per poter partire da lì con una ricerca nella
+  zona.
+- **`apps/web/src/app/le-mie-richieste/page.tsx`** (form di modifica
+  inline di una richiesta già inviata, `GuidedRequestCard`): stesso
+  principio — il controllo `if (!city.trim())` ora si applica solo se
+  `request.serviceMode !== "ONLINE"`, più la stessa nota esplicativa
+  breve sotto il campo quando la richiesta è online. Corretta anche la
+  resa del titolo card (`{categoryLabel} · {city}`) per non lasciare un
+  separatore "· " a vuoto quando la città è assente — stesso fix
+  applicato al titolo lead in `apps/web/src/app/dashboard/page.tsx`
+  (`LeadCard`).
+- Verificato end-to-end con l'API locale (non solo typecheck) e
+  Playwright: richiesta guidata `ONLINE` senza alcun campo città inviata
+  con successo, `matchedProfessionals >= 1` per un professionista con
+  `remoteAvailable: true` nella stessa categoria (nessun professionista
+  compatibile per raggio geografico, essendo la città assente — solo il
+  match per `remoteAvailable` la trova), città salvata come stringa vuota
+  sia lato lead professionista sia lato cliente; una richiesta `HOME`
+  senza città correttamente rifiutata con 400 (stesso messaggio di prima,
+  "La città è obbligatoria."). UI: dopo aver selezionato "Online" compare
+  la label "Città (facoltativa)" e la nuova nota esplicativa, il blocco
+  destinatario/indirizzo resta nascosto come già prima; invio del form
+  senza mai toccare il campo città riuscito (schermata "Richiesta
+  inviata!"), payload della `POST /guided-requests` catturato via
+  `page.route` conferma l'assenza della chiave `city` nel body. Zero
+  overflow orizzontale, zero errori console nuovi (l'unico osservato,
+  `ERR_TUNNEL_CONNECTION_FAILED`, è la stessa limitazione di rete
+  dell'ambiente di sviluppo già documentata altrove in questo file).
+  Typecheck pulito su tutti i package (`shared`, `api`, `api-client`,
+  `web`), build di produzione `apps/web` verde (24 route).

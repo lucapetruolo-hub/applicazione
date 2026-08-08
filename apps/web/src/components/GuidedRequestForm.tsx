@@ -348,15 +348,16 @@ export function GuidedRequestForm({
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
     }
-    if (!city.trim()) {
-      setError("Indica la città in cui serve l'intervento.");
-      return;
-    }
-    // Indirizzo/destinatario obbligatori solo per un intervento a
-    // domicilio (richiesta esplicita dell'utente) — per una consulenza
-    // online il blocco intero è nascosto sopra, nessuna validazione da
+    // Città (e indirizzo/destinatario) obbligatori solo per un intervento
+    // a domicilio (richiesta esplicita dell'utente: "la città poiché si è
+    // selezionato online non dev'essere obbligatoria") — per una
+    // consulenza online il campo resta facoltativo, nessuna validazione da
     // applicare qui.
     if (serviceMode === "HOME") {
+      if (!city.trim()) {
+        setError("Indica la città in cui serve l'intervento.");
+        return;
+      }
       if (!street.trim()) {
         setError("Indica l'indirizzo.");
         return;
@@ -392,7 +393,7 @@ export function GuidedRequestForm({
       const response = await apiClient.createGuidedRequest(token as string, {
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
-        city: city.trim(),
+        city: city.trim() || undefined,
         address: street.trim() || undefined,
         recipientName: recipientName.trim() || undefined,
         recipientSurname: recipientSurname.trim() || undefined,
@@ -725,7 +726,7 @@ export function GuidedRequestForm({
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Città</FieldLabel>
+          <FieldLabel>{serviceMode === "ONLINE" ? "Città (facoltativa)" : "Città"}</FieldLabel>
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete
               items={ALL_ITALIAN_CITY_NAMES}
@@ -740,14 +741,17 @@ export function GuidedRequestForm({
             />
           </YStack>
           {serviceMode === "ONLINE" ? (
-            // Richiesta esplicita dell'utente: per una consulenza online il
-            // blocco indirizzo/destinatario sotto resta nascosto (non serve
-            // sapere dove passare) — questa nota spiega perché e indica come
-            // recuperarlo se il cliente pensa che, oltre alla consulenza da
-            // remoto, servirà anche vedere il lavoro di persona.
+            // Richiesta esplicita dell'utente: "la città poiché si è
+            // selezionato online non dev'essere obbligatoria... deve
+            // esserci scritto che non è obbligatorio inserire la città, ma
+            // se pensi che sia necessario anche un intervento sul posto
+            // successivo puoi iniziare la ricerca nella zona
+            // dell'intervento" — spiega sia perché il campo è facoltativo
+            // sia perché può comunque avere senso compilarlo.
             <Text fontSize="$2" color={brand.grafite70}>
-              Per una consulenza online non è necessario indicare l&apos;indirizzo. Se pensi che il problema possa
-              richiedere anche un intervento sul posto, seleziona {'"A domicilio"'} qui sopra per inserirlo.
+              Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
+              servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
+              zona dell&apos;intervento.
             </Text>
           ) : null}
         </YStack>

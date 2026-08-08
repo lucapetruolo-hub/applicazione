@@ -98,7 +98,17 @@ export const guidedRequestSchema = z
      * del file (vedi isVideoUrl in apps/web).
      */
     photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto o un video.").max(5),
-    city: z.string().min(2),
+    /**
+     * Obbligatoria solo per un intervento "a domicilio" — richiesta
+     * esplicita dell'utente: una consulenza online non richiede di
+     * specificare dove si trova il cliente, quindi la città diventa
+     * facoltativa quando `serviceMode === "ONLINE"` (stesso principio già
+     * applicato all'indirizzo/destinatario sotto, stessa `.superRefine`).
+     * Se lasciata vuota il fan-out geografico ricade su
+     * `remoteAvailable: true` invece che sul raggio di ingaggio (vedi
+     * GuidedRequestsService.matchProfilesForFanOut).
+     */
+    city: z.string().optional(),
     /**
      * Via + destinatario + resto dell'indirizzo strutturato: obbligatori
      * solo per un intervento "a domicilio" (`serviceMode === "HOME"`),
@@ -152,6 +162,7 @@ export const guidedRequestSchema = z
   // prima che questi campi diventassero facoltativi.
   .superRefine((data, ctx) => {
     if (data.serviceMode !== "HOME") return;
+    if (!data.city?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
     if (!data.address?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "L'indirizzo è obbligatorio.", path: ["address"] });
     if (!data.recipientName?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il nome è obbligatorio.", path: ["recipientName"] });
     if (!data.recipientSurname?.trim())
@@ -176,20 +187,33 @@ export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
  * — stesso pattern "sostituzione per intero" già in uso per le prestazioni
  * professionista e le voci di preventivo.
  */
-export const guidedRequestUpdateSchema = z.object({
-  description: z.string().min(10).max(2000),
-  city: z.string().min(2),
-  serviceMode: z.enum(["HOME", "ONLINE"]).optional(),
-  address: z.string().max(200).optional(),
-  recipientName: z.string().max(120).optional(),
-  recipientSurname: z.string().max(120).optional(),
-  recipientPhone: z.string().max(20).optional(),
-  houseNumber: z.string().max(20).optional(),
-  addressExtra: z.string().max(200).optional(),
-  postalCode: z.string().max(10).optional(),
-  province: z.string().max(50).optional(),
-  photoUrls: z.array(z.string().url()).max(5).optional(),
-});
+export const guidedRequestUpdateSchema = z
+  .object({
+    description: z.string().min(10).max(2000),
+    /** Facoltativa per un intervento online, stesso principio di guidedRequestSchema.city. */
+    city: z.string().optional(),
+    serviceMode: z.enum(["HOME", "ONLINE"]).optional(),
+    address: z.string().max(200).optional(),
+    recipientName: z.string().max(120).optional(),
+    recipientSurname: z.string().max(120).optional(),
+    recipientPhone: z.string().max(20).optional(),
+    houseNumber: z.string().max(20).optional(),
+    addressExtra: z.string().max(200).optional(),
+    postalCode: z.string().max(10).optional(),
+    province: z.string().max(50).optional(),
+    photoUrls: z.array(z.string().url()).max(5).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // serviceMode è opzionale qui (modifica: la modalità potrebbe non
+    // cambiare) — la città resta obbligatoria solo se esplicitamente
+    // impostata su "HOME" in questa stessa modifica. Se `serviceMode` è
+    // assente non blocchiamo: il form di modifica non permette di
+    // cambiare la modalità, quindi non c'è nulla da validare qui contro
+    // un valore che non arriva mai in questo payload.
+    if (data.serviceMode === "HOME" && !data.city?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
+    }
+  });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 
 /**

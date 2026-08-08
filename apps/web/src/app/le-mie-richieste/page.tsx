@@ -515,7 +515,10 @@ function GuidedRequestCard({
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
     }
-    if (!city.trim()) {
+    // Città obbligatoria solo per un intervento a domicilio (stesso
+    // principio già applicato in GuidedRequestForm/handleSubmit) — per una
+    // richiesta online resta facoltativa.
+    if (request.serviceMode !== "ONLINE" && !city.trim()) {
       setError("Indica la città.");
       return;
     }
@@ -523,7 +526,7 @@ function GuidedRequestCard({
     try {
       await apiClient.updateGuidedRequest(token, request.id, {
         description: description.trim(),
-        city: city.trim(),
+        city: city.trim() || undefined,
         address: address.trim() || undefined,
         recipientName: recipientName.trim() || undefined,
         recipientSurname: recipientSurname.trim() || undefined,
@@ -577,6 +580,13 @@ function GuidedRequestCard({
               minChars={3}
             />
           </YStack>
+          {request.serviceMode === "ONLINE" ? (
+            // Stesso principio/testo già in uso in GuidedRequestForm (creazione
+            // richiesta): per un intervento online la città resta facoltativa.
+            <Text fontSize="$2" color={brand.grafite70}>
+              Per una consulenza online non è obbligatorio indicare la città.
+            </Text>
+          ) : null}
           <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Via/piazza" style={textareaStyle} />
 
           <XStack gap="$2" flexWrap="wrap">
@@ -699,7 +709,7 @@ function GuidedRequestCard({
                 lo stesso motivo (CLAUDE.md §12, ProfessionalCard). */}
             <YStack gap="$1" flex={1} flexBasis={0} minWidth={0}>
               <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
-                {request.categoryLabel} · {request.city}
+                {request.city ? `${request.categoryLabel} · ${request.city}` : request.categoryLabel}
               </Text>
               {request.serviceMode ? (
                 <XStack alignItems="center" gap="$1">

@@ -123,7 +123,12 @@ export class GuidedRequestsService {
               categoryId: category.id,
               description: input.description,
               photoUrls: input.photoUrls,
-              city: input.city,
+              // Facoltativa per un intervento online (richiesta esplicita
+              // dell'utente) — la colonna resta non-nullable a livello DB
+              // (nessuna migrazione, stessa convenzione già in uso per
+              // altri campi opzionali di questo modello: stringa vuota =
+              // "non indicata", non un null).
+              city: input.city?.trim() ?? "",
               address: input.address?.trim() || null,
               // Destinatario + resto dell'indirizzo strutturato, raccolti
               // fin dall'invio della richiesta (richiesta esplicita
@@ -161,7 +166,7 @@ export class GuidedRequestsService {
     // rispettato da matchProfilesForFanOut sotto.
     const matchingProfiles = input.professionalProfileId
       ? await this.prisma.professionalProfile.findMany({ where: { id: input.professionalProfileId } })
-      : await this.matchProfilesForFanOut(category.id, input.city, input.isUrgent);
+      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent);
 
     // Selezione intelligente (CLAUDE.md §14): sopra MAX_LEADS_PER_REQUEST
     // candidati non li contatta tutti — sceglie i migliori per rating +
@@ -202,7 +207,7 @@ export class GuidedRequestsService {
           payload: {
             guidedRequestId: guidedRequest.id,
             category: category.label,
-            city: input.city,
+            city: input.city ?? null,
             isUrgent: input.isUrgent,
           },
         })),
@@ -398,7 +403,7 @@ export class GuidedRequestsService {
       where: { id: request.id },
       data: {
         description: input.description,
-        city: input.city,
+        city: input.city?.trim() ?? "",
         address: input.address?.trim() || null,
         ...(input.recipientName !== undefined ? { recipientName: input.recipientName.trim() || null } : {}),
         ...(input.recipientSurname !== undefined ? { recipientSurname: input.recipientSurname.trim() || null } : {}),
@@ -529,9 +534,19 @@ export class GuidedRequestsService {
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId, deletedAt: null } });
-    const requestComune = findComuneByName(city);
+    const trimmedCity = city.trim();
+    // Città facoltativa per una richiesta "online" (richiesta esplicita
+    // dell'utente, CLAUDE.md): senza una zona da cui calcolare una
+    // distanza, il raggio di ingaggio geografico non ha nulla su cui
+    // applicarsi — il match ricade sui soli professionisti che offrono
+    // consulenza da remoto (`remoteAvailable`), a prescindere da dove si
+    // trovano.
+    if (!trimmedCity) {
+      return candidates.filter((profile) => profile.remoteAvailable);
+    }
+    const requestComune = findComuneByName(trimmedCity);
     if (!requestComune) {
-      return candidates.filter((profile) => profile.city.toLowerCase() === city.trim().toLowerCase());
+      return candidates.filter((profile) => profile.city.toLowerCase() === trimmedCity.toLowerCase());
     }
     return candidates.filter((profile) => {
       // Professionista senza coordinate reali ancora (0,0 placeholder, vedi

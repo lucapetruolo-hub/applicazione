@@ -1337,7 +1337,8 @@ function LeadCard({
               </Text>
             )}
             <Text fontWeight="700" color={brand.grafite}>
-              · {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
+              · {lead.guidedRequest.categoryLabel}
+              {lead.guidedRequest.city ? ` · ${lead.guidedRequest.city}` : ""}
             </Text>
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
