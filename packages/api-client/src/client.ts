@@ -99,6 +99,8 @@ export type ClientGuidedRequest = {
   province: string | null;
   /** Foto caricate insieme alla richiesta (fino a 5), modificabili in /le-mie-richieste. */
   photoUrls: string[];
+  /** Tipo di intervento (richiesta esplicita dell'utente) — `null` per le richieste create prima di questo campo. */
+  serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
   createdAt: string;

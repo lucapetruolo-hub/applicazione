@@ -145,7 +145,7 @@ export function BookingDetailPanel({
         {onOpenTimeline ? (
           <Button variant="ghost" size="$2" height={32} onPress={onOpenTimeline}>
             <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-              Vai alla cronologia della richiesta
+              Contatta/Cronologia
             </Text>
           </Button>
         ) : null}

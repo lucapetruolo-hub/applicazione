@@ -127,6 +127,7 @@ export class GuidedRequestsService {
               postalCode: input.postalCode.trim(),
               province: input.province.trim(),
               isUrgent: input.isUrgent,
+              serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
@@ -281,6 +282,7 @@ export class GuidedRequestsService {
         // per permettere al cliente di modificare le foto già inviate in
         // /le-mie-richieste — prima non erano esposte affatto lato cliente.
         photoUrls: request.photoUrls,
+        serviceMode: request.serviceMode,
         isUrgent: request.isUrgent,
         status: request.status,
         createdAt: request.createdAt.toISOString(),
@@ -378,6 +380,7 @@ export class GuidedRequestsService {
         ...(input.postalCode !== undefined ? { postalCode: input.postalCode.trim() || null } : {}),
         ...(input.province !== undefined ? { province: input.province.trim() || null } : {}),
         ...(input.photoUrls !== undefined ? { photoUrls: input.photoUrls } : {}),
+        ...(input.serviceMode !== undefined ? { serviceMode: input.serviceMode } : {}),
       },
     });
 

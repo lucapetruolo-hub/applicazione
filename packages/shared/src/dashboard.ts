@@ -101,6 +101,8 @@ export type ProfessionalLead = {
     address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
     photoUrls: string[];
+    /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
+    serviceMode: "HOME" | "ONLINE" | null;
     isUrgent: boolean;
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;

@@ -6,7 +6,7 @@ import type { UnreadNotification } from "./AuthContext";
  * esplicita dell'utente: "indica anche in quale sezione c'è stato
  * l'aggiornamento"), non solo il totale nell'header.
  */
-const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED"]);
+const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
 const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
@@ -16,6 +16,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "LEAD_DECLINED",
   "QUOTE_DATE_CHANGED",
   "GUIDED_REQUEST_EXPIRED",
+  "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
 const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL"]);
 

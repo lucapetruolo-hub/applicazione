@@ -439,6 +439,15 @@ enum GuidedRequestClosedReason {
   COMPLETED
 }
 
+// Tipo di intervento richiesto — richiesta esplicita dell'utente: "in modo
+// che il professionista già sa se può trattarsi di un intervento a
+// domicilio o online", raccolto già alla richiesta invece di scoprirlo solo
+// in trattativa.
+enum ServiceMode {
+  HOME
+  ONLINE
+}
+
 model GuidedRequest {
   id                    String                     @id @default(uuid())
   clientId              String
@@ -474,6 +483,11 @@ model GuidedRequest {
   postalCode            String?
   province              String?
   isUrgent              Boolean                    @default(false)
+  // Nullable: le richieste create prima di questa funzionalità non hanno
+  // un tipo esplicito (mai un backfill retroattivo, stessa convenzione già
+  // usata per altri campi opzionali di questo modello) — obbligatorio lato
+  // Zod alla creazione di una richiesta nuova (guidedRequestSchema).
+  serviceMode           ServiceMode?
   status                GuidedRequestStatus        @default(OPEN)
   createdAt             DateTime                   @default(now())
   // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste

@@ -56,7 +56,15 @@ export class AuthController {
   @Get("me")
   async me(@Req() req: AuthenticatedRequest) {
     const user = await this.prisma.user.findUnique({ where: { id: req.user.userId } });
-    if (!user) return null;
+    // Bug reale segnalato dall'utente: un JWT emesso prima della
+    // cancellazione dell'account resta valido fino a scadenza naturale
+    // (CLAUDE.md §16, `JwtAuthGuard` resta stateless apposta) — senza
+    // questo controllo, `/auth/me` restituiva comunque la riga
+    // anonimizzata (email sintetica "deleted-...@deleted.invalid"),
+    // mostrata in header come se l'utente fosse ancora loggato. Trattato
+    // come account inesistente: il frontend (`AuthContext.loadUser`) già
+    // interpreta `null` come "non più autenticato".
+    if (!user || user.deletedAt !== null) return null;
     return this.withBusinessName(user);
   }
 

@@ -16,9 +16,23 @@ const ACTOR_LABEL: Record<ConversationEvent["actor"], string> = {
 };
 
 const ACTOR_COLOR: Record<ConversationEvent["actor"], string> = {
-  CLIENT: brand.cianografia,
+  CLIENT: brand.cianografiaScuro,
   PROFESSIONAL: brand.verificato,
   SYSTEM: brand.grafite70,
+};
+
+// Sfondo "nuvoletta" per attore — richiesta esplicita dell'utente ("crea
+// una sorta di nuvoletta colorata, differenziando i colori in base a se è
+// il cliente e professionista"). Due tinte già esistenti nella palette,
+// nessun nuovo token: `cianografiaVelo` (verde menta, stesso accento già
+// usato per l'etichetta "Cliente") e `gesso` (pesca chiaro, già lo sfondo
+// pagina — qui riusato come tinta neutra distinta dal verde, non
+// `ottone`: quel colore è riservato ai soli contesti di pagamento/boost,
+// CLAUDE.md).
+const ACTOR_BUBBLE_BG: Record<ConversationEvent["actor"], string> = {
+  CLIENT: brand.cianografiaVelo,
+  PROFESSIONAL: brand.gesso,
+  SYSTEM: "transparent",
 };
 
 /** Data+ora reale di un evento della cronologia, fuso orario del browser (timestamp vero, non "wall clock UTC" delle fasce agenda). */
@@ -43,11 +57,17 @@ export function TimelineModal({
   token,
   guidedRequestId,
   professionalProfileId,
+  viewerRole,
   onClose,
 }: {
   token: string;
   guidedRequestId: string;
   professionalProfileId: string;
+  /** Determina quale lato del popup mostra i messaggi di chi sta guardando
+      (richiesta esplicita dell'utente: "sulla parte sinistra ci saranno
+      gli aggiornamenti dell'altra parte") — i messaggi SYSTEM restano
+      sempre centrati, non hanno un "lato". */
+  viewerRole: "CLIENT" | "PROFESSIONAL";
   onClose: () => void;
 }) {
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
@@ -169,35 +189,65 @@ export function TimelineModal({
               Nessun aggiornamento ancora.
             </Text>
           ) : (
-            events.map((event) => (
-              <YStack key={event.id} gap="$1.5" borderLeftWidth={3} borderLeftColor={ACTOR_COLOR[event.actor]} paddingLeft="$3">
-                <XStack justifyContent="space-between" alignItems="center" gap="$2">
-                  <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
-                    {ACTOR_LABEL[event.actor]}
-                  </Text>
-                  <Text fontSize={11} color={brand.grafite70}>
+            events.map((event) => {
+              if (event.actor === "SYSTEM") {
+                // Eventi automatici (fan-out, scadenze, ecc.): mai un
+                // "lato", restano centrati e discreti — non sono un
+                // messaggio di nessuna delle due parti.
+                return (
+                  <YStack key={event.id} gap="$1" alignItems="center">
+                    <Text fontSize={11} color={brand.grafite70} textAlign="center">
+                      {event.message}
+                    </Text>
+                    <Text fontSize={10} color={brand.grafite70}>
+                      {formatEventDate(event.createdAt)}
+                    </Text>
+                  </YStack>
+                );
+              }
+              // I messaggi di chi sta guardando vanno a destra (come in
+              // qualunque chat), quelli dell'altra parte a sinistra —
+              // richiesta esplicita dell'utente.
+              const isMine = event.actor === viewerRole;
+              return (
+                <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
+                  <YStack
+                    gap="$1.5"
+                    maxWidth="85%"
+                    backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
+                    borderRadius="$4"
+                    borderTopRightRadius={isMine ? 4 : undefined}
+                    borderTopLeftRadius={isMine ? undefined : 4}
+                    paddingHorizontal="$3"
+                    paddingVertical="$2.5"
+                  >
+                    <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
+                      {ACTOR_LABEL[event.actor]}
+                    </Text>
+                    {event.message ? (
+                      <Text color={brand.grafite} fontSize="$3">
+                        {event.message}
+                      </Text>
+                    ) : null}
+                    {event.mediaUrls.length > 0 ? (
+                      <XStack gap="$2" flexWrap="wrap">
+                        {event.mediaUrls.map((url, index) => (
+                          <MediaPreview
+                            key={url}
+                            url={url}
+                            onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
+                            style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                          />
+                        ))}
+                      </XStack>
+                    ) : null}
+                  </YStack>
+                  <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
                     {formatEventDate(event.createdAt)}
                   </Text>
-                </XStack>
-                {event.message ? (
-                  <Text color={brand.grafite} fontSize="$3">
-                    {event.message}
-                  </Text>
-                ) : null}
-                {event.mediaUrls.length > 0 ? (
-                  <XStack gap="$2" flexWrap="wrap">
-                    {event.mediaUrls.map((url, index) => (
-                      <MediaPreview
-                        key={url}
-                        url={url}
-                        onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
-                        style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                      />
-                    ))}
-                  </XStack>
-                ) : null}
-              </YStack>
-            ))
+                </YStack>
+              );
+            })
           )}
         </YStack>
 

@@ -1112,6 +1112,7 @@ export default function DashboardAgendaPage() {
           token={token}
           guidedRequestId={selectedBooking.guidedRequestId}
           professionalProfileId={myProfileId}
+          viewerRole="PROFESSIONAL"
           onClose={() => setShowBookingTimeline(false)}
         />
       ) : null}

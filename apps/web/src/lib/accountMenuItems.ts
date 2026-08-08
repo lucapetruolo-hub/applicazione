@@ -11,6 +11,6 @@ export function getAccountMenuItems(role: "CLIENT" | "PROFESSIONAL" | "ADMIN"): 
     : [
         { href: "/account", label: "Impostazioni dell'account" },
         { href: "/professionisti-salvati", label: "Professionisti salvati" },
-        { href: "/le-mie-richieste", label: "Le mie visite" },
+        { href: "/le-mie-richieste", label: "Le mie richieste" },
       ];
 }

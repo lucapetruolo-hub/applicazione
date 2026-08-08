@@ -677,10 +677,23 @@ function GuidedRequestCard({
       ) : (
         <>
           <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-            <YStack gap="$1">
+            {/* `flex={1}`/`flexBasis={0}`/`minWidth={0}`: senza questi, il
+                blocco si dimensiona sulla larghezza "a contenuto pieno" (non
+                spezzata) della descrizione invece di rispettare lo spazio
+                disponibile nella riga — stesso bug già corretto altrove per
+                lo stesso motivo (CLAUDE.md §12, ProfessionalCard). */}
+            <YStack gap="$1" flex={1} flexBasis={0} minWidth={0}>
               <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
                 {request.categoryLabel} · {request.city}
               </Text>
+              {request.serviceMode ? (
+                <XStack alignItems="center" gap="$1">
+                  <Icon name={request.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
+                  <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                    {request.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
+                  </Text>
+                </XStack>
+              ) : null}
               <Text color={brand.grafite70}>{request.description}</Text>
               {request.address ? (
                 <XStack alignItems="center" gap="$1">
@@ -714,7 +727,7 @@ function GuidedRequestCard({
                 </XStack>
               ) : null}
             </YStack>
-            <YStack alignItems="flex-end" gap="$1">
+            <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
               <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
                 {STATUS_LABEL[request.status]}
               </Text>
@@ -1062,7 +1075,7 @@ function QuoteCard({
         accessibilityRole="button"
         onPress={() => setShowTimeline(true)}
       >
-        Cronologia
+        Contatta/Cronologia
       </Text>
       {/* Il professionista ha inviato il preventivo con un orario diverso
           da quello effettivamente richiesto dal cliente (richiesta
@@ -1240,6 +1253,7 @@ function QuoteCard({
           token={token}
           guidedRequestId={guidedRequestId}
           professionalProfileId={quote.professionalProfileId}
+          viewerRole="CLIENT"
           onClose={() => setShowTimeline(false)}
         />
       ) : null}
@@ -1414,7 +1428,7 @@ function BookingRow({
           accessibilityRole="button"
           onPress={() => setShowTimeline(true)}
         >
-          Vai alla richiesta preventivo
+          Contatta/Cronologia
         </Text>
       ) : null}
 
@@ -1768,6 +1782,7 @@ function BookingRow({
           token={token}
           guidedRequestId={booking.guidedRequestId}
           professionalProfileId={booking.professionalProfileId}
+          viewerRole="CLIENT"
           onClose={() => setShowTimeline(false)}
         />
       ) : null}

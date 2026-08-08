@@ -634,6 +634,7 @@ export class ProfessionalsService {
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
+          serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,
           // Valorizzati solo se la richiesta è nata da una fascia generica
           // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista

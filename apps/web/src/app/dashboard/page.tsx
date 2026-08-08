@@ -659,7 +659,7 @@ function AcceptedJobCard({
           {booking.guidedRequestId && myProfileId ? (
             <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
               <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                Vai alla richiesta preventivo
+                Contatta/Cronologia
               </Text>
             </Button>
           ) : null}
@@ -915,7 +915,13 @@ function AcceptedJobCard({
         <PhotoLightbox photos={booking.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
       {showTimeline && booking.guidedRequestId && myProfileId ? (
-        <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={myProfileId} onClose={() => setShowTimeline(false)} />
+        <TimelineModal
+          token={token}
+          guidedRequestId={booking.guidedRequestId}
+          professionalProfileId={myProfileId}
+          viewerRole="PROFESSIONAL"
+          onClose={() => setShowTimeline(false)}
+        />
       ) : null}
     </Surface>
   );
@@ -1286,7 +1292,12 @@ function LeadCard({
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-        <YStack gap="$1" flex={1}>
+        {/* `flexBasis={0}`/`minWidth={0}` insieme a `flex={1}`: senza
+            questi, il blocco si dimensiona sulla larghezza "a contenuto
+            pieno" (non spezzata) del testo interno invece di rispettare lo
+            spazio disponibile — stesso bug già corretto altrove per lo
+            stesso motivo (CLAUDE.md §12, ProfessionalCard). */}
+        <YStack gap="$1" flex={1} flexBasis={0} minWidth={0}>
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
             {/* Nome del cliente, cliccabile: apre la scheda profilo minimale
                 (richiesta esplicita dell'utente). Nessuna pagina pubblica
@@ -1325,10 +1336,18 @@ function LeadCard({
                 accessibilityRole="button"
                 onPress={() => setShowTimeline(true)}
               >
-                Cronologia
+                Contatta/Cronologia
               </Text>
             ) : null}
           </XStack>
+          {lead.guidedRequest.serviceMode ? (
+            <XStack alignItems="center" gap="$1">
+              <Icon name={lead.guidedRequest.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
+              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                {lead.guidedRequest.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
+              </Text>
+            </XStack>
+          ) : null}
           <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
           {lead.guidedRequest.address ? (
             <XStack alignItems="center" gap="$1">
@@ -1787,7 +1806,13 @@ function LeadCard({
       ) : null}
 
       {showTimeline && myProfileId ? (
-        <TimelineModal token={token} guidedRequestId={lead.guidedRequest.id} professionalProfileId={myProfileId} onClose={() => setShowTimeline(false)} />
+        <TimelineModal
+          token={token}
+          guidedRequestId={lead.guidedRequest.id}
+          professionalProfileId={myProfileId}
+          viewerRole="PROFESSIONAL"
+          onClose={() => setShowTimeline(false)}
+        />
       ) : null}
     </Surface>
   );

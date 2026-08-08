@@ -118,6 +118,12 @@ export const guidedRequestSchema = z
     postalCode: z.string().min(1, "Il CAP è obbligatorio.").max(10),
     province: z.string().min(1, "La provincia è obbligatoria.").max(50),
     isUrgent: z.boolean().default(false),
+    /**
+     * Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
+     * professionista già sa se può trattarsi di un intervento a domicilio o
+     * online"), obbligatorio come gli altri campi della richiesta.
+     */
+    serviceMode: z.enum(["HOME", "ONLINE"], { errorMap: () => ({ message: "Indica se l'intervento è a domicilio o online." }) }),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.string().uuid().optional(),
     /**
@@ -155,6 +161,7 @@ export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 export const guidedRequestUpdateSchema = z.object({
   description: z.string().min(10).max(2000),
   city: z.string().min(2),
+  serviceMode: z.enum(["HOME", "ONLINE"]).optional(),
   address: z.string().max(200).optional(),
   recipientName: z.string().max(120).optional(),
   recipientSurname: z.string().max(120).optional(),

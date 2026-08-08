@@ -59,6 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadUser = useCallback(async (currentToken: string) => {
     try {
       const currentUser = await apiClient.me(currentToken);
+      // `null` copre sia un token non valido sia un account eliminato nel
+      // frattempo (`/auth/me` lo tratta come inesistente, vedi
+      // AuthController) — in entrambi i casi il token salvato non serve
+      // più a nulla: senza rimuoverlo, ogni ricarica di pagina ripeterebbe
+      // la stessa chiamata fallita all'infinito invece di restare
+      // semplicemente disconnessi.
+      if (!currentUser) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
       setUser(currentUser);
       setToken(currentUser ? currentToken : null);
       return currentUser;

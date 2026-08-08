@@ -155,6 +155,11 @@ export function GuidedRequestForm({
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
+  // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
+  // professionista già sa se può trattarsi di un intervento a domicilio o
+  // online") — obbligatorio, stesso principio degli altri campi della
+  // richiesta resi obbligatori in un giro precedente (indirizzo, foto).
+  const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(null);
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
   const [city, setCity] = useState(initialCity);
@@ -317,6 +322,10 @@ export function GuidedRequestForm({
       setError("Seleziona una categoria.");
       return;
     }
+    if (!serviceMode) {
+      setError("Indica se l'intervento è a domicilio o online.");
+      return;
+    }
     if (description.trim().length < 10) {
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
@@ -369,6 +378,7 @@ export function GuidedRequestForm({
         postalCode: postalCode.trim(),
         province: province.trim(),
         isUrgent,
+        serviceMode: serviceMode as "HOME" | "ONLINE",
         photoUrls,
         professionalProfileId,
         preferredDate: finalPreferredDate,
@@ -494,6 +504,41 @@ export function GuidedRequestForm({
             </YStack>
           </YStack>
         )}
+
+        <YStack gap="$2">
+          <FieldLabel>Tipo di intervento</FieldLabel>
+          <XStack flexWrap="wrap" gap="$2">
+            {(
+              [
+                { value: "HOME", label: "A domicilio", icon: "house" },
+                { value: "ONLINE", label: "Online", icon: "video" },
+              ] as const
+            ).map((option) => {
+              const active = serviceMode === option.value;
+              return (
+                <XStack
+                  key={option.value}
+                  alignItems="center"
+                  gap="$2"
+                  paddingHorizontal="$3"
+                  paddingVertical="$2"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={active ? brand.cianografia : brand.filetto}
+                  backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                  cursor="pointer"
+                  onPress={() => setServiceMode(option.value)}
+                  accessibilityRole="button"
+                >
+                  <Icon name={option.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
+                  <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                    {option.label}
+                  </Text>
+                </XStack>
+              );
+            })}
+          </XStack>
+        </YStack>
 
         {preferredDate && preferredTimeSlot ? (
           <YStack gap="$2">
