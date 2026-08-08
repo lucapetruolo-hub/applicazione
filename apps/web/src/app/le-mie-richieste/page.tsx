@@ -1,11 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type GuidedRequestStatusSummary } from "@professionisti/shared";
+import {
+  ALL_ITALIAN_CITY_NAMES,
+  averageQuoteTotalEurCents,
+  formatEurCents,
+  formatServicePriceRange,
+  quotePriceTotals,
+  type GuidedRequestStatusSummary,
+} from "@professionisti/shared";
 import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -453,6 +460,13 @@ function GuidedRequestCard({
   // dell'utente, stesso vincolo applicato lato API in GuidedRequestsService.
   const hasQuote = request.quotes.length > 0;
   const canEditDetails = canDelete && !hasQuote;
+  // "Prezzo totale medio" (richiesta esplicita dell'utente): solo su una
+  // richiesta generica (fan-out categoria+città, non diretta al profilo di
+  // un professionista specifico) con almeno 1 preventivo ricevuto.
+  const averagePriceEurCents = useMemo(
+    () => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)),
+    [request.quotes],
+  );
 
   function startEditing() {
     setDescription(request.description);
@@ -750,6 +764,20 @@ function GuidedRequestCard({
             </YStack>
           ) : null}
 
+          {/* "Prezzo totale medio" — richiesta esplicita dell'utente, solo
+              per una richiesta generica (fan-out categoria+città, non diretta
+              al profilo di un professionista specifico) con almeno 1
+              risposta: media tra i preventivi ricevuti, `null` se nessuno
+              indica ancora un prezzo (tutte le voci "Su richiesta"). */}
+          {!request.professionalProfileId && averagePriceEurCents !== null ? (
+            <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
+              <Icon name="coins" size={16} color={brand.cianografia} strokeWidth={1.5} />
+              <Text fontSize="$3" fontWeight="700" color={brand.cianografia}>
+                Prezzo totale medio: {formatEurCents(averagePriceEurCents)}
+              </Text>
+            </XStack>
+          ) : null}
+
           {/* Foto già allegate alla richiesta, visibili subito nell'anteprima
               (richiesta esplicita dell'utente) invece di essere nascoste
               finché non si entra in modifica. Cliccabili per ingrandirle,
@@ -958,6 +986,10 @@ function QuoteCard({
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  // Totale minimo/massimo delle voci di questo preventivo (richiesta
+  // esplicita dell'utente: "il totale dei minimi in un riquadro e il totale
+  // dei massimi nell'altro").
+  const priceTotals = useMemo(() => quotePriceTotals(quote.items), [quote.items]);
 
   // I dati per raggiungere il cliente (destinatario, indirizzo) sono già
   // stati raccolti alla richiesta (GuidedRequestForm) — accettare crea
@@ -1119,6 +1151,34 @@ function QuoteCard({
           </Text>
         ))}
       </YStack>
+      {/* "Prezzo": totale dei minimi e totale dei massimi delle voci sopra,
+          ognuno nel proprio riquadro — richiesta esplicita dell'utente.
+          Nascosto se nessuna voce ha un prezzo indicato ("Su richiesta"). */}
+      {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
+        <YStack gap="$1">
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+            Prezzo
+          </Text>
+          <XStack gap="$2" flexWrap="wrap">
+            <YStack flex={1} minWidth={120} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
+              <Text fontSize="$2" color={brand.grafite70}>
+                Totale minimo
+              </Text>
+              <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
+                {formatEurCents(priceTotals.totalMinEurCents)}
+              </Text>
+            </YStack>
+            <YStack flex={1} minWidth={120} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
+              <Text fontSize="$2" color={brand.grafite70}>
+                Totale massimo
+              </Text>
+              <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
+                {formatEurCents(priceTotals.totalMaxEurCents)}
+              </Text>
+            </YStack>
+          </XStack>
+        </YStack>
+      ) : null}
       {quote.notes ? (
         <Text color={brand.grafite70} fontSize="$3">
           {quote.notes}

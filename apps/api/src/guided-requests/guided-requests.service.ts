@@ -277,6 +277,12 @@ export class GuidedRequestsService {
         description: request.description,
         city: request.city,
         address: request.address,
+        // Valorizzato solo se la richiesta è nata dal profilo di un
+        // professionista specifico ("Richiedi un preventivo a [nome]"),
+        // null per una richiesta generica (fan-out categoria+città) — usato
+        // in UI per mostrare "prezzo totale medio" solo su queste ultime
+        // (richiesta esplicita dell'utente).
+        professionalProfileId: request.professionalProfileId,
         // Destinatario + resto dell'indirizzo strutturato: visibili qui
         // perché è il cliente stesso a vederli (i propri dati), a
         // differenza di ProfessionalLead.guidedRequest, che non li espone

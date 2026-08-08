@@ -36,6 +36,52 @@ export function formatServicePriceRange(priceMinEurCents: number | null, priceMa
   return single !== null ? format(single) : "Su richiesta";
 }
 
+/** Formatta un importo in centesimi come "12,50 €" — stesso pattern già usato in `formatServicePriceRange`. */
+export function formatEurCents(cents: number): string {
+  return `${(cents / 100).toFixed(2)} €`;
+}
+
+/**
+ * Somma minimi e massimi delle voci di un preventivo — richiesta esplicita
+ * dell'utente: "alla fine delle varie voci... inserisci 'prezzo' con il
+ * totale dei minimi in un riquadro e il totale dei massimi nell'altro". Una
+ * voce "Su richiesta" (né minimo né massimo indicato) non contribuisce a
+ * nessuno dei due totali: non è una spesa a 0€, è un prezzo non ancora
+ * indicato. Una voce con un solo estremo indicato conta quel valore su
+ * entrambi i totali (lo stesso principio già seguito da
+ * `formatServicePriceRange` per un prezzo singolo).
+ */
+export function quotePriceTotals(
+  items: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
+): { totalMinEurCents: number; totalMaxEurCents: number } {
+  let totalMinEurCents = 0;
+  let totalMaxEurCents = 0;
+  for (const item of items) {
+    totalMinEurCents += item.priceMinEurCents ?? item.priceMaxEurCents ?? 0;
+    totalMaxEurCents += item.priceMaxEurCents ?? item.priceMinEurCents ?? 0;
+  }
+  return { totalMinEurCents, totalMaxEurCents };
+}
+
+/**
+ * Prezzo totale medio tra più preventivi ricevuti per la stessa richiesta
+ * guidata — richiesta esplicita dell'utente, solo per una richiesta
+ * "generica" (non diretta a un singolo professionista) con almeno 1
+ * risposta. Media del punto medio (min+max)/2 di ciascun preventivo; un
+ * preventivo senza alcun prezzo indicato (tutte le voci "Su richiesta") non
+ * entra nella media — `null` se nessun preventivo ha un prezzo indicato.
+ */
+export function averageQuoteTotalEurCents(
+  quotesItems: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[][],
+): number | null {
+  const midpoints = quotesItems
+    .map((items) => quotePriceTotals(items))
+    .filter((totals) => totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0)
+    .map((totals) => (totals.totalMinEurCents + totals.totalMaxEurCents) / 2);
+  if (midpoints.length === 0) return null;
+  return Math.round(midpoints.reduce((sum, value) => sum + value, 0) / midpoints.length);
+}
+
 /**
  * Costruisce un link `wa.me` da un numero di telefono già raccolto
  * (nessuna API WhatsApp Business, nessuna nuova integrazione — richiesta
