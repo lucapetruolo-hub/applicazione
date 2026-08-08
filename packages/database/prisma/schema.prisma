@@ -149,6 +149,18 @@ model ProfessionalProfile {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
+  // Soft-delete (richiesta esplicita dell'utente, simmetrica a User.deletedAt
+  // già in uso per il cliente — CLAUDE.md §16): prima l'eliminazione
+  // dell'account professionista cancellava per davvero questa riga, che in
+  // cascata (onDelete: Cascade su Booking.professionalProfileId e simili)
+  // portava via anche tutte le prenotazioni/recensioni del cliente con lui
+  // — un cliente non vedeva più nulla dei propri "Lavori accettati" passati.
+  // Ora si marca solo `deletedAt`: il profilo sparisce da ricerca/profilo
+  // pubblico/fan-out (ovunque filtrato esplicitamente), ma Booking/Lead/
+  // Quote/Review restano intatti — lo stesso principio "traccia completa"
+  // già applicato al soft-delete del cliente.
+  deletedAt DateTime?
+
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
 

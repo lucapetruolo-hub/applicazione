@@ -319,6 +319,32 @@ export class BookingsService {
     return { bookingId, refundRequested: true, refundRequestedAt: refundRequestedAt.toISOString() };
   }
 
+  /**
+   * Il cliente elimina dalla propria lista "Lavori accettati" una
+   * prenotazione il cui professionista ha eliminato l'account — richiesta
+   * esplicita dell'utente, simmetrica a ProfessionalsService.deleteLead
+   * (professionista che elimina una richiesta di un cliente eliminato).
+   * Consentito solo se il professionista è soft-deleted (`deletedAt`), a
+   * prescindere dallo stato della prenotazione — altrimenti resterebbe un
+   * modo generico di far sparire prenotazioni scomode. Elimina la Booking
+   * per intero (cascata su BookingFinalItem e sull'eventuale Review: quella
+   * recensione viveva comunque su un profilo non più pubblico).
+   */
+  async deleteForClient(clientId: string, bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: true },
+    });
+    if (!booking || booking.clientId !== clientId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.professionalProfile.deletedAt === null) {
+      throw new ForbiddenException("Puoi eliminare una prenotazione solo se l'account del professionista è stato eliminato.");
+    }
+
+    await this.prisma.booking.delete({ where: { id: bookingId } });
+  }
+
   /** Prenotazioni del cliente autenticato, per proporre la recensione a lavoro completato. */
   async listForClient(clientId: string) {
     const bookings = await this.prisma.booking.findMany({
@@ -383,13 +409,20 @@ export class BookingsService {
       // Dati di contatto del professionista, per il popup "Non presentato"
       // (contatta oppure chiedi il rimborso) — richiesta esplicita
       // dell'utente, visibili solo qui, non prima nel ciclo di vita.
+      // Mai l'email anonimizzata sintetica quando l'account è stato
+      // eliminato — stesso motivo di clientEmail in getMyLeads/getMyBookings.
       professionalPhone: booking.professionalProfile.user.phone,
-      professionalEmail: booking.professionalProfile.user.email,
+      professionalEmail: booking.professionalProfile.deletedAt ? null : booking.professionalProfile.user.email,
       professionalAddress: booking.professionalProfile.address,
       refundRequested: booking.refundRequested,
       // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
       // professionista — richiesta esplicita dell'utente.
       meetingLink: booking.meetingLink,
+      // Il professionista ha eliminato l'account (soft-delete, simmetrico a
+      // clientAccountDeleted lato professionista) — richiesta esplicita
+      // dell'utente: "Lavori accettati" deve segnalarlo e offrire
+      // l'eliminazione della prenotazione dalla propria lista.
+      professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
     }));
   }
 }

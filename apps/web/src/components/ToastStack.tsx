@@ -1,17 +1,35 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
+import { notificationDestination } from "@/lib/notificationSections";
 
 const AUTO_DISMISS_MS = 6000;
 
-function ToastCard({ id, icon, message, onDismiss }: { id: string; icon: string; message: string; onDismiss: (id: string) => void }) {
+function ToastCard({
+  id,
+  icon,
+  message,
+  type,
+  onDismiss,
+  onOpen,
+}: {
+  id: string;
+  icon: string;
+  message: string;
+  type: string;
+  onDismiss: (id: string) => void;
+  onOpen: (type: string) => void;
+}) {
   useEffect(() => {
     const timer = setTimeout(() => onDismiss(id), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const destination = notificationDestination(type);
 
   return (
     <XStack
@@ -28,9 +46,16 @@ function ToastCard({ id, icon, message, onDismiss }: { id: string; icon: string;
       shadowOffset={{ width: 0, height: 4 }}
       maxWidth={360}
       cursor="pointer"
-      onPress={() => onDismiss(id)}
+      onPress={() => {
+        // Richiesta esplicita dell'utente: cliccare il banner deve aprire
+        // l'aggiornamento a cui si riferisce, non solo chiuderlo — naviga
+        // alla pagina/tab giusti (se il tipo di notifica ne conosce uno) e
+        // lo chiude comunque, stesso effetto di prima per i tipi ignoti.
+        if (destination) onOpen(type);
+        onDismiss(id);
+      }}
       accessibilityRole="button"
-      accessibilityLabel={`${message} — tocca per chiudere`}
+      accessibilityLabel={destination ? `${message} — tocca per aprire` : `${message} — tocca per chiudere`}
     >
       <Text fontSize={22} lineHeight={22}>
         {icon}
@@ -53,8 +78,15 @@ function ToastCard({ id, icon, message, onDismiss }: { id: string; icon: string;
  */
 export function ToastStack() {
   const { toasts, dismissToast } = useAuth();
+  const router = useRouter();
 
   if (toasts.length === 0) return null;
+
+  function openNotification(type: string) {
+    const destination = notificationDestination(type);
+    if (!destination) return;
+    router.push(`${destination.page}?tab=${destination.tab}`);
+  }
 
   // `position="fixed"` non è un valore tipizzato per il prop `position` di
   // Tamagui (React Native non lo supporta) — stesso limite già documentato
@@ -65,7 +97,7 @@ export function ToastStack() {
     <div style={{ position: "fixed", top: 16, left: 0, right: 0, zIndex: 2000, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <YStack alignItems="center" gap="$2" pointerEvents="box-none">
         {toasts.map((toast) => (
-          <ToastCard key={toast.id} id={toast.id} icon={toast.icon} message={toast.message} onDismiss={dismissToast} />
+          <ToastCard key={toast.id} id={toast.id} icon={toast.icon} message={toast.message} type={toast.type} onDismiss={dismissToast} onOpen={openNotification} />
         ))}
       </YStack>
     </div>

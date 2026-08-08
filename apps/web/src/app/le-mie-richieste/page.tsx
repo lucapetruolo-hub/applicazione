@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import { ALL_ITALIAN_CITY_NAMES, formatServicePriceRange, type GuidedRequestStatusSummary } from "@professionisti/shared";
@@ -111,8 +112,26 @@ function ClientTabButton({
 }
 
 export default function LeMieRichiestePage() {
+  return (
+    <Suspense fallback={null}>
+      <LeMieRichiesteContent />
+    </Suspense>
+  );
+}
+
+function LeMieRichiesteContent() {
   const { user, token, isLoading, markNotificationsRead } = useAuth();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<ClientTab>("richieste");
+  // Un toast cliccato (ToastStack, richiesta esplicita dell'utente: "fagli
+  // aprire l'aggiornamento relativo a quel banner") naviga qui con
+  // `?tab=richieste|lavori` — stesso meccanismo di /dashboard, reattivo a
+  // `searchParams` per coprire anche il caso in cui si è già su questa
+  // pagina (navigazione superficiale, nessun rimontaggio del componente).
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "richieste" || tab === "lavori") setActiveTab(tab);
+  }, [searchParams]);
   // Fotografia delle notifiche non lette al momento dell'arrivo, presa
   // PRIMA di segnarle come lette — stessa race condition già documentata
   // e corretta in /dashboard (vedi commento lì): non affidarsi al
@@ -1225,6 +1244,9 @@ function BookingRow({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [openRequestPhotoIndex, setOpenRequestPhotoIndex] = useState<number | null>(null);
+  const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
+  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleCancelBooking() {
     setCancelError(null);
@@ -1237,6 +1259,25 @@ function BookingRow({
       setConfirmingCancel(false);
     } finally {
       setIsCanceling(false);
+    }
+  }
+
+  // Richiesta esplicita dell'utente: quando il professionista ha eliminato
+  // l'account, la prenotazione non è più azionabile (nessun modo di
+  // contattarlo) e resterebbe altrimenti a ingombrare "Lavori accettati"
+  // per sempre — stesso principio/pattern di LeadCard.handleDeleteLead
+  // (professionista che elimina una richiesta di un cliente eliminato).
+  async function handleDeleteBooking() {
+    setDeleteError(null);
+    setIsDeletingBooking(true);
+    try {
+      await apiClient.deleteBooking(token, booking.id);
+      onReviewed();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingDeleteBooking(false);
+    } finally {
+      setIsDeletingBooking(false);
     }
   }
 
@@ -1288,11 +1329,26 @@ function BookingRow({
   return (
     <Surface gap="$2">
       <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-        <Link href={`/professionista/${booking.professionalProfileId}`} style={{ textDecoration: "none" }}>
-          <Text fontWeight="600" color={brand.cianografia}>
-            {booking.businessName}
-          </Text>
-        </Link>
+        {booking.professionalAccountDeleted ? (
+          // Il professionista ha eliminato l'account (soft-delete) —
+          // richiesta esplicita dell'utente: nessun link (il profilo
+          // pubblico non esiste più), stesso stile neutro già in uso per
+          // "Account eliminato" lato professionista (LeadCard/AcceptedJobCard).
+          <XStack alignItems="center" gap="$2">
+            <Text fontWeight="600" color={brand.grafite70}>
+              {booking.businessName}
+            </Text>
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              · Account eliminato
+            </Text>
+          </XStack>
+        ) : (
+          <Link href={`/professionista/${booking.professionalProfileId}`} style={{ textDecoration: "none" }}>
+            <Text fontWeight="600" color={brand.cianografia}>
+              {booking.businessName}
+            </Text>
+          </Link>
+        )}
         <XStack alignItems="center" gap="$2">
           <Text fontFamily="$body" fontSize={11} color={booking.status === "CANCELED" ? brand.urgenza : brand.cianografia} fontWeight="700">
             {booking.status === "CANCELED"
@@ -1483,6 +1539,51 @@ function BookingRow({
             Abbiamo avvisato {booking.businessName}. Contattalo direttamente per accordarvi su un rimborso.
           </Text>
         </YStack>
+      ) : null}
+
+      {/* Eliminazione dalla lista, richiesta esplicita dell'utente — mostrata
+          a prescindere dallo stato della prenotazione, quando il
+          professionista ha eliminato l'account. Doppia conferma, stesso
+          pattern già in uso per "Annulla prenotazione" sopra. */}
+      {booking.professionalAccountDeleted ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {confirmingDeleteBooking ? (
+            <>
+              <Text fontSize="$2" color={brand.urgenza}>
+                Eliminare questa prenotazione dalla lista?
+              </Text>
+              <Button
+                variant="urgent"
+                size="$2"
+                height={36}
+                onPress={handleDeleteBooking}
+                disabled={isDeletingBooking}
+                opacity={isDeletingBooking ? 0.6 : 1}
+              >
+                {isDeletingBooking ? "Eliminazione..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
+                Annulla
+              </Button>
+            </>
+          ) : (
+            <Text
+              color={brand.urgenza}
+              fontWeight="600"
+              fontSize="$2"
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setConfirmingDeleteBooking(true)}
+            >
+              Elimina prenotazione
+            </Text>
+          )}
+        </XStack>
+      ) : null}
+      {deleteError ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {deleteError}
+        </Text>
       ) : null}
 
       {showNoShowModal ? (

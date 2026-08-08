@@ -172,16 +172,20 @@ export class AuthService {
    * fisicamente lo User, per non trascinare via in cascata le richieste
    * guidate/lead/preventivi/prenotazioni/recensioni collegate — devono
    * restare visibili al professionista con l'indicazione "Account
-   * eliminato" invece di sparire. Se l'account è un professionista, il suo
-   * ProfessionalProfile (profilo pubblico + agenda) resta invece
-   * cancellato per davvero, comportamento invariato rispetto a prima: solo
-   * i dati lato CLIENTE del richiedente vanno preservati, non l'annuncio
-   * pubblico di un professionista che ha smesso di operare.
+   * eliminato" invece di sparire. Se l'account è un professionista, anche
+   * il suo ProfessionalProfile è ora soft-deleted (`deletedAt`, stesso
+   * principio) invece di cancellato per davvero come in origine — bug/
+   * lacuna corretta su richiesta esplicita dell'utente: cancellarlo per
+   * davvero portava via in cascata (onDelete: Cascade) anche Booking/Review
+   * del cliente, che perdeva ogni traccia dei propri "Lavori accettati"
+   * passati con lui. Il profilo resta comunque escluso da ricerca/profilo
+   * pubblico/fan-out (ogni query pubblica filtra esplicitamente
+   * `deletedAt: null`), ma Booking/Lead/Quote/Review restano intatti.
    */
   async deleteAccount(userId: string): Promise<void> {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (professionalProfile) {
-      await this.prisma.professionalProfile.delete({ where: { id: professionalProfile.id } });
+      await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
     }
 
     await this.prisma.user.update({

@@ -87,6 +87,9 @@ export class ProfessionalsService {
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
+        // Un professionista che ha eliminato l'account non deve mai
+        // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount).
+        deletedAt: null,
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
@@ -295,7 +298,7 @@ export class ProfessionalsService {
       },
     });
 
-    if (!profile) {
+    if (!profile || profile.deletedAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
 

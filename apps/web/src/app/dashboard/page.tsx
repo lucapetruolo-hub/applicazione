@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import {
   buildWhatsAppLink,
@@ -172,8 +173,27 @@ function DashboardTabButton({
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
   const { user, token, isLoading, markNotificationsRead } = useAuth();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>("richieste");
+  // Un toast cliccato (ToastStack, richiesta esplicita dell'utente: "fagli
+  // aprire l'aggiornamento relativo a quel banner") naviga qui con
+  // `?tab=richieste|lavori` — reattivo a `searchParams` (non solo al primo
+  // mount) perché un click sul toast mentre si è già su questa pagina è una
+  // navigazione superficiale (stessa route, solo la query cambia), che non
+  // rimonta il componente.
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "richieste" || tab === "lavori") setActiveTab(tab);
+  }, [searchParams]);
   // Fotografia delle notifiche non lette al momento dell'arrivo sulla
   // pagina, presa PRIMA di segnarle come lette — evita una race condition
   // reale: se si usasse invece il conteggio "live" di AuthContext

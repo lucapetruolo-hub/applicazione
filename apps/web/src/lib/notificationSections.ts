@@ -19,6 +19,22 @@ const CLIENT_RICHIESTE_TYPES = new Set([
 ]);
 const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL"]);
 
+/**
+ * Pagina+tab a cui porta un click sul toast di una notifica (richiesta
+ * esplicita dell'utente: "se ci cliccano sopra fagli aprire l'aggiornamento
+ * relativo a quel banner") — ogni `type` appartiene già a esattamente uno
+ * dei quattro insiemi sopra (pagina professionista/cliente × sezione
+ * richieste/lavori, mai ambiguo), stessa fonte di verità riusata invece di
+ * una seconda mappa parallela.
+ */
+export function notificationDestination(type: string): { page: "/dashboard" | "/le-mie-richieste"; tab: "richieste" | "lavori" } | null {
+  if (PROFESSIONAL_RICHIESTE_TYPES.has(type)) return { page: "/dashboard", tab: "richieste" };
+  if (PROFESSIONAL_LAVORI_TYPES.has(type)) return { page: "/dashboard", tab: "lavori" };
+  if (CLIENT_RICHIESTE_TYPES.has(type)) return { page: "/le-mie-richieste", tab: "richieste" };
+  if (CLIENT_LAVORI_TYPES.has(type)) return { page: "/le-mie-richieste", tab: "lavori" };
+  return null;
+}
+
 function countByTypes(notifications: UnreadNotification[], types: Set<string>): number {
   return notifications.filter((n) => types.has(n.type)).length;
 }

@@ -68,6 +68,8 @@ export type ClientBooking = {
   refundRequested: boolean;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
+  /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
+  professionalAccountDeleted: boolean;
 };
 
 export type ClientGuidedRequest = {
@@ -565,6 +567,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     reportBookingNoShow: (token: string, bookingId: string) =>
       request<{ bookingId: string; refundRequested: boolean; refundRequestedAt: string }>(`/bookings/${bookingId}/report-no-show`, {
         method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Il cliente elimina dalla propria lista una prenotazione il cui professionista ha eliminato l'account. */
+    deleteBooking: (token: string, bookingId: string) =>
+      request<void>(`/bookings/${bookingId}`, {
+        method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
 

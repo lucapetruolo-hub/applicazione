@@ -61,13 +61,16 @@ export class GuidedRequestsService {
       throw new BadRequestException("Categoria non valida.");
     }
 
-    let targetProfile: { id: string } | null = null;
+    let targetProfile: { id: string; deletedAt: Date | null } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true },
+        select: { id: true, deletedAt: true },
       });
-      if (!targetProfile) {
+      // Un professionista che ha eliminato l'account (soft-delete) non può
+      // ricevere nuove richieste — stesso stato di "non trovato" già
+      // applicato altrove alle query pubbliche su ProfessionalProfile.
+      if (!targetProfile || targetProfile.deletedAt) {
         throw new NotFoundException("Professionista non trovato.");
       }
     }
@@ -466,7 +469,9 @@ export class GuidedRequestsService {
    * sostituisce.
    */
   private async matchProfilesForFanOut(categoryId: string, city: string, isUrgent: boolean): Promise<ProfessionalProfile[]> {
-    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId } });
+    // Un professionista che ha eliminato l'account (soft-delete) non entra
+    // mai nel fan-out — stesso filtro già applicato a search()/getById().
+    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId, deletedAt: null } });
     const requestComune = findComuneByName(city);
     if (!requestComune) {
       return candidates.filter((profile) => profile.city.toLowerCase() === city.trim().toLowerCase());
@@ -799,10 +804,18 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Valida che dateStr/timeSlot corrispondano a una fascia "generica" reale
-   * (AvailabilitySlot.maxBookings > 1) del professionista, e che quella data
-   * non sia un giorno di chiusura straordinaria — stessa cautela già
-   * applicata da ProfessionalsService.bookAgendaSlot per le fasce esatte.
+   * Valida che dateStr/timeSlot corrispondano a una fascia reale del
+   * professionista (esatta o generica), e che quella data non sia un giorno
+   * di chiusura straordinaria. Accetta anche le fasce esatte
+   * (maxBookings=1): prima richiedeva esplicitamente maxBookings > 1 perché
+   * quelle venivano prenotate direttamente (bookAgendaSlot, istantaneo,
+   * senza passare da una richiesta di preventivo) — da quando la
+   * prenotazione diretta è stata rimossa (CLAUDE.md §20, "ogni fascia apre
+   * sempre una richiesta di preventivo, esatta o generica"), il profilo
+   * pubblico linka a questo stesso percorso anche per le fasce esatte, che
+   * senza questo fix venivano sempre rifiutate con "Questa fascia oraria
+   * non è disponibile" — bug reale segnalato dall'utente (tentativo di
+   * richiesta su una fascia 9–13, rifiutato sistematicamente).
    */
   private async resolveGenericSlot(professionalProfileId: string, dateStr: string, timeSlot: string): Promise<{ date: Date; maxBookings: number }> {
     const date = new Date(`${dateStr}T00:00:00.000Z`);
@@ -823,7 +836,7 @@ export class GuidedRequestsService {
         where: { professionalProfileId_date: { professionalProfileId, date } },
       }),
     ]);
-    if (!slot || slot.maxBookings <= 1) {
+    if (!slot) {
       throw new BadRequestException("Questa fascia oraria non è disponibile per l'invio di una richiesta di preventivo.");
     }
     if (exception) {

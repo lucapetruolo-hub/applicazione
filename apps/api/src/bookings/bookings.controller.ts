@@ -1,4 +1,4 @@
-import { Controller, Body, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Controller, Body, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import {
   cancelBookingByProfessionalSchema,
@@ -93,5 +93,16 @@ export class BookingsController {
   @Patch(":id/report-no-show")
   reportNoShow(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.bookingsService.reportProfessionalNoShow(req.user.userId, id);
+  }
+
+  /**
+   * Il cliente elimina dalla propria lista una prenotazione il cui
+   * professionista ha eliminato l'account — richiesta esplicita dell'utente,
+   * simmetrica a ProfessionalsService.deleteLead.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id")
+  deleteMine(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.deleteForClient(req.user.userId, id);
   }
 }

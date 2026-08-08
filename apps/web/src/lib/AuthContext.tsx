@@ -7,7 +7,8 @@ import { notificationCopy } from "./notificationCopy";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
-export type NotificationToast = { id: string; icon: string; message: string };
+/** `type` porta la notifica di origine — usato da ToastStack per sapere dove navigare al click (richiesta esplicita dell'utente). */
+export type NotificationToast = { id: string; icon: string; message: string; type: string };
 export type UnreadNotification = { id: string; type: string; payload: unknown; createdAt: string };
 
 type AuthContextValue = {
@@ -166,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...prev,
           ...freshOnes.map((n) => {
             const { icon, message } = notificationCopy(n.type);
-            return { id: n.id, icon, message };
+            return { id: n.id, icon, message, type: n.type };
           }),
         ]);
       }

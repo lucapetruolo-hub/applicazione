@@ -4705,3 +4705,125 @@ pubblico di un professionista con più di 4 giorni di disponibilità.
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `api`, `web`, `mobile`) dopo questi tre interventi, build di produzione
 `apps/web` verde (24 route).
+
+**Bug reale: richiesta di preventivo su una fascia esatta (es. 9–13)
+sempre rifiutata** — segnalato dall'utente ("stavo provando a prenotare in
+una fascia oraria 9-13... mi esce questa scritta"). Causa: `resolveGenericSlot`
+(`GuidedRequestsService`, chiamato da `create()` ogni volta che la
+richiesta porta `preferredDate`/`preferredTimeSlot`) rifiutava
+esplicitamente `slot.maxBookings <= 1` — corretto quando esistevano ancora
+le prenotazioni dirette per le fasce esatte (quel percorso, `bookAgendaSlot`,
+non passava da qui), ma da quando la prenotazione diretta è stata rimossa
+(§20, "ogni fascia apre sempre una richiesta di preventivo, esatta o
+generica") il profilo pubblico (`ProfessionalDetailContent.tsx`) linka
+**ogni** fascia libera — esatta compresa — a `/preventivo?...&data=...
+&fasciaOraria=...`, cioè proprio a questo stesso percorso: da quel momento
+ogni tentativo di richiedere una fascia esatta veniva sistematicamente
+rifiutato con "Questa fascia oraria non è disponibile per l'invio di una
+richiesta di preventivo.". Corretto rimuovendo il vincolo `maxBookings > 1`
+(resta solo `!slot`, la fascia deve esistere davvero) — il conteggio
+capienza subito dopo in `create()` (basato su `GuidedRequest` con lo stesso
+`preferredDate`/`preferredTimeSlot`, non filtrato per stato, comportamento
+preesistente non toccato) continua a funzionare correttamente anche per
+maxBookings=1: la prima richiesta su quella fascia esatta passa, una
+seconda richiesta sulla stessa fascia viene rifiutata con 409 "capienza
+già raggiunta" — comportamento corretto per una fascia a capienza 1.
+Verificato end-to-end con l'API locale: richiesta su una fascia esatta
+9:00–13:00 di **oggi** (stesso scenario segnalato dall'utente) accettata
+con successo (prima sistematicamente rifiutata); seconda richiesta sulla
+stessa fascia esatta da un secondo cliente correttamente rifiutata con 409.
+Typecheck pulito su tutti i package.
+
+**Account professionista: soft-delete invece di cancellazione reale, il
+cliente vede "Account eliminato" nei "Lavori accettati" con possibilità di
+eliminare la prenotazione** — richiesta esplicita dell'utente. Prima,
+`AuthService.deleteAccount` cancellava per davvero il `ProfessionalProfile`
+di un professionista che eliminava l'account (`prisma.professionalProfile.
+delete()`), che per `onDelete: Cascade` sullo schema portava via in
+cascata **anche** tutte le `Booking`/`Review`/`Lead`/`Quote` collegate — un
+cliente con una prenotazione passata (magari già completata, con
+recensione scritta) perdeva ogni traccia del lavoro svolto non appena il
+professionista chiudeva l'account, comportamento mai richiesto e opposto
+al principio "traccia completa" già seguito per il soft-delete del
+cliente (§16).
+- **`ProfessionalProfile.deletedAt DateTime?`** (nuovo campo Prisma,
+  simmetrico a `User.deletedAt`): `AuthService.deleteAccount` ora
+  aggiorna questo campo invece di cancellare la riga. Nessuno scrubbing dei
+  campi del profilo (businessName/città/ecc. restano leggibili — servono al
+  cliente per identificare "con chi" aveva a che fare, stesso principio già
+  seguito per `recipientName` sui Booking del cliente eliminato).
+- **Ogni query pubblica/di discovery su `ProfessionalProfile` filtra
+  esplicitamente `deletedAt: null`** (mai affidarsi a un default implicito):
+  `ProfessionalsService.search()` (ricerca), `getById()` (profilo pubblico,
+  ritorna 404 come se il profilo non fosse mai esistito),
+  `GuidedRequestsService.create()` (richiesta diretta a un professionista
+  specifico: 404 se il profilo target è stato eliminato — non ha senso
+  inoltrare una richiesta a un account chiuso) e
+  `matchProfilesForFanOut()` (il fan-out generico esclude i profili
+  eliminati dai candidati). **Non toccate deliberatamente**: le query dove
+  `professionalUserId` viene dal JWT del professionista stesso (invio
+  preventivo, aggiornamento prenotazione, ecc.) — un account eliminato non
+  può più autenticarsi con credenziali nuove (email/password/googleId
+  azzerati, stesso meccanismo già in uso per il cliente), quel codice resta
+  irraggiungibile in pratica senza bisogno di un filtro esplicito, stesso
+  principio già documentato per `JwtAuthGuard` in §16.
+- **`BookingsService.listForClient`** espone ora
+  `professionalAccountDeleted: boolean` (da `professionalProfile.deletedAt
+  !== null`) — e `professionalEmail` torna `null` invece dell'indirizzo
+  sintetico anonimizzato quando l'account è eliminato, stesso bug già
+  corretto in passato per `clientEmail` lato professionista.
+- **Nuovo `DELETE /bookings/:id`** (`BookingsService.deleteForClient`):
+  il cliente può eliminare dalla propria lista una prenotazione **solo**
+  se il professionista ha eliminato l'account (altrimenti 403) —
+  simmetrico a `ProfessionalsService.deleteLead` (professionista che
+  elimina una richiesta di un cliente eliminato, sezione precedente).
+  Cancella la `Booking` per intero (cascata su `BookingFinalItem` e
+  sull'eventuale `Review`: quella recensione viveva comunque su un profilo
+  non più pubblico, rimuoverla insieme non perde nulla di visibile).
+- **`BookingRow`** (`/le-mie-richieste`, tab "Lavori accettati"): quando
+  `professionalAccountDeleted` è vero, il nome dell'attività non è più un
+  link al profilo pubblico (che non esiste più) ma testo semplice con "·
+  Account eliminato" accanto — stesso stile neutro già in uso per "Account
+  eliminato" lato professionista (`LeadCard`/`AcceptedJobCard`). Sotto,
+  link testuale rosso "Elimina prenotazione" con doppia conferma, stesso
+  pattern di `LeadCard.handleDeleteLead`.
+Verificato end-to-end con l'API locale (non solo typecheck): ciclo
+completo richiesta→preventivo→accettazione→(professionista elimina
+l'account) — la prenotazione **sopravvive** (bug di cascata confermato e
+corretto: prima sarebbe sparita), `professionalAccountDeleted: true`,
+`businessName` ancora visibile, `professionalEmail` `null` (non
+l'indirizzo sintetico); il profilo eliminato sparisce da `search()`; il
+profilo pubblico ritorna 404; una nuova richiesta guidata diretta a quel
+professionista viene rifiutata con 404; eliminazione della prenotazione
+da parte del cliente riuscita, doppia eliminazione rifiutata (403/404);
+verificato separatamente che un cliente **non** può eliminare una
+prenotazione finché il professionista ha ancora l'account attivo (403).
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `web`), build di produzione `apps/web` verde (24 route).
+
+**Click su un banner "toast" apre l'aggiornamento a cui si riferisce** —
+richiesta esplicita dell'utente: prima ogni popup di notifica (§"Popup
+'toast' per nuove notifiche...") si limitava a chiudersi al click, senza
+portare da nessuna parte. `NotificationToast` (`AuthContext.tsx`) porta ora
+anche `type` (il tipo di notifica di origine); nuovo helper
+`notificationDestination(type)` in `notificationSections.ts` — riusa le
+stesse quattro mappe già esistenti per i numeretti per sezione
+(professionista/cliente × richieste/lavori, ogni tipo appartiene sempre a
+una sola di queste, mai ambiguo) per restituire `{ page: "/dashboard" |
+"/le-mie-richieste", tab: "richieste" | "lavori" }`. `ToastStack.tsx`
+naviga lì (`router.push`, con `?tab=...` in query) al click, oltre a
+chiudere il toast come già faceva. `/dashboard` e `/le-mie-richieste`
+leggono ora `?tab=` (via `useSearchParams`, reattivo — non solo al primo
+mount: un click sul toast mentre si è già sulla pagina è una navigazione
+superficiale, stessa route, che non rimonta il componente) per selezionare
+la tab giusta all'apertura — entrambe le pagine richiedevano di avvolgere
+il contenuto in `<Suspense>` per usare `useSearchParams` senza errori in
+build (stesso pattern già in uso in `/accedi`/`/registrati`). Verificato
+end-to-end con Playwright (non solo lettura di codice, con l'API locale
+reale): professionista sulla home, un cliente crea una richiesta diretta
+al suo profilo, il popup "🎉 Fantastico! Hai ricevuto una nuova richiesta."
+compare tramite il poll reale da 45s (non un evento simulato), click sul
+popup naviga a `/dashboard?tab=richieste` con la tab "Richieste ricevute"
+selezionata e la richiesta specifica visibile nella lista. Typecheck
+pulito su tutti i package, build di produzione `apps/web` verde (24
+route).
