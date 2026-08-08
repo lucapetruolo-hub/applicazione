@@ -16,6 +16,16 @@ import { useAuth } from "@/lib/AuthContext";
 // aggiuntiva se non c'è disponibilità nella finestra: il "prossimo orario
 // libero" è cercato nello stesso payload già scaricato.
 const AGENDA_PREVIEW_DAYS = 4;
+// Bug reale corretto: a 90px per colonna, 4 colonne (360px) superavano lo
+// spazio realmente disponibile su molti schermi da cellulare (padding
+// orizzontale della pagina già sottratto, es. ~358px su un viewport di
+// 390px, molto meno su un Android stretto da 360px) — la griglia risultava
+// tagliata/spinta fuori schermo su dispositivi reali (mai riprodotto in modo
+// netto in locale su un solo viewport di test, ma il margine era già troppo
+// risicato per essere sicuro). Stessa larghezza colonna della mini-agenda di
+// ricerca (`AGENDA_COLUMN_WIDTH` in packages/ui/src/ProfessionalCard.tsx),
+// che con lo stesso numero di colonne non aveva mai mostrato il problema.
+const AGENDA_COLUMN_WIDTH = 78;
 const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
@@ -259,7 +269,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
               <XStack flexShrink={0}>
                 {agendaWindowDays.map((day) => (
-                  <YStack key={day.date} width={90} alignItems="center" gap={2}>
+                  <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
                     <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
@@ -317,7 +327,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       const slot = day.slots.find((s) => s.startTime === time);
                       if (!slot) {
                         return (
-                          <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={4}>
+                          <XStack
+                            key={day.date}
+                            width={AGENDA_COLUMN_WIDTH}
+                            flexShrink={0}
+                            alignItems="center"
+                            justifyContent="center"
+                            paddingVertical={4}
+                          >
                             <Text fontSize={13} color={brand.filetto}>
                               -
                             </Text>
@@ -328,7 +345,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       const isFull = slot.bookedCount >= slot.maxBookings;
                       if (isFull) {
                         return (
-                          <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={4}>
+                          <XStack
+                            key={day.date}
+                            width={AGENDA_COLUMN_WIDTH}
+                            flexShrink={0}
+                            alignItems="center"
+                            justifyContent="center"
+                            paddingVertical={4}
+                          >
                             <Text
                               fontFamily="$mono"
                               fontSize={11.5}
@@ -343,7 +367,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       }
                       const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}`;
                       return (
-                        <XStack key={day.date} width={90} alignItems="center" justifyContent="center" paddingVertical={3}>
+                        <XStack
+                          key={day.date}
+                          width={AGENDA_COLUMN_WIDTH}
+                          flexShrink={0}
+                          alignItems="center"
+                          justifyContent="center"
+                          paddingVertical={3}
+                        >
                           <Link href={href} style={{ textDecoration: "none" }}>
                             <XStack paddingHorizontal="$2" paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
                               <Text fontFamily="$mono" fontSize={11.5} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">

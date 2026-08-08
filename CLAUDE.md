@@ -5011,3 +5011,47 @@ overflow orizzontale di pagina prima e dopo il click sulla freccia
 interamente dentro il viewport (`devices["iPhone 13"]`, 390px). Nessuna
 regressione desktop (1280px): le frecce restano sulla stessa riga delle
 intestazioni giorno, come prima, screenshot di controllo invariato.
+
+**Bug reale, correzione della correzione sopra: griglia orari dell'agenda
+(non solo le frecce) fuori margine da cellulare** — nuovo screenshot
+dall'utente (dal sito live su Vercel) con due punti evidenziati: una
+pillola barrata "09:00-13:00" quasi al bordo sinistro e uno spazio vuoto
+al bordo destro della stessa riga, sintomo dello stesso tipo di overflow
+già corretto sopra per le frecce ma questa volta nel corpo della griglia.
+Causa: le 4 colonne della griglia (intestazioni giorno + celle orario)
+erano fisse a `width={90}` (360px totali) ma senza `flexShrink={0}` — con
+il `paddingHorizontal="$4"` della pagina (32px), lo spazio realmente
+disponibile su un viewport da 390px è ~358px, **meno** dei 360px richiesti:
+un margine negativo di soli 2px in teoria, ma la mancanza di
+`flexShrink={0}` lasciava alle singole celle un ammontare di restringimento
+non uniforme (una cella con un solo carattere "-" si restringe molto più
+di una con un range orario di 11 caratteri), risultando in colonne di
+larghezza diversa tra intestazioni e righe orario — lo stesso sintomo
+visto nello screenshot (contenuto disallineato/spinto verso i bordi). Non
+riprodotto in modo netto in locale su un singolo viewport di test (`iPhone
+13`, 390px: overflow di pagina borderline, mai oltre 1-2px), ma il margine
+era già troppo risicato per essere considerato sicuro su schermi reali più
+stretti o con impostazioni di zoom/densità diverse. Corretto riducendo la
+larghezza fissa di colonna da 90 a **78px** (nuova costante
+`AGENDA_COLUMN_WIDTH`, stessa larghezza già in uso per lo stesso identico
+pattern nella mini-agenda dei risultati di ricerca,
+`packages/ui/src/ProfessionalCard.tsx`, dove il problema non si era mai
+presentato) sui 4 punti che condividono `width={90}` in
+`ProfessionalDetailContent.tsx` (intestazioni giorno + le tre varianti di
+cella: vuota "-", barrata/al completo, pillola libera cliccabile) — più
+`flexShrink={0}` esplicito su ciascuno, per garantire che intestazioni e
+celle orario si restringano sempre in modo identico e restino allineate
+anche in condizioni di spazio estremo, invece di affidarsi al
+comportamento di default del browser. Verificato con Playwright: zero
+overflow di pagina su 390px (l'esatto scenario del secondo screenshot,
+riprodotto con una fascia esatta di oggi occupata/barrata + fasce libere
+sui 3 giorni successivi, stesso mix del riferimento), con margine di
+sicurezza ora ampio (~67px, contro i 2px precedenti) — verificato inoltre
+fino a 360px e 375px (larghezze comuni di telefoni Android/iPhone reali)
+senza alcun overflow; un overflow residuo di soli 10px compare solo sotto
+i 320px (dispositivi come il primissimo iPhone SE del 2016, ormai
+irrilevanti nel traffico reale) — non perseguito oltre per non dover
+ridurre ulteriormente la leggibilità del testo negli orari. Centri delle
+celle verificati numericamente coincidenti con i centri delle rispettive
+intestazioni giorno su tutte le colonne (nessun disallineamento). Nessuna
+regressione desktop (1280px, zero overflow, layout identico a prima).
