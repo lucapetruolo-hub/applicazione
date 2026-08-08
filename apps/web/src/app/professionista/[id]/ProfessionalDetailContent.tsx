@@ -187,6 +187,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               ) : (
                 <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
               )}
+              {professional.completedThisMonth > 0 ? (
+                <Text fontSize={13} color={brand.verificato} fontWeight="600">
+                  Ha completato {professional.completedThisMonth} {professional.completedThisMonth === 1 ? "intervento" : "interventi"} questo
+                  mese
+                </Text>
+              ) : null}
             </YStack>
           </XStack>
 

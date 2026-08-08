@@ -90,6 +90,7 @@ export default function ProfessionistiSalvatiPage() {
                     subTags={pro.subTags}
                     rating={pro.rating ?? undefined}
                     reviewCount={pro.reviewCount}
+                    completedThisMonth={pro.completedThisMonth}
                     verified={pro.verified}
                     services={pro.services}
                     onPress={() => router.push(`/professionista/${pro.id}`)}

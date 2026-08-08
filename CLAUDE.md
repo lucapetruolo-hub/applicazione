@@ -5588,3 +5588,48 @@ filtrando per "perdita" la voce resta visibile, per una stringa senza
 corrispondenze compare "Nessuna prestazione trovata per...". Typecheck
 pulito su tutti i package (`shared`, `api`, `api-client`, `web`), build
 di produzione `apps/web` verde (24 route).
+
+---
+
+## 27. Contatore "Ha completato N interventi questo mese"
+
+Richiesta esplicita dell'utente: un contatore per professionista visibile
+sia sulla card piccola (risultati di ricerca) sia sulla scheda ampia
+(profilo pubblico) — dato reale, non un dato inventato.
+
+- **`countCompletedThisMonth`** (nuovo, `apps/api/src/common/completed-jobs.util.ts`):
+  conta le `Booking` con `status: "COMPLETED"` il cui `updatedAt` cade nel
+  mese di calendario corrente. Nessun campo `completedAt` dedicato nello
+  schema: `updatedAt` si aggiorna già al momento della transizione a
+  `COMPLETED` (`BookingsService.updateStatus`/`completeWithFinalAmount`),
+  quindi è un proxy reale e accurato senza richiedere una migrazione.
+  Riusato dai tre soli punti che già costruiscono un
+  `ProfessionalSearchResult` (stessa lista già documentata per `createdAt`,
+  §19): `ProfessionalsService.search`/`getById` e
+  `SavedProfessionalsService.listForUser` — tutti e tre avevano già
+  `bookings` incluso per intero nella query (usato anche per
+  `rating`/`reviewCount`), nessuna query aggiuntiva.
+- **`ProfessionalSearchResult.completedThisMonth: number`** (nuovo campo,
+  `packages/shared`) — `ProfessionalDetail` lo eredita automaticamente,
+  coprendo sia la card di ricerca sia il profilo pubblico con un solo
+  campo.
+- **`ProfessionalCard.tsx`** (`packages/ui`): nuova riga "Ha completato N
+  intervento/interventi questo mese" (verde `brand.verificato`) sotto la
+  città, visibile solo se `completedThisMonth > 0` — uno zero non viene
+  mai mostrato come se fosse un dato interessante, coerente con la
+  cautela già applicata altrove (mai un numero che fa sembrare vuoto o
+  fallimentare qualcosa che semplicemente non ha ancora dati).
+  `apps/web`: propagato da `ResultsListWithMap.tsx` e
+  `/professionisti-salvati`.
+- **`ProfessionalDetailContent.tsx`**: stessa riga, stesso colore, sotto
+  il `Rating`/"Nessuna recensione ancora" nell'header del profilo
+  pubblico.
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+ciclo completo richiesta→preventivo→accettazione→conferma→completamento
+per un professionista di test → `completedThisMonth: 1` confermato sia
+via `GET /professionals/search` sia via `GET /professionals/:id`; riga
+"Ha completato 1 intervento questo mese" visibile sia sulla card di
+ricerca (`/cerca/idraulico`) sia sul profilo pubblico. Typecheck pulito su
+tutti i package (`shared`, `api`, `api-client`, `ui`, `web`, `mobile`),
+build di produzione `apps/web` verde (24 route).

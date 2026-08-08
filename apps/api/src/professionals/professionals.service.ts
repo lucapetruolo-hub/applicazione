@@ -24,6 +24,7 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
+import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -74,6 +75,7 @@ function mapServices(
     priceMaxEurCents: service.priceMaxEurCents,
   }));
 }
+
 
 @Injectable()
 export class ProfessionalsService {
@@ -139,6 +141,7 @@ export class ProfessionalsService {
         nextAvailableSlotHome: preview?.nextAvailableSlotHome ?? null,
         nextAvailableSlotOnline: preview?.nextAvailableSlotOnline ?? null,
         createdAt: profile.createdAt.toISOString(),
+        completedThisMonth: countCompletedThisMonth(profile.bookings),
       } satisfies ProfessionalSearchResult;
     });
 
@@ -423,6 +426,7 @@ export class ProfessionalsService {
       nextAvailableSlotHome: null,
       nextAvailableSlotOnline: null,
       createdAt: profile.createdAt.toISOString(),
+      completedThisMonth: countCompletedThisMonth(profile.bookings),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
       reviews: reviews.map((review) => ({

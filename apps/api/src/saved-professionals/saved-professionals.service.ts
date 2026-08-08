@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import type { ProfessionalSearchResult, ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { countCompletedThisMonth } from "../common/completed-jobs.util";
 
 @Injectable()
 export class SavedProfessionalsService {
@@ -74,6 +75,7 @@ export class SavedProfessionalsService {
         nextAvailableSlotHome: null,
         nextAvailableSlotOnline: null,
         createdAt: profile.createdAt.toISOString(),
+        completedThisMonth: countCompletedThisMonth(profile.bookings),
       } satisfies ProfessionalSearchResult;
     });
   }

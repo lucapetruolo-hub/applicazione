@@ -181,6 +181,14 @@ export type ProfessionalSearchResult = {
    * recensioni, invariato).
    */
   createdAt: string;
+  /**
+   * "Ha completato N interventi questo mese" (richiesta esplicita
+   * dell'utente): conteggio reale di `Booking` con stato `COMPLETED`
+   * aggiornate nel mese di calendario corrente — mostrato sia sulla card
+   * di ricerca sia sul profilo pubblico (`ProfessionalDetail` eredita
+   * questo campo).
+   */
+  completedThisMonth: number;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

@@ -364,6 +364,7 @@ export function ResultsListWithMap({
               subTags={pro.subTags}
               rating={pro.rating ?? undefined}
               reviewCount={pro.reviewCount}
+              completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}

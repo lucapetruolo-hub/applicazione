@@ -72,6 +72,8 @@ export type ProfessionalCardProps = {
   subTags?: string[];
   rating?: number;
   reviewCount?: number;
+  /** "Ha completato N interventi questo mese" (richiesta esplicita dell'utente) — dato reale (Booking COMPLETED nel mese corrente), 0/assente non mostra nulla. */
+  completedThisMonth?: number;
   verified?: boolean;
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
@@ -105,6 +107,7 @@ export function ProfessionalCard({
   subTags,
   rating,
   reviewCount,
+  completedThisMonth,
   verified,
   remoteAvailable,
   services,
@@ -207,6 +210,11 @@ export function ProfessionalCard({
                 {city}
               </Text>
             </XStack>
+            {completedThisMonth && completedThisMonth > 0 ? (
+              <Text fontSize={12.5} color={brand.verificato} fontWeight="600">
+                Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
+              </Text>
+            ) : null}
             {services && services.length > 0 ? (
               <YStack gap="$1" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
                 {(showAllServices ? services : services.slice(0, 3)).map((service) => (
