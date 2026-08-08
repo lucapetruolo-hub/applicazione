@@ -256,8 +256,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
 
-            <XStack alignItems="center" justifyContent="space-between" gap="$2">
-              <XStack>
+            <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+              <XStack flexShrink={0}>
                 {agendaWindowDays.map((day) => (
                   <YStack key={day.date} width={90} alignItems="center" gap={2}>
                     <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>

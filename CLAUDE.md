@@ -4985,3 +4985,29 @@ accettato → 5° evento (`CLIENT`, "ha accettato il preventivo") — ordine
 cronologico e attore di tutti e 5 gli eventi corretti. Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (24 route).
+
+**Bug reale: frecce di navigazione dell'agenda (profilo pubblico) fuori
+schermo da cellulare** — segnalato dall'utente con screenshot: la freccia
+"Giorni successivi" (40×40px, `ProfessionalDetailContent.tsx`, sezione
+Agenda) risultava tagliata a metà sul bordo destro dello schermo, visibile
+solo scorrendo orizzontalmente la pagina. Causa: la riga che affianca le
+intestazioni dei 4 giorni (`width={90}` ciascuna, 360px totali) e le due
+frecce (40+40+gap, ~88px) non aveva alcun `flexWrap` — su un telefono
+(~390px di larghezza, meno il padding della card) lo spazio non basta per
+entrambi i blocchi sulla stessa riga, e senza wrap le frecce spillavano
+oltre il bordo destro invece di andare a capo. Corretto aggiungendo
+`flexWrap="wrap"` alla riga contenitore e `flexShrink={0}` al blocco delle
+intestazioni giorno (che deve restare su una sola riga, allineato alla
+griglia orari sottostante, mai spezzarsi al suo interno): quando lo spazio
+non basta, l'intero blocco frecce va a capo sotto le intestazioni invece di
+uscire dalla pagina — nessuno scroll orizzontale necessario, richiesta
+esplicita dell'utente ("non bisogna scorrere a destra ma entri nella
+pagina del telefono"). Verificato con Playwright (non solo lettura di
+codice) — prima riprodotto un falso positivo con un nome attività di test
+innaturalmente lungo (causa di un overflow di pagina indipendente, nel
+bottone "Richiedi un preventivo a ..."), poi con un nome realistico: zero
+overflow orizzontale di pagina prima e dopo il click sulla freccia
+(`document.documentElement.scrollWidth === clientWidth`), freccia
+interamente dentro il viewport (`devices["iPhone 13"]`, 390px). Nessuna
+regressione desktop (1280px): le frecce restano sulla stessa riga delle
+intestazioni giorno, come prima, screenshot di controllo invariato.
