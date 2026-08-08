@@ -705,14 +705,19 @@ export class ProfessionalsService {
 
   /**
    * Il professionista elimina dalla propria lista "Richieste ricevute" una
-   * richiesta il cui account cliente è stato eliminato — richiesta esplicita
-   * dell'utente: quella richiesta non è più azionabile (`QuotesService.
-   * createOrUpdate` blocca già l'invio di un nuovo preventivo su un account
-   * eliminato) e resterebbe altrimenti a ingombrare la lista per sempre.
+   * richiesta non più azionabile, in due casi distinti: (1) l'account
+   * cliente è stato eliminato (`QuotesService.createOrUpdate` blocca già
+   * l'invio di un nuovo preventivo su un account eliminato); (2) il
+   * professionista stesso ha ritirato il proprio preventivo (`Quote.status
+   * === "WITHDRAWN"`, `QuotesService.withdrawByProfessional`) — richiesta
+   * esplicita dell'utente: un preventivo ritirato da lui non porterà mai a
+   * nulla, resterebbe altrimenti a ingombrare la lista per sempre.
    * Elimina solo il proprio Lead (non la GuidedRequest, che può avere altri
-   * Lead verso altri professionisti nello stesso fan-out): nessun impatto
-   * su Quote già inviate, che non hanno una relazione diretta con Lead nello
-   * schema (CLAUDE.md §14).
+   * Lead verso altri professionisti nello stesso fan-out, né la Quote
+   * ritirata: il cliente deve continuare a vederla nella propria cronologia
+   * — questa eliminazione riguarda solo la vista del professionista):
+   * nessun impatto su Quote già inviate, che non hanno una relazione
+   * diretta con Lead nello schema (CLAUDE.md §14).
    */
   async deleteLead(userId: string, leadId: string): Promise<void> {
     const professionalProfileId = await this.requireMyProfileId(userId);
@@ -724,8 +729,17 @@ export class ProfessionalsService {
     if (!lead || lead.professionalProfileId !== professionalProfileId) {
       throw new ForbiddenException("Questa richiesta non è tua.");
     }
-    if (lead.guidedRequest.client.deletedAt === null) {
-      throw new ForbiddenException("Puoi eliminare una richiesta solo se l'account del cliente è stato eliminato.");
+    const clientAccountDeleted = lead.guidedRequest.client.deletedAt !== null;
+    if (!clientAccountDeleted) {
+      const withdrawnQuote = await this.prisma.quote.findFirst({
+        where: { guidedRequestId: lead.guidedRequestId, professionalProfileId, status: "WITHDRAWN" },
+        select: { id: true },
+      });
+      if (!withdrawnQuote) {
+        throw new ForbiddenException(
+          "Puoi eliminare una richiesta solo se l'account del cliente è stato eliminato o se hai ritirato il tuo preventivo.",
+        );
+      }
     }
 
     await this.prisma.lead.delete({ where: { id: leadId } });

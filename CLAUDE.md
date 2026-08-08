@@ -5055,3 +5055,34 @@ ridurre ulteriormente la leggibilità del testo negli orari. Centri delle
 celle verificati numericamente coincidenti con i centri delle rispettive
 intestazioni giorno su tutte le colonne (nessun disallineamento). Nessuna
 regressione desktop (1280px, zero overflow, layout identico a prima).
+
+**Eliminazione dalla lista per i preventivi ritirati dal professionista** —
+richiesta esplicita dell'utente: `ProfessionalsService.deleteLead`
+(`DELETE /professionals/me/leads/:id`) permetteva di eliminare una
+richiesta dalla lista "Richieste ricevute" solo nel caso "account cliente
+eliminato" (CLAUDE.md §20); esteso a un secondo caso, distinto ma con lo
+stesso principio ("non tornerà mai più azionabile, ingombrerebbe la lista
+per sempre"): un preventivo che il professionista **stesso** ha ritirato
+(`Quote.status === "WITHDRAWN"`, `QuotesService.withdrawByProfessional`).
+Verificato che la Quote appartenga proprio a questo professionista per
+questa richiesta (`guidedRequestId` + `professionalProfileId`, nessuna
+relazione diretta Lead↔Quote nello schema, stessa cautela già documentata
+in CLAUDE.md §14) prima di consentire l'eliminazione — un preventivo
+ancora `SENT` (non ritirato) resta bloccato, così come uno di un altro
+professionista. Elimina solo il Lead di questo professionista, mai la
+Quote: il cliente deve continuare a vedere il preventivo ritirato nella
+propria cronologia (`/le-mie-richieste`) — questa eliminazione riguarda
+solo la vista del professionista, stesso principio già seguito per il
+caso "account cliente eliminato". Frontend (`LeadCard`, `/dashboard`):
+stesso blocco UI già esistente (doppia conferma) ora condizionato su
+`canDeleteLead = clientAccountDeleted || quoteWithdrawn`, con etichetta
+adattata ("Elimina preventivo ritirato" invece di "Elimina richiesta")
+quando il motivo è il ritiro e non l'account eliminato. Verificato
+end-to-end con l'API locale (non solo typecheck): eliminazione rifiutata
+(403) prima di qualunque preventivo e mentre il preventivo è ancora
+`SENT`, riuscita solo dopo il ritiro (`POST /quotes/:id/withdraw`), lead
+sparito dalla lista del professionista, cliente che vede ancora il
+preventivo ritirato nella propria cronologia (`GET /guided-requests/me`),
+un secondo tentativo di eliminazione sullo stesso lead già eliminato
+rifiutato. Typecheck pulito su `apps/api`/`apps/web`, build di produzione
+`apps/web` verde (24 route).

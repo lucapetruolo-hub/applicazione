@@ -1061,6 +1061,12 @@ function LeadCard({
   const [isDeletingLead, setIsDeletingLead] = useState(false);
   const clientName = lead.guidedRequest.clientName ?? "Cliente";
   const clientAccountDeleted = lead.guidedRequest.clientAccountDeleted;
+  // Un preventivo ritirato da questo stesso professionista non porterà mai
+  // a nulla — richiesta esplicita dell'utente di poter eliminare anche
+  // questi dalla lista, stesso meccanismo già in uso per l'account cliente
+  // eliminato (`canDeleteLead`, condivide lo stesso blocco UI sotto).
+  const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
+  const canDeleteLead = clientAccountDeleted || quoteWithdrawn;
 
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
@@ -1624,16 +1630,17 @@ function LeadCard({
 
       {/* Eliminazione dalla lista, richiesta esplicita dell'utente — mostrata
           a prescindere dallo stato del lead (preventivo inviato o no, anche
-          rifiutato/scaduto): un account eliminato non tornerà mai più
-          azionabile, la richiesta resterebbe altrimenti a ingombrare la
-          lista per sempre. Doppia conferma, stesso pattern già in uso per
-          "Ritira preventivo" sopra. */}
-      {clientAccountDeleted ? (
+          rifiutato/scaduto): un account eliminato, o un preventivo che il
+          professionista stesso ha ritirato, non tornano mai più azionabili,
+          la richiesta resterebbe altrimenti a ingombrare la lista per
+          sempre. Doppia conferma, stesso pattern già in uso per "Ritira
+          preventivo" sopra. */}
+      {canDeleteLead ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
           {confirmingDeleteLead ? (
             <>
               <Text fontSize="$2" color={brand.urgenza}>
-                Eliminare questa richiesta dalla lista?
+                {quoteWithdrawn && !clientAccountDeleted ? "Eliminare questo preventivo ritirato dalla lista?" : "Eliminare questa richiesta dalla lista?"}
               </Text>
               <Button variant="urgent" size="$2" height={36} onPress={handleDeleteLead} disabled={isDeletingLead} opacity={isDeletingLead ? 0.6 : 1}>
                 {isDeletingLead ? "Eliminazione..." : "Conferma"}
@@ -1651,7 +1658,7 @@ function LeadCard({
               accessibilityRole="button"
               onPress={() => setConfirmingDeleteLead(true)}
             >
-              Elimina richiesta
+              {quoteWithdrawn && !clientAccountDeleted ? "Elimina preventivo ritirato" : "Elimina richiesta"}
             </Text>
           )}
         </XStack>
