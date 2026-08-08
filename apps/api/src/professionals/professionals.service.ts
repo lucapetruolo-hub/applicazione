@@ -690,6 +690,34 @@ export class ProfessionalsService {
     await this.professionalMetricsService.touchActivity(professionalProfileId);
   }
 
+  /**
+   * Il professionista elimina dalla propria lista "Richieste ricevute" una
+   * richiesta il cui account cliente è stato eliminato — richiesta esplicita
+   * dell'utente: quella richiesta non è più azionabile (`QuotesService.
+   * createOrUpdate` blocca già l'invio di un nuovo preventivo su un account
+   * eliminato) e resterebbe altrimenti a ingombrare la lista per sempre.
+   * Elimina solo il proprio Lead (non la GuidedRequest, che può avere altri
+   * Lead verso altri professionisti nello stesso fan-out): nessun impatto
+   * su Quote già inviate, che non hanno una relazione diretta con Lead nello
+   * schema (CLAUDE.md §14).
+   */
+  async deleteLead(userId: string, leadId: string): Promise<void> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    const lead = await this.prisma.lead.findUnique({
+      where: { id: leadId },
+      include: { guidedRequest: { include: { client: true } } },
+    });
+    if (!lead || lead.professionalProfileId !== professionalProfileId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+    if (lead.guidedRequest.client.deletedAt === null) {
+      throw new ForbiddenException("Puoi eliminare una richiesta solo se l'account del cliente è stato eliminato.");
+    }
+
+    await this.prisma.lead.delete({ where: { id: leadId } });
+  }
+
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
 

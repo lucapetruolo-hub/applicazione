@@ -270,11 +270,16 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 ))}
               </XStack>
               {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
-                <XStack gap="$1" alignItems="center">
+                // Frecce ingrandite (richiesta esplicita dell'utente) — stessa
+                // resa già in uso per le frecce del carosello categorie
+                // (CategoryCarousel.tsx: 40×40, cerchio pieno brand.calce,
+                // nessun bordo/ombra), qui riusata per coerenza visiva.
+                <XStack gap="$2" alignItems="center">
                   <XStack
-                    width={28}
-                    height={28}
-                    borderRadius="$10"
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    backgroundColor={brand.calce}
                     alignItems="center"
                     justifyContent="center"
                     opacity={agendaCanGoBack ? 1 : 0.3}
@@ -283,12 +288,13 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     accessibilityLabel="Giorni precedenti"
                     onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
                   >
-                    <Icon name="chevron-left" size={16} color={brand.grafite70} />
+                    <Icon name="chevron-left" size={20} color={brand.grafite} />
                   </XStack>
                   <XStack
-                    width={28}
-                    height={28}
-                    borderRadius="$10"
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    backgroundColor={brand.calce}
                     alignItems="center"
                     justifyContent="center"
                     opacity={agendaCanGoForward ? 1 : 0.3}
@@ -297,7 +303,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     accessibilityLabel="Giorni successivi"
                     onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
                   >
-                    <Icon name="chevron-right" size={16} color={brand.grafite70} />
+                    <Icon name="chevron-right" size={20} color={brand.grafite} />
                   </XStack>
                 </XStack>
               ) : null}

@@ -212,11 +212,15 @@ export default function DashboardProfiloPage() {
   // Scorciatoia per aggiungere una prestazione senza doverne scrivere il nome
   // da zero: il prezzo (range) resta comunque da compilare a mano — richiesta
   // esplicita dell'utente. Esclude i nomi già aggiunti, confronto case-insensitive.
-  const suggestedServices = categorySlug
-    ? POPULAR_SERVICES[categorySlug].filter(
-        (name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()),
-      )
-    : [];
+  // "Consulenza online" si aggiunge alle suggerite della categoria solo se il
+  // professionista ha spuntato "Offro anche consulenza online" — richiesta
+  // esplicita dell'utente: la spunta da sola attiva il filtro "Online" in
+  // ricerca, ma non proponeva ancora la voce corrispondente tra le
+  // prestazioni cliccabili.
+  const suggestedServices = [
+    ...(categorySlug ? POPULAR_SERVICES[categorySlug] : []),
+    ...(remoteAvailable ? ["Consulenza online"] : []),
+  ].filter((name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()));
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -451,7 +455,7 @@ export default function DashboardProfiloPage() {
         </YStack>
 
         <YStack gap="$2">
-          <FieldLabel>Prestazioni offerte (opzionale)</FieldLabel>
+          <FieldLabel>Prestazioni offerte</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
             costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.

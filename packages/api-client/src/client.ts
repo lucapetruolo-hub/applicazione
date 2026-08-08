@@ -506,6 +506,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ note }),
       }),
 
+    /** Il professionista elimina dalla propria lista una richiesta il cui account cliente è stato eliminato. */
+    deleteLead: (token: string, leadId: string) =>
+      request<void>(`/professionals/me/leads/${leadId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
     updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
         method: "PATCH",

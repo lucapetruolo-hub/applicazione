@@ -159,6 +159,18 @@ export class ProfessionalsController {
     return this.professionalsService.declineLead(req.user.userId, id, body);
   }
 
+  /**
+   * Il professionista elimina dalla propria lista una richiesta il cui
+   * account cliente è stato eliminato (richiesta esplicita dell'utente) —
+   * rifiutato con 403 su qualunque altro lead, vedi
+   * ProfessionalsService.deleteLead.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Delete("me/leads/:id")
+  deleteLead(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.professionalsService.deleteLead(req.user.userId, id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me/bookings")
   getMyBookings(@Req() req: AuthenticatedRequest) {

@@ -4639,3 +4639,69 @@ il valore salvato; lato cliente, link "Partecipa alla videochiamata" con
 di test ripuliti a fine script (`DELETE /auth/me`). Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (24 route).
+
+**"Prestazioni offerte" non più etichettata "(opzionale)" + suggerimento
+"Consulenza online" tra le prestazioni** — due richieste esplicite
+dell'utente, stesso giro. `/dashboard/profilo`: `FieldLabel` della sezione
+prestazioni passa da "Prestazioni offerte (opzionale)" a "Prestazioni
+offerte" (il campo resta comunque facoltativo lato validazione, solo
+l'etichetta cambia). Quando il professionista spunta "Offro anche
+consulenza online" (`remoteAvailable`), "Consulenza online" compare ora
+tra i chip suggeriti cliccabili sopra la lista prestazioni, insieme a
+quelli già suggeriti per la categoria (`POPULAR_SERVICES[categorySlug]`) —
+prima la spunta attivava solo il filtro "Online" in ricerca, senza
+proporre la prestazione corrispondente tra quelle aggiungibili con un
+click. Stesso comportamento "solo il nome, il prezzo resta da compilare a
+mano" già in uso per gli altri suggerimenti di categoria. Verificato con
+Playwright: chip assente a checkbox non spuntata, presente subito dopo
+averla spuntata, click sul chip aggiunge "Consulenza online" come voce
+prestazione.
+
+**Eliminazione di una richiesta ricevuta quando l'account del cliente è
+stato eliminato** — richiesta esplicita dell'utente: una richiesta il cui
+cliente ha eliminato l'account (§16, soft-delete) non è più azionabile
+(`QuotesService.createOrUpdate` blocca già l'invio di un nuovo preventivo
+su quell'account) e restava altrimenti a ingombrare "Richieste ricevute"
+per sempre, senza modo di rimuoverla. Nuovo `DELETE
+/professionals/me/leads/:id` (`ProfessionalsService.deleteLead`):
+consentito solo se il Lead appartiene al professionista autenticato **e**
+`guidedRequest.client.deletedAt` non è `null` — rifiutato con 403 su
+qualunque altro lead (account ancora attivo), per non trasformarlo in un
+modo generico di far sparire richieste scomode. Elimina solo il proprio
+`Lead` (mai la `GuidedRequest`, che può avere altri Lead verso altri
+professionisti nello stesso fan-out — CLAUDE.md §14): nessun impatto su
+`Quote` già inviate, che non hanno una relazione diretta con `Lead` nello
+schema. `LeadCard` (`/dashboard`) mostra un link testuale rosso "Elimina
+richiesta" quando `guidedRequest.clientAccountDeleted` è vero, a
+prescindere dallo stato del lead (preventivo inviato o no, anche
+rifiutato/scaduto) — doppia conferma prima dell'eliminazione vera, stesso
+pattern già in uso per "Ritira preventivo"; conferma ricarica l'intera
+lista leads (`onChanged`), che di conseguenza non conterrà più la card.
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+tentativo di eliminazione prima della cancellazione account rifiutato con
+403; tentativo su un lead di un altro professionista rifiutato con 404;
+dopo la cancellazione dell'account cliente, eliminazione riuscita e la
+richiesta sparisce dalla lista mentre un secondo lead con cliente ancora
+attivo resta intatto; doppio tentativo di eliminazione sullo stesso lead
+già eliminato rifiutato con 403. UI Playwright: bottone visibile solo per
+il lead con account eliminato, doppia conferma funzionante, card sparita
+dalla dashboard dopo la conferma.
+
+**Frecce di navigazione dell'agenda ingrandite nel profilo pubblico** —
+richiesta esplicita dell'utente: le frecce "Giorni precedenti"/"Giorni
+successivi" della griglia agenda su `/professionista/[id]`
+(`ProfessionalDetailContent.tsx`, introdotte nella correzione "Griglia
+agenda — fascia oraria completa + navigazione ai giorni successivi" più
+sopra in questo file) passano da 28×28px (icona 16px, nessuno sfondo) a
+40×40px (icona 20px, cerchio pieno `brand.calce`, nessun bordo/ombra) —
+stessa resa già in uso per le frecce del carosello categorie in homepage
+(`CategoryCarousel.tsx`), riusata qui per coerenza visiva invece di
+inventarne una nuova. Nessuna modifica alle frecce equivalenti nella
+card di ricerca (`ProfessionalCard.tsx`): la richiesta era scoped
+esplicitamente al profilo pubblico ("quando il cliente... ci clicca").
+Verificato con Playwright: bounding box della freccia 40×40px sul profilo
+pubblico di un professionista con più di 4 giorni di disponibilità.
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `web`, `mobile`) dopo questi tre interventi, build di produzione
+`apps/web` verde (24 route).

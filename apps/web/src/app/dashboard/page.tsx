@@ -992,6 +992,8 @@ function LeadCard({
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [confirmingDeleteLead, setConfirmingDeleteLead] = useState(false);
+  const [isDeletingLead, setIsDeletingLead] = useState(false);
   const clientName = lead.guidedRequest.clientName ?? "Cliente";
   const clientAccountDeleted = lead.guidedRequest.clientAccountDeleted;
 
@@ -1188,6 +1190,25 @@ function LeadCard({
       setConfirmingWithdraw(false);
     } finally {
       setIsWithdrawing(false);
+    }
+  }
+
+  // Richiesta esplicita dell'utente: quando l'account cliente è stato
+  // eliminato, la richiesta non è più azionabile (nessun preventivo
+  // inviabile) e resterebbe altrimenti a ingombrare la lista per sempre —
+  // il professionista può eliminarla dalla propria vista. `onChanged()`
+  // ricarica la lista intera, che quindi non conterrà più questa card.
+  async function handleDeleteLead() {
+    setError(null);
+    setIsDeletingLead(true);
+    try {
+      await apiClient.deleteLead(token, lead.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingDeleteLead(false);
+    } finally {
+      setIsDeletingLead(false);
     }
   }
 
@@ -1522,6 +1543,41 @@ function LeadCard({
             </Text>
           </XStack>
         )
+      ) : null}
+
+      {/* Eliminazione dalla lista, richiesta esplicita dell'utente — mostrata
+          a prescindere dallo stato del lead (preventivo inviato o no, anche
+          rifiutato/scaduto): un account eliminato non tornerà mai più
+          azionabile, la richiesta resterebbe altrimenti a ingombrare la
+          lista per sempre. Doppia conferma, stesso pattern già in uso per
+          "Ritira preventivo" sopra. */}
+      {clientAccountDeleted ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+          {confirmingDeleteLead ? (
+            <>
+              <Text fontSize="$2" color={brand.urgenza}>
+                Eliminare questa richiesta dalla lista?
+              </Text>
+              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteLead} disabled={isDeletingLead} opacity={isDeletingLead ? 0.6 : 1}>
+                {isDeletingLead ? "Eliminazione..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteLead(false)}>
+                Annulla
+              </Button>
+            </>
+          ) : (
+            <Text
+              color={brand.urgenza}
+              fontWeight="600"
+              fontSize="$2"
+              cursor="pointer"
+              accessibilityRole="button"
+              onPress={() => setConfirmingDeleteLead(true)}
+            >
+              Elimina richiesta
+            </Text>
+          )}
+        </XStack>
       ) : null}
 
       {showDeclineModal ? (
