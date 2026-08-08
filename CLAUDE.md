@@ -5113,3 +5113,151 @@ ancora senza overflow, invariato rispetto alla correzione precedente) né
 su desktop (1280px, frecce a destra sopra le intestazioni, come da
 screenshot di controllo). Typecheck pulito, build di produzione
 `apps/web` verde.
+
+## 22. Bug reali, cronologia in stile chat, tipo di intervento (domicilio/online)
+
+Giro di correzioni e funzionalità, tutte richieste esplicite dell'utente
+nello stesso turno.
+
+**Bug reale: header mostrava ancora un account eliminato come loggato** —
+segnalato con screenshot ("è come se fosse rimasto con l'accesso
+effettuato di un account eliminato"). Causa: un JWT emesso prima della
+cancellazione (soft-delete, CLAUDE.md §16) resta valido fino a scadenza
+naturale per design (`JwtAuthGuard` resta stateless apposta) — ma
+`AuthController.me()` non controllava `user.deletedAt`, quindi
+continuava a restituire la riga anonimizzata (email sintetica
+`deleted-...@deleted.invalid`), mostrata in `AccountMenu` come se
+l'utente fosse ancora autenticato. Corretto trattando un account con
+`deletedAt` valorizzato come inesistente (`return null`, stesso
+comportamento già gestito lato frontend per un token non valido).
+`AuthContext.loadUser` ora rimuove anche il token da `localStorage`
+quando `/auth/me` risponde `null` (prima solo in caso di errore di
+rete): senza, un token di un account eliminato sarebbe stato rispedito
+ad ogni ricarico di pagina all'infinito. Verificato con l'API locale:
+`/auth/me` con lo stesso JWT dopo `DELETE /auth/me` risponde 200 con
+corpo vuoto (interpretato correttamente come `null` sia dal test che da
+`packages/api-client`, che già ricade su `null` se `response.json()`
+fallisce).
+
+**Bug reale: testo della descrizione non andava a capo** — segnalato con
+screenshot ("non si legge, dovrebbe andare a capo") in "Le mie
+richieste": stesso bug già documentato e corretto una volta per
+`ProfessionalCard` (CLAUDE.md §12) — un blocco flex senza
+`flexBasis={0}`/`minWidth={0}` esplicito si dimensiona sulla larghezza
+"a contenuto pieno" (non spezzata) del testo invece di rispettare lo
+spazio disponibile nella riga, quando condivide la riga con un altro
+elemento (qui: lo stato/badge a destra) dentro un contenitore
+`flexWrap="wrap"`. Stesso fix applicato sia in `GuidedRequestCard`
+(`/le-mie-richieste`) sia in `LeadCard` (`/dashboard`, che aveva già
+`flex={1}` ma non gli altri due, stessa causa).
+
+**Rinomina "Le mie visite" → "Le mie richieste"** — voce del menu account
+cliente (`accountMenuItems.ts`), corretta a colpo d'occhio più chiara
+del nome precedente.
+
+**Unificazione delle etichette che aprono la cronologia** — richiesta
+esplicita dell'utente: "Cronologia" (Richieste ricevute/Le mie
+richieste), "Vai alla richiesta preventivo" (Lavori accettati, sia lato
+cliente che professionista) e "Vai alla cronologia della richiesta"
+(click su una prenotazione nel calendario "Prenotazioni") sono lo stesso
+identico popup (`TimelineModal`) raggiunto da punti diversi con testi
+diversi — tutti rinominati uniformemente in **"Contatta/Cronologia"**.
+
+**`TimelineModal` riscritto come chat con nuvolette colorate** —
+richiesta esplicita dell'utente: "crea una sorta di nuvoletta colorata,
+differenziando i colori in base a se è il cliente e professionista...
+ordina sul lato destro e sinistro del popup in base a chi visualizza".
+Nuova prop `viewerRole` (`"CLIENT" | "PROFESSIONAL"`, passata da
+ciascuno dei 5 punti di montaggio — 2 in `/dashboard`, 2 in
+`/le-mie-richieste`, 1 in `BookingDetailPanel`/`/dashboard/agenda`, ogni
+punto conosce già il proprio ruolo per costruzione): i messaggi di chi
+sta guardando vanno a destra, quelli dell'altra parte a sinistra (stessa
+convenzione di qualunque app di chat) — non un `actor` fisso per lato,
+quindi lo stesso evento appare a destra per chi l'ha scritto e a
+sinistra per l'altra parte. Sfondo nuvoletta per attore: `cianografiaVelo`
+(verde menta, cliente — stesso accento già usato per l'etichetta
+"Cliente") e `brand.gesso` (pesca chiaro, già lo sfondo pagina, riusato
+qui come tinta neutra per il professionista) — **non** `ottone`: quel
+colore resta riservato ai soli contesti di pagamento/boost per
+convenzione di progetto. Eventi `SYSTEM` (automatici: fan-out, scadenze,
+ecc.) restano centrati senza nuvoletta, non hanno un "lato" essendo di
+nessuna delle due parti.
+
+**Notifica + toast cliccabile su un aggiornamento scritto a mano** —
+richiesta esplicita dell'utente: prima `TimelineService.addUpdate`
+creava l'evento in cronologia ma non notificava mai l'altra parte (a
+differenza di ogni altro evento del ciclo di vita del preventivo, che
+notifica sempre). Due nuovi tipi di notifica (non uno solo, per
+rispettare la stessa convenzione già in uso ovunque — "ogni tipo
+corrisponde sempre allo stesso ruolo destinatario", necessaria per
+instradare correttamente il click sul toast):
+`TIMELINE_MESSAGE_FROM_CLIENT` (ricevuta dal professionista) e
+`TIMELINE_MESSAGE_FROM_PROFESSIONAL` (ricevuta dal cliente).
+`TimelineModule` importa ora `NotificationsModule`; `resolveActor` è
+stato esteso (`resolveActorWithParticipants`) per ritornare anche gli id
+utente di entrambe le parti del thread, così `addUpdate` sa a chi
+notificare (sempre l'altra parte, mai chi ha appena scritto) senza una
+query aggiuntiva. Entrambi aggiunti a `PROFESSIONAL_RICHIESTE_TYPES`/
+`CLIENT_RICHIESTE_TYPES` (`notificationSections.ts`): stesso numeretto
+per sezione e stesso comportamento "click sul toast apre la pagina
+giusta" già in uso per ogni altra notifica, nessun meccanismo nuovo.
+
+**Tipo di intervento (a domicilio/online) sulla richiesta di preventivo** —
+richiesta esplicita dell'utente: "in modo che il professionista già sa se
+può trattarsi di un intervento a domicilio o online". Nuovo enum Prisma
+`ServiceMode` (`HOME`/`ONLINE`) + campo `GuidedRequest.serviceMode`
+(nullable: righe esistenti prima di questa funzionalità restano senza,
+stessa convenzione già in uso per altri campi opzionali di questo
+modello) — obbligatorio lato Zod alla creazione
+(`guidedRequestSchema.serviceMode`), facoltativo alla modifica (stesso
+pattern "sostituzione solo se presente" già in uso per `photoUrls`).
+Due caselle cliccabili "A domicilio"/"Online" in `GuidedRequestForm`
+(`/preventivo`, `/urgente`), stesso stile a pillola già in uso per la
+selezione categoria nello stesso form. Mostrato come riga con icona
+(`house`/`video`) sia in `LeadCard` (`/dashboard`, "Richieste ricevute")
+sia in `GuidedRequestCard` (`/le-mie-richieste`, "Le mie richieste").
+**Non ancora implementato in questo giro** (esplicitamente rimandato,
+scope troppo ampio per lo stesso turno): far sì che le successive
+trattative su data/orario (proposta cliente, controproposta
+professionista, scelta della fascia per il primo preventivo) mostrino
+solo le fasce dell'agenda del professionista compatibili con la stessa
+modalità (online/domicilio) della richiesta originale — oggi il
+selettore di fasce in questi flussi resta invariato, mostra tutte le
+fasce libere indipendentemente dalla modalità. Resta inoltre distinta e
+non ancora affrontata la richiesta, più ampia, di poter impostare
+online/domicilio **per singola fascia dell'agenda** (con capienza
+massima separata per tipo, badge "online" sulla pillola, tab
+online/domicilio nella mini-agenda di ricerca) — un'estensione del
+modello `AvailabilitySlot` non ancora iniziata.
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+`/auth/me` con token di un account appena eliminato risponde in modo che
+il frontend lo interpreti come `null` (logout); richiesta guidata senza
+`serviceMode` rifiutata con 400, con `serviceMode: "ONLINE"` accettata e
+visibile identica su entrambi i lati (cliente e professionista); un
+aggiornamento manuale scritto dal cliente genera una notifica
+`TIMELINE_MESSAGE_FROM_CLIENT` per il professionista. UI: badge "Contatta/
+Cronologia" e "A domicilio" verificati a schermo; messaggio scritto dal
+cliente appare a destra quando il cliente stesso riapre la cronologia e a
+sinistra quando la apre il professionista (e viceversa per un messaggio
+scritto dal professionista); zero overflow orizzontale su mobile (390px)
+e desktop (1280px) su "Le mie richieste" con la descrizione lunga del
+bug originale. Typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `api`, `web`), build di produzione `apps/web` verde (24
+route).
+
+**Ancora da fare, richiesto esplicitamente ma non affrontato in questo
+giro per lo scope troppo ampio** (elencato qui come promemoria, non
+implementato):
+- Pannello filtri di ricerca in stile miodottore.it sopra il bottone
+  "Mostra mappa" nei risultati (`/cerca`, `/cerca/[categoria]`):
+  "Consulenza online" (mostra tutti i professionisti che la offrono),
+  "Date disponibili" (Oggi / Entro 3 giorni / Qualsiasi giorno, quest'ultima
+  selezionata di default), "Lingua parlata" (campo di ricerca testuale +
+  elenco selezionabile delle sole lingue effettivamente parlate tra i
+  professionisti nei risultati correnti) — richiede un nuovo campo
+  "lingue parlate" (multiplo, "Italiano" precompilato come unica lingua
+  di default, rimovibile) in `/dashboard/profilo`, non ancora presente
+  nello schema.
+- Estensione del modello di disponibilità già descritta sopra (fasce con
+  online/domicilio indipendenti e capienza massima separata per tipo).
