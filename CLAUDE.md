@@ -5888,3 +5888,49 @@ Verificato con Playwright: tutte e quattro le domande visibili, click sulla
 prima espande la risposta corretta, zero overflow orizzontale desktop/
 mobile, zero errori console. Typecheck pulito, build di produzione
 `apps/web` verde (24 route).
+
+---
+
+## 35. Bug reale: scroll bloccato in "Contatta/Cronologia" (TimelineModal) su mobile
+
+Segnalato dall'utente con screenshot ("non si naviga bene su e giù con
+questo finestra aperta") su una conversazione lunga. Causa: il backdrop
+del popup (`TimelineModal.tsx`) è un contenitore `position: fixed`,
+`display: flex`, `align-items: "center"`, `overflow-y: "auto"` — pattern
+noto per rompere lo scroll quando il contenuto supera l'altezza del
+viewport (bug diffuso soprattutto su iOS Safari/WebKit): con
+`align-items: center` su un flex container con overflow, la parte
+superiore dell'elemento che eccede l'altezza disponibile non è
+raggiungibile scorrendo, indipendentemente da quanto si scorre verso
+l'alto. Corretto cambiando `alignItems: "center"` in `"flex-start"`: il
+popup resta centrato orizzontalmente (`justifyContent: "center"`
+invariato) ma quando il contenuto è più alto dello schermo si ancora in
+alto con lo stesso padding invece di restare centrato verticalmente — via
+di fuga strutturale al bug, non una correzione specifica di un browser,
+valida su qualunque motore di rendering.
+
+**Stesso pattern presente in altri overlay** (`CompleteJobModal.tsx`,
+`ReportNoShowModal.tsx`, `CancelBookingModal.tsx` — tutti con
+`alignItems: "center"` + `overflowY: "auto"` sul backdrop): non toccati in
+questo giro, la segnalazione dell'utente riguardava specificamente questo
+popup — stesso fix da applicare lì se si presenta lo stesso sintomo.
+
+Verificato end-to-end con l'API locale (non solo lettura di codice) e
+Playwright, viewport mobile (`devices["iPhone 13"]`): conversazione di
+test con 17 eventi (15 aggiornamenti scritti a mano alternati cliente/
+professionista + fan-out + invio preventivo, contenuto totale ~2230px,
+viewport ~705px). Prima verifica dell'intervallo di scroll raggiungibile:
+`scrollTop` portato programmaticamente da 0 a `scrollHeight - clientHeight`
+(1525px, l'estremo inferiore) e viceversa a 0 (l'estremo superiore) —
+entrambi raggiunti esattamente. Screenshot a `scrollTop=0` conferma
+l'intestazione "Cronologia della richiesta" con il tasto di chiusura
+interamente visibile (prima nascosta/tagliata secondo la segnalazione);
+screenshot a `scrollTop` massimo conferma il campo "Scrivi un
+aggiornamento" e il bottone "Invia aggiornamento" interamente visibili in
+fondo. Ambiente di sviluppo privo del motore WebKit reale (solo Chromium
+pre-installato, `/opt/pw-browsers/`) — non è stato possibile riprodurre
+l'esatto bug di iOS Safari, ma la correzione rimuove la causa strutturale
+(non un workaround specifico di un motore), verificata comunque con
+l'intervallo di scroll completo raggiungibile su Chromium. Zero errori
+console. Typecheck pulito, build di produzione `apps/web` verde
+(24 route).

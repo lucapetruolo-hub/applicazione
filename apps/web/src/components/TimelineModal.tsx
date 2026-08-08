@@ -150,7 +150,16 @@ export function TimelineModal({
         bottom: 0,
         backgroundColor: "rgba(20,24,30,0.55)",
         display: "flex",
-        alignItems: "center",
+        // `alignItems: "center"` su un contenitore flex con `overflow-y:
+        // auto` è un bug noto (soprattutto iOS Safari): quando il
+        // contenuto è più alto del viewport, la parte superiore
+        // dell'elemento overflow non è raggiungibile scorrendo — segnalato
+        // dall'utente come "non si naviga bene su e giù" con una
+        // cronologia lunga. `flex-start` con lo stesso padding verticale
+        // rende il popup ancorato in alto invece che centrato quando
+        // supera l'altezza dello schermo, ma resta sempre scorrevole per
+        // intero in ogni browser.
+        alignItems: "flex-start",
         justifyContent: "center",
         zIndex: 1000,
         padding: 16,
