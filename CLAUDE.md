@@ -5633,3 +5633,20 @@ via `GET /professionals/search` sia via `GET /professionals/:id`; riga
 ricerca (`/cerca/idraulico`) sia sul profilo pubblico. Typecheck pulito su
 tutti i package (`shared`, `api`, `api-client`, `ui`, `web`, `mobile`),
 build di produzione `apps/web` verde (24 route).
+
+---
+
+## 28. Sezione "Perché esistiamo" in homepage
+
+Richiesta esplicita dell'utente: storia personale del fondatore (Luca,
+titolare della piattaforma), testo fornito verbatim — a differenza delle
+testimonianze/recensioni fittizie già rimosse altrove nel prodotto (§10,
+"mai dati demo pubblicati come reali"), qui è il titolare stesso che
+racconta la propria esperienza, non un contenuto inventato da questa
+sessione. Nuovo componente `WhyWeExist.tsx`, montato in `HomeContent.tsx`
+dopo "Come funziona" e prima della micro-FAQ.
+
+Verificato con Playwright: sezione visibile in homepage con il testo
+esatto fornito dall'utente, zero overflow orizzontale, zero errori
+console. Typecheck pulito, build di produzione `apps/web` verde
+(24 route).

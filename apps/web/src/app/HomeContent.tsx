@@ -15,6 +15,7 @@ import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
+import { WhyWeExist } from "@/components/WhyWeExist";
 
 export default function HomeContent({
   professionals,
@@ -82,6 +83,10 @@ export default function HomeContent({
         <div id="come-funziona" style={{ width: "100%" }}>
           <HowItWorks />
         </div>
+      </FadeInSection>
+
+      <FadeInSection>
+        <WhyWeExist />
       </FadeInSection>
 
       <FadeInSection>
