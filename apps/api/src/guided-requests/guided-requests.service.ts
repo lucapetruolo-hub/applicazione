@@ -6,6 +6,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { TimelineService } from "../timeline/timeline.service";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
@@ -53,6 +54,7 @@ export class GuidedRequestsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly timelineService: TimelineService,
   ) {}
 
   async create(clientId: string, input: GuidedRequestInput) {
@@ -198,6 +200,15 @@ export class GuidedRequestsService {
       // Metriche di affidabilità (CLAUDE.md §15, evento 1): ogni
       // destinatario del fan-out ha appena "ricevuto una richiesta".
       await Promise.all(leadRecipients.map((profile) => this.professionalMetricsService.recordRequestReceived(profile.id)));
+
+      // Cronologia (richiesta esplicita dell'utente): primo evento del
+      // thread per ogni professionista che ha davvero ricevuto il Lead.
+      const receivedMessage = input.professionalProfileId
+        ? "Il cliente ha inviato una richiesta di preventivo direttamente a te."
+        : "Il cliente ha inviato una richiesta di preventivo, ricevuta anche da te.";
+      await Promise.all(
+        leadRecipients.map((profile) => this.timelineService.log(guidedRequest.id, profile.id, "CLIENT", receivedMessage)),
+      );
     } else {
       // Nessun candidato entro il raggio oggi: la richiesta resta OPEN, ma
       // ha comunque una scadenza propria — un professionista compatibile
@@ -369,6 +380,17 @@ export class GuidedRequestsService {
         ...(input.photoUrls !== undefined ? { photoUrls: input.photoUrls } : {}),
       },
     });
+
+    // Cronologia (richiesta esplicita dell'utente): a tutti i thread già
+    // aperti su questa richiesta (quoteCount === 0 sopra garantisce che
+    // nessuno abbia ancora risposto, ma può comunque averla già ricevuta).
+    const leads = await this.prisma.lead.findMany({ where: { guidedRequestId: request.id }, select: { professionalProfileId: true } });
+    await Promise.all(
+      leads.map((lead) =>
+        this.timelineService.log(request.id, lead.professionalProfileId, "CLIENT", "Il cliente ha modificato i dettagli della richiesta."),
+      ),
+    );
+
     return {
       id: updated.id,
       description: updated.description,
@@ -398,6 +420,7 @@ export class GuidedRequestsService {
    */
   async remove(clientId: string, id: string): Promise<void> {
     const request = await this.requireOwnEditableRequest(clientId, id, "eliminare");
+    const leads = await this.prisma.lead.findMany({ where: { guidedRequestId: request.id }, select: { professionalProfileId: true } });
     await this.prisma.lead.updateMany({
       where: { guidedRequestId: request.id, status: "PENDING" },
       data: { status: "EXPIRED" },
@@ -406,6 +429,9 @@ export class GuidedRequestsService {
       where: { id: request.id },
       data: { status: "CLOSED", closedReason: "CANCELED_BY_CLIENT" },
     });
+    await Promise.all(
+      leads.map((lead) => this.timelineService.log(request.id, lead.professionalProfileId, "CLIENT", "Il cliente ha annullato la richiesta.")),
+    );
   }
 
   /**
@@ -554,6 +580,12 @@ export class GuidedRequestsService {
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(profile.id);
+      await this.timelineService.log(
+        request.id,
+        profile.id,
+        "SYSTEM",
+        "La richiesta ti è stata inoltrata: sei un professionista compatibile appena iscritto.",
+      );
     }
   }
 
@@ -720,6 +752,12 @@ export class GuidedRequestsService {
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(notifyTarget.professionalProfileId);
+      await this.timelineService.log(
+        guidedRequestId,
+        notifyTarget.professionalProfileId,
+        "SYSTEM",
+        "Richiesta inoltrata a te: il professionista precedente non ha risposto in tempo.",
+      );
     }
   }
 
@@ -761,6 +799,12 @@ export class GuidedRequestsService {
 
       for (const lead of leadsToExpire) {
         await this.prisma.lead.update({ where: { id: lead.id }, data: { status: "EXPIRED" } });
+        await this.timelineService.log(
+          lead.guidedRequestId,
+          lead.professionalProfileId,
+          "SYSTEM",
+          "La richiesta è scaduta: nessuna risposta in tempo.",
+        );
         await this.expandLeadQueue(lead.guidedRequestId);
       }
       if (leadsToExpire.length > 0) {
@@ -772,6 +816,7 @@ export class GuidedRequestsService {
       where: { status: { in: ["OPEN", "MATCHED"] }, expiresAt: { lt: now } },
     });
     for (const request of expiredRequests) {
+      const leads = await this.prisma.lead.findMany({ where: { guidedRequestId: request.id }, select: { professionalProfileId: true } });
       await this.prisma.lead.updateMany({
         where: { guidedRequestId: request.id, status: "PENDING" },
         data: { status: "EXPIRED" },
@@ -783,6 +828,11 @@ export class GuidedRequestsService {
       await this.notificationsService.notify(request.clientId, "GUIDED_REQUEST_EXPIRED", {
         guidedRequestId: request.id,
       });
+      await Promise.all(
+        leads.map((lead) =>
+          this.timelineService.log(request.id, lead.professionalProfileId, "SYSTEM", "La richiesta è stata chiusa per scadenza."),
+        ),
+      );
     }
     if (expiredRequests.length > 0) {
       this.logger.log(`Chiuse per scadenza ${expiredRequests.length} richieste guidate.`);

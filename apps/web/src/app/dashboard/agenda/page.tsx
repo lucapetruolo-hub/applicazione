@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, type CalendarView } from "@/components/calendar/CalendarShell";
 import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { LoadingState } from "@/components/LoadingState";
+import { TimelineModal } from "@/components/TimelineModal";
 import {
   datesInMonth,
   datesInMonthForGivenWeekday,
@@ -108,6 +109,12 @@ export default function DashboardAgendaPage() {
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
   const [isSavingBookingNote, setIsSavingBookingNote] = useState(false);
   const [isSavingMeetingLink, setIsSavingMeetingLink] = useState(false);
+  // Cronologia completa della richiesta collegata, aperta dal pannello di
+  // dettaglio (richiesta esplicita dell'utente: "cliccandoci sopra
+  // inserisci un pulsante dove ti porta alla cronologia della richiesta
+  // completa"). Serve il proprio profileId, non esposto altrove qui.
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [showBookingTimeline, setShowBookingTimeline] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -153,6 +160,14 @@ export default function DashboardAgendaPage() {
       .myProfessionalBookings(token)
       .then(setBookings)
       .catch((err) => setBookingsError(err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni."));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .getMyProfessionalProfile(token)
+      .then((profile) => setMyProfileId(profile?.id ?? null))
+      .catch(() => {});
   }, [token]);
 
   // Riflette l'errore "dal vivo" dell'editor anche sotto lo schema del
@@ -793,7 +808,15 @@ export default function DashboardAgendaPage() {
     return (
       <YStack gap="$2" minWidth={0}>
         {dayBookings.map((booking) => {
-          const time = new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+          // Fascia completa (richiesta esplicita dell'utente: "fai
+          // visualizzare la fascia oraria completa"), non solo l'inizio —
+          // resta su una sola riga anche in vista Settimana (numberOfLines
+          // già presente sotto), stesso principio già applicato altrove
+          // nell'agenda (BookingDetailPanel, AcceptedJobCard).
+          const startTime = new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+          const time = booking.scheduledEndAt
+            ? `${startTime}–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
+            : startTime;
           const isCanceled = booking.status === "CANCELED" || booking.status === "NO_SHOW";
           return (
             <YStack
@@ -1080,6 +1103,16 @@ export default function DashboardAgendaPage() {
           isSavingNote={isSavingBookingNote}
           onSaveMeetingLink={handleSaveMeetingLink}
           isSavingMeetingLink={isSavingMeetingLink}
+          onOpenTimeline={selectedBooking.guidedRequestId ? () => setShowBookingTimeline(true) : undefined}
+        />
+      ) : null}
+
+      {showBookingTimeline && selectedBooking?.guidedRequestId && myProfileId ? (
+        <TimelineModal
+          token={token}
+          guidedRequestId={selectedBooking.guidedRequestId}
+          professionalProfileId={myProfileId}
+          onClose={() => setShowBookingTimeline(false)}
         />
       ) : null}
 

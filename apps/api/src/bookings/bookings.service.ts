@@ -4,6 +4,7 @@ import type { CancelBookingByProfessionalInput, CompleteBookingInput } from "@pr
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { TimelineService } from "../timeline/timeline.service";
 
 @Injectable()
 export class BookingsService {
@@ -11,6 +12,7 @@ export class BookingsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly timelineService: TimelineService,
   ) {}
 
   /**
@@ -81,6 +83,13 @@ export class BookingsService {
     // diventato una prenotazione reale ("accettato" in questo dominio).
     await this.professionalMetricsService.recordJobAccepted(quote.professionalProfileId);
 
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      quote.professionalProfileId,
+      "CLIENT",
+      "Il cliente ha accettato il preventivo: prenotazione confermata.",
+    );
+
     return { bookingId: booking.id };
   }
 
@@ -99,7 +108,7 @@ export class BookingsService {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
@@ -126,6 +135,16 @@ export class BookingsService {
       await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, false);
     } else {
       await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    }
+
+    if (booking.quote) {
+      const statusMessage: Record<typeof status, string> = {
+        CONFIRMED: "Il professionista ha confermato la prenotazione.",
+        COMPLETED: "Il professionista ha segnato il lavoro come completato.",
+        CANCELED: "Il professionista ha annullato la prenotazione.",
+        NO_SHOW: "Il professionista ha segnato la prenotazione come non presentato.",
+      };
+      await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", statusMessage[status]);
     }
 
     return { bookingId, status };
@@ -195,7 +214,7 @@ export class BookingsService {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
@@ -214,6 +233,16 @@ export class BookingsService {
     ]);
 
     await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", { bookingId, finalAmountEurCents });
+
+    if (booking.quote) {
+      const totalEuro = (finalAmountEurCents / 100).toFixed(2);
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista ha segnalato il lavoro come terminato. Importo finale: €${totalEuro}.`,
+      );
+    }
 
     // Metriche di affidabilità (CLAUDE.md §15, eventi 4+6): lavoro
     // completato con importo esatto conta sia come lavoro concluso sia
@@ -237,7 +266,7 @@ export class BookingsService {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
@@ -258,6 +287,15 @@ export class BookingsService {
     // (evento 6, deciso esplicitamente), ma resta comunque "attività".
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
 
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista ha annullato l'intervento.${cancellationNote ? ` Nota: "${cancellationNote}"` : ""}`,
+      );
+    }
+
     return { bookingId, status: "CANCELED" as const };
   }
 
@@ -268,7 +306,7 @@ export class BookingsService {
    * alcun modo di disdire — solo il professionista poteva farlo.
    */
   async cancelForClient(clientId: string, bookingId: string) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
@@ -277,6 +315,9 @@ export class BookingsService {
     }
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
+    }
     return { bookingId, status: "CANCELED" as const };
   }
 
@@ -293,7 +334,7 @@ export class BookingsService {
   async reportProfessionalNoShow(clientId: string, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { professionalProfile: true },
+      include: { professionalProfile: true, quote: true },
     });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
@@ -315,6 +356,15 @@ export class BookingsService {
     await this.notificationsService.notify(booking.professionalProfile.userId, "BOOKING_NO_SHOW_REPORTED", {
       bookingId,
     });
+
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        "Il cliente ha segnalato che il professionista non si è presentato e ha richiesto un rimborso.",
+      );
+    }
 
     return { bookingId, refundRequested: true, refundRequestedAt: refundRequestedAt.toISOString() };
   }
@@ -377,6 +427,10 @@ export class BookingsService {
       status: booking.status,
       businessName: booking.professionalProfile.businessName,
       professionalProfileId: booking.professionalProfileId,
+      // Richiesta guidata di origine, per il bottone "Vai alla cronologia
+      // della richiesta" (richiesta esplicita dell'utente) — null per le
+      // prenotazioni dirette da agenda pubblica.
+      guidedRequestId: booking.quote?.guidedRequestId ?? null,
       hasReview: booking.review !== null,
       // Titolo/categoria, descrizione e foto della richiesta guidata
       // originale — richiesta esplicita dell'utente ("i dati del

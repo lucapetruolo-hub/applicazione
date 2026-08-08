@@ -2,8 +2,10 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { ProposeQuoteDateInput, QuoteSelfInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { formatSlotForTimeline } from "../common/format-date.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { TimelineService } from "../timeline/timeline.service";
 
 @Injectable()
 export class QuotesService {
@@ -11,6 +13,7 @@ export class QuotesService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly timelineService: TimelineService,
   ) {}
 
   async createOrUpdate(userId: string, input: QuoteSelfInput) {
@@ -99,6 +102,12 @@ export class QuotesService {
       // (Lead.createdAt), non dalla creazione della richiesta originale.
       const responseMinutes = (Date.now() - lead.createdAt.getTime()) / 60_000;
       await this.professionalMetricsService.recordFirstResponse(professionalProfile.id, responseMinutes);
+      await this.timelineService.log(
+        lead.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista ha inviato un preventivo (${input.items.length} ${input.items.length === 1 ? "voce" : "voci"}), data prevista ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
+      );
     } else if (existingQuote.estimatedStartDate.getTime() !== data.estimatedStartDate.getTime()) {
       // Richiesta esplicita dell'utente: se il professionista modifica un
       // preventivo già inviato cambiando la data/orario, il cliente deve
@@ -111,6 +120,18 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
       });
+      await this.timelineService.log(
+        lead.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista ha modificato il preventivo: nuova data prevista ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
+      );
+    } else if (existingQuote) {
+      // Modifica che non tocca la data (voci/note): silenziosa lato
+      // notifica (nessun cambio di "quando"), ma resta comunque un evento
+      // della cronologia — richiesta esplicita dell'utente di tracciare
+      // ogni aggiornamento, non solo quelli che generano una notifica.
+      await this.timelineService.log(lead.guidedRequestId, professionalProfile.id, "PROFESSIONAL", "Il professionista ha modificato il preventivo.");
     }
     if (existingQuote) {
       // Metriche di affidabilità (CLAUDE.md §15, evento 7): modificare un
@@ -170,6 +191,12 @@ export class QuotesService {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
     });
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      quote.professionalProfileId,
+      "CLIENT",
+      `Il cliente ha proposto un'altra data: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+    );
     return {
       id: updated.id,
       status: updated.status,
@@ -282,6 +309,12 @@ export class QuotesService {
       // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
       // diventato una prenotazione reale ("accettato" in questo dominio).
       await this.professionalMetricsService.recordJobAccepted(professionalProfile.id);
+      await this.timelineService.log(
+        quote.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        "Il professionista ha confermato la data proposta: prenotazione creata.",
+      );
       return { bookingId: booking.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
@@ -312,6 +345,12 @@ export class QuotesService {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
     });
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      professionalProfile.id,
+      "PROFESSIONAL",
+      "Il professionista ha rifiutato la data proposta: resta valida la data originale.",
+    );
     return { id: updated.id, status: updated.status };
   }
 
@@ -366,6 +405,12 @@ export class QuotesService {
       quoteId: quote.id,
     });
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      professionalProfile.id,
+      "PROFESSIONAL",
+      `Il professionista ha proposto un'altra data: ${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+    );
     return {
       id: updated.id,
       status: updated.status,
@@ -407,6 +452,7 @@ export class QuotesService {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
     });
+    await this.timelineService.log(quote.guidedRequestId, quote.professionalProfileId, "CLIENT", "Il cliente ha rifiutato il preventivo.");
     return { id: updated.id, status: updated.status };
   }
 
@@ -437,6 +483,7 @@ export class QuotesService {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
     });
+    await this.timelineService.log(quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", "Il professionista ha ritirato il preventivo.");
     return { id: updated.id, status: updated.status };
   }
 

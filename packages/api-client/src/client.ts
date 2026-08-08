@@ -5,6 +5,7 @@ import type {
   CancelBookingByProfessionalInput,
   ChangePasswordInput,
   CompleteBookingInput,
+  ConversationEvent,
   GuidedRequestInput,
   GuidedRequestStatusSummary,
   GuidedRequestUpdateInput,
@@ -20,6 +21,7 @@ import type {
   ProposeQuoteDateInput,
   QuoteSelfInput,
   ReviewInput,
+  TimelineUpdateInput,
   UpdateAccountInput,
   UpdateBookingMeetingLinkInput,
   UpdateBookingNoteInput,
@@ -39,6 +41,8 @@ export type ClientBooking = {
   status: BookingStatus;
   businessName: string;
   professionalProfileId: string;
+  /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
+  guidedRequestId: string | null;
   hasReview: boolean;
   /**
    * Titolo/categoria, descrizione e foto della richiesta guidata originale
@@ -403,6 +407,29 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadGuidedRequestPhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/photos", token, file, "image"),
+
+    /**
+     * Cronologia completa cliente↔professionista di una richiesta guidata
+     * (richiesta esplicita dell'utente) — accessibile sia dal cliente
+     * proprietario della richiesta sia dal professionista del thread
+     * indicato (verificato server-side).
+     */
+    guidedRequestTimeline: (token: string, guidedRequestId: string, professionalProfileId: string) =>
+      request<ConversationEvent[]>(
+        `/guided-requests/${guidedRequestId}/timeline?professionalProfileId=${encodeURIComponent(professionalProfileId)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+
+    /** Aggiornamento scritto a mano (testo e/o foto/video) da cliente o professionista sulla cronologia. */
+    addTimelineUpdate: (token: string, guidedRequestId: string, input: TimelineUpdateInput) =>
+      request<ConversationEvent>(`/guided-requests/${guidedRequestId}/timeline`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    uploadTimelinePhoto: (token: string, file: Blob) =>
+      uploadFile<{ imageUrl: string }>("/guided-requests/timeline-photos", token, file, "image"),
 
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),

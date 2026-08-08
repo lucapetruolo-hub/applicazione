@@ -2,11 +2,12 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { ProfessionalMetricsModule } from "../professional-metrics/professional-metrics.module";
+import { TimelineModule } from "../timeline/timeline.module";
 import { BookingsController } from "./bookings.controller";
 import { BookingsService } from "./bookings.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule],
+  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule],
   controllers: [BookingsController],
   providers: [BookingsService],
 })

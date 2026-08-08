@@ -37,6 +37,7 @@ export function BookingDetailPanel({
   isSavingNote,
   onSaveMeetingLink,
   isSavingMeetingLink,
+  onOpenTimeline,
 }: {
   booking: ProfessionalBooking;
   onClose: () => void;
@@ -48,6 +49,8 @@ export function BookingDetailPanel({
   /** Link della consulenza video (Meet/Zoom/ecc.), visibile al cliente — richiesta esplicita dell'utente. */
   onSaveMeetingLink: (meetingLink: string) => void;
   isSavingMeetingLink: boolean;
+  /** Apre la cronologia completa della richiesta (richiesta esplicita dell'utente) — assente per prenotazioni senza GuidedRequest collegata (bookAgendaSlot). */
+  onOpenTimeline?: () => void;
 }) {
   // `key={booking.id}` sul punto di montaggio (agenda/page.tsx) garantisce
   // uno stato fresco ad ogni apertura di una prenotazione diversa, stesso
@@ -138,6 +141,14 @@ export function BookingDetailPanel({
             {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
           </Text>
         </YStack>
+
+        {onOpenTimeline ? (
+          <Button variant="ghost" size="$2" height={32} onPress={onOpenTimeline}>
+            <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+              Vai alla cronologia della richiesta
+            </Text>
+          </Button>
+        ) : null}
 
         {/* Dati del cliente utili al professionista per andare a svolgere il
             lavoro (richiesta esplicita dell'utente): telefono/email come

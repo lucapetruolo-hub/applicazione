@@ -122,6 +122,13 @@ export type ProfessionalLead = {
  */
 export type ProfessionalBooking = {
   id: string;
+  /**
+   * Richiesta guidata di origine (via Booking.quote.guidedRequestId) — usata
+   * per il bottone "Vai alla cronologia della richiesta" (richiesta
+   * esplicita dell'utente), `null` per le prenotazioni dirette da agenda
+   * pubblica (bookAgendaSlot), che non hanno una GuidedRequest collegata.
+   */
+  guidedRequestId: string | null;
   scheduledAt: string;
   /** Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la fascia oraria, non solo l'inizio), null se non nota. */
   scheduledEndAt: string | null;
@@ -222,4 +229,23 @@ export type GuidedRequestStatusSummary = {
   /** Lead ancora in attesa di risposta, non scaduti. */
   pending: number;
   statusMessage: string | null;
+};
+
+/**
+ * Un singolo evento della cronologia cliente↔professionista per una
+ * richiesta guidata (richiesta esplicita dell'utente: "tieni traccia delle
+ * varie conversazioni e aggiornamenti... la cronologia completa di quello
+ * che è successo con le date... il testo e la data e tutto il resto").
+ * `message` è già testo pronto per la UI (include eventuali dettagli/note
+ * dell'evento), non un `type` da tradurre lato client — a differenza delle
+ * notifiche (notificationCopy.ts), qui la formulazione varia con i dati
+ * reali di ogni evento.
+ */
+export type ConversationEvent = {
+  id: string;
+  actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM";
+  message: string;
+  /** Foto/video allegati a un aggiornamento scritto a mano (vuoto per gli eventi automatici del ciclo di vita). */
+  mediaUrls: string[];
+  createdAt: string;
 };

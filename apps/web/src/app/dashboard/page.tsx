@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
+import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
@@ -221,6 +222,10 @@ function DashboardContent() {
   // dell'utente. Caricate una sola volta qui e passate a tutte le
   // LeadCard, non una chiamata per card.
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
+  // Id del proprio profilo professionista — serve per aprire la cronologia
+  // della richiesta (TimelineModal, richiesta esplicita dell'utente),
+  // nessun altro endpoint qui lo espone già essendo sempre "il proprio".
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Filtri/ordinamento/quantità visualizzata per le due liste (richiesta
@@ -314,11 +319,17 @@ function DashboardContent() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token)])
-      .then(([leadsResult, bookingsResult, slotsResult]) => {
+    Promise.all([
+      apiClient.myLeads(token),
+      apiClient.myProfessionalBookings(token),
+      apiClient.myAvailableSlots(token),
+      apiClient.getMyProfessionalProfile(token),
+    ])
+      .then(([leadsResult, bookingsResult, slotsResult, profile]) => {
         setLeads(leadsResult);
         setBookings(bookingsResult);
         setAvailableSlots(slotsResult);
+        setMyProfileId(profile?.id ?? null);
       })
       .catch((err) => {
         if (err instanceof Error && err.message.includes("profilo")) {
@@ -448,6 +459,7 @@ function DashboardContent() {
                   availableSlots={availableSlots}
                   onChanged={reloadLeads}
                   isNew={newLeadRequestIds.has(lead.guidedRequest.id)}
+                  myProfileId={myProfileId}
                 />
               ))
             )}
@@ -487,7 +499,14 @@ function DashboardContent() {
             ) : (
               <YStack gap="$3">
                 {visibleBookings.map((booking) => (
-                  <AcceptedJobCard key={booking.id} booking={booking} token={token} onUpdated={reloadBookings} isNew={newBookingIds.has(booking.id)} />
+                  <AcceptedJobCard
+                    key={booking.id}
+                    booking={booking}
+                    token={token}
+                    onUpdated={reloadBookings}
+                    isNew={newBookingIds.has(booking.id)}
+                    myProfileId={myProfileId}
+                  />
                 ))}
               </YStack>
             )}
@@ -519,12 +538,15 @@ function AcceptedJobCard({
   token,
   onUpdated,
   isNew,
+  myProfileId,
 }: {
   booking: ProfessionalBooking;
   token: string;
   onUpdated: () => void;
   /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
+  myProfileId: string | null;
 }) {
   const date = new Date(booking.scheduledAt);
   const endDate = booking.scheduledEndAt ? new Date(booking.scheduledEndAt) : null;
@@ -535,6 +557,10 @@ function AcceptedJobCard({
   const isCanceled = booking.status === "CANCELED";
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
+  // "in lavori accettati, inserisci un pulsante con scritto vai alla
+  // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
+  const [showTimeline, setShowTimeline] = useState(false);
   // Descrizione/foto della richiesta originale e nota privata del
   // professionista, richiesta esplicita dell'utente: già mostrate nel
   // pannello di dettaglio del calendario "Prenotazioni", ora anche qui —
@@ -617,18 +643,27 @@ function AcceptedJobCard({
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
         </YStack>
-        {booking.status === "CONFIRMED" ? (
-          <XStack gap="$2" flexWrap="wrap">
-            <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
-              Lavoro terminato
-            </Button>
-            <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
-              <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
-                Annulla intervento
+        <XStack gap="$2" flexWrap="wrap">
+          {booking.status === "CONFIRMED" ? (
+            <>
+              <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
+                Lavoro terminato
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
+                <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
+                  Annulla intervento
+                </Text>
+              </Button>
+            </>
+          ) : null}
+          {booking.guidedRequestId && myProfileId ? (
+            <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
+              <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                Vai alla richiesta preventivo
               </Text>
             </Button>
-          </XStack>
-        ) : null}
+          ) : null}
+        </XStack>
       </YStack>
 
       <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
@@ -879,6 +914,9 @@ function AcceptedJobCard({
       {openPhotoIndex !== null ? (
         <PhotoLightbox photos={booking.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
+      {showTimeline && booking.guidedRequestId && myProfileId ? (
+        <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={myProfileId} onClose={() => setShowTimeline(false)} />
+      ) : null}
     </Surface>
   );
 }
@@ -961,6 +999,7 @@ function LeadCard({
   availableSlots,
   onChanged,
   isNew,
+  myProfileId,
 }: {
   lead: ProfessionalLead;
   token: string;
@@ -969,6 +1008,8 @@ function LeadCard({
   onChanged: () => void;
   /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
+  myProfileId: string | null;
 }) {
   const [showForm, setShowForm] = useState(false);
   // Una voce di default ("Manodopera") già pronta, il professionista può
@@ -1010,6 +1051,10 @@ function LeadCard({
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
+  // "ognuno cliccando ad esempio sul preventivo possa vedere la cronologia
+  // completa").
+  const [showTimeline, setShowTimeline] = useState(false);
   const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [confirmingDeleteLead, setConfirmingDeleteLead] = useState(false);
@@ -1265,6 +1310,18 @@ function LeadCard({
             </Text>
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+            {myProfileId ? (
+              <Text
+                fontSize="$2"
+                fontWeight="600"
+                color={brand.cianografia}
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setShowTimeline(true)}
+              >
+                Cronologia
+              </Text>
+            ) : null}
           </XStack>
           <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
           {lead.guidedRequest.address ? (
@@ -1720,6 +1777,10 @@ function LeadCard({
           imageUrl={lead.guidedRequest.clientImageUrl}
           onClose={() => setShowClientProfile(false)}
         />
+      ) : null}
+
+      {showTimeline && myProfileId ? (
+        <TimelineModal token={token} guidedRequestId={lead.guidedRequest.id} professionalProfileId={myProfileId} onClose={() => setShowTimeline(false)} />
       ) : null}
     </Surface>
   );

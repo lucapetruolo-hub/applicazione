@@ -167,6 +167,27 @@ export const guidedRequestUpdateSchema = z.object({
 });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
 
+/**
+ * Aggiornamento scritto a mano da cliente o professionista sulla cronologia
+ * di una richiesta guidata (richiesta esplicita dell'utente: "tieni traccia
+ * delle varie conversazioni... dai la possibilità ad entrambi di inserire
+ * foto e video dell'aggiornamento dei lavori") — a differenza degli eventi
+ * automatici del ciclo di vita (invio preventivo, accettazione, ecc.,
+ * generati dal backend), questo è un messaggio libero: serve almeno un
+ * testo o almeno una foto/video, non un evento del tutto vuoto.
+ */
+export const timelineUpdateSchema = z
+  .object({
+    professionalProfileId: z.string().uuid(),
+    message: z.string().trim().max(2000).optional().default(""),
+    mediaUrls: z.array(z.string().url()).max(5).optional().default([]),
+  })
+  .refine((data) => data.message.length > 0 || data.mediaUrls.length > 0, {
+    message: "Scrivi un messaggio o allega almeno una foto/video.",
+    path: ["message"],
+  });
+export type TimelineUpdateInput = z.infer<typeof timelineUpdateSchema>;
+
 /** Preventivo strutturato in-app (CLAUDE.md §8): niente scambio libero di contatti. */
 /** Voce di un preventivo (es. "Manodopera", "Materiali"): nome + range di prezzo, stesso pattern di professionalServiceSchema. */
 export const quoteItemSchema = z

@@ -4827,3 +4827,161 @@ popup naviga a `/dashboard?tab=richieste` con la tab "Richieste ricevute"
 selezionata e la richiesta specifica visibile nella lista. Typecheck
 pulito su tutti i package, build di produzione `apps/web` verde (24
 route).
+
+---
+
+## 21. Cronologia conversazione cliente↔professionista + rifiniture agenda/ricerca
+
+Richiesta esplicita dell'utente: "tieni traccia delle varie conversazioni e
+aggiornamenti fatti fra il cliente e il professionista in modo che ognuno
+cliccando ad esempio sul preventivo possa vedere la cronologia completa di
+quello che è successo con le date dei vari aggiornamenti e il testo... in
+lavori accettati, inserisci un pulsante con scritto vai alla richiesta
+preventivo, e quindi visualizza tutti gli aggiornamenti" — seguita, nello
+stesso giro, da tre richieste aggiuntive: (1) "dai la possibilità ad
+entrambi di inserire foto e video dell'aggiornamento dei lavori"; (2)
+"sull'agenda del professionista in prenotazioni fai visualizzare la fascia
+oraria completa e poi cliccandoci sopra inserisci un pulsante dove ti porta
+alla cronologia della richiesta completa"; (3) "quando un cliente cerca il
+professionista... dai la possibilità tramite freccetta di far vedere tutte
+le prestazioni che offre il professionista poiché ora se ne vedono solo 3".
+
+**Schema — nuovo modello `ConversationEvent`** (non riuso di `Notification`,
+che è per-utente ed effimero — marcato "letto", pensato per badge/toast, non
+uno storico permanente leggibile da entrambe le parti): `guidedRequestId` +
+`professionalProfileId` (la stessa coppia che identifica un "thread" — una
+richiesta guidata può aver raggiunto più professionisti, CLAUDE.md §14),
+`actor` (enum `CLIENT`/`PROFESSIONAL`/`SYSTEM` — quest'ultimo per gli eventi
+automatici del fan-out/espansione, nessuna delle due parti li ha causati
+direttamente), `message` (testo già pronto per la UI, non un `type` da
+tradurre lato client come `notificationCopy.ts`: qui il testo varia con i
+dati reali dell'evento — data proposta, nota scritta, importo finale — mai
+fisso per tipo), `mediaUrls` (array, fino a 5, sempre vuoto per gli eventi
+automatici).
+
+**`apps/api/src/timeline/timeline.service.ts`** — punto unico di scrittura
+(`log()`, richiamato esplicitamente da ogni service che compie l'azione,
+stessa convenzione di `NotificationsService.notify()`, mai un trigger
+Prisma) e di lettura (`listForUser()`/`addUpdate()`, entrambi verificano che
+chi chiama sia il cliente proprietario della richiesta o il professionista
+del thread indicato — mai un terzo, nemmeno un altro dei professionisti
+coinvolti nello stesso fan-out, stesso principio già seguito da
+`GuidedRequestsService.getStatus`). `TimelineModule` importato da
+`GuidedRequestsModule`, `QuotesModule`, `BookingsModule`,
+`ProfessionalsModule`.
+
+**Eventi automatici agganciati** (un `log()` per ogni punto del ciclo di
+vita che genera già una notifica o cambia stato, testo con i dettagli reali
+invece di una frase fissa):
+- `GuidedRequestsService.create()` — un evento per ogni professionista che
+  riceve davvero il Lead dopo la selezione (`MAX_LEADS_PER_REQUEST`,
+  CLAUDE.md §14), actor `CLIENT`.
+- `GuidedRequestsService.expandLeadQueue()`/`matchNewProfileToOpenRequests()`
+  — actor `SYSTEM` (espansione automatica verso il prossimo candidato in
+  coda, o coinvolgimento di un professionista appena iscritto).
+- `GuidedRequestsService.update()`/`remove()` — actor `CLIENT`, un evento
+  per ogni Lead esistente sul thread (modifica dettagli, annullamento).
+- `GuidedRequestsService.runExpiryCheck()` (job schedulato) — actor
+  `SYSTEM`, sia per un singolo Lead scaduto sia per l'intera richiesta
+  chiusa per scadenza.
+- `QuotesService.createOrUpdate()` — actor `PROFESSIONAL`: primo invio
+  (voci+data), modifica con cambio data, modifica senza cambio data (evento
+  comunque tracciato anche se non genera una notifica — richiesta esplicita
+  di "tracciare ogni aggiornamento").
+- `QuotesService.proposeDate()`/`confirmProposedDate()`/
+  `rejectProposedDate()`/`counterProposeDate()`/`rejectByClient()`/
+  `withdrawByProfessional()` — un evento per lato per ciascuna transizione
+  della trattativa sulla data, con la fascia proposta/confermata e
+  l'eventuale nota inclusa nel testo.
+- `BookingsService.createFromQuote()` — actor `CLIENT` (accettazione
+  diretta).
+- `BookingsService.updateStatus()`/`completeWithFinalAmount()`/
+  `cancelByProfessional()`/`cancelForClient()`/`reportProfessionalNoShow()`
+  — un evento per transizione, incluso l'importo finale
+  (`completeWithFinalAmount`) e l'eventuale nota di annullamento. Tutti
+  richiedono `include: { quote: true }` sulla query del booking per
+  risalire a `guidedRequestId` (assente per le prenotazioni dirette da
+  agenda pubblica, `bookAgendaSlot` — dormiente da CLAUDE.md §20 — in quel
+  caso nessun evento viene loggato, coerente con "nessun thread senza una
+  GuidedRequest").
+- `ProfessionalsService.declineLead()` — actor `PROFESSIONAL`, con
+  l'eventuale nota di rifiuto.
+
+`apps/api/src/common/format-date.util.ts` (`formatSlotForTimeline`):
+formattazione data+fascia per il testo degli eventi, stessa convenzione
+"wall clock UTC" già in uso in tutto il modulo agenda (mai convertita al
+fuso del browser) — il messaggio è generato lato server e persistito come
+testo, deve restare identico a prescindere da chi lo legge in seguito.
+
+**Aggiornamenti scritti a mano, con foto/video** (richiesta esplicita
+dell'utente, arrivata mentre il resto della funzionalità era in corso —
+non un evento automatico, un vero e proprio messaggio libero):
+`timelineUpdateSchema` (`packages/shared`) richiede almeno un testo o
+almeno un allegato (mai un evento del tutto vuoto).
+`TimelineService.addUpdate()` deduce l'attore da chi chiama (mai passato
+dal client) con la stessa verifica di accesso di `listForUser`. Upload
+tramite un nuovo endpoint dedicato **aperto a entrambe le parti**
+(`POST /guided-requests/timeline-photos`, JWT-guarded ma senza controllo
+di titolarità sulla richiesta — a differenza di `POST /guided-requests/
+photos`, che è solo per la richiesta guidata originale lato cliente — la
+verifica "sei tu il cliente o il professionista di questo thread" avviene
+dopo, a `POST :id/timeline` con l'URL già ottenuto), stessa integrazione
+Cloudinary (`uploadMedia`, immagine o video, cartella
+`timeline-updates`) già in uso per le altre gallerie del prodotto.
+
+**`apps/web/src/components/TimelineModal.tsx`** (nuovo, condiviso tra
+dashboard professionista e area cliente): stesso pattern overlay DOM grezzo
+di `BookingDetailPanel`/`ClientProfileModal` (`role="dialog"`, chiusura con
+Escape/click sul backdrop). Elenco eventi in ordine cronologico (colore per
+attore: cianografia/cliente, verde/professionista, grigio/sistema), miniature
+cliccabili per gli allegati (`MediaPreview` + `PhotoLightbox`, stesso
+componente già in uso per le altre gallerie), form di invio in fondo
+(textarea + selettore foto/video con lo stesso pattern "+"/miniatura/tasto
+rimuovi già in uso in `GuidedRequestForm`).
+
+**Punti di ingresso** (bottone/link "Cronologia" o "Vai alla richiesta
+preventivo" a seconda del contesto — stesso componente ovunque):
+- `QuoteCard` (`/le-mie-richieste`, cliente — letteralmente "cliccando sul
+  preventivo") e `LeadCard` (`/dashboard`, professionista): link
+  "Cronologia" nell'intestazione della card.
+- `AcceptedJobCard` (`/dashboard`, "Lavori accettati" professionista) e
+  `BookingRow` (`/le-mie-richieste`, "Lavori accettati" cliente): bottone
+  "Vai alla richiesta preventivo" — richiesta esplicita dell'utente,
+  visibile solo se la prenotazione ha una `guidedRequestId` (assente per le
+  prenotazioni dirette da agenda pubblica). Entrambe le pagine risolvono il
+  proprio `professionalProfileId` (lato professionista, non esposto altrove
+  in queste risposte) con una singola chiamata a
+  `apiClient.getMyProfessionalProfile` aggiunta all'effect che carica
+  lead/prenotazioni.
+- `BookingDetailPanel` (calendario "Prenotazioni" in `/dashboard/agenda`,
+  richiesta esplicita successiva dell'utente): nuovo bottone "Vai alla
+  cronologia della richiesta" (prop opzionale `onOpenTimeline`, assente per
+  prenotazioni senza `guidedRequestId`). Stesso giro: la colonna compatta
+  della vista Settimana in `renderBookingDayColumn`
+  (`apps/web/src/app/dashboard/agenda/page.tsx`) mostrava solo l'orario di
+  inizio della prenotazione — corretto a `HH:MM–HH:MM` (fascia completa),
+  stesso principio già applicato ovunque nel prodotto ("non visualizzare
+  solo il primo orario ma tutta la fascia d'orario"), resta su una riga
+  sola (`numberOfLines={1}` già presente).
+
+**`ProfessionalCard` (`packages/ui`) — "Mostra tutte le prestazioni"**:
+richiesta esplicita dell'utente, la card di ricerca troncava sempre a 3
+prestazioni senza modo di vederne altre. Nuovo stato locale
+`showAllServices`: sopra 3 prestazioni, una riga cliccabile "Mostra tutte
+(N)"/"Mostra meno" con icona `chevron-down`/`chevron-up` (nuove chiavi nel
+registro icone condiviso, `packages/ui/src/icons.tsx`/`icons.web.tsx`) sotto
+l'elenco — `stopPropagation` sul click (stesso pattern già in uso altrove
+nello stesso file per non propagare al click della card intera, che naviga
+al profilo).
+
+Verificato end-to-end con l'API locale (non solo typecheck) — script
+dedicato: richiesta diretta a un professionista specifico → timeline con 1
+evento (`CLIENT`, "richiesta inviata") → preventivo inviato → 2° evento
+(`PROFESSIONAL`, con voci e data) → cliente legge la stessa timeline → un
+professionista estraneo alla richiesta riceve 403 → aggiornamento manuale
+del cliente (solo testo) → aggiornamento vuoto (né testo né media)
+rifiutato con 400 → aggiornamento manuale del professionista → preventivo
+accettato → 5° evento (`CLIENT`, "ha accettato il preventivo") — ordine
+cronologico e attore di tutti e 5 gli eventi corretti. Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (24 route).

@@ -15,6 +15,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
+import { TimelineModal } from "@/components/TimelineModal";
 import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
@@ -864,6 +865,7 @@ function GuidedRequestCard({
               onChanged={onChanged}
               onAcceptQuote={onAcceptQuote}
               requestedTimeSlot={request.preferredTimeSlot}
+              guidedRequestId={request.id}
             />
           ))}
         </YStack>
@@ -917,6 +919,7 @@ function QuoteCard({
   onChanged,
   onAcceptQuote,
   requestedTimeSlot,
+  guidedRequestId,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
@@ -924,6 +927,8 @@ function QuoteCard({
   onAcceptQuote: (quoteId: string) => Promise<void>;
   /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
   requestedTimeSlot: string | null;
+  /** Richiesta di origine, per il bottone "Cronologia" (richiesta esplicita dell'utente). */
+  guidedRequestId: string;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -935,6 +940,7 @@ function QuoteCard({
   const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // I dati per raggiungere il cliente (destinatario, indirizzo) sono già
   // stati raccolti alla richiesta (GuidedRequestForm) — accettare crea
@@ -1043,6 +1049,20 @@ function QuoteCard({
       </Text>
       <Text fontSize="$2" color={brand.grafite70}>
         Inviato il {formatSentAt(quote.sentAt)}
+      </Text>
+      {/* Cronologia completa del thread con questo professionista —
+          richiesta esplicita dell'utente: "cliccando ad esempio sul
+          preventivo possa vedere la cronologia completa". */}
+      <Text
+        fontSize="$2"
+        fontWeight="600"
+        color={brand.cianografia}
+        cursor="pointer"
+        alignSelf="flex-start"
+        accessibilityRole="button"
+        onPress={() => setShowTimeline(true)}
+      >
+        Cronologia
       </Text>
       {/* Il professionista ha inviato il preventivo con un orario diverso
           da quello effettivamente richiesto dal cliente (richiesta
@@ -1214,6 +1234,15 @@ function QuoteCard({
           {error}
         </Text>
       ) : null}
+
+      {showTimeline ? (
+        <TimelineModal
+          token={token}
+          guidedRequestId={guidedRequestId}
+          professionalProfileId={quote.professionalProfileId}
+          onClose={() => setShowTimeline(false)}
+        />
+      ) : null}
     </YStack>
   );
 }
@@ -1247,6 +1276,10 @@ function BookingRow({
   const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
+  // "in lavori accettati, inserisci un pulsante con scritto vai alla
+  // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
+  const [showTimeline, setShowTimeline] = useState(false);
 
   async function handleCancelBooking() {
     setCancelError(null);
@@ -1370,6 +1403,20 @@ function BookingRow({
             quando l'ora di fine è nota. */}
         {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
+
+      {booking.guidedRequestId ? (
+        <Text
+          fontSize="$2"
+          fontWeight="600"
+          color={brand.cianografia}
+          cursor="pointer"
+          alignSelf="flex-start"
+          accessibilityRole="button"
+          onPress={() => setShowTimeline(true)}
+        >
+          Vai alla richiesta preventivo
+        </Text>
+      ) : null}
 
       {/* Link consulenza video (Meet/Zoom/ecc.), impostato dal
           professionista — richiesta esplicita dell'utente. */}
@@ -1714,6 +1761,15 @@ function BookingRow({
         <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Recensione inviata
         </Text>
+      ) : null}
+
+      {showTimeline && booking.guidedRequestId ? (
+        <TimelineModal
+          token={token}
+          guidedRequestId={booking.guidedRequestId}
+          professionalProfileId={booking.professionalProfileId}
+          onClose={() => setShowTimeline(false)}
+        />
       ) : null}
     </Surface>
   );

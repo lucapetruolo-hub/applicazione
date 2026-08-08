@@ -93,6 +93,9 @@ export function ProfessionalCard({
   icon,
 }: ProfessionalCardProps) {
   const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
+  // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
+  // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
+  const [showAllServices, setShowAllServices] = useState(false);
 
   // Finestra di AGENDA_VISIBLE_DAYS colonne che scorre sui giorni già
   // scaricati (fino a 14, vedi ProfessionalsService.buildAvailabilityPreviews)
@@ -168,7 +171,7 @@ export function ProfessionalCard({
             </XStack>
             {services && services.length > 0 ? (
               <YStack gap="$1" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-                {services.slice(0, 3).map((service) => (
+                {(showAllServices ? services : services.slice(0, 3)).map((service) => (
                   <XStack key={service.id} justifyContent="space-between" gap="$2">
                     <Text fontSize={14} color={brand.grafite70} flex={1}>
                       {service.name}
@@ -178,6 +181,25 @@ export function ProfessionalCard({
                     </Text>
                   </XStack>
                 ))}
+                {services.length > 3 ? (
+                  <XStack
+                    alignItems="center"
+                    gap="$1"
+                    paddingTop="$1"
+                    cursor="pointer"
+                    onPress={(e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      setShowAllServices((prev) => !prev);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
+                  >
+                    <Text fontSize={13} fontWeight="600" color={brand.cianografia}>
+                      {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
+                    </Text>
+                    <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografia} strokeWidth={2} />
+                  </XStack>
+                ) : null}
               </YStack>
             ) : null}
           </YStack>

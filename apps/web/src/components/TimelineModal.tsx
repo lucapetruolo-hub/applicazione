@@ -1,0 +1,298 @@
+"use client";
+
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import type { ConversationEvent } from "@professionisti/shared";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { apiClient } from "@/lib/apiClient";
+import { MediaPreview } from "@/components/MediaPreview";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+
+const MAX_UPDATE_MEDIA = 5;
+
+const ACTOR_LABEL: Record<ConversationEvent["actor"], string> = {
+  CLIENT: "Cliente",
+  PROFESSIONAL: "Professionista",
+  SYSTEM: "Sistema",
+};
+
+const ACTOR_COLOR: Record<ConversationEvent["actor"], string> = {
+  CLIENT: brand.cianografia,
+  PROFESSIONAL: brand.verificato,
+  SYSTEM: brand.grafite70,
+};
+
+/** Data+ora reale di un evento della cronologia, fuso orario del browser (timestamp vero, non "wall clock UTC" delle fasce agenda). */
+function formatEventDate(iso: string): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+/**
+ * Cronologia completa cliente↔professionista di una richiesta guidata
+ * (richiesta esplicita dell'utente: "tieni traccia delle varie
+ * conversazioni e aggiornamenti... così ognuno cliccando ad esempio sul
+ * preventivo possa vedere la cronologia completa di quello che è successo
+ * con le date dei vari aggiornamenti e il testo"). Stesso pattern overlay
+ * DOM grezzo già in uso per BookingDetailPanel/ClientProfileModal
+ * (`role="dialog"`, chiusura con Escape/click sul backdrop). Usato sia dal
+ * cliente che dal professionista: `professionalProfileId` identifica il
+ * thread (una richiesta guidata può aver raggiunto più professionisti), il
+ * backend verifica l'accesso e determina l'attore per un nuovo aggiornamento.
+ */
+export function TimelineModal({
+  token,
+  guidedRequestId,
+  professionalProfileId,
+  onClose,
+}: {
+  token: string;
+  guidedRequestId: string;
+  professionalProfileId: string;
+  onClose: () => void;
+}) {
+  const [events, setEvents] = useState<ConversationEvent[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [openPhoto, setOpenPhoto] = useState<{ photos: string[]; index: number } | null>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    apiClient
+      .guidedRequestTimeline(token, guidedRequestId, professionalProfileId)
+      .then(setEvents)
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Errore nel caricamento della cronologia."));
+  }, [token, guidedRequestId, professionalProfileId]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !openPhoto) onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, openPhoto]);
+
+  async function handleMediaChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setMediaError(null);
+    setIsUploadingMedia(true);
+    try {
+      const result = await apiClient.uploadTimelinePhoto(token, file);
+      setMediaUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_UPDATE_MEDIA));
+    } catch (err) {
+      setMediaError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  }
+
+  function removeMedia(url: string) {
+    setMediaUrls((prev) => prev.filter((u) => u !== url));
+  }
+
+  async function handleSubmit() {
+    if (!message.trim() && mediaUrls.length === 0) {
+      setSubmitError("Scrivi un messaggio o allega almeno una foto/video.");
+      return;
+    }
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const created = await apiClient.addTimelineUpdate(token, guidedRequestId, { professionalProfileId, message, mediaUrls });
+      setEvents((prev) => [...(prev ?? []), created]);
+      setMessage("");
+      setMediaUrls([]);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Errore durante l'invio dell'aggiornamento.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cronologia della richiesta"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(20,24,30,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 16,
+        overflowY: "auto",
+      }}
+    >
+      <YStack
+        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        width="100%"
+        maxWidth={520}
+        backgroundColor={brand.calce}
+        borderRadius="$3"
+        padding="$5"
+        gap="$4"
+      >
+        <XStack justifyContent="space-between" alignItems="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            Cronologia della richiesta
+          </Text>
+          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
+            ✕
+          </Text>
+        </XStack>
+
+        <YStack gap="$3">
+          {loadError ? (
+            <Text color={brand.urgenza} fontSize="$3">
+              {loadError}
+            </Text>
+          ) : events === null ? (
+            <Text color={brand.grafite70} fontSize="$3">
+              Caricamento...
+            </Text>
+          ) : events.length === 0 ? (
+            <Text color={brand.grafite70} fontSize="$3">
+              Nessun aggiornamento ancora.
+            </Text>
+          ) : (
+            events.map((event) => (
+              <YStack key={event.id} gap="$1.5" borderLeftWidth={3} borderLeftColor={ACTOR_COLOR[event.actor]} paddingLeft="$3">
+                <XStack justifyContent="space-between" alignItems="center" gap="$2">
+                  <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
+                    {ACTOR_LABEL[event.actor]}
+                  </Text>
+                  <Text fontSize={11} color={brand.grafite70}>
+                    {formatEventDate(event.createdAt)}
+                  </Text>
+                </XStack>
+                {event.message ? (
+                  <Text color={brand.grafite} fontSize="$3">
+                    {event.message}
+                  </Text>
+                ) : null}
+                {event.mediaUrls.length > 0 ? (
+                  <XStack gap="$2" flexWrap="wrap">
+                    {event.mediaUrls.map((url, index) => (
+                      <MediaPreview
+                        key={url}
+                        url={url}
+                        onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
+                        style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                      />
+                    ))}
+                  </XStack>
+                ) : null}
+              </YStack>
+            ))
+          )}
+        </YStack>
+
+        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            Scrivi un aggiornamento
+          </Text>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Es. ho ordinato il pezzo di ricambio, arriverà lunedì..."
+            rows={3}
+            maxLength={2000}
+            style={{
+              width: "100%",
+              padding: 10,
+              borderRadius: 4,
+              border: `1px solid ${brand.filetto}`,
+              fontSize: 14,
+              fontFamily: "inherit",
+              color: brand.grafite,
+              resize: "vertical",
+            }}
+          />
+          <XStack gap="$2" flexWrap="wrap">
+            {mediaUrls.map((url) => (
+              <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                <MediaPreview url={url} />
+                <YStack
+                  position="absolute"
+                  top={2}
+                  right={2}
+                  width={18}
+                  height={18}
+                  borderRadius={9}
+                  backgroundColor="rgba(20,24,30,0.7)"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => removeMedia(url)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rimuovi foto"
+                >
+                  <Icon name="x" size={11} color="white" strokeWidth={2} />
+                </YStack>
+              </YStack>
+            ))}
+            {mediaUrls.length < MAX_UPDATE_MEDIA ? (
+              <YStack
+                width={56}
+                height={56}
+                borderRadius="$2"
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderStyle="dashed"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                opacity={isUploadingMedia ? 0.6 : 1}
+                onPress={() => !isUploadingMedia && mediaInputRef.current?.click()}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi foto o video"
+              >
+                <Text fontSize="$6" color={brand.grafite70}>
+                  {isUploadingMedia ? "…" : "+"}
+                </Text>
+              </YStack>
+            ) : null}
+          </XStack>
+          <input ref={mediaInputRef} type="file" accept="image/*,video/*" onChange={handleMediaChange} disabled={isUploadingMedia} style={{ display: "none" }} />
+          {mediaError ? (
+            <Text color={brand.urgenza} fontSize="$2">
+              {mediaError}
+            </Text>
+          ) : null}
+          {submitError ? (
+            <Text color={brand.urgenza} fontSize="$2">
+              {submitError}
+            </Text>
+          ) : null}
+          <Button
+            variant="primary"
+            size="$3"
+            height={40}
+            alignSelf="flex-start"
+            disabled={isSubmitting || isUploadingMedia}
+            opacity={isSubmitting || isUploadingMedia ? 0.6 : 1}
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Invio..." : "Invia aggiornamento"}
+          </Button>
+        </YStack>
+      </YStack>
+
+      {openPhoto ? <PhotoLightbox photos={openPhoto.photos} initialIndex={openPhoto.index} onClose={() => setOpenPhoto(null)} /> : null}
+    </div>
+  );
+}

@@ -176,6 +176,7 @@ model ProfessionalProfile {
   availabilityExceptions AvailabilityException[]
   guidedRequests         GuidedRequest[]
   metrics                ProfessionalMetrics?
+  timelineEvents         ConversationEvent[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -515,8 +516,9 @@ model GuidedRequest {
   category            Category             @relation(fields: [categoryId], references: [id])
   professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id], onDelete: SetNull)
 
-  leads  Lead[]
-  quotes Quote[]
+  leads          Lead[]
+  quotes         Quote[]
+  timelineEvents ConversationEvent[]
 
   @@index([categoryId, city, status])
   @@map("guided_requests")
@@ -865,6 +867,52 @@ model Notification {
 
   @@index([userId, sentAt])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Cronologia conversazione cliente↔professionista (richiesta esplicita
+// dell'utente: "tieni traccia delle varie conversazioni e aggiornamenti...
+// così ognuno cliccando ad esempio sul preventivo possa vedere la
+// cronologia completa"). Una riga per ogni evento del ciclo di vita di una
+// coppia (richiesta guidata, professionista) — non riusa il modello
+// Notification esistente: quello è per-utente ed effimero (badge/toast,
+// marcato "letto"), qui serve uno storico permanente, leggibile da
+// entrambe le parti, con il testo dell'evento già scritto in chiaro
+// (incluse eventuali note libere) invece di un payload da ricostruire lato
+// client. `message` è testo semplice pronto per la UI, mai ricalcolato:
+// coerente con come il resto del progetto tratta gli eventi "già accaduti"
+// (es. Booking.cancellationNote), non un secondo motore di traduzione
+// type→testo come notificationCopy.ts (quello serve solo notifiche fisse,
+// qui il testo varia con i dettagli reali dell'evento, es. la data
+// proposta o la nota del professionista).
+// ---------------------------------------------------------------------------
+
+enum ConversationEventActor {
+  CLIENT
+  PROFESSIONAL
+  SYSTEM
+}
+
+model ConversationEvent {
+  id                    String                 @id @default(uuid())
+  guidedRequestId       String
+  professionalProfileId String
+  actor                 ConversationEventActor
+  message               String
+  // Foto/video allegati a un aggiornamento inserito a mano da cliente o
+  // professionista (richiesta esplicita dell'utente: "dai la possibilità
+  // ad entrambi di inserire foto e video dell'aggiornamento dei lavori") —
+  // sempre vuoto per gli eventi generati automaticamente dal ciclo di vita
+  // (invio preventivo, accettazione, ecc.), stesso pattern array nativo
+  // già in uso per GuidedRequest.photoUrls/Review.photoUrls, fino a 5.
+  mediaUrls             String[]               @default([])
+  createdAt             DateTime               @default(now())
+
+  guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([guidedRequestId, professionalProfileId, createdAt])
+  @@map("conversation_events")
 }
 
 // ---------------------------------------------------------------------------

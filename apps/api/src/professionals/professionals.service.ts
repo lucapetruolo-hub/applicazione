@@ -27,6 +27,7 @@ import { slotAppliesOnDate } from "../common/availability.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { TimelineService } from "../timeline/timeline.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -82,6 +83,7 @@ export class ProfessionalsService {
     private readonly notificationsService: NotificationsService,
     private readonly guidedRequestsService: GuidedRequestsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly timelineService: TimelineService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -680,6 +682,14 @@ export class ProfessionalsService {
       professionalProfileId,
     });
 
+    const declineNote = input.note?.trim() || null;
+    await this.timelineService.log(
+      lead.guidedRequestId,
+      professionalProfileId,
+      "PROFESSIONAL",
+      `Il professionista ha rifiutato la richiesta.${declineNote ? ` Nota: "${declineNote}"` : ""}`,
+    );
+
     // Espande subito verso il prossimo candidato in coda di riserva
     // (CLAUDE.md §14) — non serve aspettare il prossimo giro del job
     // schedulato quando si sa già ora che questo professionista non
@@ -748,6 +758,11 @@ export class ProfessionalsService {
 
     return bookings.map((booking) => ({
       id: booking.id,
+      // Richiesta guidata di origine, per il bottone "Vai alla cronologia
+      // della richiesta" (richiesta esplicita dell'utente) — null per le
+      // prenotazioni dirette da agenda pubblica (bookAgendaSlot), che non
+      // hanno una Quote/GuidedRequest collegata.
+      guidedRequestId: booking.quote?.guidedRequestId ?? null,
       scheduledAt: booking.scheduledAt.toISOString(),
       // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
       // la fascia oraria, non solo l'inizio) — null se non nota.
