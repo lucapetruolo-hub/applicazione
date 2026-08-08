@@ -5705,3 +5705,36 @@ risultati dal vivo e il bottone torna a "Filtri" senza contatore. Zero
 errori console (a parte `ERR_TUNNEL_CONNECTION_FAILED`, stessa limitazione
 di rete dell'ambiente di sviluppo già documentata altrove in questo file).
 Typecheck pulito su `apps/web`, build di produzione verde (24 route).
+
+---
+
+## 30. Sezione "Garanzia Piattaforma" in homepage
+
+Richiesta esplicita dell'utente, testo fornito verbatim. A differenza di
+ogni altra sezione della homepage — dove non si pubblica mai una promessa
+non corrispondente a una funzionalità reale (regola seguita fin dall'inizio
+del progetto: mai dati/stat finti, mai testimonianze inventate) — questa
+sezione promette esplicitamente cose non ancora implementate: verifica
+documenti/assicurazione RC dei professionisti, pagamento protetto in
+piattaforma (il pagamento per il lavoro resta rimandato, §9), mediazione
+in caso di controversia. Prima di procedere ho chiesto conferma via
+`AskUserQuestion` proprio per questo motivo; l'utente ha risposto
+**"Pubblicale come scritte"**, assumendosene esplicitamente la
+responsabilità come titolare della piattaforma — decisione che vale anche
+per le due sezioni analoghe ancora da fare ("Cosa succede se...", footer
+con loghi RC/associazione/pagamenti).
+
+`apps/web/src/components/PlatformGuarantee.tsx` (nuovo): eyebrow "Garanzia
+Piattaforma", titolo "Ogni intervento è coperto dalla Garanzia
+Piattaforma", tre punti su un'unica `Surface` (icona spunta verde + testo)
+con il testo esatto fornito dall'utente — nessun badge "in arrivo" qui
+(diverso dal caso "Richieste filtrate dall'IA" in `ProCtaSection`, dove
+l'utente aveva invece chiesto di segnalarlo come funzionalità futura):
+l'istruzione qui è di pubblicare il testo così com'è. Montata in
+`HomeContent.tsx` subito dopo `QualitySection` (stessa area "fiducia"
+della pagina, prima del micro-tool prezzi).
+
+Verificato con Playwright: sezione visibile con tutti e tre i punti,
+identici al testo fornito, zero overflow orizzontale desktop/mobile, zero
+errori console. Typecheck pulito, build di produzione `apps/web` verde
+(24 route).
