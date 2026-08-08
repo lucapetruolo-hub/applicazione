@@ -16,6 +16,7 @@ import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
+import { WhatIfSection } from "@/components/WhatIfSection";
 import { WhyWeExist } from "@/components/WhyWeExist";
 
 export default function HomeContent({
@@ -78,6 +79,10 @@ export default function HomeContent({
 
       <FadeInSection>
         <PlatformGuarantee />
+      </FadeInSection>
+
+      <FadeInSection>
+        <WhatIfSection />
       </FadeInSection>
 
       <FadeInSection>

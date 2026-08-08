@@ -5865,3 +5865,26 @@ copyright.
 Verificato con Playwright: tutti e tre i badge visibili in homepage,
 zero overflow orizzontale desktop/mobile, zero errori console. Typecheck
 pulito su `packages/ui`/`apps/web`, build di produzione verde (24 route).
+
+---
+
+## 34. Sezione "Cosa succede se..." in homepage
+
+Richiesta esplicita dell'utente, testo fornito verbatim, stessa
+autorizzazione di §30/§33 ("Pubblicale come scritte") — promette
+rimborsi/sostituzioni non ancora implementati (nessun pagamento in
+piattaforma per il lavoro, CLAUDE.md §9).
+
+`apps/web/src/components/WhatIfSection.tsx` (nuovo): stesso pattern
+accordion `<details>/<summary>` già in uso in `HomeFaq.tsx` (nessuna
+libreria aggiunta), eyebrow "Cosa succede se..." e le quattro domande/
+risposte esatte fornite dall'utente (professionista che non si presenta,
+lavoro non fatto bene, preventivo finale più alto, cambio professionista).
+Montata in `HomeContent.tsx` subito dopo `PlatformGuarantee` (§30) — stessa
+area "fiducia" della pagina, naturale prosecuzione della garanzia
+piattaforma.
+
+Verificato con Playwright: tutte e quattro le domande visibili, click sulla
+prima espande la risposta corretta, zero overflow orizzontale desktop/
+mobile, zero errori console. Typecheck pulito, build di produzione
+`apps/web` verde (24 route).
