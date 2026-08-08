@@ -5385,3 +5385,33 @@ Verificato in blocco per l'intero giro (mode-aware capacity + pannello
 filtri): typecheck pulito su tutti i package (`shared`, `database`,
 `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
 verde (24 route).
+
+**Correzione — pop-up centrato ad accordion, non pannello inline** —
+richiesta esplicita dell'utente con screenshot di riferimento
+(miodottore.it): il pannello filtri, prima un riquadro che si apriva
+inline sotto il bottone "Filtri" (spingendo giù la lista, visibile solo
+nella colonna sinistra), è stato sostituito da un vero pop-up centrato
+sulla pagina — stesso pattern overlay già in uso altrove nel prodotto
+(`ClientProfileModal`, `BookingDetailPanel`, `SlotEditorModal`:
+`role="dialog"`, sfondo semi-trasparente, chiusura con Escape o click sul
+backdrop, contenuto con `stopPropagation`). Le tre sezioni sono ora ad
+**accordion**: un titolo cliccabile con chevron (`ChevronDown`/`ChevronUp`
+da lucide-react) per ciascuna, il contenuto compare solo per la sezione
+espansa — stato `expandedSection` (`"online" | "availability" |
+"language" | null`), una sola sezione aperta alla volta, "Consulenza
+online" aperta di default (stesso comportamento del riferimento). Il
+checkbox "Consulenza online" è diventato un vero interruttore a levetta
+(`filters-switch`, CSS puro — nessuna libreria di componenti UI
+aggiunta) invece della checkbox nativa del browser, più vicino al
+riferimento. Il footer non ha più i due bottoni "Reimposta filtri"/
+"Applica" fianco a fianco: un unico bottone verde a piena larghezza
+"Mostra N risultati" (conteggio live ricalcolato ad ogni modifica dei
+filtri) chiude il pop-up, richiesta esplicita dell'utente — "Reimposta
+filtri" resta come link testuale sopra, ma visibile solo quando almeno un
+filtro è attivo (`activeFilterCount > 0`), per non occupare spazio
+quando non c'è nulla da reimpostare. Verificato con Playwright
+(screenshot): pop-up centrato sopra uno sfondo scurito, accordion
+funzionante (aprire "Date disponibili" richiude "Consulenza online" e
+mostra le pillole Oggi/Entro 3 giorni/Qualsiasi giorno), bottone "Mostra 5
+risultati" con il conteggio corretto. Typecheck pulito, build di
+produzione `apps/web` verde.

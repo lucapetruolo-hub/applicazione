@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -117,6 +117,24 @@ export function ResultsListWithMap({
   const [filterAvailability, setFilterAvailability] = useState<"any" | "today" | "3days">("any");
   const [languageQuery, setLanguageQuery] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  // Sezioni ad accordion (richiesta esplicita dell'utente, riferimento
+  // miodottore.it): un titolo per sezione, click per espandere/richiudere
+  // — "Consulenza online" aperta di default (stesso comportamento del
+  // riferimento), le altre due chiuse finché non si clicca il titolo.
+  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | null>("online");
+
+  // Popup centrato (richiesta esplicita dell'utente), stesso pattern
+  // overlay già in uso altrove nel prodotto (BookingDetailPanel,
+  // ClientProfileModal, SlotEditorModal): role="dialog", chiusura con
+  // Escape o click sul backdrop.
+  useEffect(() => {
+    if (!showFilters) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowFilters(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showFilters]);
 
   // Solo le lingue effettivamente parlate tra i professionisti nei
   // risultati correnti (richiesta esplicita dell'utente), filtrate dal
@@ -146,6 +164,13 @@ export function ResultsListWithMap({
   }
 
   const activeFilterCount = (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
+  // Conteggio live per il bottone "Mostra N risultati" in fondo al pop-up
+  // (richiesta esplicita dell'utente, riferimento miodottore.it).
+  const filteredResultsCount = (showMap ? orderedVisible : professionals).filter(matchesFilters).length;
+
+  function toggleSection(section: "online" | "availability" | "language") {
+    setExpandedSection((prev) => (prev === section ? null : section));
+  }
 
   return (
     // Layout con classi CSS grezze (styled-jsx, incluso in Next.js) invece dei
@@ -166,58 +191,134 @@ export function ResultsListWithMap({
       </button>
 
       {showFilters ? (
-        <div className="filters-panel">
-          <label className="filters-checkbox-row">
-            <input type="checkbox" checked={filterOnlineOnly} onChange={(e) => setFilterOnlineOnly(e.target.checked)} />
-            Mostra tutti i professionisti che offrono consulenza online
-          </label>
-
-          <div className="filters-group">
-            <span className="filters-group-label">Date disponibili</span>
-            <div className="filters-pill-row">
-              {(
-                [
-                  { value: "any", label: "Qualsiasi giorno" },
-                  { value: "today", label: "Oggi" },
-                  { value: "3days", label: "Entro 3 giorni" },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`filters-pill${filterAvailability === opt.value ? " active" : ""}`}
-                  onClick={() => setFilterAvailability(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
+        <div className="filters-backdrop" onClick={() => setShowFilters(false)} role="dialog" aria-modal="true" aria-label="Filtri">
+          <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="filters-modal-header">
+              <span className="filters-modal-title">Filtri</span>
+              <button type="button" className="filters-modal-close" onClick={() => setShowFilters(false)} aria-label="Chiudi">
+                <X size={18} strokeWidth={1.5} />
+              </button>
             </div>
-          </div>
 
-          <div className="filters-group">
-            <span className="filters-group-label">Lingua parlata</span>
-            <input
-              type="text"
-              className="filters-text-input"
-              value={languageQuery}
-              onChange={(e) => setLanguageQuery(e.target.value)}
-              placeholder="Cerca una lingua..."
-            />
-            <div className="filters-pill-row">
-              {selectedLanguage ? (
-                <button type="button" className="filters-pill active" onClick={() => setSelectedLanguage(null)}>
-                  {selectedLanguage} ✕
+            <div className="filters-modal-body">
+              {/* Sezione ad accordion (richiesta esplicita dell'utente,
+                  riferimento miodottore.it): titolo cliccabile con
+                  chevron, il contenuto compare solo da espansa. */}
+              <div className="filters-section">
+                <button type="button" className="filters-section-header" onClick={() => toggleSection("online")}>
+                  <span className="filters-section-title">Consulenza online</span>
+                  {expandedSection === "online" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
                 </button>
-              ) : (
-                availableLanguages.map((lang) => (
-                  <button key={lang} type="button" className="filters-pill" onClick={() => setSelectedLanguage(lang)}>
-                    {lang}
-                  </button>
-                ))
-              )}
-              {!selectedLanguage && availableLanguages.length === 0 ? (
-                <span className="filters-empty">Nessuna lingua trovata tra i professionisti in questi risultati.</span>
+                {expandedSection === "online" ? (
+                  <div className="filters-section-content">
+                    <label className="filters-toggle-row">
+                      <span>Mostra tutti i professionisti che offrono consulenza online</span>
+                      <span
+                        className={`filters-switch${filterOnlineOnly ? " on" : ""}`}
+                        onClick={() => setFilterOnlineOnly((v) => !v)}
+                        role="switch"
+                        aria-checked={filterOnlineOnly}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setFilterOnlineOnly((v) => !v);
+                          }
+                        }}
+                      >
+                        <span className="filters-switch-knob" />
+                      </span>
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="filters-section">
+                <button type="button" className="filters-section-header" onClick={() => toggleSection("availability")}>
+                  <span className="filters-section-title">Date disponibili</span>
+                  {expandedSection === "availability" ? (
+                    <ChevronUp size={18} strokeWidth={1.5} />
+                  ) : (
+                    <ChevronDown size={18} strokeWidth={1.5} />
+                  )}
+                </button>
+                {expandedSection === "availability" ? (
+                  <div className="filters-section-content">
+                    <div className="filters-pill-row">
+                      {(
+                        [
+                          { value: "any", label: "Qualsiasi giorno" },
+                          { value: "today", label: "Oggi" },
+                          { value: "3days", label: "Entro 3 giorni" },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`filters-pill${filterAvailability === opt.value ? " active" : ""}`}
+                          onClick={() => setFilterAvailability(opt.value)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="filters-section">
+                <button type="button" className="filters-section-header" onClick={() => toggleSection("language")}>
+                  <span className="filters-section-title">Lingua parlata</span>
+                  {expandedSection === "language" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
+                </button>
+                {expandedSection === "language" ? (
+                  <div className="filters-section-content">
+                    <input
+                      type="text"
+                      className="filters-text-input"
+                      value={languageQuery}
+                      onChange={(e) => setLanguageQuery(e.target.value)}
+                      placeholder="Cerca una lingua..."
+                    />
+                    <div className="filters-pill-row">
+                      {selectedLanguage ? (
+                        <button type="button" className="filters-pill active" onClick={() => setSelectedLanguage(null)}>
+                          {selectedLanguage} ✕
+                        </button>
+                      ) : (
+                        availableLanguages.map((lang) => (
+                          <button key={lang} type="button" className="filters-pill" onClick={() => setSelectedLanguage(lang)}>
+                            {lang}
+                          </button>
+                        ))
+                      )}
+                      {!selectedLanguage && availableLanguages.length === 0 ? (
+                        <span className="filters-empty">Nessuna lingua trovata tra i professionisti in questi risultati.</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="filters-modal-footer">
+              {activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  className="filters-reset"
+                  onClick={() => {
+                    setFilterOnlineOnly(false);
+                    setFilterAvailability("any");
+                    setLanguageQuery("");
+                    setSelectedLanguage(null);
+                  }}
+                >
+                  Reimposta filtri
+                </button>
               ) : null}
+              <button type="button" className="filters-apply" onClick={() => setShowFilters(false)}>
+                Mostra {filteredResultsCount} risultat{filteredResultsCount === 1 ? "o" : "i"}
+              </button>
             </div>
           </div>
         </div>
@@ -301,33 +402,150 @@ export function ResultsListWithMap({
           justify-content: center;
           gap: 8px;
         }
-        .filters-panel {
-          width: 100%;
+        .filters-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(20, 24, 30, 0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
           padding: 16px;
-          border-radius: 4px;
+        }
+        .filters-modal {
+          width: 100%;
+          max-width: 420px;
+          max-height: calc(100vh - 32px);
+          border-radius: 8px;
           border: 1px solid ${brand.filetto};
           background: ${brand.calce};
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          overflow: hidden;
         }
-        .filters-checkbox-row {
+        .filters-modal-header {
           display: flex;
           align-items: center;
-          gap: 8px;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-bottom: 1px solid ${brand.filetto};
+          flex-shrink: 0;
+        }
+        .filters-modal-title {
+          font-size: 18px;
+          font-weight: 800;
+          color: ${brand.grafite};
+        }
+        .filters-modal-close {
+          border: none;
+          background: transparent;
+          color: ${brand.grafite70};
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px;
+        }
+        .filters-modal-body {
+          padding: 0 20px;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+        }
+        .filters-modal-footer {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          padding: 16px 20px;
+          border-top: 1px solid ${brand.filetto};
+          flex-shrink: 0;
+        }
+        .filters-reset {
+          border: none;
+          background: transparent;
+          color: ${brand.grafite70};
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+        .filters-apply {
+          width: 100%;
+          padding: 14px 20px;
+          border-radius: 999px;
+          border: none;
+          background: ${brand.cianografia};
+          color: #ffffff;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .filters-section {
+          border-bottom: 1px solid ${brand.filetto};
+        }
+        .filters-section:last-child {
+          border-bottom: none;
+        }
+        .filters-section-header {
+          width: 100%;
+          padding: 18px 0;
+          border: none;
+          background: transparent;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          color: ${brand.grafite70};
+        }
+        .filters-section-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: ${brand.grafite};
+        }
+        .filters-section-content {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding-bottom: 18px;
+        }
+        .filters-toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
           font-size: 14px;
           color: ${brand.grafite};
           cursor: pointer;
         }
-        .filters-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+        .filters-switch {
+          flex-shrink: 0;
+          width: 44px;
+          height: 26px;
+          border-radius: 999px;
+          background: ${brand.filetto};
+          position: relative;
+          cursor: pointer;
+          transition: background 150ms ease;
         }
-        .filters-group-label {
-          font-size: 11px;
-          font-weight: 700;
-          color: ${brand.grafite70};
+        .filters-switch.on {
+          background: ${brand.cianografia};
+        }
+        .filters-switch-knob {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 20px;
+          height: 20px;
+          border-radius: 999px;
+          background: #ffffff;
+          transition: transform 150ms ease;
+        }
+        .filters-switch.on .filters-switch-knob {
+          transform: translateX(18px);
         }
         .filters-pill-row {
           display: flex;
