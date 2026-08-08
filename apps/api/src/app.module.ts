@@ -18,7 +18,6 @@ import { SavedProfessionalsModule } from "./saved-professionals/saved-profession
 import { AdminModule } from "./admin/admin.module";
 import { WaitlistModule } from "./waitlist/waitlist.module";
 import { NotificationsModule } from "./notifications/notifications.module";
-import { StatsModule } from "./stats/stats.module";
 
 @Module({
   imports: [
@@ -53,7 +52,6 @@ import { StatsModule } from "./stats/stats.module";
     AdminModule,
     WaitlistModule,
     NotificationsModule,
-    StatsModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

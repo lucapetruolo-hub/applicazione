@@ -6,13 +6,13 @@ import { Eyebrow, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 const COLUMNS = [
   {
     icon: "receipt-text" as const,
-    title: "Agenda, preventivi e fatturazione",
+    title: "Agenda e preventivi",
     text: "Gestisci richieste, agenda e fatturazione da un'unica dashboard, senza fogli di calcolo o WhatsApp sparsi.",
   },
   {
     icon: "sparkles" as const,
-    title: "Richieste già in categoria",
-    text: "Il cliente sceglie categoria, zona e descrive il lavoro con foto: ti arriva già classificata, non un generico \"quanto costa?\".",
+    title: "Richieste filtrate dall'IA",
+    text: "Il cliente carica una foto, il sistema propone categoria e fascia di budget: a te arriva già classificata, non un testo generico.",
   },
 ];
 
@@ -21,13 +21,6 @@ const COLUMNS = [
  * bianco — cambia pubblico, cambia colore, per segnalarlo visivamente
  * invece di lasciarla indistinguibile dal resto (brief "Vicinato",
  * CLAUDE.md §19).
- *
- * Testo della seconda colonna corretto rispetto alla versione precedente
- * ("Richieste filtrate dall'IA... il sistema propone categoria e fascia di
- * budget"): nessuna classificazione automatica via IA è implementata (il
- * cliente sceglie la categoria a mano in GuidedRequestForm, CLAUDE.md
- * §16/§22) — la richiesta arriva comunque già in categoria, ma perché il
- * cliente l'ha scelta, non perché un sistema l'ha dedotta da una foto.
  */
 export function ProCtaSection() {
   return (
@@ -36,7 +29,7 @@ export function ProCtaSection() {
         <YStack gap="$3">
           <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
           <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white" maxWidth={560}>
-            Meno telefonate inutili, più lavoro concluso.
+            Le richieste arrivano già qualificate.
           </Text>
         </YStack>
 

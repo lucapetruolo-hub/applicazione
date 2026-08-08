@@ -130,17 +130,16 @@ function WaitlistBlock() {
   }
 
   return (
-    <Section eyebrow="Presto disponibile" maxWidth={640}>
+    <Section eyebrow="In costruzione" maxWidth={640}>
       <YStack alignItems="center" gap="$3">
         <YStack width={56} height={56} borderRadius={28} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-          <Icon name="bell-ring" size={26} color={brand.cianografia} strokeWidth={1.5} />
+          <Icon name="wrench" size={26} color={brand.cianografia} strokeWidth={1.5} />
         </YStack>
         <Text fontFamily="$heading" fontWeight="600" fontSize="$7" textAlign="center" color={brand.grafite}>
-          Arriviamo presto nella tua zona
+          Stiamo selezionando i primi professionisti
         </Text>
         <Text fontSize="$4" color={brand.grafite70} textAlign="center" maxWidth={480}>
-          Stiamo selezionando i migliori professionisti del territorio. Lascia la tua email: ti avvisiamo non appena
-          il servizio è attivo, con un vantaggio per i primi iscritti.
+          Lascia la tua email: ti scriviamo appena la tua zona è coperta.
         </Text>
 
         {status === "done" ? (
@@ -184,11 +183,6 @@ function WaitlistBlock() {
         {status === "error" ? (
           <Text fontSize="$2" color={brand.urgenza}>
             Inserisci un'email valida.
-          </Text>
-        ) : null}
-        {status !== "done" ? (
-          <Text fontSize="$2" color={brand.grafite70}>
-            Niente spam. Solo una notifica quando siamo pronti.
           </Text>
         ) : null}
       </YStack>

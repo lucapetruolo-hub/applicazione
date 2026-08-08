@@ -7,21 +7,13 @@ import { Icon, Section, Surface, Text, XStack, YStack, brand } from "@profession
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { CategoryTile } from "@/components/CategoryTile";
 import { FadeInSection } from "@/components/FadeInSection";
-import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { HowItWorks } from "@/components/HowItWorks";
-import { PlatformStats } from "@/components/PlatformStats";
 import { QualitySection } from "@/components/QualitySection";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
 
-export default function HomeContent({
-  professionals,
-  platformStats,
-}: {
-  professionals: ProfessionalSearchResult[];
-  platformStats: { totalUsers: number; totalProfessionals: number } | null;
-}) {
+export default function HomeContent({ professionals }: { professionals: ProfessionalSearchResult[] }) {
   const router = useRouter();
 
   // Conteggio reale per categoria (professionals arriva già filtrato
@@ -36,8 +28,6 @@ export default function HomeContent({
   return (
     <YStack width="100%" alignItems="center">
       <HomeHero />
-
-      {platformStats ? <PlatformStats stats={platformStats} /> : null}
 
       <FadeInSection>
         <Section eyebrow="Categorie" title="Di cosa hai bisogno?" maxWidth={1080}>
@@ -70,17 +60,13 @@ export default function HomeContent({
       </FadeInSection>
 
       <FadeInSection>
-        <QualitySection />
-      </FadeInSection>
-
-      <FadeInSection>
         <div id="come-funziona" style={{ width: "100%" }}>
           <HowItWorks />
         </div>
       </FadeInSection>
 
       <FadeInSection>
-        <HomeFaq />
+        <QualitySection />
       </FadeInSection>
 
       <FadeInSection>
