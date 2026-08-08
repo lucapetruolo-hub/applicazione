@@ -71,7 +71,7 @@ export function HomeHero() {
         </YStack>
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
-          <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
+          <Eyebrow tone="dark">👋 Non chiamare a caso. Chiamalo giusto.</Eyebrow>
           <Text
             fontFamily="$heading"
             fontWeight="600"

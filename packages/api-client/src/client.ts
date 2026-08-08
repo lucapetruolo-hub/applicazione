@@ -146,6 +146,8 @@ export type ClientGuidedRequest = {
     professionalCounterNote: string | null;
     notes: string | null;
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
+    /** Stato della prenotazione nata da questo preventivo (solo se accettato) — richiesta esplicita dell'utente, stepper di stato "Richiesta → Preventivo inviato → Preventivo accettato → Completato". `null` finché non accettato. */
+    bookingStatus: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW" | null;
   }[];
 };
 

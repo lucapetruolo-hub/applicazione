@@ -22,6 +22,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
+import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { TimelineModal } from "@/components/TimelineModal";
 import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
@@ -748,6 +749,12 @@ function GuidedRequestCard({
               {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             </YStack>
           </YStack>
+
+          {/* Stepper di stato in stile Deliveroo (richiesta esplicita
+              dell'utente): "Richiesta → Preventivo inviato → Preventivo
+              accettato → Completato", per trasparenza totale su a che
+              punto è la richiesta. */}
+          <RequestStepper stage={computeRequestStage(request.quotes)} />
 
           {statusSummary ? (
             <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">

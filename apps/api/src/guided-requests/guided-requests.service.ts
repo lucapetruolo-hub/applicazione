@@ -244,7 +244,13 @@ export class GuidedRequestsService {
       where: { clientId },
       include: {
         category: true,
-        quotes: { include: { professionalProfile: true, items: true } },
+        // `booking` (relazione inversa 1:1 su Quote, valorizzata solo per il
+        // preventivo eventualmente accettato) serve per lo stato "Completato"
+        // dello stepper "Richiesta → Preventivo inviato → Preventivo
+        // accettato → Completato" (richiesta esplicita dell'utente, stile
+        // Deliveroo) — nessun altro punto del prodotto aveva ancora bisogno
+        // di leggere lo stato della prenotazione da qui.
+        quotes: { include: { professionalProfile: true, items: true, booking: { select: { status: true } } } },
         // A chi è stata inviata la richiesta: mostrato in /le-mie-richieste
         // (richiesta esplicita dell'utente — "deve essere chiaro a chi si è
         // inviata la richiesta"), un professionista o più in caso di fan-out.
@@ -352,6 +358,12 @@ export class GuidedRequestsService {
           professionalCounterNote: quote.professionalCounterNote,
           notes: quote.notes,
           status: quote.status,
+          // Stato della prenotazione nata da questo preventivo (solo se
+          // accettato), per lo stepper di stato — richiesta esplicita
+          // dell'utente ("Richiesta → Preventivo inviato → Preventivo
+          // accettato → Completato"). `null` finché il preventivo non è
+          // stato accettato.
+          bookingStatus: quote.booking?.status ?? null,
         })),
       };
     });

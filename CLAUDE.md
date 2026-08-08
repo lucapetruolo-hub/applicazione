@@ -5787,3 +5787,57 @@ specifico creata nello stesso script; entrambi i preventivi mostrano
 "Totale minimo"/"Totale massimo" corretti. Zero errori console. Typecheck
 pulito su tutti i package (`shared`, `api`, `api-client`, `ui`, `web`),
 build di produzione `apps/web` verde (24 route).
+
+**Eccezione esplicita alla regola "zero emoji"**: richiesta puntuale
+dell'utente di anteporre 👋 all'eyebrow dell'hero homepage ("Non chiamare
+a caso. Chiamalo giusto." → "👋 Non chiamare a caso. Chiamalo giusto.",
+`HomeHero.tsx`). La regola "zero emoji nell'interfaccia" (§10, Fase 2)
+resta la convenzione di default del progetto — questa è un'unica
+eccezione puntuale su istruzione esplicita dell'utente, non un'inversione
+della regola: nessun altro punto del sito è stato toccato.
+
+---
+
+## 32. Stato richiesta in stile Deliveroo (stepper)
+
+Richiesta esplicita dell'utente: "'richiesta' → 'Preventivo inviato' →
+'preventivo accettato' → 'Completato' — Trasparenza totale. Il cliente sa
+sempre a che punto è la sua richiesta." — nuovo stepper orizzontale a 4
+tappe in ogni card di `/le-mie-richieste`.
+
+- **`apps/web/src/components/RequestStepper.tsx`** (nuovo): componente di
+  sola resa (`RequestStepper({ stage })`, 4 cerchi collegati da linee,
+  verde+spunta per gli stadi raggiunti, contorno grigio per quelli
+  futuri) + `computeRequestStage(quotes)`, funzione pura separata che
+  deriva lo stadio (0-3) dallo stato reale — mai un valore inventato:
+  0 = richiesta esistente senza preventivi; 1 = almeno un preventivo
+  inviato (`quotes.length > 0`); 2 = un preventivo con `status ===
+  "ACCEPTED"` (accettarlo crea sempre una `Booking`); 3 = quella
+  prenotazione ha `bookingStatus === "COMPLETED"`. Un preventivo accettato
+  ma poi annullato (`CANCELED`/`NO_SHOW`) resta fermo allo stadio 2 —
+  comportamento corretto, il lavoro non è stato completato.
+- **`GuidedRequest.professionalProfileId`** (bug di esposizione a parte,
+  §31) non bastava: serviva anche lo stato della prenotazione nata
+  dall'eventuale preventivo accettato, mai esposto prima lato cliente.
+  `GuidedRequestsService.listForClient` include ora `quotes.booking`
+  (relazione inversa 1:1 già esistente sullo schema, `Quote.booking`) e
+  espone `bookingStatus: quote.booking?.status ?? null` per ogni
+  preventivo in `ClientGuidedRequest.quotes[]` (`packages/api-client`).
+- Montato in `GuidedRequestCard` subito sotto l'intestazione (categoria/
+  città/descrizione), prima del blocco "Contattati/Risposto/In attesa" già
+  esistente — la prima cosa che il cliente vede aprendo una card.
+
+Verificato end-to-end con l'API locale (non solo typecheck/build) e
+Playwright: script dedicato con 4 richieste in una combinazione
+categoria+città isolata (`climatizzazione`/`Cagliari`, zero professionisti
+preesistenti, stesso accorgimento anti-lotteria-lead di §31) portate
+rispettivamente a stadio 0 (nessun preventivo), 1 (preventivo inviato, non
+accettato), 2 (preventivo accettato → `Booking` creata, mai completata) e
+3 (stessa prenotazione portata a `COMPLETED` via `PATCH /bookings/:id/
+complete`) — `bookingStatus` confermato `null`/`null`/`CONFIRMED`/
+`COMPLETED` sui quattro casi rispettivamente. Screenshot Playwright
+desktop e mobile (390px): tutti e quattro gli stadi renderizzati
+correttamente (cerchi/linee verdi fino allo stadio raggiunto, grigi oltre),
+zero errori console. Typecheck pulito su tutti i package (`shared`, `api`,
+`api-client`, `ui`, `web`), build di produzione `apps/web` verde
+(24 route).
