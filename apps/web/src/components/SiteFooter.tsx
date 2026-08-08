@@ -65,7 +65,37 @@ export function SiteFooter() {
           </YStack>
         </XStack>
 
-        <XStack alignItems="center" gap="$2" paddingTop="$5">
+        {/* Loghi/badge di fiducia (assicurazione RC, associazione di
+            categoria, pagamenti sicuri) — richiesta esplicita dell'utente,
+            inseriti anche se non ancora implementati (stessa
+            autorizzazione di "Garanzia Piattaforma"/"Cosa succede se...",
+            §30). Badge testuali con icona invece di loghi reali di terzi
+            (Stripe/PayPal, associazioni di categoria): riprodurre un
+            marchio altrui senza un accordo reale sarebbe un problema di
+            per sé, indipendentemente dall'autorizzazione a pubblicare
+            promesse non ancora implementate. */}
+        <XStack flexWrap="wrap" gap="$4" paddingTop="$5" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              Professionisti con assicurazione RC
+            </Text>
+          </XStack>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              Aderente ad associazione di categoria
+            </Text>
+          </XStack>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="credit-card" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              Pagamenti sicuri (Stripe · PayPal)
+            </Text>
+          </XStack>
+        </XStack>
+
+        <XStack alignItems="center" gap="$2">
           <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
           <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
             © {new Date().getFullYear()} Professionisti · Tutti i diritti riservati.

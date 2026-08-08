@@ -5841,3 +5841,27 @@ correttamente (cerchi/linee verdi fino allo stadio raggiunto, grigi oltre),
 zero errori console. Typecheck pulito su tutti i package (`shared`, `api`,
 `api-client`, `ui`, `web`), build di produzione `apps/web` verde
 (24 route).
+
+---
+
+## 33. Footer — badge fiducia (assicurazione RC, associazione, pagamenti sicuri)
+
+Richiesta esplicita dell'utente, autorizzati anche se non ancora
+implementati ("Inseriscili anche se non ancora implementati") — stessa
+decisione di §30/§9 ("Garanzia Piattaforma", "Cosa succede se...").
+
+**Non loghi reali di terzi**: riprodurre il marchio di un'associazione di
+categoria o di Stripe/PayPal senza un accordo reale sarebbe un problema a
+sé, indipendente dall'autorizzazione a pubblicare promesse non ancora
+implementate — quell'autorizzazione copre il testo/la promessa, non l'uso
+del marchio altrui. `SiteFooter.tsx` mostra invece tre badge testuali con
+icona (nuove `shield`/`credit-card` nel registro icone condiviso,
+`packages/ui/src/icons.tsx`/`icons.web.tsx`, verificate presenti sia in
+`lucide-react` che `lucide-react-native`): "Professionisti con
+assicurazione RC", "Aderente ad associazione di categoria", "Pagamenti
+sicuri (Stripe · PayPal)" — riga con separatore sopra la riga di
+copyright.
+
+Verificato con Playwright: tutti e tre i badge visibili in homepage,
+zero overflow orizzontale desktop/mobile, zero errori console. Typecheck
+pulito su `packages/ui`/`apps/web`, build di produzione verde (24 route).

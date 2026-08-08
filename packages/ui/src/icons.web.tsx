@@ -48,6 +48,8 @@ import {
   Trash2,
   MessageCircle,
   Coins,
+  Shield,
+  CreditCard,
 } from "lucide-react";
 
 export const ICONS = {
@@ -95,6 +97,8 @@ export const ICONS = {
   "trash-2": Trash2,
   "message-circle": MessageCircle,
   coins: Coins,
+  shield: Shield,
+  "credit-card": CreditCard,
 } as const;
 
 export type IconName = keyof typeof ICONS;
