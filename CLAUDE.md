@@ -5437,32 +5437,61 @@ silenziosamente. Typecheck pulito su `apps/api`.
 
 ---
 
-## 24. Contenuti homepage — riscrittura tentata e poi annullata
+## 24. Contenuti homepage riscritti + "social proof" reale (ripristinati dopo un annullamento)
 
-L'utente aveva richiesto una riscrittura completa dei contenuti della
-homepage (nuovo copy su hero/categorie/qualità/come funziona, una nuova
-micro-FAQ, e due contatori reali "Utenti entrati nella piattaforma" /
-"Professionisti entrati nella piattaforma" via un nuovo endpoint pubblico
-`GET /stats/platform`). Implementata, verificata end-to-end (typecheck,
-build, Playwright desktop+mobile) e inizialmente committata — **poi
-annullata su richiesta esplicita e immediata dell'utente** ("La home page
-deve ritornare come prima"), subito dopo aver visto il risultato.
+Prima richiesta (identica nella sostanza a quella già descritta più sopra)
+implementata, poi annullata su richiesta esplicita dell'utente ("La home
+page deve ritornare come prima") subito dopo averla vista — vedi la nota
+di ripristino, mai cancellata da questo file per tenere traccia della
+decisione. Nello stesso turno successivo l'utente ha richiesto di
+**rifare** la stessa riscrittura ("Riprendi tutto"), questa volta con testo
+di riferimento più preciso sul copy realmente sostituito. Ripristinata
+identica nella struttura (stessi file, stesso `GET /stats/platform`), con
+due differenze rispetto al primo giro:
+1. **Hero**: testo scambiato rispetto al giro precedente — l'eyebrow
+   diventa "Non chiamare a caso. Chiamalo giusto." (prima era la headline)
+   e la headline diventa "Trova un professionista vicino a te" (prima era
+   l'eyebrow "Qualcuno del quartiere..."), su istruzione esplicita e
+   puntuale dell'utente. Bottoni CTA sotto il pannello verde **non
+   toccati** in questo giro (restano "Richiedi preventivo"/"Richiesta
+   urgente" — non menzionati nella lista di questo turno).
+2. **`ProCtaSection.tsx`, colonna "Richieste filtrate dall'IA"**: la
+   riscrittura precedente aveva riformulato questa colonna per rimuovere
+   la promessa di classificazione automatica via IA (mai implementata).
+   Questa volta l'utente ha fornito lo stesso testo originale ma
+   esplicitamente marcato come funzionalità futura — nuovo campo
+   `comingSoon` su `COLUMNS`, reso come pillola "In arrivo" accanto al
+   titolo della colonna quando vero. Testo della colonna riportato quasi
+   verbatim alla proposta dell'utente ("...non un 'ciao quanto costa?'.");
+   la prima colonna ("Agenda e preventivi") resta senza badge. Questo
+   risolve la riserva di onestà del giro precedente: la funzionalità non
+   è spacciata come già attiva.
+3. **Correzioni di onestà mantenute** (stesso principio del giro
+   precedente, non ridiscusso esplicitamente in questo turno): in
+   `QualitySection.tsx`, "solo chi ha davvero prenotato un intervento può
+   lasciarne una" (non "prenotato e pagato" — nessun pagamento in
+   piattaforma per il lavoro) e "non compare mai in ricerca o nel profilo
+   pubblico: lo vede solo il professionista a cui scrivi" (non "fino alla
+   prenotazione" — l'indirizzo è visibile al professionista dalla prima
+   richiesta, §12); in `HomeFaq.tsx`, la risposta a "Devo registrarmi per
+   ricevere un preventivo?" resta "Sì, serve un account gratuito..." (non
+   "No, ti registri solo se vuoi prenotare" — `GuidedRequestForm` richiede
+   già login per **inviare** la richiesta, non solo per prenotare).
 
-Riportati a prima della riscrittura: `HomeContent.tsx`, `HomeHero.tsx`,
+Stessi file coinvolti del primo giro: `HomeContent.tsx` (props
+`platformStats`, riordino Qualità→Come funziona→FAQ), `HomeHero.tsx`,
 `CategoryTile.tsx`, `QualitySection.tsx`, `HowItWorks.tsx`,
-`ProfessionalsShowcase.tsx`, `ProCtaSection.tsx`, `apps/web/src/app/
-page.tsx`, `packages/api-client/src/client.ts`, `apps/api/src/app.module.ts`
-— rimossi del tutto `HomeFaq.tsx`, `PlatformStats.tsx` e il modulo backend
-`apps/api/src/stats/` (nessun consumatore rimasto una volta tolta la
-striscia dalla home, coerente con la regola del progetto di non lasciare
-codice morto). La homepage è quindi tornata esattamente al testo/ordine
-delle sezioni precedente a questo giro (hero "Il vicino di casa che sa
-sempre chi chiamare.", conteggio "N professionisti" per categoria,
-sezione qualità dopo "Come funziona", nessuna FAQ, nessun contatore
-piattaforma, "Richiedi preventivo"/"Richiesta urgente" come CTA
-dell'hero).
+`ProfessionalsShowcase.tsx` (`WaitlistBlock`), `ProCtaSection.tsx`,
+`HomeFaq.tsx` (nuovo), `PlatformStats.tsx` (nuovo), `apps/api/src/stats/`
+(nuovo modulo, `GET /stats/platform`), `apps/web/src/app/page.tsx`,
+`packages/api-client/src/client.ts`.
 
-**Non annullato**: il controllo di compatibilità modalità (domicilio/
-online) su `QuotesService.confirmProposedDate` documentato sopra in questa
-stessa sezione — è una correzione di correttezza indipendente dalla
-homepage, non collegata alla richiesta di ripristino.
+Verificato con l'API locale (non solo typecheck) e Playwright: `GET
+/stats/platform` risponde con conteggi reali (145 utenti, 173
+professionisti nell'ambiente di sviluppo); eyebrow/headline scambiati
+correttamente a schermo; pillola "In arrivo" visibile accanto a "Richieste
+filtrate dall'IA"; ordine sezioni confermato (Categorie → Qualità → Come
+funziona → FAQ); zero overflow orizzontale desktop (1440px) e mobile
+(iPhone 13); zero errori console. Typecheck pulito su tutti i package
+(`shared`, `api`, `api-client`, `web`), build di produzione `apps/web`
+verde (24 route).

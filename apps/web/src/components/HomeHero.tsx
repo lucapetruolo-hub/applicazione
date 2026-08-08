@@ -65,7 +65,7 @@ export function HomeHero() {
         </YStack>
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
-          <Eyebrow tone="dark">👋 Qualcuno del quartiere ti aiuta oggi</Eyebrow>
+          <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
           <Text
             fontFamily="$heading"
             fontWeight="600"
@@ -76,7 +76,7 @@ export function HomeHero() {
             color="white"
             $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
-            Il vicino di casa che sa sempre chi chiamare.
+            Trova un professionista vicino a te
           </Text>
           <Text fontSize="$5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
             Idraulici, elettricisti, imbianchini e altri professionisti verificati. Cerca per zona o scegli una

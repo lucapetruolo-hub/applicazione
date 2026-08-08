@@ -651,6 +651,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ email, website }),
       }),
 
+    /** Numeri reali della piattaforma (richiesta esplicita dell'utente, "social proof" in homepage) — mai finti. */
+    platformStats: () => request<{ totalUsers: number; totalProfessionals: number }>("/stats/platform", { cache: "no-store" }),
+
     /** Conteggio notifiche non lette, per il numeretto badge nell'header (CLAUDE.md §13). */
     unreadNotificationsCount: (token: string) =>
       request<{ count: number }>("/notifications/unread-count", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

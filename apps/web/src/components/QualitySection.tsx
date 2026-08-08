@@ -6,7 +6,7 @@ const POINTS = [
   {
     icon: "file-text" as const,
     title: "Preventivo strutturato",
-    text: "Manodopera, materiali e tempistiche separati: mai una cifra sola senza dettaglio.",
+    text: "Manodopera, materiali e tempi sempre separati: mai una cifra unica senza dettaglio.",
   },
   {
     icon: "star" as const,
@@ -15,8 +15,8 @@ const POINTS = [
   },
   {
     icon: "map-pin" as const,
-    title: "Nessun indirizzo esposto senza motivo",
-    text: "In vetrina mostriamo zona e comune, mai l'indirizzo esatto di casa o del laboratorio.",
+    title: "Privacy garantita",
+    text: "Il tuo indirizzo esatto non compare mai in ricerca o nel profilo pubblico: lo vede solo il professionista a cui scrivi.",
   },
 ];
 
@@ -31,7 +31,7 @@ const POINTS = [
  */
 export function QualitySection() {
   return (
-    <Section tone="dark" eyebrow="Come garantiamo la qualità" title="Un preventivo di cui puoi fidarti" maxWidth={1080}>
+    <Section tone="dark" eyebrow="Come garantiamo la qualità" title="La trasparenza che non trovi in giro" maxWidth={1080}>
       <YStack width="100%" flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6">
         {POINTS.map((point) => (
           <YStack key={point.title} flex={1} gap="$3">
