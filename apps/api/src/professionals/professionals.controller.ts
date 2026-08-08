@@ -66,6 +66,15 @@ export class ProfessionalsController {
     });
   }
 
+  // Pubblico (nessun guard, sola lettura di dati aggregati non sensibili):
+  // alimenta il micro-tool "Quanto costa in media" in homepage. Prima di
+  // ":id" nell'ordine delle rotte — altrimenti Nest la interpreterebbe come
+  // un id di professionista.
+  @Get("services/price-index")
+  getServicePriceIndex() {
+    return this.professionalsService.getServicePriceIndex();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   getMyProfile(@Req() req: AuthenticatedRequest) {

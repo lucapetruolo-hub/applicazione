@@ -332,6 +332,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       });
     },
 
+    /** Micro-tool "Quanto costa in media" (homepage): range di prezzo reale per prestazione, mai un dato finto. */
+    getServicePriceIndex: () =>
+      request<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]>(
+        "/professionals/services/price-index",
+        { cache: "no-store" },
+      ),
+
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     getProfessionalAgenda: (id: string) =>

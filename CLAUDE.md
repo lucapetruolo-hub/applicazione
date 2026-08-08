@@ -5541,3 +5541,50 @@ perché l'indirizzo non è richiesto e come recuperarlo se serve comunque
   catturato via `page.route` con `address`/`recipientPhone` assenti).
   Typecheck pulito su tutti i package (`shared`, `api`, `api-client`,
   `web`), build di produzione `apps/web` verde (24 route).
+
+---
+
+## 26. Micro-tool "Quanto costa in media" in homepage
+
+Richiesta esplicita dell'utente: uno strumento in homepage dove si può
+cercare scrivendo (e filtrare in base a ciò che si scrive) l'elenco delle
+prestazioni realmente inserite dai professionisti nel loro profilo, con
+range di prezzo basso-alto — **basato su dati reali della piattaforma**,
+mai un dato inventato. L'elenco è visibile subito, non solo dopo aver
+scritto qualcosa.
+
+- **Backend** — nuovo `GET /professionals/services/price-index`
+  (`ProfessionalsController`/`ProfessionalsService.getServicePriceIndex`,
+  pubblico, nessun guard): raggruppa tutte le righe `ProfessionalService`
+  con almeno un prezzo impostato (esclude le voci "Su richiesta", che non
+  hanno un range da mostrare) per nome normalizzato (trim + lowercase,
+  nessuna fuzzy-match: testo libero scritto da professionisti diversi
+  resta testo libero, unire voci solo per somiglianza avrebbe rischiato di
+  accorpare prestazioni davvero diverse). Per ogni gruppo: nome (dalla
+  prima occorrenza, non normalizzato), numero di professionisti che la
+  offrono, minimo/massimo aggregato tra tutti. Esclude professionisti
+  demo/eliminati (`isDemo: false, deletedAt: null`), stessa esclusione già
+  applicata ovunque nel prodotto per non contare dati non reali.
+- **`PriceEstimatorTool.tsx`** (nuovo, homepage): un solo fetch iniziale
+  (`apiClient.getServicePriceIndex()`), filtro per sottostringa
+  case-insensitive calcolato client-side ad ogni tasto — stesso principio
+  già in uso per `ListControls`/pannello filtri ricerca (CLAUDE.md §23):
+  nessun round-trip di rete ad ogni carattere digitato, coerente con la
+  scala di lancio (§7). Sezione intera assente se non c'è ancora nessun
+  dato reale (`entries.length === 0`, stessa cautela già applicata alla
+  vetrina professionisti/social proof: mai una sezione vuota o con numeri
+  finti). Riusa `formatServicePriceRange` (`packages/shared`) già in uso
+  per le prestazioni sulla card di ricerca e sul profilo pubblico, invece
+  di duplicare la formattazione.
+- Montato in `HomeContent.tsx` subito dopo `QualitySection` e prima di
+  "Come funziona" — coerente col tema "trasparenza" della sezione
+  precedente.
+
+Verificato con l'API locale (non solo typecheck) e Playwright: `GET
+/professionals/services/price-index` risponde con dati aggregati reali
+(es. "Riparazione perdita", 7 professionisti, range reale); sezione
+visibile in homepage con l'elenco già popolato prima di scrivere;
+filtrando per "perdita" la voce resta visibile, per una stringa senza
+corrispondenze compare "Nessuna prestazione trovata per...". Typecheck
+pulito su tutti i package (`shared`, `api`, `api-client`, `web`), build
+di produzione `apps/web` verde (24 route).

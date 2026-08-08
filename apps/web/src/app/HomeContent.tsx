@@ -11,6 +11,7 @@ import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { HowItWorks } from "@/components/HowItWorks";
 import { PlatformStats } from "@/components/PlatformStats";
+import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
@@ -71,6 +72,10 @@ export default function HomeContent({
 
       <FadeInSection>
         <QualitySection />
+      </FadeInSection>
+
+      <FadeInSection>
+        <PriceEstimatorTool />
       </FadeInSection>
 
       <FadeInSection>

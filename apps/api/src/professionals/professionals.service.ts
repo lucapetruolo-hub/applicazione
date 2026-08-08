@@ -155,6 +155,54 @@ export class ProfessionalsService {
   }
 
   /**
+   * "Quanto costa in media" (richiesta esplicita dell'utente, micro-tool
+   * homepage): range di prezzo basso-alto per ogni prestazione realmente
+   * inserita dai professionisti in `/dashboard/profilo`, mai un dato
+   * inventato. Raggruppa per nome (case/trim-insensitive: la stessa
+   * prestazione può essere scritta con maiuscole diverse da professionisti
+   * diversi, ma resta testo libero — nessuna normalizzazione oltre
+   * lowercase/trim, non una fuzzy-match che rischierebbe di unire voci
+   * davvero diverse). Esclude i professionisti demo/eliminati (stessa
+   * esclusione già applicata ovunque nel prodotto) e le voci senza alcun
+   * prezzo impostato (min e max entrambi assenti — "Su richiesta": non ha
+   * un range da mostrare in questo tool, mostrarne uno sarebbe un dato
+   * finto). Calcolato in un'unica query, filtrato/ordinato lato client
+   * (stesso principio già in uso per `ListControls`/pannello filtri
+   * ricerca — scala di lancio §7, nessun query param di ricerca lato
+   * server necessario).
+   */
+  async getServicePriceIndex(): Promise<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]> {
+    const services = await this.prisma.professionalService.findMany({
+      where: {
+        professionalProfile: { isDemo: false, deletedAt: null },
+        OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
+      },
+      select: { name: true, priceMinEurCents: true, priceMaxEurCents: true },
+    });
+
+    const groups = new Map<string, { label: string; professionalCount: number; minEurCents: number; maxEurCents: number }>();
+    for (const service of services) {
+      const key = service.name.trim().toLowerCase();
+      if (!key) continue;
+      const low = service.priceMinEurCents ?? service.priceMaxEurCents;
+      const high = service.priceMaxEurCents ?? service.priceMinEurCents;
+      if (low === null || high === null || low === undefined || high === undefined) continue;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.professionalCount += 1;
+        existing.minEurCents = Math.min(existing.minEurCents, low);
+        existing.maxEurCents = Math.max(existing.maxEurCents, high);
+      } else {
+        groups.set(key, { label: service.name.trim(), professionalCount: 1, minEurCents: low, maxEurCents: high });
+      }
+    }
+
+    return Array.from(groups.values())
+      .map((g) => ({ name: g.label, professionalCount: g.professionalCount, minEurCents: g.minEurCents, maxEurCents: g.maxEurCents }))
+      .sort((a, b) => a.name.localeCompare(b.name, "it"));
+  }
+
+  /**
    * Anteprima "prossimi orari liberi" per la mini-agenda della card di
    * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it).
    * Un'unica query batch per l'intera pagina di risultati invece di una per
