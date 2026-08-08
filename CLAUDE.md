@@ -5934,3 +5934,43 @@ l'esatto bug di iOS Safari, ma la correzione rimuove la causa strutturale
 l'intervallo di scroll completo raggiungibile su Chromium. Zero errori
 console. Typecheck pulito, build di produzione `apps/web` verde
 (24 route).
+
+---
+
+## 36. Bug reale: overflow orizzontale su mobile in "Lavori accettati" (dashboard) e tab richieste/lavori
+
+Segnalato dall'utente con screenshot (riquadro giallo sulla riga di
+bottoni "Lavoro terminato"/"Annulla intervento"/"Contatta/Cronologia" che
+sfora oltre il bordo destro dello schermo). Due cause distinte, stesso
+sintomo:
+
+1. **Riga bottoni di `AcceptedJobCard`** (`apps/dashboard/page.tsx`):
+   `<XStack gap="$2" flexWrap="wrap">` aveva già `flexWrap="wrap"` ma
+   nessun vincolo di larghezza — una volta finita sulla propria riga (per
+   via del `flexWrap` del genitore, `YStack flexDirection="row" ...`), un
+   elemento flex senza `width`/`flex` esplicito si dimensiona sul
+   contenuto pieno dei suoi figli (i tre bottoni affiancati) invece di
+   adattarsi allo spazio disponibile: il proprio `flexWrap` non ha nulla
+   contro cui scattare. Stesso identico principio già documentato più
+   volte in questo file per lo stesso tipo di bug (CLAUDE.md §12,
+   `ProfessionalCard`) — qui riprodotto e confermato via Playwright:
+   overflow di pagina di 130px su un viewport di 390px, riga bottoni larga
+   484px invece dei ~318px disponibili. Corretto aggiungendo
+   `flex={1} minWidth={200}`: ora la riga si adatta allo spazio
+   disponibile sulla propria linea e il suo `flexWrap` interno funziona
+   davvero, mandando "Contatta/Cronologia" a capo quando non c'è spazio.
+2. **Righe tab "Richieste ricevute"/"Lavori accettati"** (stesso
+   `<XStack gap="$2" borderBottomWidth={1} ...>` duplicato identico in
+   `apps/dashboard/page.tsx` e `apps/le-mie-richieste/page.tsx`): nessun
+   `flexWrap` affatto — due pillole di testo generoso (con conteggio e
+   badge) non entravano affiancate su 390px. Aggiunto `flexWrap="wrap"`
+   in entrambi i file: sotto una certa larghezza la seconda pillola va a
+   capo invece di sforare.
+
+Verificato con Playwright (non solo lettura di codice), API locale reale:
+professionista con un lavoro `CONFIRMED` e `guidedRequestId` valorizzato
+(tutti e tre i bottoni visibili insieme, il caso peggiore). Prima del fix:
+overflow di pagina 130px. Dopo: overflow 0px su viewport 390px,
+screenshot di controllo con tab impilate e "Contatta/Cronologia" andato a
+capo sotto gli altri due bottoni, nessuna riga che sfora il bordo destro.
+Typecheck pulito, build di produzione `apps/web` verde (24 route).

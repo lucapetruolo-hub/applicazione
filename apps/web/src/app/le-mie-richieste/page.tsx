@@ -304,7 +304,7 @@ function LeMieRichiesteContent() {
 
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-          <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
+          <XStack gap="$2" flexWrap="wrap" borderBottomWidth={1} borderBottomColor={brand.filetto}>
             <ClientTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")} badgeCount={sectionSnapshot.richieste}>
               Le mie richieste{requests ? ` (${requests.length})` : ""}
             </ClientTabButton>

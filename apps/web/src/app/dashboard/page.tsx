@@ -420,7 +420,7 @@ function DashboardContent() {
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        <XStack gap="$2" borderBottomWidth={1} borderBottomColor={brand.filetto}>
+        <XStack gap="$2" flexWrap="wrap" borderBottomWidth={1} borderBottomColor={brand.filetto}>
           <DashboardTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")} badgeCount={sectionSnapshot.richieste}>
             Richieste ricevute{leads ? ` (${leads.length})` : ""}
           </DashboardTabButton>
@@ -643,7 +643,15 @@ function AcceptedJobCard({
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
         </YStack>
-        <XStack gap="$2" flexWrap="wrap">
+        {/* `flex={1}`/`minWidth={200}`: senza questi, questa riga (una
+            volta finita sulla propria riga per via del `flexWrap` del
+            genitore) resta larga solo quanto il contenuto dei bottoni
+            invece di adattarsi allo spazio disponibile — il proprio
+            `flexWrap="wrap"` non ha nulla contro cui scattare e i tre
+            bottoni restano tutti su una riga, sforando lo schermo su
+            mobile (stesso principio già documentato altrove in questo
+            file per lo stesso tipo di bug, CLAUDE.md §12). */}
+        <XStack gap="$2" flexWrap="wrap" flex={1} minWidth={200}>
           {booking.status === "CONFIRMED" ? (
             <>
               <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
