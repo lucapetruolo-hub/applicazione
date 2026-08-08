@@ -5738,3 +5738,52 @@ Verificato con Playwright: sezione visibile con tutti e tre i punti,
 identici al testo fornito, zero overflow orizzontale desktop/mobile, zero
 errori console. Typecheck pulito, build di produzione `apps/web` verde
 (24 route).
+
+---
+
+## 31. "Prezzo totale medio" + totali min/max nei preventivi ricevuti
+
+Richiesta esplicita dell'utente: quando il cliente invia una richiesta di
+preventivo generica (fan-out categoria+città, non diretta al profilo di un
+professionista specifico) con almeno 1 risposta, mostrare "prezzo totale
+medio"; e in ogni preventivo ricevuto, sotto le voci, un riquadro con il
+totale dei minimi e uno con il totale dei massimi.
+
+- **`GuidedRequest.professionalProfileId`** (già esistente nello schema,
+  valorizzato solo quando la richiesta nasce dal profilo di un
+  professionista specifico — vedi CLAUDE.md §14) esposto ora anche da
+  `GuidedRequestsService.listForClient`/`ClientGuidedRequest`
+  (`packages/api-client`): distingue una richiesta "generica" (`null`) da
+  una diretta, condizione richiesta esplicitamente dall'utente per il
+  calcolo del prezzo medio.
+- **`packages/shared/src/professionals.ts`**: tre nuovi helper puri —
+  `formatEurCents` (stesso pattern di formattazione già usato in
+  `formatServicePriceRange`), `quotePriceTotals` (somma minimi e massimi
+  delle voci di un preventivo: una voce "Su richiesta", senza alcun
+  estremo indicato, non contribuisce a nessuno dei due totali — non è una
+  spesa a 0€), `averageQuoteTotalEurCents` (media del punto medio
+  (min+max)/2 di più preventivi, `null` se nessuno ha un prezzo indicato).
+- **`GuidedRequestCard`** (`/le-mie-richieste`): riquadro verde "Prezzo
+  totale medio: X €" (icona `coins`, nuova nel registro icone condiviso)
+  mostrato solo se `!request.professionalProfileId && averagePriceEurCents
+  !== null` — subito sotto lo stato aggregato "Contattati/Risposto/In
+  attesa" già esistente.
+- **`QuoteCard`**: sotto le voci del preventivo, due riquadri affiancati
+  "Totale minimo"/"Totale massimo" (`quotePriceTotals(quote.items)`) —
+  nascosti se nessuna voce del preventivo ha un prezzo indicato.
+
+Verificato end-to-end con l'API locale (non solo typecheck/build) e
+Playwright: script dedicato con due professionisti in una combinazione
+categoria+città isolata (`falegname`/`Bolzano`, zero professionisti
+preesistenti — necessario per evitare che il fan-out intelligente,
+CLAUDE.md §14, selezionasse professionisti residui di test invece dei due
+nuovi tra i 63+ già presenti su categorie/città comuni) — richiesta
+generica con due voci di preventivo ricevute (7000–11000 e
+10000–15000 centesimi) → media calcolata a mano (9000+12500)/2=10750
+centesimi, confermata identica all'output di `averageQuoteTotalEurCents`;
+UI: "Prezzo totale medio: 125.00 €" visibile solo sulla richiesta generica
+(screenshot), assente sulla richiesta diretta a un professionista
+specifico creata nello stesso script; entrambi i preventivi mostrano
+"Totale minimo"/"Totale massimo" corretti. Zero errori console. Typecheck
+pulito su tutti i package (`shared`, `api`, `api-client`, `ui`, `web`),
+build di produzione `apps/web` verde (24 route).
