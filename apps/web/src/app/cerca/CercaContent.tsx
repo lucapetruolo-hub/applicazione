@@ -10,6 +10,7 @@ export function CercaContent({
   q,
   professionals,
   allProfessionals,
+  initialUrgentOnly,
 }: {
   city?: string;
   online?: boolean;
@@ -17,6 +18,8 @@ export function CercaContent({
   professionals: ProfessionalSearchResult[];
   /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa. */
   allProfessionals?: ProfessionalSearchResult[];
+  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
+  initialUrgentOnly?: boolean;
 }) {
   const title = online
     ? city
@@ -56,6 +59,7 @@ export function CercaContent({
           city={city}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
+          initialUrgentOnly={initialUrgentOnly}
         />
       </YStack>
     </YStack>

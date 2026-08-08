@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -21,6 +21,7 @@ export function ResultsListWithMap({
   city,
   header,
   defaultMode,
+  initialUrgentOnly,
 }: {
   /** Risultati della ricerca corrente (es. filtrati per città): usati per il primo render e come base della mappa. */
   professionals: ProfessionalSearchResult[];
@@ -37,6 +38,8 @@ export function ResultsListWithMap({
   header?: ReactNode;
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
+  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
+  initialUrgentOnly?: boolean;
 }) {
   const router = useRouter();
   const fallbackCenter = useMemo<[number, number] | undefined>(() => {
@@ -118,10 +121,23 @@ export function ResultsListWithMap({
   const [languageQuery, setLanguageQuery] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   // Sezioni ad accordion (richiesta esplicita dell'utente, riferimento
-  // miodottore.it): un titolo per sezione, click per espandere/richiudere
-  // — "Consulenza online" aperta di default (stesso comportamento del
-  // riferimento), le altre due chiuse finché non si clicca il titolo.
-  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | null>("online");
+  // miodottore.it): un titolo per sezione, click per espandere/richiudere —
+  // "Date disponibili" aperta di default quando si arriva già con
+  // "Intervento urgente?" preselezionato dalla homepage (per rendere subito
+  // visibile che il filtro è attivo), altrimenti "Consulenza online" come
+  // prima.
+  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | null>(
+    initialUrgentOnly ? "availability" : "online",
+  );
+
+  // Toggle "Intervento urgente?" (richiesta esplicita dell'utente): mostra
+  // solo chi ha almeno una fascia libera nelle prossime 24 ore reali, non
+  // "oggi" in senso di giorno di calendario (diverso dal filtro "Date
+  // disponibili" per giorno intero, sotto). Selezionabile già in homepage
+  // (`HomeHero`, che porta `?urgente=1` in URL) — una volta cercato, non
+  // serve più un controllo a sé sempre visibile qui: il filtro arriva già
+  // preimpostato e resta comunque regolabile dentro il pannello Filtri.
+  const [filterUrgentOnly, setFilterUrgentOnly] = useState(initialUrgentOnly ?? false);
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
   // overlay già in uso altrove nel prodotto (BookingDetailPanel,
@@ -155,7 +171,26 @@ export function ResultsListWithMap({
       .some((day) => day.times.some((slot) => slot.homeAvailable || slot.onlineAvailable));
   }
 
+  // Toggle "Intervento urgente?" (richiesta esplicita dell'utente): a
+  // differenza di "Date disponibili" (giorno di calendario intero), questa
+  // è una vera finestra scorrevole di 24 ore da adesso — combina data+ora
+  // di ogni fascia (`day.date` + `slot.time`) come "wall clock UTC", stessa
+  // convenzione già in uso in tutto il modulo agenda (mai convertita al
+  // fuso del browser).
+  function hasAvailabilityWithin24h(pro: ProfessionalSearchResult): boolean {
+    const now = Date.now();
+    const cutoff = now + 24 * 60 * 60 * 1000;
+    return pro.availabilityPreview.some((day) =>
+      day.times.some((slot) => {
+        if (!(slot.homeAvailable || slot.onlineAvailable)) return false;
+        const slotTime = new Date(`${day.date}T${slot.time}:00Z`).getTime();
+        return slotTime >= now && slotTime <= cutoff;
+      }),
+    );
+  }
+
   function matchesFilters(pro: ProfessionalSearchResult): boolean {
+    if (filterUrgentOnly && !hasAvailabilityWithin24h(pro)) return false;
     if (filterOnlineOnly && !pro.remoteAvailable) return false;
     if (filterAvailability === "today" && !hasAvailabilityWithinDays(pro, 0)) return false;
     if (filterAvailability === "3days" && !hasAvailabilityWithinDays(pro, 2)) return false;
@@ -163,7 +198,8 @@ export function ResultsListWithMap({
     return true;
   }
 
-  const activeFilterCount = (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
+  const activeFilterCount =
+    (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
   // Conteggio live per il bottone "Mostra N risultati" in fondo al pop-up
   // (richiesta esplicita dell'utente, riferimento miodottore.it).
   const filteredResultsCount = (showMap ? orderedVisible : professionals).filter(matchesFilters).length;
@@ -244,6 +280,30 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "availability" ? (
                   <div className="filters-section-content">
+                    {/* Preimpostato dal toggle "Intervento urgente?" della
+                        homepage (?urgente=1) — resta regolabile qui, non più
+                        un controllo a sé sempre visibile sopra i risultati. */}
+                    <label className="filters-toggle-row">
+                      <span>
+                        <Zap size={14} strokeWidth={1.5} color={brand.urgenza} style={{ verticalAlign: "-2px", marginRight: 6 }} />
+                        Intervento urgente: solo disponibili nelle prossime 24h
+                      </span>
+                      <span
+                        className={`filters-switch${filterUrgentOnly ? " on" : ""}`}
+                        onClick={() => setFilterUrgentOnly((v) => !v)}
+                        role="switch"
+                        aria-checked={filterUrgentOnly}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setFilterUrgentOnly((v) => !v);
+                          }
+                        }}
+                      >
+                        <span className="filters-switch-knob" />
+                      </span>
+                    </label>
                     <div className="filters-pill-row">
                       {(
                         [
@@ -307,6 +367,7 @@ export function ResultsListWithMap({
                   type="button"
                   className="filters-reset"
                   onClick={() => {
+                    setFilterUrgentOnly(false);
                     setFilterOnlineOnly(false);
                     setFilterAvailability("any");
                     setLanguageQuery("");

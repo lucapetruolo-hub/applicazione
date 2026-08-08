@@ -6,7 +6,7 @@ import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
 type PageParams = { categoria: string };
-type PageSearchParams = { citta?: string; online?: string };
+type PageSearchParams = { citta?: string; online?: string; urgente?: string };
 
 // Server-rendered ad ogni richiesta, non in cache: pagina SEO-critica (resta
 // server-rendered, non client-side — CLAUDE.md §5.4), ma niente ISG/ISR.
@@ -76,6 +76,7 @@ export default async function CategoryPage({
         online={isOnline}
         professionals={professionals}
         allProfessionals={allProfessionals}
+        initialUrgentOnly={searchParams.urgente === "1"}
       />
     </div>
   );

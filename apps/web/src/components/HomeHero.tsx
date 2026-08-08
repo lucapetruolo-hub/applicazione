@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
 import { Button, Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
@@ -20,9 +21,14 @@ import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 export function HomeHero() {
   const router = useRouter();
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
+  // Toggle "Intervento urgente?" selezionabile già in homepage (richiesta
+  // esplicita dell'utente): una volta cercato, la pagina risultati riceve il
+  // filtro già preimpostato (`?urgente=1`, letto da ResultsListWithMap) —
+  // nessun bottone equivalente serve più lì, la preselezione arriva dall'URL.
+  const [urgentOnly, setUrgentOnly] = useState(false);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    router.push(buildSearchDestination(params));
+    router.push(buildSearchDestination({ ...params, urgentOnly }));
   }
 
   return (
@@ -90,6 +96,45 @@ export function HomeHero() {
               citySuggestions={ALL_ITALIAN_CITY_NAMES}
             />
           </YStack>
+
+          {/* Toggle "Intervento urgente?" (richiesta esplicita dell'utente):
+              selezionabile già qui, prima di cercare — una volta cercato, la
+              pagina risultati riceve il filtro già preimpostato dall'URL
+              (?urgente=1), nessun bottone equivalente serve più lì. */}
+          <XStack
+            alignItems="center"
+            justifyContent="space-between"
+            gap="$3"
+            width="100%"
+            maxWidth={520}
+            marginTop="$3"
+            backgroundColor="rgba(255,255,255,0.14)"
+            borderRadius={999}
+            paddingVertical="$2"
+            paddingHorizontal="$4"
+            cursor="pointer"
+            onPress={() => setUrgentOnly((v) => !v)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: urgentOnly }}
+          >
+            <XStack alignItems="center" gap="$2" flex={1} minWidth={0}>
+              <Icon name="zap" size={16} color="white" />
+              <Text fontSize={13} fontWeight="600" color="white">
+                Intervento urgente? Solo disponibili nelle prossime 24h
+              </Text>
+            </XStack>
+            <YStack
+              width={40}
+              height={24}
+              borderRadius={999}
+              backgroundColor={urgentOnly ? brand.urgenza : "rgba(255,255,255,0.35)"}
+              padding={2}
+              justifyContent="center"
+              flexShrink={0}
+            >
+              <YStack width={18} height={18} borderRadius={999} backgroundColor="white" marginLeft={urgentOnly ? 16 : 0} />
+            </YStack>
+          </XStack>
 
           <Text fontSize={13} fontWeight="600" color="rgba(255,255,255,0.75)">
             Ricerca gratuita · Nessuna registrazione

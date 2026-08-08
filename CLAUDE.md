@@ -5650,3 +5650,58 @@ Verificato con Playwright: sezione visibile in homepage con il testo
 esatto fornito dall'utente, zero overflow orizzontale, zero errori
 console. Typecheck pulito, build di produzione `apps/web` verde
 (24 route).
+
+---
+
+## 29. Toggle "Intervento urgente?" — selezionabile dalla homepage, preimpostato in ricerca
+
+Richiesta esplicita dell'utente, in due passaggi nello stesso giro: prima
+un filtro "mostra solo chi è disponibile nelle prossime 24h" nella pagina
+risultati, poi corretto subito dopo — "Intervento urgente deve essere
+selezionabile dalla home page per la ricerca" e "una volta effettuata la
+ricerca non servirà più quel pulsante poiché andrà a selezionare già nel
+filtro pre impostando disponibilità in 24h". Il controllo si sposta quindi
+dall'essere un bottone sempre visibile sopra i risultati a una scelta fatta
+**prima** di cercare, che poi arriva già applicata.
+
+- **`HomeHero.tsx`**: nuovo toggle a pillola (icona `Zap`, sfondo
+  traslucido bianco sul pannello verde) sotto la `SearchBar`, sopra il
+  testo "Ricerca gratuita · Nessuna registrazione" — "Intervento urgente?
+  Solo disponibili nelle prossime 24h". Stato locale `urgentOnly`, passato
+  a `buildSearchDestination` insieme agli altri parametri di ricerca già
+  esistenti (città, modalità, categoria).
+- **`buildSearchDestination`** (`apps/web/src/lib/searchNavigation.ts`):
+  nuovo parametro opzionale `urgentOnly` → aggiunge `?urgente=1` alla
+  destinazione (`/cerca` o `/cerca/[categoria]`), stesso pattern già in uso
+  per `?online=1`.
+- **`/cerca/page.tsx`** e **`/cerca/[categoria]/page.tsx`**: leggono
+  `searchParams.urgente === "1"` e lo passano come `initialUrgentOnly` a
+  `CercaContent`/`CategoryContent` → `ResultsListWithMap`.
+- **`ResultsListWithMap.tsx`**: `filterUrgentOnly` (già esistente, calcolo
+  `hasAvailabilityWithin24h` — finestra scorrevole di 24 ore reali,
+  combinando data+ora di ogni fascia come "wall clock UTC", diversa dal
+  filtro "Date disponibili" che ragiona per giorno di calendario intero)
+  ora si inizializza da `initialUrgentOnly` invece che sempre `false`. Il
+  **bottone standalone sempre visibile** (introdotto nel passaggio
+  precedente dello stesso giro, mai arrivato a un commit) è stato
+  **rimosso**: il controllo si sposta dentro il pannello Filtri, come voce
+  della sezione "Date disponibili" (stesso principio: entrambi riguardano
+  la disponibilità nel tempo) — resta comunque regolabile lì (accendibile/
+  spegnibile, incluso da "Reimposta filtri") per chi vuole cambiare idea
+  dopo aver cercato, ma non è più un controllo a sé stante che ingombra la
+  barra sopra i risultati. Quando si arriva con `?urgente=1` già in URL,
+  la sezione "Date disponibili" del pannello Filtri si apre di default
+  (invece di "Consulenza online" come di norma) così il filtro attivo è
+  subito visibile aprendo il pannello. `activeFilterCount` (mostrato nel
+  bottone "Filtri (N)") include ora anche questo filtro.
+
+Verificato con Playwright (non solo lettura di codice): toggle visibile e
+funzionante in homepage (desktop e mobile, zero overflow), click su
+"Cerca" con il toggle attivo produce `/cerca?citta=Roma&urgente=1`; sulla
+pagina risultati il bottone "Filtri" mostra "(1)", il pannello si apre
+sulla sezione "Date disponibili" con l'interruttore già acceso
+("Switches ON: 1"), spegnerlo e confermare aggiorna il conteggio
+risultati dal vivo e il bottone torna a "Filtri" senza contatore. Zero
+errori console (a parte `ERR_TUNNEL_CONNECTION_FAILED`, stessa limitazione
+di rete dell'ambiente di sviluppo già documentata altrove in questo file).
+Typecheck pulito su `apps/web`, build di produzione verde (24 route).

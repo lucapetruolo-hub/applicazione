@@ -4,7 +4,7 @@ import { apiClient } from "../../lib/apiClient";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CercaContent } from "./CercaContent";
 
-type PageSearchParams = { citta?: string; online?: string; q?: string };
+type PageSearchParams = { citta?: string; online?: string; q?: string; urgente?: string };
 
 // Pagina "tutti i professionisti": raggiunta quando la ricerca non riconosce
 // una categoria specifica (solo città, solo modalità online, o nome libero).
@@ -63,6 +63,7 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
         q={searchParams.q}
         professionals={professionals}
         allProfessionals={allProfessionals}
+        initialUrgentOnly={searchParams.urgente === "1"}
       />
     </div>
   );

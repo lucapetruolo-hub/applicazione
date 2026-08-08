@@ -13,6 +13,7 @@ export function CategoryContent({
   online,
   professionals,
   allProfessionals,
+  initialUrgentOnly,
 }: {
   category: Category;
   city?: string;
@@ -20,6 +21,8 @@ export function CategoryContent({
   professionals: ProfessionalSearchResult[];
   /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa. */
   allProfessionals?: ProfessionalSearchResult[];
+  /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
+  initialUrgentOnly?: boolean;
 }) {
   // Nella colonna sinistra, in cima alla lista: allineato con l'inizio della
   // mappa a destra (stesso layout di riferimento miodottore.it — "riquadro"
@@ -65,6 +68,7 @@ export function CategoryContent({
           city={city}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
+          initialUrgentOnly={initialUrgentOnly}
         />
       </YStack>
     </YStack>
