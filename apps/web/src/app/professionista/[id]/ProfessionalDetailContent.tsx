@@ -56,6 +56,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // aggiuntiva (richiesta esplicita dell'utente). `nextAvailableSlot` è
   // cercato una sola volta sull'intera finestra di 14 giorni, usato solo
   // come scorciatoia quando la primissima finestra (offset 0) è vuota.
+  // Tab "A domicilio"/"Online" (richiesta esplicita dell'utente, stesso
+  // pattern della mini-agenda di ricerca): filtrano gli orari mostrati sotto
+  // in base alla modalità offerta su ogni fascia (slot.home/slot.online,
+  // null quando quel tipo non è offerto).
+  const [agendaMode, setAgendaMode] = useState<"HOME" | "ONLINE">("HOME");
+
   const agendaPreview = useMemo(() => {
     if (!agenda) return null;
     const allDays = agenda.days.map((day, offset) => ({
@@ -64,14 +70,16 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       dateLabel: agendaDateLabel(day.date),
       slots: day.slots,
     }));
-    const initialHasAvailable = allDays
-      .slice(0, AGENDA_PREVIEW_DAYS)
-      .some((day) => day.slots.some((slot) => slot.bookedCount < slot.maxBookings));
+    const isAvailable = (slot: (typeof allDays)[number]["slots"][number]) => {
+      const mode = agendaMode === "HOME" ? slot.home : slot.online;
+      return mode !== null && mode.bookedCount < mode.maxBookings;
+    };
+    const initialHasAvailable = allDays.slice(0, AGENDA_PREVIEW_DAYS).some((day) => day.slots.some(isAvailable));
     let nextAvailableSlot: { date: string; dateLabel: string; startTime: string; endTime: string } | null = null;
     if (!initialHasAvailable) {
       outer: for (const day of allDays) {
         for (const slot of [...day.slots].sort((a, b) => a.startTime.localeCompare(b.startTime))) {
-          if (slot.bookedCount < slot.maxBookings) {
+          if (isAvailable(slot)) {
             nextAvailableSlot = { date: day.date, dateLabel: day.dateLabel, startTime: slot.startTime, endTime: slot.endTime };
             break outer;
           }
@@ -79,14 +87,26 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       }
     }
     return { allDays, initialHasAvailable, nextAvailableSlot };
-  }, [agenda]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agenda, agendaMode]);
 
   const [agendaWindowOffset, setAgendaWindowOffset] = useState(0);
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
   const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
   const agendaOffset = Math.min(agendaWindowOffset, maxAgendaOffset);
-  const agendaWindowDays = agendaPreview?.allDays.slice(agendaOffset, agendaOffset + AGENDA_PREVIEW_DAYS) ?? [];
-  const agendaHasAvailableInWindow = agendaWindowDays.some((day) => day.slots.some((slot) => slot.bookedCount < slot.maxBookings));
+  const agendaWindowDaysRaw = agendaPreview?.allDays.slice(agendaOffset, agendaOffset + AGENDA_PREVIEW_DAYS) ?? [];
+  // Filtrati alla sola modalità attiva: le fasce che non offrono quel tipo
+  // di intervento restano fuori, come se non esistessero per questo tab.
+  const agendaWindowDays = agendaWindowDaysRaw.map((day) => ({
+    ...day,
+    slots: day.slots.filter((slot) => (agendaMode === "HOME" ? slot.home : slot.online) !== null),
+  }));
+  const agendaHasAvailableInWindow = agendaWindowDays.some((day) =>
+    day.slots.some((slot) => {
+      const mode = agendaMode === "HOME" ? slot.home : slot.online;
+      return mode !== null && mode.bookedCount < mode.maxBookings;
+    }),
+  );
   const agendaTimeRows = agendaHasAvailableInWindow
     ? Array.from(new Set(agendaWindowDays.flatMap((day) => day.slots.map((slot) => slot.startTime)))).sort()
     : [];
@@ -266,6 +286,32 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
 
+            {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente):
+                filtrano gli orari sotto in base alla modalità offerta su
+                ogni fascia. */}
+            <XStack gap="$2">
+              {(["HOME", "ONLINE"] as const).map((mode) => (
+                <XStack
+                  key={mode}
+                  paddingHorizontal="$3"
+                  paddingVertical="$2"
+                  borderRadius="$10"
+                  backgroundColor={agendaMode === mode ? brand.cianografia : brand.gesso}
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
+                  onPress={() => {
+                    setAgendaMode(mode);
+                    setAgendaWindowOffset(0);
+                  }}
+                >
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={agendaMode === mode ? "#FFFFFF" : brand.grafite70}>
+                    {mode === "HOME" ? "A domicilio" : "Online"}
+                  </Text>
+                </XStack>
+              ))}
+            </XStack>
+
             {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
               // Frecce su una riga propria, sopra le intestazioni giorno e
               // allineate a destra (richiesta esplicita dell'utente: prima
@@ -347,7 +393,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         );
                       }
                       const range = `${slot.startTime}–${slot.endTime}`;
-                      const isFull = slot.bookedCount >= slot.maxBookings;
+                      const modeInfo = agendaMode === "HOME" ? slot.home : slot.online;
+                      const isFull = !modeInfo || modeInfo.bookedCount >= modeInfo.maxBookings;
                       if (isFull) {
                         return (
                           <XStack
@@ -370,7 +417,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                           </XStack>
                         );
                       }
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}`;
+                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}`;
                       return (
                         <XStack
                           key={day.date}
@@ -405,7 +452,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </Text>
                 </YStack>
                 <Link
-                  href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${agendaPreview.nextAvailableSlot.date}&fasciaOraria=${agendaPreview.nextAvailableSlot.startTime}-${agendaPreview.nextAvailableSlot.endTime}`}
+                  href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${agendaPreview.nextAvailableSlot.date}&fasciaOraria=${agendaPreview.nextAvailableSlot.startTime}-${agendaPreview.nextAvailableSlot.endTime}&modalita=${agendaMode}`}
                   style={{ textDecoration: "none" }}
                 >
                   <XStack alignSelf="flex-start" paddingHorizontal="$4" paddingVertical="$2" borderRadius="$10" backgroundColor={brand.cianografia}>

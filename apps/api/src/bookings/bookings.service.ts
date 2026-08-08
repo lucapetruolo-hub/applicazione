@@ -55,6 +55,7 @@ export class BookingsService {
         professionalProfileId: quote.professionalProfileId,
         scheduledAt: quote.estimatedStartDate,
         scheduledEndAt: quote.estimatedEndDate,
+        serviceMode: guidedRequest.serviceMode,
         status: "CONFIRMED",
         recipientName: guidedRequest.recipientName,
         recipientSurname: guidedRequest.recipientSurname,

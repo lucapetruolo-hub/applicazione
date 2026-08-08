@@ -42,6 +42,11 @@ export default function DashboardProfiloPage() {
   // "un'idea dei lavori svolti". Distinte da imageUrl (la foto profilo
   // singola sopra).
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
+  // in ricerca): "Italiano" precompilato di default alla creazione,
+  // rimovibile/estendibile — stesso pattern chip di subTags/servizi.
+  const [spokenLanguages, setSpokenLanguages] = useState<string[]>(["Italiano"]);
+  const [newLanguage, setNewLanguage] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +82,7 @@ export default function DashboardProfiloPage() {
           setRemoteAvailable(profile.remoteAvailable);
           setImageUrl(profile.imageUrl);
           setPortfolioUrls(profile.portfolioUrls);
+          setSpokenLanguages(profile.spokenLanguages);
           // 0,0 = comune non ancora geocodificato (stessa convenzione già
           // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
           // raggio di ingaggio centrata sull'oceano davanti all'Africa.
@@ -182,6 +188,7 @@ export default function DashboardProfiloPage() {
         // professionals.service.ts#updateMyImage.
         imageUrl: imageUrl ?? undefined,
         portfolioUrls,
+        spokenLanguages,
         services: cleanedServices.map((service) => ({
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
@@ -545,6 +552,76 @@ export default function DashboardProfiloPage() {
           <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
             + Aggiungi prestazione
           </Button>
+        </YStack>
+
+        <YStack gap="$2">
+          <FieldLabel>Lingue parlate</FieldLabel>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
+          </Text>
+          <XStack flexWrap="wrap" gap="$2">
+            {spokenLanguages.map((lang, index) => (
+              <XStack
+                key={`${lang}-${index}`}
+                alignItems="center"
+                gap="$1"
+                paddingHorizontal="$3"
+                paddingVertical="$2"
+                borderRadius="$10"
+                borderWidth={1}
+                borderColor={brand.filetto}
+                backgroundColor={brand.calce}
+              >
+                <Text fontSize="$3" color={brand.grafite}>
+                  {lang}
+                </Text>
+                <XStack
+                  width={20}
+                  height={20}
+                  borderRadius="$10"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => setSpokenLanguages((prev) => prev.filter((_, i) => i !== index))}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rimuovi ${lang}`}
+                >
+                  <X size={13} strokeWidth={2} color={brand.urgenza} />
+                </XStack>
+              </XStack>
+            ))}
+          </XStack>
+          <XStack gap="$2" alignItems="center">
+            <input
+              value={newLanguage}
+              onChange={(e) => setNewLanguage(e.target.value)}
+              placeholder="Es. Inglese"
+              style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const trimmed = newLanguage.trim();
+                if (trimmed && !spokenLanguages.includes(trimmed)) {
+                  setSpokenLanguages((prev) => [...prev, trimmed]);
+                }
+                setNewLanguage("");
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="$3"
+              height={40}
+              onPress={() => {
+                const trimmed = newLanguage.trim();
+                if (trimmed && !spokenLanguages.includes(trimmed)) {
+                  setSpokenLanguages((prev) => [...prev, trimmed]);
+                }
+                setNewLanguage("");
+              }}
+            >
+              + Aggiungi
+            </Button>
+          </XStack>
         </YStack>
 
         <YStack gap="$2">

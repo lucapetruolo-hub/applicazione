@@ -14,12 +14,23 @@ export type ProfessionalCardService = {
   priceMaxEurCents: number | null;
 };
 
-/** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
+/**
+ * Un orario configurato in un giorno della mini-agenda — disponibilità
+ * indipendente per modalità (richiesta esplicita dell'utente: tab "A
+ * domicilio"/"Online" sopra "Prossima disponibilità", ognuna mostra solo gli
+ * orari con quella modalità offerta e la relativa capienza residua).
+ * `allowsHome`/`allowsOnline` = il professionista offre quel tipo su questa
+ * fascia; `homeAvailable`/`onlineAvailable` = offerto E con capienza ancora
+ * residua per quel tipo.
+ */
 export type ProfessionalCardAvailabilitySlot = {
   time: string;
   /** Fine della fascia: mostrata insieme a `time` come intervallo completo, non solo l'inizio. */
   endTime: string;
-  available: boolean;
+  allowsHome: boolean;
+  allowsOnline: boolean;
+  homeAvailable: boolean;
+  onlineAvailable: boolean;
 };
 
 /** Un giorno della mini-agenda ("Oggi"/"Domani"/...): ogni fascia configurata, libera o al completo. */
@@ -67,8 +78,19 @@ export type ProfessionalCardProps = {
   services?: ProfessionalCardService[];
   /** Griglia agenda (Oggi + 3 giorni), ogni fascia configurata a prescindere dalla capienza — vuoto/assente nasconde la mini-agenda. */
   availabilityPreview?: ProfessionalCardAvailabilityDay[];
-  /** Mostrato al posto della griglia quando nessun giorno della finestra ha orari liberi. */
-  nextAvailableSlot?: ProfessionalCardNextAvailableSlot | null;
+  /**
+   * Presenti solo quando availabilityPreview non ha nessun orario libero per
+   * quella specifica modalità — due campi distinti (non uno solo) perché
+   * "prossimo libero" dipende dal tab attivo (A domicilio/Online).
+   */
+  nextAvailableSlotHome?: ProfessionalCardNextAvailableSlot | null;
+  nextAvailableSlotOnline?: ProfessionalCardNextAvailableSlot | null;
+  /**
+   * Tab di default (richiesta esplicita dell'utente: prescelto in base al
+   * tipo di ricerca fatto dalla homepage — "a domicilio" se cercato a
+   * domicilio, "online" se cercato online). Default "HOME" se assente.
+   */
+  defaultMode?: "HOME" | "ONLINE";
   onPress?: () => void;
   /** Click su una singola cella orario libera (o sul bottone "Mostra orari disponibili"): non deve propagare al click della card intera. Naviga sempre al profilo, non prenota mai direttamente da qui. */
   onSlotPress?: (date: string, time: string) => void;
@@ -87,7 +109,9 @@ export function ProfessionalCard({
   remoteAvailable,
   services,
   availabilityPreview,
-  nextAvailableSlot,
+  nextAvailableSlotHome,
+  nextAvailableSlotOnline,
+  defaultMode,
   onPress,
   onSlotPress,
   icon,
@@ -97,6 +121,13 @@ export function ProfessionalCard({
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);
 
+  // Tab "A domicilio"/"Online" (richiesta esplicita dell'utente): filtrano
+  // gli orari mostrati in base alla modalità offerta su quella fascia — "A
+  // domicilio" mostra le fasce con la spunta domicilio (sola o insieme a
+  // online), "Online" quelle con la spunta online (sola o insieme a
+  // domicilio). Prescelto in base al tipo di ricerca del cliente.
+  const [activeMode, setActiveMode] = useState<"HOME" | "ONLINE">(defaultMode ?? "HOME");
+
   // Finestra di AGENDA_VISIBLE_DAYS colonne che scorre sui giorni già
   // scaricati (fino a 14, vedi ProfessionalsService.buildAvailabilityPreviews)
   // — richiesta esplicita dell'utente di poter navigare anche ai giorni
@@ -105,8 +136,15 @@ export function ProfessionalCard({
   const totalDays = availabilityPreview?.length ?? 0;
   const maxOffset = Math.max(0, totalDays - AGENDA_VISIBLE_DAYS);
   const offset = Math.min(windowOffset, maxOffset);
-  const visibleDays = (availabilityPreview ?? []).slice(offset, offset + AGENDA_VISIBLE_DAYS);
-  const hasAvailableInWindow = visibleDays.some((day) => day.times.some((slot) => slot.available));
+  const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
+  const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
+  const visibleDaysRaw = (availabilityPreview ?? []).slice(offset, offset + AGENDA_VISIBLE_DAYS);
+  // Filtrate alla sola modalità attiva: un giorno mostra solo le fasce che
+  // offrono quel tipo di intervento, le altre restano "-" come se non
+  // esistessero per questo tab.
+  const visibleDays = visibleDaysRaw.map((day) => ({ ...day, times: day.times.filter((slot) => slot[allowsKey]) }));
+  const hasAvailableInWindow = visibleDays.some((day) => day.times.some((slot) => slot[availableKey]));
+  const nextAvailableSlot = activeMode === "HOME" ? nextAvailableSlotHome : nextAvailableSlotOnline;
   // Unione di tutti gli orari configurati su almeno un giorno della finestra
   // visibile, ordinata: righe della griglia. Un giorno senza quell'orario
   // mostra "-".
@@ -216,6 +254,35 @@ export function ProfessionalCard({
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
             // (borderLeftWidth resta 0 solo se non c'è spazio, gestito dal wrap).
           >
+            {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente,
+                stesso pattern a pillola di SearchBar): filtrano gli orari
+                mostrati sotto in base alla modalità offerta su ogni fascia. */}
+            <XStack
+              gap={4}
+              onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+            >
+              {(["HOME", "ONLINE"] as const).map((mode) => (
+                <XStack
+                  key={mode}
+                  paddingHorizontal="$2"
+                  paddingVertical={4}
+                  borderRadius="$10"
+                  backgroundColor={activeMode === mode ? brand.cianografia : brand.gesso}
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
+                  onPress={(e: { stopPropagation: () => void }) => {
+                    e.stopPropagation();
+                    setActiveMode(mode);
+                    setWindowOffset(0);
+                  }}
+                >
+                  <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={activeMode === mode ? "#FFFFFF" : brand.grafite70}>
+                    {mode === "HOME" ? "A domicilio" : "Online"}
+                  </Text>
+                </XStack>
+              ))}
+            </XStack>
             <XStack alignItems="center" justifyContent="space-between" gap="$2">
               <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
                 Prossima disponibilità
@@ -296,7 +363,7 @@ export function ProfessionalCard({
                         );
                       }
                       const range = `${slot.time}–${slot.endTime}`;
-                      if (!slot.available) {
+                      if (!slot[availableKey]) {
                         return (
                           <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
                             <Text

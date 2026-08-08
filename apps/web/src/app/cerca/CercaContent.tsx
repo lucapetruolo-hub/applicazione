@@ -55,6 +55,7 @@ export function CercaContent({
           showMap
           city={city}
           header={header}
+          defaultMode={online ? "ONLINE" : "HOME"}
         />
       </YStack>
     </YStack>

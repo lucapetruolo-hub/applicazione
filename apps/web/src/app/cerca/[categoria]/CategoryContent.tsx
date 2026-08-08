@@ -64,6 +64,7 @@ export function CategoryContent({
           showMap
           city={city}
           header={header}
+          defaultMode={online ? "ONLINE" : "HOME"}
         />
       </YStack>
     </YStack>

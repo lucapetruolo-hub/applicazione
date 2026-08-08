@@ -1023,6 +1023,12 @@ function LeadCard({
   // — ogni voce ha il proprio range di prezzo, non più due campi fissi
   // manodopera/materiali — richiesta esplicita dell'utente.
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
+  // Solo le fasce che offrono la stessa modalità della richiesta originale
+  // (richiesta esplicita dell'utente: "differenzia sempre se si è partiti
+  // con una consulenza online... devono uscire solo le date e fasce orarie
+  // disponibili online") — capienze home/online indipendenti, null (richieste
+  // precedenti a questa funzionalità) ricade su "a domicilio".
+  const modeAvailableSlots = availableSlots.filter((s) => (lead.guidedRequest.serviceMode === "ONLINE" ? s.onlineAvailable : s.homeAvailable));
   // Se la richiesta è nata da una fascia generica dell'agenda pubblica
   // (preferredDate/preferredTimeSlot), preseleziona quella stessa fascia
   // invece della prima disponibile qualsiasi — richiesta esplicita
@@ -1033,12 +1039,12 @@ function LeadCard({
   // altro impegno nel frattempo).
   const requestedSlotKey =
     lead.guidedRequest.preferredDate && lead.guidedRequest.preferredTimeSlot
-      ? availableSlots.find(
+      ? modeAvailableSlots.find(
           (s) => s.date === lead.guidedRequest.preferredDate && `${s.startTime}-${s.endTime}` === lead.guidedRequest.preferredTimeSlot,
         )
       : undefined;
   const [selectedSlotKey, setSelectedSlotKey] = useState(
-    requestedSlotKey ? slotKey(requestedSlotKey) : availableSlots[0] ? slotKey(availableSlots[0]) : "",
+    requestedSlotKey ? slotKey(requestedSlotKey) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "",
   );
   // Ripiego se l'agenda non ha fasce esatte libere nei prossimi 14gg (es.
   // professionista che non l'ha ancora impostata): una data libera come
@@ -1120,8 +1126,8 @@ function LeadCard({
     // viene da una fascia reale dell'agenda, non dall'input libero di
     // fallback (nessun concetto di "fine" per una data indicata a mano).
     let estimatedEndDate: string | undefined;
-    if (availableSlots.length > 0) {
-      const slot = availableSlots.find((s) => slotKey(s) === selectedSlotKey);
+    if (modeAvailableSlots.length > 0) {
+      const slot = modeAvailableSlots.find((s) => slotKey(s) === selectedSlotKey);
       if (!slot) {
         setError("Scegli un orario dalla tua agenda.");
         return;
@@ -1191,8 +1197,8 @@ function LeadCard({
     if (!lead.quote) return;
     const proposedDate = lead.quote.clientProposedDate?.slice(0, 10);
     const proposedTime = lead.quote.clientProposedDate?.slice(11, 16);
-    const matchingSlot = availableSlots.find((s) => s.date === proposedDate && s.startTime === proposedTime);
-    setCounterSlotKey(matchingSlot ? slotKey(matchingSlot) : availableSlots[0] ? slotKey(availableSlots[0]) : "");
+    const matchingSlot = modeAvailableSlots.find((s) => s.date === proposedDate && s.startTime === proposedTime);
+    setCounterSlotKey(matchingSlot ? slotKey(matchingSlot) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
     setCounterNote("");
     setError(null);
     setShowCounterForm(true);
@@ -1200,7 +1206,7 @@ function LeadCard({
 
   async function handleCounterPropose() {
     if (!lead.quote) return;
-    const slot = availableSlots.find((s) => slotKey(s) === counterSlotKey);
+    const slot = modeAvailableSlots.find((s) => slotKey(s) === counterSlotKey);
     if (!slot) {
       setError("Scegli un orario dalla tua agenda.");
       return;
@@ -1239,7 +1245,7 @@ function LeadCard({
     setNotes(lead.quote.notes ?? "");
     const quoteDate = lead.quote.estimatedStartDate.slice(0, 10);
     const quoteTime = lead.quote.estimatedStartDate.slice(11, 16);
-    const matchingSlot = availableSlots.find((s) => s.date === quoteDate && s.startTime === quoteTime);
+    const matchingSlot = modeAvailableSlots.find((s) => s.date === quoteDate && s.startTime === quoteTime);
     if (matchingSlot) {
       setSelectedSlotKey(slotKey(matchingSlot));
     } else {
@@ -1553,9 +1559,9 @@ function LeadCard({
             </XStack>
           ) : (
             <YStack gap="$2" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-              {availableSlots.length > 0 ? (
+              {modeAvailableSlots.length > 0 ? (
                 <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
-                  {availableSlots.map((slot) => {
+                  {modeAvailableSlots.map((slot) => {
                     const key = slotKey(slot);
                     const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}`;
                     return (
@@ -1747,13 +1753,13 @@ function LeadCard({
             <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
               Data di inizio
             </Text>
-            {availableSlots.length > 0 ? (
+            {modeAvailableSlots.length > 0 ? (
               <select
                 value={selectedSlotKey}
                 onChange={(e) => setSelectedSlotKey(e.target.value)}
                 style={{ ...smallInputStyle, alignSelf: "flex-start" }}
               >
-                {availableSlots.map((slot) => (
+                {modeAvailableSlots.map((slot) => (
                   <option key={slotKey(slot)} value={slotKey(slot)}>
                     {slotLabel(slot)}
                   </option>

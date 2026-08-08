@@ -5246,18 +5246,142 @@ bug originale. Typecheck pulito su tutti i package (`shared`, `database`,
 `api-client`, `api`, `web`), build di produzione `apps/web` verde (24
 route).
 
-**Ancora da fare, richiesto esplicitamente ma non affrontato in questo
-giro per lo scope troppo ampio** (elencato qui come promemoria, non
-implementato):
-- Pannello filtri di ricerca in stile miodottore.it sopra il bottone
-  "Mostra mappa" nei risultati (`/cerca`, `/cerca/[categoria]`):
-  "Consulenza online" (mostra tutti i professionisti che la offrono),
-  "Date disponibili" (Oggi / Entro 3 giorni / Qualsiasi giorno, quest'ultima
-  selezionata di default), "Lingua parlata" (campo di ricerca testuale +
-  elenco selezionabile delle sole lingue effettivamente parlate tra i
-  professionisti nei risultati correnti) — richiede un nuovo campo
-  "lingue parlate" (multiplo, "Italiano" precompilato come unica lingua
-  di default, rimovibile) in `/dashboard/profilo`, non ancora presente
-  nello schema.
-- Estensione del modello di disponibilità già descritta sopra (fasce con
-  online/domicilio indipendenti e capienza massima separata per tipo).
+## 23. Capienza indipendente per modalità (a domicilio/online), filtro data/orario a valle, pannello filtri ricerca + lingue parlate
+
+Completamento dei tre punti lasciati in sospeso a fine §22 (richiesta
+esplicita dell'utente "Continua tutto", ripresa dopo la sessione
+precedente).
+
+**Capienza indipendente per modalità sulla singola fascia oraria** —
+richiesta esplicita dell'utente, testo originale: due caselle "a
+domicilio"/"online" nel pop-up di modifica fascia (`SlotEditorModal`),
+almeno una obbligatoria per salvare, ciascuna con il proprio numero
+massimo di prenotazioni — non una sola capienza condivisa. Un professionista
+può quindi offrire, sulla stessa fascia oraria, es. 1 intervento a
+domicilio E 5 consulenze online: due pool di capienza indipendenti, non
+uno condiviso.
+- **Schema**: `AvailabilitySlot.maxBookings` (singolo) sostituito da
+  `allowsHome`/`allowsOnline` (booleani) + `homeMaxBookings`/
+  `onlineMaxBookings` (interi opzionali, valorizzati solo quando il
+  rispettivo `allows*` è vero) — `prisma db push --accept-data-loss`
+  applicato in locale (263 valori `maxBookings` esistenti persi,
+  accettabile: dati di sviluppo). `Booking.serviceMode` (nuovo campo
+  nullable) copiato dalla `GuidedRequest`/richiesta originale al momento
+  della creazione, in tutti e tre i punti che creano una `Booking`
+  (`BookingsService.createFromQuote`, `QuotesService.confirmProposedDate`) —
+  necessario per contare le prenotazioni esistenti separatamente per
+  modalità (`countBookingsInSlot`, `apps/api/src/professionals/
+  professionals.service.ts`, esteso con un parametro `mode` opzionale).
+- **Validazione** (`packages/shared/src/schemas.ts`,
+  `availabilitySlotSchema`): `.refine` che rifiuta l'intero payload se né
+  `allowsHome` né `allowsOnline` sono veri — stessa validazione applicata
+  lato client (errore "dal vivo" nel pop-up, bottone "Salva" disabilitato)
+  e lato server (`ZodValidationPipe`).
+- **`SlotEditorModal`** (`apps/web/src/app/dashboard/agenda/page.tsx`):
+  due caselle "A domicilio"/"Online", ciascuna con un campo numerico
+  capienza visibile solo se la casella è spuntata. `SlotChip` mostra una
+  piccola icona `video` quando la fascia offre la modalità online
+  (richiesta esplicita dell'utente: "deve comparire il simbolo online in
+  piccolo sull'orario").
+- **Backend, tutti i punti che leggevano/scrivevano `maxBookings`
+  riscritti mode-aware**: `ProfessionalsService.buildAvailabilityPreviews`
+  (mini-agenda di ricerca, ora calcola `homeAvailable`/`onlineAvailable`
+  indipendenti e due `nextAvailableSlot` separati, uno per modalità),
+  `getPublicAgenda` (`home`/`online` due oggetti `{maxBookings,
+  bookedCount}` indipendenti per fascia, `null` quando quel tipo non è
+  offerto), `getMyAvailableSlots` (usato per scegliere la data di un
+  preventivo: `homeAvailable`/`onlineAvailable` booleani per fascia),
+  `upsertMyAvailability`/`getMyAvailability`, `bookAgendaSlot` (dormiente,
+  §20 — capacità controllata su entrambe le modalità). Nel modulo
+  `guided-requests`: `resolveGenericSlot` accetta ora un parametro
+  `serviceMode` obbligatorio e valida che la fascia offra proprio quella
+  modalità (`homeMaxBookings`/`onlineMaxBookings`, 400 esplicito se
+  `null`), il riconteggio capienza dentro la transazione Serializable in
+  `create()` filtra ora anche per `serviceMode`. Nel modulo `quotes`:
+  `resolveFreeExactSlot` (usata da `proposeDate`/`confirmProposedDate`/
+  `counterProposeDate`) accetta lo stesso parametro e applica la stessa
+  validazione — bug reale trovato e corretto durante l'implementazione: un
+  cliente/professionista poteva proporre una fascia che non offriva affatto
+  la modalità della richiesta originale (es. una fascia "solo online" per
+  una richiesta "a domicilio"), ora rifiutato con 400 e messaggio
+  esplicito.
+- **Ricerca (`ProfessionalCard`, `packages/ui`) e profilo pubblico
+  (`ProfessionalDetailContent`)**: due tab "A domicilio"/"Online" sopra
+  "Prossima disponibilità"/l'agenda — richiesta esplicita dell'utente. Il
+  tab attivo filtra la griglia a sole le fasce che offrono quella
+  modalità (`allowsHome`/`allowsOnline`) e la relativa capienza residua
+  (`homeAvailable`/`onlineAvailable`); "Prossimo giorno disponibile" è
+  calcolato per modalità (`nextAvailableSlotHome`/`nextAvailableSlotOnline`,
+  ProfessionalCard) o dal vivo sui 14 giorni già scaricati
+  (ProfessionalDetailContent). Tab di default sulla card di ricerca
+  prescelto in base a come si è cercato dalla homepage/pagina risultati
+  (`ResultsListWithMap`/`CercaContent`/`CategoryContent` ricevono e
+  propagano `defaultMode` da `online` — lo stesso booleano già usato per
+  il titolo/copy della pagina risultati).
+- **Filtro mode-aware anche nelle fasi successive della trattativa**
+  (richiesta esplicita dell'utente: "differenzia sempre se si è partiti
+  con una consulenza online anche nelle successive modifiche della data e
+  ora"): `GuidedRequestForm.flattenPickableSlots` (orario preferito
+  facoltativo quando si arriva dal profilo di un professionista senza una
+  fascia già bloccata in URL) filtra ora per la modalità scelta nel form
+  (`serviceMode`), con un nuovo `?modalita=` in coda ai link delle pillole
+  dell'agenda pubblica (letto come prefill, non bloccato — il backend
+  rivalida comunque). `LeadCard` (`/dashboard`, invio preventivo/
+  "Modifica" su una proposta) filtra `availableSlots` con
+  `modeAvailableSlots` in base a `lead.guidedRequest.serviceMode`.
+  `QuoteCard` (`/le-mie-richieste`, "Modifica"/proponi altra data) riceve
+  un nuovo prop `serviceMode` (da `request.serviceMode`) e filtra allo
+  stesso modo `startChoosingDate`. Un valore `serviceMode` nullo (richieste
+  precedenti a questa funzionalità) ricade sempre su "a domicilio" per
+  compatibilità.
+- Verificato end-to-end con l'API locale (non solo typecheck): fascia con
+  capienza online=2/domicilio=1 indipendenti — due richieste online
+  accettate, la terza rifiutata (409, capienza online esaurita), una
+  richiesta a domicilio sulla stessa fascia comunque accettata (pool
+  indipendente), una seconda a domicilio rifiutata (409, capienza
+  domicilio esaurita a sua volta); due fasce separate (una solo-domicilio,
+  una solo-online) — proporre la fascia sbagliata per la modalità della
+  richiesta rifiutato con 400 esplicito, proporre quella giusta accettato,
+  `GET /professionals/me/available-slots` conferma `homeAvailable`/
+  `onlineAvailable` corretti e indipendenti per le due fasce. UI
+  (Playwright): pop-up fascia con le due caselle e relativo errore di
+  validazione quando nessuna è spuntata, tab "A domicilio"/"Online"
+  presenti sia sulla card di ricerca sia sul profilo pubblico.
+
+**Pannello filtri di ricerca + lingue parlate** — richiesta esplicita
+dell'utente, riferimento miodottore.it (screenshot forniti): bottone
+"Filtri" sopra "Mostra mappa" in `/cerca`/`/cerca/[categoria]`
+(`ResultsListWithMap.tsx`), apre un pannello con tre filtri — tutti
+calcolati client-side sui risultati già scaricati (stesso principio già
+seguito per `ListControls`/filtro-ordina-mostra nelle liste
+richieste/prenotazioni, coerente con la scala di lancio, CLAUDE.md §7):
+nessun nuovo query param lato server.
+- **"Consulenza online"**: checkbox, filtra a `remoteAvailable === true`.
+- **"Date disponibili"**: Oggi / Entro 3 giorni / Qualsiasi giorno
+  (default) — controlla se `availabilityPreview` (già scaricato per la
+  mini-agenda di ogni card) ha almeno una fascia libera (home o online)
+  entro la finestra di giorni scelta.
+- **"Lingua parlata"**: campo di ricerca testuale che filtra un elenco a
+  pillole delle sole lingue effettivamente parlate tra i professionisti
+  nei risultati correnti (non un elenco fisso) — click seleziona (singola
+  selezione, click di nuovo per deselezionare).
+- **Nuovo campo `ProfessionalProfile.spokenLanguages`** (Prisma,
+  `String[] @default(["Italiano"])`): editabile in `/dashboard/profilo`,
+  nuova sezione "Lingue parlate" — stesso pattern chip+tasto rimuovi rosso
+  già in uso per le prestazioni, campo di testo libero + "+ Aggiungi"
+  (anche invio con Enter). Esposto su `ProfessionalSearchResult` (ricerca,
+  profilo pubblico, professionisti salvati) e `MyProfessionalProfile`
+  (dashboard). Nessun elenco fisso di lingue nel progetto: stesso principio
+  già seguito per `subTags`/`portfolioUrls` (array libero, non un enum).
+- Verificato end-to-end con l'API locale (non solo typecheck): profilo
+  creato con `spokenLanguages: ["Italiano"]` di default, esposto
+  correttamente da `GET /professionals/:id` e `GET /professionals/me`. UI
+  (Playwright): bottone "Filtri" presente sopra i risultati, pannello che
+  mostra correttamente "Consulenza online", "Date disponibili" (tre
+  pillole) e "Lingua parlata" (campo + pillola "Italiano" del
+  professionista di test).
+
+Verificato in blocco per l'intero giro (mode-aware capacity + pannello
+filtri): typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+verde (24 route).

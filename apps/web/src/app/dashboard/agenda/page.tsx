@@ -25,7 +25,22 @@ import {
 // fascia (richiesta esplicita dell'utente: vale solo per quella data, non
 // più per ogni <dayOfWeek> per sempre) — `null`/assente solo per le fasce
 // ricorrenti create prima di questa funzionalità.
-type SlotDraft = { id?: string; dayOfWeek: number; date: string | null; start: string; end: string; maxBookings: number; hasUpcomingBooking?: boolean };
+// Capienza indipendente per modalità (richiesta esplicita dell'utente: due
+// caselle "A domicilio"/"Online", almeno una obbligatoria, con capienza
+// separata) — homeMax/onlineMax valorizzati solo quando il rispettivo
+// allows* è vero.
+type SlotDraft = {
+  id?: string;
+  dayOfWeek: number;
+  date: string | null;
+  start: string;
+  end: string;
+  allowsHome: boolean;
+  allowsOnline: boolean;
+  homeMax: number | null;
+  onlineMax: number | null;
+  hasUpcomingBooking?: boolean;
+};
 type AgendaTab = "disponibilita" | "prenotazioni";
 
 // dayOfWeek segue date.getUTCDay(): 0=domenica...6=sabato, stessa convenzione
@@ -34,6 +49,11 @@ const WEEKDAY_FULL_LABELS = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "G
 
 function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart < bEnd && bStart < aEnd;
+}
+
+/** Una fascia è "generica" (bordo tratteggiato ottone) se una delle due capienze indipendenti supera 1. */
+function isSlotGeneric(slot: SlotDraft): boolean {
+  return (slot.homeMax ?? 0) > 1 || (slot.onlineMax ?? 0) > 1;
 }
 
 const BOOKING_STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
@@ -69,7 +89,13 @@ export default function DashboardAgendaPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draftStart, setDraftStart] = useState("09:00");
   const [draftEnd, setDraftEnd] = useState("13:00");
-  const [draftMax, setDraftMax] = useState("1");
+  // Due caselle indipendenti (richiesta esplicita dell'utente: "a
+  // domicilio"/"online", almeno una obbligatoria per salvare), con la
+  // propria capienza massima ciascuna.
+  const [draftAllowsHome, setDraftAllowsHome] = useState(true);
+  const [draftAllowsOnline, setDraftAllowsOnline] = useState(false);
+  const [draftHomeMax, setDraftHomeMax] = useState("1");
+  const [draftOnlineMax, setDraftOnlineMax] = useState("1");
   // Spunta "ripeti per tutti i <giorno> del mese" (richiesta esplicita
   // dell'utente): solo per una fascia nuova, mai per una già esistente in
   // modifica — resettata ad ogni apertura dell'editor.
@@ -132,7 +158,10 @@ export default function DashboardAgendaPage() {
             date: s.date,
             start: s.startTime,
             end: s.endTime,
-            maxBookings: s.maxBookings,
+            allowsHome: s.allowsHome,
+            allowsOnline: s.allowsOnline,
+            homeMax: s.homeMaxBookings,
+            onlineMax: s.onlineMaxBookings,
             hasUpcomingBooking: s.hasUpcomingBooking,
           })),
         );
@@ -187,7 +216,7 @@ export default function DashboardAgendaPage() {
     const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
     setError(slotEditorLiveError(dayOfWeek, editIndex));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftStart, draftEnd, editingKey, slots]);
+  }, [draftStart, draftEnd, draftAllowsHome, draftAllowsOnline, editingKey, slots]);
 
   async function handleBookingAction(status: "CONFIRMED" | "COMPLETED" | "CANCELED") {
     if (!token || !selectedBooking) return;
@@ -296,7 +325,10 @@ export default function DashboardAgendaPage() {
     setEditingKey(`new-${dateStr}`);
     setDraftStart("09:00");
     setDraftEnd("13:00");
-    setDraftMax("1");
+    setDraftAllowsHome(true);
+    setDraftAllowsOnline(false);
+    setDraftHomeMax("1");
+    setDraftOnlineMax("1");
     setRepeatForMonth(false);
   }
 
@@ -307,7 +339,10 @@ export default function DashboardAgendaPage() {
     setEditingKey(`edit-${index}`);
     setDraftStart(slot.start);
     setDraftEnd(slot.end);
-    setDraftMax(String(slot.maxBookings));
+    setDraftAllowsHome(slot.allowsHome);
+    setDraftAllowsOnline(slot.allowsOnline);
+    setDraftHomeMax(String(slot.homeMax ?? 1));
+    setDraftOnlineMax(String(slot.onlineMax ?? 1));
     setRepeatForMonth(false);
   }
 
@@ -353,6 +388,9 @@ export default function DashboardAgendaPage() {
     if (draftEnd <= draftStart) {
       return "L'orario di fine deve essere dopo l'orario di inizio.";
     }
+    if (!draftAllowsHome && !draftAllowsOnline) {
+      return "Seleziona almeno una modalità (a domicilio o online).";
+    }
     const dateStr = editingDateStr();
     const overlaps = slotsSharingOccurrence(dateStr, dayOfWeek, excludeIndex).some(({ slot }) => slotsOverlap(draftStart, draftEnd, slot.start, slot.end));
     return overlaps ? "Questa fascia si sovrappone a un'altra già impostata per questo giorno." : null;
@@ -371,7 +409,12 @@ export default function DashboardAgendaPage() {
 
   function commitSlotEdit(dayOfWeek: number) {
     const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
-    const maxBookings = Math.max(1, Math.min(20, Math.round(Number(draftMax)) || 1));
+    if (!draftAllowsHome && !draftAllowsOnline) {
+      setError("Seleziona almeno una modalità (a domicilio o online).");
+      return;
+    }
+    const homeMax = draftAllowsHome ? Math.max(1, Math.min(20, Math.round(Number(draftHomeMax)) || 1)) : null;
+    const onlineMax = draftAllowsOnline ? Math.max(1, Math.min(20, Math.round(Number(draftOnlineMax)) || 1)) : null;
 
     if (editingKey?.startsWith("new-")) {
       const anchorDateStr = editingKey.slice(4);
@@ -390,7 +433,19 @@ export default function DashboardAgendaPage() {
           return;
         }
       }
-      setSlots((prev) => [...prev, ...targetDates.map((date) => ({ dayOfWeek, date, start: draftStart, end: draftEnd, maxBookings }))]);
+      setSlots((prev) => [
+        ...prev,
+        ...targetDates.map((date) => ({
+          dayOfWeek,
+          date,
+          start: draftStart,
+          end: draftEnd,
+          allowsHome: draftAllowsHome,
+          allowsOnline: draftAllowsOnline,
+          homeMax,
+          onlineMax,
+        })),
+      ]);
     } else if (editIndex !== null) {
       const original = slots[editIndex];
       if (!original) return;
@@ -424,14 +479,26 @@ export default function DashboardAgendaPage() {
           }
         }
 
-        setSlots((prev) => prev.map((s, i) => (matchingIndexes.has(i) ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
+        setSlots((prev) =>
+          prev.map((s, i) =>
+            matchingIndexes.has(i)
+              ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
+              : s,
+          ),
+        );
       } else {
         const liveError = slotEditorLiveError(dayOfWeek, editIndex);
         if (liveError) {
           setError(liveError);
           return;
         }
-        setSlots((prev) => prev.map((s, i) => (i === editIndex ? { ...s, start: draftStart, end: draftEnd, maxBookings } : s)));
+        setSlots((prev) =>
+          prev.map((s, i) =>
+            i === editIndex
+              ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
+              : s,
+          ),
+        );
       }
     }
     setEditingKey(null);
@@ -572,7 +639,10 @@ export default function DashboardAgendaPage() {
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.start,
           endTime: slot.end,
-          maxBookings: slot.maxBookings,
+          allowsHome: slot.allowsHome,
+          allowsOnline: slot.allowsOnline,
+          homeMaxBookings: slot.allowsHome ? (slot.homeMax ?? 1) : undefined,
+          onlineMaxBookings: slot.allowsOnline ? (slot.onlineMax ?? 1) : undefined,
           date: slot.date ?? undefined,
         })),
       );
@@ -772,7 +842,7 @@ export default function DashboardAgendaPage() {
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
         {daySlots.slice(0, 4).map((s, i) => (
-          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={s.maxBookings > 1 ? brand.ottone : brand.cianografia} />
+          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={isSlotGeneric(s) ? brand.ottone : brand.cianografia} />
         ))}
         {daySlots.length > 4 ? (
           <Text fontFamily="$mono" fontSize={9} color={brand.grafite70}>
@@ -1132,11 +1202,17 @@ export default function DashboardAgendaPage() {
           }
           start={draftStart}
           end={draftEnd}
-          maxBookings={draftMax}
+          allowsHome={draftAllowsHome}
+          allowsOnline={draftAllowsOnline}
+          homeMax={draftHomeMax}
+          onlineMax={draftOnlineMax}
           liveError={error}
           onStartChange={setDraftStart}
           onEndChange={setDraftEnd}
-          onMaxChange={setDraftMax}
+          onAllowsHomeChange={setDraftAllowsHome}
+          onAllowsOnlineChange={setDraftAllowsOnline}
+          onHomeMaxChange={setDraftHomeMax}
+          onOnlineMaxChange={setDraftOnlineMax}
           onSave={() => commitSlotEdit(editingDayOfWeek()!)}
           onCancel={() => setEditingKey(null)}
           isNew={editingKey.startsWith("new-")}
@@ -1207,7 +1283,7 @@ function SlotChip({
   isSelected?: boolean;
   onEdit: () => void;
 }) {
-  const isGeneric = slot.maxBookings > 1;
+  const isGeneric = isSlotGeneric(slot);
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
   // vista Settimana (richiesta esplicita dell'utente): tutto il resto
   // (modifica, capienza, eliminazione) si apre nel pop-up di modifica
@@ -1239,6 +1315,9 @@ function SlotChip({
       <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografia}>
         {slot.start}–{slot.end}
       </Text>
+      {/* Simbolo "online" in piccolo sulla fascia (richiesta esplicita
+          dell'utente) quando è stata spuntata la modalità online. */}
+      {slot.allowsOnline ? <Icon name="video" size={9} color={brand.verificato} /> : null}
     </XStack>
   );
 }
@@ -1268,11 +1347,17 @@ function SlotEditorModal({
   dayLabel,
   start,
   end,
-  maxBookings,
+  allowsHome,
+  allowsOnline,
+  homeMax,
+  onlineMax,
   liveError,
   onStartChange,
   onEndChange,
-  onMaxChange,
+  onAllowsHomeChange,
+  onAllowsOnlineChange,
+  onHomeMaxChange,
+  onOnlineMaxChange,
   onSave,
   onCancel,
   onDelete,
@@ -1287,12 +1372,19 @@ function SlotEditorModal({
   dayLabel: string;
   start: string;
   end: string;
-  maxBookings: string;
+  /** Due caselle indipendenti (richiesta esplicita dell'utente), almeno una obbligatoria per salvare. */
+  allowsHome: boolean;
+  allowsOnline: boolean;
+  homeMax: string;
+  onlineMax: string;
   /** Calcolato ad ogni render da slotEditorLiveError: mostrato subito, senza aspettare "Salva agenda". */
   liveError: string | null;
   onStartChange: (v: string) => void;
   onEndChange: (v: string) => void;
-  onMaxChange: (v: string) => void;
+  onAllowsHomeChange: (v: boolean) => void;
+  onAllowsOnlineChange: (v: boolean) => void;
+  onHomeMaxChange: (v: string) => void;
+  onOnlineMaxChange: (v: string) => void;
   onSave: () => void;
   onCancel: () => void;
   /** Assente quando si sta creando una fascia nuova: solo una fascia già esistente si può eliminare. */
@@ -1374,13 +1466,98 @@ function SlotEditorModal({
           </XStack>
         </YStack>
 
-        <YStack gap="$2">
+        <YStack gap="$3">
           <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-            Numero massimo di prenotazioni
+            Modalità (almeno una obbligatoria)
           </Text>
-          <input type="number" min={1} max={20} value={maxBookings} onChange={(e) => onMaxChange(e.target.value)} style={modalMaxInputStyle} />
+          {/* Due caselle indipendenti, richiesta esplicita dell'utente: "a
+              domicilio"/"online", ognuna con la propria capienza massima —
+              un professionista può offrire, ad esempio, 2 interventi a
+              domicilio E 5 consulenze online sulla stessa fascia oraria. */}
+          <YStack gap="$2">
+            <XStack
+              alignItems="center"
+              gap="$3"
+              padding="$3"
+              backgroundColor={brand.gesso}
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="$3"
+              cursor="pointer"
+              onPress={() => onAllowsHomeChange(!allowsHome)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: allowsHome }}
+            >
+              <YStack
+                width={22}
+                height={22}
+                borderRadius="$2"
+                borderWidth={2}
+                borderColor={allowsHome ? brand.cianografia : brand.filetto}
+                backgroundColor={allowsHome ? brand.cianografia : brand.calce}
+                alignItems="center"
+                justifyContent="center"
+              >
+                {allowsHome ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+              </YStack>
+              <Text flex={1} fontSize="$3" color={brand.grafite}>
+                A domicilio
+              </Text>
+              {allowsHome ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={homeMax}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => onHomeMaxChange(e.target.value)}
+                  style={modalMaxInputStyle}
+                />
+              ) : null}
+            </XStack>
+            <XStack
+              alignItems="center"
+              gap="$3"
+              padding="$3"
+              backgroundColor={brand.gesso}
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="$3"
+              cursor="pointer"
+              onPress={() => onAllowsOnlineChange(!allowsOnline)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: allowsOnline }}
+            >
+              <YStack
+                width={22}
+                height={22}
+                borderRadius="$2"
+                borderWidth={2}
+                borderColor={allowsOnline ? brand.cianografia : brand.filetto}
+                backgroundColor={allowsOnline ? brand.cianografia : brand.calce}
+                alignItems="center"
+                justifyContent="center"
+              >
+                {allowsOnline ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+              </YStack>
+              <Text flex={1} fontSize="$3" color={brand.grafite}>
+                Online
+              </Text>
+              {allowsOnline ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={onlineMax}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => onOnlineMaxChange(e.target.value)}
+                  style={modalMaxInputStyle}
+                />
+              ) : null}
+            </XStack>
+          </YStack>
           <Text fontSize="$2" color={brand.grafite70}>
-            1 = fascia esatta (prenotazione diretta se attiva). Più di 1 = fascia generica, sempre a richiesta di preventivo.
+            Numero massimo di prenotazioni per ciascuna modalità. 1 = fascia esatta. Più di 1 = fascia generica, sempre a richiesta di preventivo.
           </Text>
         </YStack>
 

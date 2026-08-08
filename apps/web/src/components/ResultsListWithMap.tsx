@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Map as MapIcon, Maximize2, Minimize2, X } from "lucide-react";
+import { Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -20,6 +20,7 @@ export function ResultsListWithMap({
   showMap,
   city,
   header,
+  defaultMode,
 }: {
   /** Risultati della ricerca corrente (es. filtrati per città): usati per il primo render e come base della mappa. */
   professionals: ProfessionalSearchResult[];
@@ -34,6 +35,8 @@ export function ResultsListWithMap({
   city?: string;
   /** Contenuto mostrato in cima alla colonna sinistra, allineato con l'inizio della mappa (titolo/filtri categoria). */
   header?: ReactNode;
+  /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
+  defaultMode?: "HOME" | "ONLINE";
 }) {
   const router = useRouter();
   const fallbackCenter = useMemo<[number, number] | undefined>(() => {
@@ -103,6 +106,47 @@ export function ResultsListWithMap({
     return [...visible].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
   }, [visible, pool]);
 
+  // Pannello filtri (richiesta esplicita dell'utente, riferimento
+  // miodottore.it: bottone "Filtri" sopra "Mostra mappa", apre un pannello
+  // con "Consulenza online", "Date disponibili" e "Lingua parlata"). Tutto
+  // calcolato client-side sui risultati già scaricati, nessun nuovo query
+  // param lato server — stesso principio già seguito per ListControls
+  // (filtro/ordina/mostra) nelle liste richieste/prenotazioni.
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterOnlineOnly, setFilterOnlineOnly] = useState(false);
+  const [filterAvailability, setFilterAvailability] = useState<"any" | "today" | "3days">("any");
+  const [languageQuery, setLanguageQuery] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+
+  // Solo le lingue effettivamente parlate tra i professionisti nei
+  // risultati correnti (richiesta esplicita dell'utente), filtrate dal
+  // testo digitato.
+  const availableLanguages = useMemo(() => {
+    const all = new Set<string>();
+    for (const pro of professionals) {
+      for (const lang of pro.spokenLanguages) all.add(lang);
+    }
+    const list = Array.from(all).sort((a, b) => a.localeCompare(b, "it"));
+    const query = languageQuery.trim().toLowerCase();
+    return query ? list.filter((lang) => lang.toLowerCase().includes(query)) : list;
+  }, [professionals, languageQuery]);
+
+  function hasAvailabilityWithinDays(pro: ProfessionalSearchResult, maxDayOffset: number): boolean {
+    return pro.availabilityPreview
+      .slice(0, maxDayOffset + 1)
+      .some((day) => day.times.some((slot) => slot.homeAvailable || slot.onlineAvailable));
+  }
+
+  function matchesFilters(pro: ProfessionalSearchResult): boolean {
+    if (filterOnlineOnly && !pro.remoteAvailable) return false;
+    if (filterAvailability === "today" && !hasAvailabilityWithinDays(pro, 0)) return false;
+    if (filterAvailability === "3days" && !hasAvailabilityWithinDays(pro, 2)) return false;
+    if (selectedLanguage && !pro.spokenLanguages.includes(selectedLanguage)) return false;
+    return true;
+  }
+
+  const activeFilterCount = (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
+
   return (
     // Layout con classi CSS grezze (styled-jsx, incluso in Next.js) invece dei
     // props responsive di Tamagui: qui serve sia riordinare le due colonne
@@ -116,6 +160,69 @@ export function ResultsListWithMap({
     // sotto i 1021px e mostrava il layout impilato da mobile — sbagliato, non
     // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
+      <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+        <SlidersHorizontal size={16} strokeWidth={1.5} />
+        Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+      </button>
+
+      {showFilters ? (
+        <div className="filters-panel">
+          <label className="filters-checkbox-row">
+            <input type="checkbox" checked={filterOnlineOnly} onChange={(e) => setFilterOnlineOnly(e.target.checked)} />
+            Mostra tutti i professionisti che offrono consulenza online
+          </label>
+
+          <div className="filters-group">
+            <span className="filters-group-label">Date disponibili</span>
+            <div className="filters-pill-row">
+              {(
+                [
+                  { value: "any", label: "Qualsiasi giorno" },
+                  { value: "today", label: "Oggi" },
+                  { value: "3days", label: "Entro 3 giorni" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`filters-pill${filterAvailability === opt.value ? " active" : ""}`}
+                  onClick={() => setFilterAvailability(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="filters-group">
+            <span className="filters-group-label">Lingua parlata</span>
+            <input
+              type="text"
+              className="filters-text-input"
+              value={languageQuery}
+              onChange={(e) => setLanguageQuery(e.target.value)}
+              placeholder="Cerca una lingua..."
+            />
+            <div className="filters-pill-row">
+              {selectedLanguage ? (
+                <button type="button" className="filters-pill active" onClick={() => setSelectedLanguage(null)}>
+                  {selectedLanguage} ✕
+                </button>
+              ) : (
+                availableLanguages.map((lang) => (
+                  <button key={lang} type="button" className="filters-pill" onClick={() => setSelectedLanguage(lang)}>
+                    {lang}
+                  </button>
+                ))
+              )}
+              {!selectedLanguage && availableLanguages.length === 0 ? (
+                <span className="filters-empty">Nessuna lingua trovata tra i professionisti in questi risultati.</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {showMap ? (
         <button type="button" className="mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
           {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
@@ -147,7 +254,7 @@ export function ResultsListWithMap({
       <div className="results-list-col">
         <YStack gap="$3">
           {header}
-          {(showMap ? orderedVisible : professionals).map((pro) => (
+          {(showMap ? orderedVisible : professionals).filter(matchesFilters).map((pro) => (
             <ProfessionalCard
               key={pro.id}
               businessName={pro.businessName}
@@ -160,7 +267,9 @@ export function ResultsListWithMap({
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}
-              nextAvailableSlot={pro.nextAvailableSlot}
+              nextAvailableSlotHome={pro.nextAvailableSlotHome}
+              nextAvailableSlotOnline={pro.nextAvailableSlotOnline}
+              defaultMode={defaultMode}
               onPress={() => router.push(`/professionista/${pro.id}`)}
               onSlotPress={() => router.push(`/professionista/${pro.id}#agenda`)}
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
@@ -176,7 +285,8 @@ export function ResultsListWithMap({
           gap: 16px;
           width: 100%;
         }
-        .mobile-map-toggle {
+        .mobile-map-toggle,
+        .filters-toggle {
           width: 100%;
           padding: 12px 16px;
           border-radius: 4px;
@@ -190,6 +300,67 @@ export function ResultsListWithMap({
           align-items: center;
           justify-content: center;
           gap: 8px;
+        }
+        .filters-panel {
+          width: 100%;
+          padding: 16px;
+          border-radius: 4px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.calce};
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .filters-checkbox-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          color: ${brand.grafite};
+          cursor: pointer;
+        }
+        .filters-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .filters-group-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: ${brand.grafite70};
+        }
+        .filters-pill-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .filters-pill {
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.gesso};
+          color: ${brand.grafite};
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .filters-pill.active {
+          background: ${brand.cianografia};
+          border-color: ${brand.cianografia};
+          color: #ffffff;
+        }
+        .filters-text-input {
+          padding: 10px 12px;
+          border-radius: 4px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.calce};
+          color: ${brand.grafite};
+          font-size: 14px;
+          font-family: inherit;
+        }
+        .filters-empty {
+          font-size: 13px;
+          color: ${brand.grafite70};
         }
         .results-map-col {
           display: none;

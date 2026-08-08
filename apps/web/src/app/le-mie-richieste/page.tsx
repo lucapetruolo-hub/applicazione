@@ -879,6 +879,7 @@ function GuidedRequestCard({
               onAcceptQuote={onAcceptQuote}
               requestedTimeSlot={request.preferredTimeSlot}
               guidedRequestId={request.id}
+              serviceMode={request.serviceMode}
             />
           ))}
         </YStack>
@@ -933,6 +934,7 @@ function QuoteCard({
   onAcceptQuote,
   requestedTimeSlot,
   guidedRequestId,
+  serviceMode,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
@@ -942,6 +944,8 @@ function QuoteCard({
   requestedTimeSlot: string | null;
   /** Richiesta di origine, per il bottone "Cronologia" (richiesta esplicita dell'utente). */
   guidedRequestId: string;
+  /** Modalità della richiesta originale (richiesta esplicita dell'utente: "differenzia sempre... anche nelle successive modifiche della data e ora") — filtra le fasce proponibili a quelle che offrono questa modalità. */
+  serviceMode: "HOME" | "ONLINE" | null;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -987,7 +991,11 @@ function QuoteCard({
             // questa sessione per ProfessionalsService.getMyAvailableSlots
             // ("scegliere quando iniziare un lavoro già concordato non
             // consuma la capienza pensata per il fan-out delle richieste").
-            if (slot.bookedCount < slot.maxBookings) {
+            // Filtrato anche per modalità (richiesta esplicita dell'utente):
+            // solo le fasce che offrono la stessa modalità della richiesta
+            // originale — home/online sono capienze indipendenti.
+            const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
+            if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
               slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
             }
           }

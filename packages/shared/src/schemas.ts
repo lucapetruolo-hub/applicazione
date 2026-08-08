@@ -378,6 +378,11 @@ export const professionalProfileSchema = z.object({
   // dell'utente: "un'idea dei lavori svolti" aprendo il profilo pubblico —
   // stesso pattern/limite di GuidedRequest.photoUrls.
   portfolioUrls: z.array(z.string().url()).max(10).default([]),
+  // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
+  // in ricerca): "Italiano" precompilato di default alla creazione del
+  // profilo (stesso default dello schema Prisma), rimovibile/estendibile —
+  // nessun minimo richiesto qui, un professionista può rimuoverle tutte.
+  spokenLanguages: z.array(z.string().min(1).max(40)).max(10).default(["Italiano"]),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 
@@ -407,13 +412,26 @@ export const availabilitySlotSchema = z
     dayOfWeek: z.number().int().min(0).max(6),
     startTime: timeSchema,
     endTime: timeSchema,
-    /** 1 (esatta) o >1 (generica, richiede preventivo invece di prenotazione istantanea). */
-    maxBookings: z.number().int().min(1).max(20).default(1),
+    /**
+     * Tipo/i di intervento accettati (richiesta esplicita dell'utente: due
+     * caselle "A domicilio"/"Online", almeno una obbligatoria), con
+     * capienza indipendente per tipo — 1 (esatta) o >1 (generica, richiede
+     * preventivo invece di prenotazione istantanea). `*MaxBookings`
+     * valorizzato solo quando il rispettivo `allows*` è vero.
+     */
+    allowsHome: z.boolean().default(true),
+    allowsOnline: z.boolean().default(false),
+    homeMaxBookings: z.number().int().min(1).max(20).optional(),
+    onlineMaxBookings: z.number().int().min(1).max(20).optional(),
     date: isoDateSchema.optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: "L'orario di fine deve essere dopo l'orario di inizio.",
     path: ["endTime"],
+  })
+  .refine((data) => data.allowsHome || data.allowsOnline, {
+    message: "Seleziona almeno una modalità (a domicilio o online).",
+    path: ["allowsHome"],
   });
 export type AvailabilitySlotInput = z.infer<typeof availabilitySlotSchema>;
 

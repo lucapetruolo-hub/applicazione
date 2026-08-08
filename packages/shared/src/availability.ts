@@ -33,34 +33,48 @@ export type AvailabilitySlotItem = {
    */
   date: string | null;
   /**
-   * Capienza della fascia: 1 (default) = fascia esatta, un solo impegno
-   * possibile. > 1 = fascia "generica" — più clienti possono inviare una
+   * Tipo/i di intervento accettati su questa fascia (richiesta esplicita
+   * dell'utente: due caselle "A domicilio"/"Online", almeno una
+   * obbligatoria) — con capienza INDIPENDENTE per tipo:
+   * `homeMaxBookings`/`onlineMaxBookings` valorizzati solo quando il
+   * rispettivo `allowsHome`/`allowsOnline` è vero. 1 (default) su un tipo
+   * = fascia "esatta" per quel tipo, un solo impegno possibile. > 1 =
+   * fascia "generica" per quel tipo — più clienti possono inviare una
    * richiesta di preventivo nella stessa finestra invece di occupare un
    * orario preciso (vedi GuidedRequest.preferredDate/preferredTimeSlot).
    */
-  maxBookings: number;
+  allowsHome: boolean;
+  allowsOnline: boolean;
+  homeMaxBookings: number | null;
+  onlineMaxBookings: number | null;
   /**
    * True se nei prossimi 14 giorni (stessa finestra di getPublicAgenda)
-   * esiste già almeno una prenotazione reale (fasce esatte) o una richiesta
-   * di preventivo (fasce generiche) che cade in questa fascia ricorrente.
+   * esiste già almeno una prenotazione reale o una richiesta di preventivo
+   * (di uno qualunque dei due tipi) che cade in questa fascia ricorrente.
    * Usato in /dashboard/agenda per avvisare prima di rimuovere/ridurre un
-   * orario già impegnato.
+   * orario già impegnato — non distingue per tipo, un avviso generico
+   * basta per lo scopo (evitare di cancellare una fascia già impegnata).
    */
   hasUpcomingBooking: boolean;
 };
 
 /**
- * Fascia oraria proiettata su una data reale. Per le fasce esatte
- * (maxBookings === 1) bookedCount vale 0 o 1 — stesso significato del
- * precedente campo booleano `booked`. Per le fasce generiche
- * (maxBookings > 1) conta le richieste di preventivo già inviate per
- * quella data+fascia.
+ * Fascia oraria proiettata su una data reale. Capienza e conteggio
+ * prenotazioni sono per tipo (home/online), indipendenti — vedi
+ * AvailabilitySlotItem sopra per il motivo. `home`/`online` sono `null`
+ * quando quel tipo non è offerto su questa fascia (`allowsHome`/
+ * `allowsOnline` false), mai un oggetto con capienza 0.
  */
+export type ProfessionalAgendaSlotMode = {
+  maxBookings: number;
+  bookedCount: number;
+};
+
 export type ProfessionalAgendaSlot = {
   startTime: string;
   endTime: string;
-  maxBookings: number;
-  bookedCount: number;
+  home: ProfessionalAgendaSlotMode | null;
+  online: ProfessionalAgendaSlotMode | null;
 };
 
 export type ProfessionalAgendaDay = {

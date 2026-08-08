@@ -173,6 +173,7 @@ export class QuotesService {
       input.date,
       input.startTime,
       input.endTime,
+      quote.guidedRequest.serviceMode,
     );
 
     const updated = await this.prisma.quote.update({
@@ -250,7 +251,14 @@ export class QuotesService {
       where: { professionalProfileId: professionalProfile.id, OR: [{ date: dayStart }, { date: null, dayOfWeek }] },
     });
     const matchingSlot = candidateSlots.find((s) => timeStr >= s.startTime && timeStr < s.endTime);
-    const maxBookings = matchingSlot?.maxBookings ?? 1;
+    // Capienza indipendente per modalità (CLAUDE.md §"su agenda del
+    // professionista disponibilità..."): la richiesta originale porta la
+    // modalità scelta dal cliente (serviceMode, null solo per righe
+    // precedenti a questa funzionalità — in quel caso si ricade sulla
+    // capienza a domicilio, comportamento storico).
+    const requestServiceMode = quote.guidedRequest.serviceMode;
+    const maxBookings =
+      requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
 
     try {
       const booking = await this.prisma.$transaction(
@@ -261,9 +269,13 @@ export class QuotesService {
               status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
               scheduledAt: { gte: dayStart, lt: dayEnd },
             },
-            select: { scheduledAt: true },
+            select: { scheduledAt: true, serviceMode: true },
           });
-          const bookedCount = existingBookings.filter((b) => b.scheduledAt.getTime() === scheduledAt.getTime()).length;
+          const bookedCount = existingBookings.filter(
+            (b) =>
+              b.scheduledAt.getTime() === scheduledAt.getTime() &&
+              (requestServiceMode ? b.serviceMode === requestServiceMode : true),
+          ).length;
           if (bookedCount >= maxBookings) {
             throw new ConflictException("Questa fascia non è più libera.");
           }
@@ -274,6 +286,7 @@ export class QuotesService {
               professionalProfileId: professionalProfile.id,
               scheduledAt,
               scheduledEndAt: quote.clientProposedEndDate,
+              serviceMode: requestServiceMode,
               status: "CONFIRMED",
               // Bug reale segnalato dall'utente: questo secondo percorso di
               // creazione della prenotazione (accettazione dopo una
@@ -386,6 +399,7 @@ export class QuotesService {
       input.date,
       input.startTime,
       input.endTime,
+      quote.guidedRequest.serviceMode,
     );
 
     const updated = await this.prisma.quote.update({
@@ -498,6 +512,7 @@ export class QuotesService {
     dateStr: string,
     startTime: string,
     endTime: string,
+    serviceMode: "HOME" | "ONLINE" | null,
   ): Promise<{ scheduledAt: Date; scheduledEndAt: Date }> {
     const date = new Date(`${dateStr}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) {
@@ -530,13 +545,28 @@ export class QuotesService {
     const dayStart = new Date(date);
     const dayEnd = new Date(date);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    // La fascia deve offrire proprio la modalità della richiesta originale
+    // (richiesta esplicita dell'utente: "differenzia sempre se si è
+    // partiti con una consulenza online anche nelle successive modifiche
+    // della data e ora") — null (richieste precedenti a questa
+    // funzionalità) ricade sulla capienza a domicilio, comportamento
+    // storico.
+    const maxBookings = serviceMode === "ONLINE" ? slot.onlineMaxBookings : slot.homeMaxBookings;
+    if (maxBookings === null) {
+      throw new BadRequestException(
+        serviceMode === "ONLINE"
+          ? "Il professionista non offre consulenza online su questa fascia oraria."
+          : "Il professionista non offre interventi a domicilio su questa fascia oraria.",
+      );
+    }
+
     const existingBookings = await this.prisma.booking.findMany({
       where: {
         professionalProfileId,
         status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
         scheduledAt: { gte: dayStart, lt: dayEnd },
       },
-      select: { scheduledAt: true },
+      select: { scheduledAt: true, serviceMode: true },
     });
     const [hoursStr, minutesStr] = startTime.split(":");
     const scheduledAt = new Date(date);
@@ -547,9 +577,12 @@ export class QuotesService {
     // Conteggio invece di un semplice booleano: una fascia a capienza
     // (maxBookings > 1) può ospitare più prenotazioni sulla stessa
     // data+ora, non solo una — stesso principio di countBookingsInSlot già
-    // in uso in ProfessionalsService per bookedCount.
-    const bookedCount = existingBookings.filter((b) => b.scheduledAt.getTime() === scheduledAt.getTime()).length;
-    if (bookedCount >= slot.maxBookings) {
+    // in uso in ProfessionalsService per bookedCount. Filtrato per
+    // modalità: le due capienze (domicilio/online) sono pool indipendenti.
+    const bookedCount = existingBookings.filter(
+      (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (serviceMode ? b.serviceMode === serviceMode : true),
+    ).length;
+    if (bookedCount >= maxBookings) {
       throw new ConflictException("Questa fascia è già stata prenotata.");
     }
 

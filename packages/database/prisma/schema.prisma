@@ -146,6 +146,12 @@ model ProfessionalProfile {
   // GuidedRequestsService per il filtro geografico del fan-out.
   engagementRadiusKm       Float    @default(25)
   urgentEngagementRadiusKm Float    @default(25)
+  // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
+  // nel pannello filtri di ricerca): pre-compilato con "Italiano" come unica
+  // lingua di default alla creazione del profilo, rimovibile/estendibile in
+  // /dashboard/profilo. Array libero (non un enum): non c'è un elenco fisso
+  // di lingue nel progetto, coerente con `subTags`/`portfolioUrls` sopra.
+  spokenLanguages          String[] @default(["Italiano"])
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
@@ -299,15 +305,25 @@ model AvailabilitySlot {
   // esistenti create prima di questa funzionalità continuano a funzionare
   // così: nessuna migrazione distruttiva dei dati esistenti.
   date                  DateTime?
-  // Capienza della fascia. 1 (default) = fascia "esatta": un solo impegno,
-  // il cliente la prenota istantaneamente e occupa l'intero orario. > 1 =
-  // fascia "generica" (es. "9–13, fino a 5
-  // richieste"): un click non prenota nulla, apre una richiesta di
-  // preventivo precompilata con quella data/fascia (GuidedRequest.
-  // preferredDate/preferredTimeSlot) — più clienti possono richiedere nella
-  // stessa finestra, il professionista sceglie poi con chi fissare
-  // l'appuntamento reale.
-  maxBookings           Int       @default(1)
+  // Tipo/i di intervento accettati su questa fascia (richiesta esplicita
+  // dell'utente: due caselle "A domicilio"/"Online" nel popup di modifica,
+  // almeno una obbligatoria) — con capienza INDIPENDENTE per tipo: un
+  // professionista che spunta entrambe le caselle sulla stessa fascia
+  // gestisce due pool di prenotazioni separati sullo stesso orario (es. 2
+  // clienti in presenza + 5 in videochiamata), non un'unica capienza
+  // condivisa. `homeMaxBookings`/`onlineMaxBookings` valorizzati solo
+  // quando il rispettivo `allowsHome`/`allowsOnline` è vero — null
+  // altrimenti (nessuna capienza da rispettare per un tipo non offerto su
+  // quella fascia). Sostituisce il precedente campo unico `maxBookings`
+  // (`db push --accept-data-loss`, stesso pattern già in uso in questo
+  // progetto per ogni cambio di schema): una fascia esistente perde il
+  // proprio valore di capienza, ricade sul default 1 lato applicativo
+  // (`homeMaxBookings ?? 1`, coerente col vecchio default del campo
+  // rimosso) finché il professionista non la riapre e la risalva.
+  allowsHome            Boolean   @default(true)
+  allowsOnline          Boolean   @default(false)
+  homeMaxBookings       Int?
+  onlineMaxBookings     Int?
   createdAt             DateTime  @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -784,6 +800,16 @@ model Booking {
   // professionista può ancora contestare la segnalazione.
   refundRequested   Boolean   @default(false)
   refundRequestedAt DateTime?
+
+  // Copiato da GuidedRequest.serviceMode al momento della creazione (mai
+  // ricalcolato dopo: il tipo di intervento resta fisso una volta scelto
+  // alla richiesta, solo data/ora si negoziano) — usato per contare la
+  // capienza home/online indipendente di una fascia agenda
+  // (countBookingsInSlot). Null per le prenotazioni dirette da agenda
+  // pubblica (bookAgendaSlot, dormiente da CLAUDE.md §20 — nessuna
+  // GuidedRequest collegata) o per prenotazioni create prima di questo
+  // campo.
+  serviceMode ServiceMode?
 
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)

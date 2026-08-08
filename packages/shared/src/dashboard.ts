@@ -20,6 +20,8 @@ export type MyProfessionalProfile = {
   /** Raggio (km, 1-25) entro cui arrivano rispettivamente le richieste standard e quelle urgenti — vedi updateEngagementRadiusSchema. */
   engagementRadiusKm: number;
   urgentEngagementRadiusKm: number;
+  /** Lingue parlate (richiesta esplicita dell'utente), "Italiano" precompilato di default, rimovibile/estendibile. */
+  spokenLanguages: string[];
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
@@ -213,6 +215,9 @@ export type ProfessionalAvailableSlot = {
   date: string;
   startTime: string;
   endTime: string;
+  /** True se questa fascia ha ancora capienza residua per quel tipo (richiesta esplicita dell'utente) — usate per proporre solo le fasce compatibili con la modalità della richiesta in negoziazione. */
+  homeAvailable: boolean;
+  onlineAvailable: boolean;
 };
 
 /**

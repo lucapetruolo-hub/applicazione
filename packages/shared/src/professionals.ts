@@ -82,12 +82,24 @@ export function formatBookingAddress(booking: {
   return `${line1} — ${line2}`;
 }
 
-/** Un orario configurato in un giorno della mini-agenda, libero o già al completo. */
+/**
+ * Un orario configurato in un giorno della mini-agenda, con disponibilità
+ * indipendente per modalità (richiesta esplicita dell'utente: tab "A
+ * domicilio"/"Online" sopra "Prossima disponibilità", ognuna mostra solo
+ * gli orari con quella modalità offerta e la relativa capienza residua).
+ * `allowsHome`/`allowsOnline` = il professionista offre quel tipo su
+ * questa fascia; `homeAvailable`/`onlineAvailable` = offerto E con
+ * capienza ancora residua per quel tipo (sempre `false` se il tipo non è
+ * offerto). La UI filtra/mostra in base al tab attivo.
+ */
 export type ProfessionalAvailabilityPreviewSlot = {
   time: string;
   /** Fine della fascia (es. "10:00"): mostrata insieme a `time` come intervallo completo, non solo l'inizio. */
   endTime: string;
-  available: boolean;
+  allowsHome: boolean;
+  allowsOnline: boolean;
+  homeAvailable: boolean;
+  onlineAvailable: boolean;
 };
 
 /**
@@ -148,10 +160,19 @@ export type ProfessionalSearchResult = {
   imageUrl: string | null;
   services: ProfessionalServiceItem[];
   subTags: string[];
+  /** Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata" nel pannello filtri di ricerca) — sempre almeno una in pratica ("Italiano" precompilato), ma tecnicamente può essere vuota se il professionista le rimuove tutte. */
+  spokenLanguages: string[];
   /** Vuota se il professionista non ha alcuna fascia configurata nei prossimi giorni. */
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
-  /** Presente solo quando availabilityPreview non ha nessun orario libero. */
-  nextAvailableSlot: ProfessionalNextAvailableSlot | null;
+  /**
+   * Presenti solo quando availabilityPreview non ha nessun orario libero
+   * per quella specifica modalità — due campi distinti (non uno solo)
+   * perché "prossimo libero" dipende dal tab attivo (A domicilio/Online):
+   * un professionista può avere il prossimo orario libero a domicilio
+   * oggi ma online solo tra una settimana.
+   */
+  nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
+  nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
   /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"

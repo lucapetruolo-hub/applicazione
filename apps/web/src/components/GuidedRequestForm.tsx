@@ -23,12 +23,19 @@ const MAX_PHOTOS = 5;
 /** Fascia "generica" (a capienza) dell'agenda pubblica di un professionista, ancora libera — le sole selezionabili qui (le fasce esatte sono prenotazione diretta, un flusso separato). */
 type PickableAgendaSlot = { date: string; startTime: string; endTime: string; remaining: number };
 
-function flattenPickableSlots(agenda: ProfessionalAgenda): PickableAgendaSlot[] {
+/**
+ * Solo le fasce che offrono la modalità scelta (o entrambe le modalità se
+ * non ancora scelta) — richiesta esplicita dell'utente: "differenzia sempre
+ * se si è partiti con una consulenza online". Capienza/residuo presi dal
+ * lato modalità pertinente (home/online, indipendenti).
+ */
+function flattenPickableSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE" | null): PickableAgendaSlot[] {
   const result: PickableAgendaSlot[] = [];
   for (const day of agenda.days) {
     for (const slot of day.slots) {
-      if (slot.maxBookings > 1 && slot.bookedCount < slot.maxBookings) {
-        result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime, remaining: slot.maxBookings - slot.bookedCount });
+      const modeInfo = mode === "ONLINE" ? slot.online : mode === "HOME" ? slot.home : (slot.home ?? slot.online);
+      if (modeInfo && modeInfo.maxBookings > 1 && modeInfo.bookedCount < modeInfo.maxBookings) {
+        result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime, remaining: modeInfo.maxBookings - modeInfo.bookedCount });
       }
     }
   }
@@ -96,6 +103,13 @@ export function GuidedRequestForm({
   // di un professionista specifico.
   const preferredDate = searchParams.get("data") ?? undefined;
   const preferredTimeSlot = searchParams.get("fasciaOraria") ?? undefined;
+  // Modalità già decisa dal tab attivo sull'agenda pubblica (A domicilio/
+  // Online) quando si arriva da una pillola di quella griglia — richiesta
+  // esplicita dell'utente: "differenzia sempre se si è partiti con una
+  // consulenza online". Solo un prefill (resta modificabile): il backend
+  // rivalida comunque che la fascia scelta offra davvero quella modalità.
+  const modalitaParam = searchParams.get("modalita");
+  const initialServiceMode = modalitaParam === "HOME" || modalitaParam === "ONLINE" ? modalitaParam : null;
 
   // Quando si arriva dal profilo di un professionista SENZA una fascia già
   // scelta (bottone generico "Richiedi un preventivo a [nome]", non il
@@ -107,14 +121,23 @@ export function GuidedRequestForm({
   // (bookAgendaSlot) che non passa da una richiesta di preventivo.
   const [pickableSlots, setPickableSlots] = useState<PickableAgendaSlot[]>([]);
   const [selectedSlotValue, setSelectedSlotValue] = useState("");
+  // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
+  // professionista già sa se può trattarsi di un intervento a domicilio o
+  // online") — obbligatorio, stesso principio degli altri campi della
+  // richiesta resi obbligatori in un giro precedente (indirizzo, foto).
+  // Dichiarato qui (prima dell'effetto sotto, che lo referenzia) invece che
+  // vicino agli altri stati del form.
+  const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(initialServiceMode);
 
   useEffect(() => {
     if (!professionalProfileId || preferredDate) return;
     apiClient
       .getProfessionalAgenda(professionalProfileId)
-      .then((agenda) => setPickableSlots(flattenPickableSlots(agenda)))
+      .then((agenda) => setPickableSlots(flattenPickableSlots(agenda, serviceMode)))
       .catch(() => {});
-  }, [professionalProfileId, preferredDate]);
+    setSelectedSlotValue("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [professionalProfileId, preferredDate, serviceMode]);
 
   // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
   // sola volta appena `user` è disponibile: gli useState sopra sono
@@ -155,11 +178,6 @@ export function GuidedRequestForm({
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
-  // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
-  // professionista già sa se può trattarsi di un intervento a domicilio o
-  // online") — obbligatorio, stesso principio degli altri campi della
-  // richiesta resi obbligatori in un giro precedente (indirizzo, foto).
-  const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(null);
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
   const [description, setDescription] = useState("");
   const [city, setCity] = useState(initialCity);

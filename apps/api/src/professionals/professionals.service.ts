@@ -134,8 +134,10 @@ export class ProfessionalsService {
         imageUrl: profile.imageUrl,
         services: mapServices(profile.services),
         subTags: profile.subTags,
+        spokenLanguages: profile.spokenLanguages,
         availabilityPreview: preview?.days ?? [],
-        nextAvailableSlot: preview?.nextAvailableSlot ?? null,
+        nextAvailableSlotHome: preview?.nextAvailableSlotHome ?? null,
+        nextAvailableSlotOnline: preview?.nextAvailableSlotOnline ?? null,
         createdAt: profile.createdAt.toISOString(),
       } satisfies ProfessionalSearchResult;
     });
@@ -161,12 +163,23 @@ export class ProfessionalsService {
    * essere alto e questa funzione gira dentro l'endpoint di ricerca, dove un
    * N+1 sarebbe un problema di scala reale, non solo teorico.
    */
-  private async buildAvailabilityPreviews(
-    profileIds: string[],
-  ): Promise<Map<string, { days: ProfessionalAvailabilityPreviewDay[]; nextAvailableSlot: ProfessionalNextAvailableSlot | null }>> {
+  private async buildAvailabilityPreviews(profileIds: string[]): Promise<
+    Map<
+      string,
+      {
+        days: ProfessionalAvailabilityPreviewDay[];
+        nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
+        nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
+      }
+    >
+  > {
     const result = new Map<
       string,
-      { days: ProfessionalAvailabilityPreviewDay[]; nextAvailableSlot: ProfessionalNextAvailableSlot | null }
+      {
+        days: ProfessionalAvailabilityPreviewDay[];
+        nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
+        nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
+      }
     >();
     if (profileIds.length === 0) return result;
 
@@ -190,7 +203,7 @@ export class ProfessionalsService {
           status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
           scheduledAt: { gte: startOfToday, lt: searchEnd },
         },
-        select: { professionalProfileId: true, scheduledAt: true },
+        select: { professionalProfileId: true, scheduledAt: true, serviceMode: true },
       }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId: { in: profileIds }, date: { gte: startOfToday, lt: searchEnd } },
@@ -251,38 +264,64 @@ export class ProfessionalsService {
           .filter((slot) => slotAppliesOnDate(slot, date))
           .sort((a, b) => a.startTime.localeCompare(b.startTime))
           .map((slot) => {
-            // Una fascia resta prenotabile finché ha capienza residua, non
-            // solo finché è del tutto libera — coerente con "una volta che
-            // quella fascia consuma la capienza non deve essere più
-            // prenotabile" (richiesta esplicita dell'utente).
-            const available = countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime) < slot.maxBookings;
-            return { time: slot.startTime, endTime: slot.endTime, available };
+            // Una fascia resta prenotabile finché ha capienza residua per
+            // quel tipo, non solo finché è del tutto libera — coerente con
+            // "una volta che quella fascia consuma la capienza non deve
+            // essere più prenotabile" (richiesta esplicita dell'utente),
+            // ora indipendente per home/online (CLAUDE.md §22).
+            const homeAvailable =
+              slot.allowsHome && countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
+            const onlineAvailable =
+              slot.allowsOnline &&
+              countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
+            return { time: slot.startTime, endTime: slot.endTime, allowsHome: slot.allowsHome, allowsOnline: slot.allowsOnline, homeAvailable, onlineAvailable };
           });
         days.push({ date: dateStr, label, dateLabel, times });
       }
 
-      const hasAvailableInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.available));
+      const hasAvailableInWindow = days
+        .slice(0, PREVIEW_MAX_DAYS)
+        .some((day) => day.times.some((slot) => slot.homeAvailable || slot.onlineAvailable));
 
-      let nextAvailableSlot: ProfessionalNextAvailableSlot | null = null;
-      if (!hasAvailableInWindow) {
-        for (let offset = PREVIEW_MAX_DAYS; offset < PREVIEW_SEARCH_DAYS && !nextAvailableSlot; offset++) {
+      // "Prossimo giorno disponibile" è per modalità (richiesta esplicita
+      // dell'utente): un professionista può avere il prossimo libero a
+      // domicilio oggi ma online solo tra una settimana — calcolato solo
+      // se quella specifica modalità non ha nulla nella finestra iniziale.
+      const hasHomeInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.homeAvailable));
+      const hasOnlineInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.onlineAvailable));
+
+      let nextAvailableSlotHome: ProfessionalNextAvailableSlot | null = null;
+      let nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null = null;
+      if (!hasHomeInWindow || !hasOnlineInWindow) {
+        for (
+          let offset = PREVIEW_MAX_DAYS;
+          offset < PREVIEW_SEARCH_DAYS && (!nextAvailableSlotHome || !nextAvailableSlotOnline);
+          offset++
+        ) {
           const date = new Date(startOfToday);
           date.setUTCDate(date.getUTCDate() + offset);
           const dateStr = date.toISOString().slice(0, 10);
           if (exceptionDates?.has(dateStr)) continue;
 
-          const freeSlot = profileSlots
-            .filter((slot) => slotAppliesOnDate(slot, date))
-            .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .find((slot) => countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime) < slot.maxBookings);
-          if (freeSlot) {
-            nextAvailableSlot = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
+          const candidateSlots = profileSlots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
+          if (!hasHomeInWindow && !nextAvailableSlotHome) {
+            const freeSlot = candidateSlots.find(
+              (slot) => slot.allowsHome && countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1),
+            );
+            if (freeSlot) nextAvailableSlotHome = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
+          }
+          if (!hasOnlineInWindow && !nextAvailableSlotOnline) {
+            const freeSlot = candidateSlots.find(
+              (slot) =>
+                slot.allowsOnline && countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1),
+            );
+            if (freeSlot) nextAvailableSlotOnline = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
           }
         }
       }
 
-      if (hasAvailableInWindow || nextAvailableSlot) {
-        result.set(profileId, { days, nextAvailableSlot });
+      if (hasAvailableInWindow || nextAvailableSlotHome || nextAvailableSlotOnline) {
+        result.set(profileId, { days, nextAvailableSlotHome, nextAvailableSlotOnline });
       }
     }
 
@@ -329,10 +368,12 @@ export class ProfessionalsService {
       imageUrl: profile.imageUrl,
       services: mapServices(profile.services),
       subTags: profile.subTags,
+      spokenLanguages: profile.spokenLanguages,
       // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
-      nextAvailableSlot: null,
+      nextAvailableSlotHome: null,
+      nextAvailableSlotOnline: null,
       createdAt: profile.createdAt.toISOString(),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
@@ -371,6 +412,7 @@ export class ProfessionalsService {
       services: mapServices(profile.services),
       engagementRadiusKm: profile.engagementRadiusKm,
       urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+      spokenLanguages: profile.spokenLanguages,
     };
   }
 
@@ -422,6 +464,7 @@ export class ProfessionalsService {
         // lascia il valore esistente invariato, non la azzera.
         imageUrl: input.imageUrl,
         portfolioUrls: input.portfolioUrls,
+        spokenLanguages: input.spokenLanguages,
       },
       create: {
         userId,
@@ -436,6 +479,7 @@ export class ProfessionalsService {
         remoteAvailable: input.remoteAvailable,
         imageUrl: input.imageUrl,
         portfolioUrls: input.portfolioUrls,
+        spokenLanguages: input.spokenLanguages,
       },
       include: { category: true },
     });
@@ -495,6 +539,7 @@ export class ProfessionalsService {
       services: mapServices(savedServices),
       engagementRadiusKm: profile.engagementRadiusKm,
       urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+      spokenLanguages: profile.spokenLanguages,
     };
   }
 
@@ -866,7 +911,7 @@ export class ProfessionalsService {
           status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
           scheduledAt: { gte: startOfToday, lt: endWindow },
         },
-        select: { scheduledAt: true },
+        select: { scheduledAt: true, serviceMode: true },
       }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
@@ -882,12 +927,13 @@ export class ProfessionalsService {
       const dateStr = date.toISOString().slice(0, 10);
       if (exceptionDates.has(dateStr)) continue;
 
-      const freeSlots = slots
-        .filter((slot) => slotAppliesOnDate(slot, date))
-        .sort((a, b) => a.startTime.localeCompare(b.startTime))
-        .filter((slot) => !isSlotBooked(bookings, dateStr, slot.startTime, slot.endTime));
-      for (const slot of freeSlots) {
-        result.push({ date: dateStr, startTime: slot.startTime, endTime: slot.endTime });
+      const candidateSlots = slots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
+      for (const slot of candidateSlots) {
+        const homeAvailable = slot.allowsHome && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1);
+        const onlineAvailable =
+          slot.allowsOnline && countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
+        if (!homeAvailable && !onlineAvailable) continue;
+        result.push({ date: dateStr, startTime: slot.startTime, endTime: slot.endTime, homeAvailable, onlineAvailable });
       }
     }
     return result;
@@ -949,7 +995,10 @@ export class ProfessionalsService {
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
           endTime: slot.endTime,
-          maxBookings: slot.maxBookings,
+          allowsHome: slot.allowsHome,
+          allowsOnline: slot.allowsOnline,
+          homeMaxBookings: slot.homeMaxBookings,
+          onlineMaxBookings: slot.onlineMaxBookings,
           date: slotDateStr,
           hasUpcomingBooking,
         };
@@ -976,7 +1025,10 @@ export class ProfessionalsService {
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
           endTime: slot.endTime,
-          maxBookings: slot.maxBookings,
+          allowsHome: slot.allowsHome,
+          allowsOnline: slot.allowsOnline,
+          homeMaxBookings: slot.allowsHome ? (slot.homeMaxBookings ?? 1) : null,
+          onlineMaxBookings: slot.allowsOnline ? (slot.onlineMaxBookings ?? 1) : null,
           date: slot.date ? new Date(`${slot.date}T00:00:00.000Z`) : null,
         })),
       });
@@ -1045,7 +1097,7 @@ export class ProfessionalsService {
           status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
           scheduledAt: { gte: startOfToday, lt: endWindow },
         },
-        select: { scheduledAt: true },
+        select: { scheduledAt: true, serviceMode: true },
       }),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
@@ -1078,8 +1130,18 @@ export class ProfessionalsService {
               // consumare la capienza mostrata al cliente). Una prenotazione
               // annullata non è nel set `bookings` (filtrato a monte su
               // PENDING/CONFIRMED/COMPLETED), quindi libera la fascia da sola.
-              const bookedCount = countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime);
-              return { startTime: slot.startTime, endTime: slot.endTime, maxBookings: slot.maxBookings, bookedCount };
+              // Capienza indipendente per tipo (CLAUDE.md §22): `home`/`online`
+              // null quando quel tipo non è offerto su questa fascia.
+              const home = slot.allowsHome
+                ? { maxBookings: slot.homeMaxBookings ?? 1, bookedCount: countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "HOME") }
+                : null;
+              const online = slot.allowsOnline
+                ? {
+                    maxBookings: slot.onlineMaxBookings ?? 1,
+                    bookedCount: countBookingsInSlot(bookings, dateStr, slot.startTime, slot.endTime, "ONLINE"),
+                  }
+                : null;
+              return { startTime: slot.startTime, endTime: slot.endTime, home, online };
             });
 
       days.push({ date: dateStr, dayOfWeek, slots: daySlots });
@@ -1143,7 +1205,10 @@ export class ProfessionalsService {
     if (!matchingSlot) {
       throw new NotFoundException("Questa fascia oraria non fa parte dell'agenda del professionista.");
     }
-    if (matchingSlot.maxBookings > 1) {
+    // Metodo dormiente (nessun chiamante frontend, CLAUDE.md §20): capienza
+    // > 1 su uno qualunque dei due tipi resta comunque "fascia generica",
+    // riservata al percorso richiesta di preventivo.
+    if ((matchingSlot.homeMaxBookings ?? 1) > 1 || (matchingSlot.onlineMaxBookings ?? 1) > 1) {
       throw new ForbiddenException("Questa fascia richiede l'invio di una richiesta di preventivo, non una prenotazione diretta.");
     }
     if (exception) {
@@ -1209,8 +1274,23 @@ function parseIsoDateUtc(dateStr: string): Date {
  * esclusa dal filtro di stato a monte con cui `bookings` viene popolato)
  * libera automaticamente la fascia, senza bisogno di logica dedicata.
  */
-function countBookingsInSlot(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): number {
+/**
+ * `mode` opzionale: quando presente, conta solo le prenotazioni di quel
+ * tipo (`Booking.serviceMode`) — necessario da quando la capienza è
+ * indipendente per home/online sulla stessa fascia (CLAUDE.md §22). Senza
+ * `mode`, conta tutte le prenotazioni della fascia a prescindere dal tipo
+ * (usato per `hasUpcomingBooking`, che resta un avviso generico non
+ * per-tipo).
+ */
+function countBookingsInSlot(
+  bookings: { scheduledAt: Date; serviceMode?: string | null }[],
+  dateStr: string,
+  startTime: string,
+  endTime: string,
+  mode?: "HOME" | "ONLINE",
+): number {
   return bookings.filter((booking) => {
+    if (mode && booking.serviceMode !== mode) return false;
     const bookingDate = booking.scheduledAt.toISOString().slice(0, 10);
     if (bookingDate !== dateStr) return false;
     const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
@@ -1218,6 +1298,6 @@ function countBookingsInSlot(bookings: { scheduledAt: Date }[], dateStr: string,
   }).length;
 }
 
-function isSlotBooked(bookings: { scheduledAt: Date }[], dateStr: string, startTime: string, endTime: string): boolean {
+function isSlotBooked(bookings: { scheduledAt: Date; serviceMode?: string | null }[], dateStr: string, startTime: string, endTime: string): boolean {
   return countBookingsInSlot(bookings, dateStr, startTime, endTime) > 0;
 }

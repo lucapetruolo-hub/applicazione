@@ -88,7 +88,12 @@ export class GuidedRequestsService {
       if (!targetProfile) {
         throw new BadRequestException("Una fascia oraria preferita richiede un professionista specifico.");
       }
-      resolvedSlot = await this.resolveGenericSlot(targetProfile.id, input.preferredDate, input.preferredTimeSlot);
+      resolvedSlot = await this.resolveGenericSlot(
+        targetProfile.id,
+        input.preferredDate,
+        input.preferredTimeSlot,
+        input.serviceMode,
+      );
     }
 
     let guidedRequest;
@@ -101,7 +106,12 @@ export class GuidedRequestsService {
             // della stessa fascia nello stesso istante — stesso principio
             // già applicato a ProfessionalsService.bookAgendaSlot.
             const currentCount = await tx.guidedRequest.count({
-              where: { professionalProfileId: targetProfile.id, preferredDate: resolvedSlot.date, preferredTimeSlot: input.preferredTimeSlot },
+              where: {
+                professionalProfileId: targetProfile.id,
+                preferredDate: resolvedSlot.date,
+                preferredTimeSlot: input.preferredTimeSlot,
+                serviceMode: input.serviceMode,
+              },
             });
             if (currentCount >= resolvedSlot.maxBookings) {
               throw new ConflictException("Questa fascia ha già raggiunto il numero massimo di richieste.");
@@ -870,7 +880,12 @@ export class GuidedRequestsService {
    * non è disponibile" — bug reale segnalato dall'utente (tentativo di
    * richiesta su una fascia 9–13, rifiutato sistematicamente).
    */
-  private async resolveGenericSlot(professionalProfileId: string, dateStr: string, timeSlot: string): Promise<{ date: Date; maxBookings: number }> {
+  private async resolveGenericSlot(
+    professionalProfileId: string,
+    dateStr: string,
+    timeSlot: string,
+    serviceMode: "HOME" | "ONLINE",
+  ): Promise<{ date: Date; maxBookings: number }> {
     const date = new Date(`${dateStr}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) {
       throw new BadRequestException("Data non valida.");
@@ -895,6 +910,18 @@ export class GuidedRequestsService {
     if (exception) {
       throw new ConflictException("Il professionista non è disponibile in questa data.");
     }
-    return { date, maxBookings: slot.maxBookings };
+    // La fascia deve offrire proprio il tipo richiesto (richiesta esplicita
+    // dell'utente: "differenzia sempre se si è partiti con una consulenza
+    // online... in base a quale casella il professionista ha flaggato") —
+    // capienza indipendente per tipo, mai un fallback sull'altro.
+    const maxBookings = serviceMode === "HOME" ? slot.homeMaxBookings : slot.onlineMaxBookings;
+    if (maxBookings === null) {
+      throw new BadRequestException(
+        serviceMode === "HOME"
+          ? "Il professionista non offre interventi a domicilio su questa fascia oraria."
+          : "Il professionista non offre consulenza online su questa fascia oraria.",
+      );
+    }
+    return { date, maxBookings };
   }
 }
