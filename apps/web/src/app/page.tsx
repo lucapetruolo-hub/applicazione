@@ -19,5 +19,15 @@ export default async function HomePage() {
     professionals = [];
   }
 
-  return <HomeContent professionals={professionals} />;
+  // Numeri reali per la striscia "social proof" (richiesta esplicita
+  // dell'utente) — se l'API non risponde, la striscia semplicemente non
+  // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
+  let platformStats: { totalUsers: number; totalProfessionals: number } | null = null;
+  try {
+    platformStats = await apiClient.platformStats();
+  } catch {
+    platformStats = null;
+  }
+
+  return <HomeContent professionals={professionals} platformStats={platformStats} />;
 }

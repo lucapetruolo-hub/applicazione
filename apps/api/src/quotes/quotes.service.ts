@@ -255,8 +255,25 @@ export class QuotesService {
     // professionista disponibilità..."): la richiesta originale porta la
     // modalità scelta dal cliente (serviceMode, null solo per righe
     // precedenti a questa funzionalità — in quel caso si ricade sulla
-    // capienza a domicilio, comportamento storico).
+    // capienza a domicilio, comportamento storico). A differenza del
+    // fallback storico "?? 1" (per una data proposta senza una vera
+    // AvailabilitySlot sottostante, es. legacy), qui una fascia TROVATA che
+    // però non offre più la modalità richiesta (l'agenda del professionista
+    // può essere cambiata tra la proposta e la conferma) va rifiutata
+    // esplicitamente — mai dedurre una capienza di comodo per una modalità
+    // che la fascia non offre, stessa cautela già applicata in
+    // resolveFreeExactSlot.
     const requestServiceMode = quote.guidedRequest.serviceMode;
+    if (matchingSlot) {
+      const modeCapacity = requestServiceMode === "ONLINE" ? matchingSlot.onlineMaxBookings : matchingSlot.homeMaxBookings;
+      if (modeCapacity === null) {
+        throw new ConflictException(
+          requestServiceMode === "ONLINE"
+            ? "Il professionista non offre più consulenza online su questa fascia oraria."
+            : "Il professionista non offre più interventi a domicilio su questa fascia oraria.",
+        );
+      }
+    }
     const maxBookings =
       requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
 

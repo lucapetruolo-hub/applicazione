@@ -5415,3 +5415,156 @@ funzionante (aprire "Date disponibili" richiude "Consulenza online" e
 mostra le pillole Oggi/Entro 3 giorni/Qualsiasi giorno), bottone "Mostra 5
 risultati" con il conteggio corretto. Typecheck pulito, build di
 produzione `apps/web` verde.
+
+**Fasce senza una modalità durante la conferma di una data proposta** —
+completamento della richiesta "far sì che le trattative su data/orario
+mostrino solo fasce compatibili con la modalità della richiesta originale"
+(§23): un riaudit di ogni punto della negoziazione ha trovato un ultimo
+caso non ancora coperto. `QuotesService.confirmProposedDate` calcolava la
+capienza della fascia confermata con `matchingSlot?.onlineMaxBookings ??
+1` / `matchingSlot?.homeMaxBookings ?? 1` senza controllare prima se quella
+fascia offra davvero la modalità della richiesta — se il professionista
+avesse disattivato quella modalità sulla fascia tra la proposta del
+cliente e la propria conferma, il codice avrebbe silenziosamente trattato
+la fascia come disponibile con capienza 1 invece di rifiutare, stesso bug
+già corretto altrove (`resolveFreeExactSlot`) ma non qui. Corretto con lo
+stesso controllo esplicito (`modeCapacity === null` → `ConflictException`,
+messaggio distinto per online/domicilio) prima del calcolo della capienza.
+Verificato con l'API locale: conferma di una data proposta su una fascia a
+cui il professionista ha nel frattempo tolto la modalità richiesta ora
+rifiutata con 409 e messaggio esplicito, invece di essere accettata
+silenziosamente. Typecheck pulito su `apps/api`.
+
+---
+
+## 24. Contenuti homepage riscritti + "social proof" reale
+
+Richiesta esplicita dell'utente, con testo di riferimento dettagliato per
+ognuna delle sezioni: hero, categorie, sezione qualità (spostata sotto le
+categorie), "Come funziona", blocco waitlist ("critica!", il testo
+precedente "In costruzione" sembrava un sito rotto), sezione professionisti,
+più due elementi nuovi — una micro-FAQ e due contatori reali ("Utenti
+entrati nella piattaforma" / "Professionisti entrati nella piattaforma").
+
+**Principio seguito, come per ogni altra pagina del prodotto**: il testo
+letterale proposto dall'utente è stato usato quasi ovunque com'era, tranne
+in tre punti dove affermava qualcosa che il prodotto non fa davvero — corretti
+silenziosamente nel codice con testo onesto, stessa disciplina già applicata
+a ogni altra sezione del sito (mai una promessa che il prodotto non
+mantiene):
+1. **Recensioni "prenotato e pagato"**: il testo proposto era "solo chi ha
+   davvero prenotato e pagato può lasciare un parere" — nessun pagamento in
+   piattaforma per il lavoro esiste ancora (rimandato pre-lancio, §9).
+   Corretto in "solo chi ha davvero prenotato un intervento può lasciarne
+   una".
+2. **Privacy indirizzo "fino alla prenotazione"**: il testo proposto era
+   "L'indirizzo esatto resta privato fino alla prenotazione e solo per
+   l'esperto selezionato" — in realtà l'indirizzo è visibile al
+   professionista fin dalla primissima richiesta ricevuta (§12, "il
+   contatto deve essere visibile dalla prima richiesta"), solo le pagine
+   pubbliche (ricerca, profilo) non lo mostrano mai. Corretto in "Il tuo
+   indirizzo esatto non compare mai in ricerca o nel profilo pubblico: lo
+   vede solo il professionista a cui scrivi."
+3. **FAQ "non serve registrarsi"**: la risposta proposta per "Devo
+   registrarmi per ricevere un preventivo?" era "No. [...] Ti registri solo
+   se vuoi prenotare" — falso, `GuidedRequestForm` richiede già un account
+   per **inviare** la richiesta stessa (ramo "Accedi per inviare la
+   richiesta", non solo per prenotare). Corretto in "Sì, serve un account
+   gratuito (email o Google) per inviare la richiesta e ricevere i
+   preventivi — bastano pochi secondi, nessuna carta richiesta."
+4. **`ProCtaSection.tsx` (già esistente, non riscritta da zero in questo
+   giro)**: la colonna "Richieste filtrate dall'IA" era già presente nel
+   codice prima di questa sessione con un testo pressoché identico a quello
+   che l'utente ha poi riproposto nella sua lista ("il cliente carica una
+   foto, il sistema propone categoria e fascia di budget") — probabile
+   fonte diretta della sua proposta, letta dal sito live. Nessuna
+   classificazione automatica via IA è mai stata implementata (il
+   suggerimento IA sulla categoria da foto resta esplicitamente rimandato,
+   §9/§16): era già un'affermazione falsa in produzione, non introdotta da
+   questa sessione, corretta solo ora perché la richiesta toccava
+   esplicitamente quella sezione. Titolo aggiornato a "Meno telefonate
+   inutili, più lavoro concluso" (come richiesto); testo della colonna
+   corretto in "Il cliente sceglie categoria, zona e descrive il lavoro con
+   foto: ti arriva già classificata, non un generico 'quanto costa?'" — la
+   richiesta arriva comunque già in categoria, ma perché il cliente la
+   sceglie a mano in `GuidedRequestForm`, non perché un sistema la deduce.
+
+**Sezioni riscritte** (tutte in `apps/web/src/components`, nessuna nuova
+logica di business — solo copy, ordine, un nuovo endpoint per i contatori):
+- `HomeHero.tsx`: nuovo eyebrow ("Professionisti verificati vicino a te",
+  emoji rimossa — coerente con la regola "zero emoji" già applicata al
+  resto del sito, §10 Fase 2, l'eyebrow precedente l'aveva reintrodotta
+  senza che nessuna fase successiva se ne accorgesse), headline "Non
+  chiamare a caso. Chiamalo giusto.", subheadline aggiornata. I due bottoni
+  sotto il pannello verde diventano "Descrivi il tuo lavoro" (invariato nel
+  routing, `/preventivo`) e "Come funziona" (nuovo: scroll fluido
+  all'ancora `#come-funziona` già presente in `HomeContent.tsx`, tramite
+  `document.getElementById(...)?.scrollIntoView`) — sostituisce "Richiesta
+  urgente", che resta comunque raggiungibile più in basso in pagina (link
+  "Hai un'emergenza?" già esistente, invariato). La `SearchBar` dentro il
+  pannello verde **non è stata toccata**: la home deve continuare ad avere
+  la ricerca come funzione primaria, decisione già presa esplicitamente
+  dall'utente in una correzione precedente (§4, "correzione post-Fase 4").
+- `CategoryTile.tsx`: la riga "N professionisti" sotto ogni categoria è
+  sostituita da un'etichetta di stato — "Disponibile" (verde, `brand.
+  verificato`) se almeno un professionista reale è registrato in quella
+  categoria, "In arrivo" (grigio) altrimenti — stesso principio "mai un
+  numero che fa sembrare il sito vuoto" già seguito per la vetrina
+  professionisti (soglia `MIN_PROFESSIONALS_TO_SHOWCASE`).
+- `QualitySection.tsx`: spostata subito dopo le Categorie in
+  `HomeContent.tsx` (prima veniva dopo "Come funziona"). Nuovo titolo "La
+  trasparenza che non trovi in giro", tre pilastri con le correzioni di
+  onestà sopra (punti 1 e 2).
+- `HowItWorks.tsx`: nuovo copy per i tre step ("Raccontaci il problema" /
+  "Ricevi preventivi chiari" / "Scegli e prenota"), stessa struttura
+  visiva a step numerati invariata.
+- **`HomeFaq.tsx`** (nuovo componente): micro-FAQ a scomparsa sotto "Come
+  funziona", due domande (costo per il cliente, obbligo di registrazione —
+  quest'ultima con la correzione di onestà del punto 3). Stesso pattern
+  `<details>/<summary>` nativo già in uso per il drawer mobile di
+  `MegaMenu.tsx`, nessuna libreria di accordion aggiunta.
+- `ProfessionalsShowcase.tsx` (`WaitlistBlock`): nuovo titolo "Arriviamo
+  presto nella tua zona" (l'utente l'ha segnalata esplicitamente come
+  "critica!" — "In costruzione" comunicava un sito rotto), nuovo corpo
+  testo, disclaimer "Niente spam. Solo una notifica quando siamo pronti."
+  sotto il form email — nessuna modifica alla logica (stessa soglia
+  `MIN_PROFESSIONALS_TO_SHOWCASE`, stesso endpoint `POST /waitlist`
+  con honeypot anti-spam già esistente).
+- `ProCtaSection.tsx`: vedi punto 4 sopra.
+
+**Nuovo `PlatformStats.tsx`** — i due contatori richiesti esplicitamente
+dall'utente ("Utenti entrati nella piattaforma: Professionisti entrati
+nella piattaforma:"), con l'istruzione esplicita che devono essere numeri
+**reali**, mai finti. Nuovo modulo backend minimale
+`apps/api/src/stats/` (`StatsService`/`StatsController`/`StatsModule`,
+stesso pattern di ogni altro modulo NestJS del progetto): `GET
+/stats/platform`, pubblico (nessun guard, sono numeri aggregati non
+sensibili), conta `User` con `role: "CLIENT", deletedAt: null` e
+`ProfessionalProfile` con `isDemo: false, deletedAt: null` — stessa
+esclusione dei dati demo/eliminati già applicata ovunque nel prodotto
+(mai contare account soft-deleted o profili placeholder come utenti
+reali). `apiClient.platformStats()` (nuovo metodo, `cache: "no-store"`,
+coerente con `dynamic = "force-dynamic"` già impostato sulla home).
+`apps/web/src/app/page.tsx` lo recupera server-side insieme a
+`professionals`, con lo stesso pattern try/catch → `null` già in uso per
+la ricerca: se l'endpoint non risponde, `PlatformStats` semplicemente non
+compare (mai uno zero fuorviante al posto di un dato assente). La striscia
+stessa non si mostra nemmeno sotto una soglia minima (`totalUsers < 10`):
+un numero troppo piccolo sarebbe più imbarazzante che rassicurante, stessa
+cautela già applicata altrove (`MIN_PROFESSIONALS_TO_SHOWCASE`).
+
+**Ordine finale della homepage** (`HomeContent.tsx`): Hero → PlatformStats
+→ Categorie → Qualità → Come funziona → FAQ → Vetrina professionisti/
+Waitlist → CTA professionisti → link emergenza → footer.
+
+Verificato con l'API locale (non solo typecheck) e Playwright: `GET
+/stats/platform` risponde con conteggi reali (145 utenti, 173
+professionisti nell'ambiente di sviluppo); homepage desktop (1440px) e
+mobile (iPhone 13) con zero overflow orizzontale, zero errori console
+reali (gli unici osservati sono `ERR_TUNNEL_CONNECTION_FAILED`, la stessa
+limitazione di rete dell'ambiente di sviluppo già documentata altrove in
+questo file); ordine delle sezioni confermato via testo della pagina
+(Categorie prima di Qualità, Qualità prima di Come funziona); FAQ verificata
+espandibile al click; entrambi i contatori visibili con i valori reali
+dell'API. Typecheck pulito su tutti i package (`shared`, `api`,
+`api-client`, `web`), build di produzione `apps/web` verde (24 route).

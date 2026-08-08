@@ -5,18 +5,18 @@ import { Section, Text, YStack, brand } from "@professionisti/ui";
 const STEPS = [
   {
     number: "01",
-    title: "Descrivi il lavoro",
-    text: "Una foto e due righe bastano. Nessuna registrazione per inviare la richiesta.",
+    title: "Raccontaci il problema",
+    text: "Una foto e due righe. Nessun impegno.",
   },
   {
     number: "02",
-    title: "Ricevi preventivi strutturati",
-    text: "Manodopera, materiali e tempi separati, prima di accettare qualsiasi cosa.",
+    title: "Ricevi preventivi chiari",
+    text: "Manodopera, materiali e tempi separati. Confronta prima di dire sì.",
   },
   {
     number: "03",
     title: "Scegli e prenota",
-    text: "Confermi in piattaforma, con promemoria via email e SMS prima dell'appuntamento.",
+    text: "Conferma in piattaforma. Promemoria via email e SMS prima dell'appuntamento.",
   },
 ];
 

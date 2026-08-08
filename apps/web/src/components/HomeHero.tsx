@@ -25,6 +25,10 @@ export function HomeHero() {
     router.push(buildSearchDestination(params));
   }
 
+  function scrollToHowItWorks() {
+    document.getElementById("come-funziona")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <YStack width="100%" backgroundColor={brand.gesso} paddingTop="$6" paddingBottom="$5" paddingHorizontal="$4" alignItems="center">
       <YStack
@@ -65,7 +69,7 @@ export function HomeHero() {
         </YStack>
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
-          <Eyebrow tone="dark">👋 Qualcuno del quartiere ti aiuta oggi</Eyebrow>
+          <Eyebrow tone="dark">Professionisti verificati vicino a te</Eyebrow>
           <Text
             fontFamily="$heading"
             fontWeight="600"
@@ -76,11 +80,11 @@ export function HomeHero() {
             color="white"
             $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
-            Il vicino di casa che sa sempre chi chiamare.
+            Non chiamare a caso. Chiamalo giusto.
           </Text>
           <Text fontSize="$5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
-            Idraulici, elettricisti, imbianchini e altri professionisti verificati. Cerca per zona o scegli una
-            consulenza online.
+            Idraulici, elettricisti, imbianchini e altri esperti verificati nella tua zona. Preventivi strutturati,
+            confronta e scegli. Zero sorprese.
           </Text>
 
           <YStack width="100%" marginTop="$4">
@@ -100,21 +104,25 @@ export function HomeHero() {
       {/* Fuori dal pannello verde, non più dentro SearchBar (richiesta
           esplicita dell'utente: "far uscire completamente da quel riquadro
           verde... metterla appena sotto come due grossi pulsanti") — stesso
-          routing di prima, solo posizione e resa diverse. */}
+          routing di prima, solo posizione e resa diverse. Secondo bottone
+          ("Come funziona") aggiornato con la stessa richiesta esplicita: uno
+          scroll all'ancora #come-funziona già presente in HomeContent, non
+          più "Richiesta urgente" (quel link resta comunque raggiungibile più
+          in basso in pagina). */}
       <XStack gap="$3" flexWrap="wrap" justifyContent="center" marginTop="$5" width="100%" maxWidth={1160}>
         <Button variant="primary" onPress={() => router.push("/preventivo")}>
           <XStack alignItems="center" gap="$2">
             <Icon name="file-text" size={18} color="white" />
             <Text color="white" fontWeight="700" fontSize="$4">
-              Richiedi preventivo
+              Descrivi il tuo lavoro
             </Text>
           </XStack>
         </Button>
-        <Button variant="urgent" onPress={() => router.push("/urgente")}>
+        <Button variant="secondary" onPress={scrollToHowItWorks}>
           <XStack alignItems="center" gap="$2">
-            <Icon name="zap" size={18} color="white" />
-            <Text color="white" fontWeight="700" fontSize="$4">
-              Richiesta urgente
+            <Icon name="badge-check" size={18} color={brand.cianografia} />
+            <Text color={brand.cianografia} fontWeight="700" fontSize="$4">
+              Come funziona
             </Text>
           </XStack>
         </Button>
