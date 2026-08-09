@@ -648,7 +648,7 @@ export class ProfessionalsService {
       where: { professionalProfileId },
       include: {
         guidedRequest: {
-          include: { category: true, client: true, quotes: { where: { professionalProfileId }, include: { items: true } } },
+          include: { category: true, client: true, quotes: { where: { professionalProfileId }, include: { items: true, booking: true } } },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -698,6 +698,13 @@ export class ProfessionalsService {
                 priceMaxEurCents: item.priceMaxEurCents,
               })),
               notes: quote.notes,
+              // Stato della prenotazione nata da questo preventivo (solo se
+              // accettato), per lo stepper di stato anche lato professionista
+              // (richiesta esplicita dell'utente: "stepper stile deliveroo
+              // visualizzabile anche dall'account professionista, non solo
+              // cliente") — stesso campo già esposto lato cliente
+              // (GuidedRequestsService.listForClient).
+              bookingStatus: quote.booking?.status ?? null,
             }
           : null,
         guidedRequest: {

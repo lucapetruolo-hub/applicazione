@@ -23,6 +23,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { professionalSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
@@ -1423,6 +1424,16 @@ function LeadCard({
           </Text>
         ) : null}
       </YStack>
+
+      {/* Stepper di stato in stile Deliveroo, stesso componente già in uso
+          lato cliente (`/le-mie-richieste`) — richiesta esplicita
+          dell'utente: visibile anche dall'account professionista, non solo
+          dal cliente. `lead.quote` è al più uno (un professionista invia un
+          solo preventivo per richiesta), adattato all'array atteso da
+          computeRequestStage. */}
+      <RequestStepper
+        stage={computeRequestStage(lead.quote ? [{ status: lead.quote.status, bookingStatus: lead.quote.bookingStatus }] : [])}
+      />
 
       {lead.status === "DECLINED" && lead.declineNote ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">

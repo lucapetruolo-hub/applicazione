@@ -6051,3 +6051,43 @@ facoltativi per l'online in un giro precedente (CLAUDE.md §25).
   dell'ambiente di sviluppo già documentata altrove in questo file).
   Typecheck pulito su tutti i package (`shared`, `api`, `api-client`,
   `web`), build di produzione `apps/web` verde (24 route).
+
+## 38. Stepper di stato visibile anche dall'account professionista
+
+Richiesta esplicita dell'utente: "stepper stile deliveroo visualizzabile
+anche dall'account professionista, non solo cliente". Lo stepper introdotto
+in CLAUDE.md §32 (`RequestStepper`, "Richiesta → Preventivo inviato →
+Preventivo accettato → Completato") era montato solo in `GuidedRequestCard`
+(`/le-mie-richieste`, lato cliente); `computeRequestStage` si aspettava un
+array di preventivi (`{status, bookingStatus}[]`, il fan-out di una
+richiesta generica può ricevere più preventivi da professionisti diversi) —
+sul lato professionista un `Lead` ha invece **al più un solo** preventivo
+proprio (`lead.quote`, non un array).
+
+- **`ProfessionalLead.quote.bookingStatus`** (nuovo campo,
+  `packages/shared/src/dashboard.ts`): mancava del tutto lato
+  professionista (esisteva già lato cliente su `ClientGuidedRequest.
+  quotes[].bookingStatus`, §32) — `ProfessionalsService.getMyLeads`
+  include ora anche `booking: true` nella query dei preventivi
+  (`quotes: {..., include: { items: true, booking: true } }`) ed espone
+  `bookingStatus: quote.booking?.status ?? null`.
+- **`apps/web/src/app/dashboard/page.tsx`** (`LeadCard`): montato
+  `<RequestStepper stage={computeRequestStage(lead.quote ? [{status:
+  lead.quote.status, bookingStatus: lead.quote.bookingStatus}] : [])} />`
+  subito dopo l'intestazione della card, stesso posizionamento già in uso
+  lato cliente — `lead.quote` singolo avvolto in un array di un solo
+  elemento per riusare `computeRequestStage` senza duplicarne la logica.
+
+Verificato end-to-end con l'API locale (non solo typecheck) e Playwright:
+script dedicato con richiesta diretta a un professionista specifico (stesso
+accorgimento anti-lotteria-lead già documentato altrove in questo file) che
+percorre tutti e 4 gli stadi — nessun preventivo (`lead.quote === null`) →
+preventivo inviato (`status: "SENT", bookingStatus: null`) → preventivo
+accettato (`status: "ACCEPTED", bookingStatus: "CONFIRMED"`) → lavoro
+completato (`bookingStatus: "COMPLETED"`) — confermati tutti e 4 via
+chiamate dirette a `GET /professionals/me/leads` dopo ciascuna transizione.
+UI: le quattro etichette dello stepper (`Richiesta`/`Preventivo inviato`/
+`Preventivo accettato`/`Completato`) verificate presenti in `/dashboard`
+con un professionista autenticato, zero overflow orizzontale, zero errori
+console nuovi. Typecheck pulito su tutti i package (`shared`, `api`,
+`api-client`, `web`), build di produzione `apps/web` verde (24 route).

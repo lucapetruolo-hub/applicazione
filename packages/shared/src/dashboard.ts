@@ -64,6 +64,14 @@ export type ProfessionalLead = {
      */
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     notes: string | null;
+    /**
+     * Stato della prenotazione nata da questo preventivo (solo se
+     * accettato), per lo stepper di stato "in stile Deliveroo" — richiesta
+     * esplicita dell'utente: visibile anche dall'account professionista,
+     * non solo dal cliente (che lo ha già, vedi ClientGuidedRequest).
+     * `null` finché il preventivo non è stato accettato.
+     */
+    bookingStatus: string | null;
   } | null;
   guidedRequest: {
     id: string;
