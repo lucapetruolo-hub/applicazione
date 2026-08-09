@@ -3,6 +3,17 @@
 import { useEffect } from "react";
 import { buildWhatsAppLink } from "@professionisti/shared";
 import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { MediaPreview } from "@/components/MediaPreview";
+
+export type ClientReviewSummary = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  mediaUrls: string[];
+  createdAt: string;
+  isAutomatic: boolean;
+  reviewerBusinessName: string;
+};
 
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
@@ -24,6 +35,7 @@ export function ClientProfileModal({
   phone,
   email,
   imageUrl,
+  reviews,
   onClose,
 }: {
   name: string;
@@ -31,6 +43,8 @@ export function ClientProfileModal({
   email: string | null;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
+  /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
+  reviews?: ClientReviewSummary[];
   onClose: () => void;
 }) {
   const whatsAppLink = buildWhatsAppLink(phone);
@@ -66,7 +80,9 @@ export function ClientProfileModal({
       <YStack
         onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
         width="100%"
-        maxWidth={360}
+        maxWidth={420}
+        maxHeight="85vh"
+        overflow="scroll"
         backgroundColor={brand.calce}
         borderRadius="$3"
         borderWidth={1}
@@ -130,6 +146,54 @@ export function ClientProfileModal({
             Nessun contatto disponibile per questo cliente.
           </Text>
         )}
+
+        {reviews && reviews.length > 0 ? (
+          <YStack width="100%" gap="$3" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+              Recensioni ricevute ({reviews.length})
+            </Text>
+            {reviews.map((review) => (
+              <YStack key={review.id} gap="$1" width="100%">
+                <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                  <XStack gap={2}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <Icon
+                        key={value}
+                        name="star"
+                        size={13}
+                        strokeWidth={1.5}
+                        color={brand.ottone}
+                        fill={value <= review.rating ? brand.ottone : "none"}
+                      />
+                    ))}
+                  </XStack>
+                  <Text fontSize="$2" color={brand.grafite} fontWeight="600">
+                    {review.reviewerBusinessName}
+                  </Text>
+                  {review.isAutomatic ? (
+                    <Text fontSize={11} color={brand.grafite70} fontStyle="italic">
+                      (recensione automatica)
+                    </Text>
+                  ) : null}
+                </XStack>
+                {review.comment ? (
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    {review.comment}
+                  </Text>
+                ) : null}
+                {review.mediaUrls.length > 0 ? (
+                  <XStack gap="$2" flexWrap="wrap">
+                    {review.mediaUrls.map((url) => (
+                      <YStack key={url} width={48} height={48} borderRadius="$2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
+                        <MediaPreview url={url} />
+                      </YStack>
+                    ))}
+                  </XStack>
+                ) : null}
+              </YStack>
+            ))}
+          </YStack>
+        ) : null}
       </YStack>
     </div>
   );

@@ -311,11 +311,29 @@ export const bookingFinalItemSchema = z.object({
 });
 export type BookingFinalItemInput = z.infer<typeof bookingFinalItemSchema>;
 
-/** Il professionista segnala un lavoro come terminato, inserendo l'importo preciso (voci del preventivo + eventuali extra). */
+/**
+ * Il professionista segnala un lavoro come terminato, inserendo l'importo
+ * preciso (voci del preventivo + eventuali extra) — `photoUrls` facoltative
+ * (richiesta esplicita dell'utente: "dai la possibilità di inserire delle
+ * foto del lavoro terminato"), stesso limite/pattern delle altre gallerie
+ * del prodotto.
+ */
 export const completeBookingSchema = z.object({
   items: z.array(bookingFinalItemSchema).min(1, "Aggiungi almeno una voce.").max(20),
+  photoUrls: z.array(z.string().url()).max(5).default([]),
 });
 export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
+
+/**
+ * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
+ * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
+ * indipendente dall'importo/stato, che restano pilotati dal professionista.
+ * Foto facoltative, stesso limite delle altre gallerie.
+ */
+export const clientConfirmCompleteSchema = z.object({
+  photoUrls: z.array(z.string().url()).max(5).default([]),
+});
+export type ClientConfirmCompleteInput = z.infer<typeof clientConfirmCompleteSchema>;
 
 /** Il professionista annulla un intervento già confermato, con una nota facoltativa spiegata al cliente. */
 export const cancelBookingByProfessionalSchema = z.object({
@@ -384,6 +402,20 @@ export const reviewSchema = z.object({
   photoUrls: z.array(z.string().url()).max(5).default([]),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
+
+/**
+ * Recensione del professionista sul cliente (richiesta esplicita
+ * dell'utente: "per il professionista per fare una recensione al cliente"),
+ * stessa struttura di reviewSchema — stelle+testo+media, consentita solo
+ * legata a una prenotazione COMPLETED del professionista stesso.
+ */
+export const clientReviewSchema = z.object({
+  bookingId: z.string().uuid(),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(2000).optional(),
+  mediaUrls: z.array(z.string().url()).max(5).default([]),
+});
+export type ClientReviewInput = z.infer<typeof clientReviewSchema>;
 
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z

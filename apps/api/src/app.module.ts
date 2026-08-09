@@ -13,6 +13,7 @@ import { GuidedRequestsModule } from "./guided-requests/guided-requests.module";
 import { QuotesModule } from "./quotes/quotes.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { ReviewsModule } from "./reviews/reviews.module";
+import { ClientReviewsModule } from "./client-reviews/client-reviews.module";
 import { BillingModule } from "./billing/billing.module";
 import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
 import { AdminModule } from "./admin/admin.module";
@@ -48,6 +49,7 @@ import { StatsModule } from "./stats/stats.module";
     QuotesModule,
     BookingsModule,
     ReviewsModule,
+    ClientReviewsModule,
     BillingModule,
     SavedProfessionalsModule,
     AdminModule,

@@ -1,24 +1,64 @@
-import { Controller, Body, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, Body, Delete, Get, Param, Patch, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { z } from "zod";
 import {
   cancelBookingByProfessionalSchema,
+  clientConfirmCompleteSchema,
   completeBookingSchema,
   updateBookingMeetingLinkSchema,
   updateBookingNoteSchema,
   type CancelBookingByProfessionalInput,
+  type ClientConfirmCompleteInput,
   type CompleteBookingInput,
   type UpdateBookingMeetingLinkInput,
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
 
 const updateStatusSchema = z.object({ status: z.enum(["CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"]) });
+const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
 
 @Controller("bookings")
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  /**
+   * Foto/video del lavoro terminato, caricate sia dal professionista
+   * (`CompleteJobModal`) sia dal cliente (`ClientCompleteModal`) — richiesta
+   * esplicita dell'utente. Stesso pattern di `ReviewsController.uploadPhoto`,
+   * cartella Cloudinary dedicata invece di riusare quella delle recensioni
+   * (sono due gallerie concettualmente diverse: il lavoro svolto vs. il
+   * giudizio su come è andata).
+   */
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(MulterExceptionFilter)
+  @Post("completion-photos")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine o un video."), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadCompletionPhoto(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Nessuna immagine o video caricato.");
+    }
+    const imageUrl = await this.cloudinaryService.uploadMedia(file, "booking-completions");
+    return { imageUrl };
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post("from-quote/:quoteId")
@@ -47,6 +87,22 @@ export class BookingsController {
   @Patch(":id/complete")
   complete(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(completeBookingSchema)) body: CompleteBookingInput) {
     return this.bookingsService.completeWithFinalAmount(req.user.userId, id, body);
+  }
+
+  /**
+   * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
+   * (richiesta esplicita dell'utente: "servono i completed da entrambi"),
+   * con foto facoltative — sblocca la possibilità di scrivere la propria
+   * recensione.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/client-confirm-complete")
+  clientConfirmComplete(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(clientConfirmCompleteSchema)) body: ClientConfirmCompleteInput,
+  ) {
+    return this.bookingsService.clientConfirmComplete(req.user.userId, id, body);
   }
 
   /** Il professionista annulla un intervento già confermato, con una nota facoltativa per il cliente. */

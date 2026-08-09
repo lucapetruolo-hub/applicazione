@@ -240,7 +240,15 @@ export type ProfessionalSearchResult = {
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {
   bio: string | null;
-  reviews: { id: string; rating: number; comment: string | null; photoUrls: string[]; createdAt: string }[];
+  reviews: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    photoUrls: string[];
+    createdAt: string;
+    /** Vera se generata automaticamente (5 stelle) dallo sblocco "doppio cieco" dopo 3 giorni di attesa. */
+    isAutomatic: boolean;
+  }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
    * profilo pubblico — richiesta esplicita dell'utente: "un'idea dei lavori

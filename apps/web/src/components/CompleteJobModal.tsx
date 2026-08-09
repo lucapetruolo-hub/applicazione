@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
 import type { CompleteBookingInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { MediaPreview } from "@/components/MediaPreview";
+
+const MAX_COMPLETION_PHOTOS = 5;
 
 const smallInputStyle = {
   padding: 10,
@@ -46,10 +49,13 @@ export function CompleteJobModal({
   quotedItems,
   onClose,
   onComplete,
+  uploadPhoto,
 }: {
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
+  /** Upload di una foto/video del lavoro terminato (richiesta esplicita dell'utente), restituisce l'URL. */
+  uploadPhoto: (file: File) => Promise<string>;
 }) {
   const [quotedRows, setQuotedRows] = useState<QuotedRow[]>(
     quotedItems.length > 0
@@ -57,6 +63,10 @@ export function CompleteJobModal({
       : [],
   );
   const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: "", price: "" }] : []);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -78,6 +88,27 @@ export function CompleteJobModal({
 
   function removeExtraRow(index: number) {
     setExtraRows((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      const imageUrl = await uploadPhoto(file);
+      setPhotoUrls((prev) => [...prev, imageUrl].slice(0, MAX_COMPLETION_PHOTOS));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
   const parsedQuoted = quotedRows.map((row) => ({ name: row.name, cents: parseEuroToCents(row.price) }));
@@ -113,7 +144,7 @@ export function CompleteJobModal({
 
     setIsSaving(true);
     try {
-      await onComplete({ items });
+      await onComplete({ items, photoUrls });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -135,7 +166,12 @@ export function CompleteJobModal({
         bottom: 0,
         backgroundColor: "rgba(20,24,30,0.55)",
         display: "flex",
-        alignItems: "center",
+        // `alignItems: "flex-start"` (non "center"): con contenuto più alto
+        // del viewport un contenitore centrato rende irraggiungibile la
+        // parte superiore anche scorrendo — stesso bug reale già corretto
+        // altrove per lo stesso pattern (CLAUDE.md §35), qui rilevante
+        // perché la sezione foto aggiunge altezza al modulo.
+        alignItems: "flex-start",
         justifyContent: "center",
         zIndex: 1000,
         padding: 16,
@@ -250,6 +286,65 @@ export function CompleteJobModal({
           </Text>
         </XStack>
 
+        {/* Foto/video del lavoro terminato (richiesta esplicita
+            dell'utente), distinte dalle foto della recensione. */}
+        <YStack gap="$1">
+          <Text fontSize="$2" color={brand.grafite70}>
+            Foto o video del lavoro svolto (opzionale, fino a {MAX_COMPLETION_PHOTOS})
+          </Text>
+          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+            {photoUrls.map((url) => (
+              <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                <MediaPreview url={url} />
+                <YStack
+                  position="absolute"
+                  top={2}
+                  right={2}
+                  width={18}
+                  height={18}
+                  borderRadius={9}
+                  backgroundColor="rgba(20,24,30,0.7)"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => removePhoto(url)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rimuovi foto"
+                >
+                  <X size={11} strokeWidth={2} color="white" />
+                </YStack>
+              </YStack>
+            ))}
+            {photoUrls.length < MAX_COMPLETION_PHOTOS ? (
+              <YStack
+                width={64}
+                height={64}
+                borderRadius="$3"
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderStyle="dashed"
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                opacity={isUploadingPhoto ? 0.6 : 1}
+                onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                accessibilityRole="button"
+                accessibilityLabel="Aggiungi foto"
+              >
+                <Text fontSize="$6" color={brand.grafite70}>
+                  {isUploadingPhoto ? "…" : "+"}
+                </Text>
+              </YStack>
+            ) : null}
+          </YStack>
+          <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
+          {photoError ? (
+            <Text color={brand.urgenza} fontSize="$2">
+              {photoError}
+            </Text>
+          ) : null}
+        </YStack>
+
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">
             {error}
@@ -257,7 +352,7 @@ export function CompleteJobModal({
         ) : null}
 
         <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploadingPhoto} opacity={isSaving ? 0.6 : 1}>
             {isSaving ? "Salvataggio..." : "Conferma completamento"}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>

@@ -495,11 +495,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           ) : (
             professional.reviews.map((review) => (
               <Surface key={review.id} gap="$2">
-                <XStack alignItems="center" gap="$1">
-                  <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
-                  <Text fontWeight="600" color={brand.grafite}>
-                    {review.rating}/5
-                  </Text>
+                <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                  <XStack alignItems="center" gap="$1">
+                    <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                    <Text fontWeight="600" color={brand.grafite}>
+                      {review.rating}/5
+                    </Text>
+                  </XStack>
+                  {review.isAutomatic ? (
+                    <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
+                      (recensione automatica)
+                    </Text>
+                  ) : null}
                 </XStack>
                 {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
                 {/* `?? []`: stessa cautela dell'agenda, un'API non ancora allineata all'ultimo deploy

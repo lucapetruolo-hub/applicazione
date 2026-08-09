@@ -24,7 +24,9 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { TimelineModal } from "@/components/TimelineModal";
-import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
+import { ClientCompleteModal } from "@/components/ClientCompleteModal";
+import { ReviewModal } from "@/components/ReviewModal";
+import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
@@ -151,6 +153,11 @@ function LeMieRichiesteContent() {
   // anche nella lista"), non solo il numeretto sul tab.
   const [newRequestIds, setNewRequestIds] = useState<Set<string>>(new Set());
   const [newClientBookingIds, setNewClientBookingIds] = useState<Set<string>>(new Set());
+  // Simbolo sul preventivo specifico che ha ricevuto un aggiornamento
+  // (richiesta esplicita dell'utente) — una richiesta generica può avere
+  // preventivi da più professionisti, il badge sulla card da solo non basta
+  // a distinguere quale.
+  const [newQuoteIds, setNewQuoteIds] = useState<Set<string>>(new Set());
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -233,6 +240,7 @@ function LeMieRichiesteContent() {
         setSectionSnapshot(clientSectionCounts(notifications));
         setNewRequestIds(unreadGuidedRequestIds(notifications));
         setNewClientBookingIds(unreadBookingIds(notifications));
+        setNewQuoteIds(unreadQuoteIds(notifications));
       })
       .catch(() => {})
       .finally(() => markNotificationsRead());
@@ -354,6 +362,7 @@ function LeMieRichiesteContent() {
                     onChanged={reload}
                     onAcceptQuote={handleAcceptQuote}
                     isNew={newRequestIds.has(request.id)}
+                    newQuoteIds={newQuoteIds}
                   />
                 ))
               )}
@@ -400,6 +409,7 @@ function GuidedRequestCard({
   onChanged,
   onAcceptQuote,
   isNew,
+  newQuoteIds,
 }: {
   request: ClientGuidedRequest;
   token: string;
@@ -407,6 +417,8 @@ function GuidedRequestCard({
   onAcceptQuote: (quoteId: string) => Promise<void>;
   /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** ID dei preventivi con un aggiornamento non letto — disambigua QUALE preventivo tra più ricevuti per questa richiesta. */
+  newQuoteIds?: Set<string>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
@@ -925,6 +937,7 @@ function GuidedRequestCard({
               requestedTimeSlot={request.preferredTimeSlot}
               guidedRequestId={request.id}
               serviceMode={request.serviceMode}
+              isNew={newQuoteIds?.has(quote.id)}
             />
           ))}
         </YStack>
@@ -980,6 +993,7 @@ function QuoteCard({
   requestedTimeSlot,
   guidedRequestId,
   serviceMode,
+  isNew,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
@@ -991,6 +1005,8 @@ function QuoteCard({
   guidedRequestId: string;
   /** Modalità della richiesta originale (richiesta esplicita dell'utente: "differenzia sempre... anche nelle successive modifiche della data e ora") — filtra le fasce proponibili a quelle che offrono questa modalità. */
   serviceMode: "HOME" | "ONLINE" | null;
+  /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto (richiesta esplicita dell'utente). */
+  isNew?: boolean;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -1109,11 +1125,17 @@ function QuoteCard({
       {/* Nome del professionista cliccabile: apre il suo profilo pubblico
           (richiesta esplicita dell'utente, stesso trattamento già in uso
           nella sezione "Inviata a" più sopra in questa pagina). */}
-      <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-        <Text fontWeight="600" color={brand.cianografia}>
-          {quote.businessName}
-        </Text>
-      </Link>
+      <XStack alignItems="center" gap="$2" flexWrap="wrap">
+        <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
+          <Text fontWeight="600" color={brand.cianografia}>
+            {quote.businessName}
+          </Text>
+        </Link>
+        {/* Simbolo sul preventivo specifico (richiesta esplicita
+            dell'utente): distingue quale preventivo, tra più ricevuti per
+            la stessa richiesta, ha ricevuto l'aggiornamento. */}
+        {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+      </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
       </Text>
@@ -1358,15 +1380,12 @@ function BookingRow({
   /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
 }) {
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  // Conferma del cliente che il lavoro è terminato dal suo lato (richiesta
+  // esplicita dell'utente: "servono i completed da entrambi") + recensione
+  // al professionista, sbloccata subito dopo — stessi popup condivisi con
+  // il lato professionista (ClientCompleteModal/ReviewModal).
+  const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -1413,42 +1432,19 @@ function BookingRow({
     }
   }
 
-  async function handleSubmitReview() {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await apiClient.createReview(token, { bookingId: booking.id, rating, comment: comment.trim() || undefined, photoUrls });
-      setShowReviewForm(false);
-      onReviewed();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsSubmitting(false);
+  async function handleClientConfirmComplete(photoUrls: string[]) {
+    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
+    setShowClientCompleteModal(false);
+    if (!booking.hasReview) {
+      setShowReviewModal(true);
     }
+    onReviewed();
   }
 
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setPhotoError(null);
-    setIsUploadingPhoto(true);
-    try {
-      // Cloudinary ridimensiona e comprime lato server, stessa trasformazione
-      // già usata per le foto della richiesta guidata e per l'immagine
-      // profilo professionista.
-      const result = await apiClient.uploadReviewPhoto(token, file);
-      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REVIEW_PHOTOS));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-    } finally {
-      setIsUploadingPhoto(false);
-    }
-  }
-
-  function removePhoto(url: string) {
-    setPhotoUrls((prev) => prev.filter((u) => u !== url));
+  async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
+    setShowReviewModal(false);
+    onReviewed();
   }
 
   // "Non presentato" (richiesta esplicita dell'utente): disponibile solo
@@ -1746,120 +1742,39 @@ function BookingRow({
         />
       ) : null}
 
-      {booking.status === "COMPLETED" && !booking.hasReview ? (
-        showReviewForm ? (
-          <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-            <YStack flexDirection="row" gap="$1">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <YStack
-                  key={value}
-                  cursor="pointer"
-                  onPress={() => setRating(value)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${value} stelle`}
-                >
-                  <Icon name="star" size={24} strokeWidth={1.5} color={brand.ottone} fill={value <= rating ? brand.ottone : "none"} />
-                </YStack>
-              ))}
-            </YStack>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Com'è andata? (opzionale)"
-              rows={2}
-              style={textareaStyle}
-            />
-
-            <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
-                Foto o video del lavoro svolto (opzionale, fino a {MAX_REVIEW_PHOTOS})
-              </Text>
-              <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-                {photoUrls.map((url) => (
-                  <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                    <MediaPreview url={url} />
-                    <YStack
-                      position="absolute"
-                      top={2}
-                      right={2}
-                      width={18}
-                      height={18}
-                      borderRadius={9}
-                      backgroundColor="rgba(20,24,30,0.7)"
-                      alignItems="center"
-                      justifyContent="center"
-                      cursor="pointer"
-                      onPress={() => removePhoto(url)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Rimuovi foto"
-                    >
-                      <X size={11} strokeWidth={2} color="white" />
-                    </YStack>
-                  </YStack>
-                ))}
-                {photoUrls.length < MAX_REVIEW_PHOTOS ? (
-                  <YStack
-                    width={64}
-                    height={64}
-                    borderRadius="$3"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    borderStyle="dashed"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    opacity={isUploadingPhoto ? 0.6 : 1}
-                    onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Aggiungi foto"
-                  >
-                    <Text fontSize="$6" color={brand.grafite70}>
-                      {isUploadingPhoto ? "…" : "+"}
-                    </Text>
-                  </YStack>
-                ) : null}
-              </YStack>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*,video/*"
-                onChange={handlePhotoChange}
-                disabled={isUploadingPhoto}
-                style={{ display: "none" }}
-              />
-              {photoError ? (
-                <Text color={brand.urgenza} fontSize="$2">
-                  {photoError}
-                </Text>
-              ) : null}
-            </YStack>
-
-            {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {error}
-              </Text>
-            ) : null}
-            <Button
-              variant="primary"
-              size="$3"
-              height={40}
-              alignSelf="flex-start"
-              onPress={handleSubmitReview}
-              disabled={isSubmitting || isUploadingPhoto}
-              opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
-            >
-              {isSubmitting ? "Invio..." : "Invia recensione"}
+      {booking.status === "COMPLETED" ? (
+        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {!booking.clientConfirmedCompletedAt ? (
+            <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
+              Lavoro terminato
             </Button>
-          </YStack>
-        ) : (
-          <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewForm(true)}>
-            Lascia una recensione
-          </Button>
-        )
-      ) : booking.status === "COMPLETED" && booking.hasReview ? (
-        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-          Recensione inviata
-        </Text>
+          ) : booking.hasReview ? (
+            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+              Recensione inviata
+            </Text>
+          ) : (
+            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
+              Lascia una recensione
+            </Button>
+          )}
+        </YStack>
+      ) : null}
+
+      {showClientCompleteModal ? (
+        <ClientCompleteModal
+          onClose={() => setShowClientCompleteModal(false)}
+          onConfirm={handleClientConfirmComplete}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+        />
+      ) : null}
+      {showReviewModal ? (
+        <ReviewModal
+          title="Recensisci il professionista"
+          subtitle="Com'è andato il lavoro? La tua recensione sarà pubblica non appena anche il professionista avrà lasciato la sua."
+          uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleSubmitReview}
+          onClose={() => setShowReviewModal(false)}
+        />
       ) : null}
 
       {showTimeline && booking.guidedRequestId ? (

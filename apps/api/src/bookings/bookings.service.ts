@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { CancelBookingByProfessionalInput, CompleteBookingInput } from "@professionisti/shared";
+import type { CancelBookingByProfessionalInput, ClientConfirmCompleteInput, CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -230,7 +230,10 @@ export class BookingsService {
       this.prisma.bookingFinalItem.createMany({
         data: input.items.map((item) => ({ bookingId, name: item.name, priceEurCents: item.priceEurCents })),
       }),
-      this.prisma.booking.update({ where: { id: bookingId }, data: { status: "COMPLETED", finalAmountEurCents } }),
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: "COMPLETED", finalAmountEurCents, professionalCompletionPhotoUrls: input.photoUrls },
+      }),
     ]);
 
     await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", { bookingId, finalAmountEurCents });
@@ -252,6 +255,43 @@ export class BookingsService {
     await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, true);
 
     return { bookingId, status: "COMPLETED" as const, finalAmountEurCents };
+  }
+
+  /**
+   * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
+   * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
+   * possibile solo dopo che il professionista ha già completato il proprio
+   * lato (unico che imposta l'importo finale), una sola volta. Sblocca la
+   * possibilità per il cliente di scrivere la propria recensione
+   * (ReviewsService.create controlla questo stesso campo).
+   */
+  async clientConfirmComplete(clientId: string, bookingId: string, input: ClientConfirmCompleteInput) {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
+    if (!booking || booking.clientId !== clientId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "COMPLETED") {
+      throw new BadRequestException("Il professionista deve segnalare il lavoro come terminato prima della tua conferma.");
+    }
+    if (booking.clientConfirmedCompletedAt) {
+      throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");
+    }
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { clientConfirmedCompletedAt: new Date(), clientCompletionPhotoUrls: input.photoUrls },
+    });
+
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        "Il cliente ha confermato che il lavoro è terminato.",
+      );
+    }
+
+    return { bookingId };
   }
 
   /**
@@ -478,6 +518,9 @@ export class BookingsService {
       // dell'utente: "Lavori accettati" deve segnalarlo e offrire
       // l'eliminazione della prenotazione dalla propria lista.
       professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
+      clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
+      clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));
   }
 }

@@ -23,6 +23,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { ReviewModal } from "@/components/ReviewModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { professionalSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
@@ -558,6 +559,11 @@ function AcceptedJobCard({
   const isCanceled = booking.status === "CANCELED";
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // Recensione del professionista sul cliente (richiesta esplicita
+  // dell'utente): si apre da sola subito dopo aver segnalato il lavoro
+  // come terminato, resta comunque raggiungibile manualmente se chiusa
+  // senza recensire (link sotto, visibile finché non esiste già).
+  const [showClientReviewModal, setShowClientReviewModal] = useState(false);
   // Cronologia completa della richiesta (richiesta esplicita dell'utente:
   // "in lavori accettati, inserisci un pulsante con scritto vai alla
   // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
@@ -579,6 +585,17 @@ function AcceptedJobCard({
   async function handleComplete(input: CompleteBookingInput) {
     await apiClient.completeBooking(token, booking.id, input);
     setShowCompleteModal(false);
+    // Subito dopo aver segnalato il lavoro terminato si apre il popup per
+    // recensire il cliente (richiesta esplicita dell'utente) — prima di
+    // ricaricare, altrimenti il modal si perderebbe nel re-render della
+    // lista.
+    setShowClientReviewModal(true);
+    onUpdated();
+  }
+
+  async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
+    setShowClientReviewModal(false);
     onUpdated();
   }
 
@@ -664,6 +681,13 @@ function AcceptedJobCard({
                 </Text>
               </Button>
             </>
+          ) : null}
+          {booking.status === "COMPLETED" && !booking.hasClientReview ? (
+            <Button variant="ghost" size="$2" height={36} onPress={() => setShowClientReviewModal(true)}>
+              <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                Recensisci il cliente
+              </Text>
+            </Button>
           ) : null}
           {booking.guidedRequestId && myProfileId ? (
             <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
@@ -917,7 +941,21 @@ function AcceptedJobCard({
       </YStack>
 
       {showCompleteModal ? (
-        <CompleteJobModal quotedItems={booking.items} onClose={() => setShowCompleteModal(false)} onComplete={handleComplete} />
+        <CompleteJobModal
+          quotedItems={booking.items}
+          onClose={() => setShowCompleteModal(false)}
+          onComplete={handleComplete}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+        />
+      ) : null}
+      {showClientReviewModal ? (
+        <ReviewModal
+          title="Recensisci il cliente"
+          subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
+          uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleSubmitClientReview}
+          onClose={() => setShowClientReviewModal(false)}
+        />
       ) : null}
       {showCancelModal ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancel} /> : null}
       {openPhotoIndex !== null ? (
@@ -1451,9 +1489,15 @@ function LeadCard({
           era mostrato, non il contenuto effettivo. */}
       {sent && lead.quote ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-            Il tuo preventivo
-          </Text>
+          <XStack alignItems="center" gap="$2">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              Il tuo preventivo
+            </Text>
+            {/* Simbolo sul preventivo (richiesta esplicita dell'utente):
+                qui il lead ha al più un solo preventivo proprio, quindi lo
+                stesso isNew della card basta a indicare che è questo. */}
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </XStack>
           {lead.quote.items.map((item) => (
             <XStack key={item.id} justifyContent="space-between" gap="$2">
               <Text fontSize="$3" color={brand.grafite}>
@@ -1827,6 +1871,7 @@ function LeadCard({
           phone={lead.guidedRequest.clientPhone}
           email={lead.guidedRequest.clientEmail}
           imageUrl={lead.guidedRequest.clientImageUrl}
+          reviews={lead.guidedRequest.clientReviews}
           onClose={() => setShowClientProfile(false)}
         />
       ) : null}

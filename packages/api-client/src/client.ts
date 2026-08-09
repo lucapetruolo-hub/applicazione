@@ -4,6 +4,8 @@ import type {
   BookAgendaSlotInput,
   CancelBookingByProfessionalInput,
   ChangePasswordInput,
+  ClientConfirmCompleteInput,
+  ClientReviewInput,
   CompleteBookingInput,
   ConversationEvent,
   GuidedRequestInput,
@@ -44,6 +46,16 @@ export type ClientBooking = {
   /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
   guidedRequestId: string | null;
   hasReview: boolean;
+  /**
+   * Conferma del cliente che il lavoro è davvero terminato dal suo lato
+   * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
+   * `null` finché non ha ancora confermato. Sblocca la possibilità di
+   * scrivere la propria recensione.
+   */
+  clientConfirmedCompletedAt: string | null;
+  /** Foto/video del lavoro terminato allegate da ciascuna parte (richiesta esplicita dell'utente). */
+  professionalCompletionPhotoUrls: string[];
+  clientCompletionPhotoUrls: string[];
   /**
    * Titolo/categoria, descrizione e foto della richiesta guidata originale
    * — richiesta esplicita dell'utente ("i dati del preventivo da lui
@@ -576,6 +588,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
+    /** Il cliente conferma dal proprio lato che il lavoro è terminato (richiesta esplicita dell'utente: "servono i completed da entrambi"), con foto facoltative. */
+    clientConfirmComplete: (token: string, bookingId: string, input: ClientConfirmCompleteInput) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/client-confirm-complete`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
     /** Il professionista annulla un intervento già confermato, con una nota facoltativa per il cliente. */
     cancelBookingByProfessional: (token: string, bookingId: string, input: CancelBookingByProfessionalInput) =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel-by-professional`, {
@@ -617,6 +637,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Foto/video del lavoro terminato, sia lato professionista che cliente (richiesta esplicita dell'utente). */
+    uploadBookingCompletionPhoto: (token: string, file: Blob) =>
+      uploadFile<{ imageUrl: string }>("/bookings/completion-photos", token, file, "image"),
+
     createReview: (token: string, input: ReviewInput) =>
       request<{ id: string }>("/reviews", {
         method: "POST",
@@ -625,6 +649,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),
+
+    /** Il professionista recensisce il cliente (richiesta esplicita dell'utente), stessa struttura di createReview ma sul lato opposto. */
+    createClientReview: (token: string, input: ClientReviewInput) =>
+      request<{ id: string }>("/client-reviews", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 
     createSubscriptionCheckout: (token: string, plan: "PRO" | "BUSINESS") =>
       request<{ url: string | null }>("/billing/subscription/checkout", {

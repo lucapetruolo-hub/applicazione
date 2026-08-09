@@ -6091,3 +6091,256 @@ UI: le quattro etichette dello stepper (`Richiesta`/`Preventivo inviato`/
 con un professionista autenticato, zero overflow orizzontale, zero errori
 console nuovi. Typecheck pulito su tutti i package (`shared`, `api`,
 `api-client`, `web`), build di produzione `apps/web` verde (24 route).
+
+---
+
+## 39. Simbolo "Nuovo" sul singolo preventivo/lavoro aggiornato
+
+Richiesta esplicita dell'utente: "quando c'è un qualsiasi nuovo
+aggiornamento riguardante un preventivo o un lavoro metti anche un simbolo
+sul preventivo o sul lavoro per far capire che è proprio quello che ha
+ricevuto un aggiornamento/modifica/risposta" — i numeretti per sezione
+("Le mie richieste (2)") già esistenti (§ precedente "Numeretto di
+notifiche...") dicono quante richieste hanno un aggiornamento, non **quale**
+preventivo specifico dentro una richiesta con più preventivi ricevuti (una
+richiesta generica può raggiungere più professionisti, CLAUDE.md §14).
+
+- **`unreadQuoteIds`** (nuovo, `apps/web/src/lib/notificationSections.ts`):
+  stesso principio già in uso per `unreadGuidedRequestIds`/
+  `unreadBookingIds` — estrae `quoteId` dal `payload` delle notifiche non
+  lette (`NEW_QUOTE`, `QUOTE_DATE_PROPOSED/CONFIRMED/REJECTED/CHANGED`,
+  ecc. portano già questo campo, nessuna modifica al backend necessaria).
+  `extractPayloadId` (helper condiviso) esteso per accettare anche
+  `"quoteId"` come chiave, oltre a `"guidedRequestId"`/`"bookingId"` già
+  supportate.
+- **`/le-mie-richieste`**: nuovo stato `newQuoteIds` (calcolato nello
+  stesso `useEffect` che già recupera lo snapshot di notifiche non lette
+  prima di `markNotificationsRead`, stessa sequenza esplicita già in uso
+  per evitare la race condition documentata altrove in questo file).
+  `GuidedRequestCard` riceve `newQuoteIds` e lo passa a ciascun
+  `QuoteCard` figlio come `isNew={newQuoteIds?.has(quote.id)}`: badge
+  `Badge variant="nuovo"` ("Nuovo") accanto al nome dell'attività nel
+  singolo preventivo aggiornato, non su tutta la card della richiesta.
+- **`/dashboard` (`LeadCard`)**: qui un Lead ha al più **un solo**
+  preventivo proprio (`lead.quote`, non un array — a differenza del lato
+  cliente), quindi lo stesso `isNew` già calcolato per la card
+  (`unreadGuidedRequestIds`) basta a indicare che è proprio quel
+  preventivo ad essere cambiato: badge `Nuovo` aggiunto accanto
+  all'etichetta "Il tuo preventivo" nel blocco che mostra voci/data/note
+  del preventivo già inviato.
+
+Verificato: typecheck pulito su tutti i package (`shared`, `api`,
+`api-client`, `ui`, `web`), build di produzione `apps/web` verde
+(24 route).
+
+---
+
+## 40. Doppia conferma "Lavoro terminato" con foto/video + recensioni bilaterali "doppio cieco"
+
+Tre richieste esplicite dell'utente nello stesso giro, chiarite con
+`AskUserQuestion` prima di implementare (il comportamento letterale
+richiedeva un'interpretazione per essere conciliato con la semantica già
+esistente di `Booking.status`):
+
+1. *"Quando sia che professionista che cliente cliccano su lavoro
+   terminato dai la possibilità di inserire delle foto del lavoro
+   terminato"* — foto/video sia lato professionista (già cliccava "Lavoro
+   terminato" per l'importo finale) sia lato cliente (prima nessuna azione
+   equivalente esisteva).
+2. *"Dopodiché si aprirà un altro popup... per il cliente per fare una
+   recensione al professionista, e per il professionista per fare una
+   recensione al cliente"* — nuova funzionalità, prima non esisteva alcuna
+   recensione del professionista sul cliente.
+3. *"Saranno pubbliche sul profilo solo quando entrambi avranno effettuato
+   la recensione"* — "doppio cieco": una recensione scritta non è visibile
+   pubblicamente finché non esiste anche quella della controparte.
+
+**Risposte dell'utente alle domande di chiarimento** (testo esatto,
+determinano il design):
+- *"Servono i completed da entrambi, ma le recensioni saranno subito
+  effettuabili (ma pubblicate solo quando entrambe le recensioni saranno
+  scritte, a meno che non passano 3 giorni e li si attiva la recensione
+  automatica 5 stelle per lavoro completato, dove nell'elenco recensioni ci
+  sarà una parentesi scritta con 'recensione automatica')"* — quindi non
+  serve aspettare la controparte per scrivere la propria recensione, solo
+  per vederla pubblicata.
+- La recensione del professionista sul cliente è visibile nella scheda
+  cliente (`ClientProfileModal`, già esistente per nome/contatti) — il
+  cliente non ha un profilo pubblico in questo marketplace, quindi non
+  esiste un "altrove" dove pubblicarla.
+- Se una parte non recensisce mai, un limite di giorni fa scattare la
+  recensione automatica a 5 stelle per sbloccare comunque quella già
+  scritta.
+
+**Design risultante** (nessuna riscrittura del significato di
+`Booking.status`): l'azione "Lavoro terminato" del professionista resta
+com'era nei meccanismi (imposta `status: COMPLETED` con l'importo preciso,
+CLAUDE.md §"Lavoro terminato con importo preciso...") — la sua stessa
+azione **è già** la sua conferma, quindi può recensire il cliente subito
+dopo. Il cliente ottiene una **nuova azione indipendente**, "Lavoro
+terminato" dal proprio lato (visibile solo quando `status === COMPLETED`,
+cioè dopo che il professionista ha già segnalato la fine lavori): conferma
++ foto proprie, e SOLO dopo aver confermato può scrivere la propria
+recensione del professionista (comportamento pre-esistente di
+`ReviewsService.create`, ora con questo vincolo aggiuntivo). Ogni
+recensione diventa pubblica solo quando esiste anche quella della
+controparte per la stessa `Booking` — verificato per esistenza della
+relazione al momento della query, mai un flag denormalizzato `published`
+da tenere sincronizzato.
+
+**Schema** (`packages/database`, `prisma db push --accept-data-loss`):
+- `Booking.professionalCompletionPhotoUrls String[] @default([])` (foto
+  del professionista, già raccolte al momento di "Lavoro terminato") e
+  `Booking.clientCompletionPhotoUrls String[] @default([])` (foto del
+  cliente, raccolte alla sua conferma).
+- `Booking.clientConfirmedCompletedAt DateTime?` — `null` finché il
+  cliente non conferma dal proprio lato; è il campo che gate sia la
+  seconda azione ("hai già confermato?") sia la possibilità di recensire.
+- `Review.isAutomatic Boolean @default(false)` — distingue una recensione
+  reale da una generata automaticamente dopo il timeout.
+- Nuovo modello **`ClientReview`** (relazione 1:1 con `Booking`, stesso
+  pattern di `Review`): `rating`, `comment`, `mediaUrls`, `isAutomatic` — la
+  recensione del professionista sul cliente. Nessuna metrica di
+  affidabilità collegata (quelle, CLAUDE.md §15, misurano solo il
+  professionista).
+
+**Backend**:
+- `BookingsService.completeWithFinalAmount` (professionista): accetta ora
+  anche `photoUrls` (`completeBookingSchema` esteso, max 5, opzionali),
+  persistite su `professionalCompletionPhotoUrls`.
+- Nuovo `BookingsService.clientConfirmComplete` (`PATCH
+  /bookings/:id/client-confirm-complete`, JWT): consentito solo sulla
+  propria prenotazione, solo se `status === COMPLETED` (il professionista
+  deve aver già segnalato la fine), rifiutato con 403 se già confermata
+  (`clientConfirmedCompletedAt` già valorizzato — una sola conferma).
+  Nuovo `clientConfirmCompleteSchema` (`packages/shared`, solo
+  `photoUrls`, max 5 opzionali). Un evento in cronologia (`TimelineService.
+  log`, "Il cliente ha confermato che il lavoro è terminato.") quando la
+  prenotazione ha una `GuidedRequest` collegata.
+- `ReviewsService.create` (cliente → professionista): nuovo controllo
+  esplicito, 403 se `!booking.clientConfirmedCompletedAt` — "Conferma
+  prima che il lavoro è terminato dal tuo lato.".
+- Nuovo modulo `apps/api/src/client-reviews/` (`ClientReviewsService`/
+  `ClientReviewsController`, stessa struttura di `reviews/`):
+  `POST /client-reviews` (professionista → cliente, consentito solo se
+  `booking.status === COMPLETED` — la propria stessa azione di
+  completamento è già la conferma, nessun campo aggiuntivo da controllare
+  a differenza del lato cliente), rifiutato con 409 se già recensito.
+  `POST /client-reviews/photos` (upload media, stessa integrazione
+  Cloudinary/cartella dedicata `client-reviews` — mai riusare la cartella
+  `reviews`, sono due gallerie concettualmente diverse).
+- Nuovo `POST /bookings/completion-photos` (`BookingsController`, JWT):
+  upload foto/video del lavoro terminato, condiviso da entrambe le parti
+  (professionista e cliente) — cartella Cloudinary dedicata
+  `booking-completions`, distinta sia da `reviews` che da
+  `client-reviews` (concettualmente è "il lavoro svolto", non "il
+  giudizio su come è andata" — nessuna delle due gallerie esistenti era
+  la sede corretta).
+- **Sblocco automatico "doppio cieco"** — `ReviewsService.
+  runAutoPublishCheck()` (`@Cron(CronExpression.EVERY_HOUR)`, stesso
+  meccanismo `@nestjs/schedule` già in uso per la scadenza dei lead,
+  CLAUDE.md §14): per ogni `Review` reale (`isAutomatic: false`) più
+  vecchia di `AUTO_REVIEW_AFTER_DAYS = 3` giorni senza una `ClientReview`
+  collegata, genera quella mancante a 5 stelle (`isAutomatic: true`) — e
+  simmetricamente per ogni `ClientReview` reale senza una `Review`
+  collegata. Query filtrate con la sintassi Prisma per relazioni 1:1
+  opzionali nulle (`booking: { clientReview: { is: null } } }`), idempotente
+  (una seconda esecuzione sulla stessa riga non duplica nulla, la query
+  la esclude già avendo trovato la controparte).
+- **Filtro "entrambe esistono" per la pubblicazione** —
+  `ProfessionalsService.search()`/`getById()`: i `bookings` di un
+  professionista vengono ora filtrati con `.filter(b => b.review !== null
+  && b.clientReview !== null)` prima di calcolare `rating`/`reviewCount` e
+  di comporre l'array `reviews` esposto pubblicamente — una recensione
+  reale scritta ma ancora "in attesa" della controparte non conta né nella
+  media né compare nell'elenco, esattamente come richiesto. `reviews[].
+  isAutomatic` esposto nel tipo pubblico (`ProfessionalDetail`).
+
+**Frontend**:
+- **`CompleteJobModal.tsx`** (professionista) esteso con una sezione foto/
+  video (fino a 5, stesso pattern miniatura+tasto rimuovi rosso+tasto "+"
+  già in uso ovunque nel prodotto), nuova prop `uploadPhoto` — il
+  chiamante (`AcceptedJobCard`) la collega a
+  `apiClient.uploadBookingCompletionPhoto`. `alignItems: "flex-start"` sul
+  backdrop applicato preventivamente (non dopo una segnalazione): il
+  contenuto più alto per via della nuova sezione foto avrebbe potuto
+  riprodurre lo stesso bug già corretto altrove per questo pattern
+  (CLAUDE.md §35).
+- **`ReviewModal.tsx`** (nuovo, `apps/web/src/components`): popup di
+  recensione condiviso — stelle 1-5, testo libero, foto/video (fino a 5) —
+  parametrizzato via props (`title`/`subtitle`/`uploadPhoto`/`onSubmit`),
+  usato **sia** per "il professionista recensisce il cliente" **sia** per
+  "il cliente recensisce il professionista": stessa struttura esatta
+  richiesta dall'utente per entrambe le direzioni, un solo componente
+  invece di due quasi identici.
+- **`ClientCompleteModal.tsx`** (nuovo): conferma "Lavoro terminato" lato
+  cliente, solo foto/video (nessun importo — quello resta esclusivamente
+  del professionista).
+- **`AcceptedJobCard`** (`/dashboard`, professionista): `handleComplete`
+  ora apre subito `ReviewModal` (recensisci il cliente) dopo
+  `apiClient.completeBooking` riuscito; nuovo bottone "Recensisci il
+  cliente" resta comunque disponibile in seguito (se il popup viene
+  chiuso senza recensire) finché `!booking.hasClientReview`.
+- **`BookingRow`** (`/le-mie-richieste`, cliente): l'inline review form
+  precedente è stato **sostituito** (non solo esteso) dal nuovo flusso a
+  due passaggi — bottone "Lavoro terminato" (visibile quando `status ===
+  COMPLETED && !clientConfirmedCompletedAt`) apre `ClientCompleteModal`;
+  alla conferma riuscita, se `!booking.hasReview`, si apre subito
+  `ReviewModal` (recensisci il professionista) — stesso pattern "apri
+  subito dopo" già usato lato professionista. Se già confermato ma non
+  ancora recensito, un bottone "Lascia una recensione" resta disponibile
+  per riaprire `ReviewModal` in un secondo momento.
+- **`ClientProfileModal.tsx`** (scheda cliente, aperta dal nome in una
+  richiesta ricevuta): nuova prop opzionale `reviews`
+  (`ClientReviewSummary[]`, esportato dallo stesso file) — mostra stelle,
+  commento, miniature media e nome dell'attività che ha scritto ciascuna
+  recensione, con "(recensione automatica)" quando `isAutomatic` è vero.
+  Solo qui: nessun altro punto del prodotto rende pubbliche le recensioni
+  del cliente, coerente con "il cliente non ha un profilo pubblico".
+- **`ProfessionalDetailContent.tsx`** (profilo pubblico): stessa etichetta
+  "(recensione automatica)" aggiunta accanto al voto di ogni recensione
+  reale quando `isAutomatic` è vero.
+
+Verificato end-to-end con l'API locale (non solo typecheck/build) — tre
+script dedicati, non solo letture di codice:
+1. **Ciclo completo doppio-cieco**: richiesta diretta a un professionista
+   specifico → preventivo → accettazione → professionista completa con
+   foto (`professionalCompletionPhotoUrls` persistite correttamente) →
+   professionista recensisce subito il cliente (la propria conferma basta)
+   → tentativo del cliente di recensire PRIMA della propria conferma
+   rifiutato (403) → profilo pubblico mostra 0 recensioni (solo un lato
+   esiste) → cliente conferma con foto proprie
+   (`clientCompletionPhotoUrls` persistite, seconda conferma rifiutata
+   403) → cliente recensisce il professionista (seconda recensione sulla
+   stessa prenotazione rifiutata, 409) → **ora** il profilo pubblico
+   mostra la recensione (`isAutomatic: false`) → il professionista vede la
+   propria recensione del cliente in `guidedRequest.clientReviews`
+   (`GET /professionals/me/leads`).
+2. **Sblocco automatico dopo 3 giorni**: professionista completa e
+   recensisce subito il cliente, il cliente non conferma né recensisce mai
+   — timestamp della `ClientReview` retrodatato di 4 giorni direttamente
+   nel DB (simula il tempo trascorso senza attendere davvero), poi
+   **la vera classe di produzione compilata** (`ReviewsService`,
+   `apps/api/dist/reviews/reviews.service.js`) istanziata con un
+   `PrismaClient` reale e `runAutoPublishCheck()` chiamato direttamente
+   (stesso codice del cron, non una sua reimplementazione nello script di
+   verifica): genera una `Review` automatica a 5 stelle
+   (`isAutomatic: true`), il profilo pubblico la mostra con l'etichetta
+   corretta, una seconda esecuzione del metodo non duplica nulla
+   (idempotenza confermata).
+3. **UI reale con Playwright** (token JWT iniettato in `localStorage`,
+   chiave `professionisti_token`): lato professionista, click su "Lavoro
+   terminato" apre `CompleteJobModal` (`role="dialog"`), invio →
+   `ReviewModal` "Recensisci il cliente" si apre da solo, invio con 5
+   stelle chiude il popup; lato cliente, click su "Lavoro terminato" apre
+   `ClientCompleteModal`, conferma → `ReviewModal` "Recensisci il
+   professionista" si apre da solo, invio con 4 stelle + commento chiude
+   il popup; `GET /bookings/me` conferma `hasReview: true` e
+   `clientConfirmedCompletedAt` valorizzato. Zero `pageerror` durante
+   l'intero flusso (gli unici eventi console catturati sono prefetch RSC
+   di Next.js verso endpoint bloccati dalla policy di rete dell'ambiente
+   di sviluppo, stessa limitazione già documentata altrove in questo
+   file — non causati da questa funzionalità).
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `ui`, `web`), build di produzione `apps/web` verde (24 route).

@@ -102,7 +102,7 @@ export class ProfessionalsService {
       },
       include: {
         category: true,
-        bookings: { include: { review: true } },
+        bookings: { include: { review: true, clientReview: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
       },
@@ -111,7 +111,13 @@ export class ProfessionalsService {
     const previewsByProfileId = await this.buildAvailabilityPreviews(profiles.map((profile) => profile.id));
 
     const results = profiles.map((profile) => {
+      // Recensioni "doppio cieco" (richiesta esplicita dell'utente):
+      // pubbliche solo quando esiste anche la controparte
+      // (ClientReview, professionista→cliente, sullo stesso booking) — vera
+      // o generata automaticamente dopo l'attesa (ReviewsService.
+      // runAutoPublishCheck), non importa quale delle due.
       const reviews = profile.bookings
+        .filter((booking) => booking.review !== null && booking.clientReview !== null)
         .map((booking) => booking.review)
         .filter((review): review is NonNullable<typeof review> => review !== null);
       const reviewCount = reviews.length;
@@ -384,7 +390,7 @@ export class ProfessionalsService {
       where: { id },
       include: {
         category: true,
-        bookings: { include: { review: true } },
+        bookings: { include: { review: true, clientReview: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
       },
@@ -394,7 +400,12 @@ export class ProfessionalsService {
       throw new NotFoundException("Professionista non trovato.");
     }
 
+    // Recensioni "doppio cieco" (richiesta esplicita dell'utente): pubbliche
+    // solo quando esiste anche la ClientReview sullo stesso booking — vera o
+    // generata automaticamente dopo l'attesa (ReviewsService.
+    // runAutoPublishCheck).
     const reviews = profile.bookings
+      .filter((booking) => booking.review !== null && booking.clientReview !== null)
       .map((booking) => booking.review)
       .filter((review): review is NonNullable<typeof review> => review !== null)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -435,6 +446,7 @@ export class ProfessionalsService {
         comment: review.comment,
         photoUrls: review.photoUrls,
         createdAt: review.createdAt.toISOString(),
+        isAutomatic: review.isAutomatic,
       })),
     };
   }
@@ -654,6 +666,30 @@ export class ProfessionalsService {
       orderBy: { createdAt: "desc" },
     });
 
+    // Recensioni del cliente ricevute da QUALUNQUE professionista (richiesta
+    // esplicita dell'utente: "visibile nella scheda cliente" — non solo da
+    // questo professionista), mostrate nella scheda cliente
+    // (ClientProfileModal) aperta da questa dashboard. Pubbliche solo se
+    // "doppio cieco" sbloccato (la Review del cliente sullo stesso booking
+    // esiste anche lei, vera o automatica) — stesso principio già applicato
+    // alle recensioni pubbliche del profilo professionista. Un'unica query
+    // batch per l'intera pagina di lead, mai una per lead (N+1).
+    const clientIds = [...new Set(leads.map((lead) => lead.guidedRequest.client.id))];
+    const clientReviews =
+      clientIds.length > 0
+        ? await this.prisma.clientReview.findMany({
+            where: { clientId: { in: clientIds }, booking: { review: { isNot: null } } },
+            include: { booking: { include: { professionalProfile: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : [];
+    const clientReviewsByClientId = new Map<string, typeof clientReviews>();
+    for (const clientReview of clientReviews) {
+      const existing = clientReviewsByClientId.get(clientReview.clientId) ?? [];
+      existing.push(clientReview);
+      clientReviewsByClientId.set(clientReview.clientId, existing);
+    }
+
     return leads.map((lead) => {
       // quotes è filtrato per professionalProfileId nella query: al più una
       // voce (un professionista invia un solo preventivo per richiesta,
@@ -736,6 +772,19 @@ export class ProfessionalsService {
           // per l'avatar dell'account cliente altrove nel sito.
           clientImageUrl: lead.guidedRequest.client.imageUrl,
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
+          // Recensioni ricevute dal cliente, da qualunque professionista
+          // (richiesta esplicita dell'utente) — mostrate in
+          // ClientProfileModal, mai su un profilo pubblico (il cliente non
+          // ne ha uno in questo marketplace).
+          clientReviews: (clientReviewsByClientId.get(lead.guidedRequest.client.id) ?? []).map((review) => ({
+            id: review.id,
+            rating: review.rating,
+            comment: review.comment,
+            mediaUrls: review.mediaUrls,
+            createdAt: review.createdAt.toISOString(),
+            isAutomatic: review.isAutomatic,
+            reviewerBusinessName: review.booking.professionalProfile.businessName,
+          })),
           address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
@@ -871,6 +920,7 @@ export class ProfessionalsService {
         // tutti questi campi restano null/[] in quel caso.
         quote: { include: { items: true, guidedRequest: { select: { address: true, description: true, photoUrls: true } } } },
         finalItems: true,
+        clientReview: true,
       },
       orderBy: { scheduledAt: "asc" },
     });
@@ -936,6 +986,10 @@ export class ProfessionalsService {
       // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
       // professionista stesso — richiesta esplicita dell'utente.
       meetingLink: booking.meetingLink,
+      clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
+      clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
+      hasClientReview: booking.clientReview !== null,
     }));
   }
 

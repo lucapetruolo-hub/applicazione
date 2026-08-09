@@ -80,6 +80,7 @@ model User {
   bookingsAsClient    Booking[]
   notifications       Notification[]
   savedProfessionals  SavedProfessional[]
+  clientReviews       ClientReview[]
 
   @@map("users")
 }
@@ -756,6 +757,25 @@ model Booking {
   finalAmountEurCents Int?
   finalItems          BookingFinalItem[]
 
+  // Foto/video del lavoro terminato, allegate da ciascuna parte al momento
+  // della propria conferma "Lavoro terminato" (richiesta esplicita
+  // dell'utente: "sia che professionista che cliente cliccano su lavoro
+  // terminato dai la possibilità di inserire delle foto") — distinte dalle
+  // foto della recensione (Review/ClientReview sotto, legate al giudizio
+  // scritto, non alla sola documentazione del lavoro).
+  professionalCompletionPhotoUrls String[]  @default([])
+  clientCompletionPhotoUrls       String[]  @default([])
+  // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
+  // richiesta esplicita dell'utente ("servono i completed da entrambi").
+  // Indipendente da `status` (che resta COMPLETED solo grazie
+  // all'azione del professionista, l'unico che imposta l'importo finale):
+  // null finché il cliente non conferma dal proprio lato. Sblocca la
+  // possibilità per il cliente di scrivere la propria recensione
+  // (ReviewsService.create) — lo stesso principio "prima confermi, poi
+  // recensisci" non serve lato professionista perché la sua stessa azione
+  // di completamento È già la sua conferma.
+  clientConfirmedCompletedAt      DateTime?
+
   // Nota per il cliente quando il professionista annulla un intervento già
   // confermato (richiesta esplicita dell'utente) — facoltativa, distinta
   // dall'annullamento lato cliente (cancelForClient), che non ne raccoglie una.
@@ -815,7 +835,8 @@ model Booking {
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
-  review Review?
+  review       Review?
+  clientReview ClientReview?
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
@@ -837,19 +858,52 @@ model BookingFinalItem {
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  bookingId String   @unique
-  rating    Int
-  comment   String?
+  id          String   @id @default(uuid())
+  bookingId   String   @unique
+  rating      Int
+  comment     String?
   // Foto del lavoro svolto, opzionali (fino a 3, stesso limite/pattern di
   // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
   // della recensione, mostrate poi nella sezione recensioni del professionista.
-  photoUrls String[] @default([])
-  createdAt DateTime @default(now())
+  photoUrls   String[] @default([])
+  // Vera solo se generata automaticamente dal job di sblocco (richiesta
+  // esplicita dell'utente: 5 stelle automatiche se la controparte non
+  // scrive la propria recensione entro 3 giorni) — mostrata con
+  // l'etichetta "(recensione automatica)" al posto del testo libero.
+  isAutomatic Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
+}
+
+// Recensione del professionista sul cliente (richiesta esplicita
+// dell'utente: "per il professionista per fare una recensione al
+// cliente") — stessa struttura di Review ma sul lato opposto. Nessun
+// profilo pubblico del cliente esiste in questo marketplace: visibile solo
+// nella scheda cliente (ClientProfileModal), aperta da un professionista
+// con una richiesta/prenotazione per quello stesso cliente — mai
+// indicizzata pubblicamente. Pubblica (in quella scheda) solo quando esiste
+// anche la Review del cliente sullo stesso booking, stesso principio
+// "doppio cieco" richiesto dall'utente ("saranno pubbliche solo quando
+// entrambi avranno effettuato la recensione") — nessun campo "published"
+// denormalizzato: la condizione si verifica al momento della query
+// controllando che entrambe le righe esistano per lo stesso bookingId.
+model ClientReview {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique
+  clientId    String
+  rating      Int
+  comment     String?
+  mediaUrls   String[] @default([])
+  isAutomatic Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  client  User    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_reviews")
 }
 
 // ---------------------------------------------------------------------------

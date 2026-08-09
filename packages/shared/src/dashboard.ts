@@ -107,6 +107,23 @@ export type ProfessionalLead = {
      * questi dati compilati".
      */
     clientAccountDeleted: boolean;
+    /**
+     * Recensioni ricevute dal cliente da qualunque professionista
+     * (richiesta esplicita dell'utente: "per il professionista per fare
+     * una recensione al cliente... visibile nella scheda cliente") —
+     * mostrate in ClientProfileModal, mai su un profilo pubblico (il
+     * cliente non ne ha uno in questo marketplace). Pubbliche solo se
+     * "doppio cieco" sbloccato (vedi ProfessionalMetricsService/ReviewsService).
+     */
+    clientReviews: {
+      id: string;
+      rating: number;
+      comment: string | null;
+      mediaUrls: string[];
+      createdAt: string;
+      isAutomatic: boolean;
+      reviewerBusinessName: string;
+    }[];
     /** Via e numero civico indicati dal cliente, facoltativo. */
     address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
@@ -211,6 +228,17 @@ export type ProfessionalBooking = {
    * §1). Impostato dal professionista stesso, visibile anche al cliente.
    */
   meetingLink: string | null;
+  /**
+   * Conferma del cliente che il lavoro è davvero terminato dal suo lato
+   * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
+   * `null` finché non ha ancora confermato.
+   */
+  clientConfirmedCompletedAt: string | null;
+  /** Foto/video del lavoro terminato allegate da ciascuna parte (richiesta esplicita dell'utente). */
+  professionalCompletionPhotoUrls: string[];
+  clientCompletionPhotoUrls: string[];
+  /** Vero se il professionista ha già recensito il cliente per questa prenotazione. */
+  hasClientReview: boolean;
 };
 
 /**

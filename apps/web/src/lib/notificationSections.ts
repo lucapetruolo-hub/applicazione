@@ -54,7 +54,7 @@ export function clientSectionCounts(notifications: UnreadNotification[]): { rich
   };
 }
 
-function extractPayloadId(notifications: UnreadNotification[], key: "guidedRequestId" | "bookingId"): Set<string> {
+function extractPayloadId(notifications: UnreadNotification[], key: "guidedRequestId" | "bookingId" | "quoteId"): Set<string> {
   const ids = new Set<string>();
   for (const n of notifications) {
     if (n.payload && typeof n.payload === "object" && key in n.payload) {
@@ -81,6 +81,22 @@ export function unreadGuidedRequestIds(notifications: UnreadNotification[]): Set
 
 export function unreadBookingIds(notifications: UnreadNotification[]): Set<string> {
   return extractPayloadId(notifications, "bookingId");
+}
+
+/**
+ * ID dei singoli preventivi con un aggiornamento non letto (richiesta
+ * esplicita dell'utente: "metti un simbolo sul preventivo... per far capire
+ * che è proprio quello che ha ricevuto un aggiornamento") — a differenza di
+ * `unreadGuidedRequestIds`, serve a distinguere QUALE preventivo tra più
+ * ricevuti per la stessa richiesta (il fan-out, CLAUDE.md §14, può
+ * raggiungere più professionisti: una richiesta può avere più preventivi,
+ * il numeretto a livello di richiesta da solo non basta a capire quale sia
+ * cambiato). La maggior parte degli eventi legati a un preventivo porta già
+ * `quoteId` nel payload (NEW_QUOTE, QUOTE_DATE_*, QUOTE_REJECTED,
+ * QUOTE_WITHDRAWN — vedi i punti di notify in quotes.service.ts).
+ */
+export function unreadQuoteIds(notifications: UnreadNotification[]): Set<string> {
+  return extractPayloadId(notifications, "quoteId");
 }
 
 /**
