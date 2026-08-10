@@ -567,6 +567,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Nota privata del professionista su una richiesta ricevuta, mai vista dal cliente. */
+    updateLeadNote: (token: string, leadId: string, note: string) =>
+      request<{ leadId: string; professionalNote: string | null }>(`/professionals/me/leads/${leadId}/note`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
+      }),
+
     updateBookingStatus: (token: string, bookingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW") =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/status`, {
         method: "PATCH",

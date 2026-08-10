@@ -30,6 +30,8 @@ export type ProfessionalLead = {
   status: "PENDING" | "PAID" | "CONVERTED" | "DECLINED" | "EXPIRED";
   /** Nota lasciata dal professionista se ha rifiutato la richiesta (facoltativa). */
   declineNote: string | null;
+  /** Nota privata del professionista su questa richiesta, mai vista dal cliente (`/dashboard/richieste`). */
+  professionalNote: string | null;
   priceEurCents: number;
   createdAt: string;
   /**

@@ -6344,3 +6344,140 @@ script dedicati, non solo letture di codice:
 
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `api`, `ui`, `web`), build di produzione `apps/web` verde (24 route).
+
+---
+
+## 41. Nuova pagina `/dashboard/richieste` — vista a pipeline con card espandibili
+
+Richiesta esplicita dell'utente: creare `/dashboard/richieste` seguendo una
+specifica dettagliata fornita per intero (palette propria `#1a5f2a`/
+Tailwind, 6 stati con badge+bordo colorato, card collassate di default,
+timeline mini, form preventivo inline, ecc.). Prima di implementare,
+mostrato un esempio visivo via Artifact con quella palette letterale
+(richiesta esplicita: "dammi un esempio visivo prima di procedere"); l'utente
+ha poi chiesto esplicitamente di **mantenere il sistema "Vicinato"** invece
+dei colori/framework della specifica — la pagina reale è quindi Tamagui +
+`packages/ui` + token `brand.*` esistenti (CLAUDE.md §19), non Tailwind, e
+zero emoji (icone `Icon`/lucide, coerente con la Fase 2 del redesign, CLAUDE.md
+§10) al posto dei glifi della specifica originale.
+
+**Pagina puramente additiva**: non sostituisce le "Richieste ricevute" già
+presenti su `/dashboard` (`LeadCard`), che restano invariate — è una vista
+alternativa più ricca, raggiungibile solo da URL diretto per ora (nessun
+link aggiunto al menu, non richiesto). Il bottone header "← Dashboard"
+sostituisce il "+ Nuovo preventivo" della specifica originale: quest'ultimo
+non ha un corrispettivo reale nel dominio (un preventivo è sempre legato a
+una richiesta esistente, non si può "creare dal nulla" per un cliente
+scelto a caso) — inventare un'azione che non fa nulla avrebbe violato la
+regola di progetto "mai un'azione automatica/UI che non fa nulla".
+
+**I 6 stati non sono un concetto nuovo**: derivati puramente lato client da
+campi già esposti da `ProfessionalLead` (`Lead.status`/`Quote.status`/
+`Quote.bookingStatus`), nessun nuovo campo per gli stati stessi —
+`apps/web/src/lib/requestStage.ts` (`classifyLeadStage`, funzione pura):
+`da_quotare` (nessun preventivo), `in_attesa` (`Quote.status === "SENT"`),
+`modifica_richiesta` (`"MODIFICATION_REQUESTED"`), `accettata`
+(`"ACCEPTED"` con `bookingStatus !== "COMPLETED"`), `completata`
+(`bookingStatus === "COMPLETED"`), `scaduta` (`Lead.status === "EXPIRED"`).
+Un settimo stato interno, `chiusa` (rifiuto professionista, rifiuto
+cliente, o preventivo ritirato — nessuno di questi è tra gli stati/tab
+della specifica), non ha un tab dedicato ma viene raggruppato sotto il tab
+"Scadute" (stesso significato pratico, "non più azionabile"), con il
+motivo esatto mostrato in UI (`describeClosedReason`) invece di
+etichettarlo genericamente "scaduta" — non sarebbe stato onesto.
+
+**Palette chiusa "Vicinato" riusata per gli 6 stati** (nessun hex nuovo,
+niente blu/viola come nella specifica originale — non esistono nel token
+set): `cianografia` (verde smeraldo, "da_quotare" — azione richiesta),
+`grafite70`/neutro ("in_attesa" — nessuna azione ora), `ottone` (oro,
+"modifica_richiesta" — richiede una decisione, più il bordo tratteggiato
+dell'alert box come segnale principale), `verificato` (verde muto,
+"accettata"), `grafite70`/neutro ("completata"), `urgenza` (rosso,
+"scaduta"/"chiusa"). Componente `StagePill` locale a questa pagina (non
+tocca le 4 varianti fisse di `Badge` in `packages/ui`, contratto diverso
+"rosso solo urgenza/ottone solo pagamento" — estendere quel componente
+avrebbe rischiato di alterarne il significato altrove nel sito). Badge
+domicilio/online: icona `house`/`video` + testo, stesso pattern già in uso
+altrove (CLAUDE.md §22) invece delle pillole blu/viola della specifica
+(mai introdotte nel token set).
+
+**Nota privata per-richiesta — unica aggiunta reale allo schema**: la
+specifica vuole una nota privata visibile fin dalla ricezione della
+richiesta, prima ancora che esista un preventivo — `Booking.
+professionalNote` (già esistente) non basta, si applica solo a una
+prenotazione già accettata. Nuovo campo `Lead.professionalNote String?`
+(Prisma), `updateLeadNoteSchema` (`packages/shared`), `PATCH
+/professionals/me/leads/:id/note` (`ProfessionalsService.updateLeadNote`,
+stessa guardia di titolarità di `deleteLead`/`declineLead`), `apiClient.
+updateLeadNote`. Salvataggio on-blur (come richiesto), più un bottone
+"Salva" esplicito quando il testo cambia.
+
+**Cross-reference con `ProfessionalBooking` per "accettata"/"completata"**:
+`ProfessionalLead` non porta l'importo finale fatturato né l'orario esatto
+dell'intervento (vivono solo su `Booking`) — la pagina scarica anche
+`apiClient.myProfessionalBookings` (stessa chiamata già fatta da
+`/dashboard`) e costruisce una `Map<guidedRequestId, ProfessionalBooking>`
+per mostrare `scheduledAt`/`scheduledEndAt` ("Intervento: ...") e
+`finalAmountEurCents` ("Importo finale") quando pertinenti — nessuna nuova
+query lato server.
+
+**Azioni per stato, adattate alla realtà del dominio dove la specifica
+proponeva un'azione senza corrispettivo reale** (mai un bottone finto):
+- `da_quotare`: Invia preventivo (`apiClient.createQuote`, form inline
+  identico a `LeadCard.handleSendQuote`) / Rispondi (apre `TimelineModal`,
+  la vera chat già esistente — sostituisce il generico "💬" della
+  specifica) / Rifiuta (`apiClient.declineLead`, conferma inline).
+- `in_attesa`: Modifica preventivo (`apiClient.createQuote` di nuovo,
+  precompilato) / Contatta (`TimelineModal`). Il terzo bottone della
+  specifica ("Proponi altra data") è stato omesso qui: in questo stato il
+  professionista sta aspettando la risposta del cliente, non esiste
+  un'azione reale di "proponi altra data" dal suo lato finché il cliente
+  non ha già risposto (quello è esattamente `modifica_richiesta`).
+- `modifica_richiesta`: Accetta nuova data (`confirmProposedQuoteDate`) /
+  Proponi altra data (`counterProposeQuoteDate`, form inline) / Rispondi
+  (`TimelineModal`) — più "Rifiuta la proposta" (`rejectProposedQuoteDate`)
+  come link secondario: la specifica non lo elencava tra i tre bottoni
+  principali ma è un'azione reale già esistente nel dominio, ometterla
+  sarebbe stata una regressione silenziosa di funzionalità.
+- `accettata`/`completata`: Vedi in agenda (link a `/dashboard/agenda`) /
+  Contatta (`TimelineModal`).
+- `scaduta`/`chiusa`: nessun bottone quando non c'è nulla di reale da fare
+  (la specifica proponeva "Rinvia preventivo"/"Archivia", nessuno dei due
+  ha un endpoint corrispondente — un lead scaduto non è riattivabile, non
+  esiste un flag "archiviato"); quando invece la richiesta è eliminabile
+  per davvero (`clientAccountDeleted` o preventivo `WITHDRAWN`, stessa
+  logica già esistente in `LeadCard`), un link "Elimina richiesta"/"Elimina
+  preventivo ritirato" (`apiClient.deleteLead`) sostituisce onestamente
+  quei due bottoni.
+
+**Allegati foto/video sul form preventivo (specifica) non implementati**:
+`quoteSchema`/`Quote` non hanno un campo per foto — aggiungerlo sarebbe
+stato uno scope aggiuntivo reale (nuovo campo Prisma + endpoint upload),
+non incluso in questo giro; segnalato all'utente, non costruito come
+dropzone finta.
+
+Verificato end-to-end con l'API locale (non solo typecheck): script
+dedicato con richiesta diretta a un professionista specifico (stesso
+accorgimento anti-lotteria-lead già documentato altrove in questo file) che
+percorre l'intero ciclo `da_quotare → in_attesa → modifica_richiesta →
+accettata → completata` con chiamate reali (`createQuote`,
+`propose-date`, `confirm-proposed-date`, `PATCH /bookings/:id/complete`),
+verificando la classificazione attesa ad ogni passo via `GET
+/professionals/me/leads`; nota privata salvata e riletta correttamente
+anche prima che esista un preventivo; importo finale cross-referenziato
+correttamente da `getMyBookings`; due varianti di `chiusa` verificate
+(lead rifiutato → non eliminabile, 403; preventivo ritirato →
+eliminabile, 200) con lo stesso endpoint `deleteLead` già esistente.
+UI con Playwright (token JWT iniettato in `localStorage`, chiave
+`professionisti_token`): tab con conteggi corretti e badge rosso su "Da
+quotare", card con nome cliente e pillola di stato, click sulla card la
+espande (sezioni Dettagli cliente/Descrizione/Note personali/Andamento/
+azioni tutte visibili), click su "Invia preventivo" apre il form inline
+con voce/Da €/A €. Zero overflow orizzontale su desktop (1280px) e mobile
+(390px, `scrollWidth === clientWidth` esatto su entrambi). Zero
+`pageerror`; gli unici `console.error` sono prefetch RSC falliti verso
+`ERR_TUNNEL_CONNECTION_FAILED`, stessa limitazione di rete dell'ambiente
+di sviluppo già documentata altrove in questo file. Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`),
+build di produzione `apps/web` verde (25 route, `/dashboard/richieste`
+nuova).

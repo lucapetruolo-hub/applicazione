@@ -1,0 +1,1072 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  buildWhatsAppLink,
+  formatEurCents,
+  quotePriceTotals,
+  type ProfessionalAvailableSlot,
+  type ProfessionalBooking,
+  type ProfessionalLead,
+} from "@professionisti/shared";
+import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
+import { LoadingState } from "@/components/LoadingState";
+import { ClientProfileModal } from "@/components/ClientProfileModal";
+import { TimelineModal } from "@/components/TimelineModal";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { MediaPreview } from "@/components/MediaPreview";
+import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/lib/requestStage";
+
+/**
+ * Pagina `/dashboard/richieste` — vista alternativa e più ricca delle
+ * "Richieste ricevute" già presenti su `/dashboard` (non le sostituisce,
+ * puramente additiva): card collassate di default, filtri per stadio di
+ * pipeline (Da quotare/In attesa/Modifiche/Accettate/Scadute), timeline
+ * mini, note private per richiesta. Segue il sistema "Vicinato" (CLAUDE.md
+ * §19) — nessun colore/font fuori dal set esistente, zero emoji (Fase 2 del
+ * redesign, sostituite con `Icon`).
+ *
+ * I 6 stati non sono un concetto nuovo nel dominio: sono derivati
+ * puramente da `Lead.status`/`Quote.status`/`Quote.bookingStatus` già
+ * esistenti (vedi `classifyLeadStage`, `lib/requestStage.ts`) — nessun
+ * campo nuovo per gli stati stessi. Le uniche aggiunte reali sono la nota
+ * privata per-richiesta (`Lead.professionalNote`, prima esisteva solo su
+ * `Booking`, quindi non copriva le richieste ancora senza prenotazione) e
+ * questa stessa pagina.
+ */
+
+const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
+
+type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
+
+function slotKey(slot: ProfessionalAvailableSlot): string {
+  return `${slot.date}|${slot.startTime}|${slot.endTime}`;
+}
+function slotLabel(slot: ProfessionalAvailableSlot): string {
+  const date = new Date(`${slot.date}T00:00:00Z`);
+  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
+}
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+}
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
+function formatSlotRange(startIso: string, endIso: string | null): string {
+  const start = new Date(startIso);
+  const dateLabel = start.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const startLabel = start.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  if (!endIso) return `${dateLabel} · ${startLabel}`;
+  const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  return `${dateLabel} · ${startLabel}–${endLabel}`;
+}
+
+// Palette chiusa "Vicinato" (CLAUDE.md §19): niente hex nuovi, i 6 stati si
+// distinguono riusando le tinte semantiche già esistenti (verde smeraldo =
+// azione richiesta, verde muto = confermato, oro = richiede una decisione,
+// rosso = scaduto/distruttivo, grigio = concluso/neutro) — locale a questa
+// pagina, non tocca le 4 varianti fisse di `Badge` in packages/ui (contratto
+// diverso, "rosso solo urgenza / ottone solo pagamento").
+const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professionisti/ui").IconName; fg: string; bg: string; border: string }> = {
+  da_quotare: { label: "Da quotare", icon: "zap", fg: brand.cianografiaScuro, bg: brand.cianografiaVelo, border: brand.cianografia },
+  in_attesa: { label: "In attesa", icon: "clock", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
+  modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#8a5a00", bg: "#FFF4E0", border: brand.ottone },
+  accettata: { label: "Accettata", icon: "check", fg: brand.verificato, bg: "#E6F4EC", border: brand.verificato },
+  completata: { label: "Completata", icon: "check", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
+  scaduta: { label: "Scaduta", icon: "clock", fg: brand.urgenza, bg: brand.urgenzaVelo, border: brand.urgenza },
+  chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
+};
+
+const TABS: { key: "tutte" | RequestStage; label: string }[] = [
+  { key: "tutte", label: "Tutte" },
+  { key: "da_quotare", label: "Da quotare" },
+  { key: "in_attesa", label: "In attesa" },
+  { key: "modifica_richiesta", label: "Modifiche" },
+  { key: "accettata", label: "Accettate" },
+  { key: "scaduta", label: "Scadute" },
+];
+
+type SortMode = "recenti" | "vecchie" | "prezzo";
+
+function StagePill({ stage }: { stage: RequestStage }) {
+  const s = STAGE_STYLE[stage];
+  return (
+    <XStack alignItems="center" gap={5} paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={s.bg}>
+      <Icon name={s.icon} size={12} strokeWidth={2} color={s.fg} />
+      <Text fontFamily="$body" fontSize={11.5} fontWeight="700" color={s.fg}>
+        {s.label}
+      </Text>
+    </XStack>
+  );
+}
+
+function ServiceBadge({ online }: { online: boolean }) {
+  return (
+    <XStack alignItems="center" gap={5} paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={brand.gesso}>
+      <Icon name={online ? "video" : "house"} size={12} strokeWidth={2} color={brand.cianografia} />
+      <Text fontFamily="$body" fontSize={11.5} fontWeight="700" color={brand.grafite}>
+        {online ? "Consulenza online" : "A domicilio"}
+      </Text>
+    </XStack>
+  );
+}
+
+/** Barra orizzontale a step (versione "mini" per questa pagina, distinta da RequestStepper: qui serve il ramo extra "Modifica richiesta"). */
+function MiniTimeline({ stage }: { stage: RequestStage }) {
+  const steps: { key: string; label: string; extra?: boolean }[] = [{ key: "richiesta", label: "Richiesta" }, { key: "preventivo", label: "Preventivo inviato" }];
+  if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Modifica richiesta dal cliente", extra: true });
+  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+
+  const reachedIndex: Record<RequestStage, number> = {
+    da_quotare: 0,
+    in_attesa: 1,
+    modifica_richiesta: 2,
+    accettata: stage === "modifica_richiesta" ? 3 : 2,
+    completata: stage === "modifica_richiesta" ? 4 : 3,
+    scaduta: -1,
+    chiusa: -1,
+  };
+  const reached = reachedIndex[stage];
+
+  return (
+    <XStack alignItems="flex-start" width="100%">
+      {steps.map((step, i) => {
+        const done = reached >= i;
+        return (
+          <YStack key={step.key} flex={1} alignItems="center" position="relative" minWidth={0}>
+            {i > 0 ? (
+              <YStack position="absolute" top={5} right="50%" width="100%" height={2} backgroundColor={done ? brand.cianografia : brand.filetto} zIndex={0} />
+            ) : null}
+            <YStack
+              width={step.extra ? 13 : 11}
+              height={step.extra ? 13 : 11}
+              borderRadius={999}
+              backgroundColor={done ? (step.extra ? brand.ottone : brand.cianografia) : brand.filetto}
+              zIndex={1}
+              marginBottom={5}
+            />
+            <Text fontFamily="$body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
+              {step.label}
+            </Text>
+          </YStack>
+        );
+      })}
+    </XStack>
+  );
+}
+
+export default function RichiestePage() {
+  return <RichiesteContent />;
+}
+
+function RichiesteContent() {
+  const { token, isLoading } = useAuth();
+  const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
+  const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [profileMissing, setProfileMissing] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"tutte" | RequestStage>("tutte");
+  const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("recenti");
+  const [zoneFilter, setZoneFilter] = useState("tutte");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  function reloadLeads() {
+    if (!token) return;
+    apiClient.myLeads(token).then(setLeads);
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token), apiClient.getMyProfessionalProfile(token)])
+      .then(([l, b, slots, profile]) => {
+        setLeads(l);
+        setBookings(b);
+        setAvailableSlots(slots);
+        setMyProfileId(profile?.id ?? null);
+        if (!profile) setProfileMissing(true);
+      })
+      .catch(() => setProfileMissing(true));
+  }, [token]);
+
+  const bookingByRequestId = useMemo(() => {
+    const map = new Map<string, ProfessionalBooking>();
+    (bookings ?? []).forEach((b) => {
+      if (b.guidedRequestId) map.set(b.guidedRequestId, b);
+    });
+    return map;
+  }, [bookings]);
+
+  const zones = useMemo(() => {
+    const set = new Set((leads ?? []).map((l) => l.guidedRequest.city).filter(Boolean));
+    return [...set].sort();
+  }, [leads]);
+
+  const stageByLeadId = useMemo(() => {
+    const map = new Map<string, RequestStage>();
+    (leads ?? []).forEach((l) => map.set(l.id, classifyLeadStage(l)));
+    return map;
+  }, [leads]);
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { tutte: (leads ?? []).length };
+    (leads ?? []).forEach((l) => {
+      const stage = stageByLeadId.get(l.id)!;
+      const bucket = stage === "chiusa" ? "scaduta" : stage;
+      counts[bucket] = (counts[bucket] ?? 0) + 1;
+    });
+    return counts;
+  }, [leads, stageByLeadId]);
+
+  const visibleLeads = useMemo(() => {
+    let list = leads ?? [];
+    if (activeTab !== "tutte") {
+      list = list.filter((l) => {
+        const stage = stageByLeadId.get(l.id);
+        return activeTab === "scaduta" ? stage === "scaduta" || stage === "chiusa" : stage === activeTab;
+      });
+    }
+    if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((l) => (l.guidedRequest.clientName ?? "").toLowerCase().includes(q) || (l.guidedRequest.address ?? "").toLowerCase().includes(q));
+    }
+    list = [...list];
+    if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    else if (sortMode === "prezzo") {
+      list.sort((a, b) => {
+        const ra = a.quote ? quotePriceTotals(a.quote.items) : null;
+        const rb = b.quote ? quotePriceTotals(b.quote.items) : null;
+        const va = ra && (ra.totalMinEurCents > 0 || ra.totalMaxEurCents > 0) ? ra.totalMinEurCents : Infinity;
+        const vb = rb && (rb.totalMinEurCents > 0 || rb.totalMaxEurCents > 0) ? rb.totalMinEurCents : Infinity;
+        return va - vb;
+      });
+    }
+    return list;
+  }, [leads, activeTab, zoneFilter, search, sortMode, stageByLeadId]);
+
+  if (isLoading || (token && leads === null && !profileMissing)) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+        <LoadingState />
+      </YStack>
+    );
+  }
+
+  if (!token) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+            Accedi come professionista
+          </Text>
+          <Link href="/accedi?redirect=/dashboard/richieste">
+            <Button variant="primary">Accedi</Button>
+          </Link>
+        </YStack>
+      </YStack>
+    );
+  }
+
+  if (profileMissing) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+            Crea prima il tuo profilo professionista
+          </Text>
+          <Link href="/dashboard/profilo">
+            <Button variant="primary">Vai al profilo</Button>
+          </Link>
+        </YStack>
+      </YStack>
+    );
+  }
+
+  return (
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={900} gap="$5">
+        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
+          <YStack gap="$1">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+              Richieste ricevute
+            </Text>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
+            </Text>
+          </YStack>
+          <Link href="/dashboard">
+            <Button variant="ghost" size="$3">
+              ← Dashboard
+            </Button>
+          </Link>
+        </XStack>
+
+        {/* Tab filtro */}
+        <XStack gap="$2" flexWrap="wrap" style={{ overflowX: "auto" }}>
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            const count = tabCounts[tab.key] ?? 0;
+            const showAlert = (tab.key === "da_quotare" || tab.key === "modifica_richiesta") && count > 0;
+            return (
+              <XStack
+                key={tab.key}
+                alignItems="center"
+                gap={6}
+                paddingHorizontal="$3"
+                paddingVertical={9}
+                borderRadius={999}
+                backgroundColor={active ? brand.cianografia : brand.calce}
+                borderWidth={1}
+                borderColor={active ? brand.cianografia : brand.filetto}
+                cursor="pointer"
+                onPress={() => setActiveTab(tab.key)}
+                accessibilityRole="button"
+              >
+                <Text fontFamily="$body" fontSize={13} fontWeight="700" color={active ? "white" : brand.grafite}>
+                  {tab.label}
+                </Text>
+                <Text fontFamily="$body" fontSize={11} color={active ? "rgba(255,255,255,0.85)" : brand.grafite70}>
+                  {count}
+                </Text>
+                {showAlert ? (
+                  <YStack minWidth={16} height={16} paddingHorizontal={4} borderRadius={999} backgroundColor={brand.urgenza} alignItems="center" justifyContent="center">
+                    <Text fontSize={10} fontWeight="800" color="white">
+                      {count}
+                    </Text>
+                  </YStack>
+                ) : null}
+              </XStack>
+            );
+          })}
+        </XStack>
+
+        {/* Barra filtri */}
+        <XStack gap="$2" flexWrap="wrap">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cerca cliente o indirizzo..."
+            style={{ ...smallInputStyle, flex: "1 1 220px", minWidth: 200 }}
+          />
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={smallInputStyle}>
+            <option value="recenti">Ordina: Più recenti</option>
+            <option value="vecchie">Più vecchie</option>
+            <option value="prezzo">Prezzo crescente</option>
+          </select>
+          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={smallInputStyle}>
+            <option value="tutte">Tutte le zone</option>
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </select>
+        </XStack>
+
+        {/* Elenco */}
+        {visibleLeads.length === 0 ? (
+          <Surface>
+            <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro o attendi nuove richieste dai clienti." />
+          </Surface>
+        ) : (
+          <YStack gap="$3">
+            {visibleLeads.map((lead) => (
+              <RequestCard
+                key={lead.id}
+                lead={lead}
+                stage={stageByLeadId.get(lead.id)!}
+                booking={bookingByRequestId.get(lead.guidedRequest.id) ?? null}
+                token={token}
+                availableSlots={availableSlots}
+                myProfileId={myProfileId}
+                isOpen={openId === lead.id}
+                onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
+                onChanged={reloadLeads}
+              />
+            ))}
+          </YStack>
+        )}
+      </YStack>
+    </YStack>
+  );
+}
+
+function RequestCard({
+  lead,
+  stage,
+  booking,
+  token,
+  availableSlots,
+  myProfileId,
+  isOpen,
+  onToggle,
+  onChanged,
+}: {
+  lead: ProfessionalLead;
+  stage: RequestStage;
+  /** Prenotazione collegata (se il preventivo è stato accettato), per intervento/importo finale. */
+  booking: ProfessionalBooking | null;
+  token: string;
+  availableSlots: ProfessionalAvailableSlot[];
+  myProfileId: string | null;
+  isOpen: boolean;
+  onToggle: () => void;
+  onChanged: () => void;
+}) {
+  const gr = lead.guidedRequest;
+  const isOnline = gr.serviceMode === "ONLINE";
+  const s = STAGE_STYLE[stage];
+  const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
+
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
+  const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
+  const [selectedSlotKey, setSelectedSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  const [fallbackDate, setFallbackDate] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
+
+  const [showCounterForm, setShowCounterForm] = useState(false);
+  const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  const [counterNote, setCounterNote] = useState("");
+  const [counterError, setCounterError] = useState<string | null>(null);
+  const [isCountering, setIsCountering] = useState(false);
+  const [isConfirmingDate, setIsConfirmingDate] = useState(false);
+  const [isRejectingDate, setIsRejectingDate] = useState(false);
+
+  const [confirmingDecline, setConfirmingDecline] = useState(false);
+  const [declineNoteDraft, setDeclineNoteDraft] = useState("");
+  const [isDeclining, setIsDeclining] = useState(false);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [showClientProfile, setShowClientProfile] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+
+  const [noteDraft, setNoteDraft] = useState(lead.professionalNote ?? "");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const noteChanged = noteDraft !== (lead.professionalNote ?? "");
+
+  const clientName = gr.clientAccountDeleted ? "Account eliminato" : (gr.clientName ?? "Cliente");
+  const whatsAppLink = buildWhatsAppLink(gr.clientPhone);
+  const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
+  const canDelete = gr.clientAccountDeleted || quoteWithdrawn;
+
+  function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  }
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleSendQuote() {
+    setQuoteError(null);
+    const cleaned = items.map((it) => ({ ...it, name: it.name.trim() })).filter((it) => it.name.length > 0);
+    if (cleaned.length === 0) {
+      setQuoteError("Aggiungi almeno una voce al preventivo.");
+      return;
+    }
+    const parsed: { name: string; priceMinEurCents?: number; priceMaxEurCents?: number }[] = [];
+    for (const item of cleaned) {
+      const priceMinEurCents = item.priceMin.trim() ? Math.round(Number(item.priceMin.replace(",", ".")) * 100) : undefined;
+      const priceMaxEurCents = item.priceMax.trim() ? Math.round(Number(item.priceMax.replace(",", ".")) * 100) : undefined;
+      if (item.priceMin.trim() && !Number.isFinite(priceMinEurCents)) return setQuoteError(`Prezzo minimo non valido per "${item.name}".`);
+      if (item.priceMax.trim() && !Number.isFinite(priceMaxEurCents)) return setQuoteError(`Prezzo massimo non valido per "${item.name}".`);
+      if (priceMinEurCents === undefined && priceMaxEurCents === undefined) return setQuoteError(`Indica almeno un prezzo per "${item.name}".`);
+      if (priceMinEurCents !== undefined && priceMaxEurCents !== undefined && priceMaxEurCents < priceMinEurCents)
+        return setQuoteError(`Il prezzo massimo di "${item.name}" dev'essere maggiore o uguale al minimo.`);
+      parsed.push({ name: item.name, priceMinEurCents, priceMaxEurCents });
+    }
+
+    let estimatedStartDate: string;
+    let estimatedEndDate: string | undefined;
+    if (modeAvailableSlots.length > 0) {
+      const slot = modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey);
+      if (!slot) return setQuoteError("Scegli un orario dalla tua agenda.");
+      estimatedStartDate = new Date(`${slot.date}T${slot.startTime}:00.000Z`).toISOString();
+      estimatedEndDate = new Date(`${slot.date}T${slot.endTime}:00.000Z`).toISOString();
+    } else {
+      if (!fallbackDate) return setQuoteError("Indica una data di inizio stimata.");
+      estimatedStartDate = new Date(fallbackDate).toISOString();
+    }
+
+    setIsSubmittingQuote(true);
+    try {
+      await apiClient.createQuote(token, { requestId: gr.id, items: parsed, estimatedStartDate, estimatedEndDate, notes: quoteNotes.trim() || undefined });
+      setShowQuoteForm(false);
+      onChanged();
+    } catch (err) {
+      setQuoteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsSubmittingQuote(false);
+    }
+  }
+
+  async function handleConfirmDate() {
+    if (!lead.quote) return;
+    setIsConfirmingDate(true);
+    try {
+      await apiClient.confirmProposedQuoteDate(token, lead.quote.id);
+      onChanged();
+    } finally {
+      setIsConfirmingDate(false);
+    }
+  }
+  async function handleRejectDate() {
+    if (!lead.quote) return;
+    setIsRejectingDate(true);
+    try {
+      await apiClient.rejectProposedQuoteDate(token, lead.quote.id);
+      onChanged();
+    } finally {
+      setIsRejectingDate(false);
+    }
+  }
+  async function handleCounterPropose() {
+    if (!lead.quote) return;
+    const slot = modeAvailableSlots.find((sl) => slotKey(sl) === counterSlotKey);
+    if (!slot) return setCounterError("Scegli un orario dalla tua agenda.");
+    setCounterError(null);
+    setIsCountering(true);
+    try {
+      await apiClient.counterProposeQuoteDate(token, lead.quote.id, { date: slot.date, startTime: slot.startTime, endTime: slot.endTime, note: counterNote.trim() || undefined });
+      setShowCounterForm(false);
+      onChanged();
+    } catch (err) {
+      setCounterError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsCountering(false);
+    }
+  }
+
+  async function handleDecline() {
+    setIsDeclining(true);
+    try {
+      await apiClient.declineLead(token, lead.id, declineNoteDraft.trim() || undefined);
+      onChanged();
+    } finally {
+      setIsDeclining(false);
+      setConfirmingDecline(false);
+    }
+  }
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      await apiClient.deleteLead(token, lead.id);
+      onChanged();
+    } finally {
+      setIsDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
+  async function handleSaveNote() {
+    setIsSavingNote(true);
+    try {
+      await apiClient.updateLeadNote(token, lead.id, noteDraft);
+    } finally {
+      setIsSavingNote(false);
+    }
+  }
+
+  return (
+    <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="$0" padding={0} overflow="hidden">
+      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
+          <XStack gap="$2" flexWrap="wrap">
+            <ServiceBadge online={isOnline} />
+            <StagePill stage={stage} />
+          </XStack>
+          <YStack alignItems="flex-end">
+            <Text fontSize={11} color={brand.grafite70}>
+              ricevuta {formatDate(lead.createdAt)}
+            </Text>
+            {priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
+              <Text fontFamily="$body" fontWeight="800" fontSize={15} color={brand.grafite}>
+                {formatEurCents(priceRange.totalMinEurCents)}
+                {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
+              </Text>
+            ) : null}
+          </YStack>
+        </XStack>
+
+        <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+          {clientName}
+        </Text>
+        <Text fontSize={12} color={brand.grafite70}>
+          {gr.categoryLabel} · {gr.city}
+        </Text>
+        <Text fontSize={13} color={brand.grafite} numberOfLines={1}>
+          {gr.description}
+        </Text>
+        <Text fontSize={12.5} color={brand.grafite70}>
+          {isOnline ? `Zona: ${gr.city}` : gr.address || gr.city}
+        </Text>
+
+        <XStack justifyContent="center" paddingTop="$1">
+          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
+        </XStack>
+      </YStack>
+
+      {isOpen ? (
+        <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
+            <YStack
+              marginTop="$3"
+              padding="$4"
+              borderRadius={radiusDoc}
+              backgroundColor="#FFF8E1"
+              borderWidth={1.5}
+              borderStyle="dashed"
+              borderColor={brand.ottone}
+              gap="$3"
+            >
+              <Text fontFamily="$body" fontWeight="800" fontSize={14} color="#8a5a00">
+                Il cliente ha richiesto una modifica
+              </Text>
+              <XStack alignItems="center" gap="$2">
+                <YStack flex={1} padding="$3" borderRadius={12} backgroundColor="#F5F5F5">
+                  <Text fontSize={10.5} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
+                    Data originale
+                  </Text>
+                  <Text fontSize={13} color={brand.grafite70} textDecorationLine="line-through">
+                    {formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                  </Text>
+                </YStack>
+                <Text fontSize={20} fontWeight="800" color={brand.ottone}>
+                  →
+                </Text>
+                <YStack flex={1} padding="$3" borderRadius={12} backgroundColor={brand.calce} borderWidth={2} borderColor={brand.ottone}>
+                  <Text fontSize={10.5} fontWeight="700" color={brand.ottone} textTransform="uppercase">
+                    Nuova data richiesta
+                  </Text>
+                  <Text fontSize={13} fontWeight="800" color={brand.grafite}>
+                    {formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+                  </Text>
+                </YStack>
+              </XStack>
+              {lead.quote.clientProposedNote ? (
+                <YStack padding="$3" borderRadius={8} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
+                  <Text fontSize={13} color={brand.grafite}>
+                    {lead.quote.clientProposedNote}
+                  </Text>
+                </YStack>
+              ) : null}
+            </YStack>
+          ) : null}
+
+          <XStack flexWrap="wrap" gap="$4" paddingTop="$3">
+            {/* Sezione 1 — Dettagli cliente */}
+            <YStack flex={1} minWidth={260} gap="$2">
+              <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Dettagli cliente
+              </Text>
+              {gr.clientAccountDeleted ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  L&apos;account di questo cliente è stato eliminato.
+                </Text>
+              ) : (
+                <>
+                  <Text fontSize={13} color={brand.grafite} cursor="pointer" onPress={() => setShowClientProfile(true)}>
+                    {clientName}
+                  </Text>
+                  {gr.clientPhone ? (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      {gr.clientPhone}
+                    </Text>
+                  ) : null}
+                  {gr.clientEmail ? (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      {gr.clientEmail}
+                    </Text>
+                  ) : null}
+                  <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
+                    {whatsAppLink ? (
+                      <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                        <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor="#25d366">
+                          <Text fontSize={12.5} fontWeight="700" color="white">
+                            WhatsApp
+                          </Text>
+                        </XStack>
+                      </a>
+                    ) : null}
+                    {gr.clientPhone ? (
+                      <a href={`tel:${gr.clientPhone}`} style={{ textDecoration: "none" }}>
+                        <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografia}>
+                          <Text fontSize={12.5} fontWeight="700" color="white">
+                            Chiama
+                          </Text>
+                        </XStack>
+                      </a>
+                    ) : null}
+                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={() => setShowTimeline(true)}>
+                      <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
+                        Chat
+                      </Text>
+                    </XStack>
+                  </XStack>
+                </>
+              )}
+              {isOnline ? (
+                <YStack paddingTop="$2" gap={2}>
+                  <Text fontSize={12.5} color={brand.grafite70}>
+                    Zona: {gr.city} (indirizzo nascosto)
+                  </Text>
+                </YStack>
+              ) : gr.address ? (
+                <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
+                  {gr.address}, {gr.city}
+                </Text>
+              ) : null}
+              {booking?.scheduledAt && (stage === "accettata" || stage === "completata") ? (
+                <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
+                  Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+                </Text>
+              ) : null}
+            </YStack>
+
+            {/* Sezione 2 — Descrizione lavoro */}
+            <YStack flex={1} minWidth={260} gap="$2">
+              <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Descrizione lavoro
+              </Text>
+              <Text fontSize={13.5} color={brand.grafite} lineHeight={19}>
+                {gr.description}
+              </Text>
+              {gr.photoUrls.length > 0 ? (
+                <XStack gap="$2" style={{ overflowX: "auto" }}>
+                  {gr.photoUrls.map((url, i) => (
+                    <YStack
+                      key={url}
+                      width={72}
+                      height={72}
+                      borderRadius={8}
+                      overflow="hidden"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      cursor="pointer"
+                      onPress={() => setOpenPhotoIndex(i)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Apri foto ${i + 1}`}
+                    >
+                      <MediaPreview url={url} />
+                    </YStack>
+                  ))}
+                </XStack>
+              ) : null}
+            </YStack>
+          </XStack>
+
+          {/* Sezione 3 — Preventivo */}
+          {lead.quote ? (
+            <YStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              <Text fontSize={13} fontWeight="800" color={brand.grafite}>
+                {stage === "accettata" || stage === "completata" ? "Preventivo accettato" : "Il tuo preventivo"}
+              </Text>
+              {lead.quote.items.map((item) => (
+                <XStack key={item.id} justifyContent="space-between">
+                  <Text fontSize={13} color={brand.grafite}>
+                    {item.name}
+                  </Text>
+                  <Text fontSize={13} color={brand.grafite}>
+                    {item.priceMinEurCents != null ? formatEurCents(item.priceMinEurCents) : "–"}
+                    {item.priceMaxEurCents != null && item.priceMaxEurCents !== item.priceMinEurCents ? ` – ${formatEurCents(item.priceMaxEurCents)}` : ""}
+                  </Text>
+                </XStack>
+              ))}
+              {stage === "completata" && booking?.finalAmountEurCents != null ? (
+                <XStack justifyContent="space-between" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop={6} marginTop={2}>
+                  <Text fontSize={13.5} fontWeight="800" color={brand.grafite}>
+                    Importo finale
+                  </Text>
+                  <Text fontSize={13.5} fontWeight="800" color={brand.cianografiaScuro}>
+                    {formatEurCents(booking.finalAmountEurCents)}
+                  </Text>
+                </XStack>
+              ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
+                <XStack justifyContent="space-between" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop={6} marginTop={2}>
+                  <Text fontSize={13.5} fontWeight="800" color={brand.grafite}>
+                    Totale stimato
+                  </Text>
+                  <Text fontSize={13.5} fontWeight="800" color={brand.grafite}>
+                    {formatEurCents(priceRange.totalMinEurCents)}
+                    {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
+                  </Text>
+                </XStack>
+              ) : null}
+            </YStack>
+          ) : null}
+
+          {/* Sezione 4 — Note personali */}
+          <YStack gap="$2">
+            <Text fontSize={12} fontWeight="700" color={brand.grafite}>
+              Note personali (solo per te)
+            </Text>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              onBlur={() => noteChanged && handleSaveNote()}
+              placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
+              rows={2}
+              style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "vertical" }}
+            />
+            {noteChanged ? (
+              <Button variant="secondary" size="$2" height={32} alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>
+                {isSavingNote ? "Salvataggio..." : "Salva"}
+              </Button>
+            ) : null}
+          </YStack>
+
+          {/* Sezione 5 — Timeline mini */}
+          {stage !== "scaduta" && stage !== "chiusa" ? (
+            <YStack gap="$2">
+              <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Andamento
+              </Text>
+              <MiniTimeline stage={stage} />
+            </YStack>
+          ) : null}
+
+          {/* Sezione 6 — Azioni */}
+          <YStack gap="$3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+            {stage === "da_quotare" ? (
+              <XStack gap="$2" flexWrap="wrap">
+                <Button variant="primary" size="$3" onPress={() => setShowQuoteForm((v) => !v)}>
+                  Invia preventivo
+                </Button>
+                <Button variant="ghost" size="$3" onPress={() => setShowTimeline(true)}>
+                  Rispondi
+                </Button>
+                {!confirmingDecline ? (
+                  <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(true)}>
+                    <Text color={brand.urgenza} fontWeight="700" fontSize="$3">
+                      Rifiuta
+                    </Text>
+                  </Button>
+                ) : null}
+              </XStack>
+            ) : null}
+
+            {stage === "in_attesa" ? (
+              <XStack gap="$2" flexWrap="wrap">
+                <Button
+                  variant="ghost"
+                  size="$3"
+                  onPress={() => {
+                    if (!lead.quote) return;
+                    setItems(lead.quote.items.map((it) => ({ name: it.name, priceMin: it.priceMinEurCents != null ? (it.priceMinEurCents / 100).toString() : "", priceMax: it.priceMaxEurCents != null ? (it.priceMaxEurCents / 100).toString() : "" })));
+                    setQuoteNotes(lead.quote.notes ?? "");
+                    setShowQuoteForm(true);
+                  }}
+                >
+                  Modifica preventivo
+                </Button>
+                <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
+                  Contatta
+                </Button>
+              </XStack>
+            ) : null}
+
+            {stage === "modifica_richiesta" ? (
+              <XStack gap="$2" flexWrap="wrap">
+                <Button variant="secondary" size="$3" backgroundColor={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                  <Text color="white" fontWeight="700" fontSize="$3">
+                    {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                  </Text>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="$3"
+                  onPress={() => {
+                    const proposedDate = lead.quote?.clientProposedDate?.slice(0, 10);
+                    const proposedTime = lead.quote?.clientProposedDate?.slice(11, 16);
+                    const matching = modeAvailableSlots.find((sl) => sl.date === proposedDate && sl.startTime === proposedTime);
+                    setCounterSlotKey(matching ? slotKey(matching) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+                    setCounterNote("");
+                    setCounterError(null);
+                    setShowCounterForm((v) => !v);
+                  }}
+                >
+                  Proponi altra data
+                </Button>
+                <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
+                  Rispondi
+                </Button>
+                <Button variant="ghost" size="$3" disabled={isRejectingDate} onPress={handleRejectDate}>
+                  <Text color={brand.grafite70} fontSize="$3">
+                    {isRejectingDate ? "..." : "Rifiuta la proposta"}
+                  </Text>
+                </Button>
+              </XStack>
+            ) : null}
+
+            {stage === "accettata" || stage === "completata" ? (
+              <XStack gap="$2" flexWrap="wrap">
+                <Link href="/dashboard/agenda">
+                  <Button variant="secondary" backgroundColor={brand.verificato} size="$3">
+                    <Text color="white" fontWeight="700" fontSize="$3">
+                      Vedi in agenda
+                    </Text>
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="$3" onPress={() => setShowTimeline(true)}>
+                  Contatta
+                </Button>
+              </XStack>
+            ) : null}
+
+            {(stage === "scaduta" || stage === "chiusa") && !canDelete ? (
+              <Text fontSize={12.5} color={brand.grafite70}>
+                {stage === "chiusa" ? describeClosedReason(lead) : "Questa richiesta è scaduta: la coda di riserva è stata già inoltrata ad altri professionisti."}
+              </Text>
+            ) : null}
+            {(stage === "scaduta" || stage === "chiusa") && canDelete ? (
+              !confirmingDelete ? (
+                <Text fontSize={12.5} fontWeight="700" color={brand.urgenza} cursor="pointer" onPress={() => setConfirmingDelete(true)}>
+                  {quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta"}
+                </Text>
+              ) : (
+                <XStack gap="$2" alignItems="center">
+                  <Text fontSize={12.5} color={brand.grafite70}>
+                    Confermi l&apos;eliminazione?
+                  </Text>
+                  <Text fontSize={12.5} fontWeight="700" color={brand.urgenza} cursor="pointer" onPress={handleDelete}>
+                    {isDeleting ? "..." : "Sì, elimina"}
+                  </Text>
+                  <Text fontSize={12.5} color={brand.grafite70} cursor="pointer" onPress={() => setConfirmingDelete(false)}>
+                    Annulla
+                  </Text>
+                </XStack>
+              )
+            ) : null}
+          </YStack>
+
+          {/* Form invio/modifica preventivo */}
+          {showQuoteForm ? (
+            <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              {items.map((item, index) => (
+                <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
+                  <input value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Voce" style={{ ...smallInputStyle, flex: 1, minWidth: 140 }} />
+                  <input value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="Da €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
+                  <input value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="A €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
+                  {items.length > 1 ? (
+                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={8} cursor="pointer" onPress={() => removeItem(index)}>
+                      <Icon name="x" size={14} color={brand.urgenza} />
+                    </XStack>
+                  ) : null}
+                </XStack>
+              ))}
+              <Button variant="ghost" size="$2" alignSelf="flex-start" onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
+                + Aggiungi voce
+              </Button>
+
+              {modeAvailableSlots.length > 0 ? (
+                <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
+                  {modeAvailableSlots.map((sl) => (
+                    <option key={slotKey(sl)} value={slotKey(sl)}>
+                      {slotLabel(sl)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input type="date" value={fallbackDate} onChange={(e) => setFallbackDate(e.target.value)} style={smallInputStyle} />
+              )}
+
+              <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
+
+              {quoteError ? (
+                <Text color={brand.urgenza} fontSize={13}>
+                  {quoteError}
+                </Text>
+              ) : null}
+
+              <XStack gap="$2">
+                <Button variant="primary" size="$3" disabled={isSubmittingQuote} onPress={handleSendQuote}>
+                  {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
+                </Button>
+                <Button variant="ghost" size="$3" onPress={() => setShowQuoteForm(false)}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : null}
+
+          {/* Form "proponi altra data" (contro-proposta) */}
+          {showCounterForm ? (
+            <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              {modeAvailableSlots.length > 0 ? (
+                <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
+                  {modeAvailableSlots.map((sl) => (
+                    <option key={slotKey(sl)} value={slotKey(sl)}>
+                      {slotLabel(sl)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Nessuna fascia libera nella tua agenda nei prossimi 14 giorni.
+                </Text>
+              )}
+              <textarea value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
+              {counterError ? (
+                <Text color={brand.urgenza} fontSize={13}>
+                  {counterError}
+                </Text>
+              ) : null}
+              <XStack gap="$2">
+                <Button variant="primary" size="$3" disabled={isCountering} onPress={handleCounterPropose}>
+                  {isCountering ? "Invio..." : "Invia nuova proposta"}
+                </Button>
+                <Button variant="ghost" size="$3" onPress={() => setShowCounterForm(false)}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : null}
+
+          {/* Conferma rifiuto lead */}
+          {confirmingDecline ? (
+            <YStack gap="$2" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.urgenzaVelo} borderWidth={1} borderColor={brand.urgenza}>
+              <textarea
+                value={declineNoteDraft}
+                onChange={(e) => setDeclineNoteDraft(e.target.value)}
+                placeholder="Nota per il cliente (facoltativa)"
+                rows={2}
+                style={{ ...smallInputStyle, resize: "vertical", backgroundColor: brand.calce }}
+              />
+              <XStack gap="$2">
+                <Button variant="urgent" size="$3" disabled={isDeclining} onPress={handleDecline}>
+                  {isDeclining ? "..." : "Conferma rifiuto"}
+                </Button>
+                <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(false)}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : null}
+        </YStack>
+      ) : null}
+
+      {showClientProfile ? (
+        <ClientProfileModal name={clientName} phone={gr.clientPhone} email={gr.clientEmail} imageUrl={gr.clientImageUrl} reviews={gr.clientReviews} onClose={() => setShowClientProfile(false)} />
+      ) : null}
+      {showTimeline && myProfileId ? (
+        <TimelineModal token={token} guidedRequestId={gr.id} professionalProfileId={myProfileId} viewerRole="PROFESSIONAL" onClose={() => setShowTimeline(false)} />
+      ) : null}
+      {openPhotoIndex !== null ? <PhotoLightbox photos={gr.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
+    </Surface>
+  );
+}

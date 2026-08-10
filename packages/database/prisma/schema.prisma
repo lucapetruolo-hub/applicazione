@@ -584,6 +584,11 @@ model Lead {
   // Nota facoltativa lasciata dal professionista quando rifiuta la
   // richiesta (es. "non copro quella zona"), mostrata al cliente.
   declineNote           String?
+  // Nota privata del professionista sulla richiesta, mai vista dal cliente
+  // (pagina /dashboard/richieste) — a differenza di Booking.professionalNote,
+  // valorizzabile fin dalla ricezione del lead, prima ancora che esista un
+  // preventivo/prenotazione.
+  professionalNote      String?
   // Scadenza del singolo Lead (non della GuidedRequest nel suo complesso,
   // vedi GuidedRequest.expiresAt): passato questo momento senza una Quote
   // collegata, il job schedulato lo marca EXPIRED e pesca il prossimo

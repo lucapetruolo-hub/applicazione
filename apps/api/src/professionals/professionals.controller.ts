@@ -23,12 +23,14 @@ import {
   professionalAvailabilitySchema,
   professionalProfileSelfSchema,
   updateEngagementRadiusSchema,
+  updateLeadNoteSchema,
   type AvailabilityExceptionInput,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
   type ProfessionalAvailabilityInput,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
+  type UpdateLeadNoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -178,6 +180,17 @@ export class ProfessionalsController {
   @Delete("me/leads/:id")
   deleteLead(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.professionalsService.deleteLead(req.user.userId, id);
+  }
+
+  /** Nota privata del professionista su una richiesta ricevuta, mai vista dal cliente (`/dashboard/richieste`). */
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/leads/:id/note")
+  updateLeadNote(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateLeadNoteSchema)) body: UpdateLeadNoteInput,
+  ) {
+    return this.professionalsService.updateLeadNote(req.user.userId, id, body.note);
   }
 
   @UseGuards(JwtAuthGuard)

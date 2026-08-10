@@ -705,6 +705,7 @@ export class ProfessionalsService {
         id: lead.id,
         status: lead.status,
         declineNote: lead.declineNote,
+        professionalNote: lead.professionalNote,
         priceEurCents: lead.priceEurCents,
         createdAt: lead.createdAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
@@ -897,6 +898,28 @@ export class ProfessionalsService {
     }
 
     await this.prisma.lead.delete({ where: { id: leadId } });
+  }
+
+  /**
+   * Nota privata del professionista su una richiesta ricevuta, mai vista dal
+   * cliente (`/dashboard/richieste`) — a differenza di
+   * `BookingsService.updateProfessionalNote`, valorizzabile fin dalla
+   * ricezione del lead, prima ancora che esista un preventivo/prenotazione.
+   */
+  async updateLeadNote(userId: string, leadId: string, note: string): Promise<{ leadId: string; professionalNote: string | null }> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+
+    const lead = await this.prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead || lead.professionalProfileId !== professionalProfileId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+
+    const trimmed = note.trim();
+    const updated = await this.prisma.lead.update({
+      where: { id: leadId },
+      data: { professionalNote: trimmed || null },
+    });
+    return { leadId, professionalNote: updated.professionalNote };
   }
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {

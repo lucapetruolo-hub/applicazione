@@ -360,6 +360,16 @@ export const updateBookingNoteSchema = z.object({
 export type UpdateBookingNoteInput = z.infer<typeof updateBookingNoteSchema>;
 
 /**
+ * Nota privata del professionista su una richiesta ricevuta (pagina
+ * `/dashboard/richieste`), stesso schema di `updateBookingNoteSchema` ma
+ * valorizzabile prima ancora che esista una prenotazione.
+ */
+export const updateLeadNoteSchema = z.object({
+  note: z.string().max(2000),
+});
+export type UpdateLeadNoteInput = z.infer<typeof updateLeadNoteSchema>;
+
+/**
  * Link per una consulenza video (Meet, Zoom, ecc.), facoltativo — richiesta
  * esplicita dell'utente per la "consulenza online" (CLAUDE.md §1). Nessuna
  * integrazione reale con un servizio di videochiamata: il professionista

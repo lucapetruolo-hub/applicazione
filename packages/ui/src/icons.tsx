@@ -49,6 +49,11 @@ import {
   Coins,
   Shield,
   CreditCard,
+  Paperclip,
+  Archive,
+  RotateCcw,
+  Play,
+  Send,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -98,6 +103,11 @@ export const ICONS = {
   coins: Coins,
   shield: Shield,
   "credit-card": CreditCard,
+  paperclip: Paperclip,
+  archive: Archive,
+  "rotate-ccw": RotateCcw,
+  play: Play,
+  send: Send,
 } as const;
 
 export type IconName = keyof typeof ICONS;
