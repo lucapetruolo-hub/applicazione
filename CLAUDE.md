@@ -6481,3 +6481,163 @@ di sviluppo già documentata altrove in questo file. Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`),
 build di produzione `apps/web` verde (25 route, `/dashboard/richieste`
 nuova).
+
+**Rifinitura — colori/tipografia dei 6 stati + azioni allineate a
+/dashboard**: richiesta esplicita dell'utente, con screenshot di
+riferimento, arrivata dopo aver visto la pagina reale (§41 sopra). Due
+richieste distinte nello stesso giro:
+1. *"Modifica quella pagina esattamente come questa, quindi con le icone
+   sopra a scorrimento... anche con i colori laterali arancioni e blu e
+   rosso per quelle scadute, e il colore anche sulle scritte: da
+   quotare(giallo) in attesa(blu) accettata(verde"* + *"E anche le
+   Dimensioni e il carattere delle scritte"* — eccezione deliberata e
+   circoscritta alla palette chiusa "Vicinato" (CLAUDE.md §19), solo per
+   `STAGE_STYLE` (i 6 indicatori di stato di questa pagina): hex letterali
+   locali (`#FF6B35` arancione/da_quotare, `#0D6EFD` blu/in_attesa,
+   `#28A745` verde/accettata, `#DC3545` rosso/scaduta) sostituiscono i
+   token `brand.*` usati nella prima stesura — non toccano
+   `packages/ui/tokens.ts` né le 4 varianti fisse di `Badge` (quelle
+   restano semantiche per il resto del sito). Font più grandi in tutta la
+   pagina (pillole di stato, tab, intestazione card: nome cliente passato
+   da `$5` Tamagui a 26px esplicito, prezzo/descrizione/categoria tutti
+   scalati su). Riga tab riscritta da `XStack` con `flexWrap="wrap"` +
+   `overflowX:"auto"` (combinazione che si annullava a vicenda: su
+   viewport stretti le pillole andavano a capo invece di scorrere) a un
+   `<div>` grezzo con `overflowX:"auto"` puro e `flexShrink={0}` su ogni
+   pillola — scorre su una riga sola, coerente con lo screenshot fornito
+   ("tutte-da quotare-ecc... a scorrimento"). Conteggio per tab spostato
+   da testo inline a un pallino rosso in overlay sull'angolo, mostrato su
+   ogni pillola con `count > 0` (prima solo su da_quotare/modifica).
+2. *"Implementa i pulsanti come ci sono nella Dashboard già esistente:
+   richieste ricevute, lavori accettati"* — un riaudit ha trovato che 3
+   azioni già presenti in `/dashboard` (LeadCard/AcceptedJobCard) mancavano
+   qui: "Ritira preventivo" (stage `in_attesa`, stesso
+   `apiClient.withdrawQuote` con doppia conferma inline), "Lavoro
+   terminato"/"Annulla intervento" (stage `accettata`, quando
+   `booking.status === "CONFIRMED"` — stessi `CompleteJobModal`/
+   `CancelBookingModal` già esistenti, nessuna logica duplicata) e
+   "Recensisci il cliente" (stage `completata`, quando
+   `!booking.hasClientReview` — stesso `ReviewModal`). Verificato con
+   Playwright (API locale reale, non solo lettura di codice): richiesta
+   diretta a un professionista specifico portata attraverso tutti e tre
+   gli stadi (`in_attesa`→`accettata`→`completata`), i tre bottoni trovati
+   e funzionanti, i due popup (`CompleteJobModal`/`ReviewModal`) aperti e
+   chiusi senza errori. Zero overflow orizzontale desktop; un 19px di
+   overflow mobile osservato nello stesso giro è stato tracciato a un nome
+   attività di test innaturalmente lungo (timestamp a 13 cifre nel nome,
+   artefatto dei dati di verifica), non un bug della pagina. Typecheck
+   pulito, build di produzione verde.
+
+---
+
+## 42. "Lavori accettati" (dashboard professionista) ridisegnato in stile pipeline
+
+Richiesta esplicita dell'utente, con due screenshot di riferimento (elenco
++ vista espansa di una card) — chiesto se applicare questo design alla tab
+"Lavori accettati" già esistente in `/dashboard`, alla pipeline di §41, o a
+una pagina nuova: l'utente ha scelto esplicitamente, tramite
+`AskUserQuestion`, **"Tab 'Lavori accettati' in /dashboard"** — la tab
+`AcceptedJobCard` già esistente, non `/dashboard/richieste` né una route
+nuova.
+
+- **Backend** — `ProfessionalsService.getMyBookings` include ora
+  `guidedRequest.serviceMode` e `guidedRequest.category.{slug,label}` nella
+  query esistente (nessuna nuova query, stesso `include` già presente per
+  `address`/`description`/`photoUrls`), esposti su `ProfessionalBooking`
+  come `categorySlug`/`categoryLabel`/`serviceMode` (nuovi campi,
+  `packages/shared/src/dashboard.ts`) — `null` per le prenotazioni dirette
+  da agenda pubblica (`bookAgendaSlot`, dormiente da CLAUDE.md §20), che
+  non hanno una `GuidedRequest` collegata da cui derivarli. Servivano per il
+  titolo della card (categoria) e il nuovo badge modalità, nessuno dei due
+  esposto prima di questo giro.
+- **Tre pillole "In agenda"/"Completati"/"Tutti"** (con conteggio inline
+  dentro la pillola, non un badge d'angolo — diverso dal pattern di §41)
+  sostituiscono il precedente `<select>` di `ListControls` per questa sola
+  lista (le altre 3 liste che condividono `ListControls` restano
+  invariate): riusano lo stesso `BookingStatusFilter`/`bookingMatchesStatus`
+  già esistenti (`"toDo"`→In agenda/CONFIRMED, `"completed"`→Completati,
+  `"all"`→Tutti, "Annullati" non più un tab a sé — una prenotazione
+  annullata resta comunque raggiungibile sotto "Tutti", comportamento
+  invariato). "In agenda" è il tab attivo di default (era "Tutti" prima),
+  coerente con lo screenshot fornito.
+- **Barra filtri** — ricerca cliente/indirizzo (client-side, stesso
+  principio "niente round-trip di rete" già seguito per gli altri filtri
+  del sito, CLAUDE.md §23), filtro data (`BookingDateFilter`: "Tutto"/
+  "Questa settimana"/"Prossima settimana" — calcolato su settimane
+  lunedì-domenica nel fuso del browser) e filtro zona (`<select>`, zone
+  distinte calcolate su **tutti** i lavori accettati, non sui soli
+  risultati già filtrati — altrimenti la lista delle zone si
+  restringerebbe insieme ai risultati, comportamento confuso per un
+  filtro). Default del filtro data lasciato su "Tutto" invece di "Questa
+  settimana" come nello screenshot: nascondere lavori futuri al primo
+  caricamento avrebbe fatto sembrare la lista vuota senza motivo, rischio
+  di usabilità non esplicitamente richiesto dal testo dell'utente. Il
+  controllo "Ordina per" di `ListControls` è stato rimosso per questa sola
+  lista (non presente nello screenshot): ordinamento fisso per data di
+  intervento (prossima prima), stesso comportamento di prima come default.
+- **Card collassata di default** (`AcceptedJobCard`, stato locale
+  `isOpen`, click sull'intestazione per aprire/chiudere) — filetto laterale
+  colorato per stato (riuso dei 3 colori già usati per il testo di stato
+  prima di questo redesign: `brand.verificato` CONFIRMED, `brand.grafite70`
+  COMPLETED, `brand.urgenza` CANCELED — nessun colore nuovo introdotto, a
+  differenza della rifinitura di §41 sopra dove l'utente aveva chiesto
+  esplicitamente hex arbitrari). Intestazione: pallino+data/ora colorati,
+  pillola di stato ("Confermato"/"Completato"/"Annullata..."), prezzo
+  stimato (`quotePriceTotals(booking.items)` + `formatServicePriceRange`,
+  già esistenti — riusati, non un nuovo calcolo), titolo (categoria),
+  nuovo badge "A domicilio"/"Online" (`ServiceModeBadge`, da
+  `booking.serviceMode`), nome cliente con icona, indirizzo con icona,
+  chevron. **Nessun indirizzo/contatto esposto quando la card è
+  collassata** (diverso dalla versione precedente, che mostrava
+  telefono/WhatsApp/email sempre): tutti i dettagli (Descrizione lavoro,
+  Preventivo con voci+totale, Contatti — ora bottoni pieni "WhatsApp"/
+  "Chiama" affiancati invece di link icona+testo, Videochiamata, Note
+  personali) più le azioni (Lavoro terminato/Annulla intervento/
+  Recensisci il cliente/Contatta-Cronologia) si spostano nella sola vista
+  espansa, dentro riquadri etichettati (`DetailSection`, nuovo componente
+  locale: icona+testo mono maiuscolo piccolo sopra, box chiaro
+  `brand.gesso` sotto) — stesso principio del riferimento fornito
+  dall'utente. Nessuna logica di business nuova in questi riquadri: stessi
+  handler (`handleComplete`/`handleCancel`/`handleSaveNote`/
+  `handleSaveMeetingLink`) e stessi tre popup
+  (`CompleteJobModal`/`CancelBookingModal`/`ReviewModal`) già esistenti,
+  solo riorganizzazione visiva dei campi già esposti da
+  `ProfessionalBooking`.
+
+**Bug reale critico trovato e corretto con la verifica Playwright**
+(non un problema di stile — un crash totale): il nuovo `useMemo` per
+calcolare le zone del filtro (`bookingZones`) era stato inserito **dopo**
+i quattro `return` anticipati di `DashboardContent` (`isLoading`/utente non
+loggato/ruolo non professionista/profilo mancante) — violazione delle
+Rules of Hooks invisibile a typecheck e build (nessuno dei due esegue
+davvero il componente), che TypeScript/ESLint non hanno segnalato. Un
+professionista autenticato con profilo completo salta tutti quei rami di
+`return` al secondo render rispetto al primo render (in cui `isLoading` è
+ancora vero), risultando in un numero di hook diverso tra i due render —
+React lancia `"Rendered more hooks than during the previous render"` e
+smonta l'intero albero, pagina bianca per **qualunque** professionista con
+profilo completo (non solo un caso limite). Trovato da un agente di
+verifica Playwright end-to-end con account reali (non da lettura di
+codice), corretto spostando l'hook prima di ogni `return` anticipato,
+subito dopo l'`useEffect` che carica i dati — stessa lezione già
+implicita altrove in questo file: build/typecheck verdi non sono una prova
+che una pagina React funzioni davvero, serve eseguirla.
+
+**Verificato** (due giri, il secondo dopo il fix sopra): script di seed
+via API dirette (professionista+cliente di test, due prenotazioni portate
+rispettivamente a `CONFIRMED` e `COMPLETED`) — `GET
+/professionals/me/bookings` conferma `categoryLabel`/`serviceMode`/`city`
+tutti presenti e corretti. Prima verifica: crash riprodotto in modo
+deterministico (pagina bianca, `pageerror` con "Rendered more hooks").
+Dopo il fix: nessun crash su 4 caricamenti/ricarichi consecutivi, le tre
+pillole con conteggi corretti ("In agenda" attivo di default mostra solo
+la prenotazione `CONFIRMED`, "Tutti" mostra entrambe), ricerca per nome
+cliente che filtra correttamente, card che si espande al click rivelando
+tutti i riquadri e i bottoni attesi, "Lavoro terminato" che apre
+`CompleteJobModal` senza errori. Zero `pageerror` in entrambi i giri di
+verifica del secondo passaggio; l'unico `console.error` osservato è un
+warning cosmetico preesistente (`accessibilityState` non riconosciuto su
+un `div`, da `HomeHero`/`Chip`, già documentato altrove in questo file,
+non causato da questo redesign). Typecheck pulito su tutti i package
+(`shared`, `api`, `web`), build di produzione `apps/web` verde
+(25 route).
