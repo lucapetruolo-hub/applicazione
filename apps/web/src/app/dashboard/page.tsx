@@ -426,6 +426,23 @@ function DashboardContent() {
       });
   }, [token]);
 
+  // Zone disponibili per il filtro "Lavori accettati" (richiesta esplicita
+  // dell'utente), calcolate su tutti i lavori accettati indipendentemente
+  // dal filtro tab/data/ricerca corrente — altrimenti la lista delle zone si
+  // restringerebbe insieme ai risultati filtrati, un comportamento confuso
+  // per un filtro. Bug reale corretto qui: questo hook viveva prima dopo i
+  // return anticipati sotto (isLoading/utente non loggato/ruolo sbagliato/
+  // profilo mancante) — un professionista autenticato con profilo completo
+  // fa "saltare" quei rami al secondo render rispetto al primo, violando le
+  // Rules of Hooks ("Rendered more hooks than during the previous render"),
+  // mai riprodotto in sviluppo perché il fast refresh nasconde l'errore ma
+  // scoperto con una sessione reale end-to-end (Playwright). Ogni hook deve
+  // restare sempre prima di qualunque return anticipato.
+  const bookingZones = useMemo(() => {
+    const set = new Set((bookings ? acceptedJobs(bookings) : []).map((b) => b.city).filter((c): c is string => Boolean(c)));
+    return [...set].sort();
+  }, [bookings]);
+
   if (isLoading) return null;
 
   if (!user || !token) {
@@ -479,15 +496,6 @@ function DashboardContent() {
   const leadsTotalPages = sortedLeads ? Math.max(1, Math.ceil(sortedLeads.length / leadsPageSize)) : 1;
   const leadsEffectivePage = Math.min(leadsPage, leadsTotalPages);
   const visibleLeads = sortedLeads?.slice((leadsEffectivePage - 1) * leadsPageSize, leadsEffectivePage * leadsPageSize) ?? null;
-
-  // Zone disponibili per il filtro (richiesta esplicita dell'utente),
-  // calcolate su tutti i lavori accettati indipendentemente dal filtro tab/
-  // data/ricerca corrente — altrimenti la lista delle zone si restringerebbe
-  // insieme ai risultati filtrati, un comportamento confuso per un filtro.
-  const bookingZones = useMemo(() => {
-    const set = new Set((bookings ? acceptedJobs(bookings) : []).map((b) => b.city).filter((c): c is string => Boolean(c)));
-    return [...set].sort();
-  }, [bookings]);
 
   const bookingsSearchQuery = bookingsSearch.trim().toLowerCase();
   const filteredAcceptedJobs = bookings
