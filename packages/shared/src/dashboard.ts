@@ -215,6 +215,16 @@ export type ProfessionalBooking = {
    */
   description: string | null;
   photoUrls: string[];
+  /**
+   * Categoria e modalità (a domicilio/online) del lavoro — richiesta
+   * esplicita dell'utente per il redesign "Lavori accettati" (titolo card +
+   * badge). `null` per le prenotazioni dirette da agenda pubblica
+   * (bookAgendaSlot, dormiente da CLAUDE.md §20), che non hanno una
+   * GuidedRequest collegata da cui derivarli.
+   */
+  categorySlug: string | null;
+  categoryLabel: string | null;
+  serviceMode: "HOME" | "ONLINE" | null;
   /** Nota privata del professionista (mai vista dal cliente), modificabile da BookingDetailPanel. */
   professionalNote: string | null;
   /**

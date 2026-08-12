@@ -941,7 +941,12 @@ export class ProfessionalsService {
         // prenotazione in agenda). Le prenotazioni dirette da agenda
         // (bookAgendaSlot) non hanno una Quote/GuidedRequest collegata,
         // tutti questi campi restano null/[] in quel caso.
-        quote: { include: { items: true, guidedRequest: { select: { address: true, description: true, photoUrls: true } } } },
+        quote: {
+          include: {
+            items: true,
+            guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
+          },
+        },
         finalItems: true,
         clientReview: true,
       },
@@ -1001,6 +1006,16 @@ export class ProfessionalsService {
       canceledBy: booking.canceledBy,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
+      // Categoria e modalità (a domicilio/online) del lavoro — richiesta
+      // esplicita dell'utente per il redesign "Lavori accettati" (titolo
+      // card + badge). Copiati dalla GuidedRequest originale, `null` per le
+      // prenotazioni dirette da agenda pubblica (bookAgendaSlot, dormiente
+      // da CLAUDE.md §20) che non hanno una GuidedRequest collegata —
+      // `Booking.serviceMode` esiste già come copia denormalizzata
+      // (CLAUDE.md §23) ma non era ancora esposto qui.
+      categorySlug: booking.quote?.guidedRequest?.category?.slug ?? null,
+      categoryLabel: booking.quote?.guidedRequest?.category?.label ?? null,
+      serviceMode: booking.serviceMode,
       professionalNote: booking.professionalNote,
       // Il cliente ha segnalato che non ti sei presentato e ha chiesto un
       // rimborso — richiesta esplicita dell'utente, mai un cambio di

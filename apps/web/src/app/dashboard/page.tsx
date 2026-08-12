@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
@@ -8,12 +8,13 @@ import {
   buildWhatsAppLink,
   formatBookingAddress,
   formatServicePriceRange,
+  quotePriceTotals,
   type CompleteBookingInput,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalLead,
 } from "@professionisti/shared";
-import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -73,6 +74,26 @@ function describeDateChangeKind(oldStartIso: string, oldEndIso: string | null, n
   return "none";
 }
 
+/**
+ * Riquadro etichettato (icona + testo mono maiuscolo piccolo sopra, box
+ * chiaro sotto) usato nella vista espansa di "Lavori accettati" — richiesta
+ * esplicita dell'utente con screenshot di riferimento ("Descrizione
+ * lavoro"/"Preventivo"/"Contatti"/"Videochiamata"/"Note personali").
+ */
+function DetailSection({ icon, label, children }: { icon: import("@professionisti/ui").IconName; label: string; children: React.ReactNode }) {
+  return (
+    <YStack gap="$2" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$3">
+      <XStack alignItems="center" gap={6}>
+        <Icon name={icon} size={13} color={brand.grafite70} />
+        <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+          {label}
+        </Text>
+      </XStack>
+      {children}
+    </YStack>
+  );
+}
+
 function SectionTitle({ children }: { children: string }) {
   return (
     <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
@@ -117,17 +138,68 @@ function leadMatchesStatus(lead: ProfessionalLead, filter: LeadStatusFilter): bo
 }
 
 type BookingStatusFilter = "all" | "toDo" | "completed" | "canceled";
-const BOOKING_STATUS_OPTIONS: { value: BookingStatusFilter; label: string }[] = [
-  { value: "all", label: "Tutti" },
-  { value: "toDo", label: "Da effettuare" },
-  { value: "completed", label: "Completati" },
-  { value: "canceled", label: "Annullati" },
-];
 function bookingMatchesStatus(booking: ProfessionalBooking, filter: BookingStatusFilter): boolean {
   if (filter === "all") return true;
   if (filter === "completed") return booking.status === "COMPLETED";
   if (filter === "canceled") return booking.status === "CANCELED";
   return booking.status === "CONFIRMED";
+}
+
+/**
+ * Tre pillole "In agenda"/"Completati"/"Tutti" per "Lavori accettati" —
+ * richiesta esplicita dell'utente, con screenshot di riferimento: riusa lo
+ * stesso `BookingStatusFilter`/`bookingMatchesStatus` già esistenti
+ * ("toDo"→In agenda, mai esposto come tab a sé "Annullati": una
+ * prenotazione annullata resta comunque raggiungibile sotto "Tutti", stesso
+ * comportamento di `acceptedJobs()` da prima di questo redesign).
+ */
+const BOOKING_TABS: { value: BookingStatusFilter; label: string }[] = [
+  { value: "toDo", label: "In agenda" },
+  { value: "completed", label: "Completati" },
+  { value: "all", label: "Tutti" },
+];
+
+/** Filtro data per "Lavori accettati" (richiesta esplicita dell'utente: "questa settimana/prossima settimana/tutto"). */
+type BookingDateFilter = "all" | "thisWeek" | "nextWeek";
+const BOOKING_DATE_FILTER_OPTIONS: { value: BookingDateFilter; label: string }[] = [
+  { value: "all", label: "Tutto" },
+  { value: "thisWeek", label: "Questa settimana" },
+  { value: "nextWeek", label: "Prossima settimana" },
+];
+/** Lunedì 00:00 della settimana di `date` (fuso del browser, coerente con la resa a schermo di `scheduledAt`). */
+function startOfWeek(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+function bookingMatchesDateFilter(booking: ProfessionalBooking, filter: BookingDateFilter): boolean {
+  if (filter === "all") return true;
+  const scheduled = new Date(booking.scheduledAt);
+  const thisWeekStart = startOfWeek(new Date());
+  const thisWeekEnd = new Date(thisWeekStart);
+  thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
+  if (filter === "thisWeek") return scheduled >= thisWeekStart && scheduled < thisWeekEnd;
+  const nextWeekEnd = new Date(thisWeekEnd);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+  return scheduled >= thisWeekEnd && scheduled < nextWeekEnd;
+}
+
+const ZONE_ALL = "tutte";
+
+/** Pillola "A domicilio"/"Online" sulla card di un lavoro accettato — richiesta esplicita dell'utente. */
+function ServiceModeBadge({ mode }: { mode: "HOME" | "ONLINE" | null }) {
+  if (!mode) return null;
+  const isOnline = mode === "ONLINE";
+  return (
+    <XStack alignItems="center" gap={4} paddingHorizontal={8} paddingVertical={3} borderRadius={999} backgroundColor={brand.gesso}>
+      <Icon name={isOnline ? "video" : "house"} size={11} color={brand.grafite70} />
+      <Text fontSize={11} fontWeight="700" color={brand.grafite70}>
+        {isOnline ? "Online" : "A domicilio"}
+      </Text>
+    </XStack>
+  );
 }
 
 /**
@@ -237,10 +309,22 @@ function DashboardContent() {
   const [leadsSort, setLeadsSort] = useState<ListSortKey>("createdAt");
   const [leadsPageSize, setLeadsPageSize] = useState(5);
   const [leadsPage, setLeadsPage] = useState(1);
-  const [bookingsStatusFilter, setBookingsStatusFilter] = useState<BookingStatusFilter>("all");
-  const [bookingsSort, setBookingsSort] = useState<ListSortKey>("scheduledAt");
+  // "In agenda" di default (richiesta esplicita dell'utente, screenshot di
+  // riferimento) — non più "Tutti", coerente con le tre pillole in cima
+  // alla sezione "Lavori accettati" (BOOKING_TABS).
+  const [bookingsStatusFilter, setBookingsStatusFilter] = useState<BookingStatusFilter>("toDo");
   const [bookingsPageSize, setBookingsPageSize] = useState(5);
   const [bookingsPage, setBookingsPage] = useState(1);
+  // Ricerca cliente/indirizzo + filtro data (Questa settimana/Prossima
+  // settimana/Tutto) + zona — richiesta esplicita dell'utente per il
+  // redesign "Lavori accettati", stesso principio "tutto calcolato
+  // client-side" già seguito per ListControls (CLAUDE.md, scala di lancio
+  // §7). Default "Tutto" per la data (non "Questa settimana" come nello
+  // screenshot fornito): un professionista non deve vedere una lista vuota
+  // al primo caricamento solo perché nessun lavoro cade in questa settimana.
+  const [bookingsSearch, setBookingsSearch] = useState("");
+  const [bookingsDateFilter, setBookingsDateFilter] = useState<BookingDateFilter>("all");
+  const [bookingsZoneFilter, setBookingsZoneFilter] = useState(ZONE_ALL);
 
   // Cambiare filtro/ordinamento/quantità riparte sempre da pagina 1 —
   // restare su una pagina che potrebbe non esistere più nel nuovo elenco
@@ -262,12 +346,12 @@ function DashboardContent() {
     setBookingsStatusFilter(value);
     setBookingsPage(1);
   }
-  function updateBookingsSort(value: ListSortKey) {
-    setBookingsSort(value);
+  function updateBookingsDateFilter(value: BookingDateFilter) {
+    setBookingsDateFilter(value);
     setBookingsPage(1);
   }
-  function updateBookingsPageSize(value: number) {
-    setBookingsPageSize(value);
+  function updateBookingsZoneFilter(value: string) {
+    setBookingsZoneFilter(value);
     setBookingsPage(1);
   }
 
@@ -396,8 +480,32 @@ function DashboardContent() {
   const leadsEffectivePage = Math.min(leadsPage, leadsTotalPages);
   const visibleLeads = sortedLeads?.slice((leadsEffectivePage - 1) * leadsPageSize, leadsEffectivePage * leadsPageSize) ?? null;
 
-  const filteredAcceptedJobs = bookings ? acceptedJobs(bookings).filter((b) => bookingMatchesStatus(b, bookingsStatusFilter)) : [];
-  const sortedBookings = sortListItems(filteredAcceptedJobs, bookingsSort, {
+  // Zone disponibili per il filtro (richiesta esplicita dell'utente),
+  // calcolate su tutti i lavori accettati indipendentemente dal filtro tab/
+  // data/ricerca corrente — altrimenti la lista delle zone si restringerebbe
+  // insieme ai risultati filtrati, un comportamento confuso per un filtro.
+  const bookingZones = useMemo(() => {
+    const set = new Set((bookings ? acceptedJobs(bookings) : []).map((b) => b.city).filter((c): c is string => Boolean(c)));
+    return [...set].sort();
+  }, [bookings]);
+
+  const bookingsSearchQuery = bookingsSearch.trim().toLowerCase();
+  const filteredAcceptedJobs = bookings
+    ? acceptedJobs(bookings)
+        .filter((b) => bookingMatchesStatus(b, bookingsStatusFilter))
+        .filter((b) => bookingMatchesDateFilter(b, bookingsDateFilter))
+        .filter((b) => bookingsZoneFilter === ZONE_ALL || b.city === bookingsZoneFilter)
+        .filter((b) => {
+          if (!bookingsSearchQuery) return true;
+          const name = ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "").toLowerCase();
+          const address = (formatBookingAddress(b) ?? b.address ?? "").toLowerCase();
+          return name.includes(bookingsSearchQuery) || address.includes(bookingsSearchQuery);
+        })
+    : [];
+  // Ordinamento fisso per data di intervento (prossimo prima) — nessun
+  // controllo "Ordina per" per questa lista, coerente con lo screenshot di
+  // riferimento fornito dall'utente, che non ne mostra uno.
+  const sortedBookings = sortListItems(filteredAcceptedJobs, "scheduledAt", {
     createdAt: (b) => b.createdAt,
     updatedAt: (b) => b.updatedAt,
     scheduledAt: (b) => b.scheduledAt,
@@ -479,17 +587,81 @@ function DashboardContent() {
             <Text fontSize="$2" color={brand.grafite70}>
               Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
             </Text>
+
+            {/* Tre pillole "In agenda"/"Completati"/"Tutti" con conteggio —
+                richiesta esplicita dell'utente, screenshot di riferimento —
+                stesso pattern a scorrimento orizzontale già in uso in
+                /dashboard/richieste (una riga sola, mai andare a capo). */}
             {bookings !== null && acceptedJobs(bookings).length > 0 ? (
-              <ListControls
-                statusValue={bookingsStatusFilter}
-                statusOptions={BOOKING_STATUS_OPTIONS}
-                onStatusChange={updateBookingsStatusFilter}
-                sortValue={bookingsSort}
-                sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
-                onSortChange={updateBookingsSort}
-                pageSize={bookingsPageSize}
-                onPageSizeChange={updateBookingsPageSize}
-              />
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingTop: 2, paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+                {BOOKING_TABS.map((tab) => {
+                  const active = bookingsStatusFilter === tab.value;
+                  const count = acceptedJobs(bookings).filter((b) => bookingMatchesStatus(b, tab.value)).length;
+                  return (
+                    <XStack
+                      key={tab.value}
+                      flexShrink={0}
+                      alignItems="center"
+                      gap={6}
+                      paddingHorizontal="$3"
+                      paddingVertical={10}
+                      borderRadius={999}
+                      backgroundColor={active ? brand.verificato : brand.calce}
+                      borderWidth={1}
+                      borderColor={active ? brand.verificato : brand.filetto}
+                      cursor="pointer"
+                      onPress={() => updateBookingsStatusFilter(tab.value)}
+                      accessibilityRole="button"
+                    >
+                      <Text fontFamily="$body" fontSize={15} fontWeight="800" color={active ? "white" : brand.grafite}>
+                        {tab.label}
+                      </Text>
+                      <YStack
+                        minWidth={20}
+                        height={20}
+                        paddingHorizontal={4}
+                        borderRadius={999}
+                        alignItems="center"
+                        justifyContent="center"
+                        backgroundColor={active ? "rgba(255,255,255,0.28)" : brand.gesso}
+                      >
+                        <Text fontSize={11} fontWeight="800" color={active ? "white" : brand.grafite70}>
+                          {count}
+                        </Text>
+                      </YStack>
+                    </XStack>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {bookings !== null && acceptedJobs(bookings).length > 0 ? (
+              <XStack gap="$2" flexWrap="wrap">
+                <input
+                  value={bookingsSearch}
+                  onChange={(e) => {
+                    setBookingsSearch(e.target.value);
+                    setBookingsPage(1);
+                  }}
+                  placeholder="Cerca cliente o indirizzo..."
+                  style={{ ...smallInputStyle, flex: "1 1 220px", minWidth: 200, borderRadius: radiusDoc, padding: "10px 12px" }}
+                />
+                <select value={bookingsDateFilter} onChange={(e) => updateBookingsDateFilter(e.target.value as BookingDateFilter)} style={{ ...smallInputStyle, borderRadius: radiusDoc, padding: "10px 12px" }}>
+                  {BOOKING_DATE_FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <select value={bookingsZoneFilter} onChange={(e) => updateBookingsZoneFilter(e.target.value)} style={{ ...smallInputStyle, borderRadius: radiusDoc, padding: "10px 12px" }}>
+                  <option value={ZONE_ALL}>Tutte le zone</option>
+                  {bookingZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                </select>
+              </XStack>
             ) : null}
             <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
             {bookings === null ? (
@@ -557,6 +729,21 @@ function AcceptedJobCard({
   const structuredAddress = formatBookingAddress(booking);
   const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
   const isCanceled = booking.status === "CANCELED";
+  // Card collassata di default, si apre al click sull'intestazione —
+  // richiesta esplicita dell'utente con screenshot di riferimento (stesso
+  // principio già in uso in /dashboard/richieste). Colore di stato riusato
+  // sia per il filetto laterale sia per la pillola di stato: stessi 3 colori
+  // già in uso per il testo di stato prima di questo redesign, nessun nuovo
+  // colore introdotto.
+  const [isOpen, setIsOpen] = useState(false);
+  const statusColor = isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato;
+  const statusBg = isCanceled ? brand.urgenzaVelo : booking.status === "COMPLETED" ? brand.gesso : "#E6F4EC";
+  const statusLabel = isCanceled
+    ? `Annullata${booking.canceledBy === "CLIENT" ? " dal cliente" : booking.canceledBy === "PROFESSIONAL" ? " da te" : ""}`
+    : booking.status === "COMPLETED"
+      ? "Completato"
+      : "Confermato";
+  const priceTotals = booking.items.length > 0 ? quotePriceTotals(booking.items) : null;
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   // Recensione del professionista sul cliente (richiesta esplicita
@@ -626,84 +813,63 @@ function AcceptedJobCard({
   }
 
   return (
-    <Surface gap="$2" borderColor={isCanceled ? brand.urgenza : undefined} borderWidth={isCanceled ? 1.5 : undefined} backgroundColor={isCanceled ? brand.urgenzaVelo : undefined}>
-      <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-        <YStack gap="$1">
-          <Text fontWeight="700" color={brand.grafite}>
-            {date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            {" · "}
-            {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-            {/* Fascia completa (richiesta esplicita dell'utente: "non
-                visualizzare solo il primo orario ma tutta la fascia
-                d'orario"), quando l'ora di fine è nota — null per date
-                indicate a mano o prenotazioni precedenti a questa
-                funzionalità, in quel caso resta solo l'inizio come prima. */}
-            {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
-          </Text>
-          <XStack alignItems="center" gap="$2">
-            <Text
-              fontFamily="$body"
-              fontSize={13}
-              fontWeight="700"
-              color={isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato}
-            >
-              {isCanceled
-                ? `Annullata${
-                    // Da questa vista (dashboard professionista) "PROFESSIONAL" è "tu" —
-                    // richiesta esplicita dell'utente: far capire chi ha annullato, non
-                    // solo che è stata annullata. `null` per righe da prima di questo campo.
-                    booking.canceledBy === "CLIENT" ? " dal cliente" : booking.canceledBy === "PROFESSIONAL" ? " da te" : ""
-                  }`
-                : booking.status === "COMPLETED"
-                  ? "Completato"
-                  : "Confermato"}
+    <Surface
+      gap="$3"
+      padding={0}
+      overflow="hidden"
+      borderLeftWidth={4}
+      borderLeftColor={statusColor}
+      backgroundColor={isCanceled ? brand.urgenzaVelo : brand.calce}
+    >
+      {/* Intestazione, sempre visibile — click/tap apre/chiude il resto
+          della card (richiesta esplicita dell'utente, screenshot di
+          riferimento: card collassata di default). */}
+      <YStack gap="$2" padding="$3" cursor="pointer" onPress={() => setIsOpen((v) => !v)} accessibilityRole="button">
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
+          <XStack alignItems="center" gap={8} flexShrink={1}>
+            <YStack width={8} height={8} borderRadius={999} backgroundColor={statusColor} />
+            <Text fontFamily="$body" fontSize={13} fontWeight="800" color={statusColor} textTransform="uppercase">
+              {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}
+              {" · "}
+              {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+              {/* Fascia completa (richiesta esplicita dell'utente: "non
+                  visualizzare solo il primo orario ma tutta la fascia
+                  d'orario"), quando l'ora di fine è nota. */}
+              {endDate ? ` – ${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
             </Text>
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
-        </YStack>
-        {/* `flex={1}`/`minWidth={200}`: senza questi, questa riga (una
-            volta finita sulla propria riga per via del `flexWrap` del
-            genitore) resta larga solo quanto il contenuto dei bottoni
-            invece di adattarsi allo spazio disponibile — il proprio
-            `flexWrap="wrap"` non ha nulla contro cui scattare e i tre
-            bottoni restano tutti su una riga, sforando lo schermo su
-            mobile (stesso principio già documentato altrove in questo
-            file per lo stesso tipo di bug, CLAUDE.md §12). */}
-        <XStack gap="$2" flexWrap="wrap" flex={1} minWidth={200}>
-          {booking.status === "CONFIRMED" ? (
-            <>
-              <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
-                Lavoro terminato
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
-                <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
-                  Annulla intervento
+          <YStack alignItems="flex-end" gap={2}>
+            <XStack alignItems="center" gap={6} paddingHorizontal={10} paddingVertical={4} borderRadius={999} backgroundColor={statusBg}>
+              <Text fontFamily="$body" fontSize={12} fontWeight="800" color={statusColor}>
+                {statusLabel}
+              </Text>
+            </XStack>
+            {priceTotals && (priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0) ? (
+              <Text fontFamily="$body" fontSize={17} fontWeight="800" color={brand.grafite}>
+                {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+                <Text fontSize={12} fontWeight="600" color={brand.grafite70}>
+                  {" "}
+                  stimato
                 </Text>
-              </Button>
-            </>
-          ) : null}
-          {booking.status === "COMPLETED" && !booking.hasClientReview ? (
-            <Button variant="ghost" size="$2" height={36} onPress={() => setShowClientReviewModal(true)}>
-              <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                Recensisci il cliente
               </Text>
-            </Button>
-          ) : null}
-          {booking.guidedRequestId && myProfileId ? (
-            <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
-              <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                Contatta/Cronologia
-              </Text>
-            </Button>
-          ) : null}
+            ) : null}
+          </YStack>
         </XStack>
-      </YStack>
 
-      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
+        <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+          {booking.categoryLabel ?? "Lavoro"}
+        </Text>
+
+        <ServiceModeBadge mode={booking.serviceMode} />
+
         <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontWeight="600" color={brand.grafite}>
-            {recipientFullName ?? booking.clientName ?? "Cliente"}
-          </Text>
+          <XStack alignItems="center" gap={4}>
+            <Icon name="phone" size={13} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontWeight="700" fontSize={15} color={brand.grafite}>
+              {recipientFullName ?? booking.clientName ?? "Cliente"}
+            </Text>
+          </XStack>
           {booking.clientAccountDeleted ? (
             // Richiesta esplicita dell'utente: il lavoro resta con traccia
             // completa (nome del destinatario/contatti raccolti
@@ -715,230 +881,270 @@ function AcceptedJobCard({
             </Text>
           ) : null}
         </XStack>
-        {(booking.recipientPhone ?? booking.clientPhone) ? (
-          <XStack alignItems="center" gap="$3" flexWrap="wrap">
-            <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none" }}>
-              <XStack alignItems="center" gap="$1">
-                <Icon name="phone" size={12} color={brand.cianografia} strokeWidth={1.5} />
-                <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                  {booking.recipientPhone ?? booking.clientPhone}
-                </Text>
-              </XStack>
-            </a>
-            {whatsAppLink ? (
-              <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                <XStack alignItems="center" gap="$1">
-                  <Icon name="message-circle" size={12} color={brand.verificato} strokeWidth={1.5} />
-                  <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-                    WhatsApp
-                  </Text>
-                </XStack>
-              </a>
-            ) : null}
-          </XStack>
-        ) : null}
-        {booking.clientEmail ? (
-          <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
-            <XStack alignItems="center" gap="$1">
-              <Icon name="mail" size={12} color={brand.cianografia} strokeWidth={1.5} />
-              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                {booking.clientEmail}
-              </Text>
-            </XStack>
-          </a>
-        ) : null}
         {structuredAddress ?? booking.address ? (
-          <XStack alignItems="center" gap="$1">
-            <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$2" color={brand.grafite70}>
+          <XStack alignItems="center" gap={4}>
+            <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$3" color={brand.grafite70}>
               {structuredAddress ?? booking.address}
             </Text>
           </XStack>
         ) : null}
+
+        <XStack justifyContent="center">
+          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={brand.grafite70} />
+        </XStack>
       </YStack>
 
-      {/* Descrizione del lavoro e foto scritte/caricate dal cliente nella
-          richiesta guidata originale — richiesta esplicita dell'utente,
-          visibili anche qui (non solo nel pannello di dettaglio del
-          calendario "Prenotazioni"). Assenti per le prenotazioni dirette da
-          agenda pubblica, che non hanno una GuidedRequest collegata. */}
-      {booking.description ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Descrizione del lavoro
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            {booking.description}
-          </Text>
-        </YStack>
-      ) : null}
+      {isOpen ? (
+        <YStack gap="$3" padding="$3" paddingTop={0}>
+          {/* Descrizione del lavoro e foto scritte/caricate dal cliente
+              nella richiesta guidata originale — assenti per le
+              prenotazioni dirette da agenda pubblica, che non hanno una
+              GuidedRequest collegata. */}
+          {booking.description ? (
+            <DetailSection icon="file-text" label="Descrizione lavoro">
+              <Text fontSize="$3" color={brand.grafite}>
+                {booking.description}
+              </Text>
+            </DetailSection>
+          ) : null}
 
-      {(booking.photoUrls ?? []).length > 0 ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Foto del cliente
-          </Text>
-          <XStack gap="$2" flexWrap="wrap">
-            {booking.photoUrls.map((url, index) => (
-              <MediaPreview
-                key={url}
-                url={url}
-                onClick={() => setOpenPhotoIndex(index)}
-                style={{ width: 56, height: 56, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+          {(booking.photoUrls ?? []).length > 0 ? (
+            <DetailSection icon="camera" label="Foto del cliente">
+              <XStack gap="$2" flexWrap="wrap">
+                {booking.photoUrls.map((url, index) => (
+                  <MediaPreview
+                    key={url}
+                    url={url}
+                    onClick={() => setOpenPhotoIndex(index)}
+                    style={{ width: 56, height: 56, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                  />
+                ))}
+              </XStack>
+            </DetailSection>
+          ) : null}
+
+          {booking.items.length > 0 ? (
+            <DetailSection icon="receipt-text" label="Preventivo">
+              <YStack gap="$1">
+                {booking.items.map((item) => (
+                  <XStack key={item.id} justifyContent="space-between" gap="$2">
+                    <Text fontSize="$3" color={brand.grafite70}>
+                      {item.name}
+                    </Text>
+                    <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                      {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
+                    </Text>
+                  </XStack>
+                ))}
+                {priceTotals ? (
+                  <XStack justifyContent="space-between" gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$1" marginTop="$1">
+                    <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+                      Totale stimato
+                    </Text>
+                    <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+                      {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </YStack>
+            </DetailSection>
+          ) : null}
+
+          {(booking.recipientPhone ?? booking.clientPhone) || booking.clientEmail ? (
+            <DetailSection icon="phone" label="Contatti">
+              <YStack gap="$2">
+                {(booking.recipientPhone ?? booking.clientPhone) ? (
+                  <Text fontSize="$3" color={brand.grafite}>
+                    {booking.recipientPhone ?? booking.clientPhone}
+                  </Text>
+                ) : null}
+                {booking.clientEmail ? (
+                  <Text fontSize="$3" color={brand.grafite}>
+                    {booking.clientEmail}
+                  </Text>
+                ) : null}
+                {(booking.recipientPhone ?? booking.clientPhone) ? (
+                  <XStack gap="$2" flexWrap="wrap">
+                    {whatsAppLink ? (
+                      <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", flex: "1 1 auto" }}>
+                        <XStack alignItems="center" justifyContent="center" gap={6} paddingHorizontal="$4" paddingVertical={10} borderRadius={999} backgroundColor="#E6F4EC">
+                          <Icon name="message-circle" size={14} color={brand.verificato} />
+                          <Text fontSize="$3" fontWeight="700" color={brand.verificato}>
+                            WhatsApp
+                          </Text>
+                        </XStack>
+                      </a>
+                    ) : null}
+                    <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none", flex: "1 1 auto" }}>
+                      <XStack alignItems="center" justifyContent="center" gap={6} paddingHorizontal="$4" paddingVertical={10} borderRadius={999} backgroundColor={brand.verificato}>
+                        <Icon name="phone" size={14} color="white" />
+                        <Text fontSize="$3" fontWeight="700" color="white">
+                          Chiama
+                        </Text>
+                      </XStack>
+                    </a>
+                  </XStack>
+                ) : null}
+              </YStack>
+            </DetailSection>
+          ) : null}
+
+          {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
+            <DetailSection icon="coins" label="Importo finale">
+              <YStack gap="$1">
+                {booking.finalItems.map((item) => (
+                  <XStack key={item.id} justifyContent="space-between" gap="$2">
+                    <Text fontSize="$3" color={brand.grafite70}>
+                      {item.name}
+                    </Text>
+                    <Text fontSize="$3" color={brand.grafite}>
+                      €{(item.priceEurCents / 100).toFixed(2)}
+                    </Text>
+                  </XStack>
+                ))}
+                <XStack justifyContent="space-between" gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$1" marginTop="$1">
+                  <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+                    Totale
+                  </Text>
+                  <Text fontSize="$3" fontWeight="700" color={brand.cianografia}>
+                    €{(booking.finalAmountEurCents / 100).toFixed(2)}
+                  </Text>
+                </XStack>
+              </YStack>
+            </DetailSection>
+          ) : null}
+
+          {isCanceled && booking.cancellationNote ? (
+            <DetailSection icon="x" label="Nota lasciata al cliente">
+              <Text fontSize="$3" color={brand.grafite70}>
+                {booking.cancellationNote}
+              </Text>
+            </DetailSection>
+          ) : null}
+
+          {booking.refundRequested ? (
+            <YStack gap="$1" padding="$3" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={radiusDoc}>
+              <Text fontSize="$3" fontWeight="700" color={brand.urgenza}>
+                Il cliente ha segnalato che non ti sei presentato
+              </Text>
+              <Text fontSize="$3" color={brand.grafite70}>
+                Ha chiesto un rimborso. Contattalo per chiarire la situazione.
+              </Text>
+            </YStack>
+          ) : null}
+
+          {/* Link consulenza video (Meet/Zoom/ecc.), visibile al cliente. */}
+          <DetailSection icon="video" label="Videochiamata">
+            <YStack gap="$2">
+              <input
+                value={meetingLinkDraft}
+                onChange={(e) => setMeetingLinkDraft(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: radiusDoc,
+                  border: `1px solid ${brand.filetto}`,
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  color: brand.grafite,
+                  backgroundColor: brand.calce,
+                }}
               />
-            ))}
+              {meetingLinkChanged ? (
+                <Button
+                  variant="secondary"
+                  size="$2"
+                  height={32}
+                  alignSelf="flex-start"
+                  disabled={isSavingMeetingLink}
+                  opacity={isSavingMeetingLink ? 0.6 : 1}
+                  onPress={handleSaveMeetingLink}
+                >
+                  {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
+                </Button>
+              ) : null}
+            </YStack>
+          </DetailSection>
+
+          {/* Nota privata del professionista (mai vista dal cliente). */}
+          <DetailSection icon="pencil" label="Note personali">
+            <YStack gap="$2">
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
+                rows={2}
+                maxLength={2000}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: radiusDoc,
+                  border: `1px solid ${brand.filetto}`,
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  color: brand.grafite,
+                  backgroundColor: brand.calce,
+                  resize: "vertical",
+                }}
+              />
+              {noteChanged ? (
+                <Button
+                  variant="secondary"
+                  size="$2"
+                  height={32}
+                  alignSelf="flex-start"
+                  disabled={isSavingNote}
+                  opacity={isSavingNote ? 0.6 : 1}
+                  onPress={handleSaveNote}
+                >
+                  {isSavingNote ? "Salvataggio..." : "Salva nota"}
+                </Button>
+              ) : null}
+            </YStack>
+          </DetailSection>
+
+          {/* `flex={1}`/`minWidth={200}`: senza questi, questa riga (una
+              volta finita sulla propria riga per via del `flexWrap` del
+              genitore) resta larga solo quanto il contenuto dei bottoni
+              invece di adattarsi allo spazio disponibile — il proprio
+              `flexWrap="wrap"` non ha nulla contro cui scattare e i tre
+              bottoni restano tutti su una riga, sforando lo schermo su
+              mobile (stesso principio già documentato altrove in questo
+              file per lo stesso tipo di bug, CLAUDE.md §12). */}
+          <XStack gap="$2" flexWrap="wrap" flex={1} minWidth={200}>
+            {booking.status === "CONFIRMED" ? (
+              <>
+                <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
+                  Lavoro terminato
+                </Button>
+                <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
+                  <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
+                    Annulla intervento
+                  </Text>
+                </Button>
+              </>
+            ) : null}
+            {booking.status === "COMPLETED" && !booking.hasClientReview ? (
+              <Button variant="ghost" size="$2" height={36} onPress={() => setShowClientReviewModal(true)}>
+                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                  Recensisci il cliente
+                </Text>
+              </Button>
+            ) : null}
+            {booking.guidedRequestId && myProfileId ? (
+              <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
+                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                  Contatta/Cronologia
+                </Text>
+              </Button>
+            ) : null}
           </XStack>
         </YStack>
       ) : null}
-
-      {booking.items.length > 0 ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          {booking.items.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
-                {item.name}
-              </Text>
-              <Text fontSize="$2" color={brand.grafite} fontWeight="600">
-                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-              </Text>
-            </XStack>
-          ))}
-        </YStack>
-      ) : null}
-
-      {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Importo finale
-          </Text>
-          {booking.finalItems.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
-                {item.name}
-              </Text>
-              <Text fontSize="$2" color={brand.grafite}>
-                €{(item.priceEurCents / 100).toFixed(2)}
-              </Text>
-            </XStack>
-          ))}
-          <XStack justifyContent="space-between" gap="$2">
-            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
-              Totale
-            </Text>
-            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
-              €{(booking.finalAmountEurCents / 100).toFixed(2)}
-            </Text>
-          </XStack>
-        </YStack>
-      ) : null}
-
-      {isCanceled && booking.cancellationNote ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Nota lasciata al cliente
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            {booking.cancellationNote}
-          </Text>
-        </YStack>
-      ) : null}
-
-      {booking.refundRequested ? (
-        <YStack
-          gap="$1"
-          paddingTop="$1"
-          paddingHorizontal="$2"
-          paddingBottom="$2"
-          borderWidth={1}
-          borderColor={brand.urgenza}
-          backgroundColor={brand.urgenzaVelo}
-          borderRadius="$2"
-          marginTop="$1"
-        >
-          <Text fontSize="$2" fontWeight="700" color={brand.urgenza}>
-            Il cliente ha segnalato che non ti sei presentato
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Ha chiesto un rimborso. Contattalo per chiarire la situazione.
-          </Text>
-        </YStack>
-      ) : null}
-
-      {/* Link consulenza video (Meet/Zoom/ecc.), visibile al cliente —
-          richiesta esplicita dell'utente, stesso campo di
-          BookingDetailPanel. */}
-      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-        <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-          Link videochiamata (visibile al cliente)
-        </Text>
-        <input
-          value={meetingLinkDraft}
-          onChange={(e) => setMeetingLinkDraft(e.target.value)}
-          placeholder="https://meet.google.com/..."
-          style={{
-            width: "100%",
-            padding: 8,
-            borderRadius: 4,
-            border: `1px solid ${brand.filetto}`,
-            fontSize: 13,
-            fontFamily: "inherit",
-            color: brand.grafite,
-          }}
-        />
-        {meetingLinkChanged ? (
-          <Button
-            variant="secondary"
-            size="$2"
-            height={32}
-            alignSelf="flex-start"
-            disabled={isSavingMeetingLink}
-            opacity={isSavingMeetingLink ? 0.6 : 1}
-            onPress={handleSaveMeetingLink}
-          >
-            {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
-          </Button>
-        ) : null}
-      </YStack>
-
-      {/* Nota privata del professionista (mai vista dal cliente) — stesso
-          campo/pattern già in uso in BookingDetailPanel (calendario
-          "Prenotazioni"), richiesta esplicita dell'utente di vederla anche
-          qui. */}
-      <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-        <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-          Note personali (solo per te)
-        </Text>
-        <textarea
-          value={noteDraft}
-          onChange={(e) => setNoteDraft(e.target.value)}
-          placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
-          rows={2}
-          maxLength={2000}
-          style={{
-            width: "100%",
-            padding: 8,
-            borderRadius: 4,
-            border: `1px solid ${brand.filetto}`,
-            fontSize: 13,
-            fontFamily: "inherit",
-            color: brand.grafite,
-            resize: "vertical",
-          }}
-        />
-        {noteChanged ? (
-          <Button
-            variant="secondary"
-            size="$2"
-            height={32}
-            alignSelf="flex-start"
-            disabled={isSavingNote}
-            opacity={isSavingNote ? 0.6 : 1}
-            onPress={handleSaveNote}
-          >
-            {isSavingNote ? "Salvataggio..." : "Salva nota"}
-          </Button>
-        ) : null}
-      </YStack>
 
       {showCompleteModal ? (
         <CompleteJobModal
