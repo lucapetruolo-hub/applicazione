@@ -6,6 +6,7 @@ import {
   buildWhatsAppLink,
   formatEurCents,
   quotePriceTotals,
+  type CompleteBookingInput,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalLead,
@@ -18,6 +19,9 @@ import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { ReviewModal } from "@/components/ReviewModal";
 import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/lib/requestStage";
 
 /**
@@ -39,6 +43,10 @@ import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/li
  */
 
 const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
+// Filtri in cima alla pagina (cerca/ordina/zona) — dimensioni più grandi
+// della versione compatta usata nel form preventivo, richiesta esplicita
+// dell'utente ("anche le dimensioni e il carattere delle scritte").
+const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
 
 type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
 
@@ -66,19 +74,22 @@ function formatSlotRange(startIso: string, endIso: string | null): string {
   return `${dateLabel} · ${startLabel}–${endLabel}`;
 }
 
-// Palette chiusa "Vicinato" (CLAUDE.md §19): niente hex nuovi, i 6 stati si
-// distinguono riusando le tinte semantiche già esistenti (verde smeraldo =
-// azione richiesta, verde muto = confermato, oro = richiede una decisione,
-// rosso = scaduto/distruttivo, grigio = concluso/neutro) — locale a questa
-// pagina, non tocca le 4 varianti fisse di `Badge` in packages/ui (contratto
-// diverso, "rosso solo urgenza / ottone solo pagamento").
+// Palette per gli stati — richiesta esplicita dell'utente dopo aver visto la
+// pagina reale, con riferimento visivo puntuale (arancione/da quotare,
+// blu/in attesa, verde/accettata, rosso/scadute): eccezione deliberata alla
+// palette chiusa "Vicinato" (CLAUDE.md §19) solo per questi 6 indicatori di
+// stato — stessa logica già usata altrove nel progetto per un'eccezione
+// puntuale e circoscritta (es. CLAUDE.md §31, emoji nell'eyebrow home). Hex
+// letterali locali a questa pagina, non toccano `packages/ui/tokens.ts` né
+// le 4 varianti fisse di `Badge` (quelle restano semantiche "verificato/
+// pro/urgente/nuovo" per il resto del sito).
 const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professionisti/ui").IconName; fg: string; bg: string; border: string }> = {
-  da_quotare: { label: "Da quotare", icon: "zap", fg: brand.cianografiaScuro, bg: brand.cianografiaVelo, border: brand.cianografia },
-  in_attesa: { label: "In attesa", icon: "clock", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
+  da_quotare: { label: "Da quotare", icon: "zap", fg: "#B8860B", bg: "#FFF3D6", border: "#FF6B35" },
+  in_attesa: { label: "In attesa", icon: "clock", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#8a5a00", bg: "#FFF4E0", border: brand.ottone },
-  accettata: { label: "Accettata", icon: "check", fg: brand.verificato, bg: "#E6F4EC", border: brand.verificato },
+  accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
   completata: { label: "Completata", icon: "check", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
-  scaduta: { label: "Scaduta", icon: "clock", fg: brand.urgenza, bg: brand.urgenzaVelo, border: brand.urgenza },
+  scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
 
@@ -96,9 +107,9 @@ type SortMode = "recenti" | "vecchie" | "prezzo";
 function StagePill({ stage }: { stage: RequestStage }) {
   const s = STAGE_STYLE[stage];
   return (
-    <XStack alignItems="center" gap={5} paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={s.bg}>
-      <Icon name={s.icon} size={12} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={11.5} fontWeight="700" color={s.fg}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
+      <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
+      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={s.fg} textTransform="uppercase">
         {s.label}
       </Text>
     </XStack>
@@ -107,9 +118,9 @@ function StagePill({ stage }: { stage: RequestStage }) {
 
 function ServiceBadge({ online }: { online: boolean }) {
   return (
-    <XStack alignItems="center" gap={5} paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={brand.gesso}>
-      <Icon name={online ? "video" : "house"} size={12} strokeWidth={2} color={brand.cianografia} />
-      <Text fontFamily="$body" fontSize={11.5} fontWeight="700" color={brand.grafite}>
+    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
+      <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografia} />
+      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>
     </XStack>
@@ -310,36 +321,48 @@ function RichiesteContent() {
           </Link>
         </XStack>
 
-        {/* Tab filtro */}
-        <XStack gap="$2" flexWrap="wrap" style={{ overflowX: "auto" }}>
+        {/* Tab filtro — riga unica scorrevole orizzontalmente (richiesta
+            esplicita dell'utente, con riferimento visivo puntuale): niente
+            flexWrap, altrimenti le pillole andrebbero a capo invece di
+            scorrere su schermi stretti. */}
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingTop: 6, paddingBottom: 8, WebkitOverflowScrolling: "touch" }}>
           {TABS.map((tab) => {
             const active = activeTab === tab.key;
             const count = tabCounts[tab.key] ?? 0;
-            const showAlert = (tab.key === "da_quotare" || tab.key === "modifica_richiesta") && count > 0;
             return (
-              <XStack
-                key={tab.key}
-                alignItems="center"
-                gap={6}
-                paddingHorizontal="$3"
-                paddingVertical={9}
-                borderRadius={999}
-                backgroundColor={active ? brand.cianografia : brand.calce}
-                borderWidth={1}
-                borderColor={active ? brand.cianografia : brand.filetto}
-                cursor="pointer"
-                onPress={() => setActiveTab(tab.key)}
-                accessibilityRole="button"
-              >
-                <Text fontFamily="$body" fontSize={13} fontWeight="700" color={active ? "white" : brand.grafite}>
-                  {tab.label}
-                </Text>
-                <Text fontFamily="$body" fontSize={11} color={active ? "rgba(255,255,255,0.85)" : brand.grafite70}>
-                  {count}
-                </Text>
-                {showAlert ? (
-                  <YStack minWidth={16} height={16} paddingHorizontal={4} borderRadius={999} backgroundColor={brand.urgenza} alignItems="center" justifyContent="center">
-                    <Text fontSize={10} fontWeight="800" color="white">
+              <XStack key={tab.key} flexShrink={0} position="relative">
+                <XStack
+                  alignItems="center"
+                  paddingHorizontal="$4"
+                  paddingVertical={14}
+                  borderRadius={999}
+                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  borderWidth={1}
+                  borderColor={active ? brand.cianografia : brand.filetto}
+                  cursor="pointer"
+                  onPress={() => setActiveTab(tab.key)}
+                  accessibilityRole="button"
+                >
+                  <Text fontFamily="$body" fontSize={17} fontWeight="800" color={active ? "white" : brand.grafite}>
+                    {tab.label}
+                  </Text>
+                </XStack>
+                {count > 0 ? (
+                  <YStack
+                    position="absolute"
+                    top={-6}
+                    right={-6}
+                    minWidth={24}
+                    height={24}
+                    paddingHorizontal={5}
+                    borderRadius={999}
+                    backgroundColor={brand.urgenza}
+                    alignItems="center"
+                    justifyContent="center"
+                    borderWidth={2}
+                    borderColor={brand.gesso}
+                  >
+                    <Text fontSize={12} fontWeight="800" color="white">
                       {count}
                     </Text>
                   </YStack>
@@ -347,7 +370,7 @@ function RichiesteContent() {
               </XStack>
             );
           })}
-        </XStack>
+        </div>
 
         {/* Barra filtri */}
         <XStack gap="$2" flexWrap="wrap">
@@ -355,14 +378,14 @@ function RichiesteContent() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cerca cliente o indirizzo..."
-            style={{ ...smallInputStyle, flex: "1 1 220px", minWidth: 200 }}
+            style={{ ...filterInputStyle, flex: "1 1 220px", minWidth: 200 }}
           />
-          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={smallInputStyle}>
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={filterInputStyle}>
             <option value="recenti">Ordina: Più recenti</option>
             <option value="vecchie">Più vecchie</option>
             <option value="prezzo">Prezzo crescente</option>
           </select>
-          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={smallInputStyle}>
+          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={filterInputStyle}>
             <option value="tutte">Tutte le zone</option>
             {zones.map((z) => (
               <option key={z} value={z}>
@@ -448,8 +471,18 @@ function RequestCard({
   const [declineNoteDraft, setDeclineNoteDraft] = useState("");
   const [isDeclining, setIsDeclining] = useState(false);
 
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Stessi popup già in uso in /dashboard (LeadCard/AcceptedJobCard) per
+  // "Lavoro terminato"/"Annulla intervento"/"Recensisci il cliente" —
+  // richiesta esplicita dell'utente di implementarli qui identici.
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showClientReviewModal, setShowClientReviewModal] = useState(false);
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -562,6 +595,42 @@ function RequestCard({
     }
   }
 
+  async function handleWithdrawQuote() {
+    if (!lead.quote) return;
+    setIsWithdrawing(true);
+    try {
+      await apiClient.withdrawQuote(token, lead.quote.id);
+      onChanged();
+    } finally {
+      setIsWithdrawing(false);
+      setConfirmingWithdraw(false);
+    }
+  }
+
+  async function handleComplete(input: CompleteBookingInput) {
+    if (!booking) return;
+    await apiClient.completeBooking(token, booking.id, input);
+    setShowCompleteModal(false);
+    // Subito dopo aver segnalato il lavoro terminato si apre il popup per
+    // recensire il cliente (stesso comportamento già in uso in /dashboard).
+    setShowClientReviewModal(true);
+    onChanged();
+  }
+
+  async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    if (!booking) return;
+    await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
+    setShowClientReviewModal(false);
+    onChanged();
+  }
+
+  async function handleCancelBooking(note: string | undefined) {
+    if (!booking) return;
+    await apiClient.cancelBookingByProfessional(token, booking.id, { note });
+    setShowCancelModal(false);
+    onChanged();
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     try {
@@ -591,11 +660,11 @@ function RequestCard({
             <StagePill stage={stage} />
           </XStack>
           <YStack alignItems="flex-end">
-            <Text fontSize={11} color={brand.grafite70}>
-              ricevuta {formatDate(lead.createdAt)}
+            <Text fontSize={14} color={brand.grafite70}>
+              Ricevuta {formatDate(lead.createdAt)}
             </Text>
             {priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
-              <Text fontFamily="$body" fontWeight="800" fontSize={15} color={brand.grafite}>
+              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEurCents(priceRange.totalMinEurCents)}
                 {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
               </Text>
@@ -603,18 +672,24 @@ function RequestCard({
           </YStack>
         </XStack>
 
-        <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+        <Text fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
           {clientName}
         </Text>
-        <Text fontSize={12} color={brand.grafite70}>
-          {gr.categoryLabel} · {gr.city}
-        </Text>
-        <Text fontSize={13} color={brand.grafite} numberOfLines={1}>
+        <XStack alignItems="center" gap="$1">
+          <Icon name="wrench" size={15} color={brand.grafite70} />
+          <Text fontSize={16} color={brand.grafite70}>
+            {gr.categoryLabel} · {gr.city}
+          </Text>
+        </XStack>
+        <Text fontSize={16} color={brand.grafite} lineHeight={22}>
           {gr.description}
         </Text>
-        <Text fontSize={12.5} color={brand.grafite70}>
-          {isOnline ? `Zona: ${gr.city}` : gr.address || gr.city}
-        </Text>
+        <XStack alignItems="center" gap="$1">
+          <Icon name="map-pin" size={14} color={brand.grafite70} />
+          <Text fontSize={15} color={brand.grafite70}>
+            {isOnline ? `Zona: ${gr.city}` : gr.address || gr.city}
+          </Text>
+        </XStack>
 
         <XStack justifyContent="center" paddingTop="$1">
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
@@ -861,7 +936,7 @@ function RequestCard({
             ) : null}
 
             {stage === "in_attesa" ? (
-              <XStack gap="$2" flexWrap="wrap">
+              <XStack gap="$2" flexWrap="wrap" alignItems="center">
                 <Button
                   variant="ghost"
                   size="$3"
@@ -877,6 +952,25 @@ function RequestCard({
                 <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
                   Contatta
                 </Button>
+                {confirmingWithdraw ? (
+                  <>
+                    <Text fontSize="$2" color={brand.urgenza}>
+                      Ritirare questo preventivo?
+                    </Text>
+                    <Button variant="urgent" size="$3" disabled={isWithdrawing} opacity={isWithdrawing ? 0.6 : 1} onPress={handleWithdrawQuote}>
+                      {isWithdrawing ? "Ritiro..." : "Conferma"}
+                    </Button>
+                    <Button variant="ghost" size="$3" onPress={() => setConfirmingWithdraw(false)}>
+                      Annulla
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="ghost" size="$3" onPress={() => setConfirmingWithdraw(true)}>
+                    <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
+                      Ritira preventivo
+                    </Text>
+                  </Button>
+                )}
               </XStack>
             ) : null}
 
@@ -915,6 +1009,30 @@ function RequestCard({
 
             {stage === "accettata" || stage === "completata" ? (
               <XStack gap="$2" flexWrap="wrap">
+                {/* Stessi bottoni già in uso in /dashboard (AcceptedJobCard) —
+                    richiesta esplicita dell'utente di implementarli identici
+                    qui: "Lavoro terminato"/"Annulla intervento" finché la
+                    prenotazione è CONFIRMED, "Recensisci il cliente" dopo il
+                    completamento se non già recensito. */}
+                {booking?.status === "CONFIRMED" ? (
+                  <>
+                    <Button variant="secondary" size="$3" onPress={() => setShowCompleteModal(true)}>
+                      Lavoro terminato
+                    </Button>
+                    <Button variant="ghost" size="$3" onPress={() => setShowCancelModal(true)}>
+                      <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
+                        Annulla intervento
+                      </Text>
+                    </Button>
+                  </>
+                ) : null}
+                {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
+                  <Button variant="ghost" size="$3" onPress={() => setShowClientReviewModal(true)}>
+                    <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                      Recensisci il cliente
+                    </Text>
+                  </Button>
+                ) : null}
                 <Link href="/dashboard/agenda">
                   <Button variant="secondary" backgroundColor={brand.verificato} size="$3">
                     <Text color="white" fontWeight="700" fontSize="$3">
@@ -927,6 +1045,24 @@ function RequestCard({
                 </Button>
               </XStack>
             ) : null}
+            {showCompleteModal && booking ? (
+              <CompleteJobModal
+                quotedItems={booking.items}
+                onClose={() => setShowCompleteModal(false)}
+                onComplete={handleComplete}
+                uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+              />
+            ) : null}
+            {showClientReviewModal && booking ? (
+              <ReviewModal
+                title="Recensisci il cliente"
+                subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
+                uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
+                onSubmit={handleSubmitClientReview}
+                onClose={() => setShowClientReviewModal(false)}
+              />
+            ) : null}
+            {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
 
             {(stage === "scaduta" || stage === "chiusa") && !canDelete ? (
               <Text fontSize={12.5} color={brand.grafite70}>
