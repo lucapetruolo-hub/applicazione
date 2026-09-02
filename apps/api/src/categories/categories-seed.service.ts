@@ -6,7 +6,7 @@ import { PRISMA } from "../prisma/prisma.module";
 /**
  * Popola la tabella `categories` all'avvio (upsert, idempotente) invece di
  * richiedere un comando `prisma db seed` manuale separato — lo start script
- * di Railway esegue solo `prisma db push` (sincronizza lo schema, non i
+ * di produzione esegue solo `prisma db push` (sincronizza lo schema, non i
  * dati), quindi senza questo le categorie restano assenti sul DB di
  * produzione e ogni registrazione profilo professionista fallisce con
  * "Categoria non valida" (`ProfessionalsService.upsertMyProfile`).

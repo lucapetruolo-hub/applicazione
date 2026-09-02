@@ -11,7 +11,7 @@ async function bootstrap() {
   // manualmente solo su quella rotta, prima del parser JSON globale
   // (CLAUDE.md §2 — Stripe è già nello stack approvato).
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
-  // Railway (come ogni hosting dietro un proxy) inoltra le richieste da un
+  // Render (come ogni hosting dietro un proxy) inoltra le richieste da un
   // solo IP interno: senza "trust proxy" il rate limiting (ThrottlerGuard,
   // Fase 6) userebbe quell'IP del proxy per tutti gli utenti, azzerando la
   // protezione (un solo client abusivo blocca tutti) invece di limitare per
@@ -22,7 +22,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }));
   app.enableCors();
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
-  // "0.0.0.0" esplicito: su alcune piattaforme cloud (Railway inclusa)
+  // "0.0.0.0" esplicito: su alcune piattaforme cloud (Render inclusa)
   // app.listen(port) senza host può legarsi solo a IPv6, irraggiungibile
   // dal proxy pubblico che si connette via IPv4 — da qui "Application
   // failed to respond" pur con il processo avviato correttamente.

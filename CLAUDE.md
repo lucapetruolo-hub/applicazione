@@ -54,7 +54,7 @@ Implicazioni tecniche dirette:
 | Notifiche | Expo Push, **Resend** (email), **Twilio** (SMS) | Promemoria automatici anti no-show |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
-| Hosting | Web → **Vercel** (`applicazione-web.vercel.app`); Mobile build → EAS (Expo); API/DB → **Railway** (deciso, deployato) | Scelta pragmatica per iterare velocemente in fase iniziale |
+| Hosting | Web → **Vercel** (`applicazione-web.vercel.app`); Mobile build → EAS (Expo); API/DB → **Render** (deciso, deployato; in precedenza Railway, abbandonato per scadenza piano free) | Scelta pragmatica per iterare velocemente in fase iniziale |
 | Mappa risultati ricerca | **Leaflet + OpenStreetMap** (`apps/web` only, mai in `packages/ui`) | Puntini reali dei professionisti nei risultati di ricerca. Deciso esplicitamente con l'utente **al posto di** Google Maps/Places: nessuna chiave API, nessuna carta di pagamento su Google Cloud, tile OpenStreetMap gratuiti. Leaflet non gira in React Native (serve DOM/CSS) — se la mappa servirà anche su mobile andrà valutato `react-native-maps` separatamente, non è nello scope attuale |
 | Storage immagini profilo | **Cloudinary** | Upload dell'immagine profilo dei professionisti (`apps/api/src/cloudinary/`). Deciso esplicitamente con l'utente al posto di Vercel Blob o di salvare il file nel database: piano gratuito senza carta di pagamento, CDN + resize automatico (800×800 max) incluso lato upload |
 | Geocodifica indirizzo preciso | **Nominatim** (OpenStreetMap) | `apps/api/src/geocoding/geocoding.service.ts` — geocodifica l'indirizzo preciso (opzionale) inserito dal professionista in `/dashboard/profilo` per posizionarlo esatto sulla mappa dei risultati, invece che al centro del comune. Stessa scelta già fatta per le tile della mappa (niente Google Geocoding API, niente carta di pagamento): gratuito, nessuna chiave richiesta, solo uno User-Agent identificativo richiesto dalla usage policy. Usata solo al salvataggio del profilo (poche richieste al giorno), mai in un percorso di ricerca. Se la geocodifica non trova nulla o il servizio non risponde entro 5s, si ricade silenziosamente sul centro del comune (dataset ISTAT) — non deve mai bloccare il salvataggio del profilo |
@@ -98,21 +98,34 @@ prima discuterne e aggiornare questo file.
   nella tabella `categories` a ogni avvio dell'API, stesso principio pragmatico
   del punto sopra.
   Deploy live e funzionante (registrazione, login email e login Google
-  testati sul sito reale): backend su `professionistiapi-production.up.railway.app`,
-  Postgres su Railway (senza estensione PostGIS — vedi nota schema sotto),
+  testati sul sito reale): backend su Render (URL `<nome>.onrender.com`),
+  Postgres su Render (senza estensione PostGIS — vedi nota schema sotto),
   variabili impostate: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
-  `FRONTEND_URL`, `PORT=3001`. Due problemi risolti durante il primo
-  deploy, entrambi corretti nel codice (non solo in configurazione, per
-  non doverli rifare ad ogni nuovo ambiente):
+  `FRONTEND_URL`. Render inietta `PORT` automaticamente — a differenza di
+  Railway NON va impostata manualmente nelle env var.
+  Il deploy è dichiarato come codice in **`render.yaml`** (Blueprint alla
+  radice del repo): Dashboard Render → New → Blueprint → selezionare il repo
+  crea API + database in un colpo solo. Le variabili segrete marcate
+  `sync: false` vanno valorizzate una sola volta dalla dashboard.
+  **Limiti free tier Render da ricordare**: il web service va in sleep dopo
+  15 min di inattività (cold start ~1 min alla prima richiesta — le
+  funzioni schedulate con `@nestjs/schedule` non girano mentre dorme);
+  il Postgres free (1 GB) scade dopo 30 giorni → alla scadenza creare un
+  nuovo DB free, aggiornare `DATABASE_URL` e rieseguire il seed
+  (`pnpm db:push` parte da solo nello start dell'API; il seed demo si
+  rilancia a mano puntando `DATABASE_URL` locale sull'External Connection
+  String di Render con `?sslmode=require`).
+  Due problemi risolti durante il primo deploy (su Railway), entrambi
+  corretti nel codice (non solo in configurazione, per non doverli rifare
+  ad ogni nuovo ambiente) e ancora validi su Render:
   1. `app.listen(port)` senza host esplicito si lega solo a IPv6 su
-     Railway → il proxy pubblico (IPv4) non raggiunge il processo pur
-     essendo partito correttamente nei log ("Application failed to
-     respond"). Fix: `app.listen(port, "0.0.0.0")` in `apps/api/src/main.ts`.
-  2. Railway inietta un proprio `PORT` (es. 8080) diverso dalla porta
-     dichiarata manualmente in "Generate Domain" durante il setup —
-     serve impostare `PORT` esplicitamente nelle Variables coerente con
-     quella porta, altrimenti il proxy pubblico punta a una porta su cui
-     nessuno ascolta.
+     alcune piattaforme cloud → il proxy pubblico (IPv4) non raggiunge il
+     processo pur essendo partito correttamente nei log ("Application
+     failed to respond"). Fix: `app.listen(port, "0.0.0.0")` in
+     `apps/api/src/main.ts`.
+  2. Ogni piattaforma può iniettare un proprio `PORT` diverso da 3001 —
+     l'API legge sempre `process.env.PORT` (fallback 3001 in locale), mai
+     hardcodare la porta.
   Sul frontend Vercel vanno impostate anche `NEXT_PUBLIC_API_URL` (verso
   l'URL Railway) e `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (esisteva solo in
   `.env.local` locale, mai propagata a Vercel finché non serviva in

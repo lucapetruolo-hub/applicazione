@@ -1,0 +1,67 @@
+# Blueprint Render — deploy API + PostgreSQL con un click
+# (Dashboard → New → Blueprint → seleziona questo repo).
+#
+# Sostituisce l'hosting Railway (piano free scaduto). Note sul free tier Render:
+# - Il web service free va in sleep dopo 15 min di inattività (~1 min di
+#   cold start alla prima richiesta successiva). 750 ore/mese incluse.
+# - Il Postgres free ha 1 GB e SCADE DOPO 30 GIORNI: alla scadenza va creato
+#   un nuovo database free e rieseguito il seed (vedi CLAUDE.md §2).
+# - Render inietta automaticamente PORT: l'API la legge già da process.env.PORT
+#   e ascolta su 0.0.0.0 (apps/api/src/main.ts), quindi nessuna config extra.
+
+services:
+  - type: web
+    name: professionisti-api
+    runtime: node
+    plan: free
+    branch: claude/professionisti-platform-architecture-xr9gmn
+    healthCheckPath: /health
+    # Monorepo pnpm: root directory = radice del repo (workspace manifest,
+    # lockfile e packages condivisi devono restare raggiungibili), build e
+    # start scoperti sul solo servizio API via --filter.
+    # Lo script "build" di apps/api compila già database + shared prima di
+    # "nest build"; lo script "start" esegue "prisma db push" (schema sync
+    # idempotente) prima di avviare il server.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
+    startCommand: pnpm --filter @professionisti/api start
+    # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .npmrc
+        - .nvmrc
+        - render.yaml
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: professionisti-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      # Valorizzare dalla dashboard Render dopo la creazione (sync:false =
+      # il valore non sta nel repo, lo inserisci tu una sola volta):
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_BOOTSTRAP_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        value: https://applicazione-web.vercel.app
+
+databases:
+  - name: professionisti-db
+    plan: free
+    databaseName: professionisti
