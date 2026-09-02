@@ -112,9 +112,12 @@ prima discuterne e aggiornare questo file.
   funzioni schedulate con `@nestjs/schedule` non girano mentre dorme);
   il Postgres free (1 GB) scade dopo 30 giorni → alla scadenza creare un
   nuovo DB free, aggiornare `DATABASE_URL` e rieseguire il seed
-  (`pnpm db:push` parte da solo nello start dell'API; il seed demo si
-  rilancia a mano puntando `DATABASE_URL` locale sull'External Connection
-  String di Render con `?sslmode=require`).
+  (lo script `start` di `apps/api` esegue già da solo `prisma db push
+  --accept-data-loss` ad ogni avvio, vedi sopra in questa sezione; le
+  categorie si ripopolano da sole via `CategoriesSeedService` — nessun
+  comando manuale necessario per quelle. Il seed dei dati demo, se
+  servisse, si rilancia a mano puntando `DATABASE_URL` locale
+  sull'External Connection String di Render con `?sslmode=require`).
   Due problemi risolti durante il primo deploy (su Railway), entrambi
   corretti nel codice (non solo in configurazione, per non doverli rifare
   ad ogni nuovo ambiente) e ancora validi su Render:
@@ -127,7 +130,7 @@ prima discuterne e aggiornare questo file.
      l'API legge sempre `process.env.PORT` (fallback 3001 in locale), mai
      hardcodare la porta.
   Sul frontend Vercel vanno impostate anche `NEXT_PUBLIC_API_URL` (verso
-  l'URL Railway) e `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (esisteva solo in
+  l'URL Render) e `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (esisteva solo in
   `.env.local` locale, mai propagata a Vercel finché non serviva in
   produzione) — più l'origine `https://applicazione-web.vercel.app`
   aggiunta manualmente tra le "Authorized JavaScript origins" del Client
