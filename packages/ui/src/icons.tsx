@@ -54,6 +54,7 @@ import {
   RotateCcw,
   Play,
   Send,
+  Share2,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -108,6 +109,7 @@ export const ICONS = {
   "rotate-ccw": RotateCcw,
   play: Play,
   send: Send,
+  "share-2": Share2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

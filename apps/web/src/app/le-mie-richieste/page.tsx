@@ -824,6 +824,37 @@ function GuidedRequestCard({
             </XStack>
           ) : null}
 
+          {/* Scorciatoia "stesso problema di prima": apre il form di
+              nuova richiesta già precompilato con categoria, città,
+              descrizione e indirizzo di questa — le foto vanno ricaricate
+              (devono ritrarre il problema attuale). Fuori dal blocco
+              canDelete: serve soprattutto sulle richieste CHIUSE (lavoro
+              concluso, problema che si ripresenta), che non sono più
+              né modificabili né eliminabili. */}
+          <XStack>
+            <Link
+              href={`/preventivo?${new URLSearchParams({
+                categoria: request.categorySlug,
+                ...(request.city ? { citta: request.city } : {}),
+                descrizione: request.description,
+                ...(request.address ? { via: request.address } : {}),
+                ...(request.houseNumber ? { civico: request.houseNumber } : {}),
+                ...(request.addressExtra ? { interno: request.addressExtra } : {}),
+                ...(request.postalCode ? { cap: request.postalCode } : {}),
+                ...(request.province ? { provincia: request.province } : {}),
+                ...(request.recipientName ? { nome: request.recipientName } : {}),
+                ...(request.recipientSurname ? { cognome: request.recipientSurname } : {}),
+                ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
+                ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
+              }).toString()}`}
+              style={{ textDecoration: "none" }}
+            >
+              <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                Ripeti la richiesta
+              </Text>
+            </Link>
+          </XStack>
+
           {canDelete ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
               {canEditDetails ? (

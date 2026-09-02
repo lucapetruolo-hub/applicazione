@@ -138,6 +138,33 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       .catch(() => {});
   }, [professional.id]);
 
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+
+  async function handleShare() {
+    const url = window.location.href;
+    const shareData = {
+      title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
+      text: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city} su Professionisti.`,
+      url,
+    };
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share(shareData);
+        return; // condivisione nativa completata o annullata: nessun feedback
+      }
+      throw new Error("share-non-disponibile");
+    } catch {
+      // Fallback: copia il link negli appunti (desktop senza Web Share API)
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareFeedback("Link copiato");
+      } catch {
+        setShareFeedback("Copia il link dalla barra degli indirizzi");
+      }
+      window.setTimeout(() => setShareFeedback(null), 3000);
+    }
+  }
+
   async function handleToggleSave() {
     if (!token) return;
     setIsSaving(true);
@@ -212,6 +239,22 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </XStack>
             </Button>
           ) : null}
+        </XStack>
+
+        {/* Passaparola: per i lavori di casa la raccomandazione gira su
+            WhatsApp, quindi il bottone apre la condivisione nativa del
+            dispositivo (che su mobile include WhatsApp/contatti) e ripiega
+            sulla copia del link dove l'API non esiste (desktop senza
+            navigator.share). */}
+        <XStack>
+          <Button variant="ghost" size="$3" onPress={handleShare}>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografia} />
+              <Text color={brand.cianografia} fontWeight="600">
+                {shareFeedback ?? "Condividi il profilo"}
+              </Text>
+            </XStack>
+          </Button>
         </XStack>
 
         {professional.subTags.length > 0 ? (

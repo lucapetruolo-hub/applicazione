@@ -397,9 +397,55 @@ function RichiesteContent() {
 
         {/* Elenco */}
         {visibleLeads.length === 0 ? (
-          <Surface>
-            <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro o attendi nuove richieste dai clienti." />
-          </Surface>
+          <YStack gap="$3">
+            <Surface>
+              <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro o attendi nuove richieste dai clienti." />
+            </Surface>
+            {/* Mini-guida per i professionisti appena iscritti (tour
+                pre-lancio): senza richieste la pagina non spiegava cosa
+                succede "dopo" — i tre passi sotto danno aspettative
+                concrete invece di lasciare un vuoto muto. */}
+            <Surface gap="$3">
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+                Come funziona quando arriva una richiesta
+              </Text>
+              <XStack gap="$3" flexWrap="wrap">
+                <YStack flex={1} minWidth={180} gap="$1">
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="bell-ring" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                      1. Ricevi la richiesta
+                    </Text>
+                  </XStack>
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    Un cliente della tua zona descrive il lavoro con foto: ti arriva qui e ti avvisiamo.
+                  </Text>
+                </YStack>
+                <YStack flex={1} minWidth={180} gap="$1">
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="file-text" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                      2. Invii il preventivo
+                    </Text>
+                  </XStack>
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    Prezzo e data scelti dalla tua agenda. Solo allora il cliente vede chi sei.
+                  </Text>
+                </YStack>
+                <YStack flex={1} minWidth={180} gap="$1">
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="calendar" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                      3. Il lavoro entra in agenda
+                    </Text>
+                  </XStack>
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    Se il cliente accetta, l'appuntamento compare nella tua agenda con contatti e indirizzo.
+                  </Text>
+                </YStack>
+              </XStack>
+            </Surface>
+          </YStack>
         ) : (
           <YStack gap="$3">
             {visibleLeads.map((lead) => (

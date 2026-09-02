@@ -149,14 +149,16 @@ export function GuidedRequestForm({
   useEffect(() => {
     if (!user || prefilledFromAccountRef.current) return;
     prefilledFromAccountRef.current = true;
-    setRecipientName(user.name ?? "");
-    setRecipientSurname(user.surname ?? "");
-    setRecipientPhone(user.phone ?? "");
-    setStreet(user.street ?? "");
-    setHouseNumber(user.houseNumber ?? "");
-    setAddressExtra(user.addressExtra ?? "");
-    setPostalCode(user.postalCode ?? "");
-    setProvince(user.province ?? "");
+    // I valori arrivati dall'URL (es. "Ripeti la richiesta") hanno la
+    // precedenza: l'account riempie solo i campi ancora vuoti.
+    setRecipientName((prev) => prev || user.name || "");
+    setRecipientSurname((prev) => prev || user.surname || "");
+    setRecipientPhone((prev) => prev || user.phone || "");
+    setStreet((prev) => prev || user.street || "");
+    setHouseNumber((prev) => prev || user.houseNumber || "");
+    setAddressExtra((prev) => prev || user.addressExtra || "");
+    setPostalCode((prev) => prev || user.postalCode || "");
+    setProvince((prev) => prev || user.province || "");
     setCity((prev) => prev || user.city || "");
     // Richiesta esplicita dell'utente: "se non sono ancora presenti in
     // impostazioni account dopo il salva chiedi se vuole che diventino i
@@ -179,9 +181,13 @@ export function GuidedRequestForm({
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
-  const [description, setDescription] = useState("");
+  // Prefill completo quando si arriva da "Ripeti la richiesta" (pagina
+  // Le mie richieste): un lavoro simile al precedente si riparte da qui
+  // con descrizione/indirizzo già compilati — restano solo le foto
+  // (obbligatorie, e devono essere del problema attuale, non riciclate).
+  const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
-  const [street, setStreet] = useState("");
+  const [street, setStreet] = useState(searchParams.get("via") ?? "");
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
   // (richiesta esplicita dell'utente: "voglio che li inserisca subito
   // appena [invia] un preventivo... ma verranno visualizzati al
@@ -191,13 +197,13 @@ export function GuidedRequestForm({
   // finestra impostazioni dell'account, in modo che quando si richiede un
   // preventivo escano automaticamente compilate già nei campi"), sempre
   // modificabili qui per singola richiesta.
-  const [recipientName, setRecipientName] = useState("");
-  const [recipientSurname, setRecipientSurname] = useState("");
-  const [recipientPhone, setRecipientPhone] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
-  const [addressExtra, setAddressExtra] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [province, setProvince] = useState("");
+  const [recipientName, setRecipientName] = useState(searchParams.get("nome") ?? "");
+  const [recipientSurname, setRecipientSurname] = useState(searchParams.get("cognome") ?? "");
+  const [recipientPhone, setRecipientPhone] = useState(searchParams.get("telefono") ?? "");
+  const [houseNumber, setHouseNumber] = useState(searchParams.get("civico") ?? "");
+  const [addressExtra, setAddressExtra] = useState(searchParams.get("interno") ?? "");
+  const [postalCode, setPostalCode] = useState(searchParams.get("cap") ?? "");
+  const [province, setProvince] = useState(searchParams.get("provincia") ?? "");
   const prefilledFromAccountRef = useRef(false);
   // True se, al momento del prefill, l'account non aveva ancora questi dati
   // — richiesta esplicita dell'utente: dopo l'invio riuscito, in quel caso
