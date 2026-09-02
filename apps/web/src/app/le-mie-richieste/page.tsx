@@ -723,14 +723,21 @@ function GuidedRequestCard({
               <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
                 {request.city ? `${request.categoryLabel} · ${request.city}` : request.categoryLabel}
               </Text>
-              {request.serviceMode ? (
-                <XStack alignItems="center" gap="$1">
-                  <Icon name={request.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
-                  <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                    {request.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
-                  </Text>
-                </XStack>
-              ) : null}
+              <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                {request.serviceMode ? (
+                  <XStack alignItems="center" gap="$1">
+                    <Icon name={request.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
+                    <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
+                      {request.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
+                    </Text>
+                  </XStack>
+                ) : null}
+                {/* Il cliente deve riconoscere a colpo d'occhio le proprie
+                    richieste urgenti (priorita' e scadenza diverse — vedi
+                    /urgente): stessa variante semantica rossa gia' usata
+                    nella inbox del professionista. */}
+                {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+              </XStack>
               <Text color={brand.grafite70}>{request.description}</Text>
               {request.address ? (
                 <XStack alignItems="center" gap="$1">

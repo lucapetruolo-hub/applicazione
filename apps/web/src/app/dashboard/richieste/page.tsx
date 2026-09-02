@@ -11,7 +11,7 @@ import {
   type ProfessionalBooking,
   type ProfessionalLead,
 } from "@professionisti/shared";
-import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -702,6 +702,11 @@ function RequestCard({
       <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
           <XStack gap="$2" flexWrap="wrap">
+            {/* Le richieste urgenti (costo lead maggiore, scadenza breve —
+                vedi guided-requests.service) erano indistinguibili dalle
+                normali: il badge rosso è la variante semantica prevista
+                dal design system proprio per questo flusso. */}
+            {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ServiceBadge online={isOnline} />
             <StagePill stage={stage} />
           </XStack>
