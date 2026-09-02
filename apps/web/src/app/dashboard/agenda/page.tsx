@@ -81,7 +81,11 @@ export default function DashboardAgendaPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [view, setView] = useState<CalendarView>("week");
+  // Stesso criterio del calendario Prenotazioni sotto: su mobile il
+  // default è "Giorno" perché la griglia settimanale non ci sta.
+  const [view, setView] = useState<CalendarView>(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "day" : "week",
+  );
   const [currentDate, setCurrentDate] = useState(todayUtc());
   // "new-<dateStr>" (ISO) mentre si aggiunge una fascia nuova sulla colonna
   // di quella data esatta, "edit-<index>" mentre se ne modifica una
@@ -129,7 +133,14 @@ export default function DashboardAgendaPage() {
   // impostare gli orari e uno dove compaiono le prenotazioni.
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
-  const [bookingView, setBookingView] = useState<CalendarView>("week");
+  // Su schermi stretti la settimana a 7 colonne è illeggibile (testo
+  // spezzato, chip invisibili): il default diventa "Giorno", da cui si
+  // passa comunque a Settimana/Mese con i selettori. Rilevato una sola
+  // volta all'avvio, senza listener: cambiare orientamento/larghezza dopo
+  // non deve resettare la scelta fatta a mano dall'utente.
+  const [bookingView, setBookingView] = useState<CalendarView>(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "day" : "week",
+  );
   const [bookingCurrentDate, setBookingCurrentDate] = useState(todayUtc());
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
