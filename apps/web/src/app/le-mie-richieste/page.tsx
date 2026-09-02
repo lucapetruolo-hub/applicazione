@@ -1335,7 +1335,7 @@ function QuoteCard({
               accessibilityRole="button"
               onPress={() => setShowPaymentInfo(true)}
             >
-              Vai al pagamento
+              Come pago?
             </Text>
           )}
         </YStack>

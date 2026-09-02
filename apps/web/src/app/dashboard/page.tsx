@@ -696,7 +696,7 @@ function DashboardContent() {
           </YStack>
         )}
 
-        <BoostSection token={token} />
+        <BoostSection />
       </YStack>
     </YStack>
   );
@@ -1194,52 +1194,33 @@ const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCC
   { type: "STORIA_SUCCESSO", label: "Storia di successo", description: "Contenuto editoriale in evidenza sulla piattaforma.", priceEur: 49.9 },
 ];
 
-function BoostSection({ token }: { token: string }) {
-  const [loadingType, setLoadingType] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleBuy(type: (typeof BOOST_OPTIONS)[number]["type"]) {
-    setError(null);
-    setLoadingType(type);
-    try {
-      const { url } = await apiClient.createBoostCheckout(token, type);
-      if (url) {
-        window.location.href = url;
-      } else {
-        setError("Checkout non disponibile al momento.");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setLoadingType(null);
-    }
-  }
-
+function BoostSection() {
   return (
     <YStack gap="$3">
       <SectionTitle>Aumenta la tua visibilità</SectionTitle>
-      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
         {BOOST_OPTIONS.map((option) => (
           <Surface key={option.type} flex={1} gap="$2">
-            <Badge variant="pro">{option.label}</Badge>
+            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+              <Badge variant="pro">{option.label}</Badge>
+              {/* Pagamenti non ancora attivi (Stripe escluso dal lancio):
+                  il bottone "Acquista" fallirebbe sempre, quindi mostriamo
+                  uno stato "In arrivo" onesto invece di un errore. */}
+              <YStack backgroundColor={brand.cianografiaVelo} borderRadius="$10" paddingHorizontal="$2" paddingVertical={2}>
+                <Text fontSize={11} fontWeight="700" color={brand.cianografia}>
+                  In arrivo
+                </Text>
+              </YStack>
+            </XStack>
             <Text color={brand.grafite70} fontSize="$3">
               {option.description}
             </Text>
             <Text fontWeight="700" color={brand.grafite}>
               €{option.priceEur.toFixed(2)}
             </Text>
-            <Button
-              variant="secondary"
-              size="$3"
-              height={40}
-              alignSelf="flex-start"
-              onPress={() => handleBuy(option.type)}
-              disabled={loadingType === option.type}
-              opacity={loadingType === option.type ? 0.6 : 1}
-            >
-              {loadingType === option.type ? "Attendi..." : "Acquista"}
-            </Button>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Ti avviseremo appena gli acquisti in piattaforma saranno attivi.
+            </Text>
           </Surface>
         ))}
       </YStack>
