@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Icon, motionBase, motionEasing, motionFast } from "@professionisti/ui";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION, categoryBySlug } from "@/lib/megaMenuGroups";
+import { useAuth } from "@/lib/AuthContext";
 
 /**
  * "Servizi" nell'header: mega-menu a 3 colonne su desktop (brief §4.1),
@@ -15,6 +17,10 @@ export function MegaMenu() {
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Auth per il drawer mobile: su schermi stretti l'header nasconde
+  // "Accedi" e i link, quindi il menu hamburger è l'unico modo per
+  // raggiungere login/dashboard da telefono (bug segnalato in audit).
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -98,7 +104,11 @@ export function MegaMenu() {
         </span>
       </button>
 
-      {mobileOpen ? (
+      {/* Portal su document.body: l'header sticky ha backdrop-filter, che
+          per spec CSS diventa il containing block dei discendenti position:fixed
+          e schiacciava il drawer dentro i 64px dell'header (bug mobile reale). */}
+      {mobileOpen && typeof document !== "undefined" ? (
+        createPortal(
         <div className="mega-drawer-backdrop" onClick={() => setMobileOpen(false)}>
           <div className="mega-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mega-drawer-header">
@@ -108,6 +118,31 @@ export function MegaMenu() {
               </button>
             </div>
             <div className="mega-drawer-body">
+              {/* Link di navigazione principali (su mobile l'header li
+                  nasconde: qui restano raggiungibili) */}
+              <div className="mega-navlinks">
+                <Link href="/#come-funziona" className="mega-navlink" onClick={() => setMobileOpen(false)}>
+                  Come funziona
+                </Link>
+                <Link href="/per-professionisti" className="mega-navlink" onClick={() => setMobileOpen(false)}>
+                  Prezzi
+                </Link>
+                {!isLoading && !user ? (
+                  <Link href="/accedi" className="mega-navlink mega-navlink-strong" onClick={() => setMobileOpen(false)}>
+                    Accedi
+                  </Link>
+                ) : null}
+                {!isLoading && user ? (
+                  <Link
+                    href={user.role === "PROFESSIONAL" ? "/dashboard" : "/le-mie-richieste"}
+                    className="mega-navlink mega-navlink-strong"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {user.role === "PROFESSIONAL" ? "La mia dashboard" : "Le mie richieste"}
+                  </Link>
+                ) : null}
+              </div>
+              <div className="mega-section-label">Servizi</div>
               {MEGA_MENU_GROUPS.map((group) => (
                 <details key={group.title} className="mega-accordion">
                   <summary>{group.title}</summary>
@@ -129,7 +164,9 @@ export function MegaMenu() {
               </Link>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
+        )
       ) : null}
 
       <style jsx>{`
@@ -198,7 +235,11 @@ export function MegaMenu() {
           color: #6e6459;
           margin-bottom: 8px;
         }
-        .mega-item {
+        /* Le regole che hanno come target un next/link usano :global():
+           styled-jsx non aggiunge la classe di scope ai componenti (solo
+           agli elementi host), quindi .mega-item.jsx-XXX non matcherebbe
+           mai la <a> renderizzata da Link (link del menu senza stile). */
+        :global(.mega-item) {
           display: flex;
           align-items: flex-start;
           gap: 10px;
@@ -207,7 +248,7 @@ export function MegaMenu() {
           text-decoration: none;
           color: inherit;
         }
-        .mega-item:hover {
+        :global(.mega-item:hover) {
           background: #dcf3e7;
         }
         .mega-item-icon {
@@ -228,7 +269,7 @@ export function MegaMenu() {
           font-size: 12px;
           color: #6e6459;
         }
-        .mega-footer {
+        :global(.mega-footer) {
           display: block;
           background: #189a63;
           color: #ffffff;
@@ -237,7 +278,7 @@ export function MegaMenu() {
           font-weight: 600;
           text-decoration: none;
         }
-        .mega-footer:hover {
+        :global(.mega-footer:hover) {
           background: #0e7a4c;
         }
 
@@ -310,6 +351,32 @@ export function MegaMenu() {
           overflow-y: auto;
           padding: 12px 20px;
         }
+        .mega-navlinks {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f0dcc0;
+          margin-bottom: 4px;
+        }
+        :global(.mega-navlink) {
+          padding: 10px 4px;
+          text-decoration: none;
+          color: #2b2420;
+          font-size: 15px;
+          font-weight: 600;
+        }
+        :global(.mega-navlink-strong) {
+          color: #189a63;
+        }
+        .mega-section-label {
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: #6e6459;
+          padding: 8px 4px 4px;
+        }
         .mega-accordion {
           border-bottom: 1px solid #fdefe1;
           padding: 12px 0;
@@ -323,7 +390,7 @@ export function MegaMenu() {
         .mega-accordion summary::-webkit-details-marker {
           display: none;
         }
-        .mega-accordion-item {
+        :global(.mega-accordion-item) {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -336,7 +403,7 @@ export function MegaMenu() {
           padding: 16px 20px;
           border-top: 1px solid #f0dcc0;
         }
-        .mega-drawer-cta a {
+        :global(.mega-drawer-cta a) {
           display: block;
           text-align: center;
           background: #189a63;

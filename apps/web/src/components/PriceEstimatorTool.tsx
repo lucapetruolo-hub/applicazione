@@ -31,8 +31,11 @@ export function PriceEstimatorTool() {
   // Nessun dato reale ancora (piattaforma agli inizi, §7): il tool non ha
   // senso da mostrare finché nessun professionista ha inserito un prezzo,
   // stesso principio già seguito per la vetrina professionisti/social proof
-  // (mai una sezione vuota o con dati inventati).
-  if (entries !== null && entries.length === 0) return null;
+  // (mai una sezione vuota o con dati inventati). In quel caso mostriamo un
+  // invito utile (richiedi un preventivo) invece di sparire lasciando un
+  // vuoto nella pagina — il problema non era il null in sé ma l'effetto
+  // "buco bianco" segnalato in audit.
+  const isEmpty = entries !== null && entries.length === 0;
 
   const filtered = (entries ?? []).filter((entry) => entry.name.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -58,7 +61,29 @@ export function PriceEstimatorTool() {
           }}
         />
 
-        {entries === null ? (
+        {isEmpty ? (
+          <YStack width="100%" gap="$3" alignItems="flex-start">
+            <Text fontSize="$3" color={brand.grafite70}>
+              I prezzi medi appariranno qui non appena i professionisti inseriranno le loro prestazioni. Nel frattempo
+              puoi chiedere un preventivo gratuito: è il modo più preciso per sapere quanto costa il tuo lavoro.
+            </Text>
+            <a
+              href="/preventivo"
+              style={{
+                display: "inline-block",
+                backgroundColor: brand.cianografia,
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 15,
+                padding: "12px 22px",
+                borderRadius: 999,
+                textDecoration: "none",
+              }}
+            >
+              Richiedi un preventivo gratuito
+            </a>
+          </YStack>
+        ) : entries === null ? (
           <Text fontSize="$3" color={brand.grafite70}>
             Caricamento...
           </Text>

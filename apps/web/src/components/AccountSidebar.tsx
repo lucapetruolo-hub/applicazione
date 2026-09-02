@@ -24,7 +24,10 @@ export function AccountSidebar() {
         paddingHorizontal="$3"
         paddingBottom="$2"
       >
-        Impostazioni dell&apos;account
+        {/* Intestazione diversa per ruolo: per il cliente la prima voce del
+            menu è già "Impostazioni dell'account", ripeterla qui creava una
+            duplicazione confusa (segnalata nel tour pre-lancio). */}
+        {user.role === "PROFESSIONAL" ? "Area professionista" : "Il tuo account"}
       </Text>
       {items.map((item) => {
         const active = pathname === item.href;

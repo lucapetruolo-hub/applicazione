@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Input, ScrollView, Text, YStack } from "tamagui";
 
 export type AutocompleteProps<T> = {
@@ -36,6 +36,36 @@ export function Autocomplete<T>({
   size,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
+  // ritardato da solo non basta — con il dropdown aperto a z-index alto il
+  // click sul bottone di invio sottostante veniva intercettato e il form
+  // risultava "non cliccabile" (bug reale segnalato in audit).
+  useEffect(() => {
+    // Web-only: il package è condiviso con React Native, dove `document`
+    // non esiste né nei tipi né a runtime — doppia guardia (typeof + cast)
+    // per non rompere il typecheck RN né il bundle nativo.
+    if (typeof globalThis !== "object" || !("document" in globalThis)) return;
+    type DocLike = {
+      addEventListener: (type: string, listener: (e: Event) => void) => void;
+      removeEventListener: (type: string, listener: (e: Event) => void) => void;
+    };
+    const doc = (globalThis as { document?: DocLike }).document;
+    if (!doc) return;
+    function handlePointerDown(e: Event) {
+      const node = containerRef.current as unknown as { contains?: (t: unknown) => boolean } | null;
+      if (node && typeof node.contains === "function" && !node.contains(e.target)) {
+        setIsFocused(false);
+      }
+    }
+    doc.addEventListener("mousedown", handlePointerDown);
+    doc.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      doc.removeEventListener("mousedown", handlePointerDown);
+      doc.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, []);
 
   const normalizedQuery = value.trim().toLowerCase();
   // Query vuota: mostra comunque un elenco (i primi N) invece di un menu
@@ -71,7 +101,7 @@ export function Autocomplete<T>({
   const showDropdown = isFocused && filtered.length > 0;
 
   return (
-    <YStack position="relative" flex={1}>
+    <YStack position="relative" flex={1} ref={containerRef as never}>
       <Input
         flex={1}
         size={size}

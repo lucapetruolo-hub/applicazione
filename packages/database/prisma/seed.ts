@@ -73,7 +73,7 @@ async function main() {
       },
     });
 
-    await seedDemoReviews(profile.id, pro.businessName, pro.rating);
+    await seedDemoReviews(profile.id, user.id, pro.businessName, pro.rating);
   }
 
   console.log(`Seed completato: ${categoriesBySlug.size} categorie, ${PLACEHOLDER_PROFESSIONALS.length} professionisti demo.`);
@@ -100,7 +100,7 @@ const DEMO_REVIEW_COMMENTS = [
  * rating mostrato in ricerca sia calcolato da recensioni reali (nessun campo
  * "rating" hardcoded sul profilo), non un numero fabbricato.
  */
-async function seedDemoReviews(professionalProfileId: string, businessName: string, targetAverage: number) {
+async function seedDemoReviews(professionalProfileId: string, professionalUserId: string, businessName: string, targetAverage: number) {
   const ratings = ratingsForAverage(targetAverage, DEMO_CLIENT_EMAILS.length);
 
   for (let i = 0; i < DEMO_CLIENT_EMAILS.length; i++) {

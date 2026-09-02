@@ -24,10 +24,11 @@ function FooterLink({ href, children }: { href: string; children: string }) {
   );
 }
 
-// Nessuna riga legale (Privacy/Cookie/Termini/P.IVA/PEC/ODR, prevista dal
-// brief §4.8): richiederebbe dati reali di un'azienda registrata che non
-// sono disponibili in questa sessione — meglio ometterla che inventarla o
-// linkare pagine che non esistono ancora.
+// Riga legale (Privacy/Cookie/Termini) presente dal refactor post-audit:
+// le pagine /privacy, /termini e /cookie sono bozze standard da far
+// verificare a un legale prima del lancio definitivo — il titolare del
+// trattamento è indicato con segnaposto da compilare con i dati reali
+// dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
 export function SiteFooter() {
   return (
     <YStack width="100%" backgroundColor={brand.gesso} alignItems="center">
@@ -65,41 +66,57 @@ export function SiteFooter() {
           </YStack>
         </XStack>
 
-        {/* Loghi/badge di fiducia (assicurazione RC, associazione di
-            categoria, pagamenti sicuri) — richiesta esplicita dell'utente,
-            inseriti anche se non ancora implementati (stessa
-            autorizzazione di "Garanzia Piattaforma"/"Cosa succede se...",
-            §30). Badge testuali con icona invece di loghi reali di terzi
-            (Stripe/PayPal, associazioni di categoria): riprodurre un
-            marchio altrui senza un accordo reale sarebbe un problema di
-            per sé, indipendentemente dall'autorizzazione a pubblicare
-            promesse non ancora implementate. */}
+        {/* Badge di fiducia: solo claim veri e verificabili oggi. Rimossi
+            "Professionisti con assicurazione RC", "Aderente ad associazione
+            di categoria" e "Pagamenti sicuri (Stripe · PayPal)" dalla
+            versione precedente: non corrispondono a nulla di implementato
+            (nessuna verifica RC, nessuna associazione, Stripe non
+            configurato e PayPal mai esistito nel codice) — promesse false
+            nel footer distruggono la fiducia invece di costruirla e
+            espongono legalmente (pratica commerciale ingannevole). */}
         <XStack flexWrap="wrap" gap="$4" paddingTop="$5" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <XStack alignItems="center" gap="$2">
-            <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
-              Professionisti con assicurazione RC
-            </Text>
-          </XStack>
           <XStack alignItems="center" gap="$2">
             <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
-              Aderente ad associazione di categoria
+              Profili verificati dalla piattaforma
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2">
-            <Icon name="credit-card" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
-              Pagamenti sicuri (Stripe · PayPal)
+              Recensioni solo da lavori confermati
+            </Text>
+          </XStack>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="sparkles" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+              Gratis per chi cerca
             </Text>
           </XStack>
         </XStack>
 
-        <XStack alignItems="center" gap="$2">
-          <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-          <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
-            © {new Date().getFullYear()} Professionisti · Tutti i diritti riservati.
-          </Text>
+        <XStack flexWrap="wrap" alignItems="center" gap="$4">
+          <XStack alignItems="center" gap="$2">
+            <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              © {new Date().getFullYear()} Professionisti · Tutti i diritti riservati.
+            </Text>
+          </XStack>
+          <Link href="/privacy" style={{ textDecoration: "none" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Privacy Policy
+            </Text>
+          </Link>
+          <Link href="/termini" style={{ textDecoration: "none" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Termini di Servizio
+            </Text>
+          </Link>
+          <Link href="/cookie" style={{ textDecoration: "none" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Cookie Policy
+            </Text>
+          </Link>
         </XStack>
       </YStack>
     </YStack>

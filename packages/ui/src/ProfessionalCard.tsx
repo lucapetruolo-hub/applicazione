@@ -188,7 +188,24 @@ export function ProfessionalCard({
               <Text fontFamily="$heading" fontWeight="800" fontSize={22} lineHeight={26} color={brand.grafite}>
                 {businessName}
               </Text>
-              {verified ? <Icon name="badge-check" size={19} color={brand.verificato} strokeWidth={2} /> : null}
+              {verified ? (
+                // Pillola "Verificato" esplicita accanto al nome: la sola
+                // icona non comunica il significato a chi non conosce la
+                // piattaforma (principio di riprova sociale leggibile).
+                <XStack
+                  alignItems="center"
+                  gap={4}
+                  paddingHorizontal="$2"
+                  paddingVertical={2}
+                  borderRadius="$10"
+                  backgroundColor={brand.cianografiaVelo}
+                >
+                  <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
+                    Verificato
+                  </Text>
+                </XStack>
+              ) : null}
             </XStack>
             <Text fontSize={15} color={brand.grafite70} fontWeight="500">
               {specialtyLine}

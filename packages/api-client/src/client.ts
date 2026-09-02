@@ -355,6 +355,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         { cache: "no-store" },
       ),
 
+    /** Riprova sociale reale per la home: ultime recensioni pubbliche (doppio cieco), mai dati finti. */
+    getRecentReviews: () =>
+      request<
+        {
+          id: string;
+          rating: number;
+          comment: string | null;
+          isAutomatic: boolean;
+          createdAt: string;
+          professional: { businessName: string; categoryLabel: string; city: string };
+        }[]
+      >("/reviews/recent", { cache: "no-store" }),
+
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 
     getProfessionalAgenda: (id: string) =>

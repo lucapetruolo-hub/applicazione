@@ -14,6 +14,7 @@ import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
+import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
 import { WhatIfSection } from "@/components/WhatIfSection";
@@ -97,6 +98,10 @@ export default function HomeContent({
 
       <FadeInSection>
         <WhyWeExist />
+      </FadeInSection>
+
+      <FadeInSection>
+        <RecentReviews />
       </FadeInSection>
 
       <FadeInSection>

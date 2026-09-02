@@ -52,9 +52,11 @@ export function CategoryTile({ slug, label, count, onPress }: CategoryTileProps)
         <Text fontFamily="$body" fontSize={17} fontWeight="700" color={brand.grafite}>
           {label}
         </Text>
-        <Text fontFamily="$body" fontSize={12.5} fontWeight="600" color={count ? brand.verificato : brand.grafite70}>
-          {count ? "Disponibile" : "In arrivo"}
-        </Text>
+        {count ? (
+          <Text fontFamily="$body" fontSize={12.5} fontWeight="600" color={brand.verificato}>
+            Disponibile
+          </Text>
+        ) : null}
       </YStack>
     </Surface>
   );

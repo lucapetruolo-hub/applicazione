@@ -232,14 +232,42 @@ export function GuidedRequestForm({
       <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
-            Accedi per inviare la richiesta
+            Un ultimo passo: accedi o crea l&apos;account gratuito
           </Text>
-          <Text color={brand.grafite70} textAlign="center">
-            Serve un account per inviare la richiesta ai professionisti e ricevere le risposte.
+          {/* Spiegare il valore PRIMA del muro (psicologia della conversione,
+              audit): l'utente deve sapere cosa ottiene in cambio dei 30
+              secondi di registrazione, non solo che "serve un account". */}
+          <YStack width="100%" gap="$3" backgroundColor={brand.calce} borderRadius="$5" padding="$4" borderWidth={1} borderColor={brand.filetto}>
+            <XStack alignItems="center" gap="$3">
+              <Icon name="send" size={18} color={brand.cianografia} strokeWidth={1.5} />
+              <Text flex={1} fontSize="$3" color={brand.grafite}>
+                La tua richiesta arriva subito ai professionisti compatibili della tua zona
+              </Text>
+            </XStack>
+            <XStack alignItems="center" gap="$3">
+              <Icon name="badge-check" size={18} color={brand.cianografia} strokeWidth={1.5} />
+              <Text flex={1} fontSize="$3" color={brand.grafite}>
+                Ricevi e confronti i preventivi in un unico posto, gratis
+              </Text>
+            </XStack>
+            <XStack alignItems="center" gap="$3">
+              <Icon name="shield" size={18} color={brand.cianografia} strokeWidth={1.5} />
+              <Text flex={1} fontSize="$3" color={brand.grafite}>
+                I tuoi contatti restano nascosti finché non accetti un preventivo
+              </Text>
+            </XStack>
+          </YStack>
+          <Text color={brand.grafite70} textAlign="center" fontSize="$3">
+            Bastano 30 secondi: email o Google, nessuna carta richiesta.
           </Text>
-          <Link href={`/accedi?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
-          </Link>
+          <XStack gap="$3" flexWrap="wrap" justifyContent="center">
+            <Link href={`/accedi?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
+              <Button variant="primary">Accedi</Button>
+            </Link>
+            <Link href={`/registrati?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
+              <Button variant="secondary">Crea account gratuito</Button>
+            </Link>
+          </XStack>
         </YStack>
       </YStack>
     );

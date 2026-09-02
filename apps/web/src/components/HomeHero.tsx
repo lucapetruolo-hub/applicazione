@@ -114,8 +114,8 @@ export function HomeHero() {
             paddingHorizontal="$4"
             cursor="pointer"
             onPress={() => setUrgentOnly((v) => !v)}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: urgentOnly }}
+            role="switch"
+            aria-checked={urgentOnly}
           >
             <XStack alignItems="center" gap="$2" flex={1} minWidth={0}>
               <Icon name="zap" size={16} color="white" />

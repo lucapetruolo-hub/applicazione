@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import { reviewSchema, type ReviewInput } from "@professionisti/shared";
@@ -20,6 +20,14 @@ export class ReviewsController {
     private readonly reviewsService: ReviewsService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  // Pubblico (nessuna guardia): riprova sociale reale per la home, stesso
+  // criterio di visibilità delle recensioni sulla pagina profilo pubblica.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("recent")
+  getRecent() {
+    return this.reviewsService.getRecentPublic();
+  }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)

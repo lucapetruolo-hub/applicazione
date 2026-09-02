@@ -4,6 +4,7 @@ import { Providers } from "./providers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastStack } from "@/components/ToastStack";
+import { CookieBanner } from "@/components/CookieBanner";
 import { SITE_URL } from "@/lib/siteUrl";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteHeader />
           <main id="main-content">{children}</main>
           <SiteFooter />
+          <CookieBanner />
         </Providers>
       </body>
     </html>

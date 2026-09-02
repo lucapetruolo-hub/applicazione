@@ -21,6 +21,49 @@ export class ReviewsService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
   ) {}
 
+  /**
+   * Ultime recensioni pubbliche della piattaforma (sezione riprova sociale
+   * in home). Stesso filtro "doppio cieco" del profilo pubblico: visibili
+   * solo se esiste anche la ClientReview sullo stesso booking. Demo esclusi
+   * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
+   * se non ce ne sono, la home non mostra proprio la sezione.
+   */
+  async getRecentPublic(limit = 6) {
+    const reviews = await this.prisma.review.findMany({
+      where: {
+        booking: {
+          clientReview: { isNot: null },
+          professionalProfile: { isDemo: false, deletedAt: null },
+        },
+      },
+      include: {
+        booking: {
+          include: {
+            professionalProfile: { include: { category: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      // Le automatiche (5 stelle per controparte assente) non hanno testo
+      // libero: l'etichetta "(recensione automatica)" la mette il frontend,
+      // come già nella pagina profilo pubblica.
+      comment: review.isAutomatic ? null : review.comment,
+      isAutomatic: review.isAutomatic,
+      createdAt: review.createdAt.toISOString(),
+      professional: {
+        businessName: review.booking.professionalProfile.businessName,
+        categoryLabel: review.booking.professionalProfile.category.label,
+        city: review.booking.professionalProfile.city,
+      },
+    }));
+  }
+
   async create(clientId: string, input: ReviewInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: input.bookingId },
