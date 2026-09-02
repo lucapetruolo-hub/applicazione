@@ -135,6 +135,19 @@ async function seedDemoReviews(professionalProfileId: string, professionalUserId
         comment: DEMO_REVIEW_COMMENTS[i % DEMO_REVIEW_COMMENTS.length],
       },
     });
+
+    // Controparte double-blind: una Review resta invisibile finché sullo
+    // stesso booking non esiste anche la ClientReview (il professionista
+    // valuta il cliente). Senza questa, i rating dei profili demo non
+    // comparirebbero mai in ricerca né nel profilo pubblico.
+    await prisma.clientReview.create({
+      data: {
+        bookingId: booking.id,
+        clientId: professionalUserId,
+        rating: 5,
+        isAutomatic: true,
+      },
+    });
   }
 
   console.log(`  - ${businessName}: ${ratings.length} recensioni demo (media target ${targetAverage})`);
