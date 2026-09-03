@@ -221,11 +221,6 @@ export function ResultsListWithMap({
     // sotto i 1021px e mostrava il layout impilato da mobile — sbagliato, non
     // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
-      <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
-        <SlidersHorizontal size={16} strokeWidth={1.5} />
-        Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-      </button>
-
       {showFilters ? (
         <div className="filters-backdrop" onClick={() => setShowFilters(false)} role="dialog" aria-modal="true" aria-label="Filtri">
           <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
@@ -415,6 +410,16 @@ export function ResultsListWithMap({
 
       <div className="results-list-col">
         <YStack gap="$3">
+          {/* Il bottone filtri vive DENTRO la colonna lista (sopra
+              l'intestazione), non come figlio diretto del layout a righe:
+              su desktop (>=700px) il contenitore e' un flex orizzontale, e
+              un bottone full-width li' diventava una terza "colonna"
+              schiacciata che sfalsava lista e mappa (bug segnalato
+              dall'utente). */}
+          <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+            <SlidersHorizontal size={16} strokeWidth={1.5} />
+            Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </button>
           {header}
           {(showMap ? orderedVisible : professionals).filter(matchesFilters).map((pro) => (
             <ProfessionalCard
@@ -463,6 +468,19 @@ export function ResultsListWithMap({
           align-items: center;
           justify-content: center;
           gap: 8px;
+        }
+        @media (min-width: 700px) {
+          /* Desktop: il bottone sta in cima alla colonna lista (e' spostato
+              li' nel markup) e non deve occupare tutta la larghezza —
+              pillola compatta allineata a sinistra, coerente col riferimento
+              miodottore.it. */
+          .filters-toggle {
+            width: auto;
+            align-self: flex-start;
+            justify-content: flex-start;
+            padding: 10px 18px;
+            border-radius: 999px;
+          }
         }
         .filters-backdrop {
           position: fixed;
