@@ -709,6 +709,12 @@ export class ProfessionalsService {
         priceEurCents: lead.priceEurCents,
         createdAt: lead.createdAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
+        // Scadenza del Lead (CLAUDE.md §14) — mai esposta all'UI prima
+        // d'ora: richiesta esplicita dell'utente ("evidenziare quanto manca
+        // alla scadenza della richiesta spinge a quotare in fretta").
+        // `null` per un Lead senza scadenza (righe create prima di questa
+        // funzionalità) o già scaduto/con preventivo (non più pertinente).
+        expiresAt: lead.expiresAt ? lead.expiresAt.toISOString() : null,
         quote: quote
           ? {
               id: quote.id,

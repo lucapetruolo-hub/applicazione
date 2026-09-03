@@ -42,6 +42,16 @@ export type ProfessionalLead = {
    */
   updatedAt: string;
   /**
+   * Scadenza del Lead (CLAUDE.md §14): passato questo momento senza un
+   * preventivo, il job schedulato lo marca scaduto e pesca il prossimo
+   * candidato dalla coda di riserva — mostrata in `/dashboard/richieste`
+   * come "Rispondi entro..." per spingere a quotare in fretta (richiesta
+   * esplicita dell'utente). `null` per un Lead senza scadenza (righe
+   * precedenti a questa funzionalità) o non più pertinente (già scaduto o
+   * con un preventivo già inviato).
+   */
+  expiresAt: string | null;
+  /**
    * Preventivo eventualmente già inviato per questo lead (null se non ancora
    * inviato). `clientProposedDate` valorizzata solo quando status è
    * MODIFICATION_REQUESTED: il cliente ha proposto una data diversa tra le

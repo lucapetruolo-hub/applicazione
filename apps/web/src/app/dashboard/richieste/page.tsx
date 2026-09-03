@@ -76,6 +76,33 @@ function formatSlotRange(startIso: string, endIso: string | null): string {
   return `${dateLabel} · ${startLabel}–${endLabel}`;
 }
 
+/**
+ * "Rispondi entro..." per una richiesta non ancora quotata — richiesta
+ * esplicita dell'utente (revisione UX, finitura §10: "evidenziare quanto
+ * manca alla scadenza della richiesta spinge a quotare in fretta"). Gli
+ * orizzonti reali (CLAUDE.md §14) sono brevi — 20 minuti per le urgenti,
+ * fino a 4 ore per le standard — mai giorni, quindi il formato resta
+ * sempre minuti/ore, mai una data. `null` se la scadenza è già passata
+ * (il job schedulato la marcherà EXPIRED a breve, non ha senso mostrare un
+ * conto alla rovescia negativo) o non nota (Lead precedenti a questa
+ * funzionalità).
+ */
+function formatLeadDeadline(expiresAt: string | null): { label: string; urgent: boolean } | null {
+  if (!expiresAt) return null;
+  const diffMs = new Date(expiresAt).getTime() - Date.now();
+  if (diffMs <= 0) return null;
+  const diffMinutes = Math.ceil(diffMs / 60_000);
+  // Urgente (bordo/testo rosso invece di ambra) sotto mezz'ora, a
+  // prescindere dal tipo di richiesta — un margine sempre stretto,
+  // indipendentemente da quanto tempo aveva a disposizione all'inizio.
+  const urgent = diffMinutes <= 30;
+  if (diffMinutes < 60) {
+    return { label: `Rispondi entro ${diffMinutes} minut${diffMinutes === 1 ? "o" : "i"}`, urgent };
+  }
+  const diffHours = Math.ceil(diffMinutes / 60);
+  return { label: `Rispondi entro ${diffHours} or${diffHours === 1 ? "a" : "e"}`, urgent };
+}
+
 // Palette per gli stati — richiesta esplicita dell'utente dopo aver visto la
 // pagina reale, con riferimento visivo puntuale (arancione/da quotare,
 // blu/in attesa, verde/accettata, rosso/scadute): eccezione deliberata alla
@@ -129,6 +156,27 @@ function ServiceBadge({ online }: { online: boolean }) {
       <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografia} />
       <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
+      </Text>
+    </XStack>
+  );
+}
+
+/**
+ * "Rispondi entro..." per una richiesta da quotare — richiesta esplicita
+ * dell'utente (revisione UX, finitura #10): rende visibile a colpo
+ * d'occhio quanto tempo resta prima che il Lead scada, per spingere a
+ * quotare in fretta. Ambra di default, rosso (`brand.urgenza`) sotto i 30
+ * minuti — stesso principio "rosso solo su urgenza" già seguito ovunque
+ * nel prodotto.
+ */
+function DeadlinePill({ deadline }: { deadline: { label: string; urgent: boolean } }) {
+  const color = deadline.urgent ? brand.urgenza : "#B8860B";
+  const bg = deadline.urgent ? "#FBEAEA" : "#FFF3D6";
+  return (
+    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={bg}>
+      <Icon name="clock" size={15} strokeWidth={2} color={color} />
+      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={color}>
+        {deadline.label}
       </Text>
     </XStack>
   );
@@ -521,6 +569,7 @@ function RequestCard({
   const isOnline = gr.serviceMode === "ONLINE";
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
+  const leadDeadline = formatLeadDeadline(lead.expiresAt);
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
@@ -735,6 +784,7 @@ function RequestCard({
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ServiceBadge online={isOnline} />
             <StagePill stage={stage} />
+            {stage === "da_quotare" && leadDeadline ? <DeadlinePill deadline={leadDeadline} /> : null}
           </XStack>
           <YStack alignItems="flex-end">
             <Text fontSize={14} color={brand.grafite70}>

@@ -6803,3 +6803,60 @@ come quella sessione stessa aveva già deciso di fare.
   verde (28 route). Zero errori console reali in tutti i flussi
   (`ERR_TUNNEL_CONNECTION_FAILED` è la stessa limitazione di rete
   dell'ambiente di sviluppo già documentata altrove in questo file).
+
+---
+
+## 44. Scadenza del Lead visibile in `/dashboard/richieste` ("Rispondi entro...")
+
+Ultima finitura rimasta in coda dalla revisione UX di §43 (item "🟢
+finiture (dopo il resto)" della sessione interrotta di Kimi): "nella card
+pro, evidenziare quanto manca alla scadenza della richiesta ('rispondi
+entro domani') spinge a quotare in fretta" — richiesta esplicita
+dell'utente di procedere solo con questa (l'altra finitura, tinte più
+distintive per gli stati, tenuta in sospeso: i colori in `STAGE_STYLE`
+sono già distinti nel codice reale di questo repository, non "quasi tutto
+rosa/salmone" come descritto — stesso disallineamento già osservato più
+volte in §43 tra quanto Kimi riportava e quanto esiste davvero qui,
+verifica rimandata a un confronto diretto con l'utente sul sito live).
+
+- **Campo mai esposto prima d'ora**: `Lead.expiresAt` esiste già nello
+  schema fin da CLAUDE.md §14 (fan-out intelligente: 20 minuti per un
+  Lead urgente, 4 ore per uno standard, passata la scadenza il job
+  schedulato lo marca `EXPIRED` e pesca il prossimo candidato dalla coda
+  di riserva) ma non veniva mai restituito da `GET /professionals/me/leads`
+  — nessuna migrazione necessaria, solo un campo aggiunto alla proiezione
+  in `ProfessionalsService.getMyLeads` e al tipo `ProfessionalLead`
+  (`packages/shared/src/dashboard.ts`).
+- **`formatLeadDeadline`** (`apps/web/src/app/dashboard/richieste/page.tsx`):
+  funzione pura, minuti se sotto l'ora altrimenti ore (gli orizzonti reali
+  sono sempre brevi — 20 minuti o 4 ore, mai giorni — quindi niente
+  formato "entro domani", diversamente da quanto ipotizzato in una
+  risposta esplorativa precedente a questo giro), `null` se la scadenza è
+  già passata (evita un conto alla rovescia negativo: il job la marcherà
+  `EXPIRED` a breve) o non nota (Lead precedenti a questa funzionalità).
+- **`DeadlinePill`**: nuova pillola nella stessa riga di `ServiceBadge`/
+  `StagePill` sull'intestazione della card, mostrata **solo** per lo
+  stage `da_quotare` (prima che esista un preventivo — dopo, la scadenza
+  del Lead non è più l'informazione rilevante). Ambra di default
+  (`#B8860B` su `#FFF3D6`, stessa coppia già in uso per la pillola
+  `da_quotare` di `STAGE_STYLE`), rossa (`brand.urgenza` su `#FBEAEA`)
+  sotto i 30 minuti residui — soglia fissa indipendente dal tipo di
+  richiesta (urgente/standard), un margine stretto resta stretto a
+  prescindere da quanto tempo aveva a disposizione all'inizio.
+- Verificato con l'API locale (non solo typecheck/build) e un agente
+  Playwright end-to-end: due richieste dirette allo stesso professionista
+  (una standard, una urgente) → `expiresAt` esposto su entrambi i Lead,
+  rispettivamente ~240 e ~20 minuti da subito, coerente con le costanti
+  già esistenti (§14). UI: pillola ambra "Rispondi entro 4 ore" sulla
+  richiesta standard, pillola rossa "Rispondi entro 20 minuti" su quella
+  urgente (colori misurati via `getComputedStyle`, effettivamente distinti
+  dall'ambra), badge "Urgente" preesistente ancora presente e distinto
+  accanto alla nuova pillola sulla card urgente (stesso tono di rosso per
+  entrambi, scelta consistente con la regola di progetto "rosso solo su
+  urgenza", non una svista — segnalato dall'agente di verifica come
+  possibile miglioramento estetico futuro, non un bug). Pillola scadenza
+  verificata sparire correttamente dopo l'invio di un preventivo (stage
+  non più `da_quotare`), sostituita dalla pillola di stato "In attesa del
+  cliente". Zero errori console. Typecheck pulito su tutti i package
+  (`shared`, `api`, `web`), build di produzione `apps/web` verde
+  (28 route).
