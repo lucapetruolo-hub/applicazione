@@ -57,7 +57,11 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <SearchHeader initialQuery={searchParams.q ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
+      {/* Key che cambia con i search params: forza il remount completo del
+          contenuto quando si cambia modalita'/citta'/testo, cosi' la lista si
+          aggiorna sempre anche navigando verso lo stesso percorso. */}
       <CercaContent
+        key={`${isOnline}-${city ?? ""}-${searchParams.q ?? ""}`}
         city={city}
         online={isOnline}
         q={searchParams.q}

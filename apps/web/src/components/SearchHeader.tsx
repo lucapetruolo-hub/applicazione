@@ -20,7 +20,19 @@ export function SearchHeader({
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    router.push(buildSearchDestination(params));
+    const destination = buildSearchDestination(params);
+    // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
+    // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
+    // lista. Next.js 14 tiene in cache client-side (Router Cache) le pagine
+    // gia' visitate: navigando verso lo STESSO percorso con query diverse
+    // (es. /cerca/idraulico -> /cerca/idraulico?online=1) serviva la pagina
+    // vecchia finche' non scadeva o si ricaricava a mano. staleTimes:0 in
+    // next.config.mjs riduce ma non elimina il problema per le pagine gia'
+    // nella cache della sessione: forziamo un refresh esplicito dopo il push
+    // (in coda al push, cosi' vale sia per la navigazione nuova sia per una
+    // eventuale risposta gia' in cache).
+    router.push(destination);
+    router.refresh();
   }
 
   return (
@@ -33,6 +45,7 @@ export function SearchHeader({
           initialMode={initialMode}
           professionalSuggestions={professionalSuggestions}
           citySuggestions={ALL_ITALIAN_CITY_NAMES}
+          searchOnModeChange
         />
       </YStack>
     </YStack>

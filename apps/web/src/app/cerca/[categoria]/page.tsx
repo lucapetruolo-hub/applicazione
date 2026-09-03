@@ -70,7 +70,11 @@ export default async function CategoryPage({
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
+      {/* Key che cambia con i search params: forza il remount completo del
+          contenuto quando si cambia modalita'/citta', cosi' la lista si
+          aggiorna sempre anche navigando verso lo stesso percorso. */}
       <CategoryContent
+        key={`${category.slug}-${isOnline}-${city ?? ""}`}
         category={category}
         city={city}
         online={isOnline}

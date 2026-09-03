@@ -26,6 +26,14 @@ export type SearchBarProps = {
   professionalSuggestions?: ProfessionalSuggestion[];
   /** Suggerimenti mostrati mentre si scrive nel campo "Città". */
   citySuggestions?: string[];
+  /**
+   * Richiesta esplicita dell'utente: nelle pagine risultati (SearchHeader)
+   * cambiare "A domicilio"/"Online" deve aggiornare SUBITO la lista, senza
+   * dover ripremere "Cerca" — la barra resta in cima proprio per ritentare
+   * la ricerca al volo. In home (nessun valore) il tab cambia solo lo stato
+   * locale e la ricerca parte dal bottone, come prima.
+   */
+  searchOnModeChange?: boolean;
 };
 
 const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
@@ -40,11 +48,25 @@ export function SearchBar({
   initialMode = "domicilio",
   professionalSuggestions = [],
   citySuggestions = [],
+  searchOnModeChange = false,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
   const [mode, setMode] = useState<SearchMode>(initialMode);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
+
+  function handleModeChange(next: SearchMode) {
+    if (next === mode) return;
+    setMode(next);
+    if (searchOnModeChange) {
+      onSearch({
+        query,
+        city,
+        mode: next,
+        professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+      });
+    }
+  }
 
   function handleSelectProfessional(professional: ProfessionalSuggestion) {
     setQuery(professional.name);
@@ -83,7 +105,7 @@ export function SearchBar({
               cursor="pointer"
               alignItems="center"
               gap="$2"
-              onPress={() => setMode(tab.key)}
+              onPress={() => handleModeChange(tab.key)}
               accessibilityRole="button"
               accessibilityLabel={tab.label}
             >

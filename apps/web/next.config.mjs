@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Niente cache client-side delle pagine (Router Cache): le pagine
+    // risultati devono rileggere i searchParams ad ogni navigazione, anche
+    // verso lo stesso percorso con query diverse (cambio Online/Domicilio).
+    staleTimes: { dynamic: 0, static: 0 },
+  },
   transpilePackages: ["@professionisti/ui", "@professionisti/shared"],
   // packages/ui/src/config.ts importa `Platform` da "react-native" per
   // scegliere la famiglia di font per piattaforma (vedi commento lì):

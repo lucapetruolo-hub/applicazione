@@ -200,9 +200,17 @@ export function ResultsListWithMap({
 
   const activeFilterCount =
     (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
+
+  // Pool gia' filtrato dai filtri attivi: lista E mappa leggono da qui, cosi'
+  // i puntini sulla mappa corrispondono sempre alle schede visibili (bug
+  // segnalato dall'utente: con "Solo disponibili entro 24h" attivo la mappa
+  // continuava a mostrare i puntini dei professionisti filtrati fuori).
+  const filteredProfessionals = professionals.filter(matchesFilters);
+  const filteredPool = pool.filter(matchesFilters);
+  const filteredOrderedVisible = orderedVisible.filter(matchesFilters);
   // Conteggio live per il bottone "Mostra N risultati" in fondo al pop-up
   // (richiesta esplicita dell'utente, riferimento miodottore.it).
-  const filteredResultsCount = (showMap ? orderedVisible : professionals).filter(matchesFilters).length;
+  const filteredResultsCount = (showMap ? filteredOrderedVisible : filteredProfessionals).length;
 
   function toggleSection(section: "online" | "availability" | "language") {
     setExpandedSection((prev) => (prev === section ? null : section));
@@ -397,8 +405,8 @@ export function ResultsListWithMap({
             <YStack width="100%" height="100%" borderRadius="$4" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
               {shouldMountMap ? (
                 <ResultsMap
-                  professionals={pool}
-                  initialProfessionals={professionals}
+                  professionals={filteredPool}
+                  initialProfessionals={filteredProfessionals}
                   fallbackCenter={fallbackCenter}
                   onBoundsChange={handleBoundsChange}
                 />
@@ -421,7 +429,7 @@ export function ResultsListWithMap({
             Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </button>
           {header}
-          {(showMap ? orderedVisible : professionals).filter(matchesFilters).map((pro) => (
+          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro) => (
             <ProfessionalCard
               key={pro.id}
               businessName={pro.businessName}
