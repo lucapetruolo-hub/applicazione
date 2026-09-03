@@ -6657,3 +6657,149 @@ un `div`, da `HomeHero`/`Chip`, già documentato altrove in questo file,
 non causato da questo redesign). Typecheck pulito su tutti i package
 (`shared`, `api`, `web`), build di produzione `apps/web` verde
 (25 route).
+
+---
+
+## 43. "Contatta/Cronologia" sempre visibile + pallini di notifica, poi revisione UX del flusso preventivi (dedup dashboard/dashboard-richieste)
+
+Due giri di lavoro nella stessa sessione, entrambi su richiesta esplicita
+dell'utente.
+
+**Primo giro — "Contatta/Cronologia" mancante + pallini di notifica per
+singola card**: segnalazioni puntuali dell'utente — "nelle mie richieste
+del cliente, non compare il pulsante contatta/cronologia"; "quando si
+riceve un nuovo messaggio... aggiungere un pallino rosso di fianco al
+pulsante contatta/cronologia con un numero"; "quando il cliente riceve la
+modifica della data ora da parte del professionista deve essere visibile
+chiaramente"; "i pallini rossi delle notifiche devono comparire sia in
+richieste ricevute oppure lavori accettati, sia vicino la richiesta che
+effettivamente ha avuto un aggiornamento".
+- **`apps/web/src/components/UnreadDot.tsx`** (nuovo): pallino rosso con
+  numero ("9+" oltre 9), `null` se il conteggio è 0/assente — riusato
+  ovunque serva un contatore per-elemento, non solo un booleano "Nuovo".
+- **`notificationSections.ts`** esteso con varianti "conteggio" (non solo
+  presenza) delle mappe già esistenti — `unreadGuidedRequestCounts`/
+  `unreadBookingCounts`/`unreadQuoteCounts` (`Map<id, count>`) — più
+  `unreadThreadCounts`, chiave composita `guidedRequestId:
+  professionalProfileId`: serve per il pallino sulla sezione "Inviata a"
+  di una richiesta guidata (`/le-mie-richieste`), dove — prima di questo
+  giro — non esisteva **alcun** modo di contattare/vedere la cronologia
+  con un professionista finché non arrivava un suo preventivo (bug reale,
+  non solo mancanza del pallino): `GuidedRequestCard` ora apre
+  `TimelineModal` per singolo professionista anche in quello stadio.
+- Pallino cablato ovunque compare "Contatta/Cronologia": `LeadCard`/
+  `AcceptedJobCard` (`/dashboard`), `QuoteCard`/`BookingRow`/riga "Inviata
+  a" (`/le-mie-richieste`).
+- **Banner data modificata dal professionista, reso evidente quanto quello
+  già esistente lato professionista**: il banner client-side per
+  `quote.professionalCounterNote` (mostrato quando il professionista usa
+  "Modifica" sulla trattativa) aveva padding/font più piccoli del
+  corrispondente "Il cliente ha proposto un'altra data" mostrato al
+  professionista — allineato alla stessa resa (padding `$3`, font `$3`) e
+  reso esplicito ("Il professionista ha risposto proponendo: <data/ora>")
+  invece del generico "ti ha risposto:".
+- Verificato con l'API locale e un agente Playwright end-to-end (non solo
+  typecheck): timeline con notifica prima di ogni preventivo, pallini
+  numerati corretti su tutte e cinque le posizioni, banner data ingrandito
+  e con la data esplicita. Zero errori console reali.
+
+**Secondo giro — revisione UX del flusso preventivi**: l'utente aveva
+affidato un giro di revisione visiva a un'altra sessione (un modello
+diverso, "Kimi"), interrotta per limite di utilizzo a metà lavoro. Le
+modifiche di quella sessione **non erano mai arrivate in questo
+repository** — girava su un ambiente/checkout completamente separato e
+mai collegato a questo — e i tentativi di recuperarne i file reali
+(diversi allegati caricati dall'utente) hanno restituito solo copie
+statiche/non modificate di file di configurazione già presenti qui, mai
+il lavoro vero. Confermato esplicitamente con l'utente prima di procedere
+(`AskUserQuestion`): reimplementato da zero in questo repository,
+partendo dal testo dettagliato della revisione scritta da quella sessione
+(non dal suo codice, mai recuperato), pacchetto "alta + media priorità"
+come quella sessione stessa aveva già deciso di fare.
+
+- **Foto rotte** (`MediaPreview.tsx`): un URL Cloudinary scaduto/rotto
+  mostrava l'icona nativa di rottura del browser ("dà un'impressione di
+  sito non finito"). `onError` su `<img>`/`<video>` mostra ora un riquadro
+  neutro (`brand.gesso`) con icona `camera` — un solo `useState` locale,
+  nessuna dipendenza dal contesto del chiamante (categoria, ecc.), per
+  restare un drop-in valido nei 13 punti del sito che lo usano.
+- **Contatori poco chiari** (`/le-mie-richieste`): "Contattati 2 · Risposto
+  1 · In attesa 2" sostituito da una frase sola ("1 preventivo ricevuto su
+  2 professionisti contattati.", con le forme singolare/plurale corrette e
+  un caso dedicato per zero risposte).
+- **Pillola "IN ATTESA" ambigua** (`/dashboard/richieste`): resa esplicita
+  in "In attesa del cliente" sulla singola card — il tab della riga a
+  scorrimento resta "In attesa" per lo spazio ridotto, stesso significato.
+- **"Totale minimo"/"Totale massimo" su due righe** (`/le-mie-richieste`,
+  `QuoteCard`): unificati in un unico "Totale indicativo: X–Y €" in
+  evidenza, riusando `formatServicePriceRange` già esistente invece di
+  duplicarne la logica di formattazione.
+- **Riorganizzazione della card preventivo** (`/le-mie-richieste`): note
+  del professionista in un box a parte etichettato "Messaggio del
+  professionista" (prima un rigo di testo isolato); gerarchia bottoni
+  rivista — "Accetta preventivo" (primario) e "Modifica data/orario"
+  (rinominato da solo "Modifica", secondario) sulla stessa riga, "Rifiuta
+  preventivo" spostato su una riga propria sotto e reso discreto (testo
+  grigio sottolineato, non più rosso in grassetto affiancato al
+  primario) — il rosso resta riservato alla sola conferma effettiva del
+  rifiuto.
+- **Item "stepper con date ripetute sugli step futuri"**: non riprodotto
+  in questo repository — né `RequestStepper` (`/le-mie-richieste`) né
+  `MiniTimeline` (`/dashboard/richieste`) mostrano date sui singoli step,
+  quindi non c'è nulla da correggere lì; probabilmente specifico
+  dell'ambiente/build della sessione interrotta, mai esistito nel codice
+  reale di questo repository.
+- **Deduplicazione `/dashboard` vs `/dashboard/richieste`**: la stessa
+  card completa (voci preventivo, form di invio, cronologia inline)
+  appariva identica in due punti del sito — `/dashboard/richieste` (la
+  pipeline a card espandibili di §41, con feature complete: invio/modifica
+  preventivo, conferma/rifiuto/controproposta data, rifiuto/ritiro/
+  eliminazione, agenda, lavoro terminato) era inoltre **una pagina
+  orfana**, raggiungibile solo per URL diretto, mai linkata da alcun menu.
+  Corretto senza perdere funzionalità, non semplicemente cancellando la
+  duplicazione:
+  1. `accountMenuItems.ts`: nuova voce "Richieste ricevute" →
+     `/dashboard/richieste` per i professionisti, accanto a "Dashboard".
+  2. `/dashboard`, tab "Richieste ricevute": la card completa (`LeadCard`,
+     ~850 righe) è stata rimossa e sostituita da un riepilogo compatto —
+     una frase con il conteggio in attesa di risposta, le 5 richieste più
+     recentemente aggiornate come righe compatte (nome/categoria/città +
+     etichetta di stato breve, riusata da `LEAD_STATUS_OPTIONS` già
+     esistente + un nuovo `leadSummaryLabel`), e un bottone "Apri tutte le
+     richieste ricevute" verso l'inbox completa. Filtri/ordinamento/
+     paginazione di questa lista (prima duplicati anche loro) restano solo
+     su `/dashboard/richieste`, unica fonte di verità per l'elenco intero.
+     Rimossi con `LeadCard` anche i suoi stati/helper esclusivi
+     (`availableSlots`, `formatDateTimeRange`/`formatSentAt`/
+     `describeDateChangeKind`, filtri/ordinamento/pagina leads) — `/dashboard`
+     è passato da 10,7 kB a 7,9 kB di bundle.
+  3. Il pallino di notifica non letta (dal primo giro sopra) è stato
+     esteso a `/dashboard/richieste`, che prima non calcolava affatto le
+     notifiche non lette (nessun `markNotificationsRead`/conteggio
+     preesistente lì) — ora lo fa allo stesso modo delle altre pagine,
+     sui due bottoni "Contatta" della pipeline.
+- Verificato con l'API locale (non solo typecheck/build) e un agente
+  Playwright end-to-end: tutti i 6 punti sopra confermati funzionanti a
+  schermo (screenshot before/after su foto rotta, frase contatori, pillola
+  "In attesa del cliente", "Totale indicativo", riga "Rifiuta preventivo"
+  che si trasforma in conferma senza navigare via, menu account con la
+  nuova voce, riepilogo compatto in `/dashboard` con click che porta
+  all'inbox completa, pallino di notifica su entrambe le superfici).
+  Un solo comportamento anomalo osservato dall'agente (pallino di
+  notifica assente su un caricamento) è stato investigato e ricondotto a
+  un artefatto esclusivo di React Strict Mode in sviluppo (doppia
+  invocazione dell'effetto in `next dev`, mai in produzione — `next
+  build`/`next start` non raddoppiano gli effetti) combinato con il
+  pattern di navigazione sintetico usato dall'agente stesso
+  (goto→inject-token→reload, due mount reali in rapida sequenza, ciascuno
+  poi raddoppiato da Strict Mode) — lo stesso identico pattern
+  `unreadNotifications().then(...).finally(markNotificationsRead)` è già
+  in uso identico da tempo in `/dashboard` e `/le-mie-richieste`
+  (`markNotificationsRead` ha dipendenze stabili, `useCallback(..., [])`,
+  quindi l'effetto guardato da `[token, markNotificationsRead]` corre una
+  sola volta per token in ogni caso reale di navigazione utente); non
+  modificato per non introdurre un guard asimmetrico solo nel file nuovo.
+  Typecheck pulito su tutti i package, build di produzione `apps/web`
+  verde (28 route). Zero errori console reali in tutti i flussi
+  (`ERR_TUNNEL_CONNECTION_FAILED` è la stessa limitazione di rete
+  dell'ambiente di sviluppo già documentata altrove in questo file).
