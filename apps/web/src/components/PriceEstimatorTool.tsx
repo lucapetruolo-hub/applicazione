@@ -17,9 +17,21 @@ type PriceEntry = { name: string; professionalCount: number; minEurCents: number
  * (stessa scala di lancio già documentata per ListControls/pannello filtri
  * ricerca, CLAUDE.md §23).
  */
+// Solo le 10 prestazioni più inserite dai professionisti quando l'elenco è
+// a riposo (richiesta esplicita dell'utente) — l'elenco completo, scorribile,
+// compare solo quando si clicca nel campo per scrivere (vedi showFullList).
+const IDLE_VISIBLE_COUNT = 10;
+
 export function PriceEstimatorTool() {
   const [entries, setEntries] = useState<PriceEntry[] | null>(null);
   const [query, setQuery] = useState("");
+  // Campo attivo (a fuoco) o con del testo scritto: solo in quel caso si
+  // apre l'elenco completo scorribile — richiesta esplicita dell'utente
+  // ("il resto mettilo solo a comparsa... quando si clicca per scriverci
+  // che può scorrere"). Resta espanso finché resta a fuoco o c'è del testo,
+  // torna ai primi 10 solo quando si lascia il campo vuoto e senza fuoco.
+  const [isFocused, setIsFocused] = useState(false);
+  const showFullList = isFocused || query.trim().length > 0;
 
   useEffect(() => {
     apiClient
@@ -37,7 +49,13 @@ export function PriceEstimatorTool() {
   // "buco bianco" segnalato in audit.
   const isEmpty = entries !== null && entries.length === 0;
 
+  // "Più inserite" = da più professionisti diversi (professionalCount) —
+  // ordinamento usato solo per l'elenco a riposo (i primi 10), l'elenco
+  // completo filtrato dalla ricerca resta nell'ordine restituito dall'API.
+  const mostAdded = [...(entries ?? [])].sort((a, b) => b.professionalCount - a.professionalCount);
+
   const filtered = (entries ?? []).filter((entry) => entry.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
     <Section eyebrow="Prezzi reali" title="Quanto costa in media?" maxWidth={780}>
@@ -49,6 +67,8 @@ export function PriceEstimatorTool() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder="Es. sostituzione caldaia, tinteggiatura, trasloco..."
           style={{
             padding: 14,
@@ -87,15 +107,23 @@ export function PriceEstimatorTool() {
           <Text fontSize="$3" color={brand.grafite70}>
             Caricamento...
           </Text>
-        ) : filtered.length === 0 ? (
+        ) : visibleEntries.length === 0 ? (
           <Text fontSize="$3" color={brand.grafite70}>
             Nessuna prestazione trovata per {'"'}
             {query}
             {'"'}.
           </Text>
         ) : (
-          <YStack width="100%" gap={0}>
-            {filtered.slice(0, 25).map((entry, index) => (
+          <YStack
+            width="100%"
+            gap={0}
+            // Elenco completo scorribile solo da aperto (a fuoco/con testo
+            // scritto) — richiesta esplicita dell'utente. A riposo (soli
+            // primi 10) non serve scroll, l'elenco è già corto.
+            maxHeight={showFullList ? 420 : undefined}
+            overflow={showFullList ? "scroll" : "visible"}
+          >
+            {visibleEntries.map((entry, index) => (
               <XStack
                 key={entry.name}
                 width="100%"
