@@ -500,16 +500,34 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     {agendaPreview.nextAvailableSlot.endTime}
                   </Text>
                 </YStack>
-                <Link
-                  href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${agendaPreview.nextAvailableSlot.date}&fasciaOraria=${agendaPreview.nextAvailableSlot.startTime}-${agendaPreview.nextAvailableSlot.endTime}&modalita=${agendaMode}`}
-                  style={{ textDecoration: "none" }}
+                <XStack
+                  alignSelf="flex-start"
+                  paddingHorizontal="$4"
+                  paddingVertical="$2"
+                  borderRadius="$10"
+                  backgroundColor={brand.cianografia}
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => {
+                    // Porta avanti la griglia fino al giorno del prossimo
+                    // orario libero (richiesta esplicita dell'utente: prima
+                    // saltava direttamente alla creazione di un nuovo
+                    // preventivo invece di far vedere il calendario) — stessa
+                    // modalità A domicilio/Online correntemente selezionata,
+                    // già rispettata da nextAvailableSlot (calcolato con
+                    // agendaMode nella dipendenza dello useMemo sopra). Il
+                    // giorno target diventa la prima colonna della finestra
+                    // successiva; la fascia resta cliccabile lì per aprire
+                    // /preventivo, stesso comportamento di ogni altra fascia
+                    // in griglia — nessuna navigazione diretta da qui.
+                    const targetIndex = agendaPreview.allDays.findIndex((d) => d.date === agendaPreview.nextAvailableSlot!.date);
+                    if (targetIndex >= 0) setAgendaWindowOffset(targetIndex);
+                  }}
                 >
-                  <XStack alignSelf="flex-start" paddingHorizontal="$4" paddingVertical="$2" borderRadius="$10" backgroundColor={brand.cianografia}>
-                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
-                      Mostra orari disponibili →
-                    </Text>
-                  </XStack>
-                </Link>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
+                    Mostra orari disponibili →
+                  </Text>
+                </XStack>
               </YStack>
             ) : (
               <Text fontSize="$2" color={brand.grafite70}>
