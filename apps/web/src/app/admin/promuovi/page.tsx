@@ -41,7 +41,7 @@ export default function AdminPromuoviPage() {
           <H1 size="$7">Promuovi ad admin</H1>
           <Paragraph color={brand.grafite70}>
             Inserisci l&apos;email dell&apos;account da promuovere e il codice configurato in
-            <Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text> su Railway.
+            <Text fontWeight="600"> ADMIN_BOOTSTRAP_SECRET</Text> sul backend (Render).
           </Paragraph>
         </YStack>
 
