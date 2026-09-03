@@ -170,7 +170,11 @@ export function unreadThreadCounts(notifications: UnreadNotification[]): Map<str
 export function accountMenuUnreadCounts(isProfessional: boolean, notifications: UnreadNotification[]): Record<string, number> {
   if (isProfessional) {
     const { richieste, lavori } = professionalSectionCounts(notifications);
-    return { "/dashboard": richieste + lavori };
+    // "Dashboard" (riepilogo di entrambe le sezioni) porta il totale;
+    // "Richieste ricevute" (/dashboard/richieste, l'inbox completa dove
+    // vivono davvero dettaglio e azioni dopo la deduplicazione) porta solo
+    // gli aggiornamenti pertinenti a quella sezione.
+    return { "/dashboard": richieste + lavori, "/dashboard/richieste": richieste };
   }
   const { richieste, lavori } = clientSectionCounts(notifications);
   return { "/le-mie-richieste": richieste + lavori };

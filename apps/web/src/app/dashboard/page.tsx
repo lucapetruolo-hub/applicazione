@@ -10,7 +10,6 @@ import {
   formatServicePriceRange,
   quotePriceTotals,
   type CompleteBookingInput,
-  type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalLead,
 } from "@professionisti/shared";
@@ -34,52 +33,9 @@ import {
   unreadGuidedRequestIds,
 } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
-import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
+import { Pagination, sortListItems } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
-
-/**
- * Data + fascia oraria di una fascia agenda ("lunedì 5 agosto · 09:00–13:00"),
- * mostra solo l'inizio se la fine non è nota (richiesta esplicita
- * dell'utente: "non visualizzare solo il primo orario ma tutta la fascia
- * d'orario" — ma resta un fallback per i preventivi/proposte precedenti a
- * questa funzionalità, senza `endIso`).
- */
-function formatDateTimeRange(startIso: string, endIso: string | null): string {
-  const start = new Date(startIso);
-  const dateLabel = start.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
-  const startLabel = start.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  if (!endIso) return `${dateLabel} · ${startLabel}`;
-  const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  return `${dateLabel} · ${startLabel}–${endLabel}`;
-}
-
-/** Data+ora di invio di un preventivo (timestamp reale, fuso orario del browser — non la data pura "wall clock UTC" delle fasce agenda). */
-function formatSentAt(iso: string): string {
-  const date = new Date(iso);
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-/**
- * Cosa è cambiato tra due date/orari (richiesta esplicita dell'utente:
- * "avverti sia se è cambiato l'orario, sia se è cambiata la data o
- * entrambe"; e "se non è stato modificato il gruppo data ora non deve
- * uscire 'ha proposto un'altra data'" — un cliente che usa "Modifica" solo
- * per scrivere una nota, senza cambiare data/ora, non ha "proposto
- * un'altra data"). Confronto su stringa "wall clock UTC" (stessa
- * convenzione già in uso in tutto il modulo agenda), mai vero fuso orario.
- */
-type DateChangeKind = "none" | "date" | "time" | "both";
-function describeDateChangeKind(oldStartIso: string, oldEndIso: string | null, newStartIso: string, newEndIso: string | null): DateChangeKind {
-  const dateChanged = oldStartIso.slice(0, 10) !== newStartIso.slice(0, 10);
-  const oldTime = `${oldStartIso.slice(11, 16)}-${oldEndIso?.slice(11, 16) ?? ""}`;
-  const newTime = `${newStartIso.slice(11, 16)}-${newEndIso?.slice(11, 16) ?? ""}`;
-  const timeChanged = oldTime !== newTime;
-  if (dateChanged && timeChanged) return "both";
-  if (dateChanged) return "date";
-  if (timeChanged) return "time";
-  return "none";
-}
 
 /**
  * Riquadro etichettato (icona + testo mono maiuscolo piccolo sopra, box
@@ -142,6 +98,18 @@ function leadMatchesStatus(lead: ProfessionalLead, filter: LeadStatusFilter): bo
   // solo DECLINED. Un lead EXPIRED non è più azionabile, non deve
   // comparire come "in attesa".
   return lead.quote === null && lead.status !== "DECLINED" && lead.status !== "EXPIRED";
+}
+
+/**
+ * Etichetta di stato breve per il riepilogo compatto (richiesta esplicita
+ * dell'utente, revisione UX: "la dashboard dovrebbe essere un riepilogo...
+ * e rimandare all'inbox per il dettaglio") — riusa le stesse categorie già
+ * definite per il filtro completo di /dashboard/richieste, senza duplicare
+ * la logica.
+ */
+function leadSummaryLabel(lead: ProfessionalLead): string {
+  const match = LEAD_STATUS_OPTIONS.find((option) => option.value !== "all" && leadMatchesStatus(lead, option.value));
+  return match?.label ?? "";
 }
 
 type BookingStatusFilter = "all" | "toDo" | "completed" | "canceled";
@@ -303,25 +271,12 @@ function DashboardContent() {
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
-  // Fasce libere della propria agenda (prossimi 14gg): usate nel form
-  // preventivo per far scegliere la data di inizio dentro la disponibilità
-  // reale invece di una data libera scollegata — richiesta esplicita
-  // dell'utente. Caricate una sola volta qui e passate a tutte le
-  // LeadCard, non una chiamata per card.
-  const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   // Id del proprio profilo professionista — serve per aprire la cronologia
   // della richiesta (TimelineModal, richiesta esplicita dell'utente),
   // nessun altro endpoint qui lo espone già essendo sempre "il proprio".
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtri/ordinamento/quantità visualizzata per le due liste (richiesta
-  // esplicita dell'utente): tutto calcolato client-side, le liste sono già
-  // interamente scaricate a questa scala (vedi ListControls.tsx).
-  const [leadsStatusFilter, setLeadsStatusFilter] = useState<LeadStatusFilter>("all");
-  const [leadsSort, setLeadsSort] = useState<ListSortKey>("createdAt");
-  const [leadsPageSize, setLeadsPageSize] = useState(5);
-  const [leadsPage, setLeadsPage] = useState(1);
   // "In agenda" di default (richiesta esplicita dell'utente, screenshot di
   // riferimento) — non più "Tutti", coerente con le tre pillole in cima
   // alla sezione "Lavori accettati" (BOOKING_TABS).
@@ -343,18 +298,6 @@ function DashboardContent() {
   // restare su una pagina che potrebbe non esistere più nel nuovo elenco
   // filtrato sarebbe confuso (richiesta esplicita dell'utente: "se ce ne
   // sono di più andranno in altre pagine selezionabili").
-  function updateLeadsStatusFilter(value: LeadStatusFilter) {
-    setLeadsStatusFilter(value);
-    setLeadsPage(1);
-  }
-  function updateLeadsSort(value: ListSortKey) {
-    setLeadsSort(value);
-    setLeadsPage(1);
-  }
-  function updateLeadsPageSize(value: number) {
-    setLeadsPageSize(value);
-    setLeadsPage(1);
-  }
   function updateBookingsStatusFilter(value: BookingStatusFilter) {
     setBookingsStatusFilter(value);
     setBookingsPage(1);
@@ -377,18 +320,9 @@ function DashboardContent() {
   function scrollToListTop() {
     listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
-  function goToLeadsPage(page: number) {
-    setLeadsPage(page);
-    scrollToListTop();
-  }
   function goToBookingsPage(page: number) {
     setBookingsPage(page);
     scrollToListTop();
-  }
-
-  function reloadLeads() {
-    if (!token) return;
-    apiClient.myLeads(token).then(setLeads);
   }
 
   function reloadBookings() {
@@ -423,13 +357,11 @@ function DashboardContent() {
     Promise.all([
       apiClient.myLeads(token),
       apiClient.myProfessionalBookings(token),
-      apiClient.myAvailableSlots(token),
       apiClient.getMyProfessionalProfile(token),
     ])
-      .then(([leadsResult, bookingsResult, slotsResult, profile]) => {
+      .then(([leadsResult, bookingsResult, profile]) => {
         setLeads(leadsResult);
         setBookings(bookingsResult);
-        setAvailableSlots(slotsResult);
         setMyProfileId(profile?.id ?? null);
       })
       .catch((err) => {
@@ -502,15 +434,15 @@ function DashboardContent() {
     );
   }
 
-  const sortedLeads = leads
-    ? sortListItems(leads.filter((lead) => leadMatchesStatus(lead, leadsStatusFilter)), leadsSort, {
-        createdAt: (l) => l.createdAt,
-        updatedAt: (l) => l.updatedAt,
-      })
-    : null;
-  const leadsTotalPages = sortedLeads ? Math.max(1, Math.ceil(sortedLeads.length / leadsPageSize)) : 1;
-  const leadsEffectivePage = Math.min(leadsPage, leadsTotalPages);
-  const visibleLeads = sortedLeads?.slice((leadsEffectivePage - 1) * leadsPageSize, leadsEffectivePage * leadsPageSize) ?? null;
+  // Riepilogo compatto invece dell'elenco completo (richiesta esplicita
+  // dell'utente, revisione UX: la stessa card appariva due volte tra
+  // /dashboard e /dashboard/richieste) — solo le 5 richieste più
+  // recentemente aggiornate, con un link all'inbox completa per il
+  // dettaglio/le azioni. Filtri/ordinamento/paginazione restano solo su
+  // /dashboard/richieste, unica fonte di verità per l'elenco intero.
+  const RECENT_LEADS_COUNT = 5;
+  const recentLeads = leads ? sortListItems(leads, "updatedAt", { createdAt: (l) => l.createdAt, updatedAt: (l) => l.updatedAt }).slice(0, RECENT_LEADS_COUNT) : null;
+  const pendingLeadsCount = leads ? leads.filter((lead) => leadMatchesStatus(lead, "pending")).length : 0;
 
   const bookingsSearchQuery = bookingsSearch.trim().toLowerCase();
   const filteredAcceptedJobs = bookings
@@ -564,40 +496,38 @@ function DashboardContent() {
 
         {activeTab === "richieste" ? (
           <YStack ref={listTopRef} gap="$3">
-            {leads !== null && leads.length > 0 ? (
-              <ListControls
-                statusValue={leadsStatusFilter}
-                statusOptions={LEAD_STATUS_OPTIONS}
-                onStatusChange={updateLeadsStatusFilter}
-                sortValue={leadsSort}
-                sortOptions={["createdAt", "updatedAt"]}
-                onSortChange={updateLeadsSort}
-                pageSize={leadsPageSize}
-                onPageSizeChange={updateLeadsPageSize}
-              />
-            ) : null}
-            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
             {leads === null ? (
               <LoadingState />
             ) : leads.length === 0 ? (
               <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
-            ) : visibleLeads && visibleLeads.length === 0 ? (
-              <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
             ) : (
-              visibleLeads?.map((lead) => (
-                <LeadCard
-                  key={lead.id}
-                  lead={lead}
-                  token={token}
-                  availableSlots={availableSlots}
-                  onChanged={reloadLeads}
-                  isNew={newLeadRequestIds.has(lead.guidedRequest.id)}
-                  unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
-                  myProfileId={myProfileId}
-                />
-              ))
+              <>
+                {/* Riepilogo, non l'elenco completo (segnalato in revisione
+                    UX: la stessa card ripetuta identica su questa pagina e
+                    su /dashboard/richieste) — i numeri e le ultime novità
+                    qui, dettaglio/azioni sempre nell'inbox dedicata. */}
+                <Text color={brand.grafite70} fontSize="$3">
+                  {pendingLeadsCount === 0
+                    ? "Nessuna richiesta in attesa di risposta al momento."
+                    : `${pendingLeadsCount} richiest${pendingLeadsCount === 1 ? "a" : "e"} in attesa della tua risposta, su ${leads.length} ricevut${leads.length === 1 ? "a" : "e"} in totale.`}
+                </Text>
+                <YStack gap="$2">
+                  {recentLeads?.map((lead) => (
+                    <LeadSummaryRow
+                      key={lead.id}
+                      lead={lead}
+                      isNew={newLeadRequestIds.has(lead.guidedRequest.id)}
+                      unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
+                    />
+                  ))}
+                </YStack>
+                <Link href="/dashboard/richieste" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+                  <Button variant="secondary" size="$3" height={40}>
+                    Apri tutte le richieste ricevute
+                  </Button>
+                </Link>
+              </>
             )}
-            <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
           </YStack>
         ) : (
           <YStack ref={listTopRef} gap="$3">
@@ -1251,863 +1181,51 @@ function BoostSection() {
   );
 }
 
-type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
 
-/** Codifica una fascia come chiave selezionabile in un <select>, decodificata al momento dell'invio. */
-function slotKey(slot: ProfessionalAvailableSlot): string {
-  return `${slot.date}|${slot.startTime}|${slot.endTime}`;
-}
-
-function slotLabel(slot: ProfessionalAvailableSlot): string {
-  const date = new Date(`${slot.date}T00:00:00Z`);
-  const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
-}
-
-function LeadCard({
+/**
+ * Riga compatta per il riepilogo "Richieste ricevute" in dashboard —
+ * richiesta esplicita dell'utente, revisione UX: la card completa
+ * (voci del preventivo, form di invio, cronologia inline, ecc.) appariva
+ * identica sia qui sia in /dashboard/richieste, ora unica fonte di verità
+ * per il dettaglio e le azioni. Qui resta solo identità + stato +
+ * eventuale pallino non letto: click apre l'inbox completa.
+ */
+function LeadSummaryRow({
   lead,
-  token,
-  availableSlots,
-  onChanged,
   isNew,
   unreadCount,
-  myProfileId,
 }: {
   lead: ProfessionalLead;
-  token: string;
-  /** Fasce esatte libere della propria agenda (prossimi 14gg): usate per scegliere la data di inizio invece di una data libera. */
-  availableSlots: ProfessionalAvailableSlot[];
-  onChanged: () => void;
   /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso, stesso significato già in uso su "Contatta/Cronologia". */
   unreadCount?: number;
-  /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
-  myProfileId: string | null;
 }) {
-  const [showForm, setShowForm] = useState(false);
-  // Una voce di default ("Manodopera") già pronta, il professionista può
-  // rinominarla/rimuoverla e aggiungerne altre (es. "Materiali", "Trasporto")
-  // — ogni voce ha il proprio range di prezzo, non più due campi fissi
-  // manodopera/materiali — richiesta esplicita dell'utente.
-  const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
-  // Solo le fasce che offrono la stessa modalità della richiesta originale
-  // (richiesta esplicita dell'utente: "differenzia sempre se si è partiti
-  // con una consulenza online... devono uscire solo le date e fasce orarie
-  // disponibili online") — capienze home/online indipendenti, null (richieste
-  // precedenti a questa funzionalità) ricade su "a domicilio".
-  const modeAvailableSlots = availableSlots.filter((s) => (lead.guidedRequest.serviceMode === "ONLINE" ? s.onlineAvailable : s.homeAvailable));
-  // Se la richiesta è nata da una fascia generica dell'agenda pubblica
-  // (preferredDate/preferredTimeSlot), preseleziona quella stessa fascia
-  // invece della prima disponibile qualsiasi — richiesta esplicita
-  // dell'utente: il professionista deve proporre l'orario che il cliente
-  // ha effettivamente richiesto, non uno scelto a caso dalla propria
-  // agenda. Ricade sulla prima fascia libera se quella richiesta non è
-  // (più) tra le fasce esatte libere (es. slot esatto già preso da un
-  // altro impegno nel frattempo).
-  const requestedSlotKey =
-    lead.guidedRequest.preferredDate && lead.guidedRequest.preferredTimeSlot
-      ? modeAvailableSlots.find(
-          (s) => s.date === lead.guidedRequest.preferredDate && `${s.startTime}-${s.endTime}` === lead.guidedRequest.preferredTimeSlot,
-        )
-      : undefined;
-  const [selectedSlotKey, setSelectedSlotKey] = useState(
-    requestedSlotKey ? slotKey(requestedSlotKey) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "",
-  );
-  // Ripiego se l'agenda non ha fasce esatte libere nei prossimi 14gg (es.
-  // professionista che non l'ha ancora impostata): una data libera come
-  // prima, per non bloccare comunque l'invio del preventivo.
-  const [fallbackDate, setFallbackDate] = useState("");
-  const [notes, setNotes] = useState("");
-  const sent = lead.quote !== null;
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isConfirmingDate, setIsConfirmingDate] = useState(false);
-  const [isRejectingDate, setIsRejectingDate] = useState(false);
-  const [showCounterForm, setShowCounterForm] = useState(false);
-  const [counterSlotKey, setCounterSlotKey] = useState("");
-  const [counterNote, setCounterNote] = useState("");
-  const [isCountering, setIsCountering] = useState(false);
-  const [showClientProfile, setShowClientProfile] = useState(false);
-  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
-  const [showDeclineModal, setShowDeclineModal] = useState(false);
-  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
-  // "ognuno cliccando ad esempio sul preventivo possa vedere la cronologia
-  // completa").
-  const [showTimeline, setShowTimeline] = useState(false);
-  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [confirmingDeleteLead, setConfirmingDeleteLead] = useState(false);
-  const [isDeletingLead, setIsDeletingLead] = useState(false);
-  const clientName = lead.guidedRequest.clientName ?? "Cliente";
-  const clientAccountDeleted = lead.guidedRequest.clientAccountDeleted;
-  // Un preventivo ritirato da questo stesso professionista non porterà mai
-  // a nulla — richiesta esplicita dell'utente di poter eliminare anche
-  // questi dalla lista, stesso meccanismo già in uso per l'account cliente
-  // eliminato (`canDeleteLead`, condivide lo stesso blocco UI sotto).
-  const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
-  const canDeleteLead = clientAccountDeleted || quoteWithdrawn;
-
-  function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
-  }
-
-  function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handleSendQuote() {
-    setError(null);
-
-    const cleanedItems = items.map((item) => ({ ...item, name: item.name.trim() })).filter((item) => item.name.length > 0);
-    if (cleanedItems.length === 0) {
-      setError("Aggiungi almeno una voce al preventivo.");
-      return;
-    }
-
-    const parsedItems: { name: string; priceMinEurCents?: number; priceMaxEurCents?: number }[] = [];
-    for (const item of cleanedItems) {
-      const priceMinEurCents = item.priceMin.trim() ? Math.round(Number(item.priceMin.replace(",", ".")) * 100) : undefined;
-      const priceMaxEurCents = item.priceMax.trim() ? Math.round(Number(item.priceMax.replace(",", ".")) * 100) : undefined;
-      if (item.priceMin.trim() && !Number.isFinite(priceMinEurCents)) {
-        setError(`Prezzo minimo non valido per "${item.name}".`);
-        return;
-      }
-      if (item.priceMax.trim() && !Number.isFinite(priceMaxEurCents)) {
-        setError(`Prezzo massimo non valido per "${item.name}".`);
-        return;
-      }
-      if (priceMinEurCents === undefined && priceMaxEurCents === undefined) {
-        setError(`Indica almeno un prezzo per "${item.name}".`);
-        return;
-      }
-      if (priceMinEurCents !== undefined && priceMaxEurCents !== undefined && priceMaxEurCents < priceMinEurCents) {
-        setError(`Il prezzo massimo di "${item.name}" dev'essere maggiore o uguale al minimo.`);
-        return;
-      }
-      parsedItems.push({ name: item.name, priceMinEurCents, priceMaxEurCents });
-    }
-
-    let estimatedStartDate: string;
-    // Fine della fascia scelta (richiesta esplicita dell'utente: mostrare
-    // tutta la fascia oraria, non solo l'inizio) — nota solo quando la data
-    // viene da una fascia reale dell'agenda, non dall'input libero di
-    // fallback (nessun concetto di "fine" per una data indicata a mano).
-    let estimatedEndDate: string | undefined;
-    if (modeAvailableSlots.length > 0) {
-      const slot = modeAvailableSlots.find((s) => slotKey(s) === selectedSlotKey);
-      if (!slot) {
-        setError("Scegli un orario dalla tua agenda.");
-        return;
-      }
-      estimatedStartDate = new Date(`${slot.date}T${slot.startTime}:00.000Z`).toISOString();
-      estimatedEndDate = new Date(`${slot.date}T${slot.endTime}:00.000Z`).toISOString();
-    } else {
-      if (!fallbackDate) {
-        setError("Indica una data di inizio stimata.");
-        return;
-      }
-      estimatedStartDate = new Date(fallbackDate).toISOString();
-    }
-
-    setIsSubmitting(true);
-    try {
-      await apiClient.createQuote(token, {
-        requestId: lead.guidedRequest.id,
-        items: parsedItems,
-        estimatedStartDate,
-        estimatedEndDate,
-        notes: notes.trim() || undefined,
-      });
-      setShowForm(false);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleConfirmDate() {
-    if (!lead.quote) return;
-    setError(null);
-    setIsConfirmingDate(true);
-    try {
-      await apiClient.confirmProposedQuoteDate(token, lead.quote.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsConfirmingDate(false);
-    }
-  }
-
-  async function handleRejectDate() {
-    if (!lead.quote) return;
-    setError(null);
-    setIsRejectingDate(true);
-    try {
-      await apiClient.rejectProposedQuoteDate(token, lead.quote.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsRejectingDate(false);
-    }
-  }
-
-  // "Modifica" (richiesta esplicita dell'utente): invece di limitarsi a
-  // confermare o rifiutare la data proposta dal cliente, il professionista
-  // può modificarla direttamente — precompilata sull'ultima data/orario
-  // proposti, editabile tra le fasce libere della propria agenda, con una
-  // nota facoltativa.
-  function startCounterProposing() {
-    if (!lead.quote) return;
-    const proposedDate = lead.quote.clientProposedDate?.slice(0, 10);
-    const proposedTime = lead.quote.clientProposedDate?.slice(11, 16);
-    const matchingSlot = modeAvailableSlots.find((s) => s.date === proposedDate && s.startTime === proposedTime);
-    setCounterSlotKey(matchingSlot ? slotKey(matchingSlot) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
-    setCounterNote("");
-    setError(null);
-    setShowCounterForm(true);
-  }
-
-  async function handleCounterPropose() {
-    if (!lead.quote) return;
-    const slot = modeAvailableSlots.find((s) => slotKey(s) === counterSlotKey);
-    if (!slot) {
-      setError("Scegli un orario dalla tua agenda.");
-      return;
-    }
-    setError(null);
-    setIsCountering(true);
-    try {
-      await apiClient.counterProposeQuoteDate(token, lead.quote.id, {
-        date: slot.date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        note: counterNote.trim() || undefined,
-      });
-      setShowCounterForm(false);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsCountering(false);
-    }
-  }
-
-  // Riapre il modulo precompilato con il preventivo già inviato (richiesta
-  // esplicita dell'utente: "dai la possibilità di modificare un
-  // preventivo") — consentito solo mentre lo stato è SENT, stessa guardia
-  // applicata lato server in QuotesService.createOrUpdate.
-  function startEditingQuote() {
-    if (!lead.quote) return;
-    setItems(
-      lead.quote.items.map((item) => ({
-        name: item.name,
-        priceMin: item.priceMinEurCents != null ? (item.priceMinEurCents / 100).toString() : "",
-        priceMax: item.priceMaxEurCents != null ? (item.priceMaxEurCents / 100).toString() : "",
-      })),
-    );
-    setNotes(lead.quote.notes ?? "");
-    const quoteDate = lead.quote.estimatedStartDate.slice(0, 10);
-    const quoteTime = lead.quote.estimatedStartDate.slice(11, 16);
-    const matchingSlot = modeAvailableSlots.find((s) => s.date === quoteDate && s.startTime === quoteTime);
-    if (matchingSlot) {
-      setSelectedSlotKey(slotKey(matchingSlot));
-    } else {
-      setFallbackDate(quoteDate);
-    }
-    setError(null);
-    setShowForm(true);
-  }
-
-  async function handleDeclineLead(note: string | undefined) {
-    await apiClient.declineLead(token, lead.id, note);
-    setShowDeclineModal(false);
-    onChanged();
-  }
-
-  async function handleWithdrawQuote() {
-    if (!lead.quote) return;
-    setError(null);
-    setIsWithdrawing(true);
-    try {
-      await apiClient.withdrawQuote(token, lead.quote.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-      setConfirmingWithdraw(false);
-    } finally {
-      setIsWithdrawing(false);
-    }
-  }
-
-  // Richiesta esplicita dell'utente: quando l'account cliente è stato
-  // eliminato, la richiesta non è più azionabile (nessun preventivo
-  // inviabile) e resterebbe altrimenti a ingombrare la lista per sempre —
-  // il professionista può eliminarla dalla propria vista. `onChanged()`
-  // ricarica la lista intera, che quindi non conterrà più questa card.
-  async function handleDeleteLead() {
-    setError(null);
-    setIsDeletingLead(true);
-    try {
-      await apiClient.deleteLead(token, lead.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-      setConfirmingDeleteLead(false);
-    } finally {
-      setIsDeletingLead(false);
-    }
-  }
-
+  const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : lead.guidedRequest.clientName ?? "Cliente";
   return (
-    <Surface gap="$2">
-      <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-        {/* `flexBasis={0}`/`minWidth={0}` insieme a `flex={1}`: senza
-            questi, il blocco si dimensiona sulla larghezza "a contenuto
-            pieno" (non spezzata) del testo interno invece di rispettare lo
-            spazio disponibile — stesso bug già corretto altrove per lo
-            stesso motivo (CLAUDE.md §12, ProfessionalCard). */}
-        <YStack gap="$1" flex={1} flexBasis={0} minWidth={0}>
+    <Link href="/dashboard/richieste" style={{ textDecoration: "none" }}>
+      <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
+        <YStack flex={1} minWidth={200} gap="$1">
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
-            {/* Nome del cliente, cliccabile: apre la scheda profilo minimale
-                (richiesta esplicita dell'utente). Nessuna pagina pubblica
-                per i clienti in questo marketplace (a differenza dei
-                professionisti, /professionista/[id]): la scheda è un
-                overlay, non una navigazione. */}
-            {clientAccountDeleted ? (
-              // Stesso stile neutro già in uso per un altro stato "non più
-              // azionabile" (Richiesta scaduta, sotto): niente Badge
-              // colorato, non è né un successo né un'urgenza.
-              <Text fontSize="$3" fontWeight="700" color={brand.grafite70}>
-                Account eliminato
-              </Text>
-            ) : (
-              <Text
-                fontWeight="700"
-                color={brand.cianografia}
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => setShowClientProfile(true)}
-              >
-                {clientName}
-              </Text>
-            )}
             <Text fontWeight="700" color={brand.grafite}>
+              {clientName}
+            </Text>
+            <Text color={brand.grafite70} fontSize="$3">
               · {lead.guidedRequest.categoryLabel}
               {lead.guidedRequest.city ? ` · ${lead.guidedRequest.city}` : ""}
             </Text>
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
-            {myProfileId ? (
-              <XStack
-                alignItems="center"
-                gap="$1"
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => setShowTimeline(true)}
-              >
-                <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
-                  Contatta/Cronologia
-                </Text>
-                <UnreadDot count={unreadCount} />
-              </XStack>
-            ) : null}
           </XStack>
-          {lead.guidedRequest.serviceMode ? (
-            <XStack alignItems="center" gap="$1">
-              <Icon name={lead.guidedRequest.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
-              <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                {lead.guidedRequest.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
-              </Text>
-            </XStack>
-          ) : null}
-          <Text color={brand.grafite70}>{lead.guidedRequest.description}</Text>
-          {lead.guidedRequest.address ? (
-            <XStack alignItems="center" gap="$1">
-              <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$2" color={brand.grafite70}>
-                {lead.guidedRequest.address}
-              </Text>
-            </XStack>
-          ) : null}
-          {/*
-            Data/fascia oraria richiesta dal cliente (solo se la richiesta
-            parte da una fascia "generica" dell'agenda pubblica) — bug reale
-            segnalato dall'utente: il backend la esponeva già
-            (guidedRequest.preferredDate/preferredTimeSlot) ma la card non la
-            mostrava mai, quindi il professionista non sapeva quale
-            orario riproporre nel proprio preventivo.
-          */}
-          {lead.guidedRequest.preferredDate && lead.guidedRequest.preferredTimeSlot ? (
-            <XStack alignItems="center" gap="$1">
-              <Icon name="calendar" size={12} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$2" color={brand.grafite70} fontWeight="600">
-                Orario richiesto:{" "}
-                {new Date(`${lead.guidedRequest.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  timeZone: "UTC",
-                })}
-                {" · "}
-                {lead.guidedRequest.preferredTimeSlot.replace("-", "–")}
-              </Text>
-            </XStack>
-          ) : null}
-        </YStack>
-        {lead.status === "DECLINED" ? (
-          <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
-            Richiesta rifiutata
-          </Text>
-        ) : lead.status === "EXPIRED" ? (
-          <Text fontSize="$2" color={brand.grafite70} fontWeight="600">
-            Richiesta scaduta
-          </Text>
-        ) : sent && lead.quote?.status !== "MODIFICATION_REQUESTED" ? (
-          <Text
-            fontSize="$2"
-            fontWeight="600"
-            color={
-              lead.quote?.status === "REJECTED" || lead.quote?.status === "WITHDRAWN" ? brand.urgenza : brand.verificato
-            }
-          >
-            {lead.quote?.status === "ACCEPTED"
-              ? "Preventivo accettato"
-              : lead.quote?.status === "REJECTED"
-                ? "Preventivo rifiutato"
-                : lead.quote?.status === "WITHDRAWN"
-                  ? "Preventivo ritirato"
-                  : "Preventivo inviato"}
-          </Text>
-        ) : null}
-      </YStack>
-
-      {/* Stepper di stato in stile Deliveroo, stesso componente già in uso
-          lato cliente (`/le-mie-richieste`) — richiesta esplicita
-          dell'utente: visibile anche dall'account professionista, non solo
-          dal cliente. `lead.quote` è al più uno (un professionista invia un
-          solo preventivo per richiesta), adattato all'array atteso da
-          computeRequestStage. */}
-      <RequestStepper
-        stage={computeRequestStage(lead.quote ? [{ status: lead.quote.status, bookingStatus: lead.quote.bookingStatus }] : [])}
-      />
-
-      {lead.status === "DECLINED" && lead.declineNote ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Nota lasciata al cliente
-          </Text>
           <Text fontSize="$2" color={brand.grafite70}>
-            {lead.declineNote}
+            {leadSummaryLabel(lead)}
           </Text>
         </YStack>
-      ) : null}
-
-      {/* Il preventivo già inviato, visibile al professionista che lo ha
-          mandato (richiesta esplicita dell'utente) — prima solo lo stato
-          era mostrato, non il contenuto effettivo. */}
-      {sent && lead.quote ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          <XStack alignItems="center" gap="$2">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-              Il tuo preventivo
-            </Text>
-            {/* Simbolo sul preventivo (richiesta esplicita dell'utente):
-                qui il lead ha al più un solo preventivo proprio, quindi lo
-                stesso isNew della card basta a indicare che è questo. */}
-            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
-          </XStack>
-          {lead.quote.items.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$3" color={brand.grafite}>
-                {item.name}
-              </Text>
-              <Text fontSize="$3" color={brand.grafite} fontWeight="600">
-                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-              </Text>
-            </XStack>
-          ))}
-          <Text fontSize="$3" color={brand.grafite70}>
-            Data di inizio: {formatDateTimeRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Inviato il {formatSentAt(lead.quote.sentAt)}
-          </Text>
-          {lead.quote.notes ? (
-            <Text fontSize="$3" color={brand.grafite70}>
-              {lead.quote.notes}
-            </Text>
-          ) : null}
-
-          {lead.quote.status === "SENT" && !showForm ? (
-            <XStack gap="$2" flexWrap="wrap" paddingTop="$1" alignItems="center">
-              {!clientAccountDeleted ? (
-                <Button variant="secondary" size="$2" height={36} onPress={startEditingQuote}>
-                  Modifica preventivo
-                </Button>
-              ) : null}
-              {confirmingWithdraw ? (
-                <>
-                  <Text fontSize="$2" color={brand.urgenza}>
-                    Ritirare questo preventivo?
-                  </Text>
-                  <Button variant="urgent" size="$2" height={36} onPress={handleWithdrawQuote} disabled={isWithdrawing} opacity={isWithdrawing ? 0.6 : 1}>
-                    {isWithdrawing ? "Ritiro..." : "Conferma"}
-                  </Button>
-                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingWithdraw(false)}>
-                    Annulla
-                  </Button>
-                </>
-              ) : (
-                <Text
-                  color={brand.urgenza}
-                  fontWeight="600"
-                  fontSize="$2"
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  onPress={() => setConfirmingWithdraw(true)}
-                >
-                  Ritira preventivo
-                </Text>
-              )}
-            </XStack>
-          ) : null}
-        </YStack>
-      ) : null}
-
-      {lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate ? (
-        <YStack
-          gap="$2"
-          borderWidth={1}
-          borderColor={brand.ottone}
-          backgroundColor={brand.calce}
-          borderRadius="$3"
-          padding="$3"
-        >
-          <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-            {(() => {
-              const kind = describeDateChangeKind(
-                lead.quote.estimatedStartDate,
-                lead.quote.estimatedEndDate,
-                lead.quote.clientProposedDate,
-                lead.quote.clientProposedEndDate,
-              );
-              const range = formatDateTimeRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate);
-              if (kind === "none") return `Il cliente ti ha scritto (stessa data: ${range}):`;
-              if (kind === "time") return `Il cliente ha proposto un altro orario: ${range}`;
-              if (kind === "date") return `Il cliente ha proposto un'altra data: ${range}`;
-              return `Il cliente ha proposto un'altra data e orario: ${range}`;
-            })()}
-          </Text>
-          {lead.quote.clientProposedNote ? (
-            <Text fontSize="$3" color={brand.grafite70}>
-              {lead.quote.clientProposedNote}
-            </Text>
-          ) : null}
-          {!showCounterForm ? (
-            <XStack gap="$2" flexWrap="wrap">
-              <Button
-                backgroundColor={brand.verificato}
-                borderWidth={0}
-                color="white"
-                size="$3"
-                height={40}
-                onPress={handleConfirmDate}
-                disabled={isConfirmingDate || isRejectingDate}
-                opacity={isConfirmingDate ? 0.6 : 1}
-              >
-                {isConfirmingDate ? "Conferma..." : "Conferma"}
-              </Button>
-              <Button
-                backgroundColor={brand.ottone}
-                borderWidth={0}
-                color="white"
-                size="$3"
-                height={40}
-                onPress={startCounterProposing}
-                disabled={isConfirmingDate || isRejectingDate}
-              >
-                Modifica
-              </Button>
-              <Button
-                variant="urgent"
-                size="$3"
-                height={40}
-                onPress={handleRejectDate}
-                disabled={isConfirmingDate || isRejectingDate}
-                opacity={isRejectingDate ? 0.6 : 1}
-              >
-                {isRejectingDate ? "Rifiuto..." : "Rifiuta"}
-              </Button>
-            </XStack>
-          ) : (
-            <YStack gap="$2" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-              {modeAvailableSlots.length > 0 ? (
-                <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
-                  {modeAvailableSlots.map((slot) => {
-                    const key = slotKey(slot);
-                    const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}`;
-                    return (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-              ) : (
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Nessun orario libero nella tua agenda al momento.
-                </Text>
-              )}
-              <textarea
-                value={counterNote}
-                onChange={(e) => setCounterNote(e.target.value)}
-                placeholder="Scrivi qualcosa al cliente (opzionale)"
-                rows={2}
-                style={{ ...smallInputStyle, width: "100%", resize: "vertical" as const }}
-              />
-              <XStack gap="$2">
-                <Button
-                  backgroundColor={brand.ottone}
-                  borderWidth={0}
-                  color="white"
-                  size="$3"
-                  height={40}
-                  onPress={handleCounterPropose}
-                  disabled={isCountering}
-                  opacity={isCountering ? 0.6 : 1}
-                >
-                  {isCountering ? "Invio..." : "Invia"}
-                </Button>
-                <Button variant="ghost" size="$3" height={40} onPress={() => setShowCounterForm(false)} disabled={isCountering}>
-                  Annulla
-                </Button>
-              </XStack>
-            </YStack>
-          )}
-        </YStack>
-      ) : null}
-
-      {lead.guidedRequest.photoUrls.length > 0 ? (
-        <XStack gap="$2" flexWrap="wrap">
-          {lead.guidedRequest.photoUrls.map((url, index) => (
-            // Cliccabile per aprirla a schermo intero (richiesta esplicita
-            // dell'utente, "vederla meglio"): stesso PhotoLightbox già usato
-            // per le foto delle recensioni, nessun nuovo componente.
-            <MediaPreview
-              key={url}
-              url={url}
-              onClick={() => setOpenPhotoIndex(index)}
-              style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
-            />
-          ))}
+        <XStack alignItems="center" gap="$2" flexShrink={0}>
+          <UnreadDot count={unreadCount} />
+          <Icon name="chevron-right" size={16} color={brand.grafite70} />
         </XStack>
-      ) : null}
-
-      {openPhotoIndex !== null ? (
-        <PhotoLightbox photos={lead.guidedRequest.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
-      ) : null}
-
-      {!sent && !showForm && lead.status !== "DECLINED" && lead.status !== "EXPIRED" ? (
-        clientAccountDeleted ? (
-          // Richiesta esplicita dell'utente: nessuna nuova operazione su un
-          // preventivo il cui cliente ha eliminato l'account — non
-          // riceverebbe mai risposta. La richiesta resta comunque visibile
-          // ("traccia completa"), solo l'invio è bloccato.
-          <Text fontSize="$2" color={brand.grafite70}>
-            Il cliente ha eliminato il proprio account: non puoi più inviare un preventivo per questa richiesta.
-          </Text>
-        ) : (
-          <XStack gap="$3" alignItems="center" flexWrap="wrap">
-            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowForm(true)}>
-              Invia preventivo
-            </Button>
-            <Text
-              color={brand.urgenza}
-              fontWeight="600"
-              fontSize="$3"
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setShowDeclineModal(true)}
-            >
-              Rifiuta richiesta
-            </Text>
-          </XStack>
-        )
-      ) : null}
-
-      {/* Eliminazione dalla lista, richiesta esplicita dell'utente — mostrata
-          a prescindere dallo stato del lead (preventivo inviato o no, anche
-          rifiutato/scaduto): un account eliminato, o un preventivo che il
-          professionista stesso ha ritirato, non tornano mai più azionabili,
-          la richiesta resterebbe altrimenti a ingombrare la lista per
-          sempre. Doppia conferma, stesso pattern già in uso per "Ritira
-          preventivo" sopra. */}
-      {canDeleteLead ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-          {confirmingDeleteLead ? (
-            <>
-              <Text fontSize="$2" color={brand.urgenza}>
-                {quoteWithdrawn && !clientAccountDeleted ? "Eliminare questo preventivo ritirato dalla lista?" : "Eliminare questa richiesta dalla lista?"}
-              </Text>
-              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteLead} disabled={isDeletingLead} opacity={isDeletingLead ? 0.6 : 1}>
-                {isDeletingLead ? "Eliminazione..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteLead(false)}>
-                Annulla
-              </Button>
-            </>
-          ) : (
-            <Text
-              color={brand.urgenza}
-              fontWeight="600"
-              fontSize="$2"
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setConfirmingDeleteLead(true)}
-            >
-              {quoteWithdrawn && !clientAccountDeleted ? "Elimina preventivo ritirato" : "Elimina richiesta"}
-            </Text>
-          )}
-        </XStack>
-      ) : null}
-
-      {showDeclineModal ? (
-        <CancelBookingModal
-          onClose={() => setShowDeclineModal(false)}
-          onCancel={handleDeclineLead}
-          title="Rifiuta richiesta"
-          description="Il cliente verrà avvisato che hai rifiutato la richiesta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
-          notePlaceholder="Es. Non copro quella zona."
-          confirmLabel="Conferma rifiuto"
-          confirmingLabel="Rifiuto..."
-        />
-      ) : null}
-
-      {showForm ? (
-        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <YStack gap="$2">
-            <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-              Voci del preventivo
-            </Text>
-            {items.map((item, index) => (
-              <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
-                <input
-                  value={item.name}
-                  onChange={(e) => updateItem(index, "name", e.target.value)}
-                  placeholder="Es. Manodopera"
-                  style={{ ...smallInputStyle, flex: 1, minWidth: 140 }}
-                />
-                <input
-                  value={item.priceMin}
-                  onChange={(e) => updateItem(index, "priceMin", e.target.value)}
-                  placeholder="Da €"
-                  inputMode="decimal"
-                  style={{ ...smallInputStyle, width: 90 }}
-                />
-                <Text fontSize="$2" color={brand.grafite70}>
-                  a
-                </Text>
-                <input
-                  value={item.priceMax}
-                  onChange={(e) => updateItem(index, "priceMax", e.target.value)}
-                  placeholder="A €"
-                  inputMode="decimal"
-                  style={{ ...smallInputStyle, width: 90 }}
-                />
-                {items.length > 1 ? (
-                  <Button variant="ghost" size="$2" height={36} onPress={() => removeItem(index)} accessibilityLabel="Rimuovi voce">
-                    <X size={14} strokeWidth={1.5} color={brand.grafite} />
-                  </Button>
-                ) : null}
-              </YStack>
-            ))}
-            <Button
-              variant="ghost"
-              size="$2"
-              height={36}
-              alignSelf="flex-start"
-              onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}
-            >
-              + Aggiungi voce
-            </Button>
-          </YStack>
-          <YStack gap="$1">
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-              Data di inizio
-            </Text>
-            {modeAvailableSlots.length > 0 ? (
-              <select
-                value={selectedSlotKey}
-                onChange={(e) => setSelectedSlotKey(e.target.value)}
-                style={{ ...smallInputStyle, alignSelf: "flex-start" }}
-              >
-                {modeAvailableSlots.map((slot) => (
-                  <option key={slotKey(slot)} value={slotKey(slot)}>
-                    {slotLabel(slot)}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <>
-                <input
-                  type="date"
-                  value={fallbackDate}
-                  onChange={(e) => setFallbackDate(e.target.value)}
-                  style={{ ...smallInputStyle, alignSelf: "flex-start" }}
-                />
-                <Text fontSize="$1" color={brand.grafite70}>
-                  Nessun orario libero nei prossimi 14 giorni nella tua agenda — imposta le tue fasce in{" "}
-                  <Link href="/dashboard/agenda" style={{ color: brand.cianografia }}>
-                    Agenda
-                  </Link>{" "}
-                  per scegliere direttamente da lì.
-                </Text>
-              </>
-            )}
-          </YStack>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Note per il cliente"
-            rows={2}
-            style={{ ...smallInputStyle, resize: "vertical" }}
-          />
-          {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
-              {error}
-            </Text>
-          ) : null}
-          <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={handleSendQuote} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-            {isSubmitting ? "Invio..." : "Conferma preventivo"}
-          </Button>
-        </YStack>
-      ) : null}
-
-      {showClientProfile ? (
-        <ClientProfileModal
-          name={clientName}
-          phone={lead.guidedRequest.clientPhone}
-          email={lead.guidedRequest.clientEmail}
-          imageUrl={lead.guidedRequest.clientImageUrl}
-          reviews={lead.guidedRequest.clientReviews}
-          onClose={() => setShowClientProfile(false)}
-        />
-      ) : null}
-
-      {showTimeline && myProfileId ? (
-        <TimelineModal
-          token={token}
-          guidedRequestId={lead.guidedRequest.id}
-          professionalProfileId={myProfileId}
-          viewerRole="PROFESSIONAL"
-          onClose={() => setShowTimeline(false)}
-        />
-      ) : null}
-    </Surface>
+      </XStack>
+    </Link>
   );
 }

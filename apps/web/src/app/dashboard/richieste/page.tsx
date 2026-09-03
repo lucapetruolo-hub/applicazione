@@ -23,6 +23,8 @@ import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/lib/requestStage";
+import { unreadGuidedRequestCounts } from "@/lib/notificationSections";
+import { UnreadDot } from "@/components/UnreadDot";
 
 /**
  * Pagina `/dashboard/richieste` — vista alternativa e più ricca delle
@@ -85,7 +87,12 @@ function formatSlotRange(startIso: string, endIso: string | null): string {
 // pro/urgente/nuovo" per il resto del sito).
 const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professionisti/ui").IconName; fg: string; bg: string; border: string }> = {
   da_quotare: { label: "Da quotare", icon: "zap", fg: "#B8860B", bg: "#FFF3D6", border: "#FF6B35" },
-  in_attesa: { label: "In attesa", icon: "clock", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
+  // "In attesa" da solo era ambiguo sulla singola card (segnalato in
+  // revisione UX: "il pro ha già inviato il preventivo, in attesa di
+  // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab
+  // resta "In attesa" (spazio ridotto nella riga a scorrimento, stesso
+  // significato).
+  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#8a5a00", bg: "#FFF4E0", border: brand.ottone },
   accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
   completata: { label: "Completata", icon: "check", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
@@ -176,12 +183,18 @@ export default function RichiestePage() {
 }
 
 function RichiesteContent() {
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, markNotificationsRead } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
+  // Pallino rosso su "Contatta" (stesso significato già in uso su
+  // /dashboard e /le-mie-richieste) — questa pagina è ora la destinazione
+  // canonica per il dettaglio di una richiesta (link dal menu account e dal
+  // riepilogo compatto di /dashboard), deve azzerare le notifiche in
+  // arrivo esattamente come faceva prima la vecchia scheda in /dashboard.
+  const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
 
   const [activeTab, setActiveTab] = useState<"tutte" | RequestStage>("tutte");
   const [search, setSearch] = useState("");
@@ -206,6 +219,15 @@ function RichiesteContent() {
       })
       .catch(() => setProfileMissing(true));
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .unreadNotifications(token)
+      .then((notifications) => setLeadUnreadCounts(unreadGuidedRequestCounts(notifications)))
+      .catch(() => {})
+      .finally(() => markNotificationsRead());
+  }, [token, markNotificationsRead]);
 
   const bookingByRequestId = useMemo(() => {
     const map = new Map<string, ProfessionalBooking>();
@@ -460,6 +482,7 @@ function RichiesteContent() {
                 isOpen={openId === lead.id}
                 onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
                 onChanged={reloadLeads}
+                unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
               />
             ))}
           </YStack>
@@ -479,6 +502,7 @@ function RequestCard({
   isOpen,
   onToggle,
   onChanged,
+  unreadCount,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -490,6 +514,8 @@ function RequestCard({
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
+  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta", stesso significato già in uso su /dashboard e /le-mie-richieste. */
+  unreadCount?: number;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -1001,7 +1027,12 @@ function RequestCard({
                   Modifica preventivo
                 </Button>
                 <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
-                  Contatta
+                  <XStack alignItems="center" gap="$1">
+                    <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
+                      Contatta
+                    </Text>
+                    <UnreadDot count={unreadCount} />
+                  </XStack>
                 </Button>
                 {confirmingWithdraw ? (
                   <>
@@ -1092,7 +1123,12 @@ function RequestCard({
                   </Button>
                 </Link>
                 <Button variant="ghost" size="$3" onPress={() => setShowTimeline(true)}>
-                  Contatta
+                  <XStack alignItems="center" gap="$1">
+                    <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3">
+                      Contatta
+                    </Text>
+                    <UnreadDot count={unreadCount} />
+                  </XStack>
                 </Button>
               </XStack>
             ) : null}

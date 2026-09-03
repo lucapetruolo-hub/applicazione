@@ -835,8 +835,14 @@ function GuidedRequestCard({
                 </Text>
               ) : (
                 <Text fontSize="$2" color={brand.grafite70}>
-                  Contattati {statusSummary.totalContacted} · Risposto {statusSummary.responded} · In attesa{" "}
-                  {statusSummary.pending}
+                  {/* Una frase sola invece di tre numeri affiancati (segnalato in
+                      revisione UX: "Contattati 2 · Risposto 1 · In attesa 2"
+                      sembrava non tornare) — la stessa informazione (quanti
+                      preventivi sono già arrivati su quanti professionisti
+                      contattati) in una forma che si legge senza fare i conti. */}
+                  {statusSummary.responded === 0
+                    ? `Nessun preventivo ricevuto ancora, su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`
+                    : `${statusSummary.responded} preventiv${statusSummary.responded === 1 ? "o" : "i"} ricevut${statusSummary.responded === 1 ? "o" : "i"} su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`}
                 </Text>
               )}
             </YStack>
@@ -1305,77 +1311,86 @@ function QuoteCard({
           </Text>
         ))}
       </YStack>
-      {/* "Prezzo": totale dei minimi e totale dei massimi delle voci sopra,
-          ognuno nel proprio riquadro — richiesta esplicita dell'utente.
-          Nascosto se nessuna voce ha un prezzo indicato ("Su richiesta"). */}
+      {/* Totale indicativo del preventivo: un'unica riga in evidenza invece
+          dei due riquadri "Totale minimo"/"Totale massimo" affiancati
+          (segnalato in revisione UX: occupava spazio e si leggeva male,
+          è la prima cosa che entrambe le parti cercano) — stesso helper
+          `formatServicePriceRange` già usato per le prestazioni del
+          profilo pubblico, riduce automaticamente a un solo valore quando
+          min ed max coincidono. Nascosto se nessuna voce ha un prezzo
+          indicato ("Su richiesta"). */}
       {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
-        <YStack gap="$1">
+        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-            Prezzo
+            Totale indicativo
           </Text>
-          <XStack gap="$2" flexWrap="wrap">
-            <YStack flex={1} minWidth={120} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
-                Totale minimo
-              </Text>
-              <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
-                {formatEurCents(priceTotals.totalMinEurCents)}
-              </Text>
-            </YStack>
-            <YStack flex={1} minWidth={120} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
-                Totale massimo
-              </Text>
-              <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
-                {formatEurCents(priceTotals.totalMaxEurCents)}
-              </Text>
-            </YStack>
-          </XStack>
+          <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
+            {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+          </Text>
         </YStack>
       ) : null}
+      {/* Note del professionista in un box a parte (segnalato in revisione
+          UX: prima era un rigo di testo isolato, mischiato al resto della
+          card) — stesso trattamento visivo già usato per i banner "Il
+          professionista ha risposto proponendo"/"Il cliente ha proposto
+          un'altra data" più sopra in questo file. */}
       {quote.notes ? (
-        <Text color={brand.grafite70} fontSize="$3">
-          {quote.notes}
-        </Text>
+        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+            Messaggio del professionista
+          </Text>
+          <Text color={brand.grafite70} fontSize="$3">
+            {quote.notes}
+          </Text>
+        </YStack>
       ) : null}
 
       {quote.status === "SENT" ? (
         <>
+          {/* Gerarchia dei bottoni (segnalato in revisione UX): "Accetta"
+              primario, "Modifica data/orario" secondario, "Rifiuta" spostato
+              su una riga propria sotto e reso discreto (testo grigio, non più
+              rosso in grassetto affiancato al primario) — il rosso resta
+              riservato alla sola conferma effettiva del rifiuto. */}
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
               {isAccepting ? "Accettazione..." : "Accetta preventivo"}
             </Button>
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
-                Modifica
+                Modifica data/orario
               </Button>
             ) : null}
-            {!isChoosingDate && !confirmingReject ? (
-              <Text
-                color={brand.urgenza}
-                fontWeight="600"
-                fontSize="$3"
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => setConfirmingReject(true)}
-              >
-                Rifiuta preventivo
-              </Text>
-            ) : null}
-            {confirmingReject ? (
-              <>
-                <Text fontSize="$2" color={brand.urgenza}>
-                  Rifiutare questo preventivo?
-                </Text>
-                <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
-                  {isRejecting ? "Rifiuto..." : "Conferma"}
-                </Button>
-                <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
-                  Annulla
-                </Button>
-              </>
-            ) : null}
           </XStack>
+          {!isChoosingDate ? (
+            <XStack gap="$2" alignItems="center">
+              {!confirmingReject ? (
+                <Text
+                  color={brand.grafite70}
+                  fontWeight="500"
+                  fontSize="$2"
+                  textDecorationLine="underline"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => setConfirmingReject(true)}
+                >
+                  Rifiuta preventivo
+                </Text>
+              ) : (
+                <>
+                  <Text fontSize="$2" color={brand.urgenza}>
+                    Rifiutare questo preventivo?
+                  </Text>
+                  <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
+                    {isRejecting ? "Rifiuto..." : "Conferma"}
+                  </Button>
+                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
+                    Annulla
+                  </Button>
+                </>
+              )}
+            </XStack>
+          ) : null}
           {isChoosingDate ? (
             <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
               {freeSlots === null ? (
