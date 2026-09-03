@@ -54,15 +54,33 @@ export function clientSectionCounts(notifications: UnreadNotification[]): { rich
   };
 }
 
-function extractPayloadId(notifications: UnreadNotification[], key: "guidedRequestId" | "bookingId" | "quoteId"): Set<string> {
-  const ids = new Set<string>();
-  for (const n of notifications) {
-    if (n.payload && typeof n.payload === "object" && key in n.payload) {
-      const value = (n.payload as Record<string, unknown>)[key];
-      if (typeof value === "string") ids.add(value);
-    }
+function payloadString(n: UnreadNotification, key: string): string | null {
+  if (n.payload && typeof n.payload === "object" && key in n.payload) {
+    const value = (n.payload as Record<string, unknown>)[key];
+    if (typeof value === "string") return value;
   }
-  return ids;
+  return null;
+}
+
+/**
+ * Conteggio (non solo presenza) delle notifiche non lette per id — richiesta
+ * esplicita dell'utente: "aggiungere un pallino rosso di fianco al pulsante
+ * contatta/cronologia con un numero all'interno del numero degli
+ * aggiornamenti ricevuti". `extractPayloadId` (sotto) resta per il badge
+ * booleano "Nuovo" già esistente, derivata da questa mappa per non
+ * duplicare il filtro.
+ */
+function countPayloadId(notifications: UnreadNotification[], key: "guidedRequestId" | "bookingId" | "quoteId"): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const n of notifications) {
+    const value = payloadString(n, key);
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function extractPayloadId(notifications: UnreadNotification[], key: "guidedRequestId" | "bookingId" | "quoteId"): Set<string> {
+  return new Set(countPayloadId(notifications, key).keys());
 }
 
 /**
@@ -97,6 +115,46 @@ export function unreadBookingIds(notifications: UnreadNotification[]): Set<strin
  */
 export function unreadQuoteIds(notifications: UnreadNotification[]): Set<string> {
   return extractPayloadId(notifications, "quoteId");
+}
+
+/**
+ * Varianti "conteggio" delle tre mappe sopra (richiesta esplicita
+ * dell'utente: il pallino accanto a "Contatta/Cronologia" deve avere "un
+ * numero all'interno del numero degli aggiornamenti ricevuti", non solo un
+ * indicatore booleano) — stessa granularità già in uso per il badge "Nuovo"
+ * (per richiesta guidata, per prenotazione, per singolo preventivo).
+ */
+export function unreadGuidedRequestCounts(notifications: UnreadNotification[]): Map<string, number> {
+  return countPayloadId(notifications, "guidedRequestId");
+}
+export function unreadBookingCounts(notifications: UnreadNotification[]): Map<string, number> {
+  return countPayloadId(notifications, "bookingId");
+}
+export function unreadQuoteCounts(notifications: UnreadNotification[]): Map<string, number> {
+  return countPayloadId(notifications, "quoteId");
+}
+
+/**
+ * Conteggio per singolo thread cliente↔professionista (richiesta esplicita
+ * dell'utente: il pallino su "Contatta/Cronologia" nella sezione "Inviata a"
+ * — prima che esista un preventivo — deve riflettere gli aggiornamenti di
+ * QUEL professionista specifico, non di un altro nella stessa richiesta a
+ * più destinatari). Chiave composita `guidedRequestId:professionalProfileId`
+ * — solo i tipi con entrambi i campi nel payload (LEAD_DECLINED,
+ * TIMELINE_MESSAGE_FROM_CLIENT/FROM_PROFESSIONAL) contribuiscono; gli altri
+ * (es. GUIDED_REQUEST_EXPIRED, senza un professionista specifico) restano
+ * fuori per costruzione, corretto: non appartengono a un thread preciso.
+ */
+export function unreadThreadCounts(notifications: UnreadNotification[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const n of notifications) {
+    const guidedRequestId = payloadString(n, "guidedRequestId");
+    const professionalProfileId = payloadString(n, "professionalProfileId");
+    if (!guidedRequestId || !professionalProfileId) continue;
+    const key = `${guidedRequestId}:${professionalProfileId}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /**

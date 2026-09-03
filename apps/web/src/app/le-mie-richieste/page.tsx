@@ -26,7 +26,16 @@ import { RequestStepper, computeRequestStage } from "@/components/RequestStepper
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
-import { clientSectionCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteIds } from "@/lib/notificationSections";
+import {
+  clientSectionCounts,
+  unreadBookingCounts,
+  unreadBookingIds,
+  unreadGuidedRequestIds,
+  unreadQuoteCounts,
+  unreadQuoteIds,
+  unreadThreadCounts,
+} from "@/lib/notificationSections";
+import { UnreadDot } from "@/components/UnreadDot";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
@@ -158,6 +167,14 @@ function LeMieRichiesteContent() {
   // preventivi da più professionisti, il badge sulla card da solo non basta
   // a distinguere quale.
   const [newQuoteIds, setNewQuoteIds] = useState<Set<string>>(new Set());
+  // Conteggio (non solo presenza) degli aggiornamenti non letti — richiesta
+  // esplicita dell'utente: un pallino rosso con un numero accanto a
+  // "Contatta/Cronologia", sia sul singolo preventivo/lavoro sia sulla
+  // riga di un professionista in "Inviata a" (prima che esista un
+  // preventivo, identificata dalla chiave composita richiesta+professionista).
+  const [threadUnreadCounts, setThreadUnreadCounts] = useState<Map<string, number>>(new Map());
+  const [quoteUnreadCounts, setQuoteUnreadCounts] = useState<Map<string, number>>(new Map());
+  const [bookingUnreadCounts, setBookingUnreadCounts] = useState<Map<string, number>>(new Map());
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -241,6 +258,9 @@ function LeMieRichiesteContent() {
         setNewRequestIds(unreadGuidedRequestIds(notifications));
         setNewClientBookingIds(unreadBookingIds(notifications));
         setNewQuoteIds(unreadQuoteIds(notifications));
+        setThreadUnreadCounts(unreadThreadCounts(notifications));
+        setQuoteUnreadCounts(unreadQuoteCounts(notifications));
+        setBookingUnreadCounts(unreadBookingCounts(notifications));
       })
       .catch(() => {})
       .finally(() => markNotificationsRead());
@@ -363,6 +383,8 @@ function LeMieRichiesteContent() {
                     onAcceptQuote={handleAcceptQuote}
                     isNew={newRequestIds.has(request.id)}
                     newQuoteIds={newQuoteIds}
+                    threadUnreadCounts={threadUnreadCounts}
+                    quoteUnreadCounts={quoteUnreadCounts}
                   />
                 ))
               )}
@@ -391,7 +413,14 @@ function LeMieRichiesteContent() {
                 <Text color={brand.grafite70}>Nessuna prenotazione corrisponde al filtro selezionato.</Text>
               ) : (
                 visibleClientBookings.map((booking) => (
-                  <BookingRow key={booking.id} booking={booking} token={token} onReviewed={reload} isNew={newClientBookingIds.has(booking.id)} />
+                  <BookingRow
+                    key={booking.id}
+                    booking={booking}
+                    token={token}
+                    onReviewed={reload}
+                    isNew={newClientBookingIds.has(booking.id)}
+                    unreadCount={bookingUnreadCounts.get(booking.id)}
+                  />
                 ))
               )}
               <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />
@@ -410,6 +439,8 @@ function GuidedRequestCard({
   onAcceptQuote,
   isNew,
   newQuoteIds,
+  threadUnreadCounts,
+  quoteUnreadCounts,
 }: {
   request: ClientGuidedRequest;
   token: string;
@@ -419,7 +450,18 @@ function GuidedRequestCard({
   isNew?: boolean;
   /** ID dei preventivi con un aggiornamento non letto — disambigua QUALE preventivo tra più ricevuti per questa richiesta. */
   newQuoteIds?: Set<string>;
+  /** Conteggio aggiornamenti non letti per thread (chiave `guidedRequestId:professionalProfileId`) — pallino su "Contatta/Cronologia" nella sezione "Inviata a", prima che esista un preventivo. */
+  threadUnreadCounts?: Map<string, number>;
+  /** Conteggio aggiornamenti non letti per singolo preventivo — pallino su "Contatta/Cronologia" di ogni QuoteCard. */
+  quoteUnreadCounts?: Map<string, number>;
 }) {
+  // Professionista il cui thread è aperto nella cronologia (sezione "Inviata
+  // a", prima che esista un preventivo) — richiesta esplicita dell'utente:
+  // "nelle mie richieste del cliente, non compare il pulsante
+  // contatta/cronologia" (mancava del tutto in questo punto della card,
+  // esisteva solo dentro QuoteCard/BookingRow una volta ricevuto un
+  // preventivo).
+  const [openTimelineProfessionalId, setOpenTimelineProfessionalId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
@@ -913,51 +955,72 @@ function GuidedRequestCard({
             Inviata a
           </Text>
           {request.sentTo.map((professional) => (
-            <Link
+            <XStack
               key={professional.id}
-              href={`/professionista/${professional.id}`}
-              style={{ textDecoration: "none", color: "inherit" }}
+              gap="$3"
+              alignItems="center"
+              backgroundColor={brand.gesso}
+              borderRadius="$3"
+              padding="$3"
+              opacity={professional.declined ? 0.7 : 1}
             >
-              <XStack
-                gap="$3"
-                alignItems="center"
-                backgroundColor={brand.gesso}
-                borderRadius="$3"
-                padding="$3"
-                opacity={professional.declined ? 0.7 : 1}
-              >
-                <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
-                <YStack gap="$1" flex={1}>
-                  <XStack gap="$2" alignItems="center" flexWrap="wrap">
-                    <Text fontWeight="600" color={brand.grafite}>
-                      {professional.businessName}
+              <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1 }}>
+                <XStack gap="$3" alignItems="center">
+                  <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
+                  <YStack gap="$1" flex={1}>
+                    <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                      <Text fontWeight="600" color={brand.grafite}>
+                        {professional.businessName}
+                      </Text>
+                      {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                      {/*
+                        Un professionista che ha rifiutato la richiesta prima
+                        di inviare un preventivo (richiesta esplicita
+                        dell'utente): il cliente prima non aveva modo di
+                        sapere perché quel professionista non rispondeva mai.
+                      */}
+                      {professional.declined ? (
+                        <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
+                          Ha rifiutato
+                        </Text>
+                      ) : null}
+                    </XStack>
+                    <Text color={brand.grafite70} fontSize="$3">
+                      {professional.categoryLabel} · {professional.city}
                     </Text>
-                    {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
-                    {/*
-                      Un professionista che ha rifiutato la richiesta prima
-                      di inviare un preventivo (richiesta esplicita
-                      dell'utente): il cliente prima non aveva modo di
-                      sapere perché quel professionista non rispondeva mai.
-                    */}
-                    {professional.declined ? (
-                      <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
-                        Ha rifiutato
+                    {professional.declined && professional.declineNote ? (
+                      <Text color={brand.grafite70} fontSize="$2">
+                        {professional.declineNote}
                       </Text>
                     ) : null}
-                  </XStack>
-                  <Text color={brand.grafite70} fontSize="$3">
-                    {professional.categoryLabel} · {professional.city}
-                  </Text>
-                  {professional.declined && professional.declineNote ? (
-                    <Text color={brand.grafite70} fontSize="$2">
-                      {professional.declineNote}
-                    </Text>
-                  ) : null}
-                </YStack>
+                  </YStack>
+                </XStack>
+              </Link>
+              <XStack
+                alignItems="center"
+                gap="$1"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setOpenTimelineProfessionalId(professional.id)}
+              >
+                <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+                  Contatta/Cronologia
+                </Text>
+                <UnreadDot count={threadUnreadCounts?.get(`${request.id}:${professional.id}`)} />
               </XStack>
-            </Link>
+            </XStack>
           ))}
         </YStack>
+      ) : null}
+
+      {openTimelineProfessionalId ? (
+        <TimelineModal
+          token={token}
+          guidedRequestId={request.id}
+          professionalProfileId={openTimelineProfessionalId}
+          viewerRole="CLIENT"
+          onClose={() => setOpenTimelineProfessionalId(null)}
+        />
       ) : null}
 
       {request.quotes.length > 0 ? (
@@ -976,6 +1039,7 @@ function GuidedRequestCard({
               guidedRequestId={request.id}
               serviceMode={request.serviceMode}
               isNew={newQuoteIds?.has(quote.id)}
+              unreadCount={quoteUnreadCounts?.get(quote.id)}
             />
           ))}
         </YStack>
@@ -1032,6 +1096,7 @@ function QuoteCard({
   guidedRequestId,
   serviceMode,
   isNew,
+  unreadCount,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
@@ -1045,6 +1110,8 @@ function QuoteCard({
   serviceMode: "HOME" | "ONLINE" | null;
   /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto (richiesta esplicita dell'utente). */
   isNew?: boolean;
+  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  unreadCount?: number;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -1183,17 +1250,19 @@ function QuoteCard({
       {/* Cronologia completa del thread con questo professionista —
           richiesta esplicita dell'utente: "cliccando ad esempio sul
           preventivo possa vedere la cronologia completa". */}
-      <Text
-        fontSize="$2"
-        fontWeight="600"
-        color={brand.cianografia}
-        cursor="pointer"
+      <XStack
+        alignItems="center"
+        gap="$1"
         alignSelf="flex-start"
+        cursor="pointer"
         accessibilityRole="button"
         onPress={() => setShowTimeline(true)}
       >
-        Contatta/Cronologia
-      </Text>
+        <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+          Contatta/Cronologia
+        </Text>
+        <UnreadDot count={unreadCount} />
+      </XStack>
       {/* Il professionista ha inviato il preventivo con un orario diverso
           da quello effettivamente richiesto dal cliente (richiesta
           esplicita dell'utente: "evidenzialo... per farglielo notare") —
@@ -1211,12 +1280,20 @@ function QuoteCard({
           la data proposta) — richiesta esplicita dell'utente. La "Data
           proposta" sopra riflette già il nuovo orario, qui solo l'eventuale
           messaggio lasciato. */}
+      {/* Il professionista ha modificato direttamente data/orario durante la
+          trattativa ("Modifica") — richiesta esplicita dell'utente: "deve
+          essere visibile chiaramente così come visualizzato nella parte del
+          professionista quando il cliente modifica data/ora" — stessa resa
+          visiva (padding/radius/font) del banner "Il cliente ha proposto
+          un'altra data" mostrato al professionista in /dashboard, con la
+          nuova data/ora riportata esplicitamente nel banner (non solo nella
+          riga "Data proposta" sopra). */}
       {quote.status === "SENT" && quote.professionalCounterNote ? (
-        <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Il professionista ti ha risposto:
+        <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
+          <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+            Il professionista ha risposto proponendo: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
           </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize="$3" color={brand.grafite70}>
             {quote.professionalCounterNote}
           </Text>
         </YStack>
@@ -1411,12 +1488,15 @@ function BookingRow({
   token,
   onReviewed,
   isNew,
+  unreadCount,
 }: {
   booking: ClientBooking;
   token: string;
   onReviewed: () => void;
   /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** Numero di aggiornamenti non letti per questa prenotazione — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  unreadCount?: number;
 }) {
   // Conferma del cliente che il lavoro è terminato dal suo lato (richiesta
   // esplicita dell'utente: "servono i completed da entrambi") + recensione
@@ -1538,17 +1618,19 @@ function BookingRow({
       </Text>
 
       {booking.guidedRequestId ? (
-        <Text
-          fontSize="$2"
-          fontWeight="600"
-          color={brand.cianografia}
-          cursor="pointer"
+        <XStack
+          alignItems="center"
+          gap="$1"
           alignSelf="flex-start"
+          cursor="pointer"
           accessibilityRole="button"
           onPress={() => setShowTimeline(true)}
         >
-          Contatta/Cronologia
-        </Text>
+          <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+            Contatta/Cronologia
+          </Text>
+          <UnreadDot count={unreadCount} />
+        </XStack>
       ) : null}
 
       {/* Link consulenza video (Meet/Zoom/ecc.), impostato dal

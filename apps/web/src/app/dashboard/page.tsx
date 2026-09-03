@@ -26,7 +26,14 @@ import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
-import { professionalSectionCounts, unreadBookingIds, unreadGuidedRequestIds } from "@/lib/notificationSections";
+import {
+  professionalSectionCounts,
+  unreadBookingCounts,
+  unreadBookingIds,
+  unreadGuidedRequestCounts,
+  unreadGuidedRequestIds,
+} from "@/lib/notificationSections";
+import { UnreadDot } from "@/components/UnreadDot";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
@@ -287,6 +294,12 @@ function DashboardContent() {
   // "Nuovo" quando il proprio id è tra questi.
   const [newLeadRequestIds, setNewLeadRequestIds] = useState<Set<string>>(new Set());
   const [newBookingIds, setNewBookingIds] = useState<Set<string>>(new Set());
+  // Conteggio (non solo presenza) degli aggiornamenti non letti per
+  // richiesta/prenotazione — richiesta esplicita dell'utente: un pallino
+  // rosso con un numero accanto a "Contatta/Cronologia", non solo il badge
+  // "Nuovo" già esistente.
+  const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
+  const [bookingUnreadCounts, setBookingUnreadCounts] = useState<Map<string, number>>(new Map());
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
@@ -398,6 +411,8 @@ function DashboardContent() {
         setSectionSnapshot(professionalSectionCounts(notifications));
         setNewLeadRequestIds(unreadGuidedRequestIds(notifications));
         setNewBookingIds(unreadBookingIds(notifications));
+        setLeadUnreadCounts(unreadGuidedRequestCounts(notifications));
+        setBookingUnreadCounts(unreadBookingCounts(notifications));
       })
       .catch(() => {})
       .finally(() => markNotificationsRead());
@@ -577,6 +592,7 @@ function DashboardContent() {
                   availableSlots={availableSlots}
                   onChanged={reloadLeads}
                   isNew={newLeadRequestIds.has(lead.guidedRequest.id)}
+                  unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
                   myProfileId={myProfileId}
                 />
               ))
@@ -687,6 +703,7 @@ function DashboardContent() {
                     token={token}
                     onUpdated={reloadBookings}
                     isNew={newBookingIds.has(booking.id)}
+                    unreadCount={bookingUnreadCounts.get(booking.id)}
                     myProfileId={myProfileId}
                   />
                 ))}
@@ -720,6 +737,7 @@ function AcceptedJobCard({
   token,
   onUpdated,
   isNew,
+  unreadCount,
   myProfileId,
 }: {
   booking: ProfessionalBooking;
@@ -727,6 +745,8 @@ function AcceptedJobCard({
   onUpdated: () => void;
   /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** Numero di aggiornamenti non letti per questa prenotazione — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  unreadCount?: number;
   /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
   myProfileId: string | null;
 }) {
@@ -1145,9 +1165,12 @@ function AcceptedJobCard({
             ) : null}
             {booking.guidedRequestId && myProfileId ? (
               <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
-                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                  Contatta/Cronologia
-                </Text>
+                <XStack alignItems="center" gap="$1">
+                  <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                    Contatta/Cronologia
+                  </Text>
+                  <UnreadDot count={unreadCount} />
+                </XStack>
               </Button>
             ) : null}
           </XStack>
@@ -1247,6 +1270,7 @@ function LeadCard({
   availableSlots,
   onChanged,
   isNew,
+  unreadCount,
   myProfileId,
 }: {
   lead: ProfessionalLead;
@@ -1256,6 +1280,8 @@ function LeadCard({
   onChanged: () => void;
   /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
   isNew?: boolean;
+  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  unreadCount?: number;
   /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
   myProfileId: string | null;
 }) {
@@ -1577,16 +1603,18 @@ function LeadCard({
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             {myProfileId ? (
-              <Text
-                fontSize="$2"
-                fontWeight="600"
-                color={brand.cianografia}
+              <XStack
+                alignItems="center"
+                gap="$1"
                 cursor="pointer"
                 accessibilityRole="button"
                 onPress={() => setShowTimeline(true)}
               >
-                Contatta/Cronologia
-              </Text>
+                <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+                  Contatta/Cronologia
+                </Text>
+                <UnreadDot count={unreadCount} />
+              </XStack>
             ) : null}
           </XStack>
           {lead.guidedRequest.serviceMode ? (
