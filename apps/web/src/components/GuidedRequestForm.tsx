@@ -11,7 +11,7 @@ import {
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
-import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Button, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -20,21 +20,30 @@ import { MediaPreview } from "@/components/MediaPreview";
 // (aumentato da 3, stessa richiesta).
 const MAX_PHOTOS = 5;
 
-/** Fascia "generica" (a capienza) dell'agenda pubblica di un professionista, ancora libera — le sole selezionabili qui (le fasce esatte sono prenotazione diretta, un flusso separato). */
-type PickableAgendaSlot = { date: string; startTime: string; endTime: string; remaining: number };
+/**
+ * Fascia libera dell'agenda pubblica di un professionista, selezionabile
+ * qui come data/orario preferito per l'intervento. `remaining` assente per
+ * la fascia arrivata bloccata dall'URL (click diretto su una pillola
+ * dell'agenda, prima che il fetch dell'agenda completa sia tornato) — solo
+ * un'etichetta provvisoria, sostituita dal dato reale appena disponibile.
+ */
+type PickableAgendaSlot = { date: string; startTime: string; endTime: string; remaining?: number };
 
 /**
- * Solo le fasce che offrono la modalità scelta (o entrambe le modalità se
- * non ancora scelta) — richiesta esplicita dell'utente: "differenzia sempre
- * se si è partiti con una consulenza online". Capienza/residuo presi dal
- * lato modalità pertinente (home/online, indipendenti).
+ * Ogni fascia libera che offre la modalità scelta (o entrambe le modalità
+ * se non ancora scelta) — richiesta esplicita dell'utente: "differenzia
+ * sempre se si è partiti con una consulenza online". Nessuna distinzione
+ * più tra fasce "esatte" e "generiche": da quando la prenotazione diretta è
+ * stata rimossa (CLAUDE.md §20, "ogni fascia apre sempre una richiesta di
+ * preventivo") entrambe passano da qui, il backend le rivalida comunque
+ * (resolveGenericSlot/resolveFreeExactSlot non escludono più maxBookings=1).
  */
 function flattenPickableSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE" | null): PickableAgendaSlot[] {
   const result: PickableAgendaSlot[] = [];
   for (const day of agenda.days) {
     for (const slot of day.slots) {
       const modeInfo = mode === "ONLINE" ? slot.online : mode === "HOME" ? slot.home : (slot.home ?? slot.online);
-      if (modeInfo && modeInfo.maxBookings > 1 && modeInfo.bookedCount < modeInfo.maxBookings) {
+      if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
         result.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime, remaining: modeInfo.maxBookings - modeInfo.bookedCount });
       }
     }
@@ -42,13 +51,14 @@ function flattenPickableSlots(agenda: ProfessionalAgenda, mode: "HOME" | "ONLINE
   return result;
 }
 
-function pickableSlotValue(slot: PickableAgendaSlot): string {
+function pickableSlotValue(slot: Pick<PickableAgendaSlot, "date" | "startTime" | "endTime">): string {
   return `${slot.date}|${slot.startTime}-${slot.endTime}`;
 }
 
 function pickableSlotLabel(slot: PickableAgendaSlot): string {
   const date = new Date(`${slot.date}T00:00:00Z`);
   const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  if (slot.remaining === undefined) return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
   const seatsLabel = slot.remaining === 1 ? "1 posto libero" : `${slot.remaining} posti liberi`;
   return `${dateLabel} · ${slot.startTime}–${slot.endTime} (${seatsLabel})`;
 }
@@ -111,16 +121,19 @@ export function GuidedRequestForm({
   const modalitaParam = searchParams.get("modalita");
   const initialServiceMode = modalitaParam === "HOME" || modalitaParam === "ONLINE" ? modalitaParam : null;
 
-  // Quando si arriva dal profilo di un professionista SENZA una fascia già
-  // scelta (bottone generico "Richiedi un preventivo a [nome]", non il
-  // click su una singola pillola dell'agenda pubblica), offre comunque la
-  // possibilità di indicare un orario preferito tra quelli realmente
-  // liberi nella sua agenda — richiesta esplicita dell'utente. Solo le
-  // fasce "generiche" (capienza > 1) sono selezionabili qui: le fasce
-  // esatte sono prenotazione diretta istantanea, un flusso a parte
-  // (bookAgendaSlot) che non passa da una richiesta di preventivo.
+  // Quando si arriva dal profilo di un professionista — sia dal bottone
+  // generico "Richiedi un preventivo a [nome]" sia dal click diretto su una
+  // pillola dell'agenda pubblica — offre sempre la possibilità di scegliere
+  // (o cambiare) la data/orario dell'intervento tra quelli realmente liberi
+  // nella sua agenda, richiesta esplicita dell'utente: "se si è cliccato
+  // direttamente su un orario, inserisci già quell'orario... e dai la
+  // possibilità di modificarla sempre in base alle disponibilità aggiunte
+  // dal professionista". Nessuna fascia esclusa a priori (esatta o
+  // generica, vedi flattenPickableSlots sopra).
   const [pickableSlots, setPickableSlots] = useState<PickableAgendaSlot[]>([]);
-  const [selectedSlotValue, setSelectedSlotValue] = useState("");
+  // Inizializzato dalla fascia già bloccata in URL (click su una pillola
+  // dell'agenda pubblica), se presente — resta comunque modificabile.
+  const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
   // professionista già sa se può trattarsi di un intervento a domicilio o
   // online") — obbligatorio, stesso principio degli altri campi della
@@ -128,16 +141,22 @@ export function GuidedRequestForm({
   // Dichiarato qui (prima dell'effetto sotto, che lo referenzia) invece che
   // vicino agli altri stati del form.
   const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(initialServiceMode);
+  // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
+  // uno disponibile da scegliere — richiesta esplicita dell'utente.
+  const [showNoTimeWarning, setShowNoTimeWarning] = useState(false);
 
   useEffect(() => {
-    if (!professionalProfileId || preferredDate) return;
+    if (!professionalProfileId) return;
     apiClient
       .getProfessionalAgenda(professionalProfileId)
       .then((agenda) => setPickableSlots(flattenPickableSlots(agenda, serviceMode)))
       .catch(() => {});
-    setSelectedSlotValue("");
+    // Nessun reset di selectedSlotValue qui: al primo giro deve restare
+    // valorizzato dall'URL (se presente); ai cambi successivi di modalità
+    // ci pensa già il tasto A domicilio/Online stesso (vedi onPress sotto),
+    // un reset anche qui cancellerebbe il prefill dell'URL al primo render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [professionalProfileId, preferredDate, serviceMode]);
+  }, [professionalProfileId, serviceMode]);
 
   // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
   // sola volta appena `user` è disponibile: gli useState sopra sono
@@ -170,12 +189,21 @@ export function GuidedRequestForm({
     );
   }, [user]);
 
-  // Fascia effettivamente inviata: quella bloccata dall'URL ha sempre la
-  // precedenza (non è mai in conflitto, il picker sotto non viene mostrato
-  // in quel caso), altrimenti quella scelta nel nuovo selettore.
-  const [chosenDate, chosenTimeSlot] = selectedSlotValue ? (selectedSlotValue.split("|") as [string, string]) : [undefined, undefined];
-  const finalPreferredDate = preferredDate ?? chosenDate;
-  const finalPreferredTimeSlot = preferredTimeSlot ?? chosenTimeSlot;
+  // Fascia effettivamente inviata: sempre quella corrente nel selettore
+  // (inizializzata dall'URL se si è cliccata una pillola dell'agenda, ma
+  // sempre modificabile — vedi selectedSlotValue sopra).
+  const [finalPreferredDate, finalPreferredTimeSlot] = selectedSlotValue ? (selectedSlotValue.split("|") as [string, string]) : [undefined, undefined];
+  // Elenco mostrato nel selettore: le fasce reali già scaricate, più — solo
+  // finché il fetch non è ancora tornato o se per qualche motivo non compare
+  // tra quelle scaricate — la fascia arrivata dall'URL, così il selettore
+  // mostra sempre la fascia richiesta fin dal primo render invece di un
+  // momentaneo "Nessuna preferenza".
+  const urlSlot: PickableAgendaSlot | null =
+    preferredDate && preferredTimeSlot ? { date: preferredDate, startTime: preferredTimeSlot.split("-")[0]!, endTime: preferredTimeSlot.split("-")[1]! } : null;
+  const displaySlots =
+    urlSlot && !pickableSlots.some((s) => pickableSlotValue(s) === pickableSlotValue(urlSlot))
+      ? [urlSlot, ...pickableSlots]
+      : pickableSlots;
 
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
@@ -368,8 +396,9 @@ export function GuidedRequestForm({
     }
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(skipNoTimeConfirm = false) {
     setError(null);
+    setShowNoTimeWarning(false);
     if (!categorySlug) {
       setError("Seleziona una categoria.");
       return;
@@ -419,6 +448,14 @@ export function GuidedRequestForm({
     }
     if (photoUrls.length === 0) {
       setError("Aggiungi almeno una foto o un video.");
+      return;
+    }
+    // Avviso di conferma prima di inviare senza data/orario, solo quando
+    // c'era davvero una scelta disponibile da fare (altrimenti l'avviso non
+    // avrebbe senso: non c'è nulla che il cliente abbia "saltato") —
+    // richiesta esplicita dell'utente.
+    if (professionalProfileId && displaySlots.length > 0 && !finalPreferredDate && !skipNoTimeConfirm) {
+      setShowNoTimeWarning(true);
       return;
     }
 
@@ -599,7 +636,16 @@ export function GuidedRequestForm({
                   borderRadius="$10"
                   backgroundColor={active ? brand.cianografia : "transparent"}
                   cursor="pointer"
-                  onPress={() => setServiceMode(option.value)}
+                  onPress={() => {
+                    setServiceMode(option.value);
+                    // Un orario scelto per una modalità può non valere per
+                    // l'altra (fasce home/online indipendenti) — richiesta
+                    // esplicita dell'utente, "differenzia sempre se si è
+                    // partiti con una consulenza online": cambiare modalità
+                    // a mano azzera la scelta, il nuovo fetch sotto ripopola
+                    // il selettore con le fasce della modalità corretta.
+                    setSelectedSlotValue("");
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={option.label}
                 >
@@ -613,40 +659,14 @@ export function GuidedRequestForm({
           </XStack>
         </YStack>
 
-        {preferredDate && preferredTimeSlot ? (
+        {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
-            <FieldLabel>Fascia richiesta</FieldLabel>
-            <XStack
-              alignItems="center"
-              gap="$2"
-              alignSelf="flex-start"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              backgroundColor={brand.calce}
-              borderWidth={1}
-              borderColor={brand.ottone}
-              borderRadius="$2"
-            >
-              <Icon name="clock" size={16} color={brand.ottone} />
-              <Text color={brand.grafite} fontWeight="600">
-                {new Date(`${preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}
-                {" · "}
-                {preferredTimeSlot.replace("-", "–")}
-              </Text>
-            </XStack>
+            <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
             <Text fontSize="$2" color={brand.grafite70}>
-              Questa è una fascia a capienza limitata: la richiesta non prenota subito l&apos;orario, il professionista ti
-              risponderà con un preventivo.
-            </Text>
-          </YStack>
-        ) : null}
-
-        {!preferredDate && professionalProfileId && pickableSlots.length > 0 ? (
-          <YStack gap="$2">
-            <FieldLabel>Orario preferito (facoltativo)</FieldLabel>
-            <Text fontSize="$2" color={brand.grafite70}>
-              Scegli un orario tra quelli liberi nell&apos;agenda del professionista, oppure lascia senza preferenza:
-              risponderà comunque con un preventivo.
+              {preferredDate && preferredTimeSlot
+                ? "Hai scelto questo orario dall'agenda del professionista — puoi cambiarlo qui, sempre tra quelli davvero liberi."
+                : "Scegli un orario tra quelli liberi nell'agenda del professionista, oppure lascia senza preferenza."}{" "}
+              La richiesta non prenota subito l&apos;orario: il professionista ti risponderà con un preventivo.
             </Text>
             <select
               value={selectedSlotValue}
@@ -662,12 +682,31 @@ export function GuidedRequestForm({
               }}
             >
               <option value="">Nessuna preferenza di orario</option>
-              {pickableSlots.map((slot) => (
+              {displaySlots.map((slot) => (
                 <option key={pickableSlotValue(slot)} value={pickableSlotValue(slot)}>
                   {pickableSlotLabel(slot)}
                 </option>
               ))}
             </select>
+            {showNoTimeWarning ? (
+              <YStack gap="$2" padding="$3" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={radiusDoc}>
+                <Text fontSize="$3" fontWeight="700" color={brand.urgenza}>
+                  Vuoi davvero inviare la richiesta senza indicare data e orario?
+                </Text>
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Il professionista ha degli orari liberi in agenda: se non ne scegli uno dovrà proporti lui una data nel
+                  preventivo.
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  <Button variant="urgent" size="$3" onPress={() => handleSubmit(true)} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+                    {isSubmitting ? submittingLabel : "Sì, invia senza data e orario"}
+                  </Button>
+                  <Button variant="ghost" size="$3" onPress={() => setShowNoTimeWarning(false)}>
+                    Annulla, scelgo un orario
+                  </Button>
+                </XStack>
+              </YStack>
+            ) : null}
           </YStack>
         ) : null}
 
@@ -856,7 +895,7 @@ export function GuidedRequestForm({
 
         <Button
           variant={isUrgent ? "urgent" : "primary"}
-          onPress={handleSubmit}
+          onPress={() => handleSubmit()}
           disabled={isSubmitting || isUploadingPhoto}
           opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
         >
