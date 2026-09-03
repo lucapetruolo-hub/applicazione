@@ -301,7 +301,7 @@ export default function DashboardAgendaPage() {
     );
   }
 
-  if (user.role !== "PROFESSIONAL") {
+  if (!user.isProfessional) {
     return (
       <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">

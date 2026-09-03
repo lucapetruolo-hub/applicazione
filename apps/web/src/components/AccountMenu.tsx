@@ -24,27 +24,27 @@ export function AccountMenu() {
 
   if (!user) return null;
 
-  const items = getAccountMenuItems(user.role);
+  const items = getAccountMenuItems(user.isProfessional);
 
   // Richiesta esplicita dell'utente: un professionista è identificato dalla
   // propria attività, non dal nome dell'intestatario dell'account — un
   // cliente vede invece sempre il proprio nome come prima. `businessName`
   // resta `null` per un professionista che non ha ancora creato il
   // profilo (subito dopo la registrazione): ricade sul nome personale
-  // finché non lo fa, invece di mostrare un'etichetta vuota.
-  const displayName =
-    user.role === "PROFESSIONAL" ? user.businessName ?? user.name ?? user.email : user.name ?? user.phone ?? user.email;
+  // finché non lo fa, invece di mostrare un'etichetta vuota. `isProfessional`
+  // (non `role`) regge anche un admin promosso che aveva già un profilo.
+  const displayName = user.isProfessional ? user.businessName ?? user.name ?? user.email : user.name ?? user.phone ?? user.email;
   // Richiesta esplicita dell'utente: l'icona in alto a destra mostra
   // l'immagine profilo pubblica del professionista (ProfessionalProfile.
   // imageUrl) quando disponibile, non le sole iniziali — `user.imageUrl`
   // (User.imageUrl) resta sempre null per un professionista, l'upload in
   // /account è disabilitato per quel ruolo.
-  const displayImageUrl = user.role === "PROFESSIONAL" ? user.businessImageUrl ?? user.imageUrl : user.imageUrl;
+  const displayImageUrl = user.isProfessional ? user.businessImageUrl ?? user.imageUrl : user.imageUrl;
 
   // Numeretto per voce di menu (richiesta esplicita dell'utente: oltre al
   // totale accanto al nome, deve comparire anche sulla voce del sottomenu
   // che porta alla pagina con la novità, es. "Dashboard"/"Le mie visite").
-  const menuUnreadCounts = accountMenuUnreadCounts(user.role, unreadNotifications);
+  const menuUnreadCounts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
 
   return (
     <YStack ref={containerRef} position="relative">

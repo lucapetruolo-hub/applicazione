@@ -186,6 +186,16 @@ export type CurrentUser = {
   surname: string | null;
   birthDate: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+  /**
+   * Vero se l'account gestisce un profilo professionista, a prescindere dal
+   * `role` corrente — un professionista promosso ad ADMIN mantiene il
+   * proprio `ProfessionalProfile` (la promozione tocca solo `role`), quindi
+   * questo resta `true` per lui mentre `role === "PROFESSIONAL"` da solo non
+   * lo sarebbe più. Unica fonte di verità per mostrare/nascondere
+   * dashboard/agenda/profilo pubblico: preferire sempre questo a
+   * `role === "PROFESSIONAL"`.
+   */
+  isProfessional: boolean;
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;

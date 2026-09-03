@@ -134,11 +134,11 @@ export function MegaMenu() {
                 ) : null}
                 {!isLoading && user ? (
                   <Link
-                    href={user.role === "PROFESSIONAL" ? "/dashboard" : "/le-mie-richieste"}
+                    href={user.isProfessional ? "/dashboard" : "/le-mie-richieste"}
                     className="mega-navlink mega-navlink-strong"
                     onClick={() => setMobileOpen(false)}
                   >
-                    {user.role === "PROFESSIONAL" ? "La mia dashboard" : "Le mie richieste"}
+                    {user.isProfessional ? "La mia dashboard" : "Le mie richieste"}
                   </Link>
                 ) : null}
               </div>

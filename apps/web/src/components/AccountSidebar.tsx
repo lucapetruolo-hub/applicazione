@@ -12,7 +12,7 @@ export function AccountSidebar() {
 
   if (!user) return null;
 
-  const items = getAccountMenuItems(user.role);
+  const items = getAccountMenuItems(user.isProfessional);
 
   return (
     <YStack width={220} gap="$1" flexShrink={0}>
@@ -27,7 +27,7 @@ export function AccountSidebar() {
         {/* Intestazione diversa per ruolo: per il cliente la prima voce del
             menu è già "Impostazioni dell'account", ripeterla qui creava una
             duplicazione confusa (segnalata nel tour pre-lancio). */}
-        {user.role === "PROFESSIONAL" ? "Area professionista" : "Il tuo account"}
+        {user.isProfessional ? "Area professionista" : "Il tuo account"}
       </Text>
       {items.map((item) => {
         const active = pathname === item.href;

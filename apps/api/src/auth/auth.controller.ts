@@ -101,8 +101,18 @@ export class AuthController {
     province: string | null;
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
+    // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
+    // admin una email scompare il campo agenda dal suo menu"): promuovere un
+    // professionista ad ADMIN (AdminService.promoteToAdmin) sovrascrive
+    // `role` a "ADMIN" — il `ProfessionalProfile` collegato resta intatto sul
+    // DB (la promozione non lo tocca), ma ogni punto che leggeva
+    // `role === "PROFESSIONAL"` per decidere se mostrare la dashboard/agenda/
+    // profilo pubblico smetteva di trovarlo, come se il professionista avesse
+    // perso il proprio profilo. La query va quindi tentata per qualunque
+    // ruolo diverso da CLIENT (un CLIENT non ha mai un ProfessionalProfile
+    // per costruzione), non solo per PROFESSIONAL.
     const professionalProfile =
-      role === "PROFESSIONAL"
+      role !== "CLIENT"
         ? await this.prisma.professionalProfile.findUnique({ where: { userId: id }, select: { businessName: true, imageUrl: true } })
         : null;
     return {
@@ -113,6 +123,15 @@ export class AuthController {
       surname,
       birthDate,
       role,
+      // Vero per un account PROFESSIONAL "normale" (anche senza ancora un
+      // profilo creato — un professionista appena registrato deve poter
+      // raggiungere /dashboard/profilo per crearne uno, esattamente come
+      // prima), oppure per un ADMIN che ne aveva già uno al momento della
+      // promozione. Non basta "il profilo esiste": un ADMIN promosso da un
+      // CLIENT (mai stato professionista) deve restare fuori, altrimenti
+      // baserebbe l'accesso alla dashboard su un side-effect della query
+      // invece che sul suo status reale.
+      isProfessional: role === "PROFESSIONAL" || (role === "ADMIN" && professionalProfile !== null),
       hasPassword: Boolean(passwordHash),
       imageUrl,
       businessName: professionalProfile?.businessName ?? null,

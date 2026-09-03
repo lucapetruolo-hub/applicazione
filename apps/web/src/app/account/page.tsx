@@ -285,7 +285,7 @@ export default function AccountPage() {
               mostrata pubblicamente sul profilo/nei risultati di ricerca.
               Richiesta esplicita dell'utente.
             */}
-            {user.role !== "PROFESSIONAL" ? (
+            {!user.isProfessional ? (
               <FieldRow label="Immagine profilo">
                 <XStack alignItems="center" gap="$3">
                   <YStack

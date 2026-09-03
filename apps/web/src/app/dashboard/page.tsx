@@ -460,7 +460,7 @@ function DashboardContent() {
     );
   }
 
-  if (user.role !== "PROFESSIONAL") {
+  if (!user.isProfessional) {
     return (
       <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
         <Text color={brand.grafite70}>Questa sezione è riservata ai professionisti.</Text>

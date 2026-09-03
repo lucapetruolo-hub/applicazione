@@ -34,9 +34,9 @@ function AccediForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  function destinationAfterLogin(role: "CLIENT" | "PROFESSIONAL" | "ADMIN" | undefined) {
+  function destinationAfterLogin(isProfessional: boolean | undefined) {
     if (explicitRedirect) return explicitRedirect;
-    return role === "PROFESSIONAL" ? "/dashboard" : "/";
+    return isProfessional ? "/dashboard" : "/";
   }
 
   async function handleLogin() {
@@ -51,7 +51,7 @@ function AccediForm() {
     try {
       const { token } = await apiClient.login(result.data.email, result.data.password);
       const currentUser = await login(token);
-      router.push(destinationAfterLogin(currentUser?.role));
+      router.push(destinationAfterLogin(currentUser?.isProfessional));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -71,7 +71,7 @@ function AccediForm() {
       // createIfMissing resta true (comportamento di default).
       const { token } = await apiClient.verifyGoogle(idToken, undefined, false);
       const currentUser = await login(token);
-      router.push(destinationAfterLogin(currentUser?.role));
+      router.push(destinationAfterLogin(currentUser?.isProfessional));
     } catch (err) {
       if (err instanceof Error && err.message === "Nessun account trovato con questa email.") {
         router.push("/registrati?motivo=nessun-account");

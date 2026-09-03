@@ -35,7 +35,7 @@ export function PerProfessionistiContent({ plans }: { plans: typeof SUBSCRIPTION
       router.push("/registrati?ruolo=professionista");
       return;
     }
-    if (user.role !== "PROFESSIONAL") {
+    if (!user.isProfessional) {
       setError("Il tuo account è registrato come cliente: iscriviti come professionista con un'altra email.");
       return;
     }

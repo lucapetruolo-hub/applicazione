@@ -106,11 +106,11 @@ export function SiteHeader() {
               cliente, non pertinente per chi gestisce il proprio profilo
               professionale. `isLoading` va controllato qui esplicitamente
               (bug reale): mentre l'autenticazione è ancora in corso `user`
-              è `null`/`undefined`, quindi `user?.role !== "PROFESSIONAL"`
+              è `null`/`undefined`, quindi `!user?.isProfessional`
               risultava vero per un istante anche per un professionista già
               loggato, facendo comparire il bottone per un breve lampo ad
               ogni caricamento di pagina prima di sparire. */}
-          {!isLoading && user?.role !== "PROFESSIONAL" ? (
+          {!isLoading && !user?.isProfessional ? (
             <Link href="/preventivo" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena

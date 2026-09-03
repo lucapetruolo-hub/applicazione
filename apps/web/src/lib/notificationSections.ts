@@ -109,14 +109,11 @@ export function unreadQuoteIds(notifications: UnreadNotification[]): Set<string>
  * coperte da professionalSectionCounts/clientSectionCounts sopra), quindi
  * la mappa è {"href": count} con una sola voce diversa da zero.
  */
-export function accountMenuUnreadCounts(role: "CLIENT" | "PROFESSIONAL" | "ADMIN", notifications: UnreadNotification[]): Record<string, number> {
-  if (role === "PROFESSIONAL") {
+export function accountMenuUnreadCounts(isProfessional: boolean, notifications: UnreadNotification[]): Record<string, number> {
+  if (isProfessional) {
     const { richieste, lavori } = professionalSectionCounts(notifications);
     return { "/dashboard": richieste + lavori };
   }
-  if (role === "CLIENT") {
-    const { richieste, lavori } = clientSectionCounts(notifications);
-    return { "/le-mie-richieste": richieste + lavori };
-  }
-  return {};
+  const { richieste, lavori } = clientSectionCounts(notifications);
+  return { "/le-mie-richieste": richieste + lavori };
 }
