@@ -197,9 +197,17 @@ export function GuidedRequestForm({
   // finché il fetch non è ancora tornato o se per qualche motivo non compare
   // tra quelle scaricate — la fascia arrivata dall'URL, così il selettore
   // mostra sempre la fascia richiesta fin dal primo render invece di un
-  // momentaneo "Nessuna preferenza".
+  // momentaneo "Nessuna preferenza". Bug reale corretto: la fascia dall'URL
+  // è legata a `initialServiceMode` (la modalità del tab da cui si è
+  // cliccata la pillola in agenda) — mostrarla anche dopo che l'utente ha
+  // cambiato modalità la faceva "trapelare" nel selettore dell'altra
+  // modalità (es. una fascia A domicilio ancora elencata sotto Online),
+  // quindi si applica solo finché `serviceMode` non è stato cambiato
+  // rispetto a quello iniziale.
   const urlSlot: PickableAgendaSlot | null =
-    preferredDate && preferredTimeSlot ? { date: preferredDate, startTime: preferredTimeSlot.split("-")[0]!, endTime: preferredTimeSlot.split("-")[1]! } : null;
+    preferredDate && preferredTimeSlot && serviceMode === initialServiceMode
+      ? { date: preferredDate, startTime: preferredTimeSlot.split("-")[0]!, endTime: preferredTimeSlot.split("-")[1]! }
+      : null;
   const displaySlots =
     urlSlot && !pickableSlots.some((s) => pickableSlotValue(s) === pickableSlotValue(urlSlot))
       ? [urlSlot, ...pickableSlots]
