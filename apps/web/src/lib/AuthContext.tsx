@@ -71,10 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       setToken(currentUser ? currentToken : null);
       return currentUser;
-    } catch {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-      setUser(null);
-      setToken(null);
+    } catch (err) {
+      // Bug reale trovato da un agente di verifica: un fetch fallito a
+      // livello di rete (offline, richiesta interrotta perché l'utente ha
+      // navigato altrove prima che /auth/me rispondesse — `TypeError` o
+      // `AbortError`, mai un vero 401) veniva trattato esattamente come un
+      // token non valido, disconnettendo silenziosamente un utente con una
+      // sessione perfettamente valida solo per sfortuna di tempistica. Solo
+      // una risposta HTTP che l'API ha davvero dato (qui `request()` lancia
+      // un `Error` generico con lo status nel messaggio, mai un `TypeError`/
+      // `AbortError`) significa "il token non è più valido" — un fallimento
+      // di rete lascia lo stato invariato, il prossimo tentativo (poll,
+      // ricarica, navigazione) riproverà da solo.
+      const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
+      if (!isNetworkFailure) {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        setUser(null);
+        setToken(null);
+      }
       return null;
     }
   }, []);

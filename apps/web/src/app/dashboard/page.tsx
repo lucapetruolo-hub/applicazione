@@ -25,6 +25,7 @@ import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import {
+  combineUnreadCounts,
   mergeCounts,
   mergeIds,
   professionalSectionCounts,
@@ -32,6 +33,7 @@ import {
   unreadBookingIds,
   unreadGuidedRequestCounts,
   unreadGuidedRequestIds,
+  unreadThreadCounts,
 } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
@@ -279,6 +281,16 @@ function DashboardContent() {
   // "Nuovo" già esistente.
   const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
   const [bookingUnreadCounts, setBookingUnreadCounts] = useState<Map<string, number>>(new Map());
+  // Bug reale trovato da un agente di verifica: un messaggio di chat su un
+  // lavoro già accettato non accendeva mai il pallino di AcceptedJobCard,
+  // perché quel pallino leggeva solo `bookingUnreadCounts` (chiave
+  // `bookingId`) mentre un messaggio di chat porta solo
+  // `guidedRequestId`+`professionalProfileId` nel payload — mai `bookingId`.
+  // Chiave composita `guidedRequestId:professionalProfileId` (stessa già in
+  // uso in /le-mie-richieste per "Inviata a"), sommata a bookingUnreadCounts
+  // via combineUnreadCounts (mai lo stesso evento contato due volte, vedi
+  // il commento su combineUnreadCounts).
+  const [threadUnreadCounts, setThreadUnreadCounts] = useState<Map<string, number>>(new Map());
   const [profileMissing, setProfileMissing] = useState(false);
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
@@ -368,6 +380,7 @@ function DashboardContent() {
           setNewBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
           setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
+          setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
         })
         .catch(() => {})
         .finally(() => markNotificationsRead());
@@ -661,7 +674,10 @@ function DashboardContent() {
                     token={token}
                     onUpdated={reloadBookings}
                     isNew={newBookingIds.has(booking.id)}
-                    unreadCount={bookingUnreadCounts.get(booking.id)}
+                    unreadCount={combineUnreadCounts(
+                      bookingUnreadCounts.get(booking.id),
+                      booking.guidedRequestId && myProfileId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${myProfileId}`) : undefined,
+                    )}
                     myProfileId={myProfileId}
                   />
                 ))}

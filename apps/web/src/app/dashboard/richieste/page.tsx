@@ -983,10 +983,11 @@ function RequestCard({
                         </XStack>
                       </a>
                     ) : null}
-                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline}>
+                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
                       <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
                         Chat
                       </Text>
+                      <UnreadDot count={effectiveUnreadCount} />
                     </XStack>
                   </XStack>
                 </>
@@ -1123,7 +1124,12 @@ function RequestCard({
                   Invia preventivo
                 </Button>
                 <Button variant="ghost" size="$3" onPress={openTimeline}>
-                  Rispondi
+                  <XStack alignItems="center" gap="$1">
+                    <Text fontFamily="$body" fontWeight="600" fontSize="$3">
+                      Rispondi
+                    </Text>
+                    <UnreadDot count={effectiveUnreadCount} />
+                  </XStack>
                 </Button>
                 {!confirmingDecline ? (
                   <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(true)}>
@@ -1202,7 +1208,12 @@ function RequestCard({
                   Proponi altra data
                 </Button>
                 <Button variant="primary" size="$3" onPress={openTimeline}>
-                  Rispondi
+                  <XStack alignItems="center" gap="$1">
+                    <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
+                      Rispondi
+                    </Text>
+                    <UnreadDot count={effectiveUnreadCount} />
+                  </XStack>
                 </Button>
                 <Button variant="ghost" size="$3" disabled={isRejectingDate} onPress={handleRejectDate}>
                   <Text color={brand.grafite70} fontSize="$3">

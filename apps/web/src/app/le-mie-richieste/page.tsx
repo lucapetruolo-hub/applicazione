@@ -27,6 +27,7 @@ import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import {
   clientSectionCounts,
+  combineUnreadCounts,
   mergeCounts,
   mergeIds,
   unreadBookingCounts,
@@ -443,7 +444,10 @@ function LeMieRichiesteContent() {
                     token={token}
                     onReviewed={reload}
                     isNew={newClientBookingIds.has(booking.id)}
-                    unreadCount={bookingUnreadCounts.get(booking.id)}
+                    unreadCount={combineUnreadCounts(
+                      bookingUnreadCounts.get(booking.id),
+                      booking.guidedRequestId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${booking.professionalProfileId}`) : undefined,
+                    )}
                   />
                 ))
               )}
@@ -1088,7 +1092,7 @@ function GuidedRequestCard({
               guidedRequestId={request.id}
               serviceMode={request.serviceMode}
               isNew={newQuoteIds?.has(quote.id)}
-              unreadCount={quoteUnreadCounts?.get(quote.id)}
+              unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
             />
           ))}
         </YStack>

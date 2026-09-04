@@ -187,6 +187,27 @@ export function mergeIds(base: Set<string>, extra: Set<string>): Set<string> {
 }
 
 /**
+ * Somma più conteggi non letti provenienti da mappe diverse (bug reale
+ * trovato da un agente di verifica: `AcceptedJobCard`/`BookingRow` erano
+ * cablati solo su `unreadBookingCounts`/`unreadQuoteCounts`, che indicizzano
+ * per `bookingId`/`quoteId` — ma un messaggio di chat
+ * (`TIMELINE_MESSAGE_FROM_CLIENT`/`FROM_PROFESSIONAL`) porta solo
+ * `guidedRequestId`+`professionalProfileId` nel payload, mai `bookingId`/
+ * `quoteId`: il pallino non si accendeva mai per un nuovo messaggio su un
+ * lavoro già accettato o su un preventivo). Sicuro contro il doppio
+ * conteggio: nessun tipo di notifica porta contemporaneamente `bookingId`/
+ * `quoteId` E la coppia `guidedRequestId`+`professionalProfileId` usata da
+ * `unreadThreadCounts` (verificato sui punti di notify esistenti — solo
+ * `LEAD_DECLINED`/`TIMELINE_MESSAGE_*` portano quella coppia, nessuno dei
+ * due porta anche `bookingId`/`quoteId`), quindi sommare le mappe non
+ * duplica mai lo stesso evento.
+ */
+export function combineUnreadCounts(...counts: (number | undefined)[]): number | undefined {
+  const total = counts.reduce((sum: number, c) => sum + (c ?? 0), 0);
+  return total > 0 ? total : undefined;
+}
+
+/**
  * Numeretto per voce del menu account (AccountMenu, header) — richiesta
  * esplicita dell'utente: oltre al totale accanto al nome, il numero deve
  * comparire anche sulla voce di menu che porta alla pagina con la novità

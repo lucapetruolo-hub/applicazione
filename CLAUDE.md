@@ -7218,9 +7218,70 @@ cambio successivo).
 
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `api`, `web`, `mobile`), build di produzione `apps/web` verde (29 route,
-`/chat` nuova). Verifica end-to-end con un agente Playwright contro l'API
-locale reale avviata separatamente (non solo typecheck/build, stesso
-principio già seguito per ogni giro precedente) — un primo tentativo
-interrotto da un limite di utilizzo della sessione (non un bug), rilanciato:
-esito da riportare qui in un aggiornamento successivo di questa sezione,
-insieme all'eventuale correzione di bug reali trovati.
+`/chat` nuova). Verificato end-to-end con un agente Playwright contro
+l'API locale reale (non solo typecheck/build) — Feature 1 (chat in tempo
+reale), Feature 3 (data manuale + chip "In attesa") e Feature 4 (inbox
+`/chat`) tutte confermate PASS con evidenza concreta (tempi di consegna
+messaggio in tempo reale misurati a 1,19s/1,59s tra le due direzioni,
+`GET /professionals/me/leads` con `estimatedStartDate`/`estimatedEndDate`
+identici a quanto digitato a mano, chip "In attesa" sostituita
+correttamente da una prenotazione reale dopo l'accettazione, righe
+`/chat` verificate contro `GET /guided-requests/:id/timeline` come
+riferimento). Zero errori console/pageerror, zero overflow orizzontale a
+1280px/390px in tutti i flussi.
+
+**Tre bug reali trovati dall'agente sui pallini "Contatta/Cronologia" e
+corretti nello stesso giro** (Feature 2, "pallini live"):
+1. `RequestCard` (`/dashboard/richieste`) non mostrava mai `<UnreadDot>`
+   negli stadi `da_quotare`/`modifica_richiesta` — il dato
+   (`leadUnreadCounts`) era già corretto, mancava solo il render in due
+   dei quattro stadi (il bottone "Chat" nella sezione "Dettagli cliente" e
+   i due bottoni "Rispondi"). Aggiunto `<UnreadDot count=
+   {effectiveUnreadCount} />` in tutti e tre i punti mancanti.
+2. **`AcceptedJobCard`** (`/dashboard`) **e `BookingRow`**
+   (`/le-mie-richieste`) non si accendevano mai per un nuovo messaggio di
+   chat su un lavoro già accettato — erano cablati solo su
+   `bookingUnreadCounts`/`unreadBookingCounts` (chiave `bookingId`), ma le
+   notifiche `TIMELINE_MESSAGE_FROM_CLIENT`/`FROM_PROFESSIONAL` portano
+   nel payload solo `guidedRequestId`+`professionalProfileId`, mai
+   `bookingId`.
+3. **`QuoteCard`** (`/le-mie-richieste`) stesso problema, con
+   `quoteUnreadCounts`/`unreadQuoteCounts` (chiave `quoteId`) al posto di
+   `bookingUnreadCounts`.
+   
+   Corretti tutti e tre con lo stesso principio: una nuova mappa
+   `threadUnreadCounts` (chiave composita `guidedRequestId:
+   professionalProfileId`, dallo helper già esistente `unreadThreadCounts`
+   — usato finora solo per la sezione "Inviata a") sommata al conteggio
+   già esistente tramite un nuovo helper `combineUnreadCounts`
+   (`apps/web/src/lib/notificationSections.ts`) — sicuro contro il doppio
+   conteggio perché nessun tipo di notifica porta contemporaneamente
+   `bookingId`/`quoteId` **e** la coppia `guidedRequestId`+
+   `professionalProfileId` (verificato su tutti i punti di `notify()`
+   esistenti in `apps/api/src`: solo `LEAD_DECLINED` e i due
+   `TIMELINE_MESSAGE_*` portano quella coppia, nessuno dei due porta anche
+   `bookingId`/`quoteId`). Per `AcceptedJobCard` la chiave usa
+   `myProfileId` (il professionista guarda sempre e solo il proprio
+   thread); per `BookingRow`/`QuoteCard` usa `booking.professionalProfileId`/
+   `quote.professionalProfileId`, già esposti su `ClientBooking`/
+   `ClientGuidedRequest.quotes[]`.
+
+**Bug incidentale trovato dall'agente fuori scope, corretto nello stesso
+giro perché reale e a basso rischio**: `AuthContext.loadUser`
+(`apps/web/src/lib/AuthContext.tsx`) trattava qualunque errore di
+`apiClient.me()` — inclusi un fallimento di rete (`TypeError`) o una
+richiesta interrotta dalla navigazione (`AbortError`, es. un utente che
+clicca un link subito dopo il caricamento della pagina, prima che
+`/auth/me` risponda) — esattamente come un token non valido, cancellando
+il JWT salvato e disconnettendo silenziosamente una sessione perfettamente
+valida solo per sfortuna di tempistica (riprodotto in modo affidabile
+dall'agente con navigazioni ravvicinate). Corretto distinguendo l'errore:
+solo un `Error` "vero" (una risposta HTTP non-2xx effettivamente ricevuta
+dall'API, l'unico caso in cui `packages/api-client`'s `request()` lancia
+un errore che non sia `TypeError`/`DOMException`) disconnette l'utente —
+un fallimento di rete/richiesta interrotta lascia lo stato invariato,
+il prossimo tentativo (poll, ricarica, navigazione) riprova da solo.
+
+Tutti e quattro i fix (tre pallini + AuthContext) riverificati con un
+secondo giro di agente Playwright end-to-end mirato: [aggiornato dopo il
+completamento].
