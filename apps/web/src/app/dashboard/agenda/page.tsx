@@ -1374,6 +1374,9 @@ export default function DashboardAgendaPage() {
           onSaveMeetingLink={handleSaveMeetingLink}
           isSavingMeetingLink={isSavingMeetingLink}
           onOpenTimeline={selectedBooking.guidedRequestId ? () => setShowBookingTimeline(true) : undefined}
+          onOpenFullRequest={
+            selectedBooking.guidedRequestId ? () => router.push(`/dashboard/richieste?open=${selectedBooking.guidedRequestId}`) : undefined
+          }
         />
       ) : null}
 

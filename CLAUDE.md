@@ -7299,3 +7299,181 @@ caricamento — che il token NON viene più cancellato da un fallimento di
 rete/richiesta interrotta (il codice precedente lo avrebbe cancellato), con
 recupero automatico della sessione al tentativo successivo andato a buon
 fine. Zero regressioni trovate.
+
+---
+
+## 47. Deep link chat→richiesta, chat che non torna più in cima, bottoni "vai alla richiesta completa", cliente cliccabile in agenda, data manuale anche nella modifica/controproposta
+
+Sei richieste esplicite dell'utente, stesso giro di lavoro successivo al
+§46 (chat in tempo reale, pallini live, data manuale nel primo preventivo,
+inbox "Chat").
+
+**Deep link da `/chat` alla richiesta/preventivo** — richiesta esplicita
+dell'utente: "nella pagina chat dai la possibilità di andare alla pagina
+del preventivo/informazioni di quella determinata chat". Ogni riga di
+`/chat` (`apps/web/src/app/chat/page.tsx`) ha ora, oltre al click che apre
+`TimelineModal`, un piccolo bottone icona quadrato a destra (`file-text`,
+`stopPropagation` per non aprire anche il popup — stesso pattern già in
+uso in `ProfessionalCard.tsx`) che naviga a
+`/dashboard/richieste?open=<guidedRequestId>` (professionista) o
+`/le-mie-richieste?open=<guidedRequestId>` (cliente), tramite un nuovo
+helper `requestDestination(thread)` basato su `viewerRole`. Entrambe le
+pagine di destinazione hanno guadagnato supporto al deep-link
+(`?open=<id>`): un nuovo `useEffect` (avvolto in `<Suspense>` per
+`useSearchParams`, gotcha ricorrente già documentato altrove in questo
+file) trova la card corrispondente, la espande, seleziona la tab/pagina di
+paginazione giusta e scorre fino a lì (`scrollIntoView`). In
+`le-mie-richieste/page.tsx` l'effetto è stato posizionato **prima** dei
+`return` anticipati di `isLoading`/`!user` (violazione delle Rules of
+Hooks altrimenti — gli stessi `sortedRequests`/`visibleRequests` usati
+altrove sono calcolati dopo quei guard, quindi l'effetto ricalcola
+filtro/ordinamento a mano con l'helper già esistente `sortListItems`
+invece di dipendere da quei valori memoizzati).
+
+**Bug reale: la chat torna in cima da sola durante una conversazione
+lunga** — segnalato dall'utente: "quando si tiene aperta la chat ed è
+lunga e viene visualizzata la parte inferiore della chat ritorna
+automaticamente alla parte superiore". Causa reale in
+`TimelineModal.tsx`: il confronto "niente di nuovo, non fare nulla" nel
+poll (§46) era `freshLastId === lastEventIdRef.current && fresh.length ===
+(events?.length ?? 0)` — la seconda metà confrontava contro `events`, uno
+stato letto dentro la closure del `setInterval` creato dall'effetto, mai
+incluso nel suo array di dipendenze: quel valore restava **permanentemente
+a `0`/`null`** per tutta la vita del componente (closure stale), quindi
+ogni singolo tick da 4s (§46) chiamava comunque `setEvents(fresh)` — non
+per una modifica reale, solo per il confronto rotto — ri-innescando ad
+ogni giro l'effetto di auto-scroll, che riportava sempre la vista in cima
+prima che l'utente riuscisse a leggere in fondo. Corretto rimuovendo del
+tutto il secondo confronto: `if (freshLastId === lastEventIdRef.current)
+return;` — un `ref` non è mai stale, e i messaggi in questa app non
+vengono mai modificati/cancellati, quindi il solo confronto sull'ultimo id
+è sufficiente e corretto.
+
+**`TimelineModal` reso più fruibile mobile+desktop** — richiesta
+immediatamente successiva dell'utente ("rendendola più fruibile sia da
+mobile che desktop"), risolta insieme al bug sopra riscrivendo la
+struttura: il backdrop non è più `overflow-y:"auto"` con contenuto
+potenzialmente più alto del viewport (causa strutturale del bug §35 già
+corretto altrove, qui prevenuta anziché rincorsa); la card ha ora
+`maxHeight="85vh"` + `overflow="hidden"`, divisa in tre blocchi con
+`flexShrink={0}` su header e footer e un nuovo `<div>` centrale
+`flex:1 overflowY:"auto" minHeight:0` (il classico reset necessario perché
+un figlio flex rispetti `overflow` senza quello, altrimenti ignorato) che
+contiene solo i messaggi — header (titolo+chiudi) e footer (form di invio)
+restano sempre visibili a schermo, mai scorrono via, indipendentemente da
+quanto è lunga la conversazione.
+
+**Bottone "Vai alla richiesta completa" nel dettaglio prenotazione
+dell'agenda** — richiesta esplicita dell'utente: "quando nell'agenda si
+clicca su una prenotazione... dai la possibilità tramite pulsante di
+portarlo sulla richiesta completa". `BookingDetailPanel.tsx` guadagna una
+nuova prop opzionale `onOpenFullRequest` (distinta da `onOpenTimeline`,
+già esistente per "Contatta/Cronologia" — un bottone porta alla chat, l'altro
+alla pagina intera della richiesta), resa come bottone aggiuntivo
+("Vai alla richiesta completa", icona `chevron-right`) nella stessa riga
+del bottone cronologia quando presente. `/dashboard/agenda/page.tsx` la
+passa solo quando la prenotazione ha un `guidedRequestId`
+(`router.push(\`/dashboard/richieste?open=${...}\`)`, riusa lo stesso
+deep-link introdotto sopra per `/chat`).
+
+**Nome cliente visibilmente cliccabile** — richiesta esplicita dell'utente:
+"il cliente deve avere ben visibile che è cliccabile il nome del cliente
+per visualizzare le informazioni come il rating" — riferito al nome del
+professionista mostrato al cliente nelle proprie richieste/preventivi (il
+professionista, non il cliente, ha un profilo pubblico con rating —
+coerente col resto del prodotto). Il testo semplice è sostituito da uno
+stile esplicito da link (`brand.cianografia`, sottolineato, icona
+`chevron-right`, `accessibilityRole="button"`) nella sezione "Dettagli
+cliente"/intestazione del preventivo su `/dashboard/richieste`.
+
+**Data manuale anche nella "modifica"/controproposta del professionista**
+— richiesta esplicita dell'utente, in due messaggi consecutivi: "ogni
+volta che il professionista clicca su proponi un'altra data gli si deve
+dare la possibilità di inserire un gruppo data orario che non è presente
+in agenda, che poi verrà sempre inserita come detto in precedenza" +
+"quindi visualizzabile in agenda come in attesa" — estende ai flussi di
+trattativa (`counterProposeDate`, usato quando il professionista risponde
+a una data proposta dal cliente con "Modifica") lo stesso principio già
+introdotto per il primo invio del preventivo (§46), che lì non richiedeva
+alcun cambiamento server-side (`createOrUpdate` non ha mai validato contro
+l'agenda). Qui invece serviva un cambiamento reale: sia `proposeDate`
+(cliente) sia `counterProposeDate` (professionista) chiamano
+`resolveFreeExactSlot`, che **rifiuta sempre** un orario senza un
+`AvailabilitySlot` corrispondente (`BadRequestException`).
+- **Bypass mirato per la ri-affermazione della propria proposta
+  (`proposeDate`, lato cliente)** — scoperto investigando l'item
+  "picker del cliente": un cliente che voleva ri-selezionare esattamente
+  la stessa data manuale già proposta dal professionista (per aggiungere
+  solo una nota, es.) avrebbe sempre fallito, perché quella data non è
+  mai stata backed da uno slot. Nuovo controllo `isSameAsCurrentProposal`
+  (confronto diretto su `quote.estimatedStartDate`/`EndDate`): se il
+  cliente ripropone esattamente il valore attuale, si salta del tutto
+  `resolveFreeExactSlot` e si riusano i valori esistenti — nessun nuovo
+  controllo di capienza necessario (l'orario non viene "riprenotato", solo
+  riaffermato). `startChoosingDate()` (`le-mie-richieste/page.tsx`,
+  `QuoteCard`) inietta ora anche la proposta corrente nell'elenco delle
+  opzioni selezionabili se non coincide già con una fascia reale
+  dell'agenda pubblica, etichettata "(proposta attuale)".
+- **Libertà piena per `counterProposeDate` (lato professionista)** — a
+  differenza del cliente (che sceglie sempre tra fasce reali o riafferma
+  quella esistente), qui l'utente ha chiesto la stessa libertà di inserimento
+  manuale già data al primo invio: nuovo campo opzionale
+  `isManual` su `proposeQuoteDateSchema`/`ProposeQuoteDateInput`
+  (`packages/shared`, condiviso con `counterProposeQuoteDateSchema` per
+  definizione, ma **onorato solo da `counterProposeDate`** — `proposeDate`
+  lo ignora, il cliente resta vincolato alle fasce reali o alla propria
+  riaffermazione). `QuotesService.counterProposeDate`: se `input.isManual`
+  è vero, salta `resolveFreeExactSlot` e costruisce
+  `estimatedStartDate`/`estimatedEndDate` direttamente da
+  `input.date`/`startTime`/`endTime` (stessa convenzione "wall clock UTC"
+  già in uso in `resolveFreeExactSlot` stesso — `new Date(...)` +
+  `setUTCHours`). Form "Modifica" in `RequestCard`
+  (`dashboard/richieste/page.tsx`, `showCounterForm`): stesso pattern
+  toggle "Inserisci data e orario manualmente"/"Usa un orario dalla mia
+  agenda" già costruito per l'invio iniziale (§46) — quando l'agenda non
+  ha fasce libere per la modalità richiesta, la modalità manuale è ora il
+  default automatico invece di un vicolo cieco ("Nessuna fascia libera
+  nella tua agenda", che prima non offriva alcuna via d'uscita). Testo
+  esplicativo sotto i campi manuali: "Comparirà in agenda come 'In attesa'
+  finché il cliente non accetta." — **nessun cambiamento necessario**
+  al meccanismo che già mostra questa chip su `/dashboard/agenda`
+  (`pendingQuotesOnDate`, §46): filtra genericamente su
+  `quote.status === "SENT" || "MODIFICATION_REQUESTED"` +
+  `estimatedStartDate`, quindi una data controproposta manualmente
+  (che riporta lo stato a `SENT` con la nuova data) vi compare
+  automaticamente, verificato e confermato dall'agente di verifica, non
+  solo assunto.
+
+Verificato in due giri distinti con agenti Playwright end-to-end contro
+l'API locale reale (non solo typecheck/build):
+- **Giro 1** (deep link + fix scroll chat): entrambe le feature **PASS**
+  (27/27 controlli ciascuna). Deep link professionista→
+  `/dashboard/richieste?open=...` e cliente→`/le-mie-richieste?open=...`
+  verificati (card giusta espansa, scrollata in vista, anche con
+  paginazione multi-pagina), click sulla riga (non sull'icona) apre ancora
+  `TimelineModal` normalmente (nessuna regressione). Scroll: aperto già in
+  fondo, resta pinnato per 10s di poll senza nuovi messaggi (prima
+  saltava), un nuovo messaggio mentre si è in fondo fa scrollare in fondo,
+  un nuovo messaggio mentre si è scrollati in su NON strappa via la
+  posizione. Header/footer restano a posizione fissa su desktop e mobile
+  (390px), l'intero popup entra nel viewport in altezza. Zero errori
+  console reali, zero overflow orizzontale.
+- **Giro 2** (data manuale in propose/counter-propose + bottoni g/h):
+  entrambe le feature **PASS**, nessun bug reale trovato. Feature A
+  (picker cliente): opzione "(proposta attuale)" iniettata correttamente
+  per una data manuale del professionista senza fascia agenda
+  corrispondente, riproposta con successo (`POST /quotes/:id/propose-date`
+  → 201, prima avrebbe dato 400), confermata dal professionista → Booking
+  creata con `scheduledAt` esatto. Feature B (controproposta manuale):
+  form "Modifica" del professionista con zero fasce in agenda va dritto
+  all'inserimento manuale (0 `<select>`, testo esplicativo presente),
+  invio cattura `isManual: true` nel payload di rete → 201, quote tornata
+  `SENT` con la nuova data, chip tratteggiata ottone "In attesa" verificata
+  sul calendario "Prenotazioni" alla data corretta, click naviga a
+  `/dashboard/richieste`; regressione con una fascia reale in agenda
+  confermata invariata (dropdown di default, nessun `isManual` nel
+  payload). Zero errori console reali, zero overflow orizzontale
+  su desktop (1280px) e mobile (390px) su tutte le pagine coinvolte.
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `web`, `mobile`), build di produzione `apps/web` verde (29 route).

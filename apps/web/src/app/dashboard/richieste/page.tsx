@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   buildWhatsAppLink,
   formatBookingAddress,
@@ -232,11 +233,16 @@ function MiniTimeline({ stage }: { stage: RequestStage }) {
 }
 
 export default function RichiestePage() {
-  return <RichiesteContent />;
+  return (
+    <Suspense fallback={null}>
+      <RichiesteContent />
+    </Suspense>
+  );
 }
 
 function RichiesteContent() {
   const { token, isLoading, markNotificationsRead } = useAuth();
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
@@ -254,6 +260,29 @@ function RichiesteContent() {
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
   const [zoneFilter, setZoneFilter] = useState("tutte");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Deep link da /chat (richiesta esplicita dell'utente: "dai la
+  // possibilità di andare alla pagina del preventivo/informazioni di
+  // quella determinata chat") — `?open=<guidedRequestId>` apre e scrolla
+  // alla card giusta appena i lead sono caricati, a prescindere dal filtro
+  // per stadio corrente (passato a "tutte" per non nascondere la card).
+  useEffect(() => {
+    if (!leads) return;
+    const targetGuidedRequestId = searchParams.get("open");
+    if (!targetGuidedRequestId) return;
+    const match = leads.find((l) => l.guidedRequest.id === targetGuidedRequestId);
+    if (!match) return;
+    setActiveTab("tutte");
+    setOpenId(match.id);
+    // Il DOM della card esiste solo dopo che React ha renderizzato lo stato
+    // appena impostato — un breve timeout invece di un secondo effetto
+    // dedicato, stesso compromesso pragmatico già in uso altrove nel
+    // progetto per attese di rendering minime.
+    setTimeout(() => {
+      document.getElementById(`request-${match.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, searchParams]);
 
   function reloadLeads() {
     if (!token) return;
@@ -546,19 +575,20 @@ function RichiesteContent() {
         ) : (
           <YStack gap="$3">
             {visibleLeads.map((lead) => (
-              <RequestCard
-                key={lead.id}
-                lead={lead}
-                stage={stageByLeadId.get(lead.id)!}
-                booking={bookingByRequestId.get(lead.guidedRequest.id) ?? null}
-                token={token}
-                availableSlots={availableSlots}
-                myProfileId={myProfileId}
-                isOpen={openId === lead.id}
-                onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
-                onChanged={reloadLeads}
-                unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
-              />
+              <div key={lead.id} id={`request-${lead.id}`}>
+                <RequestCard
+                  lead={lead}
+                  stage={stageByLeadId.get(lead.id)!}
+                  booking={bookingByRequestId.get(lead.guidedRequest.id) ?? null}
+                  token={token}
+                  availableSlots={availableSlots}
+                  myProfileId={myProfileId}
+                  isOpen={openId === lead.id}
+                  onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
+                  onChanged={reloadLeads}
+                  unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
+                />
+              </div>
             ))}
           </YStack>
         )}
@@ -622,6 +652,17 @@ function RequestCard({
 
   const [showCounterForm, setShowCounterForm] = useState(false);
   const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  // Data/orario libera anche qui (richiesta esplicita dell'utente: "ogni
+  // volta che il professionista clicca su proponi un'altra data gli si
+  // deve dare la possibilità di inserire un gruppo data orario che non è
+  // presente in agenda") — stesso pattern del primo invio preventivo, ma
+  // qui il backend (counterProposeDate) richiede il flag esplicito
+  // `isManual` per saltare la validazione contro l'agenda reale, perché
+  // altrimenti questo endpoint rivalida sempre via resolveFreeExactSlot.
+  const [useManualCounterDateTime, setUseManualCounterDateTime] = useState(false);
+  const [manualCounterDate, setManualCounterDate] = useState("");
+  const [manualCounterStartTime, setManualCounterStartTime] = useState("");
+  const [manualCounterEndTime, setManualCounterEndTime] = useState("");
   const [counterNote, setCounterNote] = useState("");
   const [counterError, setCounterError] = useState<string | null>(null);
   const [isCountering, setIsCountering] = useState(false);
@@ -754,12 +795,21 @@ function RequestCard({
   }
   async function handleCounterPropose() {
     if (!lead.quote) return;
-    const slot = modeAvailableSlots.find((sl) => slotKey(sl) === counterSlotKey);
-    if (!slot) return setCounterError("Scegli un orario dalla tua agenda.");
+    let payload: { date: string; startTime: string; endTime: string; isManual?: boolean };
+    if (modeAvailableSlots.length > 0 && !useManualCounterDateTime) {
+      const slot = modeAvailableSlots.find((sl) => slotKey(sl) === counterSlotKey);
+      if (!slot) return setCounterError("Scegli un orario dalla tua agenda.");
+      payload = { date: slot.date, startTime: slot.startTime, endTime: slot.endTime };
+    } else {
+      if (!manualCounterDate) return setCounterError("Indica una data.");
+      if (!manualCounterStartTime || !manualCounterEndTime) return setCounterError("Indica sia l'ora di inizio sia l'ora di fine.");
+      if (manualCounterEndTime <= manualCounterStartTime) return setCounterError("L'ora di fine deve essere dopo l'ora di inizio.");
+      payload = { date: manualCounterDate, startTime: manualCounterStartTime, endTime: manualCounterEndTime, isManual: true };
+    }
     setCounterError(null);
     setIsCountering(true);
     try {
-      await apiClient.counterProposeQuoteDate(token, lead.quote.id, { date: slot.date, startTime: slot.startTime, endTime: slot.endTime, note: counterNote.trim() || undefined });
+      await apiClient.counterProposeQuoteDate(token, lead.quote.id, { ...payload, note: counterNote.trim() || undefined });
       setShowCounterForm(false);
       onChanged();
     } catch (err) {
@@ -946,9 +996,29 @@ function RequestCard({
                 </Text>
               ) : (
                 <>
-                  <Text fontSize={13} color={brand.grafite} cursor="pointer" onPress={() => setShowClientProfile(true)}>
-                    {clientName}
-                  </Text>
+                  {/* Reso chiaramente cliccabile (richiesta esplicita
+                      dell'utente: "il cliente deve avere ben visibile che
+                      è cliccabile il nome del cliente per visualizzare le
+                      informazioni come il rating") — prima era testo
+                      grigio piatto, indistinguibile da un'etichetta
+                      qualunque. Colore/sottolineatura da link + icona,
+                      stesso principio "affordance visiva" già seguito
+                      altrove nel sito per un controllo cliccabile senza
+                      un bordo/pillola proprio. */}
+                  <XStack
+                    alignItems="center"
+                    gap={4}
+                    cursor="pointer"
+                    alignSelf="flex-start"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Vedi il profilo di ${clientName}`}
+                    onPress={() => setShowClientProfile(true)}
+                  >
+                    <Text fontSize={14} fontWeight="700" color={brand.cianografia} textDecorationLine="underline">
+                      {clientName}
+                    </Text>
+                    <Icon name="chevron-right" size={13} color={brand.cianografia} strokeWidth={2} />
+                  </XStack>
                   {revealedPhone ? (
                     <Text fontSize={13} color={brand.grafite70}>
                       {revealedPhone}
@@ -1410,18 +1480,54 @@ function RequestCard({
           {/* Form "proponi altra data" (contro-proposta) */}
           {showCounterForm ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
-              {modeAvailableSlots.length > 0 ? (
-                <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
-                  {modeAvailableSlots.map((sl) => (
-                    <option key={slotKey(sl)} value={slotKey(sl)}>
-                      {slotLabel(sl)}
-                    </option>
-                  ))}
-                </select>
+              {modeAvailableSlots.length > 0 && !useManualCounterDateTime ? (
+                <YStack gap="$2">
+                  <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
+                    {modeAvailableSlots.map((sl) => (
+                      <option key={slotKey(sl)} value={slotKey(sl)}>
+                        {slotLabel(sl)}
+                      </option>
+                    ))}
+                  </select>
+                  <Text
+                    fontSize={12}
+                    fontWeight="600"
+                    color={brand.cianografia}
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => setUseManualCounterDateTime(true)}
+                  >
+                    Inserisci data e orario manualmente
+                  </Text>
+                </YStack>
               ) : (
-                <Text fontSize={13} color={brand.grafite70}>
-                  Nessuna fascia libera nella tua agenda nei prossimi 14 giorni.
-                </Text>
+                <YStack gap="$2">
+                  <XStack gap="$2" flexWrap="wrap">
+                    <input type="date" value={manualCounterDate} onChange={(e) => setManualCounterDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <input type="time" value={manualCounterStartTime} onChange={(e) => setManualCounterStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <input type="time" value={manualCounterEndTime} onChange={(e) => setManualCounterEndTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                  </XStack>
+                  {/* Richiesta esplicita dell'utente: la nuova data può non
+                      far parte delle fasce configurate in agenda — comparirà
+                      comunque sul calendario "Prenotazioni" come "In attesa"
+                      finché il cliente non accetta (stesso principio già
+                      seguito per la data manuale del primo preventivo). */}
+                  <Text fontSize={11} color={brand.grafite70}>
+                    Comparirà in agenda come &quot;In attesa&quot; finché il cliente non accetta.
+                  </Text>
+                  {modeAvailableSlots.length > 0 ? (
+                    <Text
+                      fontSize={12}
+                      fontWeight="600"
+                      color={brand.cianografia}
+                      cursor="pointer"
+                      accessibilityRole="button"
+                      onPress={() => setUseManualCounterDateTime(false)}
+                    >
+                      Usa un orario dalla mia agenda
+                    </Text>
+                  ) : null}
+                </YStack>
               )}
               <textarea value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (

@@ -38,6 +38,7 @@ export function BookingDetailPanel({
   onSaveMeetingLink,
   isSavingMeetingLink,
   onOpenTimeline,
+  onOpenFullRequest,
 }: {
   booking: ProfessionalBooking;
   onClose: () => void;
@@ -51,6 +52,15 @@ export function BookingDetailPanel({
   isSavingMeetingLink: boolean;
   /** Apre la cronologia completa della richiesta (richiesta esplicita dell'utente) — assente per prenotazioni senza GuidedRequest collegata (bookAgendaSlot). */
   onOpenTimeline?: () => void;
+  /**
+   * Porta alla pipeline completa della richiesta su /dashboard/richieste
+   * (richiesta esplicita dell'utente: "dai la possibilità tramite pulsante
+   * di portarlo sulla richiesta completa") — distinto da `onOpenTimeline`
+   * (quello apre solo la chat): qui si vedono voci del preventivo, stato
+   * della trattativa e le altre azioni già disponibili su quella pagina.
+   * Assente per le stesse prenotazioni senza GuidedRequest collegata.
+   */
+  onOpenFullRequest?: () => void;
 }) {
   // `key={booking.id}` sul punto di montaggio (agenda/page.tsx) garantisce
   // uno stato fresco ad ogni apertura di una prenotazione diversa, stesso
@@ -142,12 +152,26 @@ export function BookingDetailPanel({
           </Text>
         </YStack>
 
-        {onOpenTimeline ? (
-          <Button variant="ghost" size="$2" height={32} onPress={onOpenTimeline}>
-            <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-              Contatta/Cronologia
-            </Text>
-          </Button>
+        {onOpenTimeline || onOpenFullRequest ? (
+          <XStack gap="$2" flexWrap="wrap">
+            {onOpenTimeline ? (
+              <Button variant="ghost" size="$2" height={32} onPress={onOpenTimeline}>
+                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
+                  Contatta/Cronologia
+                </Text>
+              </Button>
+            ) : null}
+            {onOpenFullRequest ? (
+              <Button variant="ghost" size="$2" height={32} onPress={onOpenFullRequest}>
+                <XStack alignItems="center" gap={4}>
+                  <Text color={brand.grafite} fontWeight="600" fontSize="$2">
+                    Vai alla richiesta completa
+                  </Text>
+                  <Icon name="chevron-right" size={13} color={brand.grafite} strokeWidth={2} />
+                </XStack>
+              </Button>
+            ) : null}
+          </XStack>
         ) : null}
 
         {/* Dati del cliente utili al professionista per andare a svolgere il

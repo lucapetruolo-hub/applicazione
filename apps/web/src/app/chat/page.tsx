@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ChatThreadSummary } from "@professionisti/shared";
-import { Avatar, Button, EmptyState, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Button, EmptyState, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -18,6 +19,17 @@ const CHAT_POLL_MS = 15000;
 
 function threadKey(thread: ChatThreadSummary): string {
   return `${thread.guidedRequestId}:${thread.professionalProfileId}`;
+}
+
+/**
+ * Pagina del preventivo/richiesta a cui questo thread si riferisce
+ * (richiesta esplicita dell'utente: "dai la possibilità di andare alla
+ * pagina del preventivo/informazioni di quella determinata chat") —
+ * `?open=<guidedRequestId>` apre e scrolla alla card giusta su quella
+ * pagina (vedi l'effetto dedicato in entrambi i file).
+ */
+function requestDestination(thread: ChatThreadSummary): string {
+  return thread.viewerRole === "PROFESSIONAL" ? `/dashboard/richieste?open=${thread.guidedRequestId}` : `/le-mie-richieste?open=${thread.guidedRequestId}`;
 }
 
 function formatThreadTimestamp(iso: string): string {
@@ -163,6 +175,7 @@ function ChatThreadRow({
   // esplicita dell'utente, stesso principio già in uso ovunque nel
   // prodotto) — vedi useDismissableUnreadCount.
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
+  const router = useRouter();
   const previewText = thread.lastMessage
     ? thread.lastMessage
     : thread.lastMessageHasMedia
@@ -204,6 +217,30 @@ function ChatThreadRow({
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
       </YStack>
+      {/* Link separato dall'apertura della chat (richiesta esplicita
+          dell'utente: "dai la possibilità di andare alla pagina del
+          preventivo/informazioni di quella determinata chat") —
+          stopPropagation per non aprire anche il popup chat allo stesso
+          click, stesso pattern già in uso in ProfessionalCard per un
+          controllo annidato dentro un elemento cliccabile più grande. */}
+      <XStack
+        width={32}
+        height={32}
+        alignItems="center"
+        justifyContent="center"
+        borderRadius={8}
+        backgroundColor={brand.gesso}
+        cursor="pointer"
+        flexShrink={0}
+        accessibilityRole="button"
+        accessibilityLabel="Vai alla richiesta"
+        onPress={(e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          router.push(requestDestination(thread));
+        }}
+      >
+        <Icon name="file-text" size={15} color={brand.grafite70} strokeWidth={1.5} />
+      </XStack>
     </XStack>
   );
 }

@@ -114,13 +114,22 @@ export function TimelineModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [openPhoto, setOpenPhoto] = useState<{ photos: string[]; index: number } | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
-  // Scroll "quasi in tempo reale": il popup intero è la regione scorrevole
-  // (backdrop `overflowY: auto`, stesso motivo già documentato in CLAUDE.md
-  // §35 per l'ancoraggio in alto). `bottomRef` è la sentinella di fondo,
-  // `scrollContainerRef` il div su cui si scrolla davvero — serve per
-  // capire se l'utente è già vicino al fondo prima di un aggiornamento
-  // ricevuto dal poll: se ha scrollato in su per rileggere la cronologia,
-  // un nuovo messaggio non deve strappargli via la posizione.
+  // Popup ad altezza fissata (`maxHeight="85vh"` sulla card) con SOLO la
+  // regione messaggi scorrevole al suo interno — non più l'intero popup
+  // dentro il backdrop (bug reale segnalato dall'utente: "rendendola più
+  // fruibile sia da mobile che desktop" + una cronologia lunga che
+  // "ritornava automaticamente in cima"). Intestazione e modulo di invio
+  // restano sempre visibili, ancorati sopra/sotto — pattern di chat
+  // standard, più leggibile su schermi piccoli di quanto non fosse far
+  // scrollare l'intera pagina/popup come un unico blocco (il vecchio
+  // approccio, CLAUDE.md §35, risolveva un bug diverso — il contenuto più
+  // alto del viewport non raggiungibile — che qui non si presenta più per
+  // costruzione: la card non supera mai l'85% dell'altezza del viewport).
+  // `bottomRef` è la sentinella di fondo della lista messaggi,
+  // `scrollContainerRef` il div che scrolla davvero — serve per capire se
+  // l'utente è già vicino al fondo prima di un aggiornamento ricevuto dal
+  // poll: se ha scrollato in su per rileggere la cronologia, un nuovo
+  // messaggio non deve strappargli via la posizione.
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -155,7 +164,21 @@ export function TimelineModal({
         .guidedRequestTimeline(token, guidedRequestId, professionalProfileId)
         .then((fresh) => {
           const freshLastId = fresh[fresh.length - 1]?.id ?? null;
-          if (freshLastId === lastEventIdRef.current && fresh.length === (events?.length ?? 0)) return;
+          // Bug reale corretto: il confronto includeva anche `fresh.length
+          // === (events?.length ?? 0)`, ma `events` qui è la chiusura
+          // "stale" del render in cui questo effetto è stato creato (mai
+          // aggiornata, l'effetto non ha `events` tra le dipendenze) —
+          // restava sempre `null`/0 per tutta la vita del popup, quindi
+          // quella metà del confronto era quasi sempre falsa e
+          // `setEvents(fresh)` scattava ad OGNI tick anche senza alcun
+          // messaggio nuovo. Segnalato dall'utente come "la chat torna
+          // automaticamente in cima" su una cronologia lunga: ogni
+          // set inutile riattivava l'effetto di scroll sotto. Il solo
+          // confronto sull'id dell'ultimo evento (`lastEventIdRef`, un ref,
+          // mai stale) basta: i messaggi non vengono mai modificati/
+          // cancellati dopo l'invio, un id di coda diverso è l'unico modo
+          // in cui la cronologia può davvero cambiare.
+          if (freshLastId === lastEventIdRef.current) return;
           lastEventIdRef.current = freshLastId;
           setEvents(fresh);
         })
@@ -224,11 +247,7 @@ export function TimelineModal({
 
   return (
     <div
-      ref={scrollContainerRef}
       onClick={onClose}
-      onScroll={() => {
-        shouldAutoScrollRef.current = isNearBottom();
-      }}
       role="dialog"
       aria-modal="true"
       aria-label="Cronologia della richiesta"
@@ -240,32 +259,22 @@ export function TimelineModal({
         bottom: 0,
         backgroundColor: "rgba(20,24,30,0.55)",
         display: "flex",
-        // `alignItems: "center"` su un contenitore flex con `overflow-y:
-        // auto` è un bug noto (soprattutto iOS Safari): quando il
-        // contenuto è più alto del viewport, la parte superiore
-        // dell'elemento overflow non è raggiungibile scorrendo — segnalato
-        // dall'utente come "non si naviga bene su e giù" con una
-        // cronologia lunga. `flex-start` con lo stesso padding verticale
-        // rende il popup ancorato in alto invece che centrato quando
-        // supera l'altezza dello schermo, ma resta sempre scorrevole per
-        // intero in ogni browser.
-        alignItems: "flex-start",
+        alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
         padding: 16,
-        overflowY: "auto",
       }}
     >
       <YStack
         onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
         width="100%"
         maxWidth={520}
+        maxHeight="85vh"
         backgroundColor={brand.calce}
         borderRadius="$3"
-        padding="$5"
-        gap="$4"
+        overflow="hidden"
       >
-        <XStack justifyContent="space-between" alignItems="center">
+        <XStack justifyContent="space-between" alignItems="center" flexShrink={0} paddingHorizontal="$5" paddingTop="$5" paddingBottom="$3">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             Cronologia della richiesta
           </Text>
@@ -274,84 +283,97 @@ export function TimelineModal({
           </Text>
         </XStack>
 
-        <YStack gap="$3">
-          {loadError ? (
-            <Text color={brand.urgenza} fontSize="$3">
-              {loadError}
-            </Text>
-          ) : events === null ? (
-            <Text color={brand.grafite70} fontSize="$3">
-              Caricamento...
-            </Text>
-          ) : events.length === 0 ? (
-            <Text color={brand.grafite70} fontSize="$3">
-              Nessun aggiornamento ancora.
-            </Text>
-          ) : (
-            events.map((event) => {
-              if (event.actor === "SYSTEM") {
-                // Eventi automatici (fan-out, scadenze, ecc.): mai un
-                // "lato", restano centrati e discreti — non sono un
-                // messaggio di nessuna delle due parti.
+        {/* Unica regione scorrevole del popup (richiesta esplicita
+            dell'utente: "rendendola più fruibile sia da mobile che
+            desktop") — intestazione e modulo di invio restano sempre
+            visibili sopra/sotto, come in una chat vera, invece di
+            scorrere via insieme ai messaggi su una cronologia lunga. */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={() => {
+            shouldAutoScrollRef.current = isNearBottom();
+          }}
+          style={{ flex: 1, overflowY: "auto", paddingLeft: 20, paddingRight: 20, minHeight: 0 }}
+        >
+          <YStack gap="$3" paddingBottom="$2">
+            {loadError ? (
+              <Text color={brand.urgenza} fontSize="$3">
+                {loadError}
+              </Text>
+            ) : events === null ? (
+              <Text color={brand.grafite70} fontSize="$3">
+                Caricamento...
+              </Text>
+            ) : events.length === 0 ? (
+              <Text color={brand.grafite70} fontSize="$3">
+                Nessun aggiornamento ancora.
+              </Text>
+            ) : (
+              events.map((event) => {
+                if (event.actor === "SYSTEM") {
+                  // Eventi automatici (fan-out, scadenze, ecc.): mai un
+                  // "lato", restano centrati e discreti — non sono un
+                  // messaggio di nessuna delle due parti.
+                  return (
+                    <YStack key={event.id} gap="$1" alignItems="center">
+                      <Text fontSize={11} color={brand.grafite70} textAlign="center">
+                        {event.message}
+                      </Text>
+                      <Text fontSize={10} color={brand.grafite70}>
+                        {formatEventDate(event.createdAt)}
+                      </Text>
+                    </YStack>
+                  );
+                }
+                // I messaggi di chi sta guardando vanno a destra (come in
+                // qualunque chat), quelli dell'altra parte a sinistra —
+                // richiesta esplicita dell'utente.
+                const isMine = event.actor === viewerRole;
                 return (
-                  <YStack key={event.id} gap="$1" alignItems="center">
-                    <Text fontSize={11} color={brand.grafite70} textAlign="center">
-                      {event.message}
-                    </Text>
-                    <Text fontSize={10} color={brand.grafite70}>
+                  <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
+                    <YStack
+                      gap="$1.5"
+                      maxWidth="85%"
+                      backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
+                      borderRadius="$4"
+                      borderTopRightRadius={isMine ? 4 : undefined}
+                      borderTopLeftRadius={isMine ? undefined : 4}
+                      paddingHorizontal="$3"
+                      paddingVertical="$2.5"
+                    >
+                      <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
+                        {displayNameFor(event.actor)}
+                      </Text>
+                      {event.message ? (
+                        <Text color={brand.grafite} fontSize="$3">
+                          {event.message}
+                        </Text>
+                      ) : null}
+                      {event.mediaUrls.length > 0 ? (
+                        <XStack gap="$2" flexWrap="wrap">
+                          {event.mediaUrls.map((url, index) => (
+                            <MediaPreview
+                              key={url}
+                              url={url}
+                              onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
+                              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                            />
+                          ))}
+                        </XStack>
+                      ) : null}
+                    </YStack>
+                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
                       {formatEventDate(event.createdAt)}
                     </Text>
                   </YStack>
                 );
-              }
-              // I messaggi di chi sta guardando vanno a destra (come in
-              // qualunque chat), quelli dell'altra parte a sinistra —
-              // richiesta esplicita dell'utente.
-              const isMine = event.actor === viewerRole;
-              return (
-                <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
-                  <YStack
-                    gap="$1.5"
-                    maxWidth="85%"
-                    backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
-                    borderRadius="$4"
-                    borderTopRightRadius={isMine ? 4 : undefined}
-                    borderTopLeftRadius={isMine ? undefined : 4}
-                    paddingHorizontal="$3"
-                    paddingVertical="$2.5"
-                  >
-                    <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
-                      {displayNameFor(event.actor)}
-                    </Text>
-                    {event.message ? (
-                      <Text color={brand.grafite} fontSize="$3">
-                        {event.message}
-                      </Text>
-                    ) : null}
-                    {event.mediaUrls.length > 0 ? (
-                      <XStack gap="$2" flexWrap="wrap">
-                        {event.mediaUrls.map((url, index) => (
-                          <MediaPreview
-                            key={url}
-                            url={url}
-                            onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
-                            style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                          />
-                        ))}
-                      </XStack>
-                    ) : null}
-                  </YStack>
-                  <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
-                    {formatEventDate(event.createdAt)}
-                  </Text>
-                </YStack>
-              );
-            })
-          )}
-          <div ref={bottomRef} />
-        </YStack>
+              })
+            )}
+            <div ref={bottomRef} />
+          </YStack>
+        </div>
 
-        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$5" paddingTop="$3" paddingBottom="$5" flexShrink={0}>
           <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Scrivi un aggiornamento
           </Text>

@@ -196,6 +196,33 @@ function LeMieRichiesteContent() {
   const [clientBookingsPageSize, setClientBookingsPageSize] = useState(5);
   const [clientBookingsPage, setClientBookingsPage] = useState(1);
 
+  // Deep link da /chat (richiesta esplicita dell'utente: "dai la
+  // possibilità di andare alla pagina del preventivo/informazioni di
+  // quella determinata chat") — `?open=<guidedRequestId>` porta sul tab
+  // "richieste", azzera il filtro per stato (potrebbe nascondere la
+  // richiesta target) e calcola la pagina corretta, poi scrolla alla card
+  // giusta. Calcolato qui a mano da `requests` (non da `sortedRequests`,
+  // derivato più sotto dopo i guard di autenticazione: un useEffect non
+  // può dipendere da un valore calcolato dopo un return condizionale).
+  useEffect(() => {
+    const targetId = searchParams.get("open");
+    if (!targetId || !requests) return;
+    if (!requests.some((r) => r.id === targetId)) return;
+    setActiveTab("richieste");
+    if (requestsStatusFilter !== "all") {
+      setRequestsStatusFilter("all");
+      return; // richiamato di nuovo dopo il re-render con il filtro azzerato
+    }
+    const sorted = sortListItems(requests, requestsSort, { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt });
+    const index = sorted.findIndex((r) => r.id === targetId);
+    if (index === -1) return;
+    setRequestsPage(Math.floor(index / requestsPageSize) + 1);
+    setTimeout(() => {
+      document.getElementById(`request-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, requestsStatusFilter, requestsSort, requestsPageSize, searchParams]);
+
   // Stesso principio di /dashboard: cambiare filtro/ordinamento/quantità
   // riparte sempre da pagina 1.
   function updateRequestsStatusFilter(value: RequestStatusFilter) {
@@ -400,17 +427,18 @@ function LeMieRichiesteContent() {
                 <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
               ) : (
                 visibleRequests?.map((request) => (
-                  <GuidedRequestCard
-                    key={request.id}
-                    request={request}
-                    token={token}
-                    onChanged={reload}
-                    onAcceptQuote={handleAcceptQuote}
-                    isNew={newRequestIds.has(request.id)}
-                    newQuoteIds={newQuoteIds}
-                    threadUnreadCounts={threadUnreadCounts}
-                    quoteUnreadCounts={quoteUnreadCounts}
-                  />
+                  <div key={request.id} id={`request-${request.id}`}>
+                    <GuidedRequestCard
+                      request={request}
+                      token={token}
+                      onChanged={reload}
+                      onAcceptQuote={handleAcceptQuote}
+                      isNew={newRequestIds.has(request.id)}
+                      newQuoteIds={newQuoteIds}
+                      threadUnreadCounts={threadUnreadCounts}
+                      quoteUnreadCounts={quoteUnreadCounts}
+                    />
+                  </div>
                 ))
               )}
               <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={goToRequestsPage} />
@@ -1132,7 +1160,12 @@ function formatSentAt(iso: string): string {
   return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-type FreeSlot = { date: string; startTime: string; endTime: string };
+// `isCurrentProposal` distingue la data/orario attualmente proposti dal
+// professionista quando non corrisponde a nessuna fascia reale
+// dell'agenda (data/ora inserita a mano dal professionista, CLAUDE.md
+// §46) — mai una vera fascia libera, solo aggiunta per poterla comunque
+// scegliere/vedere nell'elenco.
+type FreeSlot = { date: string; startTime: string; endTime: string; isCurrentProposal?: boolean };
 
 /**
  * Preventivo ricevuto: mostra la data proposta dal professionista (prima
@@ -1227,15 +1260,23 @@ function QuoteCard({
             }
           }
         }
-        setFreeSlots(slots);
-        // Precompilato sull'ultima data/orario proposti (il preventivo
-        // attuale), non sulla prima fascia libera qualsiasi — richiesta
-        // esplicita dell'utente ("nel gruppo data ora ci sarà l'ultimo
-        // proposto"): il cliente può anche solo scrivere una nota senza
-        // cambiare nulla.
+        // La data/orario attualmente proposti dal professionista potrebbe
+        // non corrispondere a nessuna fascia reale dell'agenda (richiesta
+        // esplicita dell'utente: il professionista può inserire una
+        // data/orario manuale, indipendente dalle fasce configurate,
+        // CLAUDE.md §46) — senza aggiungerla esplicitamente all'elenco,
+        // il cliente non potrebbe mai scegliere "la stessa proposta" (per
+        // scrivere solo una nota) né vederla tra le opzioni. Aggiunta in
+        // testa se non già presente, così resta anche la selezione
+        // iniziale di default.
         const currentDate = quote.estimatedStartDate.slice(0, 10);
-        const currentTime = quote.estimatedStartDate.slice(11, 16);
-        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentTime);
+        const currentStartTime = quote.estimatedStartDate.slice(11, 16);
+        const currentEndTime = quote.estimatedEndDate ? quote.estimatedEndDate.slice(11, 16) : currentStartTime;
+        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
+        if (!matching) {
+          slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
+        }
+        setFreeSlots(slots);
         const initial = matching ?? slots[0];
         if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
       } catch (err) {
@@ -1460,7 +1501,7 @@ function QuoteCard({
                   <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
                     {freeSlots.map((slot) => {
                       const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
-                      const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}`;
+                      const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
                       return (
                         <option key={key} value={key}>
                           {label}

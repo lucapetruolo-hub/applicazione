@@ -168,13 +168,32 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo non è più modificabile.");
     }
 
-    const { scheduledAt: proposedDate, scheduledEndAt: proposedEndDate } = await this.resolveFreeExactSlot(
-      quote.professionalProfileId,
-      input.date,
-      input.startTime,
-      input.endTime,
-      quote.guidedRequest.serviceMode,
-    );
+    // Bug reale corretto (richiesta esplicita dell'utente): il
+    // professionista può ora inserire una data/orario manuale nel primo
+    // invio del preventivo, indipendente dalle fasce configurate in
+    // agenda (CLAUDE.md §46) — se il cliente sceglie di "riproporre" quella
+    // stessa identica data/ora (tipicamente solo per aggiungere una nota,
+    // senza cambiare nulla — comportamento già previsto), `resolveFreeExactSlot`
+    // la rifiuterebbe sempre con "non fa parte dell'agenda", perché non
+    // corrisponde a nessuna AvailabilitySlot reale. In questo caso preciso
+    // (stessa data/ora già sul preventivo) non serve rivalidare l'agenda:
+    // non si sta prenotando una fascia nuova, solo confermando quella già
+    // presente su questo stesso preventivo, mai ancora trasformata in una
+    // Booking (quindi nessuna capacità da ricontrollare).
+    const isSameAsCurrentProposal =
+      quote.estimatedStartDate.toISOString().slice(0, 10) === input.date &&
+      quote.estimatedStartDate.toISOString().slice(11, 16) === input.startTime &&
+      (quote.estimatedEndDate ? quote.estimatedEndDate.toISOString().slice(11, 16) === input.endTime : true);
+
+    const { scheduledAt: proposedDate, scheduledEndAt: proposedEndDate } = isSameAsCurrentProposal
+      ? { scheduledAt: quote.estimatedStartDate, scheduledEndAt: quote.estimatedEndDate ?? quote.estimatedStartDate }
+      : await this.resolveFreeExactSlot(
+          quote.professionalProfileId,
+          input.date,
+          input.startTime,
+          input.endTime,
+          quote.guidedRequest.serviceMode,
+        );
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
@@ -411,13 +430,36 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo è già stato accettato.");
     }
 
-    const { scheduledAt: estimatedStartDate, scheduledEndAt: estimatedEndDate } = await this.resolveFreeExactSlot(
-      professionalProfile.id,
-      input.date,
-      input.startTime,
-      input.endTime,
-      quote.guidedRequest.serviceMode,
-    );
+    // Richiesta esplicita dell'utente: il professionista può inserire un
+    // orario libero non presente nella propria agenda (isManual) invece di
+    // essere sempre vincolato a resolveFreeExactSlot — finirà comunque sul
+    // calendario come "In attesa" tramite pendingQuotesOnDate, stesso
+    // principio già seguito per la data manuale del primo preventivo
+    // (QuotesService.createOrUpdate non valida mai contro l'agenda).
+    let estimatedStartDate: Date;
+    let estimatedEndDate: Date;
+    if (input.isManual) {
+      const date = new Date(`${input.date}T00:00:00.000Z`);
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException("Data non valida.");
+      }
+      const [hoursStr, minutesStr] = input.startTime.split(":");
+      estimatedStartDate = new Date(date);
+      estimatedStartDate.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
+      const [endHoursStr, endMinutesStr] = input.endTime.split(":");
+      estimatedEndDate = new Date(date);
+      estimatedEndDate.setUTCHours(Number(endHoursStr), Number(endMinutesStr), 0, 0);
+    } else {
+      const resolved = await this.resolveFreeExactSlot(
+        professionalProfile.id,
+        input.date,
+        input.startTime,
+        input.endTime,
+        quote.guidedRequest.serviceMode,
+      );
+      estimatedStartDate = resolved.scheduledAt;
+      estimatedEndDate = resolved.scheduledEndAt;
+    }
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
