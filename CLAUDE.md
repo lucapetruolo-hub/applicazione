@@ -7283,5 +7283,19 @@ un fallimento di rete/richiesta interrotta lascia lo stato invariato,
 il prossimo tentativo (poll, ricarica, navigazione) riprova da solo.
 
 Tutti e quattro i fix (tre pallini + AuthContext) riverificati con un
-secondo giro di agente Playwright end-to-end mirato: [aggiornato dopo il
-completamento].
+secondo giro di agente Playwright end-to-end mirato contro l'API locale
+reale, tutti confermati **PASS**: `AcceptedJobCard` accende il pallino
+entro pochi secondi da un messaggio del cliente su un lavoro già accettato
+(prima non si accendeva mai) e lo azzera aprendo/chiudendo la cronologia;
+`RequestCard` mostra ora il pallino sia sul bottone "Chat" sia su
+"Rispondi" negli stadi `da_quotare`/`modifica_richiesta` (prima assente in
+entrambi); `QuoteCard`/`BookingRow` lato cliente si accendono
+correttamente per un messaggio del professionista, sia su un preventivo
+non ancora accettato sia su un lavoro già accettato. Per `AuthContext`:
+verificato che il percorso di logout "vero" resta intatto (un token
+corrotto/non valido viene comunque rimosso al prossimo giro), e — con
+`page.route()` che forza l'abort della richiesta `/auth/me` al primo
+caricamento — che il token NON viene più cancellato da un fallimento di
+rete/richiesta interrotta (il codice precedente lo avrebbe cancellato), con
+recupero automatico della sessione al tentativo successivo andato a buon
+fine. Zero regressioni trovate.
