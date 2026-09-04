@@ -8,6 +8,9 @@ import type {
   ClientReviewInput,
   CompleteBookingInput,
   ConversationEvent,
+  ExternalJob,
+  ExternalJobInput,
+  ExternalJobUpdateInput,
   GuidedRequestInput,
   GuidedRequestStatusSummary,
   GuidedRequestUpdateInput,
@@ -374,7 +377,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
           comment: string | null;
           isAutomatic: boolean;
           createdAt: string;
-          professional: { businessName: string; categoryLabel: string; city: string };
+          professional: { businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
         }[]
       >("/reviews/recent", { cache: "no-store" }),
 
@@ -508,6 +511,37 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     myProfessionalBookings: (token: string) =>
       request<ProfessionalBooking[]>("/professionals/me/bookings", { headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Lavori presi al di fuori della piattaforma, inseriti a mano dal professionista nella propria agenda (richiesta esplicita dell'utente). */
+    createExternalJob: (token: string, input: ExternalJobInput) =>
+      request<ExternalJob>("/external-jobs", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    myExternalJobs: (token: string) =>
+      request<ExternalJob[]>("/external-jobs/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    updateExternalJob: (token: string, id: string, input: ExternalJobUpdateInput) =>
+      request<ExternalJob>(`/external-jobs/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    updateExternalJobStatus: (token: string, id: string, status: "SCHEDULED" | "COMPLETED" | "CANCELED") =>
+      request<ExternalJob>(`/external-jobs/${id}/status`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      }),
+
+    deleteExternalJob: (token: string, id: string) =>
+      request<void>(`/external-jobs/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
 
     myAvailableSlots: (token: string) =>
       request<ProfessionalAvailableSlot[]>("/professionals/me/available-slots", { headers: { Authorization: `Bearer ${token}` } }),
@@ -713,6 +747,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminListUsers: (token: string) =>
       request<AdminUsersByRole>("/admin/users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Email raccolte dal riquadro "Arriviamo presto nella tua zona" in homepage (richiesta esplicita dell'utente). */
+    adminListWaitlist: (token: string) =>
+      request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminBootstrapPromote: (email: string, secret: string) =>
       request<{ email: string; role: string }>("/admin/bootstrap", {

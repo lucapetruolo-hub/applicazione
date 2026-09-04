@@ -16,7 +16,6 @@ import {
 import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AccountSidebar } from "@/components/AccountSidebar";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -322,9 +321,10 @@ function LeMieRichiesteContent() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <AccountSidebar />
-
+      {/* Sidebar "Il tuo account" rimossa (richiesta esplicita dell'utente:
+          "non far vedere quel menu sempre lì fisso") — navigazione tra le
+          voci disponibile dal menu a tendina dell'header (AccountMenu). */}
+      <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} minWidth={280} gap="$5">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Le mie richieste
@@ -1025,6 +1025,7 @@ function GuidedRequestCard({
           guidedRequestId={request.id}
           professionalProfileId={openTimelineProfessionalId}
           viewerRole="CLIENT"
+          otherPartyName={request.sentTo.find((p) => p.id === openTimelineProfessionalId)?.businessName ?? null}
           onClose={() => setOpenTimelineProfessionalId(null)}
         />
       ) : null}
@@ -1491,6 +1492,7 @@ function QuoteCard({
           guidedRequestId={guidedRequestId}
           professionalProfileId={quote.professionalProfileId}
           viewerRole="CLIENT"
+          otherPartyName={quote.businessName}
           onClose={() => setShowTimeline(false)}
         />
       ) : null}
@@ -1918,6 +1920,7 @@ function BookingRow({
           guidedRequestId={booking.guidedRequestId}
           professionalProfileId={booking.professionalProfileId}
           viewerRole="CLIENT"
+          otherPartyName={booking.businessName}
           onClose={() => setShowTimeline(false)}
         />
       ) : null}

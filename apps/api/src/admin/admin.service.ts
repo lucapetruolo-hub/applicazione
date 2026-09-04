@@ -47,6 +47,19 @@ export class AdminService {
     };
   }
 
+  /**
+   * Email raccolte dal riquadro "Arriviamo presto nella tua zona"
+   * (homepage, sotto la soglia di professionisti reali per mostrare la
+   * vetrina — CLAUDE.md §10 Fase 4) — richiesta esplicita dell'utente:
+   * "salvale in un elenco visualizzabile dai profili admin". Erano già
+   * scritte su `WaitlistSignup` da `WaitlistService.signup`, mai lette da
+   * nessun endpoint prima d'ora.
+   */
+  async listWaitlist(): Promise<{ email: string; createdAt: string }[]> {
+    const signups = await this.prisma.waitlistSignup.findMany({ orderBy: { createdAt: "desc" } });
+    return signups.map((s) => ({ email: s.email, createdAt: s.createdAt.toISOString() }));
+  }
+
   async promoteToAdmin(email: string): Promise<{ email: string; role: string }> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {

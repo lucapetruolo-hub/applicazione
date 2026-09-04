@@ -6860,3 +6860,202 @@ verifica rimandata a un confronto diretto con l'utente sul sito live).
   cliente". Zero errori console. Typecheck pulito su tutti i package
   (`shared`, `api`, `web`), build di produzione `apps/web` verde
   (28 route).
+
+---
+
+## 45. Nomi reali in chat, foto professionista nelle recensioni, suggerimenti bio, lavoro esterno in agenda, sidebar account rimossa, lista d'attesa in admin, privacy contatti cliente ribaltata di nuovo
+
+Sei richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Nomi reali al posto di "Cliente"/"Professionista" in `TimelineModal`** —
+richiesta esplicita dell'utente: la chat della cronologia (§21) mostrava
+l'etichetta generica del ruolo (`ACTOR_LABEL`) invece del nome vero di chi
+ha scritto ogni messaggio. `TimelineModal` guadagna una prop opzionale
+`otherPartyName` (nome+cognome del cliente se `viewerRole="PROFESSIONAL"`,
+nome attività del professionista se `viewerRole="CLIENT"`) — ogni punto di
+montaggio la passa già con un dato che aveva a disposizione, nessuna nuova
+chiamata API: `RequestCard`/`LeadSummaryRow`
+(`/dashboard`/`/dashboard/richieste`, `lead.guidedRequest.clientName`),
+`BookingDetailPanel` (agenda, `booking.clientName`),
+`GuidedRequestCard`/`QuoteCard`/`BookingRow`
+(`/le-mie-richieste`, rispettivamente il nome dell'attività trovato in
+`sentTo`/`quote.businessName`/`booking.businessName`). Il proprio nome (per
+le nuvolette del lato "mio") si ricava da `useAuth()` — `businessName` per
+un professionista (stesso fallback su `name` già in uso in `AccountMenu`),
+nome+cognome per un cliente. `null`/assente ricade sull'etichetta generica
+di prima (account eliminato, o dato non ancora noto) — mai un'etichetta
+vuota.
+
+**Foto del professionista nelle "Recensioni verificate" in homepage** —
+richiesta esplicita dell'utente: "deve essere grande quanto tutto il
+riquadro sulla sinistra... senza aumentare le dimensioni del riquadro".
+`GET /reviews/recent` (`ReviewsService.getRecentPublic`) espone ora anche
+`categorySlug`/`imageUrl` del professionista recensito (mancavano,
+serviva solo `categoryLabel`/`city` prima). `RecentReviews.tsx` riscritta
+da singola colonna a `XStack` a due colonne dentro la stessa `Surface`
+(`padding={0} overflow="hidden"`): colonna sinistra a larghezza fissa
+132px che si allunga da sola all'altezza della card (`alignItems:
+"stretch"` di default, mai impostato esplicitamente) con `<img
+style="objectFit:cover">` se il professionista ha un'immagine profilo,
+altrimenti la stessa icona colorata di categoria già in uso altrove
+(`CategoryIconBadge`/`CATEGORY_ACCENT`) ma a piena altezza invece che nel
+cerchio piccolo — mai un placeholder generico, stesso principio già
+seguito per `Avatar.tsx`. Colonna destra invariata nel contenuto
+(stelle+badge, commento, nome/categoria/città), solo ristretta nello
+spazio residuo. **Bug reale trovato da un agente di verifica Playwright e
+corretto nello stesso giro**: a larghezza massima della card (360px), la
+riga stelle+badge "Lavoro confermato" (`XStack justifyContent="space-
+between"`, nessun `flexWrap`) sforava il bordo destro di ~14px — la nuova
+colonna foto aveva ridotto lo spazio disponibile alla colonna testo sotto
+la soglia in cui i due elementi stavano affiancati senza spezzarsi, stesso
+identico bug già documentato più volte in questo file (CSS/Tamagui:
+un elemento flex non si restringe sotto la dimensione del contenuto senza
+`flexWrap` esplicito). Corretto aggiungendo `flexWrap="wrap"` alla riga:
+il badge va a capo sotto le stelle quando lo spazio non basta, invece di
+sforare.
+
+**Suggerimenti per scrivere la bio del profilo professionista** — richiesta
+esplicita dell'utente: "dai dei suggerimenti in modo che sia più
+professionale". `/dashboard/profilo`: il campo Bio ha ora, sopra la
+`<textarea>`, un riquadro (`brand.gesso`, icona a stella) con 6 consigli
+pratici in elenco puntato (es. "Menziona da quanti anni lavori nel
+settore", "Evita frasi generiche come 'faccio del mio meglio'") più, solo
+quando il campo è ancora vuoto, un link cliccabile "Usa un esempio come
+punto di partenza" che precompila la textarea con un paragrafo di esempio
+generico (`BIO_EXAMPLE`) — resta comunque modificabile, non un testo
+finto salvato senza controllo: il professionista deve comunque premere
+"Salva profilo" per confermarlo, stesso flusso di sempre.
+
+**Lavoro preso al di fuori della piattaforma, in agenda** — richiesta
+esplicita dell'utente: "dai la possibilità di inserire un lavoro preso al
+di fuori della piattaforma, dove poter inserire tutti i dati utili per
+effettuare l'intervento". Nuovo modello Prisma `ExternalJob`
+(`clientName`, `clientPhone`, `address`, `description`, `scheduledAt`/
+`scheduledEndAt`, `priceEurCents`, `notes`, `status`
+`SCHEDULED`/`COMPLETED`/`CANCELED`), **modello separato da `Booking`**
+invece di rendere `Booking.clientId` opzionale: un `Booking` porta con sé
+garanzie che presuppongono sempre un vero account cliente (recensioni
+"doppio cieco", notifiche, visibilità in `/le-mie-richieste`, cronologia
+condivisa) che qui non hanno senso — nessun cliente reale, solo un
+promemoria strutturato per il professionista stesso, stesso principio
+architetturale già seguito per `AvailabilityException` come modello a
+parte da `AvailabilitySlot`. Nuovo modulo `apps/api/src/external-jobs/`
+(`POST /external-jobs`, `GET /external-jobs/me`, `PATCH
+/external-jobs/:id`, `PATCH /external-jobs/:id/status`, `DELETE
+/external-jobs/:id`, tutti JWT-guarded, guardia di titolarità sul proprio
+`professionalProfileId` prima di ogni update/delete). **Bug reale trovato
+e corretto durante lo sviluppo, non da typecheck**: `ExternalJobsModule`
+creato inizialmente senza `imports: [AuthModule]` — `JwtAuthGuard` (usata
+su ogni rotta del controller) dipende da `JwtService`, registrato solo
+dentro `AuthModule` ed esportato da lì; senza quell'import il bootstrap di
+Nest andava in crash-loop ("Nest can't resolve dependencies of the
+JwtAuthGuard"), non un errore di singolo endpoint ma un blocco totale
+dell'API — non intercettato da `tsc --noEmit` (pulito su entrambi i lati),
+scoperto solo da un agente di verifica end-to-end che ha urtato contro il
+server locale condiviso mentre girava per un'altra funzionalità. Stesso
+identico problema già documentato altrove in questo file per
+`@nestjs/throttler`/`@nestjs/schedule` — ormai un sospetto di prima battuta
+per qualunque nuovo modulo con un guard, non solo per pacchetti esterni.
+`ExternalJobModal.tsx` (nuovo, `apps/web/src/components`): stesso pattern
+overlay DOM grezzo di `CompleteJobModal`/`BookingDetailPanel`
+(`role="dialog"`, `alignItems:"flex-start"` per lo stesso motivo già
+documentato in CLAUDE.md §35), un solo componente sia per creare che per
+modificare (`job` assente = creazione). Wired in
+`/dashboard/agenda`, tab "Prenotazioni": nuovo bottone "Lavoro esterno"
+sopra il calendario, i lavori esterni compaiono nello stesso
+`renderBookingDayColumn`/`renderBookingMonthCell` delle Booking reali ma
+con bordo tratteggiato (stesso principio visivo già in uso per le fasce
+generiche dell'agenda) ed etichetta "· Esterno" per restare distinguibili
+a colpo d'occhio da un impegno nato da un preventivo accettato — click
+apre lo stesso modale in modifica, con azioni di stato
+(Completato/Annullato/Riapri) ed eliminazione a doppia conferma.
+
+**Sidebar "Il tuo account" rimossa dalle pagine menu** — richiesta
+esplicita dell'utente: "non far vedere quel menu il tuo account sempre lì
+fisso, così da avere a schermo intero solo il menu aperto... sia lato
+cliente che professionista". `AccountSidebar.tsx` **eliminato** (verificato
+con una ricerca che nessun file lo importasse più dopo le modifiche): la
+navigazione tra le voci resta comunque disponibile dal menu a tendina
+dell'header (`AccountMenu`), che le elenca già tutte — nessuna funzionalità
+persa, solo il duplicato fisso rimosso. Tre pagine coinvolte: `/account`
+(maxWidth 900→640, la colonna sidebar tolta lasciava il contenuto stretto
+sproporzionato rispetto a prima, ridotto per restare centrato invece di
+allargarsi a vuoto), `/le-mie-richieste` e `/professionisti-salvati`
+(entrambe 900→760).
+
+**Lista d'attesa "Arriviamo presto nella tua zona" visibile da admin** —
+richiesta esplicita dell'utente: "salva le email... in un elenco
+visualizzabile dai profili admin". Le email erano già scritte su
+`WaitlistSignup` (`WaitlistService.signup`, CLAUDE.md §19) ma mai lette da
+nessun endpoint. Nuovo `GET /admin/waitlist` (`AdminService.listWaitlist`,
+stesso controller/guard già protetto da `JwtAuthGuard`+`AdminGuard`),
+nuova sezione in `/admin` (`apps/web/src/app/admin/page.tsx`) sotto le tre
+liste utenti esistenti: email + data di iscrizione, stesso stile a righe
+zebrate già in uso per `UserGroup`.
+
+**Privacy dati di contatto del cliente — ribaltata di nuovo verso
+"visibili solo ad accettazione"** — richiesta esplicita dell'utente, terzo
+ribaltamento sullo stesso punto in questo file (prima "solo dopo
+l'accettazione" → poi "già dalla prima richiesta", CLAUDE.md §12 → ora di
+nuovo "solo dopo l'accettazione"): *"non devono già comparire il numero di
+telefono e il contatto email né l'indirizzo, ma solo la città... tutte le
+info relative al cliente gli verranno visualizzate solo ad accettazione
+del lavoro"*. In aggiunta, cliccando il nome del cliente si deve poter
+vedere nome cognome, data di nascita e immagine del profilo (identità, non
+contatto) — e le recensioni ricevute dal cliente restano visibili subito,
+non essendo un dato di contatto personale e già pubbliche solo a "doppio
+cieco" sbloccato per costruzione (CLAUDE.md §40).
+
+- **`ProfessionalsService.getMyLeads`**: la proiezione `guidedRequest` non
+  espone più `clientPhone`/`clientEmail`/`address` (rimossi dal tipo
+  `ProfessionalLead.guidedRequest`, non solo azzerati — un professionista
+  aggiornato al nuovo frontend non li riceve proprio nella risposta JSON,
+  verificato esplicitamente con un controllo di assenza della chiave, non
+  solo `null`). Nuovo campo `clientBirthDate` (solo data, `YYYY-MM-DD`, da
+  `client.birthDate`) per la scheda identità. `city` resta l'unico
+  riferimento geografico pre-accettazione, come già era per il resto del
+  prodotto (profilo pubblico, ricerca).
+- **`ClientProfileModal.tsx`**: props `phone`/`email` rimosse, sostituite
+  da `birthDate` (formattata in italiano, "15 maggio 1990") — la scheda
+  aperta cliccando il nome mostra ora solo identità (nome, data di
+  nascita, avatar) + recensioni ricevute, mai un contatto. Un testo fisso
+  in fondo ("Telefono, email e indirizzo saranno visibili qui e in agenda
+  non appena il preventivo verrà accettato") sostituisce il vecchio blocco
+  telefono/email/WhatsApp — stesso messaggio, quasi verbatim, già usato
+  nella primissima versione di questo componente prima del ribaltamento
+  precedente (§12), riproposto qui perché torna ad essere vero.
+- **`RequestCard`** (`/dashboard/richieste`, l'unico consumatore reale di
+  `ClientProfileModal` — l'import in `dashboard/page.tsx` non era mai
+  stato usato, rimosso nello stesso giro): tre variabili derivate
+  (`revealedPhone`/`revealedEmail`/`revealedAddress`) sostituiscono i
+  riferimenti diretti a `gr.clientPhone`/`clientEmail`/`address` —
+  valorizzate solo quando la prop `booking` (già passata al componente,
+  presente solo per gli stadi `accettata`/`completata`) esiste, lette da
+  lì (`booking.recipientPhone ?? booking.clientPhone`,
+  `booking.clientEmail`, `formatBookingAddress(booking)` — la stessa
+  fonte già in uso da tempo su `AcceptedJobCard`/`/dashboard`, mai
+  duplicata qui prima d'ora). Pre-accettazione: solo `gr.city` mostrata
+  (sia nell'intestazione collassata sia nel pannello espanso), un testo
+  "Telefono, email e indirizzo saranno visibili qui ad accettazione del
+  preventivo" al posto dei vecchi campi, il tasto "Chat" (cronologia
+  interna) resta comunque disponibile — non è un dato di contatto
+  personale del cliente, è il canale di messaggistica della piattaforma
+  stessa. Il filtro di ricerca della lista (`search`) non filtra più su
+  `guidedRequest.address` (campo non più disponibile a questo livello) ma
+  su `city`, oltre al nome cliente già esistente.
+- Verificato end-to-end con l'API locale (non solo typecheck/build) e un
+  agente Playwright: richiesta guidata inviata direttamente a un
+  professionista di test → prima di ogni preventivo, `GET
+  /professionals/me/leads` non contiene le chiavi `clientPhone`/
+  `clientEmail`/`address` sul `guidedRequest` (assenza confermata, non
+  solo `null`), contiene `clientBirthDate` corretto; UI: nessun testo con
+  il vero numero di telefono/email/indirizzo del cliente ovunque nel DOM
+  della card prima dell'accettazione, click sul nome apre la scheda con
+  nome+data di nascita formattata+avatar, nessun telefono/email nella
+  scheda; preventivo inviato e accettato → `GET
+  /professionals/me/bookings` torna ad esporre `clientPhone`/`clientEmail`
+  (via `Booking`, invariato) → UI: telefono/email/indirizzo pieno
+  visibili nella stessa card, ora nello stadio "accettata", con
+  bottoni WhatsApp/Chiama funzionanti. Typecheck pulito su tutti i package
+  (`shared`, `database`, `api-client`, `api`, `web`, `mobile`), build di
+  produzione `apps/web` verde (28 route).

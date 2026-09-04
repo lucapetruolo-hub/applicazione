@@ -20,6 +20,7 @@ import { AdminModule } from "./admin/admin.module";
 import { WaitlistModule } from "./waitlist/waitlist.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StatsModule } from "./stats/stats.module";
+import { ExternalJobsModule } from "./external-jobs/external-jobs.module";
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { StatsModule } from "./stats/stats.module";
     WaitlistModule,
     NotificationsModule,
     StatsModule,
+    ExternalJobsModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

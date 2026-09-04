@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalBooking } from "@professionisti/shared";
+import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -10,6 +10,7 @@ import { CalendarShell, type CalendarView } from "@/components/calendar/Calendar
 import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TimelineModal } from "@/components/TimelineModal";
+import { ExternalJobModal } from "@/components/ExternalJobModal";
 import {
   datesInMonth,
   datesInMonthForGivenWeekday,
@@ -62,6 +63,17 @@ const BOOKING_STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
   COMPLETED: brand.grafite70,
   CANCELED: brand.urgenza,
   NO_SHOW: brand.urgenza,
+};
+
+// Lavori presi al di fuori della piattaforma (richiesta esplicita
+// dell'utente), mostrati insieme alle Booking reali nello stesso
+// calendario "Prenotazioni" — bordo tratteggiato (stesso principio già in
+// uso per le fasce generiche dell'agenda) per restare visivamente distinti
+// da un impegno nato da un preventivo accettato.
+const EXTERNAL_JOB_STATUS_COLOR: Record<ExternalJob["status"], string> = {
+  SCHEDULED: brand.grafite70,
+  COMPLETED: brand.verificato,
+  CANCELED: brand.urgenza,
 };
 
 export default function DashboardAgendaPage() {
@@ -153,6 +165,17 @@ export default function DashboardAgendaPage() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [showBookingTimeline, setShowBookingTimeline] = useState(false);
 
+  // Lavori presi al di fuori della piattaforma (richiesta esplicita
+  // dell'utente: "dai la possibilità di inserire un lavoro preso al di
+  // fuori della piattaforma, dove poter inserire tutti i dati utili per
+  // effettuare l'intervento") — nessuna GuidedRequest/Quote dietro, gestiti
+  // interamente dal professionista tramite ExternalJobModal, mostrati nello
+  // stesso calendario "Prenotazioni" delle Booking reali.
+  const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
+  const [externalJobsError, setExternalJobsError] = useState<string | null>(null);
+  const [selectedExternalJob, setSelectedExternalJob] = useState<ExternalJob | null>(null);
+  const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
+
   useEffect(() => {
     if (!token) return;
     apiClient
@@ -200,6 +223,14 @@ export default function DashboardAgendaPage() {
       .myProfessionalBookings(token)
       .then(setBookings)
       .catch((err) => setBookingsError(err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni."));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .myExternalJobs(token)
+      .then(setExternalJobs)
+      .catch((err) => setExternalJobsError(err instanceof Error ? err.message : "Errore nel caricamento dei lavori esterni."));
   }, [token]);
 
   useEffect(() => {
@@ -871,9 +902,17 @@ export default function DashboardAgendaPage() {
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
+  function externalJobsOnDate(date: Date): ExternalJob[] {
+    const dateStr = toIsoDate(date);
+    return (externalJobs ?? [])
+      .filter((j) => j.scheduledAt.slice(0, 10) === dateStr)
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  }
+
   function renderBookingDayColumn(date: Date) {
     const dayBookings = bookingsOnDate(date);
-    if (dayBookings.length === 0) {
+    const dayExternalJobs = externalJobsOnDate(date);
+    if (dayBookings.length === 0 && dayExternalJobs.length === 0) {
       return (
         <Text fontSize={11} color={brand.grafite70}>
           Nessuna prenotazione.
@@ -933,21 +972,67 @@ export default function DashboardAgendaPage() {
             </YStack>
           );
         })}
+        {dayExternalJobs.map((job) => {
+          const startTime = new Date(job.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+          const time = job.scheduledEndAt
+            ? `${startTime}–${new Date(job.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
+            : startTime;
+          const isCanceled = job.status === "CANCELED";
+          return (
+            <YStack
+              key={job.id}
+              minWidth={0}
+              borderLeftWidth={3}
+              borderStyle="dashed"
+              borderLeftColor={EXTERNAL_JOB_STATUS_COLOR[job.status]}
+              backgroundColor={brand.gesso}
+              borderRadius="$2"
+              paddingHorizontal={compact ? "$1.5" : "$2"}
+              paddingVertical={compact ? 5 : "$2"}
+              gap={compact ? 0 : "$1"}
+              cursor="pointer"
+              opacity={isCanceled ? 0.6 : 1}
+              onPress={() => setSelectedExternalJob(job)}
+              accessibilityRole="button"
+            >
+              <Text
+                fontFamily="$mono"
+                fontSize={compact ? 10 : 10.5}
+                fontWeight="700"
+                color={brand.grafite}
+                textDecorationLine={isCanceled ? "line-through" : "none"}
+                numberOfLines={1}
+              >
+                {time} · Esterno
+              </Text>
+              {!compact ? (
+                <Text fontSize={10.5} color={brand.grafite70}>
+                  {job.clientName}
+                </Text>
+              ) : null}
+            </YStack>
+          );
+        })}
       </YStack>
     );
   }
 
   function renderBookingMonthCell(date: Date) {
     const dayBookings = bookingsOnDate(date);
-    if (dayBookings.length === 0) return null;
+    const dayExternalJobs = externalJobsOnDate(date);
+    const totalCount = dayBookings.length + dayExternalJobs.length;
+    if (totalCount === 0) return null;
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
         {dayBookings.slice(0, 4).map((b) => (
           <YStack key={b.id} width={6} height={6} borderRadius={3} backgroundColor={BOOKING_STATUS_COLOR[b.status]} />
         ))}
-        {dayBookings.length > 4 ? (
+        {dayExternalJobs.slice(0, Math.max(0, 4 - dayBookings.length)).map((j) => (
+          <YStack key={j.id} width={6} height={6} borderRadius={1} backgroundColor={EXTERNAL_JOB_STATUS_COLOR[j.status]} />
+        ))}
+        {totalCount > 4 ? (
           <Text fontFamily="$mono" fontSize={9} color={brand.grafite70}>
-            +{dayBookings.length - 4}
+            +{totalCount - 4}
           </Text>
         ) : null}
       </XStack>
@@ -1148,9 +1233,30 @@ export default function DashboardAgendaPage() {
           </>
         ) : (
           <>
+            <XStack justifyContent="flex-end">
+              <Button
+                variant="secondary"
+                size="$3"
+                height={40}
+                alignSelf="flex-start"
+                onPress={() => setCreatingExternalJobFor(bookingCurrentDate)}
+              >
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="plus" size={15} color={brand.grafite} />
+                  <Text color={brand.grafite} fontWeight="600">
+                    Lavoro esterno
+                  </Text>
+                </XStack>
+              </Button>
+            </XStack>
             {bookingsError ? (
               <Text color={brand.urgenza} fontSize="$3">
                 {bookingsError}
+              </Text>
+            ) : null}
+            {externalJobsError ? (
+              <Text color={brand.urgenza} fontSize="$3">
+                {externalJobsError}
               </Text>
             ) : null}
             {bookings === null ? (
@@ -1194,7 +1300,28 @@ export default function DashboardAgendaPage() {
           guidedRequestId={selectedBooking.guidedRequestId}
           professionalProfileId={myProfileId}
           viewerRole="PROFESSIONAL"
+          otherPartyName={selectedBooking.clientName}
           onClose={() => setShowBookingTimeline(false)}
+        />
+      ) : null}
+
+      {selectedExternalJob ? (
+        <ExternalJobModal
+          key={selectedExternalJob.id}
+          token={token}
+          job={selectedExternalJob}
+          onClose={() => setSelectedExternalJob(null)}
+          onSaved={(job) => setExternalJobs((prev) => (prev ? prev.map((j) => (j.id === job.id ? job : j)) : [job]))}
+          onDeleted={(id) => setExternalJobs((prev) => (prev ? prev.filter((j) => j.id !== id) : prev))}
+        />
+      ) : null}
+
+      {creatingExternalJobFor ? (
+        <ExternalJobModal
+          token={token}
+          defaultDate={creatingExternalJobFor}
+          onClose={() => setCreatingExternalJobFor(null)}
+          onSaved={(job) => setExternalJobs((prev) => (prev ? [...prev, job] : [job]))}
         />
       ) : null}
 

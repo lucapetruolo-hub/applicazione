@@ -17,7 +17,6 @@ import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } 
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
-import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -1134,6 +1133,7 @@ function AcceptedJobCard({
           guidedRequestId={booking.guidedRequestId}
           professionalProfileId={myProfileId}
           viewerRole="PROFESSIONAL"
+          otherPartyName={booking.clientName}
           onClose={() => setShowTimeline(false)}
         />
       ) : null}

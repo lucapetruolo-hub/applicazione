@@ -7,7 +7,6 @@ import { Camera, Trash2 } from "lucide-react";
 import { Avatar, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AccountSidebar } from "@/components/AccountSidebar";
 import { ImageCropModal } from "@/components/ImageCropModal";
 
 const inputStyle = {
@@ -263,9 +262,13 @@ export default function AccountPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <AccountSidebar />
-
+      {/* Sidebar "Il tuo account" rimossa da questa e dalle altre pagine
+          menu (richiesta esplicita dell'utente: "non far vedere quel menu
+          sempre lì fisso, così da avere a schermo intero solo il menu
+          aperto") — la navigazione tra le voci resta disponibile dal
+          menu a tendina dell'header (AccountMenu), che le elenca già
+          tutte. */}
+      <XStack width="100%" maxWidth={640} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} gap="$5" minWidth={280}>
           <YStack gap="$1">
             <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>

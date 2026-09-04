@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { ConversationEvent } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
@@ -58,6 +59,7 @@ export function TimelineModal({
   guidedRequestId,
   professionalProfileId,
   viewerRole,
+  otherPartyName,
   onClose,
 }: {
   token: string;
@@ -68,8 +70,34 @@ export function TimelineModal({
       gli aggiornamenti dell'altra parte") — i messaggi SYSTEM restano
       sempre centrati, non hanno un "lato". */
   viewerRole: "CLIENT" | "PROFESSIONAL";
+  /**
+   * Nome reale dell'altra parte del thread (nome+cognome del cliente se
+   * `viewerRole` è "PROFESSIONAL", nome attività del professionista se è
+   * "CLIENT") — richiesta esplicita dell'utente: "al posto di cliente e
+   * professionista deve esserci scritto il nome esatto". Ogni chiamante lo
+   * ha già a disposizione nei propri dati (nessuna nuova chiamata API).
+   * `null`/assente ricade sull'etichetta generica "Cliente"/"Professionista"
+   * (es. account eliminato, dato non ancora noto).
+   */
+  otherPartyName?: string | null;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
+  // Il proprio nome (per le nuvolette del lato "mio") si ricava
+  // dall'account loggato — stesso fallback già in uso in AccountMenu per
+  // un professionista senza ancora businessName. L'altra parte arriva da
+  // `otherPartyName` (prop), il chiamante specifico del thread la conosce
+  // già.
+  const myDisplayName =
+    viewerRole === "PROFESSIONAL"
+      ? user?.businessName ?? user?.name ?? null
+      : [user?.name, user?.surname].filter(Boolean).join(" ") || user?.name || null;
+  function displayNameFor(actor: ConversationEvent["actor"]): string {
+    if (actor === "SYSTEM") return ACTOR_LABEL.SYSTEM;
+    const name = actor === viewerRole ? myDisplayName : otherPartyName;
+    return name && name.trim() ? name : ACTOR_LABEL[actor];
+  }
+
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -231,7 +259,7 @@ export function TimelineModal({
                     paddingVertical="$2.5"
                   >
                     <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
-                      {ACTOR_LABEL[event.actor]}
+                      {displayNameFor(event.actor)}
                     </Text>
                     {event.message ? (
                       <Text color={brand.grafite} fontSize="$3">

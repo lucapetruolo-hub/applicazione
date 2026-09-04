@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   buildWhatsAppLink,
+  formatBookingAddress,
   formatEurCents,
   quotePriceTotals,
   type CompleteBookingInput,
@@ -317,7 +318,10 @@ function RichiesteContent() {
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      list = list.filter((l) => (l.guidedRequest.clientName ?? "").toLowerCase().includes(q) || (l.guidedRequest.address ?? "").toLowerCase().includes(q));
+      // Indirizzo non più disponibile a questo livello (richiesta esplicita
+      // dell'utente: nessun dato di contatto/indirizzo prima
+      // dell'accettazione) — il filtro cerca ora su nome cliente e città.
+      list = list.filter((l) => (l.guidedRequest.clientName ?? "").toLowerCase().includes(q) || l.guidedRequest.city.toLowerCase().includes(q));
     }
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -614,7 +618,14 @@ function RequestCard({
   const noteChanged = noteDraft !== (lead.professionalNote ?? "");
 
   const clientName = gr.clientAccountDeleted ? "Account eliminato" : (gr.clientName ?? "Cliente");
-  const whatsAppLink = buildWhatsAppLink(gr.clientPhone);
+  // Telefono/email/indirizzo NON arrivano più su `gr` (richiesta esplicita
+  // dell'utente: visibili solo ad accettazione del lavoro) — quando esiste
+  // una Booking (preventivo accettato) vengono letti da lì, dove sono
+  // sempre stati disponibili (recipientPhone/street/ecc.), mai prima.
+  const revealedPhone = booking ? (booking.recipientPhone ?? booking.clientPhone) : null;
+  const revealedEmail = booking ? booking.clientEmail : null;
+  const revealedAddress = booking ? (formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${gr.city}` : null)) : null;
+  const whatsAppLink = buildWhatsAppLink(revealedPhone);
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canDelete = gr.clientAccountDeleted || quoteWithdrawn;
 
@@ -814,7 +825,7 @@ function RequestCard({
         <XStack alignItems="center" gap="$1">
           <Icon name="map-pin" size={14} color={brand.grafite70} />
           <Text fontSize={15} color={brand.grafite70}>
-            {isOnline ? `Zona: ${gr.city}` : gr.address || gr.city}
+            {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
           </Text>
         </XStack>
 
@@ -885,14 +896,19 @@ function RequestCard({
                   <Text fontSize={13} color={brand.grafite} cursor="pointer" onPress={() => setShowClientProfile(true)}>
                     {clientName}
                   </Text>
-                  {gr.clientPhone ? (
+                  {revealedPhone ? (
                     <Text fontSize={13} color={brand.grafite70}>
-                      {gr.clientPhone}
+                      {revealedPhone}
                     </Text>
                   ) : null}
-                  {gr.clientEmail ? (
+                  {revealedEmail ? (
                     <Text fontSize={13} color={brand.grafite70}>
-                      {gr.clientEmail}
+                      {revealedEmail}
+                    </Text>
+                  ) : null}
+                  {!booking ? (
+                    <Text fontSize={12.5} color={brand.grafite70} fontStyle="italic">
+                      Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo.
                     </Text>
                   ) : null}
                   <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
@@ -905,8 +921,8 @@ function RequestCard({
                         </XStack>
                       </a>
                     ) : null}
-                    {gr.clientPhone ? (
-                      <a href={`tel:${gr.clientPhone}`} style={{ textDecoration: "none" }}>
+                    {revealedPhone ? (
+                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
                         <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografia}>
                           <Text fontSize={12.5} fontWeight="700" color="white">
                             Chiama
@@ -928,11 +944,15 @@ function RequestCard({
                     Zona: {gr.city} (indirizzo nascosto)
                   </Text>
                 </YStack>
-              ) : gr.address ? (
+              ) : revealedAddress ? (
                 <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
-                  {gr.address}, {gr.city}
+                  {revealedAddress}
                 </Text>
-              ) : null}
+              ) : (
+                <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
+                  {gr.city}
+                </Text>
+              )}
               {booking?.scheduledAt && (stage === "accettata" || stage === "completata") ? (
                 <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
                   Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
@@ -1334,10 +1354,17 @@ function RequestCard({
       ) : null}
 
       {showClientProfile ? (
-        <ClientProfileModal name={clientName} phone={gr.clientPhone} email={gr.clientEmail} imageUrl={gr.clientImageUrl} reviews={gr.clientReviews} onClose={() => setShowClientProfile(false)} />
+        <ClientProfileModal name={clientName} birthDate={gr.clientBirthDate} imageUrl={gr.clientImageUrl} reviews={gr.clientReviews} onClose={() => setShowClientProfile(false)} />
       ) : null}
       {showTimeline && myProfileId ? (
-        <TimelineModal token={token} guidedRequestId={gr.id} professionalProfileId={myProfileId} viewerRole="PROFESSIONAL" onClose={() => setShowTimeline(false)} />
+        <TimelineModal
+          token={token}
+          guidedRequestId={gr.id}
+          professionalProfileId={myProfileId}
+          viewerRole="PROFESSIONAL"
+          otherPartyName={gr.clientName}
+          onClose={() => setShowTimeline(false)}
+        />
       ) : null}
       {openPhotoIndex !== null ? <PhotoLightbox photos={gr.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
     </Surface>

@@ -25,6 +25,26 @@ function FieldLabel({ children }: { children: string }) {
   );
 }
 
+/**
+ * Suggerimenti per la Bio — richiesta esplicita dell'utente: "dai dei
+ * suggerimenti in modo che sia più professionale". Consigli statici
+ * (nessun servizio IA nello stack, CLAUDE.md §2 — anche il suggerimento
+ * categoria da foto resta esplicitamente rimandato per lo stesso motivo),
+ * concreti invece che generici ("scrivi qualcosa di professionale" non
+ * aiuterebbe nessuno).
+ */
+const BIO_TIPS = [
+  "Indica da quanti anni lavori in questo settore.",
+  "Elenca le prestazioni in cui sei più specializzato.",
+  "Specifica la zona in cui operi con facilità.",
+  "Menziona eventuali certificazioni, garanzie o assicurazioni.",
+  "Racconta cosa ti distingue: preventivo gratuito, tempi di risposta rapidi, disponibilità per urgenze.",
+  'Evita frasi generiche come "professionista serio e affidabile": preferisci esempi concreti.',
+];
+
+const BIO_EXAMPLE =
+  "Lavoro in questo settore da oltre 10 anni, con esperienza in interventi di manutenzione, riparazione e lavori su misura. Offro un preventivo gratuito dopo un sopralluogo rapido e garantisco una risposta entro 24 ore. Uso solo materiali di qualità e rilascio garanzia scritta su ogni intervento.";
+
 export default function DashboardProfiloPage() {
   const router = useRouter();
   const { user, token, isLoading } = useAuth();
@@ -696,6 +716,39 @@ export default function DashboardProfiloPage() {
 
         <YStack gap="$2">
           <FieldLabel>Bio (opzionale)</FieldLabel>
+          <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="sparkles" size={14} color={brand.cianografia} />
+              <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                Consigli per una bio più professionale
+              </Text>
+            </XStack>
+            <YStack gap="$1">
+              {BIO_TIPS.map((tip) => (
+                <XStack key={tip} gap="$2" alignItems="flex-start">
+                  <Text fontSize="$2" color={brand.cianografia}>
+                    ·
+                  </Text>
+                  <Text fontSize="$2" color={brand.grafite70} flex={1}>
+                    {tip}
+                  </Text>
+                </XStack>
+              ))}
+            </YStack>
+            {!bio.trim() ? (
+              <Text
+                fontSize="$2"
+                fontWeight="600"
+                color={brand.cianografia}
+                alignSelf="flex-start"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setBio(BIO_EXAMPLE)}
+              >
+                Usa un esempio come punto di partenza
+              </Text>
+            ) : null}
+          </YStack>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}

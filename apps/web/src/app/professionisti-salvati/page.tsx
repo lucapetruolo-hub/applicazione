@@ -8,7 +8,6 @@ import { Button, EmptyState, ProfessionalCard, Text, XStack, YStack, brand } fro
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
-import { AccountSidebar } from "@/components/AccountSidebar";
 import { LoadingState } from "@/components/LoadingState";
 
 export default function ProfessionistiSalvatiPage() {
@@ -54,9 +53,10 @@ export default function ProfessionistiSalvatiPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={900} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <AccountSidebar />
-
+      {/* Sidebar "Il tuo account" rimossa (richiesta esplicita dell'utente:
+          "non far vedere quel menu sempre lì fisso") — navigazione tra le
+          voci disponibile dal menu a tendina dell'header (AccountMenu). */}
+      <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} minWidth={280} gap="$5">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Professionisti salvati

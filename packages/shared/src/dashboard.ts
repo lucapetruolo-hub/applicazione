@@ -97,13 +97,21 @@ export type ProfessionalLead = {
      */
     clientName: string | null;
     /**
-     * Telefono/email del cliente, visibili già dalla prima richiesta
-     * ricevuta — non solo dopo l'accettazione del preventivo (correzione
-     * esplicita dell'utente rispetto alla scelta precedente, che li
-     * mostrava solo su `ProfessionalBooking`/`AcceptedJobCard`).
+     * Data di nascita del cliente (solo data, YYYY-MM-DD), per la scheda
+     * profilo aperta cliccando il nome (ClientProfileModal) — richiesta
+     * esplicita dell'utente: "vedere nome cognome, data di nascita e
+     * immagine del profilo". `null` se il cliente non l'ha compilata.
      */
-    clientPhone: string | null;
-    clientEmail: string | null;
+    clientBirthDate: string | null;
+    /**
+     * Telefono/email/indirizzo NON esposti a questo livello — decisione di
+     * privacy ribaltata di nuovo su richiesta esplicita dell'utente ("non
+     * devono già comparire il numero di telefono e il contatto email né
+     * l'indirizzo, ma solo la città... tutte le info relative al cliente gli
+     * verranno visualizzate solo ad accettazione del lavoro"): quei dati
+     * restano disponibili solo dopo l'accettazione, su
+     * `ProfessionalBooking` (recipientPhone/street/ecc., già esistenti lì).
+     */
     /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
     clientImageUrl: string | null;
     /**
@@ -113,7 +121,7 @@ export type ProfessionalLead = {
      * un'indicazione "Account eliminato" al posto del nome, e senza più
      * poter inviare/modificare un preventivo per questa richiesta
      * (QuotesService.createOrUpdate lo rifiuta esplicitamente). `clientName`/
-     * `clientPhone`/`clientEmail`/`clientImageUrl` sono già `null` in
+     * `clientImageUrl` sono già `null` in
      * questo caso (anonimizzati alla cancellazione), questo flag esiste
      * solo per distinguere in UI "account eliminato" da "account senza
      * questi dati compilati".
@@ -136,8 +144,6 @@ export type ProfessionalLead = {
       isAutomatic: boolean;
       reviewerBusinessName: string;
     }[];
-    /** Via e numero civico indicati dal cliente, facoltativo. */
-    address: string | null;
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
     photoUrls: string[];
     /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
@@ -261,6 +267,28 @@ export type ProfessionalBooking = {
   clientCompletionPhotoUrls: string[];
   /** Vero se il professionista ha già recensito il cliente per questa prenotazione. */
   hasClientReview: boolean;
+};
+
+/**
+ * Lavoro preso al di fuori della piattaforma, inserito a mano dal
+ * professionista nella propria agenda (richiesta esplicita dell'utente) —
+ * nessun account cliente reale dietro: `clientName`/`clientPhone`/
+ * `address` sono campi liberi scritti dal professionista stesso, non
+ * riferimenti a un `User`.
+ */
+export type ExternalJob = {
+  id: string;
+  clientName: string;
+  clientPhone: string | null;
+  address: string | null;
+  description: string | null;
+  scheduledAt: string;
+  scheduledEndAt: string | null;
+  priceEurCents: number | null;
+  notes: string | null;
+  status: "SCHEDULED" | "COMPLETED" | "CANCELED";
+  createdAt: string;
+  updatedAt: string;
 };
 
 /**

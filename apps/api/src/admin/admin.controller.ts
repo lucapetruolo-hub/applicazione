@@ -12,4 +12,9 @@ export class AdminController {
   listUsers() {
     return this.adminService.listUsersByRole();
   }
+
+  @Get("waitlist")
+  listWaitlist() {
+    return this.adminService.listWaitlist();
+  }
 }

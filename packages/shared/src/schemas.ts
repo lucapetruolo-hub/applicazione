@@ -389,6 +389,54 @@ export const updateBookingMeetingLinkSchema = z.object({
 export type UpdateBookingMeetingLinkInput = z.infer<typeof updateBookingMeetingLinkSchema>;
 
 /**
+ * Lavoro preso al di fuori della piattaforma (richiesta esplicita
+ * dell'utente): il professionista lo inserisce a mano nella propria
+ * agenda con tutti i dati utili per svolgerlo — nessun account cliente
+ * reale dietro, quindi solo campi liberi, non l'indirizzo strutturato di
+ * `acceptQuoteSchema` (che presuppone la schermata di accettazione di un
+ * preventivo vero). `scheduledEndAt`, se presente, deve seguire l'inizio.
+ */
+export const externalJobSchema = z
+  .object({
+    clientName: z.string().trim().min(1, "Il nome del cliente è obbligatorio.").max(160),
+    clientPhone: z.string().trim().max(30).optional(),
+    address: z.string().trim().max(300).optional(),
+    description: z.string().trim().max(2000).optional(),
+    scheduledAt: z.string().datetime(),
+    scheduledEndAt: z.string().datetime().optional(),
+    priceEurCents: z.number().int().nonnegative().max(100_000_00).optional(),
+    notes: z.string().trim().max(2000).optional(),
+  })
+  .refine((data) => !data.scheduledEndAt || data.scheduledEndAt > data.scheduledAt, {
+    message: "L'orario di fine deve essere dopo l'orario di inizio.",
+    path: ["scheduledEndAt"],
+  });
+export type ExternalJobInput = z.infer<typeof externalJobSchema>;
+
+/** Modifica di un lavoro esterno già inserito: stessi campi, tutti facoltativi (si aggiorna solo ciò che è cambiato). */
+export const externalJobUpdateSchema = z
+  .object({
+    clientName: z.string().trim().min(1, "Il nome del cliente è obbligatorio.").max(160).optional(),
+    clientPhone: z.string().trim().max(30).optional(),
+    address: z.string().trim().max(300).optional(),
+    description: z.string().trim().max(2000).optional(),
+    scheduledAt: z.string().datetime().optional(),
+    scheduledEndAt: z.string().datetime().optional(),
+    priceEurCents: z.number().int().nonnegative().max(100_000_00).optional(),
+    notes: z.string().trim().max(2000).optional(),
+  })
+  .refine((data) => !data.scheduledEndAt || !data.scheduledAt || data.scheduledEndAt > data.scheduledAt, {
+    message: "L'orario di fine deve essere dopo l'orario di inizio.",
+    path: ["scheduledEndAt"],
+  });
+export type ExternalJobUpdateInput = z.infer<typeof externalJobUpdateSchema>;
+
+export const externalJobStatusSchema = z.object({
+  status: z.enum(["SCHEDULED", "COMPLETED", "CANCELED"]),
+});
+export type ExternalJobStatusInput = z.infer<typeof externalJobStatusSchema>;
+
+/**
  * Raggio di ingaggio del professionista (km, indipendenti tra standard e
  * urgente — richiesta esplicita dell'utente): usati da
  * GuidedRequestsService per il filtro geografico del fan-out invece di una

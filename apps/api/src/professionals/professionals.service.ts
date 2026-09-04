@@ -760,19 +760,22 @@ export class ProfessionalsService {
           // pattern già in uso in getMyBookings, join(" ") invece di solo
           // client.name per includere anche il cognome.
           clientName: [lead.guidedRequest.client.name, lead.guidedRequest.client.surname].filter(Boolean).join(" ") || null,
-          // Telefono/email visibili già dalla prima richiesta ricevuta, non
-          // solo dopo l'accettazione del preventivo — correzione esplicita
-          // dell'utente rispetto alla scelta precedente (che li mostrava
-          // solo su ProfessionalBooking/AcceptedJobCard): un professionista
-          // deve poter contattare il cliente anche solo per chiarire i
-          // dettagli prima di formulare un preventivo.
-          clientPhone: lead.guidedRequest.client.phone,
-          // Mai l'email anonimizzata sintetica (deleted-{id}@deleted.invalid,
-          // scritta da AuthService.deleteAccount solo per liberare il
-          // vincolo unico) — quella non è un vero indirizzo del cliente, e
-          // mostrarla al professionista sarebbe fuorviante/rotta (link
-          // "mailto:" verso un dominio inventato).
-          clientEmail: lead.guidedRequest.client.deletedAt ? null : lead.guidedRequest.client.email,
+          // Data di nascita del cliente — richiesta esplicita dell'utente:
+          // la scheda aperta cliccando il nome (ClientProfileModal) deve
+          // poter mostrare "nome cognome, data di nascita e immagine del
+          // profilo" già dalla prima richiesta. Solo la data (YYYY-MM-DD,
+          // nessun'ora): stesso taglio già in uso per preferredDate poco
+          // sotto.
+          clientBirthDate: lead.guidedRequest.client.birthDate ? lead.guidedRequest.client.birthDate.toISOString().slice(0, 10) : null,
+          // Telefono/email/indirizzo NON esposti finché il preventivo non è
+          // accettato — decisione di privacy ribaltata di nuovo su richiesta
+          // esplicita dell'utente rispetto alla correzione precedente (che
+          // li mostrava già dalla prima richiesta): "tutte le info relative
+          // al cliente gli verranno visualizzate solo ad accettazione del
+          // lavoro". Una volta creata la Booking, restano disponibili come
+          // sempre su ProfessionalBooking/getMyBookings (recipientPhone,
+          // street, ecc. — dati raccolti alla richiesta ma girati al
+          // professionista solo con l'accettazione).
           // Richiesta esplicita dell'utente: mostrare la foto profilo del
           // cliente (se presente) nella scheda aperta cliccando il nome
           // (ClientProfileModal) — stesso campo User.imageUrl già usato
@@ -781,8 +784,11 @@ export class ProfessionalsService {
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
           // Recensioni ricevute dal cliente, da qualunque professionista
           // (richiesta esplicita dell'utente) — mostrate in
-          // ClientProfileModal, mai su un profilo pubblico (il cliente non
-          // ne ha uno in questo marketplace).
+          // ClientProfileModal fin da subito, indipendentemente
+          // dall'accettazione: non sono un dato di contatto personale, sono
+          // già "doppio cieco" per costruzione (pubbliche solo a review
+          // reciproca completata), mai su un profilo pubblico (il cliente
+          // non ne ha uno in questo marketplace).
           clientReviews: (clientReviewsByClientId.get(lead.guidedRequest.client.id) ?? []).map((review) => ({
             id: review.id,
             rating: review.rating,
@@ -792,7 +798,6 @@ export class ProfessionalsService {
             isAutomatic: review.isAutomatic,
             reviewerBusinessName: review.booking.professionalProfile.businessName,
           })),
-          address: lead.guidedRequest.address,
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,

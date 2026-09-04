@@ -12,6 +12,12 @@ export default function AdminPage() {
   const { user, token, isLoading } = useAuth();
   const [data, setData] = useState<AdminUsersByRole | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Email raccolte dal riquadro "Arriviamo presto nella tua zona" in
+  // homepage (richiesta esplicita dell'utente: "salvale in un elenco
+  // visualizzabile dai profili admin") — erano già scritte su DB, mai
+  // lette da nessuna pagina prima d'ora.
+  const [waitlist, setWaitlist] = useState<{ email: string; createdAt: string }[] | null>(null);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
@@ -19,6 +25,10 @@ export default function AdminPage() {
       .adminListUsers(token)
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento."));
+    apiClient
+      .adminListWaitlist(token)
+      .then(setWaitlist)
+      .catch((err) => setWaitlistError(err instanceof Error ? err.message : "Errore nel caricamento."));
   }, [token, user]);
 
   if (isLoading) return null;
@@ -69,6 +79,38 @@ export default function AdminPage() {
             <UserGroup title={`Clienti (${data.clients.length})`} rows={data.clients} showBusiness={false} />
           </>
         ) : null}
+
+        <YStack gap="$3">
+          <H2 size="$6">Lista d&apos;attesa (&quot;Arriviamo presto nella tua zona&quot;)</H2>
+          {waitlistError ? (
+            <Text color={brand.urgenza}>{waitlistError}</Text>
+          ) : waitlist === null ? (
+            <LoadingState />
+          ) : waitlist.length === 0 ? (
+            <Text color={brand.grafite70}>Nessuna email raccolta finora.</Text>
+          ) : (
+            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+              {waitlist.map((row, index) => (
+                <YStack
+                  key={row.email}
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  flexWrap="wrap"
+                  gap="$2"
+                  paddingHorizontal="$3"
+                  paddingVertical="$3"
+                  backgroundColor={index % 2 === 0 ? "transparent" : brand.gesso}
+                >
+                  <Text fontWeight="600">{row.email}</Text>
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    {new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+                  </Text>
+                </YStack>
+              ))}
+            </YStack>
+          )}
+        </YStack>
       </YStack>
     </YStack>
   );

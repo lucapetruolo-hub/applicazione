@@ -184,6 +184,7 @@ model ProfessionalProfile {
   guidedRequests         GuidedRequest[]
   metrics                ProfessionalMetrics?
   timelineEvents         ConversationEvent[]
+  externalJobs           ExternalJob[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -860,6 +861,45 @@ model BookingFinalItem {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("booking_final_items")
+}
+
+// Lavoro preso al di fuori della piattaforma (richiesta esplicita
+// dell'utente: "dai la possibilità di inserire un lavoro preso al di
+// fuori della piattaforma, dove poter inserire tutti i dati utili per
+// effettuare l'intervento") — inserito a mano dal professionista, mai da
+// un cliente. Modello separato da `Booking` invece di rendere `Booking.
+// clientId` opzionale: un `Booking` porta con sé garanzie che presuppongono
+// sempre un vero account cliente (recensioni doppio cieco, notifiche al
+// cliente, visibilità in /le-mie-richieste, cronologia condivisa) che qui
+// non hanno senso — nessun cliente reale da notificare o con cui
+// conversare, solo un promemoria strutturato per il professionista stesso.
+enum ExternalJobStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+model ExternalJob {
+  id                    String            @id @default(uuid())
+  professionalProfileId String
+  clientName            String
+  clientPhone           String?
+  address               String?
+  description           String?
+  scheduledAt           DateTime
+  scheduledEndAt        DateTime?
+  priceEurCents         Int?
+  // Nota privata (mai vista da nessun altro, non esiste un cliente con cui
+  // condividerla) — stesso concetto di Booking.professionalNote.
+  notes                 String?
+  status                ExternalJobStatus @default(SCHEDULED)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, scheduledAt])
+  @@map("external_jobs")
 }
 
 model Review {

@@ -59,7 +59,13 @@ export class ReviewsService {
       professional: {
         businessName: review.booking.professionalProfile.businessName,
         categoryLabel: review.booking.professionalProfile.category.label,
+        // Slug categoria (non solo l'etichetta) per il fallback visivo lato
+        // home quando il professionista non ha un'immagine profilo —
+        // richiesta esplicita dell'utente: "fai comparire anche la foto
+        // del professionista... grande quanto tutto il riquadro".
+        categorySlug: review.booking.professionalProfile.category.slug,
         city: review.booking.professionalProfile.city,
+        imageUrl: review.booking.professionalProfile.imageUrl,
       },
     }));
   }

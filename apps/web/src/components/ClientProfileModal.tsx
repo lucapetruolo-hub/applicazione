@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { buildWhatsAppLink } from "@professionisti/shared";
 import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 
@@ -15,40 +14,57 @@ export type ClientReviewSummary = {
   reviewerBusinessName: string;
 };
 
+function formatBirthDate(birthDate: string): string {
+  const parts = birthDate.split("-").map(Number);
+  const year = parts[0] ?? 1970;
+  const month = parts[1] ?? 1;
+  const day = parts[2] ?? 1;
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
- * ricevuta (`/dashboard`, `LeadCard`) — richiesta esplicita dell'utente
- * ("nelle richieste ricevute deve esserci anche il nome, cliccando si
- * aprirà la scheda profilo della persona"). Stesso pattern overlay di
- * BookingDetailPanel/PhotoLightbox (role="dialog", chiusura con
+ * ricevuta (`/dashboard/richieste`, `RequestCard`) — richiesta esplicita
+ * dell'utente ("nelle richieste ricevute deve esserci anche il nome,
+ * cliccando si aprirà la scheda profilo della persona"). Stesso pattern
+ * overlay di BookingDetailPanel/PhotoLightbox (role="dialog", chiusura con
  * Escape/click sul backdrop, nessuna libreria aggiunta).
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * nome + contatti. Telefono/email sono visibili già dalla prima richiesta
- * ricevuta, non solo dopo l'accettazione del preventivo — correzione
- * esplicita dell'utente rispetto alla scelta iniziale (CLAUDE.md §12), che
- * li mostrava solo su ProfessionalBooking/AcceptedJobCard.
+ * solo l'identità (nome/cognome, data di nascita, foto profilo) — richiesta
+ * esplicita dell'utente, che ha ribaltato di nuovo la decisione di privacy
+ * presa in un giro precedente (CLAUDE.md §12, mostrava telefono/email già
+ * da qui): "tutte le info relative al cliente gli verranno visualizzate
+ * solo ad accettazione del lavoro". Telefono/email/indirizzo non sono più
+ * props di questo componente — restano disponibili solo dopo l'accettazione
+ * del preventivo, mostrati direttamente nella sezione "Contatti" della
+ * card di un lavoro accettato (già esistente, sorgente ProfessionalBooking),
+ * non in questa scheda identità. Le recensioni ricevute dal cliente restano
+ * invece visibili subito (richiesta esplicita dell'utente): non sono un
+ * dato di contatto personale, sono già "doppio cieco" per costruzione.
  */
 export function ClientProfileModal({
   name,
-  phone,
-  email,
+  birthDate,
   imageUrl,
   reviews,
   onClose,
 }: {
   name: string;
-  phone: string | null;
-  email: string | null;
+  /** Data di nascita del cliente (YYYY-MM-DD), se compilata. */
+  birthDate?: string | null;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
   /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
   reviews?: ClientReviewSummary[];
   onClose: () => void;
 }) {
-  const whatsAppLink = buildWhatsAppLink(phone);
-
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -108,44 +124,18 @@ export function ClientProfileModal({
           </Text>
         </YStack>
 
-        {phone || email ? (
-          <YStack gap="$2" width="100%">
-            {phone ? (
-              <a href={`tel:${phone}`} style={{ textDecoration: "none" }}>
-                <XStack alignItems="center" justifyContent="center" gap="$2">
-                  <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                  <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
-                    {phone}
-                  </Text>
-                </XStack>
-              </a>
-            ) : null}
-            {whatsAppLink ? (
-              <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                <XStack alignItems="center" justifyContent="center" gap="$2">
-                  <Icon name="message-circle" size={14} color={brand.verificato} strokeWidth={1.5} />
-                  <Text color={brand.verificato} fontSize="$3" fontWeight="600">
-                    WhatsApp
-                  </Text>
-                </XStack>
-              </a>
-            ) : null}
-            {email ? (
-              <a href={`mailto:${email}`} style={{ textDecoration: "none" }}>
-                <XStack alignItems="center" justifyContent="center" gap="$2">
-                  <Icon name="mail" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                  <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
-                    {email}
-                  </Text>
-                </XStack>
-              </a>
-            ) : null}
-          </YStack>
-        ) : (
-          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-            Nessun contatto disponibile per questo cliente.
-          </Text>
-        )}
+        {birthDate ? (
+          <XStack alignItems="center" justifyContent="center" gap="$2">
+            <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
+            <Text color={brand.grafite70} fontSize="$3" fontWeight="600">
+              Nato/a il {formatBirthDate(birthDate)}
+            </Text>
+          </XStack>
+        ) : null}
+
+        <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+          Telefono, email e indirizzo saranno visibili qui e in agenda non appena il preventivo verrà accettato.
+        </Text>
 
         {reviews && reviews.length > 0 ? (
           <YStack width="100%" gap="$3" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
