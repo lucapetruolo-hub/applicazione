@@ -126,6 +126,17 @@ export class GuidedRequestsController {
     return this.guidedRequestsService.listForClient(req.user.userId);
   }
 
+  // Inbox "Chat" (richiesta esplicita dell'utente) — elenco di tutti i
+  // thread (richiesta guidata + professionista) a cui questo utente
+  // partecipa, con solo l'ultimo messaggio come anteprima. Route letterale
+  // (non ":id/..."), va dichiarata qui e non rischia comunque conflitti:
+  // nessuna rotta ":id" bare in questo controller.
+  @UseGuards(JwtAuthGuard)
+  @Get("chat-threads")
+  listChatThreads(@Req() req: AuthenticatedRequest) {
+    return this.timelineService.listThreadsForUser(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(":id")
   update(

@@ -27,6 +27,8 @@ import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import {
   clientSectionCounts,
+  mergeCounts,
+  mergeIds,
   unreadBookingCounts,
   unreadBookingIds,
   unreadGuidedRequestIds,
@@ -35,7 +37,11 @@ import {
   unreadThreadCounts,
 } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
+import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
+
+// Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
+const UNREAD_BADGE_POLL_MS = 15000;
 
 const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
   OPEN: "In attesa di risposte",
@@ -247,22 +253,40 @@ function LeMieRichiesteContent() {
 
   // Stesso principio della dashboard professionista: aprire questa pagina
   // segna come lette le notifiche in attesa (nuovo preventivo, conferma/
-  // rifiuto della data proposta) e azzera il badge nell'header.
+  // rifiuto della data proposta) e azzera il badge nell'header. Ripetuto
+  // ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta (richiesta
+  // esplicita dell'utente: "controlla anche lato cliente" per lo stesso
+  // problema segnalato lato professionista — un nuovo messaggio in chat
+  // deve comparire da solo, non solo al prossimo caricamento). Ogni tick
+  // trova solo le notifiche arrivate dopo il markNotificationsRead del tick
+  // precedente, quindi i conteggi si sommano (mergeCounts/mergeIds) invece
+  // di sostituire lo stato.
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .unreadNotifications(token)
-      .then((notifications) => {
-        setSectionSnapshot(clientSectionCounts(notifications));
-        setNewRequestIds(unreadGuidedRequestIds(notifications));
-        setNewClientBookingIds(unreadBookingIds(notifications));
-        setNewQuoteIds(unreadQuoteIds(notifications));
-        setThreadUnreadCounts(unreadThreadCounts(notifications));
-        setQuoteUnreadCounts(unreadQuoteCounts(notifications));
-        setBookingUnreadCounts(unreadBookingCounts(notifications));
-      })
-      .catch(() => {})
-      .finally(() => markNotificationsRead());
+    let cancelled = false;
+    function poll() {
+      apiClient
+        .unreadNotifications(token!)
+        .then((notifications) => {
+          if (cancelled || notifications.length === 0) return;
+          const delta = clientSectionCounts(notifications);
+          setSectionSnapshot((prev) => ({ richieste: prev.richieste + delta.richieste, lavori: prev.lavori + delta.lavori }));
+          setNewRequestIds((prev) => mergeIds(prev, unreadGuidedRequestIds(notifications)));
+          setNewClientBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
+          setNewQuoteIds((prev) => mergeIds(prev, unreadQuoteIds(notifications)));
+          setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
+          setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
+          setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
+        })
+        .catch(() => {})
+        .finally(() => markNotificationsRead());
+    }
+    poll();
+    const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [token, markNotificationsRead]);
 
   // L'indirizzo di lavoro è già stato raccolto all'invio della richiesta
@@ -462,6 +486,24 @@ function GuidedRequestCard({
   // esisteva solo dentro QuoteCard/BookingRow una volta ricevuto un
   // preventivo).
   const [openTimelineProfessionalId, setOpenTimelineProfessionalId] = useState<string | null>(null);
+  // Il pallino "Contatta/Cronologia" per riga professionista deve sparire
+  // non appena si apre quel thread specifico (richiesta esplicita
+  // dell'utente) — più righe condividono questo stesso componente (un
+  // professionista per riga in `request.sentTo`), quindi non si può usare
+  // `useDismissableUnreadCount` (un hook per componente, non per elemento di
+  // un `.map()`): stessa logica differenziale, ma tenuta in una mappa
+  // "conteggio al momento dell'apertura" per chiave composita.
+  const [dismissedThreadCounts, setDismissedThreadCounts] = useState<Map<string, number>>(new Map());
+  function effectiveThreadUnread(key: string): number | undefined {
+    const count = threadUnreadCounts?.get(key);
+    if (count === undefined) return undefined;
+    return Math.max(0, count - (dismissedThreadCounts.get(key) ?? 0));
+  }
+  function openTimelineForProfessional(professionalId: string) {
+    setOpenTimelineProfessionalId(professionalId);
+    const key = `${request.id}:${professionalId}`;
+    setDismissedThreadCounts((prev) => new Map(prev).set(key, threadUnreadCounts?.get(key) ?? 0));
+  }
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
@@ -1007,12 +1049,12 @@ function GuidedRequestCard({
                 gap="$1"
                 cursor="pointer"
                 accessibilityRole="button"
-                onPress={() => setOpenTimelineProfessionalId(professional.id)}
+                onPress={() => openTimelineForProfessional(professional.id)}
               >
                 <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
                   Contatta/Cronologia
                 </Text>
-                <UnreadDot count={threadUnreadCounts?.get(`${request.id}:${professional.id}`)} />
+                <UnreadDot count={effectiveThreadUnread(`${request.id}:${professional.id}`)} />
               </XStack>
             </XStack>
           ))}
@@ -1131,6 +1173,10 @@ function QuoteCard({
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
+  // conversazione (richiesta esplicita dell'utente) — vedi
+  // useDismissableUnreadCount per il motivo del calcolo differenziale.
+  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
   // Totale minimo/massimo delle voci di questo preventivo (richiesta
   // esplicita dell'utente: "il totale dei minimi in un riquadro e il totale
   // dei massimi nell'altro").
@@ -1263,12 +1309,15 @@ function QuoteCard({
         alignSelf="flex-start"
         cursor="pointer"
         accessibilityRole="button"
-        onPress={() => setShowTimeline(true)}
+        onPress={() => {
+          setShowTimeline(true);
+          dismissUnread();
+        }}
       >
         <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
           Contatta/Cronologia
         </Text>
-        <UnreadDot count={unreadCount} />
+        <UnreadDot count={effectiveUnreadCount} />
       </XStack>
       {/* Il professionista ha inviato il preventivo con un orario diverso
           da quello effettivamente richiesto dal cliente (richiesta
@@ -1533,6 +1582,10 @@ function BookingRow({
   // "in lavori accettati, inserisci un pulsante con scritto vai alla
   // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
   const [showTimeline, setShowTimeline] = useState(false);
+  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
+  // conversazione (richiesta esplicita dell'utente) — vedi
+  // useDismissableUnreadCount per il motivo del calcolo differenziale.
+  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
 
   async function handleCancelBooking() {
     setCancelError(null);
@@ -1641,12 +1694,15 @@ function BookingRow({
           alignSelf="flex-start"
           cursor="pointer"
           accessibilityRole="button"
-          onPress={() => setShowTimeline(true)}
+          onPress={() => {
+            setShowTimeline(true);
+            dismissUnread();
+          }}
         >
           <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
             Contatta/Cronologia
           </Text>
-          <UnreadDot count={unreadCount} />
+          <UnreadDot count={effectiveUnreadCount} />
         </XStack>
       ) : null}
 

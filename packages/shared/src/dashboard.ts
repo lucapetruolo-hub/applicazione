@@ -342,3 +342,29 @@ export type ConversationEvent = {
   mediaUrls: string[];
   createdAt: string;
 };
+
+/**
+ * Una riga dell'inbox "Chat" (richiesta esplicita dell'utente: "aggiungi un
+ * menu Chat, dove saranno presenti tutte le chat di tutti i preventivi...
+ * solo il nome del cliente o professionista con l'ultimo messaggio
+ * ricevuto/inviato") — un thread è la stessa coppia (richiesta guidata,
+ * professionista) già usata da TimelineModal, qui riassunta con l'ultimo
+ * evento invece dell'intera cronologia. Un solo endpoint per entrambi i
+ * ruoli: `viewerRole` dice a chi appartiene la riga (mai passato dal
+ * client, dedotto server-side).
+ */
+export type ChatThreadSummary = {
+  guidedRequestId: string;
+  professionalProfileId: string;
+  viewerRole: "CLIENT" | "PROFESSIONAL";
+  /** Nome+cognome del cliente se viewerRole è PROFESSIONAL, nome attività del professionista se è CLIENT. */
+  otherPartyName: string;
+  otherPartyImageUrl: string | null;
+  categoryLabel: string;
+  lastMessage: string | null;
+  /** True se l'ultimo evento porta almeno una foto/video allegata (il testo può essere vuoto in quel caso). */
+  lastMessageHasMedia: boolean;
+  lastMessageAt: string;
+  /** True se l'ultimo messaggio è stato scritto da chi guarda la lista, non dall'altra parte. */
+  lastMessageIsMine: boolean;
+};

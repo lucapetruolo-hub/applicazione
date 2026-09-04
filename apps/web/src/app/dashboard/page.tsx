@@ -25,6 +25,8 @@ import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import {
+  mergeCounts,
+  mergeIds,
   professionalSectionCounts,
   unreadBookingCounts,
   unreadBookingIds,
@@ -32,6 +34,16 @@ import {
   unreadGuidedRequestIds,
 } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
+import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
+
+// Intervallo di poll per i pallini "Contatta/Cronologia" (richiesta
+// esplicita dell'utente: "al professionista ancora non si capisce che è
+// arrivato un nuovo messaggio da quella particolare richiesta") — più
+// frequente del poll da 45s già in uso in AuthContext per il badge
+// aggregato dell'header/i toast, perché qui l'obiettivo è far comparire il
+// pallino sulla card giusta mentre si è già sulla pagina, non solo al
+// prossimo login.
+const UNREAD_BADGE_POLL_MS = 15000;
 import { Pagination, sortListItems } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
@@ -335,20 +347,37 @@ function DashboardContent() {
   // dell'utente di vedere "un numeretto con le novità da visualizzare".
   // L'elenco va recuperato ESPLICITAMENTE prima di segnarle come lette
   // (vedi commento su sectionSnapshot) — mai affidarsi al conteggio "live"
-  // già in corso di poll altrove per questo calcolo one-shot.
+  // già in corso di poll altrove per questo calcolo one-shot. Ripetuto ogni
+  // UNREAD_BADGE_POLL_MS finché la pagina resta aperta (richiesta esplicita
+  // dell'utente: un nuovo messaggio in chat mentre si è già sulla dashboard
+  // deve comparire da solo, non solo al prossimo caricamento) — ogni tick
+  // trova solo le notifiche arrivate DOPO il markNotificationsRead del tick
+  // precedente (mai le stesse due volte), quindi i conteggi si sommano
+  // (mergeCounts/mergeIds) invece di sostituire lo stato.
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .unreadNotifications(token)
-      .then((notifications) => {
-        setSectionSnapshot(professionalSectionCounts(notifications));
-        setNewLeadRequestIds(unreadGuidedRequestIds(notifications));
-        setNewBookingIds(unreadBookingIds(notifications));
-        setLeadUnreadCounts(unreadGuidedRequestCounts(notifications));
-        setBookingUnreadCounts(unreadBookingCounts(notifications));
-      })
-      .catch(() => {})
-      .finally(() => markNotificationsRead());
+    let cancelled = false;
+    function poll() {
+      apiClient
+        .unreadNotifications(token!)
+        .then((notifications) => {
+          if (cancelled || notifications.length === 0) return;
+          const delta = professionalSectionCounts(notifications);
+          setSectionSnapshot((prev) => ({ richieste: prev.richieste + delta.richieste, lavori: prev.lavori + delta.lavori }));
+          setNewLeadRequestIds((prev) => mergeIds(prev, unreadGuidedRequestIds(notifications)));
+          setNewBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
+          setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
+          setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
+        })
+        .catch(() => {})
+        .finally(() => markNotificationsRead());
+    }
+    poll();
+    const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [token, markNotificationsRead]);
 
   useEffect(() => {
@@ -712,6 +741,10 @@ function AcceptedJobCard({
   // "in lavori accettati, inserisci un pulsante con scritto vai alla
   // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
   const [showTimeline, setShowTimeline] = useState(false);
+  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
+  // conversazione (richiesta esplicita dell'utente) — vedi
+  // useDismissableUnreadCount per il motivo del calcolo differenziale.
+  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
   // Descrizione/foto della richiesta originale e nota privata del
   // professionista, richiesta esplicita dell'utente: già mostrate nel
   // pannello di dettaglio del calendario "Prenotazioni", ora anche qui —
@@ -1093,12 +1126,20 @@ function AcceptedJobCard({
               </Button>
             ) : null}
             {booking.guidedRequestId && myProfileId ? (
-              <Button variant="ghost" size="$2" height={36} onPress={() => setShowTimeline(true)}>
+              <Button
+                variant="ghost"
+                size="$2"
+                height={36}
+                onPress={() => {
+                  setShowTimeline(true);
+                  dismissUnread();
+                }}
+              >
                 <XStack alignItems="center" gap="$1">
                   <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
                     Contatta/Cronologia
                   </Text>
-                  <UnreadDot count={unreadCount} />
+                  <UnreadDot count={effectiveUnreadCount} />
                 </XStack>
               </Button>
             ) : null}

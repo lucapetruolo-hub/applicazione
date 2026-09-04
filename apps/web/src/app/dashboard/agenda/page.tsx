@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
+import { useRouter } from "next/navigation";
+import type { ExternalJob, ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -76,8 +77,15 @@ const EXTERNAL_JOB_STATUS_COLOR: Record<ExternalJob["status"], string> = {
   CANCELED: brand.urgenza,
 };
 
+// Data/orario di un preventivo inviato ma non ancora accettato dal cliente
+// (richiesta esplicita dell'utente) — colore ottone, coerente con lo stesso
+// significato "in attesa di una decisione" già usato altrove nel prodotto
+// (es. Booking PENDING).
+const PENDING_QUOTE_COLOR = brand.ottone;
+
 export default function DashboardAgendaPage() {
   const { user, token, isLoading } = useAuth();
+  const router = useRouter();
 
   // "Prenotazioni" di default all'apertura (richiesta esplicita dell'utente):
   // è la vista con l'informazione più urgente al primo sguardo (gli
@@ -176,6 +184,16 @@ export default function DashboardAgendaPage() {
   const [selectedExternalJob, setSelectedExternalJob] = useState<ExternalJob | null>(null);
   const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
 
+  // Preventivi inviati ma non ancora accettati (richiesta esplicita
+  // dell'utente: una data/orario scelta per un preventivo — specialmente se
+  // inserita a mano, non da una fascia dell'agenda — deve comunque comparire
+  // da qualche parte sul calendario, così il professionista non se ne
+  // dimentica né rischia di doppio-prenotarsi). Mostrati con l'etichetta
+  // "In attesa" finché il cliente non accetta: nessun impatto su
+  // AvailabilitySlot/capacità (una Quote non consuma mai capienza, solo una
+  // Booking lo fa — invariato), puramente un promemoria visivo.
+  const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
+
   useEffect(() => {
     if (!token) return;
     apiClient
@@ -231,6 +249,11 @@ export default function DashboardAgendaPage() {
       .myExternalJobs(token)
       .then(setExternalJobs)
       .catch((err) => setExternalJobsError(err instanceof Error ? err.message : "Errore nel caricamento dei lavori esterni."));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient.myLeads(token).then(setLeads).catch(() => {});
   }, [token]);
 
   useEffect(() => {
@@ -909,10 +932,31 @@ export default function DashboardAgendaPage() {
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
+  // Preventivi ancora in attesa di risposta del cliente (SENT o
+  // MODIFICATION_REQUESTED — quest'ultimo mostra comunque la data
+  // attualmente proposta dal professionista, non quella in trattativa) la
+  // cui data proposta cade su questo giorno — richiesta esplicita
+  // dell'utente. `bookingStatus === null` esclude i preventivi già accettati
+  // (a quel punto esiste una Booking reale, già mostrata da
+  // `bookingsOnDate` — evita di mostrare la stessa data due volte).
+  function pendingQuotesOnDate(date: Date): ProfessionalLead[] {
+    const dateStr = toIsoDate(date);
+    return (leads ?? [])
+      .filter(
+        (lead) =>
+          lead.quote &&
+          lead.quote.bookingStatus === null &&
+          (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED") &&
+          lead.quote.estimatedStartDate.slice(0, 10) === dateStr,
+      )
+      .sort((a, b) => a.quote!.estimatedStartDate.localeCompare(b.quote!.estimatedStartDate));
+  }
+
   function renderBookingDayColumn(date: Date) {
     const dayBookings = bookingsOnDate(date);
     const dayExternalJobs = externalJobsOnDate(date);
-    if (dayBookings.length === 0 && dayExternalJobs.length === 0) {
+    const dayPendingQuotes = pendingQuotesOnDate(date);
+    if (dayBookings.length === 0 && dayExternalJobs.length === 0 && dayPendingQuotes.length === 0) {
       return (
         <Text fontSize={11} color={brand.grafite70}>
           Nessuna prenotazione.
@@ -1013,6 +1057,41 @@ export default function DashboardAgendaPage() {
             </YStack>
           );
         })}
+        {dayPendingQuotes.map((lead) => {
+          const quote = lead.quote!;
+          const startTime = new Date(quote.estimatedStartDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+          const time = quote.estimatedEndDate
+            ? `${startTime}–${new Date(quote.estimatedEndDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
+            : startTime;
+          const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente");
+          return (
+            <YStack
+              key={lead.id}
+              minWidth={0}
+              borderLeftWidth={3}
+              borderStyle="dashed"
+              borderLeftColor={PENDING_QUOTE_COLOR}
+              backgroundColor={brand.gesso}
+              borderRadius="$2"
+              paddingHorizontal={compact ? "$1.5" : "$2"}
+              paddingVertical={compact ? 5 : "$2"}
+              gap={compact ? 0 : "$1"}
+              cursor="pointer"
+              onPress={() => router.push("/dashboard/richieste")}
+              accessibilityRole="button"
+              accessibilityLabel={`Preventivo in attesa per ${clientName}, vai a Richieste ricevute`}
+            >
+              <Text fontFamily="$mono" fontSize={compact ? 10 : 10.5} fontWeight="700" color={brand.grafite} numberOfLines={1}>
+                {time} · In attesa
+              </Text>
+              {!compact ? (
+                <Text fontSize={10.5} color={brand.grafite70}>
+                  {clientName}
+                </Text>
+              ) : null}
+            </YStack>
+          );
+        })}
       </YStack>
     );
   }
@@ -1020,7 +1099,8 @@ export default function DashboardAgendaPage() {
   function renderBookingMonthCell(date: Date) {
     const dayBookings = bookingsOnDate(date);
     const dayExternalJobs = externalJobsOnDate(date);
-    const totalCount = dayBookings.length + dayExternalJobs.length;
+    const dayPendingQuotes = pendingQuotesOnDate(date);
+    const totalCount = dayBookings.length + dayExternalJobs.length + dayPendingQuotes.length;
     if (totalCount === 0) return null;
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
@@ -1029,6 +1109,9 @@ export default function DashboardAgendaPage() {
         ))}
         {dayExternalJobs.slice(0, Math.max(0, 4 - dayBookings.length)).map((j) => (
           <YStack key={j.id} width={6} height={6} borderRadius={1} backgroundColor={EXTERNAL_JOB_STATUS_COLOR[j.status]} />
+        ))}
+        {dayPendingQuotes.slice(0, Math.max(0, 4 - dayBookings.length - dayExternalJobs.length)).map((lead) => (
+          <YStack key={lead.id} width={6} height={6} borderRadius={3} borderWidth={1} borderColor={PENDING_QUOTE_COLOR} backgroundColor="transparent" />
         ))}
         {totalCount > 4 ? (
           <Text fontFamily="$mono" fontSize={9} color={brand.grafite70}>

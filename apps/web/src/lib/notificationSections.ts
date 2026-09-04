@@ -19,6 +19,11 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
 const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL"]);
+// Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
+// riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
+// quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
+// di menu "Chat" (richiesta esplicita dell'utente).
+const CHAT_MESSAGE_TYPES = new Set(["TIMELINE_MESSAGE_FROM_CLIENT", "TIMELINE_MESSAGE_FROM_PROFESSIONAL"]);
 
 /**
  * Pagina+tab a cui porta un click sul toast di una notifica (richiesta
@@ -158,6 +163,30 @@ export function unreadThreadCounts(notifications: UnreadNotification[]): Map<str
 }
 
 /**
+ * Somma additiva di due mappe conteggio (nuova istanza, mai muta gli
+ * argomenti) — usata per i poll periodici di `/dashboard`,
+ * `/dashboard/richieste` e `/le-mie-richieste` (richiesta esplicita
+ * dell'utente: "al professionista ancora non si capisce che è arrivato un
+ * nuovo messaggio da quella particolare richiesta"): ogni tick del poll
+ * interroga `GET /notifications/unread`, che per costruzione restituisce
+ * solo le notifiche arrivate DOPO l'ultimo `markNotificationsRead()` (il
+ * tick precedente le ha già segnate come lette) — sommare invece di
+ * sostituire mantiene visibili i pallini già mostrati in questa sessione
+ * finché non vengono esplicitamente aperti/letti in UI.
+ */
+export function mergeCounts(base: Map<string, number>, extra: Map<string, number>): Map<string, number> {
+  if (extra.size === 0) return base;
+  const merged = new Map(base);
+  for (const [key, value] of extra) merged.set(key, (merged.get(key) ?? 0) + value);
+  return merged;
+}
+
+export function mergeIds(base: Set<string>, extra: Set<string>): Set<string> {
+  if (extra.size === 0) return base;
+  return new Set([...base, ...extra]);
+}
+
+/**
  * Numeretto per voce del menu account (AccountMenu, header) — richiesta
  * esplicita dell'utente: oltre al totale accanto al nome, il numero deve
  * comparire anche sulla voce di menu che porta alla pagina con la novità
@@ -168,14 +197,17 @@ export function unreadThreadCounts(notifications: UnreadNotification[]): Map<str
  * la mappa è {"href": count} con una sola voce diversa da zero.
  */
 export function accountMenuUnreadCounts(isProfessional: boolean, notifications: UnreadNotification[]): Record<string, number> {
+  const chat = countByTypes(notifications, CHAT_MESSAGE_TYPES);
   if (isProfessional) {
     const { richieste, lavori } = professionalSectionCounts(notifications);
     // "Dashboard" (riepilogo di entrambe le sezioni) porta il totale;
     // "Richieste ricevute" (/dashboard/richieste, l'inbox completa dove
     // vivono davvero dettaglio e azioni dopo la deduplicazione) porta solo
-    // gli aggiornamenti pertinenti a quella sezione.
-    return { "/dashboard": richieste + lavori, "/dashboard/richieste": richieste };
+    // gli aggiornamenti pertinenti a quella sezione. "Chat" (richiesta
+    // esplicita dell'utente) porta solo i messaggi di conversazione non
+    // letti, un sottoinsieme di "richieste".
+    return { "/dashboard": richieste + lavori, "/dashboard/richieste": richieste, "/chat": chat };
   }
   const { richieste, lavori } = clientSectionCounts(notifications);
-  return { "/le-mie-richieste": richieste + lavori };
+  return { "/le-mie-richieste": richieste + lavori, "/chat": chat };
 }

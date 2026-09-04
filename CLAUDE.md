@@ -7059,3 +7059,168 @@ cieco" sbloccato per costruzione (CLAUDE.md §40).
   bottoni WhatsApp/Chiama funzionanti. Typecheck pulito su tutti i package
   (`shared`, `database`, `api-client`, `api`, `web`, `mobile`), build di
   produzione `apps/web` verde (28 route).
+
+---
+
+## 46. Chat in tempo reale, pallini "live" per singola richiesta, data/ora manuale nel preventivo con anteprima "in attesa" in agenda, inbox "Chat"
+
+Quattro richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Chat in tempo reale in `TimelineModal`** — richiesta esplicita
+dell'utente: "la chat deve aggiornarsi real time, in modo da poter avere
+una conversazione fluida". Prima la cronologia veniva caricata una sola
+volta all'apertura del popup, mai più finché non lo si richiudeva e
+riapriva. `TimelineModal.tsx`: nuovo poll ogni 4 secondi (`TIMELINE_POLL_MS`)
+mentre il popup resta aperto — refetch completo della cronologia (nessun
+endpoint "solo i nuovi" introdotto apposta, la cronologia di una singola
+richiesta resta piccola, coerente con la scala di lancio §7), confrontato
+solo per id dell'ultimo evento per evitare un re-render ad ogni tick senza
+novità. Scroll automatico in fondo quando arriva un evento nuovo, **ma
+solo se chi guarda era già vicino al fondo** (soglia 140px,
+`isNearBottomRef`/`onScroll` sul backdrop, che è la regione scorrevole
+intera — stesso motivo già documentato in CLAUDE.md §35): chi ha scrollato
+in su per rileggere la cronologia non viene strappato via da un messaggio
+in arrivo. Invio di un proprio messaggio forza sempre lo scroll in fondo,
+indipendentemente dalla posizione corrente.
+
+**Pallini "Contatta/Cronologia" aggiornati dal vivo, per singola
+richiesta/preventivo/prenotazione** — richiesta esplicita dell'utente: "al
+professionista ancora non si capisce che è arrivato un nuovo messaggio da
+quella particolare richiesta; controlla anche lato cliente". I pallini per
+singolo elemento (introdotti in CLAUDE.md §43) venivano calcolati una sola
+volta all'apertura di `/dashboard`, `/dashboard/richieste` e
+`/le-mie-richieste` — un messaggio arrivato mentre si resta sulla pagina
+non compariva mai finché non si ricaricava. Ora ogni pagina ripete lo
+stesso fetch (`GET /notifications/unread`) ogni 15 secondi
+(`UNREAD_BADGE_POLL_MS`) finché resta aperta: ogni tick trova solo le
+notifiche arrivate dopo il `markNotificationsRead()` del tick precedente
+(mai le stesse due volte, stessa garanzia anti-race-condition già
+documentata in CLAUDE.md §43), quindi i conteggi si **sommano**
+(`mergeCounts`/`mergeIds`, nuovi helper in `notificationSections.ts`)
+invece di sostituire lo stato — altrimenti un pallino già mostrato
+sparirebbe al tick successivo pur non essendo stato letto.
+- **Il pallino deve sparire aprendo la conversazione, ma non per
+  sempre** — nuovo hook `useDismissableUnreadCount`
+  (`apps/web/src/lib/useDismissableUnreadCount.ts`): ricorda "a quale
+  totale ero quando ho aperto l'ultima volta" e mostra solo la
+  differenza, così un nuovo messaggio arrivato dopo la chiusura del
+  popup fa ricomparire il pallino con il conteggio corretto invece di
+  restare azzerato per sempre o rimostrare l'intero storico. Cablato in
+  ogni punto che apre direttamente un `TimelineModal`:
+  `AcceptedJobCard` (`/dashboard`), `RequestCard` (`/dashboard/richieste`
+  — un solo hook per l'intera card, condiviso da tutti i bottoni che
+  aprono la stessa cronologia in stadi diversi: Chat/Contatta/Cronologia),
+  `QuoteCard`/`BookingRow` (`/le-mie-richieste`). Un caso non copribile
+  dall'hook (un componente per elemento, non chiamabile dentro un
+  `.map()`): la riga "Inviata a" per professionista in `GuidedRequestCard`
+  — più professionisti condividono lo stesso componente, quindi la stessa
+  logica differenziale vive in una `Map<string, number>`
+  "conteggio al momento dell'apertura" per chiave composita invece che in
+  uno `useState` per elemento.
+- `LeadSummaryRow` (`/dashboard`, riepilogo compatto) non apre un
+  `TimelineModal` direttamente — resta un link a `/dashboard/richieste` —
+  quindi il suo pallino resta "informativo" (aggiornato dal poll, ma non
+  dismissabile lì: si azzera aprendo l'inbox completa, dove vive la vera
+  conversazione).
+
+**Data/orario manuale nell'invio preventivo, "In attesa" sull'agenda** —
+richiesta esplicita dell'utente: "nella selezione della data orario in
+base all'agenda con la tendina, dai la possibilità di inserire una data
+orario manualmente, che verrà poi aggiunta all'agenda in maniera
+indipendente dagli slot aggiunti dal professionista, con la dicitura in
+attesa se il cliente non ha ancora accettato un preventivo".
+- **Form "Invia preventivo"** (`RequestCard`, `/dashboard/richieste`):
+  prima, con fasce configurate per la modalità della richiesta, l'unica
+  scelta era la tendina; senza fasce, un semplice `<input type="date">`
+  di ripiego (nessun orario). Ora un link "Inserisci data e orario
+  manualmente" (sempre visibile insieme alla tendina, non solo come
+  ripiego) rivela data+ora inizio+ora fine, con "Usa un orario dalla mia
+  agenda" per tornare alla tendina. **Nessuna validazione lato server
+  contro `AvailabilitySlot` per questo campo** (non c'era già:
+  `QuotesService.createOrUpdate` accetta da sempre qualunque
+  `estimatedStartDate`/`estimatedEndDate`, solo la UI obbligava a
+  scegliere da una fascia reale) — a differenza della contro-proposta
+  (`counterProposeDate`, che rivalida sempre contro l'agenda reale via
+  `resolveFreeExactSlot`), volutamente non toccata in questo giro: il
+  backend lì richiede davvero una fascia esistente, estendere la stessa
+  libertà avrebbe richiesto cambiare la logica di validazione stessa, non
+  richiesto dall'utente ("quando il professionista manda i preventivi" —
+  scoped al primo invio).
+- **Anteprima "In attesa" in agenda** (`/dashboard/agenda`, tab
+  "Prenotazioni"): nuovo fetch di `GET /professionals/me/leads` (già
+  esistente, riusato) — ogni preventivo `SENT`/`MODIFICATION_REQUESTED`
+  ancora senza una `Booking` (`quote.bookingStatus === null`, campo già
+  esposto da CLAUDE.md §38) compare sul calendario come chip tratteggiata
+  color ottone "HH:MM–HH:MM · In attesa" (giorno/settimana) o un pallino
+  vuoto bordato in vista mese — stesso trattamento visivo già introdotto
+  per i "lavori esterni" (§45), colore distinto per non confondere le tre
+  categorie (Booking reale: bordo pieno; lavoro esterno: tratteggiato
+  grafite "· Esterno"; preventivo in attesa: tratteggiato ottone "· In
+  attesa"). Vale per **qualunque** preventivo in attesa, non solo quelli
+  con data inserita a mano — richiesta esplicita dell'utente formulata in
+  termini generali ("con la dicitura in attesa se il cliente non ha
+  ancora accettato"), e comunque coerente: prima di questa funzionalità
+  nessun preventivo (nemmeno quello scelto dalla tendina) aveva un modo di
+  comparire sull'agenda finché non veniva accettato. Click sulla chip
+  naviga a `/dashboard/richieste` (`router.push`, nuovo `useRouter` in
+  questo file) — nessun popup di dettaglio dedicato, la vera pipeline
+  resta quella pagina. Nessun impatto su capienza/`AvailabilitySlot`: una
+  `Quote` non ha mai consumato capacità, solo una `Booking` lo fa
+  (invariato) — puramente un promemoria visivo.
+
+**Inbox "Chat"** — richiesta esplicita dell'utente: "aggiungi un menu
+Chat, dove saranno presenti tutte le chat di tutti i preventivi, dove
+appena clicchi sul menu ci sarà solo il nome del cliente o professionista
+con l'ultimo messaggio ricevuto/inviato; e poi cliccando apparirà la chat
+completa con tutti i messaggi e aggiornamenti" — con successiva precisazione
+"nell'anteprima deve esserci indicato anche il gruppo data orario
+dell'ultimo messaggio ricevuto/inviato" (già previsto nel design, non un
+cambio successivo).
+- **`TimelineService.listThreadsForUser(userId)`** (nuovo,
+  `apps/api/src/timeline/timeline.service.ts`): un thread è la stessa
+  coppia (richiesta guidata, professionista) già usata da
+  `TimelineModal`/`ConversationEvent` — una singola query su tutti i
+  `ConversationEvent` dove l'utente compare come cliente
+  (`guidedRequest.clientId`) O come professionista
+  (`professionalProfile.userId`), ordinata per `createdAt desc`, raggruppata
+  in memoria tenendo solo il **primo** evento incontrato per coppia (già
+  il più recente, l'ordine di scoperta ordina naturalmente anche l'elenco
+  finale di thread senza un secondo sort). Nessuna paginazione — stessa
+  scala di lancio già documentata ovunque nel progetto (§7). Nuovo tipo
+  `ChatThreadSummary` (`packages/shared/src/dashboard.ts`):
+  `otherPartyName`/`otherPartyImageUrl` (nome+cognome/avatar del cliente o
+  `businessName`/immagine del professionista, a seconda di chi guarda —
+  cliente eliminato → "Account eliminato", stesso trattamento già in uso
+  altrove), `categoryLabel`, `lastMessage`, `lastMessageHasMedia`,
+  `lastMessageAt`, `lastMessageIsMine`. Nuovo `GET
+  /guided-requests/chat-threads` (JWT), route letterale — nessun conflitto
+  con le rotte `:id/...` esistenti nello stesso controller, verificato che
+  non esista già una `GET /guided-requests/:id` bare.
+- **`/chat`** (nuova pagina, `apps/web/src/app/chat/page.tsx`): elenco a
+  righe zebrate (stesso pattern già in uso in `/admin`), avatar+nome+
+  categoria+anteprima ultimo messaggio (prefisso "Tu: " se l'ultimo
+  messaggio è dell'utente stesso, "Foto/video allegati" se l'ultimo evento
+  aveva solo allegati) + data/ora dell'ultimo messaggio (solo orario se
+  oggi, altrimenti giorno+mese+orario) + pallino non letto per thread
+  (stesso `unreadThreadCounts`/poll da 15s/`useDismissableUnreadCount` già
+  in uso altrove in questo giro). Click apre lo stesso `TimelineModal` già
+  esistente (real-time via poll, Feature 1) — nessuna cronologia
+  duplicata, la pagina mostra solo l'anteprima. Stato vuoto
+  (`EmptyState`), guardia di login (stesso pattern di
+  `/professionisti-salvati`), esclusa da `robots.ts` (pagina dietro login,
+  stesso trattamento già riservato a `/account`/`/le-mie-richieste`/ecc.).
+- **Voce di menu "Chat"** (`accountMenuItems.ts`, entrambi i ruoli) con
+  pallino proprio: `accountMenuUnreadCounts` (`notificationSections.ts`)
+  guadagna una chiave `/chat` che conta solo
+  `TIMELINE_MESSAGE_FROM_CLIENT`/`TIMELINE_MESSAGE_FROM_PROFESSIONAL` (un
+  sottoinsieme di "richieste", mai entrambi i tipi insieme per lo stesso
+  utente essendo ciascuno destinato a un solo lato del thread).
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `web`, `mobile`), build di produzione `apps/web` verde (29 route,
+`/chat` nuova). Verifica end-to-end con un agente Playwright contro l'API
+locale reale avviata separatamente (non solo typecheck/build, stesso
+principio già seguito per ogni giro precedente) — un primo tentativo
+interrotto da un limite di utilizzo della sessione (non un bug), rilanciato:
+esito da riportare qui in un aggiornamento successivo di questa sezione,
+insieme all'eventuale correzione di bug reali trovati.

@@ -24,8 +24,12 @@ import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/lib/requestStage";
-import { unreadGuidedRequestCounts } from "@/lib/notificationSections";
+import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
+import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
+
+// Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
+const UNREAD_BADGE_POLL_MS = 15000;
 
 /**
  * Pagina `/dashboard/richieste` — vista alternativa e più ricca delle
@@ -269,13 +273,32 @@ function RichiesteContent() {
       .catch(() => setProfileMissing(true));
   }, [token]);
 
+  // Ripetuto ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta
+  // (richiesta esplicita dell'utente: "al professionista ancora non si
+  // capisce che è arrivato un nuovo messaggio da quella particolare
+  // richiesta") — ogni tick trova solo le notifiche arrivate dopo il
+  // markNotificationsRead del tick precedente, quindi i conteggi si sommano
+  // (mergeCounts) invece di sostituire lo stato, stesso principio già in
+  // uso su /dashboard e /le-mie-richieste.
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .unreadNotifications(token)
-      .then((notifications) => setLeadUnreadCounts(unreadGuidedRequestCounts(notifications)))
-      .catch(() => {})
-      .finally(() => markNotificationsRead());
+    let cancelled = false;
+    function poll() {
+      apiClient
+        .unreadNotifications(token!)
+        .then((notifications) => {
+          if (cancelled || notifications.length === 0) return;
+          setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
+        })
+        .catch(() => {})
+        .finally(() => markNotificationsRead());
+    }
+    poll();
+    const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [token, markNotificationsRead]);
 
   const bookingByRequestId = useMemo(() => {
@@ -579,7 +602,20 @@ function RequestCard({
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
   const [selectedSlotKey, setSelectedSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
-  const [fallbackDate, setFallbackDate] = useState("");
+  // Data/orario inserita a mano (richiesta esplicita dell'utente: "dai la
+  // possibilità di inserire una data orario manualmente"), non solo come
+  // ripiego quando l'agenda non ha fasce — sempre disponibile tramite il
+  // link "Inserisci data e orario manualmente" anche quando la tendina è
+  // popolata. Nessuna validazione contro AvailabilitySlot lato server per
+  // questo campo (mai stata presente, `QuotesService.createOrUpdate`
+  // accetta già qualunque data/ora — solo il form obbligava a scegliere da
+  // una fascia reale): a differenza della contro-proposta
+  // (`counterProposeDate`, che invece rivalida contro l'agenda reale via
+  // `resolveFreeExactSlot`), qui resta volutamente libero.
+  const [useManualDateTime, setUseManualDateTime] = useState(false);
+  const [manualDate, setManualDate] = useState("");
+  const [manualStartTime, setManualStartTime] = useState("");
+  const [manualEndTime, setManualEndTime] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
@@ -612,6 +648,16 @@ function RequestCard({
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
+  // conversazione (richiesta esplicita dell'utente) — vedi
+  // useDismissableUnreadCount per il motivo del calcolo differenziale.
+  // Un solo stato per l'intera card: qualunque bottone apra la cronologia
+  // (Chat/Contatta/Cronologia, in stadi diversi) azzera lo stesso pallino.
+  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
+  function openTimeline() {
+    setShowTimeline(true);
+    dismissUnread();
+  }
 
   const [noteDraft, setNoteDraft] = useState(lead.professionalNote ?? "");
   const [isSavingNote, setIsSavingNote] = useState(false);
@@ -657,14 +703,21 @@ function RequestCard({
 
     let estimatedStartDate: string;
     let estimatedEndDate: string | undefined;
-    if (modeAvailableSlots.length > 0) {
+    if (modeAvailableSlots.length > 0 && !useManualDateTime) {
       const slot = modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey);
       if (!slot) return setQuoteError("Scegli un orario dalla tua agenda.");
       estimatedStartDate = new Date(`${slot.date}T${slot.startTime}:00.000Z`).toISOString();
       estimatedEndDate = new Date(`${slot.date}T${slot.endTime}:00.000Z`).toISOString();
     } else {
-      if (!fallbackDate) return setQuoteError("Indica una data di inizio stimata.");
-      estimatedStartDate = new Date(fallbackDate).toISOString();
+      if (!manualDate) return setQuoteError("Indica una data di inizio stimata.");
+      if (manualEndTime && !manualStartTime) return setQuoteError("Indica anche l'ora di inizio.");
+      if (manualStartTime && manualEndTime && manualEndTime <= manualStartTime) return setQuoteError("L'ora di fine deve essere dopo l'ora di inizio.");
+      if (manualStartTime) {
+        estimatedStartDate = new Date(`${manualDate}T${manualStartTime}:00.000Z`).toISOString();
+        estimatedEndDate = manualEndTime ? new Date(`${manualDate}T${manualEndTime}:00.000Z`).toISOString() : undefined;
+      } else {
+        estimatedStartDate = new Date(manualDate).toISOString();
+      }
     }
 
     setIsSubmittingQuote(true);
@@ -930,7 +983,7 @@ function RequestCard({
                         </XStack>
                       </a>
                     ) : null}
-                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={() => setShowTimeline(true)}>
+                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline}>
                       <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
                         Chat
                       </Text>
@@ -1069,7 +1122,7 @@ function RequestCard({
                 <Button variant="primary" size="$3" onPress={() => setShowQuoteForm((v) => !v)}>
                   Invia preventivo
                 </Button>
-                <Button variant="ghost" size="$3" onPress={() => setShowTimeline(true)}>
+                <Button variant="ghost" size="$3" onPress={openTimeline}>
                   Rispondi
                 </Button>
                 {!confirmingDecline ? (
@@ -1096,12 +1149,12 @@ function RequestCard({
                 >
                   Modifica preventivo
                 </Button>
-                <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
+                <Button variant="primary" size="$3" onPress={openTimeline}>
                   <XStack alignItems="center" gap="$1">
                     <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
                       Contatta
                     </Text>
-                    <UnreadDot count={unreadCount} />
+                    <UnreadDot count={effectiveUnreadCount} />
                   </XStack>
                 </Button>
                 {confirmingWithdraw ? (
@@ -1148,7 +1201,7 @@ function RequestCard({
                 >
                   Proponi altra data
                 </Button>
-                <Button variant="primary" size="$3" onPress={() => setShowTimeline(true)}>
+                <Button variant="primary" size="$3" onPress={openTimeline}>
                   Rispondi
                 </Button>
                 <Button variant="ghost" size="$3" disabled={isRejectingDate} onPress={handleRejectDate}>
@@ -1192,12 +1245,12 @@ function RequestCard({
                     </Text>
                   </Button>
                 </Link>
-                <Button variant="ghost" size="$3" onPress={() => setShowTimeline(true)}>
+                <Button variant="ghost" size="$3" onPress={openTimeline}>
                   <XStack alignItems="center" gap="$1">
                     <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3">
                       Contatta
                     </Text>
-                    <UnreadDot count={unreadCount} />
+                    <UnreadDot count={effectiveUnreadCount} />
                   </XStack>
                 </Button>
               </XStack>
@@ -1266,16 +1319,62 @@ function RequestCard({
                 + Aggiungi voce
               </Button>
 
-              {modeAvailableSlots.length > 0 ? (
-                <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
-                  {modeAvailableSlots.map((sl) => (
-                    <option key={slotKey(sl)} value={slotKey(sl)}>
-                      {slotLabel(sl)}
-                    </option>
-                  ))}
-                </select>
+              {modeAvailableSlots.length > 0 && !useManualDateTime ? (
+                <YStack gap="$2">
+                  <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
+                    {modeAvailableSlots.map((sl) => (
+                      <option key={slotKey(sl)} value={slotKey(sl)}>
+                        {slotLabel(sl)}
+                      </option>
+                    ))}
+                  </select>
+                  <Text
+                    fontSize={12}
+                    fontWeight="600"
+                    color={brand.cianografia}
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => setUseManualDateTime(true)}
+                  >
+                    Inserisci data e orario manualmente
+                  </Text>
+                </YStack>
               ) : (
-                <input type="date" value={fallbackDate} onChange={(e) => setFallbackDate(e.target.value)} style={smallInputStyle} />
+                <YStack gap="$2">
+                  <XStack gap="$2" flexWrap="wrap">
+                    <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <input type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <input
+                      type="time"
+                      value={manualEndTime}
+                      onChange={(e) => setManualEndTime(e.target.value)}
+                      placeholder="Ora fine (facoltativa)"
+                      style={{ ...smallInputStyle, flex: 1, minWidth: 100 }}
+                    />
+                  </XStack>
+                  {/* Richiesta esplicita dell'utente: una data/orario inserita
+                      a mano non fa parte delle fasce configurate in agenda —
+                      comparirà comunque nel calendario "Prenotazioni" con
+                      l'etichetta "In attesa" finché il cliente non accetta
+                      il preventivo (vedi renderBookingDayColumn in
+                      /dashboard/agenda). */}
+                  <Text fontSize={11} color={brand.grafite70}>
+                    Non fa parte della tua agenda — comparirà nel calendario &quot;Prenotazioni&quot; come &quot;In
+                    attesa&quot; finché il cliente non accetta il preventivo.
+                  </Text>
+                  {modeAvailableSlots.length > 0 ? (
+                    <Text
+                      fontSize={12}
+                      fontWeight="600"
+                      color={brand.cianografia}
+                      cursor="pointer"
+                      accessibilityRole="button"
+                      onPress={() => setUseManualDateTime(false)}
+                    >
+                      Usa un orario dalla mia agenda
+                    </Text>
+                  ) : null}
+                </YStack>
               )}
 
               <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />

@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { ConversationEvent } from "@professionisti/shared";
+import type { ChatThreadSummary, ConversationEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -67,6 +67,63 @@ export class TimelineService {
       mediaUrls: event.mediaUrls,
       createdAt: event.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Elenco dei thread (coppie richiesta guidata+professionista) a cui
+   * questo utente partecipa, con solo l'ultimo evento come anteprima —
+   * richiesta esplicita dell'utente: menu "Chat" che elenca "solo il nome
+   * del cliente o professionista con l'ultimo messaggio ricevuto/inviato",
+   * la cronologia completa si apre solo al click (stesso TimelineModal già
+   * esistente). Un utente può comparire sia come cliente (proprie
+   * GuidedRequest) sia come professionista (proprio ProfessionalProfile) —
+   * in pratica mai insieme, ma la query copre comunque entrambi i casi con
+   * un solo OR invece di due chiamate. Nessuna paginazione: stessa scala di
+   * lancio già documentata altrove nel progetto (una città, poche
+   * categorie) — il numero di thread per utente resta piccolo.
+   */
+  async listThreadsForUser(userId: string): Promise<ChatThreadSummary[]> {
+    const events = await this.prisma.conversationEvent.findMany({
+      where: { OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] },
+      orderBy: { createdAt: "desc" },
+      include: {
+        guidedRequest: { include: { client: true, category: true } },
+        professionalProfile: true,
+      },
+    });
+
+    const threads: ChatThreadSummary[] = [];
+    const seen = new Set<string>();
+    for (const event of events) {
+      const key = `${event.guidedRequestId}:${event.professionalProfileId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const viewerRole: "CLIENT" | "PROFESSIONAL" = event.guidedRequest.clientId === userId ? "CLIENT" : "PROFESSIONAL";
+      const client = event.guidedRequest.client;
+      const professionalProfile = event.professionalProfile;
+      const otherPartyName =
+        viewerRole === "CLIENT"
+          ? professionalProfile.businessName
+          : client.deletedAt
+            ? "Account eliminato"
+            : ([client.name, client.surname].filter(Boolean).join(" ") || "Cliente");
+      const otherPartyImageUrl = viewerRole === "CLIENT" ? professionalProfile.imageUrl : client.deletedAt ? null : client.imageUrl;
+
+      threads.push({
+        guidedRequestId: event.guidedRequestId,
+        professionalProfileId: event.professionalProfileId,
+        viewerRole,
+        otherPartyName,
+        otherPartyImageUrl,
+        categoryLabel: event.guidedRequest.category.label,
+        lastMessage: event.message || null,
+        lastMessageHasMedia: event.mediaUrls.length > 0,
+        lastMessageAt: event.createdAt.toISOString(),
+        lastMessageIsMine: event.actor !== "SYSTEM" && event.actor === viewerRole,
+      });
+    }
+    return threads;
   }
 
   /**

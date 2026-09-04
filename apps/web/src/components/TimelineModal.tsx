@@ -9,6 +9,12 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 const MAX_UPDATE_MEDIA = 5;
+// Intervallo di polling mentre il popup è aperto (richiesta esplicita
+// dell'utente: "la chat deve aggiornarsi real time, in modo da poter avere
+// una conversazione fluida") — abbastanza breve da sembrare una chat vera,
+// non così breve da martellare l'API per un popup che può restare aperto a
+// lungo durante una conversazione.
+const TIMELINE_POLL_MS = 4000;
 
 const ACTOR_LABEL: Record<ConversationEvent["actor"], string> = {
   CLIENT: "Cliente",
@@ -108,13 +114,63 @@ export function TimelineModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [openPhoto, setOpenPhoto] = useState<{ photos: string[]; index: number } | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  // Scroll "quasi in tempo reale": il popup intero è la regione scorrevole
+  // (backdrop `overflowY: auto`, stesso motivo già documentato in CLAUDE.md
+  // §35 per l'ancoraggio in alto). `bottomRef` è la sentinella di fondo,
+  // `scrollContainerRef` il div su cui si scrolla davvero — serve per
+  // capire se l'utente è già vicino al fondo prima di un aggiornamento
+  // ricevuto dal poll: se ha scrollato in su per rileggere la cronologia,
+  // un nuovo messaggio non deve strappargli via la posizione.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const lastEventIdRef = useRef<string | null>(null);
+
+  function isNearBottom(): boolean {
+    const el = scrollContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+  }
 
   useEffect(() => {
     apiClient
       .guidedRequestTimeline(token, guidedRequestId, professionalProfileId)
-      .then(setEvents)
+      .then((fresh) => {
+        setEvents(fresh);
+        lastEventIdRef.current = fresh[fresh.length - 1]?.id ?? null;
+      })
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Errore nel caricamento della cronologia."));
   }, [token, guidedRequestId, professionalProfileId]);
+
+  // Poll periodico mentre il popup resta aperto (richiesta esplicita
+  // dell'utente: "la chat deve aggiornarsi real time"): confronta solo
+  // l'id dell'ultimo evento per evitare un re-render ad ogni tick quando
+  // non è cambiato nulla — un semplice refetch completo, nessun endpoint
+  // "solo i nuovi" introdotto apposta (la cronologia di una singola
+  // richiesta resta piccola, coerente con la scala di lancio, CLAUDE.md
+  // §7).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      apiClient
+        .guidedRequestTimeline(token, guidedRequestId, professionalProfileId)
+        .then((fresh) => {
+          const freshLastId = fresh[fresh.length - 1]?.id ?? null;
+          if (freshLastId === lastEventIdRef.current && fresh.length === (events?.length ?? 0)) return;
+          lastEventIdRef.current = freshLastId;
+          setEvents(fresh);
+        })
+        .catch(() => {});
+    }, TIMELINE_POLL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, guidedRequestId, professionalProfileId]);
+
+  useEffect(() => {
+    if (!events) return;
+    if (shouldAutoScrollRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [events]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -154,6 +210,8 @@ export function TimelineModal({
     setIsSubmitting(true);
     try {
       const created = await apiClient.addTimelineUpdate(token, guidedRequestId, { professionalProfileId, message, mediaUrls });
+      lastEventIdRef.current = created.id;
+      shouldAutoScrollRef.current = true;
       setEvents((prev) => [...(prev ?? []), created]);
       setMessage("");
       setMediaUrls([]);
@@ -166,7 +224,11 @@ export function TimelineModal({
 
   return (
     <div
+      ref={scrollContainerRef}
       onClick={onClose}
+      onScroll={() => {
+        shouldAutoScrollRef.current = isNearBottom();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Cronologia della richiesta"
@@ -286,6 +348,7 @@ export function TimelineModal({
               );
             })
           )}
+          <div ref={bottomRef} />
         </YStack>
 
         <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">

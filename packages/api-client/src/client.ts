@@ -4,6 +4,7 @@ import type {
   BookAgendaSlotInput,
   CancelBookingByProfessionalInput,
   ChangePasswordInput,
+  ChatThreadSummary,
   ClientConfirmCompleteInput,
   ClientReviewInput,
   CompleteBookingInput,
@@ -481,6 +482,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadTimelinePhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/timeline-photos", token, file, "image"),
+
+    /** Inbox "Chat" (richiesta esplicita dell'utente): tutti i thread a cui l'utente partecipa, con solo l'ultimo messaggio come anteprima. */
+    myChatThreads: (token: string) => request<ChatThreadSummary[]>("/guided-requests/chat-threads", { headers: { Authorization: `Bearer ${token}` } }),
 
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
