@@ -152,28 +152,6 @@ export function BookingDetailPanel({
           </Text>
         </YStack>
 
-        {onOpenTimeline || onOpenFullRequest ? (
-          <XStack gap="$2" flexWrap="wrap">
-            {onOpenTimeline ? (
-              <Button variant="ghost" size="$2" height={32} onPress={onOpenTimeline}>
-                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                  Contatta/Cronologia
-                </Text>
-              </Button>
-            ) : null}
-            {onOpenFullRequest ? (
-              <Button variant="ghost" size="$2" height={32} onPress={onOpenFullRequest}>
-                <XStack alignItems="center" gap={4}>
-                  <Text color={brand.grafite} fontWeight="600" fontSize="$2">
-                    Vai alla richiesta completa
-                  </Text>
-                  <Icon name="chevron-right" size={13} color={brand.grafite} strokeWidth={2} />
-                </XStack>
-              </Button>
-            ) : null}
-          </XStack>
-        ) : null}
-
         {/* Dati del cliente utili al professionista per andare a svolgere il
             lavoro (richiesta esplicita dell'utente): telefono/email come
             link diretti tel:/mailto:, indirizzo preciso se indicato nella
@@ -378,6 +356,35 @@ export function BookingDetailPanel({
             </Button>
           ) : null}
         </XStack>
+
+        {/* Richiesta esplicita dell'utente: resi come veri pulsanti (non più
+            "ghost"/testo sottolineato) e spostati in fondo alla scheda,
+            insieme alle altre azioni — prima stavano subito sotto data/ora,
+            in cima. */}
+        {onOpenTimeline || onOpenFullRequest ? (
+          <XStack gap="$2" flexWrap="wrap">
+            {onOpenTimeline ? (
+              <Button variant="secondary" size="$3" height={40} onPress={onOpenTimeline}>
+                <XStack alignItems="center" gap={4}>
+                  <Icon name="message-circle" size={15} color={brand.cianografia} strokeWidth={2} />
+                  <Text color={brand.cianografia} fontWeight="700" fontSize="$3">
+                    Contatta/Cronologia
+                  </Text>
+                </XStack>
+              </Button>
+            ) : null}
+            {onOpenFullRequest ? (
+              <Button variant="secondary" size="$3" height={40} onPress={onOpenFullRequest}>
+                <XStack alignItems="center" gap={4}>
+                  <Text color={brand.grafite} fontWeight="700" fontSize="$3">
+                    Vai alla richiesta completa
+                  </Text>
+                  <Icon name="chevron-right" size={15} color={brand.grafite} strokeWidth={2} />
+                </XStack>
+              </Button>
+            ) : null}
+          </XStack>
+        ) : null}
       </YStack>
 
       {openPhotoIndex !== null ? (
