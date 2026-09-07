@@ -185,15 +185,42 @@ export class QuotesService {
       quote.estimatedStartDate.toISOString().slice(11, 16) === input.startTime &&
       (quote.estimatedEndDate ? quote.estimatedEndDate.toISOString().slice(11, 16) === input.endTime : true);
 
-    const { scheduledAt: proposedDate, scheduledEndAt: proposedEndDate } = isSameAsCurrentProposal
-      ? { scheduledAt: quote.estimatedStartDate, scheduledEndAt: quote.estimatedEndDate ?? quote.estimatedStartDate }
-      : await this.resolveFreeExactSlot(
-          quote.professionalProfileId,
-          input.date,
-          input.startTime,
-          input.endTime,
-          quote.guidedRequest.serviceMode,
-        );
+    // Richiesta esplicita dell'utente ("Altro" nel menu a tendina data/ora):
+    // il cliente può ora proporre un orario libero non presente
+    // nell'agenda del professionista, esattamente come già può fare il
+    // professionista con "Proponi un'altra data"/"Modifica"
+    // (counterProposeDate, isManual) — stesso principio già in uso per la
+    // data manuale del primo preventivo: finisce comunque sul calendario
+    // come "In attesa" (pendingQuotesOnDate), la capienza va comunque
+    // rivalidata solo alla conferma (confirmProposedDate già gestisce
+    // correttamente l'assenza di una AvailabilitySlot corrispondente).
+    let proposedDate: Date;
+    let proposedEndDate: Date;
+    if (isSameAsCurrentProposal) {
+      proposedDate = quote.estimatedStartDate;
+      proposedEndDate = quote.estimatedEndDate ?? quote.estimatedStartDate;
+    } else if (input.isManual) {
+      const date = new Date(`${input.date}T00:00:00.000Z`);
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException("Data non valida.");
+      }
+      const [hoursStr, minutesStr] = input.startTime.split(":");
+      proposedDate = new Date(date);
+      proposedDate.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
+      const [endHoursStr, endMinutesStr] = input.endTime.split(":");
+      proposedEndDate = new Date(date);
+      proposedEndDate.setUTCHours(Number(endHoursStr), Number(endMinutesStr), 0, 0);
+    } else {
+      const resolved = await this.resolveFreeExactSlot(
+        quote.professionalProfileId,
+        input.date,
+        input.startTime,
+        input.endTime,
+        quote.guidedRequest.serviceMode,
+      );
+      proposedDate = resolved.scheduledAt;
+      proposedEndDate = resolved.scheduledEndAt;
+    }
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },

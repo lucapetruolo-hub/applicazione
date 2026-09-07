@@ -291,18 +291,25 @@ export class BookingsService {
   /**
    * Il cliente conferma dal proprio lato che il lavoro è davvero terminato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
-   * possibile solo dopo che il professionista ha già completato il proprio
-   * lato (unico che imposta l'importo finale), una sola volta. Sblocca la
-   * possibilità per il cliente di scrivere la propria recensione
-   * (ReviewsService.create controlla questo stesso campo).
+   * in origine possibile solo dopo che il professionista aveva già
+   * completato il proprio lato, richiesta esplicita successiva
+   * dell'utente ("il cliente deve poter cliccare su lavoro terminato a
+   * prescindere se il professionista l'abbia già cliccato o no") ha
+   * rimosso quella dipendenza d'ordine: il cliente può confermare su
+   * qualunque prenotazione ancora attiva (`CONFIRMED`) o già completata
+   * dal professionista (`COMPLETED`), una sola volta. La recensione resta
+   * comunque bloccata finché `status` non è davvero `COMPLETED`
+   * (`ReviewsService.create`, controllo indipendente da questo campo — non
+   * toccato: "recensione solo da prenotazione confermata/completata",
+   * CLAUDE.md §8, regola di business separata da "chi ha cliccato prima").
    */
   async clientConfirmComplete(clientId: string, bookingId: string, input: ClientConfirmCompleteInput) {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
-    if (booking.status !== "COMPLETED") {
-      throw new BadRequestException("Il professionista deve segnalare il lavoro come terminato prima della tua conferma.");
+    if (booking.status !== "CONFIRMED" && booking.status !== "COMPLETED") {
+      throw new BadRequestException("Puoi segnalare come terminato solo un lavoro confermato.");
     }
     if (booking.clientConfirmedCompletedAt) {
       throw new ForbiddenException("Hai già confermato il completamento di questo lavoro.");

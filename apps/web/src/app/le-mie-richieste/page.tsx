@@ -1178,6 +1178,11 @@ function formatSentAt(iso: string): string {
 // scegliere/vedere nell'elenco.
 type FreeSlot = { date: string; startTime: string; endTime: string; isCurrentProposal?: boolean };
 
+// Valore speciale per l'opzione "Altro" nel menu a tendina data/ora
+// (richiesta esplicita dell'utente) — mai una data reale, quindi non può
+// collidere con una vera chiave `date|startTime|endTime`.
+const MANUAL_OPTION_VALUE = "altro";
+
 /**
  * Preventivo ricevuto: mostra la data proposta dal professionista (prima
  * non era visibile affatto) e permette al cliente di accettarla o
@@ -1214,6 +1219,13 @@ function QuoteCard({
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
   const [proposeNote, setProposeNote] = useState("");
+  // "Altro" nel menu a tendina data/ora (richiesta esplicita dell'utente):
+  // il cliente può proporre un orario libero non presente nell'agenda
+  // pubblica del professionista — stesso principio già in uso per la
+  // controproposta del professionista (isManual, CLAUDE.md §47).
+  const [manualDate, setManualDate] = useState("");
+  const [manualStartTime, setManualStartTime] = useState("");
+  const [manualEndTime, setManualEndTime] = useState("");
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -1297,15 +1309,30 @@ function QuoteCard({
   }
 
   async function handleProposeDate() {
-    const [date, startTime, endTime] = selectedSlotKey.split("|");
-    if (!date || !startTime || !endTime) {
-      setError("Scegli un orario.");
-      return;
+    let date: string;
+    let startTime: string;
+    let endTime: string;
+    let isManual = false;
+    if (selectedSlotKey === MANUAL_OPTION_VALUE) {
+      if (!manualDate) return setError("Indica una data.");
+      if (!manualStartTime || !manualEndTime) return setError("Indica sia l'ora di inizio sia l'ora di fine.");
+      if (manualEndTime <= manualStartTime) return setError("L'ora di fine deve essere dopo l'ora di inizio.");
+      date = manualDate;
+      startTime = manualStartTime;
+      endTime = manualEndTime;
+      isManual = true;
+    } else {
+      const parts = selectedSlotKey.split("|");
+      if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+        setError("Scegli un orario.");
+        return;
+      }
+      [date, startTime, endTime] = parts as [string, string, string];
     }
     setError(null);
     setIsProposing(true);
     try {
-      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined });
+      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined, isManual: isManual || undefined });
       setIsChoosingDate(false);
       setProposeNote("");
       onChanged();
@@ -1519,7 +1546,20 @@ function QuoteCard({
                         </option>
                       );
                     })}
+                    <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
                   </select>
+                  {selectedSlotKey === MANUAL_OPTION_VALUE ? (
+                    <YStack gap="$2">
+                      <XStack gap="$2" flexWrap="wrap">
+                        <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
+                        <input type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                        <input type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                      </XStack>
+                      <Text fontSize={11} color={brand.grafite70}>
+                        Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
+                      </Text>
+                    </YStack>
+                  ) : null}
                   <textarea
                     value={proposeNote}
                     onChange={(e) => setProposeNote(e.target.value)}
@@ -1679,7 +1719,12 @@ function BookingRow({
   async function handleClientConfirmComplete(photoUrls: string[]) {
     await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
     setShowClientCompleteModal(false);
-    if (!booking.hasReview) {
+    // La recensione resta bloccata finché il professionista non ha
+    // anche lui completato il lavoro (ReviewsService.create, invariato) —
+    // il cliente può ora confermare "a prescindere" dal professionista,
+    // quindi qui lo stato potrebbe essere ancora CONFIRMED: aprire il
+    // popup di recensione in quel caso fallirebbe subito con un 403.
+    if (booking.status === "COMPLETED" && !booking.hasReview) {
       setShowReviewModal(true);
     }
     onReviewed();
@@ -1991,12 +2036,20 @@ function BookingRow({
         />
       ) : null}
 
-      {booking.status === "COMPLETED" ? (
+      {/* Richiesta esplicita dell'utente: il cliente può cliccare "Lavoro
+          terminato" a prescindere dal fatto che il professionista l'abbia
+          già fatto o no — non più gated su status === "COMPLETED" (quello
+          resta impostato solo dal professionista, con l'importo finale). */}
+      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
           {!booking.clientConfirmedCompletedAt ? (
             <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </Button>
+          ) : booking.status !== "COMPLETED" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai confermato il completamento. In attesa che anche il professionista lo segnali per poter lasciare una recensione.
+            </Text>
           ) : booking.hasReview ? (
             <Text fontSize="$2" color={brand.verificato} fontWeight="600">
               Recensione inviata

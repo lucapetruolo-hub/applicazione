@@ -314,13 +314,13 @@ export const proposeQuoteDateSchema = z.object({
   note: z.string().max(1000).optional(),
   /**
    * Richiesta esplicita dell'utente: quando il professionista usa
-   * "Proponi un'altra data" (counter-propose-date) deve poter inserire un
-   * orario libero, non necessariamente presente nella propria agenda —
-   * finirà comunque sul calendario come "In attesa" (stesso principio già
-   * in uso per la data manuale nell'invio del primo preventivo). Se vero,
-   * il backend salta la validazione contro AvailabilitySlot. Ignorato da
-   * proposeDate (il cliente sceglie sempre tra le fasce reali dell'agenda
-   * pubblica, o riconferma la proposta attuale del professionista).
+   * "Proponi un'altra data" (counter-propose-date) o il cliente sceglie
+   * "Altro" nel menu a tendina data/ora (propose-date) deve poter inserire
+   * un orario libero, non necessariamente presente nell'agenda del
+   * professionista — finirà comunque sul calendario come "In attesa"
+   * (stesso principio già in uso per la data manuale nell'invio del primo
+   * preventivo). Se vero, il backend salta la validazione contro
+   * AvailabilitySlot.
    */
   isManual: z.boolean().optional(),
 });
