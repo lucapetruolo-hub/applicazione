@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_REOPENED_BY_CLIENT"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",
@@ -18,7 +18,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "GUIDED_REQUEST_EXPIRED",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce

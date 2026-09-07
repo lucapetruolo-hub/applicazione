@@ -1,5 +1,5 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PrismaClient } from "@professionisti/database";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { CancelBookingByProfessionalInput, ClientConfirmCompleteInput, CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -398,6 +398,113 @@ export class BookingsService {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
     }
     return { bookingId, status: "CANCELED" as const };
+  }
+
+  /**
+   * Riapre una prenotazione annullata (richiesta esplicita dell'utente:
+   * "una volta annullata dai la possibilità di riaprirla") — disponibile a
+   * entrambe le parti, chiunque l'abbia annullata: a differenza
+   * dell'annullamento (motivi/nota diversi per cliente e professionista,
+   * due metodi separati sopra), riaprire è la stessa identica azione da
+   * qualunque lato, un solo metodo condiviso. Rivalida la capienza della
+   * fascia sottostante (se la data corrisponde a una vera
+   * AvailabilitySlot — potrebbe non esserlo, es. una data negoziata
+   * manualmente) prima di riportare lo stato a CONFIRMED: nel frattempo
+   * quella stessa fascia potrebbe essere stata presa da qualcun altro,
+   * stessa cautela già applicata a QuotesService.confirmProposedDate
+   * (transazione Serializable).
+   */
+  async reopenBooking(userId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { quote: true, professionalProfile: true },
+    });
+    if (!booking) {
+      throw new NotFoundException("Prenotazione non trovata.");
+    }
+    const isClient = booking.clientId === userId;
+    const isProfessional = booking.professionalProfile.userId === userId;
+    if (!isClient && !isProfessional) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "CANCELED") {
+      throw new ForbiddenException("Questa prenotazione non è annullata.");
+    }
+
+    const scheduledAt = booking.scheduledAt;
+    const dayStart = new Date(scheduledAt);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const timeStr = scheduledAt.toISOString().slice(11, 16);
+    const dayOfWeek = scheduledAt.getUTCDay();
+
+    const candidateSlots = await this.prisma.availabilitySlot.findMany({
+      where: { professionalProfileId: booking.professionalProfileId, OR: [{ date: dayStart }, { date: null, dayOfWeek }] },
+    });
+    const matchingSlot = candidateSlots.find((s) => timeStr >= s.startTime && timeStr < s.endTime);
+    const requestServiceMode = booking.serviceMode;
+    if (matchingSlot) {
+      const modeCapacity = requestServiceMode === "ONLINE" ? matchingSlot.onlineMaxBookings : matchingSlot.homeMaxBookings;
+      if (modeCapacity === null) {
+        throw new ConflictException(
+          requestServiceMode === "ONLINE"
+            ? "Il professionista non offre più consulenza online su questa fascia oraria."
+            : "Il professionista non offre più interventi a domicilio su questa fascia oraria.",
+        );
+      }
+    }
+    const maxBookings =
+      requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
+
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const existingBookings = await tx.booking.findMany({
+            where: {
+              professionalProfileId: booking.professionalProfileId,
+              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+              scheduledAt: { gte: dayStart, lt: dayEnd },
+            },
+            select: { scheduledAt: true, serviceMode: true },
+          });
+          const bookedCount = existingBookings.filter(
+            (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (requestServiceMode ? b.serviceMode === requestServiceMode : true),
+          ).length;
+          if (bookedCount >= maxBookings) {
+            throw new ConflictException("Questa fascia non è più libera.");
+          }
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia non è più libera.");
+      }
+      throw err;
+    }
+
+    const otherPartyUserId = isClient ? booking.professionalProfile.userId : booking.clientId;
+    await this.notificationsService.notify(otherPartyUserId, isClient ? "BOOKING_REOPENED_BY_CLIENT" : "BOOKING_REOPENED_BY_PROFESSIONAL", {
+      bookingId,
+    });
+    if (isProfessional) {
+      await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
+    }
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        isClient ? "CLIENT" : "PROFESSIONAL",
+        `${isClient ? "Il cliente" : "Il professionista"} ha riaperto la prenotazione annullata.`,
+      );
+    }
+
+    return { bookingId, status: "CONFIRMED" as const };
   }
 
   /**

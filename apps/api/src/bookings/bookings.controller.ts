@@ -82,6 +82,13 @@ export class BookingsController {
     return this.bookingsService.cancelForClient(req.user.userId, id);
   }
 
+  /** Riapre una prenotazione annullata — disponibile a entrambe le parti, chiunque l'abbia annullata. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/reopen")
+  reopen(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.reopenBooking(req.user.userId, id);
+  }
+
   /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso (voci del preventivo + eventuali extra). */
   @UseGuards(JwtAuthGuard)
   @Patch(":id/complete")

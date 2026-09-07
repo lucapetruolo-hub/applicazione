@@ -31,6 +31,13 @@ export function CancelBookingModal({
   notePlaceholder = "Es. Imprevisto, ti ricontatterò per riprogrammare.",
   confirmLabel = "Conferma annullamento",
   confirmingLabel = "Annullamento...",
+  // Il cliente che annulla una propria prenotazione non lascia una nota
+  // (richiesta esplicita dell'utente, decisione di design già presa:
+  // "il cliente non deve spiegazioni al professionista") — a differenza
+  // dell'annullamento lato professionista, dove il campo resta sempre
+  // visibile. Quando false, il popup è un semplice "sei sicuro?" senza
+  // testarea, `onCancel` riceve sempre `undefined`.
+  showNote = true,
 }: {
   onClose: () => void;
   onCancel: (note: string | undefined) => Promise<void>;
@@ -39,6 +46,7 @@ export function CancelBookingModal({
   notePlaceholder?: string;
   confirmLabel?: string;
   confirmingLabel?: string;
+  showNote?: boolean;
 }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -106,12 +114,14 @@ export function CancelBookingModal({
           </Text>
         </YStack>
 
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-            Nota (facoltativa)
-          </Text>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
-        </YStack>
+        {showNote ? (
+          <YStack gap="$2">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              Nota (facoltativa)
+            </Text>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
+          </YStack>
+        ) : null}
 
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">

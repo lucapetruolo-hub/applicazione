@@ -28,7 +28,7 @@ export class ReviewsService {
    * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
    * se non ce ne sono, la home non mostra proprio la sezione.
    */
-  async getRecentPublic(limit = 6) {
+  async getRecentPublic(limit = 5) {
     const reviews = await this.prisma.review.findMany({
       where: {
         booking: {
@@ -57,6 +57,10 @@ export class ReviewsService {
       isAutomatic: review.isAutomatic,
       createdAt: review.createdAt.toISOString(),
       professional: {
+        // Richiesta esplicita dell'utente: le card devono essere cliccabili
+        // verso la recensione in questione sul profilo pubblico — serve
+        // l'id del professionista per costruire il link, mancava del tutto.
+        id: review.booking.professionalProfile.id,
         businessName: review.booking.professionalProfile.businessName,
         categoryLabel: review.booking.professionalProfile.category.label,
         // Slug categoria (non solo l'etichetta) per il fallback visivo lato

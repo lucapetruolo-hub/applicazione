@@ -10,6 +10,7 @@ import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { HowItWorks } from "@/components/HowItWorks";
+import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
 import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
@@ -102,6 +103,10 @@ export default function HomeContent({
 
       <FadeInSection>
         <RecentReviews />
+      </FadeInSection>
+
+      <FadeInSection>
+        <NewProfilesCarousel professionals={professionals} />
       </FadeInSection>
 
       <FadeInSection>

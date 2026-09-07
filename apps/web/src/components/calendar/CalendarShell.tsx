@@ -5,6 +5,7 @@ import { Icon, Text, XStack, YStack, brand, motionEasing, motionFast } from "@pr
 import {
   addDaysUtc,
   addMonthsUtc,
+  addYearsUtc,
   isSameDateUtc,
   monthGridDays,
   monthLabel,
@@ -14,7 +15,7 @@ import {
   formatDayRangeLabel,
 } from "@/lib/calendarDates";
 
-export type CalendarView = "day" | "week" | "month";
+export type CalendarView = "day" | "week" | "month" | "year";
 
 export type CalendarShellProps = {
   view: CalendarView;
@@ -24,9 +25,20 @@ export type CalendarShellProps = {
   onSelectDay?: (date: Date) => void;
   renderDayColumn: (date: Date) => ReactNode;
   renderMonthCell?: (date: Date) => ReactNode;
+  /**
+   * Vista "Anno" (richiesta esplicita dell'utente: "la possibilità di avere
+   * una lista annuale") — a differenza di Giorno/Settimana/Mese non è una
+   * griglia (renderDayColumn/renderMonthCell non si applicano: un anno di
+   * celle giorno non è leggibile), è una lista cronologica fornita per
+   * intero dal chiamante. Puramente opt-in: il toggle "Anno" compare nella
+   * riga Giorno/Settimana/Mese solo quando questa prop è passata — il
+   * calendario "Disponibilità" (che non la passa) resta invariato, zero
+   * rischio di regressione lì.
+   */
+  renderYearList?: () => ReactNode;
 };
 
-const VIEW_LABELS: { value: CalendarView; label: string }[] = [
+const BASE_VIEW_LABELS: { value: CalendarView; label: string }[] = [
   { value: "day", label: "Giorno" },
   { value: "week", label: "Settimana" },
   { value: "month", label: "Mese" },
@@ -42,7 +54,17 @@ const VIEW_LABELS: { value: CalendarView; label: string }[] = [
  * evita di dover tenere sincronizzate due fonti di dati nella stessa
  * griglia, ognuno dei due calendari resta responsabile solo dei propri dati.
  */
-export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onSelectDay, renderDayColumn, renderMonthCell }: CalendarShellProps) {
+export function CalendarShell({
+  view,
+  onViewChange,
+  currentDate,
+  onNavigate,
+  onSelectDay,
+  renderDayColumn,
+  renderMonthCell,
+  renderYearList,
+}: CalendarShellProps) {
+  const viewLabels = renderYearList ? [...BASE_VIEW_LABELS, { value: "year" as const, label: "Anno" }] : BASE_VIEW_LABELS;
   const today = todayUtc();
   // Vista a schermo intero (richiesta esplicita dell'utente per una
   // migliore visualizzazione): overlay fisso a tutto viewport, stesso
@@ -64,11 +86,13 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
   function handlePrev() {
     if (view === "day") onNavigate(addDaysUtc(currentDate, -1));
     else if (view === "week") onNavigate(addDaysUtc(currentDate, -7));
+    else if (view === "year") onNavigate(addYearsUtc(currentDate, -1));
     else onNavigate(addMonthsUtc(currentDate, -1));
   }
   function handleNext() {
     if (view === "day") onNavigate(addDaysUtc(currentDate, 1));
     else if (view === "week") onNavigate(addDaysUtc(currentDate, 7));
+    else if (view === "year") onNavigate(addYearsUtc(currentDate, 1));
     else onNavigate(addMonthsUtc(currentDate, 1));
   }
 
@@ -83,12 +107,15 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
   // con lo scroll verticale naturale della pagina in quella vista.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   function handleTouchStart(e: React.TouchEvent) {
-    if (view === "month") return;
+    // La vista "Anno" è una lista scorrevole verticalmente (stesso motivo
+    // per cui lo swipe è già disattivato in Mese): niente swipe orizzontale
+    // qui, confliggerebbe con lo scroll naturale della lista.
+    if (view === "month" || view === "year") return;
     const touch = e.touches[0];
     touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
   }
   function handleTouchEnd(e: React.TouchEvent) {
-    if (view === "month") return;
+    if (view === "month" || view === "year") return;
     const start = touchStart.current;
     const touch = e.changedTouches[0];
     if (!start || !touch) return;
@@ -106,6 +133,8 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
   } else if (view === "week") {
     const days = weekDays(currentDate);
     rangeLabel = formatDayRangeLabel(days[0]!, days[6]!);
+  } else if (view === "year") {
+    rangeLabel = `${currentDate.getUTCFullYear()}`;
   } else {
     rangeLabel = `${monthLabel(currentDate)} ${currentDate.getUTCFullYear()}`;
   }
@@ -114,7 +143,7 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
     <YStack gap="$3">
       <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
         <XStack backgroundColor={brand.gesso} borderRadius={999} padding="$1" gap="$1">
-          {VIEW_LABELS.map((item) => {
+          {viewLabels.map((item) => {
             const active = item.value === view;
             return (
               <XStack
@@ -212,7 +241,9 @@ export function CalendarShell({ view, onViewChange, currentDate, onNavigate, onS
       </XStack>
 
       <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        {view === "month" ? (
+        {view === "year" ? (
+          renderYearList ? renderYearList() : null
+        ) : view === "month" ? (
           <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
         ) : (
           <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />

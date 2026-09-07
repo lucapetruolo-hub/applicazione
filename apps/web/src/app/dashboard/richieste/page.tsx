@@ -129,6 +129,12 @@ const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professi
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#8a5a00", bg: "#FFF4E0", border: brand.ottone },
   accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
   completata: { label: "Completata", icon: "check", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
+  // Richiesta esplicita dell'utente: "rendi chiare quelle che sono state
+  // annullate" — prima indistinguibile da "accettata" (nessuno stadio
+  // dedicato). Icona "x" (già usata per "chiusa", stesso significato
+  // "non riuscita") a distinguerla visivamente da "scaduta" pur
+  // condividendo lo stesso rosso semantico.
+  annullata: { label: "Annullata", icon: "x", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
   scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
@@ -140,6 +146,7 @@ const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "modifica_richiesta", label: "Modifiche" },
   { key: "accettata", label: "Accettate" },
   { key: "completata", label: "Completate" },
+  { key: "annullata", label: "Annullate" },
   { key: "scaduta", label: "Scadute" },
 ];
 
@@ -201,6 +208,10 @@ function MiniTimeline({ stage }: { stage: RequestStage }) {
     modifica_richiesta: 2,
     accettata: stage === "modifica_richiesta" ? 3 : 2,
     completata: stage === "modifica_richiesta" ? 4 : 3,
+    // Una prenotazione annullata era comunque già "accettata" prima di
+    // esserlo (stesso passo raggiunto, non un passo a sé nella mini
+    // timeline che non ha una bolla dedicata per questo stato).
+    annullata: 2,
     scaduta: -1,
     chiusa: -1,
   };
@@ -883,6 +894,25 @@ function RequestCard({
     onChanged();
   }
 
+  // Riapertura di una prenotazione annullata (richiesta esplicita
+  // dell'utente: "una volta annullata dai la possibilità di riaprirla") —
+  // stesso endpoint condiviso già in uso in /dashboard e /le-mie-richieste.
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  async function handleReopenBooking() {
+    if (!booking) return;
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.reopenBooking(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     try {
@@ -1094,7 +1124,7 @@ function RequestCard({
                   {gr.city}
                 </Text>
               )}
-              {booking?.scheduledAt && (stage === "accettata" || stage === "completata") ? (
+              {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
                 <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
                   Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
                 </Text>
@@ -1137,7 +1167,7 @@ function RequestCard({
           {lead.quote ? (
             <YStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               <Text fontSize={13} fontWeight="800" color={brand.grafite}>
-                {stage === "accettata" || stage === "completata" ? "Preventivo accettato" : "Il tuo preventivo"}
+                {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
               {lead.quote.items.map((item) => (
                 <XStack key={item.id} justifyContent="space-between">
@@ -1230,8 +1260,14 @@ function RequestCard({
 
             {stage === "in_attesa" ? (
               <XStack gap="$2" flexWrap="wrap" alignItems="center">
+                {/* Richiesta esplicita dell'utente: reso "più simile a un
+                    pulsante" (prima variant="ghost", quasi solo testo) —
+                    ottone/giallo, stesso token semantico già in uso per lo
+                    stadio "modifica_richiesta"/"in attesa di modifica" in
+                    tutto il resto di questa pagina. */}
                 <Button
-                  variant="ghost"
+                  variant="secondary"
+                  backgroundColor={brand.ottone}
                   size="$3"
                   onPress={() => {
                     if (!lead.quote) return;
@@ -1240,7 +1276,9 @@ function RequestCard({
                     setShowQuoteForm(true);
                   }}
                 >
-                  Modifica preventivo
+                  <Text color="white" fontWeight="700" fontSize="$3">
+                    Modifica preventivo
+                  </Text>
                 </Button>
                 <Button variant="primary" size="$3" onPress={openTimeline}>
                   <XStack alignItems="center" gap="$1">
@@ -1310,7 +1348,7 @@ function RequestCard({
               </XStack>
             ) : null}
 
-            {stage === "accettata" || stage === "completata" ? (
+            {stage === "accettata" || stage === "completata" || stage === "annullata" ? (
               <XStack gap="$2" flexWrap="wrap">
                 {/* Stessi bottoni già in uso in /dashboard (AcceptedJobCard) —
                     richiesta esplicita dell'utente di implementarli identici
@@ -1333,6 +1371,13 @@ function RequestCard({
                   <Button variant="ghost" size="$3" onPress={() => setShowClientReviewModal(true)}>
                     <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
                       Recensisci il cliente
+                    </Text>
+                  </Button>
+                ) : null}
+                {booking?.status === "CANCELED" ? (
+                  <Button variant="secondary" backgroundColor={brand.verificato} size="$3" onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
+                    <Text color="white" fontWeight="700" fontSize="$3">
+                      {isReopening ? "Riapertura..." : "Riapri intervento"}
                     </Text>
                   </Button>
                 ) : null}
@@ -1371,6 +1416,11 @@ function RequestCard({
               />
             ) : null}
             {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+            {reopenError ? (
+              <Text fontSize="$2" color={brand.urgenza}>
+                {reopenError}
+              </Text>
+            ) : null}
 
             {(stage === "scaduta" || stage === "chiusa") && !canDelete ? (
               <Text fontSize={12.5} color={brand.grafite70}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Icon, Rating, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
@@ -11,7 +12,7 @@ type RecentReview = {
   comment: string | null;
   isAutomatic: boolean;
   createdAt: string;
-  professional: { businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
+  professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
 };
 
 /**
@@ -39,7 +40,20 @@ export function RecentReviews() {
         {reviews.map((review) => {
           const accent = CATEGORY_ACCENT[review.professional.categorySlug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#F1F5F9", fg: "#334155" };
           return (
-            <Surface key={review.id} width={320} flexGrow={1} flexBasis={280} maxWidth={360} padding={0} overflow="hidden">
+            // Richiesta esplicita dell'utente: le card devono essere
+            // cliccabili, portando alla recensione in questione sul profilo
+            // pubblico del professionista (ancora #recensione-{id}, vedi
+            // ProfessionalDetailContent.tsx). L'intera card è il target
+            // cliccabile — il wrapper <Link> porta le stesse proprietà
+            // flex che prima stavano sulla Surface, così il layout non
+            // cambia (stesso pattern già in uso altrove per una card intera
+            // cliccabile con next/link, es. /le-mie-richieste).
+            <Link
+              key={review.id}
+              href={`/professionista/${review.professional.id}#recensione-${review.id}`}
+              style={{ textDecoration: "none", color: "inherit", flexGrow: 1, flexBasis: 280, maxWidth: 360, width: 320, minWidth: 0 }}
+            >
+              <Surface width="100%" padding={0} overflow="hidden" cursor="pointer" hoverStyle={{ borderColor: brand.cianografia }}>
               {/* Foto del professionista grande quanto l'intera card, non
                   un'icona piccola in un angolo — richiesta esplicita
                   dell'utente: "deve essere la prima cosa che salta
@@ -97,7 +111,8 @@ export function RecentReviews() {
                   </YStack>
                 </YStack>
               </XStack>
-            </Surface>
+              </Surface>
+            </Link>
           );
         })}
       </XStack>

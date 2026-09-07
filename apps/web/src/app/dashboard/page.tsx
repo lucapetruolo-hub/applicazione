@@ -809,6 +809,25 @@ function AcceptedJobCard({
     onUpdated();
   }
 
+  // Riapertura di una prenotazione annullata (richiesta esplicita
+  // dell'utente: "una volta annullata dai la possibilità di riaprirla") —
+  // stesso endpoint condiviso già disponibile lato cliente, nessun popup
+  // di conferma: riaprire non è distruttivo come annullare.
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  async function handleReopen() {
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.reopenBooking(token, booking.id);
+      onUpdated();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleSaveNote() {
     setIsSavingNote(true);
     try {
@@ -1152,6 +1171,11 @@ function AcceptedJobCard({
                 </Text>
               </Button>
             ) : null}
+            {booking.status === "CANCELED" ? (
+              <Button variant="secondary" size="$2" height={36} onPress={handleReopen} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
+                {isReopening ? "Riapertura..." : "Riapri intervento"}
+              </Button>
+            ) : null}
             {booking.guidedRequestId && myProfileId ? (
               <Button
                 variant="ghost"
@@ -1171,6 +1195,11 @@ function AcceptedJobCard({
               </Button>
             ) : null}
           </XStack>
+          {reopenError ? (
+            <Text color={brand.urgenza} fontSize="$2">
+              {reopenError}
+            </Text>
+          ) : null}
         </YStack>
       ) : null}
 

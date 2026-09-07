@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
@@ -1666,9 +1667,17 @@ function BookingRow({
   // il lato professionista (ClientCompleteModal/ReviewModal).
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
-  const [isCanceling, setIsCanceling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
+  // Popup di conferma annullamento (richiesta esplicita dell'utente: "fa
+  // uscire un popup dove chiede se si è sicuri" — prima era un semplice
+  // conferma inline, "poco visibile" rispetto allo stesso pop-up già
+  // usato lato professionista, CancelBookingModal). Nessuna nota qui
+  // (showNote={false}, decisione di design invariata: il cliente non deve
+  // spiegazioni al professionista).
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  // Riapertura di una prenotazione annullata (richiesta esplicita
+  // dell'utente: "una volta annullata dai la possibilità di riaprirla").
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [openRequestPhotoIndex, setOpenRequestPhotoIndex] = useState<number | null>(null);
   const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
@@ -1683,17 +1692,26 @@ function BookingRow({
   // useDismissableUnreadCount per il motivo del calcolo differenziale.
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
 
-  async function handleCancelBooking() {
-    setCancelError(null);
-    setIsCanceling(true);
+  // Errori mostrati DENTRO al popup (CancelBookingModal ha un proprio
+  // stato d'errore interno, stesso pattern già in uso lato professionista
+  // — handleCancel lì non li intercetta) invece che qui sotto: lasciato
+  // propagare, mai avvolto in try/catch.
+  async function handleCancelBooking(): Promise<void> {
+    await apiClient.cancelMyBooking(token, booking.id);
+    setShowCancelModal(false);
+    onReviewed();
+  }
+
+  async function handleReopenBooking() {
+    setReopenError(null);
+    setIsReopening(true);
     try {
-      await apiClient.cancelMyBooking(token, booking.id);
+      await apiClient.reopenBooking(token, booking.id);
       onReviewed();
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-      setConfirmingCancel(false);
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
-      setIsCanceling(false);
+      setIsReopening(false);
     }
   }
 
@@ -1919,37 +1937,34 @@ function BookingRow({
         </YStack>
       ) : null}
 
+      {/* Popup di conferma (richiesta esplicita dell'utente: "fa uscire un
+          popup dove chiede se si è sicuri" — prima un testo con doppia
+          conferma inline, "poco visibile" rispetto allo stesso pop-up già
+          in uso lato professionista, CancelBookingModal — ora identico,
+          solo senza il campo nota). */}
       {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          {confirmingCancel ? (
-            <>
-              <Text fontSize="$2" color={brand.urgenza}>
-                Annullare questa prenotazione?
-              </Text>
-              <Button variant="urgent" size="$2" height={36} onPress={handleCancelBooking} disabled={isCanceling} opacity={isCanceling ? 0.6 : 1}>
-                {isCanceling ? "Annullamento..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingCancel(false)}>
-                Torna indietro
-              </Button>
-            </>
-          ) : (
-            <Text
-              color={brand.urgenza}
-              fontWeight="600"
-              fontSize="$3"
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setConfirmingCancel(true)}
-            >
+          <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
+            <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
               Annulla prenotazione
             </Text>
-          )}
+          </Button>
         </XStack>
       ) : null}
-      {cancelError ? (
+      {/* Riapertura di una prenotazione annullata (richiesta esplicita
+          dell'utente: "una volta annullata dai la possibilità di
+          riaprirla") — nessun popup di conferma qui: riaprire non è
+          distruttivo come annullare, un solo click basta. */}
+      {booking.status === "CANCELED" ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <Button variant="secondary" size="$2" height={36} onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
+            {isReopening ? "Riapertura..." : "Riapri prenotazione"}
+          </Button>
+        </XStack>
+      ) : null}
+      {reopenError ? (
         <Text color={brand.urgenza} fontSize="$3">
-          {cancelError}
+          {reopenError}
         </Text>
       ) : null}
 
@@ -2022,6 +2037,17 @@ function BookingRow({
         </Text>
       ) : null}
 
+      {showCancelModal ? (
+        <CancelBookingModal
+          title="Annulla prenotazione"
+          description="Il professionista verrà avvisato dell'annullamento."
+          confirmLabel="Sì, annulla prenotazione"
+          confirmingLabel="Annullamento..."
+          showNote={false}
+          onClose={() => setShowCancelModal(false)}
+          onCancel={handleCancelBooking}
+        />
+      ) : null}
       {showNoShowModal ? (
         <ReportNoShowModal
           businessName={booking.businessName}

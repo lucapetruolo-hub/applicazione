@@ -574,7 +574,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             <EmptyState icon="star" title="Nessuna recensione ancora" description="Le recensioni arrivano solo da prenotazioni confermate." />
           ) : (
             professional.reviews.map((review) => (
-              <Surface key={review.id} gap="$2">
+              <YStack key={review.id} gap="$0">
+                {/* Ancora per il deep-link dalla homepage ("Ultime recensioni",
+                    RecentReviews.tsx) — stesso pattern già in uso per #agenda
+                    sopra: un <div> grezzo con scrollMarginTop, mai un id
+                    passato direttamente a un componente Tamagui (non è
+                    garantito che lo inoltri al nodo DOM). */}
+                <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
+                <Surface gap="$2">
                 <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
                   <XStack alignItems="center" gap="$2" flexWrap="wrap">
                     <XStack alignItems="center" gap="$1">
@@ -629,6 +636,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </XStack>
                 ) : null}
               </Surface>
+              </YStack>
             ))
           )}
         </YStack>

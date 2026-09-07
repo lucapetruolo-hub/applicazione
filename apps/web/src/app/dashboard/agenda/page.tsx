@@ -83,6 +83,50 @@ const EXTERNAL_JOB_STATUS_COLOR: Record<ExternalJob["status"], string> = {
 // (es. Booking PENDING).
 const PENDING_QUOTE_COLOR = brand.ottone;
 
+// Etichette italiane per stato — usate sia in UI (lista annuale/risultati di
+// ricerca) sia come testo indicizzato dalla ricerca full-text (così cercare
+// "confermat" trova le prenotazioni confermate, non solo un nome cliente).
+const AGENDA_BOOKING_STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
+  PENDING: "In attesa di conferma",
+  CONFIRMED: "Confermata",
+  COMPLETED: "Completata",
+  CANCELED: "Annullata",
+  NO_SHOW: "Cliente non presentato",
+};
+const AGENDA_EXTERNAL_JOB_STATUS_LABEL: Record<ExternalJob["status"], string> = {
+  SCHEDULED: "Programmato",
+  COMPLETED: "Completato",
+  CANCELED: "Annullato",
+};
+
+/**
+ * Riga unificata per la lista annuale e per i risultati di ricerca
+ * (richiesta esplicita dell'utente, entrambe): stessa forma per Booking,
+ * ExternalJob e preventivo "in attesa", con `searchText` precalcolato —
+ * concatenazione minuscola di ogni campo pertinente, così "qualsiasi
+ * prenotazione dove in qualsiasi campo c'è la parola" (richiesta letterale
+ * dell'utente) funziona con un solo `.includes()` invece di controllare
+ * campo per campo ad ogni digitazione.
+ */
+type AgendaListItem = {
+  key: string;
+  date: Date;
+  timeLabel: string;
+  title: string;
+  subtitle: string;
+  statusLabel: string;
+  statusColor: string;
+  dashed: boolean;
+  searchText: string;
+  onPress: () => void;
+};
+
+function formatAgendaTimeRange(startIso: string, endIso: string | null): string {
+  const start = new Date(startIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  if (!endIso) return start;
+  return `${start}–${new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function DashboardAgendaPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
@@ -193,6 +237,15 @@ export default function DashboardAgendaPage() {
   // AvailabilitySlot/capacità (una Quote non consuma mai capienza, solo una
   // Booking lo fa — invariato), puramente un promemoria visivo.
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
+
+  // Ricerca full-text sul calendario "Prenotazioni" (richiesta esplicita
+  // dell'utente): filtra Booking/ExternalJob/preventivi in attesa su
+  // QUALSIASI campo, non solo nome/città/via — vedi AgendaListItem.searchText
+  // e buildAgendaListItems più sotto. Quando valorizzata, sostituisce
+  // l'intero CalendarShell (griglia Giorno/Settimana/Mese/Anno) con un
+  // elenco piatto dei soli risultati: filtrare una griglia lasciando celle
+  // vuote sparse in giro non avrebbe senso, un elenco sì.
+  const [agendaSearchQuery, setAgendaSearchQuery] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -1122,6 +1175,109 @@ export default function DashboardAgendaPage() {
     );
   }
 
+  /**
+   * Elenco unificato di TUTTI gli eventi del calendario "Prenotazioni"
+   * (Booking reali, lavori esterni, preventivi in attesa) — a differenza di
+   * `bookingsOnDate`/`externalJobsOnDate`/`pendingQuotesOnDate` sopra (che
+   * filtrano per un singolo giorno, usati dalla griglia) qui non c'è alcun
+   * filtro di data: serve sia alla lista annuale (poi filtrata per anno da
+   * chi la chiama) sia alla ricerca full-text (che deve poter trovare un
+   * risultato passato o futuro, non solo nell'anno corrente). Ogni campo
+   * "utile a un umano che deve svolgere l'intervento" entra in `searchText`
+   * — richiesta esplicita dell'utente: "qualsiasi campo".
+   */
+  function buildAgendaListItems(): AgendaListItem[] {
+    const bookingItems: AgendaListItem[] = (bookings ?? []).map((b) => {
+      const clientName = b.clientAccountDeleted ? "Account eliminato" : (b.clientName ?? "Cliente");
+      const recipientName = [b.recipientName, b.recipientSurname].filter(Boolean).join(" ");
+      const addressParts = [b.street, b.houseNumber, b.addressExtra, b.postalCode, b.city, b.province, b.address];
+      return {
+        key: `booking-${b.id}`,
+        date: new Date(b.scheduledAt),
+        timeLabel: formatAgendaTimeRange(b.scheduledAt, b.scheduledEndAt),
+        title: clientName,
+        subtitle: b.categoryLabel ?? "Prenotazione",
+        statusLabel: AGENDA_BOOKING_STATUS_LABEL[b.status],
+        statusColor: BOOKING_STATUS_COLOR[b.status],
+        dashed: false,
+        searchText: [
+          clientName,
+          recipientName,
+          b.clientPhone,
+          b.clientEmail,
+          b.recipientPhone,
+          ...addressParts,
+          b.categoryLabel,
+          b.description,
+          b.professionalNote,
+          b.cancellationNote,
+          AGENDA_BOOKING_STATUS_LABEL[b.status],
+          ...b.items.map((i) => i.name),
+          ...b.finalItems.map((i) => i.name),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+        onPress: () => setSelectedBooking(b),
+      };
+    });
+
+    const externalItems: AgendaListItem[] = (externalJobs ?? []).map((j) => ({
+      key: `external-${j.id}`,
+      date: new Date(j.scheduledAt),
+      timeLabel: formatAgendaTimeRange(j.scheduledAt, j.scheduledEndAt),
+      title: j.clientName,
+      subtitle: "Lavoro esterno",
+      statusLabel: AGENDA_EXTERNAL_JOB_STATUS_LABEL[j.status],
+      statusColor: EXTERNAL_JOB_STATUS_COLOR[j.status],
+      dashed: true,
+      searchText: [j.clientName, j.clientPhone, j.address, j.description, j.notes, AGENDA_EXTERNAL_JOB_STATUS_LABEL[j.status], "esterno"]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+      onPress: () => setSelectedExternalJob(j),
+    }));
+
+    const pendingQuoteItems: AgendaListItem[] = (leads ?? [])
+      .filter(
+        (lead) =>
+          lead.quote &&
+          lead.quote.bookingStatus === null &&
+          (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"),
+      )
+      .map((lead) => {
+        const quote = lead.quote!;
+        const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente");
+        return {
+          key: `pending-${lead.id}`,
+          date: new Date(quote.estimatedStartDate),
+          timeLabel: formatAgendaTimeRange(quote.estimatedStartDate, quote.estimatedEndDate),
+          title: clientName,
+          subtitle: lead.guidedRequest.categoryLabel,
+          statusLabel: "In attesa del cliente",
+          statusColor: PENDING_QUOTE_COLOR,
+          dashed: true,
+          searchText: [clientName, lead.guidedRequest.categoryLabel, lead.guidedRequest.description, lead.guidedRequest.city, "in attesa", "preventivo"]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase(),
+          onPress: () => router.push("/dashboard/richieste"),
+        };
+      });
+
+    return [...bookingItems, ...externalItems, ...pendingQuoteItems].sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  const agendaSearchResults = agendaSearchQuery.trim()
+    ? buildAgendaListItems().filter((item) => item.searchText.includes(agendaSearchQuery.trim().toLowerCase()))
+    : [];
+
+  function renderBookingYearList() {
+    const year = bookingCurrentDate.getUTCFullYear();
+    const items = buildAgendaListItems().filter((item) => item.date.getUTCFullYear() === year);
+    return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessuna prenotazione nel ${year}.`} />;
+  }
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={980} gap="$5">
@@ -1316,7 +1472,41 @@ export default function DashboardAgendaPage() {
           </>
         ) : (
           <>
-            <XStack justifyContent="flex-end">
+            <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
+              {/* Ricerca full-text (richiesta esplicita dell'utente):
+                  qualsiasi parola o parte di parola presente in QUALSIASI
+                  campo di una prenotazione/lavoro esterno/preventivo in
+                  attesa (nome cliente, telefono, indirizzo, descrizione,
+                  note, stato, voci del preventivo...) — non solo
+                  nome/città/via. Filtra dal vivo ad ogni digitazione,
+                  nessuna chiamata di rete (stessi dati già scaricati). */}
+              <XStack
+                alignItems="center"
+                gap="$2"
+                flex={1}
+                minWidth={220}
+                maxWidth={360}
+                height={40}
+                paddingHorizontal="$3"
+                borderRadius="$3"
+                backgroundColor={brand.calce}
+                borderWidth={1}
+                borderColor={brand.filetto}
+              >
+                <Icon name="search" size={15} color={brand.grafite70} />
+                <input
+                  type="text"
+                  value={agendaSearchQuery}
+                  onChange={(e) => setAgendaSearchQuery(e.target.value)}
+                  placeholder="Cerca in qualsiasi campo..."
+                  style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 14, color: brand.grafite }}
+                />
+                {agendaSearchQuery ? (
+                  <XStack cursor="pointer" onPress={() => setAgendaSearchQuery("")} accessibilityRole="button" accessibilityLabel="Cancella ricerca">
+                    <Icon name="x" size={15} color={brand.grafite70} />
+                  </XStack>
+                ) : null}
+              </XStack>
               <Button
                 variant="secondary"
                 size="$3"
@@ -1344,6 +1534,11 @@ export default function DashboardAgendaPage() {
             ) : null}
             {bookings === null ? (
               <LoadingState />
+            ) : agendaSearchQuery.trim() ? (
+              <AgendaEventsList
+                items={agendaSearchResults}
+                emptyLabel="Nessuna prenotazione corrisponde alla ricerca."
+              />
             ) : (
               <CalendarShell
                 view={bookingView}
@@ -1356,6 +1551,7 @@ export default function DashboardAgendaPage() {
                 }}
                 renderDayColumn={renderBookingDayColumn}
                 renderMonthCell={renderBookingMonthCell}
+                renderYearList={renderBookingYearList}
               />
             )}
           </>
@@ -1901,5 +2097,107 @@ function SlotEditorModal({
         ) : null}
       </YStack>
     </div>
+  );
+}
+
+/**
+ * Lista di eventi condivisa (richiesta esplicita dell'utente, entrambe): sia
+ * per la vista "Anno" (raggruppata per mese) sia per i risultati della
+ * ricerca full-text (elenco piatto, un filtro non ha una struttura mensile
+ * naturale). Click su una riga apre lo stesso pannello/pop-up di dettaglio
+ * già usato dalla griglia (`item.onPress`, già collegato a
+ * `setSelectedBooking`/`setSelectedExternalJob`/navigazione a
+ * "/dashboard/richieste" da `buildAgendaListItems`).
+ */
+function AgendaEventsList({ items, groupByMonth = false, emptyLabel }: { items: AgendaListItem[]; groupByMonth?: boolean; emptyLabel: string }) {
+  if (items.length === 0) {
+    return (
+      <YStack padding="$5" alignItems="center" backgroundColor={brand.calce} borderRadius="$3">
+        <Text color={brand.grafite70} fontSize="$3">
+          {emptyLabel}
+        </Text>
+      </YStack>
+    );
+  }
+
+  if (!groupByMonth) {
+    return (
+      <YStack gap="$2">
+        {items.map((item) => (
+          <AgendaEventRow key={item.key} item={item} />
+        ))}
+      </YStack>
+    );
+  }
+
+  // Raggruppamento per mese (vista Anno): un'intestazione per ogni mese che
+  // contiene almeno un evento — i mesi senza nulla non occupano spazio,
+  // stesso principio "niente sezioni vuote" già seguito altrove nel sito.
+  const groups: { monthKey: string; label: string; items: AgendaListItem[] }[] = [];
+  for (const item of items) {
+    const monthKey = `${item.date.getUTCFullYear()}-${item.date.getUTCMonth()}`;
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.monthKey === monthKey) {
+      lastGroup.items.push(item);
+    } else {
+      groups.push({ monthKey, label: monthLabel(item.date), items: [item] });
+    }
+  }
+
+  return (
+    <YStack gap="$5">
+      {groups.map((group) => (
+        <YStack key={group.monthKey} gap="$2">
+          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70} textTransform="capitalize">
+            {group.label}
+          </Text>
+          <YStack gap="$2">
+            {group.items.map((item) => (
+              <AgendaEventRow key={item.key} item={item} />
+            ))}
+          </YStack>
+        </YStack>
+      ))}
+    </YStack>
+  );
+}
+
+function AgendaEventRow({ item }: { item: AgendaListItem }) {
+  const dateLabel = `${WEEKDAY_FULL_LABELS[item.date.getUTCDay()]!.slice(0, 3)} ${item.date.getUTCDate()} ${monthLabel(item.date)}`;
+  return (
+    <XStack
+      minWidth={0}
+      alignItems="center"
+      gap="$3"
+      padding="$3"
+      backgroundColor={brand.calce}
+      borderRadius="$3"
+      borderLeftWidth={3}
+      borderStyle={item.dashed ? "dashed" : "solid"}
+      borderLeftColor={item.statusColor}
+      cursor="pointer"
+      onPress={item.onPress}
+      accessibilityRole="button"
+    >
+      <YStack minWidth={92}>
+        <Text fontFamily="$mono" fontSize={12} fontWeight="700" color={brand.grafite} numberOfLines={1}>
+          {dateLabel}
+        </Text>
+        <Text fontFamily="$mono" fontSize={11} color={brand.grafite70} numberOfLines={1}>
+          {item.timeLabel}
+        </Text>
+      </YStack>
+      <YStack flex={1} minWidth={0} gap={2}>
+        <Text fontWeight="700" fontSize={14} color={brand.grafite} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text fontSize={12} color={brand.grafite70} numberOfLines={1}>
+          {item.subtitle}
+        </Text>
+      </YStack>
+      <Text fontSize={11} fontWeight="700" color={item.statusColor} numberOfLines={1}>
+        {item.statusLabel}
+      </Text>
+    </XStack>
   );
 }

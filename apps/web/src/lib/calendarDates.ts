@@ -43,6 +43,13 @@ export function addMonthsUtc(date: Date, months: number): Date {
   return result;
 }
 
+/** Naviga la vista "Anno" del calendario (richiesta esplicita dell'utente: "lista annuale"). */
+export function addYearsUtc(date: Date, years: number): Date {
+  const result = new Date(date);
+  result.setUTCFullYear(result.getUTCFullYear() + years);
+  return result;
+}
+
 /** Lunedì della settimana che contiene `date` (getUTCDay: 0=domenica...6=sabato). */
 export function startOfWeekUtc(date: Date): Date {
   const day = date.getUTCDay();

@@ -416,7 +416,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
           comment: string | null;
           isAutomatic: boolean;
           createdAt: string;
-          professional: { businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
+          professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
         }[]
       >("/reviews/recent", { cache: "no-store" }),
 
@@ -683,6 +683,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     cancelMyBooking: (token: string, bookingId: string) =>
       request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Riapre una prenotazione annullata — disponibile a entrambe le parti. */
+    reopenBooking: (token: string, bookingId: string) =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/reopen`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       }),
