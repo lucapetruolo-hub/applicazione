@@ -143,7 +143,6 @@ export function GuidedRequestForm({
   const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(initialServiceMode);
   // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
-  const [showNoTimeWarning, setShowNoTimeWarning] = useState(false);
 
   useEffect(() => {
     if (!professionalProfileId) return;
@@ -404,9 +403,8 @@ export function GuidedRequestForm({
     }
   }
 
-  async function handleSubmit(skipNoTimeConfirm = false) {
+  async function handleSubmit() {
     setError(null);
-    setShowNoTimeWarning(false);
     if (!categorySlug) {
       setError("Seleziona una categoria.");
       return;
@@ -458,15 +456,6 @@ export function GuidedRequestForm({
       setError("Aggiungi almeno una foto o un video.");
       return;
     }
-    // Avviso di conferma prima di inviare senza data/orario, solo quando
-    // c'era davvero una scelta disponibile da fare (altrimenti l'avviso non
-    // avrebbe senso: non c'è nulla che il cliente abbia "saltato") —
-    // richiesta esplicita dell'utente.
-    if (professionalProfileId && displaySlots.length > 0 && !finalPreferredDate && !skipNoTimeConfirm) {
-      setShowNoTimeWarning(true);
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const response = await apiClient.createGuidedRequest(token as string, {
@@ -696,25 +685,6 @@ export function GuidedRequestForm({
                 </option>
               ))}
             </select>
-            {showNoTimeWarning ? (
-              <YStack gap="$2" padding="$3" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={radiusDoc}>
-                <Text fontSize="$3" fontWeight="700" color={brand.urgenza}>
-                  Vuoi davvero inviare la richiesta senza indicare data e orario?
-                </Text>
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Il professionista ha degli orari liberi in agenda: se non ne scegli uno dovrà proporti lui una data nel
-                  preventivo.
-                </Text>
-                <XStack gap="$2" flexWrap="wrap">
-                  <Button variant="urgent" size="$3" onPress={() => handleSubmit(true)} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-                    {isSubmitting ? submittingLabel : "Sì, invia senza data e orario"}
-                  </Button>
-                  <Button variant="ghost" size="$3" onPress={() => setShowNoTimeWarning(false)}>
-                    Annulla, scelgo un orario
-                  </Button>
-                </XStack>
-              </YStack>
-            ) : null}
           </YStack>
         ) : null}
 
