@@ -157,6 +157,21 @@ export class BookingsService {
    * modificabile indipendentemente dallo stato della prenotazione (anche
    * conclusa: può ancora servire per ricordare qualcosa dopo il lavoro).
    * Stringa vuota salvata come `null`.
+   *
+   * Unificata con `ProfessionalsService.updateLeadNote` (richiesta esplicita
+   * dell'utente: "le note personali del professionista devono essere le
+   * stesse sia quando si apre il riquadro dall'agenda sia quelle inserite
+   * tramite richieste ricevute") — prima erano due campi indipendenti
+   * (`Booking.professionalNote` qui, `Lead.professionalNote` per il
+   * pannello "richieste ricevute"), con lo stesso testo che poteva
+   * divergere a seconda di dove lo si modificava. `Lead.professionalNote`
+   * resta la fonte di verità (il Lead esiste da prima, fin dalla ricezione
+   * della richiesta, il Booking arriva solo dopo): quando la prenotazione
+   * ha una GuidedRequest collegata (Booking.quoteId → Quote.guidedRequestId,
+   * ogni Quote presuppone un Lead già ricevuto — QuotesService.createOrUpdate
+   * lo verifica), si scrive lì. `Booking.professionalNote` (colonna) resta
+   * solo per le prenotazioni dirette da agenda pubblica (bookAgendaSlot,
+   * dormiente da CLAUDE.md §20), che non hanno mai una GuidedRequest/Lead.
    */
   async updateProfessionalNote(professionalUserId: string, bookingId: string, note: string) {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
@@ -164,13 +179,29 @@ export class BookingsService {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { quote: { select: { guidedRequestId: true } } },
+    });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
 
     const trimmed = note.trim();
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { professionalNote: trimmed || null } });
+    const guidedRequestId = booking.quote?.guidedRequestId;
+    let wroteToLead = false;
+    if (guidedRequestId) {
+      const result = await this.prisma.lead.updateMany({
+        where: { guidedRequestId, professionalProfileId: professionalProfile.id },
+        data: { professionalNote: trimmed || null },
+      });
+      wroteToLead = result.count > 0;
+    }
+    if (!wroteToLead) {
+      // Nessun Lead corrispondente (prenotazione diretta da agenda pubblica,
+      // o caso limite senza Lead) — fallback sulla colonna della Booking.
+      await this.prisma.booking.update({ where: { id: bookingId }, data: { professionalNote: trimmed || null } });
+    }
     // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del professionista.
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
     return { bookingId, professionalNote: trimmed || null };

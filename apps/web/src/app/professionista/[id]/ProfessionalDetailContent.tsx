@@ -7,6 +7,7 @@ import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, Y
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -46,6 +47,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   const [isSaving, setIsSaving] = useState(false);
   const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  // Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di
+  // Conformità" — notice-and-action, DSA art. 16): profilo o singola
+  // recensione, uno stato solo (mai due modali aperti insieme).
+  const [reportTarget, setReportTarget] = useState<{ targetType: "PROFESSIONAL_PROFILE" | "REVIEW"; targetId: string; label: string } | null>(null);
 
   // Ogni fascia (esatta o generica) apre sempre la richiesta di preventivo
   // precompilata — richiesta esplicita dell'utente: nessuna prenotazione
@@ -246,7 +251,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             dispositivo (che su mobile include WhatsApp/contatti) e ripiega
             sulla copia del link dove l'API non esiste (desktop senza
             navigator.share). */}
-        <XStack>
+        <XStack gap="$4" flexWrap="wrap">
           <Button variant="ghost" size="$3" onPress={handleShare}>
             <XStack alignItems="center" gap="$2">
               <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografia} />
@@ -255,6 +260,20 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </Text>
             </XStack>
           </Button>
+          {user ? (
+            <Button
+              variant="ghost"
+              size="$3"
+              onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
+            >
+              <XStack alignItems="center" gap="$2">
+                <Icon name="flag" size={15} strokeWidth={1.5} color={brand.grafite70} />
+                <Text color={brand.grafite70} fontWeight="600">
+                  Segnala
+                </Text>
+              </XStack>
+            </Button>
+          ) : null}
         </XStack>
 
         {professional.subTags.length > 0 ? (
@@ -556,17 +575,33 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           ) : (
             professional.reviews.map((review) => (
               <Surface key={review.id} gap="$2">
-                <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                  <XStack alignItems="center" gap="$1">
-                    <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
-                    <Text fontWeight="600" color={brand.grafite}>
-                      {review.rating}/5
-                    </Text>
+                <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                    <XStack alignItems="center" gap="$1">
+                      <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                      <Text fontWeight="600" color={brand.grafite}>
+                        {review.rating}/5
+                      </Text>
+                    </XStack>
+                    {review.isAutomatic ? (
+                      <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
+                        (recensione automatica)
+                      </Text>
+                    ) : null}
                   </XStack>
-                  {review.isAutomatic ? (
-                    <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
-                      (recensione automatica)
-                    </Text>
+                  {user ? (
+                    <XStack
+                      alignItems="center"
+                      gap={4}
+                      cursor="pointer"
+                      onPress={() => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })}
+                      accessibilityRole="button"
+                    >
+                      <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
+                      <Text fontSize="$1" color={brand.grafite70}>
+                        Segnala
+                      </Text>
+                    </XStack>
                   ) : null}
                 </XStack>
                 {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
@@ -601,6 +636,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
       {lightbox ? (
         <PhotoLightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
+      ) : null}
+
+      {reportTarget ? (
+        <ReportContentModal
+          targetType={reportTarget.targetType}
+          targetLabel={reportTarget.label}
+          onClose={() => setReportTarget(null)}
+          onSubmit={async (reason, details) => {
+            if (!token) return;
+            await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, reason, details });
+          }}
+        />
       ) : null}
     </YStack>
   );

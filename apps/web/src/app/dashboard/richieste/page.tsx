@@ -139,6 +139,7 @@ const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "in_attesa", label: "In attesa" },
   { key: "modifica_richiesta", label: "Modifiche" },
   { key: "accettata", label: "Accettate" },
+  { key: "completata", label: "Completate" },
   { key: "scaduta", label: "Scadute" },
 ];
 
@@ -284,9 +285,19 @@ function RichiesteContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, searchParams]);
 
+  // Bug reale corretto: ricaricava solo i Lead, mai le Booking — dopo
+  // "Lavoro terminato" (che porta booking.status a COMPLETED) la card
+  // continuava a leggere lo stato locale non aggiornato e mostrava di
+  // nuovo il bottone "Lavoro terminato" come se il lavoro non fosse mai
+  // stato segnato completato, permettendo un secondo click. Entrambe le
+  // liste alimentano la stessa card (booking risolto da bookingByRequestId
+  // sopra), quindi vanno ricaricate insieme ad ogni azione.
   function reloadLeads() {
     if (!token) return;
-    apiClient.myLeads(token).then(setLeads);
+    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token)]).then(([l, b]) => {
+      setLeads(l);
+      setBookings(b);
+    });
   }
 
   useEffect(() => {
@@ -318,6 +329,12 @@ function RichiesteContent() {
         .then((notifications) => {
           if (cancelled || notifications.length === 0) return;
           setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
+          // Stesso bug/fix già applicato in /le-mie-richieste: un evento
+          // generato dal cliente (accettazione, proposta data, conferma
+          // "lavoro terminato", ecc.) mentre questa pagina resta aperta
+          // lasciava leads/bookings non aggiornati fino a un ricaricamento
+          // manuale — il poll dei pallini ora ricarica anche le due liste.
+          reloadLeads();
         })
         .catch(() => {})
         .finally(() => markNotificationsRead());
@@ -1570,7 +1587,14 @@ function RequestCard({
       ) : null}
 
       {showClientProfile ? (
-        <ClientProfileModal name={clientName} birthDate={gr.clientBirthDate} imageUrl={gr.clientImageUrl} reviews={gr.clientReviews} onClose={() => setShowClientProfile(false)} />
+        <ClientProfileModal
+          name={clientName}
+          birthDate={gr.clientBirthDate}
+          imageUrl={gr.clientImageUrl}
+          reviews={gr.clientReviews}
+          token={token}
+          onClose={() => setShowClientProfile(false)}
+        />
       ) : null}
       {showTimeline && myProfileId ? (
         <TimelineModal

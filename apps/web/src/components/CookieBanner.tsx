@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { COOKIE_CONSENT_ACCEPTED_EVENT } from "@/components/GoogleSignInButton";
 
 const CONSENT_KEY = "cookie-consent-v1";
 
@@ -30,6 +31,10 @@ export function CookieBanner() {
     } catch {
       // ignora
     }
+    // Richiesta esplicita dell'utente ("Verbale di Conformità"): sveglia
+    // GoogleSignInButton, che aspetta questo evento prima di caricare lo
+    // script Google se il consenso non era ancora stato dato al mount.
+    window.dispatchEvent(new Event(COOKIE_CONSENT_ACCEPTED_EVENT));
     setVisible(false);
   }
 

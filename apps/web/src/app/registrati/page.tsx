@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
@@ -123,6 +123,37 @@ function RoleChoiceScreen({
   );
 }
 
+/**
+ * Casella di spunta compatta per le due dichiarazioni obbligatorie in
+ * registrazione — stesso pattern visivo (riquadro 22×22, icona `check`
+ * bianca su sfondo cianografia) già in uso in /dashboard/profilo per
+ * "Offro anche consulenza online", qui in versione più compatta (un solo
+ * rigo di testo, non una card intera) perché servono due insieme.
+ */
+function ConsentCheckbox({ checked, onToggle, children }: { checked: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <XStack alignItems="flex-start" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked }}>
+      <YStack
+        width={18}
+        height={18}
+        marginTop={2}
+        borderRadius="$1"
+        borderWidth={2}
+        borderColor={checked ? brand.cianografia : brand.filetto}
+        backgroundColor={checked ? brand.cianografia : brand.calce}
+        alignItems="center"
+        justifyContent="center"
+        flexShrink={0}
+      >
+        {checked ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
+      </YStack>
+      <Text fontSize="$2" color={brand.grafite70} lineHeight={18}>
+        {children}
+      </Text>
+    </XStack>
+  );
+}
+
 function RegistratiForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,6 +176,14 @@ function RegistratiForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Due dichiarazioni obbligatorie richieste esplicitamente dall'utente
+  // ("Verbale di Conformità"): prima nessun atto tracciato confermava che
+  // l'utente avesse letto le informative, né esisteva una dichiarazione di
+  // maggiore età — vale sia per la registrazione email+password sia per
+  // Google (v. `disabled` su GoogleSignInButton sotto).
+  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
+  const [declaredAdult, setDeclaredAdult] = useState(false);
+  const canSubmitConsent = acceptedLegalTerms && declaredAdult;
 
   function chooseRole(choice: "cliente" | "professionista") {
     const params = new URLSearchParams(searchParams.toString());
@@ -183,6 +222,8 @@ function RegistratiForm() {
       password,
       name: name.trim() || undefined,
       role,
+      acceptedLegalTerms,
+      declaredAdult,
     });
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Dati non validi.");
@@ -191,7 +232,14 @@ function RegistratiForm() {
 
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.register(result.data.email, result.data.password, result.data.name, result.data.role);
+      const { token, isNewUser } = await apiClient.register(
+        result.data.email,
+        result.data.password,
+        result.data.name,
+        result.data.role,
+        result.data.acceptedLegalTerms,
+        result.data.declaredAdult,
+      );
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -203,9 +251,13 @@ function RegistratiForm() {
 
   async function handleGoogleCredential(idToken: string) {
     setError(null);
+    if (!canSubmitConsent) {
+      setError("Accetta Privacy Policy e Termini di Servizio e dichiara di avere almeno 18 anni per continuare.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role);
+      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, acceptedLegalTerms, declaredAdult);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -230,7 +282,7 @@ function RegistratiForm() {
           ) : null}
         </YStack>
 
-        <GoogleSignInButton onCredential={handleGoogleCredential} />
+        <GoogleSignInButton onCredential={handleGoogleCredential} disabled={!canSubmitConsent} />
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
@@ -299,13 +351,38 @@ function RegistratiForm() {
             onSubmitEditing={handleRegister}
           />
 
+          {/* Due dichiarazioni obbligatorie richieste esplicitamente
+              dall'utente ("Verbale di Conformità") — valgono anche per il
+              pulsante Google sopra, non solo per questo form. */}
+          <YStack gap="$2">
+            <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
+              Ho letto e accetto la{" "}
+              <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+                Privacy Policy
+              </Link>{" "}
+              e i{" "}
+              <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+                Termini di Servizio
+              </Link>
+              .
+            </ConsentCheckbox>
+            <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
+              Dichiaro di avere almeno 18 anni.
+            </ConsentCheckbox>
+          </YStack>
+
           {error ? (
             <Text color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
 
-          <Button variant="primary" onPress={handleRegister} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button
+            variant="primary"
+            onPress={handleRegister}
+            disabled={isSubmitting || !canSubmitConsent}
+            opacity={isSubmitting || !canSubmitConsent ? 0.6 : 1}
+          >
             {isSubmitting ? "Creazione account..." : "Registrati"}
           </Button>
         </YStack>

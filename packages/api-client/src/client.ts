@@ -9,6 +9,7 @@ import type {
   ClientReviewInput,
   CompleteBookingInput,
   ConversationEvent,
+  CreateContentReportInput,
   ExternalJob,
   ExternalJobInput,
   ExternalJobUpdateInput,
@@ -182,6 +183,21 @@ export type AdminUserRow = {
 };
 export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUserRow[]; admins: AdminUserRow[] };
 
+/** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
+export type AdminContentReport = {
+  id: string;
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW";
+  targetId: string;
+  targetLabel: string | null;
+  reason: string;
+  details: string | null;
+  status: "OPEN" | "RESOLVED" | "DISMISSED";
+  createdAt: string;
+  resolvedAt: string | null;
+  reporterEmail: string | null;
+  reporterName: string | null;
+};
+
 export type CurrentUser = {
   id: string;
   phone: string | null;
@@ -280,10 +296,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     health: () => request<{ status: string }>("/health"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
-    register: (email: string, password: string, name?: string, role?: "CLIENT" | "PROFESSIONAL") =>
+    register: (
+      email: string,
+      password: string,
+      name: string | undefined,
+      role: "CLIENT" | "PROFESSIONAL" | undefined,
+      acceptedLegalTerms: boolean,
+      declaredAdult: boolean,
+    ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, role }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult }),
       }),
 
     login: (email: string, password: string) =>
@@ -297,10 +320,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
      * `false` per non iscrivere silenziosamente un account nuovo su
      * un'email mai registrata — vedi googleVerifySchema.
      */
-    verifyGoogle: (idToken: string, role?: "CLIENT" | "PROFESSIONAL", createIfMissing?: boolean) =>
+    verifyGoogle: (
+      idToken: string,
+      role?: "CLIENT" | "PROFESSIONAL",
+      createIfMissing?: boolean,
+      acceptedLegalTerms?: boolean,
+      declaredAdult?: boolean,
+    ) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken, role, createIfMissing }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
@@ -324,6 +353,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    /**
+     * Esportazione dei propri dati personali (diritto alla portabilità, art.
+     * 20 GDPR) — forma libera (non tipizzata riga per riga qui: copre più
+     * entità diverse, il consumatore lo scarica com'è senza doverne leggere
+     * la struttura).
+     */
+    exportMyData: (token: string) =>
+      request<Record<string, unknown>>("/auth/me/export", { headers: { Authorization: `Bearer ${token}` } }),
 
     /** Immagine profilo dell'account (cliente o professionista) — indipendente da uploadMyProfessionalImage. */
     uploadMyAccountImage: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/auth/me/image", token, file, "image"),
@@ -760,6 +798,28 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{ email: string; role: string }>("/admin/bootstrap", {
         method: "POST",
         body: JSON.stringify({ email, secret }),
+      }),
+
+    /** Segnalazioni contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
+    adminListContentReports: (token: string, status?: "OPEN" | "RESOLVED" | "DISMISSED") =>
+      request<AdminContentReport[]>(`/admin/reports${status ? `?status=${status}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminResolveContentReport: (token: string, id: string, status: "RESOLVED" | "DISMISSED") =>
+      request<{ id: string; status: string }>(`/admin/reports/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      }),
+
+    /** Segnalare un profilo/recensione come illecito o inappropriato (richiesta esplicita dell'utente, "Verbale di Conformità" — notice-and-action, DSA art. 16). */
+    createContentReport: (token: string, input: CreateContentReportInput) =>
+      request<{ id: string }>("/reports", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     /** `website`: honeypot anti-spam, va sempre passato vuoto da un form reale (Fase 6). */

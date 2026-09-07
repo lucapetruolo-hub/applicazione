@@ -440,6 +440,7 @@ export function ResultsListWithMap({
               reviewCount={pro.reviewCount}
               completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
+              boosted={pro.boosted}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}

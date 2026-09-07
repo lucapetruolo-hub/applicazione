@@ -44,6 +44,18 @@ function GoogleIcon() {
   );
 }
 
+const COOKIE_CONSENT_KEY = "cookie-consent-v1";
+/** Nome dell'evento globale che CookieBanner emette all'accettazione — vedi lì. */
+export const COOKIE_CONSENT_ACCEPTED_EVENT = "cookie-consent-accepted";
+
+function hasCookieConsent(): boolean {
+  try {
+    return window.localStorage.getItem(COOKIE_CONSENT_KEY) === "accepted";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Pulsante "Continua con Google" con stile custom (pillola, larghezza piena,
  * icona ufficiale) per uniformarsi al resto del form invece di usare la
@@ -51,8 +63,16 @@ function GoogleIcon() {
  * renderizzato — fuori schermo — ed è quello che riceve il click reale: solo
  * così il flusso OAuth resta quello genuino di Google (nessun popup finto,
  * niente credenziali gestite da noi).
+ *
+ * Richiesta esplicita dell'utente ("Verbale di Conformità" — subordinare lo
+ * script Google al consenso cookie): lo script `gsi/client` di Google, unico
+ * script di terze parti del sito, non viene più caricato incondizionatamente
+ * al mount di questa pagina — solo dopo che il banner cookie (`CookieBanner`)
+ * è stato accettato. Se il consenso non c'è ancora, resta in attesa
+ * dell'evento `COOKIE_CONSENT_ACCEPTED_EVENT` emesso da quel banner, invece
+ * di ripetere qui la stessa logica di lettura del banner.
  */
-export function GoogleSignInButton({ onCredential }: { onCredential: (idToken: string) => void }) {
+export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (idToken: string) => void; disabled?: boolean }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const hiddenContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,20 +92,31 @@ export function GoogleSignInButton({ onCredential }: { onCredential: (idToken: s
       });
     }
 
-    const scriptId = "google-identity-services";
-    const existing = document.getElementById(scriptId);
-    if (existing) {
-      renderButton();
-      return;
+    function loadScript() {
+      const scriptId = "google-identity-services";
+      const existing = document.getElementById(scriptId);
+      if (existing) {
+        renderButton();
+        return;
+      }
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = renderButton;
+      document.body.appendChild(script);
     }
 
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = renderButton;
-    document.body.appendChild(script);
+    if (hasCookieConsent()) {
+      loadScript();
+      return;
+    }
+    function onConsentAccepted() {
+      loadScript();
+    }
+    window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
+    return () => window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
   }, [clientId, onCredential]);
 
   if (!clientId) {
@@ -93,6 +124,7 @@ export function GoogleSignInButton({ onCredential }: { onCredential: (idToken: s
   }
 
   function handlePress() {
+    if (disabled) return;
     const realButton = hiddenContainerRef.current?.querySelector<HTMLElement>('div[role="button"]');
     realButton?.click();
   }
@@ -104,9 +136,12 @@ export function GoogleSignInButton({ onCredential }: { onCredential: (idToken: s
 
       <Button
         onPress={handlePress}
+        disabled={disabled}
+        opacity={disabled ? 0.5 : 1}
+        cursor={disabled ? "not-allowed" : "pointer"}
         backgroundColor={brand.gesso}
-        hoverStyle={{ backgroundColor: brand.filetto }}
-        pressStyle={{ backgroundColor: brand.filetto }}
+        hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+        pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
         color={brand.grafite}
         size="$5"
         borderRadius={999}

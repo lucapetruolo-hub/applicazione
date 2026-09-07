@@ -75,6 +75,16 @@ export type ProfessionalCardProps = {
   /** "Ha completato N interventi questo mese" (richiesta esplicita dell'utente) — dato reale (Booking COMPLETED nel mese corrente), 0/assente non mostra nulla. */
   completedThisMonth?: number;
   verified?: boolean;
+  /**
+   * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale
+   * di Conformità" — trasparenza sul ranking sponsorizzato, art. 26 DSA):
+   * il profilo pubblico mostra già questa pillola quando boostato, ma i
+   * risultati di ricerca — dove il boost altera davvero l'ordine — non la
+   * mostravano affatto, lasciando intendere un ordinamento neutro che non
+   * lo è. Colore ottone: stesso token già riservato ai soli contesti di
+   * pagamento/boost (CLAUDE.md §10).
+   */
+  boosted?: boolean;
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
   services?: ProfessionalCardService[];
@@ -109,6 +119,7 @@ export function ProfessionalCard({
   reviewCount,
   completedThisMonth,
   verified,
+  boosted,
   remoteAvailable,
   services,
   availabilityPreview,
@@ -203,6 +214,14 @@ export function ProfessionalCard({
                   <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
                     Verificato
+                  </Text>
+                </XStack>
+              ) : null}
+              {boosted ? (
+                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
+                  <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.ottone}>
+                    In evidenza
                   </Text>
                 </XStack>
               ) : null}

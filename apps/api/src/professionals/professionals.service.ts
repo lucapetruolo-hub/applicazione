@@ -964,6 +964,25 @@ export class ProfessionalsService {
       orderBy: { scheduledAt: "asc" },
     });
 
+    // Nota privata del professionista unificata con quella di
+    // `/dashboard/richieste` (richiesta esplicita dell'utente, vedi
+    // `BookingsService.updateProfessionalNote`): `Lead.professionalNote` è
+    // la fonte di verità per ogni prenotazione nata da una GuidedRequest,
+    // recuperata qui in un'unica query batch (mai una per prenotazione,
+    // stesso principio anti-N+1 già seguito altrove in questo file) invece
+    // della colonna `Booking.professionalNote`, ormai di sola lettura per
+    // quel caso (resta scritta solo per le prenotazioni dirette da agenda
+    // pubblica, senza GuidedRequest).
+    const guidedRequestIds = bookings.map((b) => b.quote?.guidedRequestId).filter((id): id is string => Boolean(id));
+    const leadNoteByGuidedRequestId = new Map<string, string | null>();
+    if (guidedRequestIds.length > 0) {
+      const leads = await this.prisma.lead.findMany({
+        where: { professionalProfileId, guidedRequestId: { in: guidedRequestIds } },
+        select: { guidedRequestId: true, professionalNote: true },
+      });
+      for (const lead of leads) leadNoteByGuidedRequestId.set(lead.guidedRequestId, lead.professionalNote);
+    }
+
     return bookings.map((booking) => ({
       id: booking.id,
       // Richiesta guidata di origine, per il bottone "Vai alla cronologia
@@ -1027,7 +1046,9 @@ export class ProfessionalsService {
       categorySlug: booking.quote?.guidedRequest?.category?.slug ?? null,
       categoryLabel: booking.quote?.guidedRequest?.category?.label ?? null,
       serviceMode: booking.serviceMode,
-      professionalNote: booking.professionalNote,
+      professionalNote: booking.quote?.guidedRequestId
+        ? (leadNoteByGuidedRequestId.get(booking.quote.guidedRequestId) ?? booking.professionalNote)
+        : booking.professionalNote,
       // Il cliente ha segnalato che non ti sei presentato e ha chiesto un
       // rimborso — richiesta esplicita dell'utente, mai un cambio di
       // `status` automatico (il professionista può ancora contestarlo).

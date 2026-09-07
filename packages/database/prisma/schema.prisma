@@ -74,6 +74,18 @@ model User {
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
   deletedAt    DateTime?
+  // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
+  // di registrazione (richiesta esplicita dell'utente, "Verbale di
+  // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
+  // prima nessun atto tracciato esisteva, l'account veniva creato senza che
+  // l'utente confermasse mai di aver letto le informative. `legalConsentAt`
+  // è nullo per gli account creati prima di questa funzionalità (mai
+  // retroattivo). `legalConsentVersion` è la stringa "aggiornato al" mostrata
+  // in quel momento su /privacy e /termini (LegalPage.updatedAt) — se le
+  // informative cambiano, la versione accettata resta tracciata per quella
+  // specifica registrazione, non sovrascritta.
+  legalConsentAt      DateTime?
+  legalConsentVersion String?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -81,6 +93,7 @@ model User {
   notifications       Notification[]
   savedProfessionals  SavedProfessional[]
   clientReviews       ClientReview[]
+  contentReports      ContentReport[]
 
   @@map("users")
 }
@@ -1067,4 +1080,43 @@ model WaitlistSignup {
   createdAt DateTime @default(now())
 
   @@map("waitlist_signups")
+}
+
+// ---------------------------------------------------------------------------
+// Segnalazione contenuti (notice-and-action, richiesta esplicita dell'utente
+// — "Verbale di Conformità": Reg. (UE) 2022/2065 (Digital Services Act),
+// art. 16, richiede un meccanismo per segnalare contenuti illeciti anche a
+// piattaforme piccole; rafforza anche l'esenzione di responsabilità come
+// hosting passivo, che presuppone la rimozione tempestiva una volta a
+// conoscenza. Prima non esisteva alcun modo di segnalare un profilo, una
+// recensione o una foto come illecita.
+// ---------------------------------------------------------------------------
+
+enum ContentReportTargetType {
+  PROFESSIONAL_PROFILE
+  REVIEW
+  CLIENT_REVIEW
+}
+
+enum ContentReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model ContentReport {
+  id         String                  @id @default(uuid())
+  reporterId String
+  targetType ContentReportTargetType
+  targetId   String
+  reason     String
+  details    String?
+  status     ContentReportStatus     @default(OPEN)
+  createdAt  DateTime                @default(now())
+  resolvedAt DateTime?
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("content_reports")
 }

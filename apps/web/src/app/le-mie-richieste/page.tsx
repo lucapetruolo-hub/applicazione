@@ -305,6 +305,17 @@ function LeMieRichiesteContent() {
           setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
           setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
+          // Bug reale corretto (richiesta esplicita dell'utente: "anche dalla
+          // parte del cliente deve poter cliccare su lavoro terminato come il
+          // professionista"): `reload()` girava solo al primo montaggio —
+          // quando il professionista segna un lavoro completato (notifica
+          // JOB_COMPLETED) mentre il cliente ha già questa pagina aperta,
+          // `booking.status` restava CONFIRMED in memoria e il bottone
+          // "Lavoro terminato" del cliente non compariva mai senza un
+          // ricaricamento manuale. Stesso poll da 15s già in uso per i
+          // pallini di notifica, riusato per tenere aggiornate anche le due
+          // liste stesse quando c'è qualcosa di nuovo da vedere.
+          reload();
         })
         .catch(() => {})
         .finally(() => markNotificationsRead());

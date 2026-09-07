@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
+import type { AdminContentReport, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
 import { Button, H1, H2, Paragraph, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -19,6 +19,21 @@ export default function AdminPage() {
   const [waitlist, setWaitlist] = useState<{ email: string; createdAt: string }[] | null>(null);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
 
+  // Segnalazioni contenuti (richiesta esplicita dell'utente, "Verbale di
+  // Conformità" — meccanismo di notice-and-action, Reg. (UE) 2022/2065 art.
+  // 16): solo quelle ancora aperte, le altre restano nello storico DB ma
+  // non ingombrano la pagina una volta gestite.
+  const [reports, setReports] = useState<AdminContentReport[] | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+
+  function reloadReports() {
+    if (!token) return;
+    apiClient
+      .adminListContentReports(token, "OPEN")
+      .then(setReports)
+      .catch((err) => setReportsError(err instanceof Error ? err.message : "Errore nel caricamento."));
+  }
+
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
     apiClient
@@ -29,6 +44,8 @@ export default function AdminPage() {
       .adminListWaitlist(token)
       .then(setWaitlist)
       .catch((err) => setWaitlistError(err instanceof Error ? err.message : "Errore nel caricamento."));
+    reloadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user]);
 
   if (isLoading) return null;
@@ -79,6 +96,23 @@ export default function AdminPage() {
             <UserGroup title={`Clienti (${data.clients.length})`} rows={data.clients} showBusiness={false} />
           </>
         ) : null}
+
+        <YStack gap="$3">
+          <H2 size="$6">Segnalazioni contenuti</H2>
+          {reportsError ? (
+            <Text color={brand.urgenza}>{reportsError}</Text>
+          ) : reports === null ? (
+            <LoadingState />
+          ) : reports.length === 0 ? (
+            <Text color={brand.grafite70}>Nessuna segnalazione aperta.</Text>
+          ) : (
+            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+              {reports.map((report, index) => (
+                <ReportRow key={report.id} report={report} zebra={index % 2 !== 0} token={token} onResolved={reloadReports} />
+              ))}
+            </YStack>
+          )}
+        </YStack>
 
         <YStack gap="$3">
           <H2 size="$6">Lista d&apos;attesa (&quot;Arriviamo presto nella tua zona&quot;)</H2>
@@ -150,6 +184,69 @@ function UserGroup({ title, rows, showBusiness }: { title: string; rows: AdminUs
           ))}
         </YStack>
       )}
+    </YStack>
+  );
+}
+
+const REPORT_TARGET_LABEL: Record<AdminContentReport["targetType"], string> = {
+  PROFESSIONAL_PROFILE: "Profilo professionista",
+  REVIEW: "Recensione",
+  CLIENT_REVIEW: "Recensione sul cliente",
+};
+
+function ReportRow({
+  report,
+  zebra,
+  token,
+  onResolved,
+}: {
+  report: AdminContentReport;
+  zebra: boolean;
+  token: string;
+  onResolved: () => void;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function resolve(status: "RESOLVED" | "DISMISSED") {
+    setIsSubmitting(true);
+    try {
+      await apiClient.adminResolveContentReport(token, report.id, status);
+      onResolved();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <YStack gap="$2" paddingHorizontal="$3" paddingVertical="$3" backgroundColor={zebra ? brand.gesso : "transparent"}>
+      <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
+        <YStack gap="$1" minWidth={220} flex={1}>
+          <Text fontWeight="600">
+            {REPORT_TARGET_LABEL[report.targetType]}
+            {report.targetLabel ? ` · ${report.targetLabel}` : ""}
+          </Text>
+          <Text fontSize="$2" color={brand.grafite}>
+            {report.reason}
+          </Text>
+          {report.details ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              {report.details}
+            </Text>
+          ) : null}
+          <Text fontSize="$1" color={brand.grafite70}>
+            Da {report.reporterName ?? report.reporterEmail ?? "un utente"} ·{" "}
+            {new Date(report.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+          </Text>
+        </YStack>
+        <YStack flexDirection="row" gap="$2">
+          <Button size="$2" disabled={isSubmitting} onPress={() => resolve("RESOLVED")}>
+            Risolvi
+          </Button>
+          <Button size="$2" variant="ghost" disabled={isSubmitting} onPress={() => resolve("DISMISSED")}>
+            Ignora
+          </Button>
+        </YStack>
+      </YStack>
     </YStack>
   );
 }

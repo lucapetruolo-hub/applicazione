@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Download, Trash2 } from "lucide-react";
 import { Avatar, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -81,6 +81,10 @@ export default function AccountPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
+  // di Conformità" — diritto alla portabilità, art. 20 GDPR).
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Immagine profilo dell'account (richiesta esplicita dell'utente: prima
   // solo i professionisti potevano caricarne una) — stesso pattern di
@@ -257,6 +261,29 @@ export default function AccountPage() {
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
       setIsDeleting(false);
+    }
+  }
+
+  async function handleExportData() {
+    setExportError(null);
+    setIsExporting(true);
+    try {
+      const data = await apiClient.exportMyData(token as string);
+      // Download del file direttamente dal browser (questa è l'app reale,
+      // non un Artifact: nessuna restrizione sui download avviati da qui).
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `professionisti-dati-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -526,22 +553,45 @@ export default function AccountPage() {
               </Text>
             </XStack>
 
-            {!isConfirmingDelete ? (
+            <XStack gap="$4" alignItems="center" flexWrap="wrap">
               <XStack
                 gap="$1"
                 alignItems="center"
-                cursor="pointer"
-                onPress={() => setIsConfirmingDelete(true)}
+                cursor={isExporting ? "default" : "pointer"}
+                opacity={isExporting ? 0.6 : 1}
+                onPress={isExporting ? undefined : handleExportData}
                 accessibilityRole="button"
-                accessibilityLabel="Elimina il mio account"
+                accessibilityLabel="Esporta i miei dati"
               >
-                <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
-                <Text color={brand.urgenza} fontWeight="600">
-                  Elimina il mio account
+                <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
+                <Text color={brand.grafite70} fontWeight="600">
+                  {isExporting ? "Esportazione..." : "Esporta i miei dati"}
                 </Text>
               </XStack>
-            ) : null}
+
+              {!isConfirmingDelete ? (
+                <XStack
+                  gap="$1"
+                  alignItems="center"
+                  cursor="pointer"
+                  onPress={() => setIsConfirmingDelete(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Elimina il mio account"
+                >
+                  <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
+                  <Text color={brand.urgenza} fontWeight="600">
+                    Elimina il mio account
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
           </XStack>
+
+          {exportError ? (
+            <Text color={brand.urgenza} fontSize="$3">
+              {exportError}
+            </Text>
+          ) : null}
 
           {isConfirmingDelete ? (
             <YStack gap="$3" padding="$4" backgroundColor="#FBEAE8" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza}>

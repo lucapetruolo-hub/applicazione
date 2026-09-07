@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
+import { LEGAL_CONSENT_VERSION } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -43,7 +44,14 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user = await this.prisma.user.create({ data: { email, passwordHash, name, role } });
+    // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
+    // `registerSchema` (Zod `.refine`) prima di arrivare qui — richiesta
+    // esplicita dell'utente ("Verbale di Conformità", art. 7 GDPR): prima
+    // nessun atto tracciato confermava che l'utente avesse letto le
+    // informative né dichiarato la maggiore età.
+    const user = await this.prisma.user.create({
+      data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
+    });
 
     return { token: this.issueToken(user.id), isNewUser: true };
   }
@@ -63,7 +71,12 @@ export class AuthService {
     return { token: this.issueToken(user.id), isNewUser: false };
   }
 
-  async verifyGoogleToken(idToken: string, role?: "CLIENT" | "PROFESSIONAL", createIfMissing = true): Promise<AuthResult> {
+  async verifyGoogleToken(
+    idToken: string,
+    role?: "CLIENT" | "PROFESSIONAL",
+    createIfMissing = true,
+    legalConsent?: { acceptedLegalTerms: boolean; declaredAdult: boolean },
+  ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
@@ -94,11 +107,24 @@ export class AuthService {
     if (!existingUser && !createIfMissing) {
       throw new NotFoundException("Nessun account trovato con questa email.");
     }
+    // Stessa doppia dichiarazione obbligatoria di `register()` (v. sopra),
+    // qui applicata solo quando questa chiamata crea davvero un nuovo
+    // account — un login su un account esistente non la richiede mai.
+    if (!existingUser && (!legalConsent?.acceptedLegalTerms || !legalConsent.declaredAdult)) {
+      throw new BadRequestException("Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.");
+    }
 
     const user =
       existingUser ??
       (await this.prisma.user.create({
-        data: { googleId: payload.sub, email: payload.email, name: payload.name, role: role ?? "CLIENT" },
+        data: {
+          googleId: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          role: role ?? "CLIENT",
+          legalConsentAt: new Date(),
+          legalConsentVersion: LEGAL_CONSENT_VERSION,
+        },
       }));
 
     if (existingUser && !existingUser.googleId) {
@@ -206,6 +232,110 @@ export class AuthService {
         imageUrl: null,
       },
     });
+  }
+
+  /**
+   * Esportazione dei propri dati personali (richiesta esplicita dell'utente,
+   * "Verbale di Conformità" — art. 20 GDPR, diritto alla portabilità: era
+   * già dichiarato in Privacy Policy senza che esistesse alcuna funzione
+   * reale per esercitarlo). Copre le principali entità che portano dati
+   * personali dell'utente, non ogni riga collegata nel database.
+   *
+   * Attenzione a `professionalNote` su `Booking`: è privata del
+   * professionista, mai vista dal cliente in nessun punto del prodotto
+   * (CLAUDE.md) — esclusa esplicitamente qui quando si esporta il lato
+   * cliente di una prenotazione, altrimenti l'export stesso diventerebbe un
+   * modo per far trapelare al cliente una nota che l'app non gli mostra mai.
+   */
+  async exportMyData(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt !== null) {
+      throw new NotFoundException("Account non trovato.");
+    }
+    const { passwordHash: _passwordHash, googleId: _googleId, ...account } = user;
+
+    const [guidedRequests, bookingsAsClient, reviewsWritten, clientReviewsReceived, savedProfessionals, professionalProfile] =
+      await Promise.all([
+        this.prisma.guidedRequest.findMany({
+          where: { clientId: userId },
+          include: { quotes: { include: { items: true } } },
+          orderBy: { createdAt: "desc" },
+        }),
+        this.prisma.booking.findMany({
+          where: { clientId: userId },
+          select: {
+            id: true,
+            scheduledAt: true,
+            scheduledEndAt: true,
+            status: true,
+            recipientName: true,
+            recipientSurname: true,
+            recipientPhone: true,
+            street: true,
+            houseNumber: true,
+            addressExtra: true,
+            postalCode: true,
+            city: true,
+            province: true,
+            finalAmountEurCents: true,
+            finalItems: true,
+            cancellationNote: true,
+            canceledBy: true,
+            meetingLink: true,
+            refundRequested: true,
+            refundRequestedAt: true,
+            serviceMode: true,
+            createdAt: true,
+            updatedAt: true,
+            // `professionalNote` volutamente esclusa, v. commento sul metodo.
+          },
+          orderBy: { scheduledAt: "desc" },
+        }),
+        this.prisma.review.findMany({ where: { booking: { clientId: userId } }, orderBy: { createdAt: "desc" } }),
+        this.prisma.clientReview.findMany({ where: { clientId: userId }, orderBy: { createdAt: "desc" } }),
+        this.prisma.savedProfessional.findMany({ where: { userId } }),
+        this.prisma.professionalProfile.findUnique({ where: { userId } }),
+      ]);
+
+    let professional: Record<string, unknown> | null = null;
+    if (professionalProfile) {
+      const [services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs] =
+        await Promise.all([
+          this.prisma.professionalService.findMany({ where: { professionalProfileId: professionalProfile.id } }),
+          this.prisma.availabilitySlot.findMany({ where: { professionalProfileId: professionalProfile.id } }),
+          this.prisma.lead.findMany({ where: { professionalProfileId: professionalProfile.id }, orderBy: { createdAt: "desc" } }),
+          this.prisma.quote.findMany({
+            where: { professionalProfileId: professionalProfile.id },
+            include: { items: true },
+            orderBy: { createdAt: "desc" },
+          }),
+          // Qui `professionalNote` resta inclusa: è contenuto scritto dal
+          // professionista stesso su una propria prenotazione, non un dato
+          // che appartiene alla controparte.
+          this.prisma.booking.findMany({
+            where: { professionalProfileId: professionalProfile.id },
+            orderBy: { scheduledAt: "desc" },
+          }),
+          this.prisma.review.findMany({ where: { booking: { professionalProfileId: professionalProfile.id } }, orderBy: { createdAt: "desc" } }),
+          this.prisma.clientReview.findMany({
+            where: { booking: { professionalProfileId: professionalProfile.id } },
+            orderBy: { createdAt: "desc" },
+          }),
+          this.prisma.externalJob.findMany({ where: { professionalProfileId: professionalProfile.id }, orderBy: { scheduledAt: "desc" } }),
+        ]);
+      professional = { profile: professionalProfile, services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs };
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      account,
+      guidedRequests,
+      bookingsAsClient,
+      reviewsWritten,
+      clientReviewsReceived,
+      savedProfessionals,
+      professional,
+    };
   }
 
   private issueToken(userId: string): string {

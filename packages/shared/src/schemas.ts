@@ -24,6 +24,14 @@ export const googleVerifySchema = z.object({
    * caso normale di una nuova registrazione).
    */
   createIfMissing: z.boolean().default(true),
+  // Stesse due dichiarazioni obbligatorie di `registerSchema` (v. sopra),
+  // richieste qui solo quando questa chiamata crea davvero un nuovo account
+  // (mai su un login su un account esistente, dove questi campi restano
+  // ininfluenti) — validato server-side in `AuthService.verifyGoogleToken`,
+  // non da Zod stesso: qui restano opzionali perché lo stesso schema serve
+  // anche a /accedi, che non li invia mai.
+  acceptedLegalTerms: z.boolean().optional(),
+  declaredAdult: z.boolean().optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -45,9 +53,28 @@ export const emailPasswordSchema = z.object({
 });
 export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
 
+/**
+ * Versione delle informative (Privacy Policy + Termini di Servizio) accettate
+ * in registrazione — stessa stringa "Ultimo aggiornamento" mostrata su
+ * /privacy e /termini. Richiesta esplicita dell'utente ("Verbale di
+ * Conformità"): un cambio sostanziale delle informative va accompagnato da
+ * un aggiornamento di questa costante, così le registrazioni successive
+ * tracciano la versione realmente accettata — mai retroattivo sugli account
+ * già creati (`User.legalConsentVersion` resta quella accettata a suo tempo).
+ */
+export const LEGAL_CONSENT_VERSION = "2026-09-02";
+
 export const registerSchema = emailPasswordSchema.extend({
   name: z.string().min(2).max(120).optional(),
   role: z.enum(["CLIENT", "PROFESSIONAL"]).default("CLIENT"),
+  // Due dichiarazioni obbligatorie richieste esplicitamente dall'utente
+  // ("Verbale di Conformità"): prima nessun atto tracciato confermava che
+  // l'utente avesse letto le informative, né esisteva una dichiarazione di
+  // maggiore età. Solo autocertificazione (nessuna verifica reale
+  // dell'età, coerente col resto del prodotto — es. le qualifiche
+  // professionali sono anch'esse autodichiarate, CLAUDE.md §"Verbale").
+  acceptedLegalTerms: z.boolean().refine((v) => v === true, "Devi accettare Privacy Policy e Termini di Servizio."),
+  declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -641,3 +668,24 @@ export const adminBootstrapSchema = z.object({
   secret: z.string().min(1),
 });
 export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
+
+/**
+ * Segnalazione di un contenuto (richiesta esplicita dell'utente, "Verbale di
+ * Conformità" — meccanismo di notice-and-action, Reg. (UE) 2022/2065 art.
+ * 16): un profilo professionista, una recensione del cliente o una
+ * recensione del professionista sul cliente.
+ */
+export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "CLIENT_REVIEW"] as const;
+export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
+export const createContentReportSchema = z.object({
+  targetType: z.enum(contentReportTargetTypes),
+  targetId: z.string().min(1),
+  reason: z.string().min(3, "Indica il motivo della segnalazione.").max(300),
+  details: z.string().max(1000).optional(),
+});
+export type CreateContentReportInput = z.infer<typeof createContentReportSchema>;
+
+export const resolveContentReportSchema = z.object({
+  status: z.enum(["RESOLVED", "DISMISSED"]),
+});
+export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;

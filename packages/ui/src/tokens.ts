@@ -31,6 +31,10 @@ export const brand = {
   // distruttivo/urgente, cambiarlo confonderebbe l'utente.
   urgenzaVelo: "#FBEAE7",
   ottone: "#D9A441",
+  // Tinta chiara di sfondo per il badge "In evidenza" (boost a pagamento in
+  // ricerca) — stesso principio di cianografiaVelo/urgenzaVelo: colore
+  // pieno solo per bordi/testo, mai per sfondi estesi.
+  ottoneVelo: "#F6ECD9",
 } as const;
 
 // Ombra soffice unica, usata al posto del filetto hairline sui pannelli

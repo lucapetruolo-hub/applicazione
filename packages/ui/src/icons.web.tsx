@@ -56,6 +56,7 @@ import {
   Play,
   Send,
   Share2,
+  Flag,
 } from "lucide-react";
 
 export const ICONS = {
@@ -111,6 +112,7 @@ export const ICONS = {
   play: Play,
   send: Send,
   "share-2": Share2,
+  flag: Flag,
 } as const;
 
 export type IconName = keyof typeof ICONS;

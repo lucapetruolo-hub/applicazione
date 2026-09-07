@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
+import { ReportContentModal } from "@/components/ReportContentModal";
+import { apiClient } from "@/lib/apiClient";
 
 export type ClientReviewSummary = {
   id: string;
@@ -54,6 +56,7 @@ export function ClientProfileModal({
   birthDate,
   imageUrl,
   reviews,
+  token,
   onClose,
 }: {
   name: string;
@@ -63,8 +66,12 @@ export function ClientProfileModal({
   imageUrl?: string | null;
   /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
   reviews?: ClientReviewSummary[];
+  /** Per la segnalazione di una singola recensione (Verbale di Conformità, notice-and-action). */
+  token?: string | null;
   onClose: () => void;
 }) {
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -144,26 +151,36 @@ export function ClientProfileModal({
             </Text>
             {reviews.map((review) => (
               <YStack key={review.id} gap="$1" width="100%">
-                <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                  <XStack gap={2}>
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <Icon
-                        key={value}
-                        name="star"
-                        size={13}
-                        strokeWidth={1.5}
-                        color={brand.ottone}
-                        fill={value <= review.rating ? brand.ottone : "none"}
-                      />
-                    ))}
-                  </XStack>
-                  <Text fontSize="$2" color={brand.grafite} fontWeight="600">
-                    {review.reviewerBusinessName}
-                  </Text>
-                  {review.isAutomatic ? (
-                    <Text fontSize={11} color={brand.grafite70} fontStyle="italic">
-                      (recensione automatica)
+                <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                    <XStack gap={2}>
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Icon
+                          key={value}
+                          name="star"
+                          size={13}
+                          strokeWidth={1.5}
+                          color={brand.ottone}
+                          fill={value <= review.rating ? brand.ottone : "none"}
+                        />
+                      ))}
+                    </XStack>
+                    <Text fontSize="$2" color={brand.grafite} fontWeight="600">
+                      {review.reviewerBusinessName}
                     </Text>
+                    {review.isAutomatic ? (
+                      <Text fontSize={11} color={brand.grafite70} fontStyle="italic">
+                        (recensione automatica)
+                      </Text>
+                    ) : null}
+                  </XStack>
+                  {token ? (
+                    <XStack alignItems="center" gap={4} cursor="pointer" onPress={() => setReportTargetId(review.id)} accessibilityRole="button">
+                      <Icon name="flag" size={11} strokeWidth={1.5} color={brand.grafite70} />
+                      <Text fontSize={11} color={brand.grafite70}>
+                        Segnala
+                      </Text>
+                    </XStack>
                   ) : null}
                 </XStack>
                 {review.comment ? (
@@ -185,6 +202,17 @@ export function ClientProfileModal({
           </YStack>
         ) : null}
       </YStack>
+
+      {reportTargetId && token ? (
+        <ReportContentModal
+          targetType="CLIENT_REVIEW"
+          targetLabel="questa recensione"
+          onClose={() => setReportTargetId(null)}
+          onSubmit={async (reason, details) => {
+            await apiClient.createContentReport(token, { targetType: "CLIENT_REVIEW", targetId: reportTargetId, reason, details });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

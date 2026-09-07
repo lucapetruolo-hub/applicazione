@@ -353,6 +353,11 @@ function DashboardContent() {
     apiClient.myProfessionalBookings(token).then(setBookings);
   }
 
+  function reloadLeads() {
+    if (!token) return;
+    apiClient.myLeads(token).then(setLeads);
+  }
+
   // Aprire la dashboard segna come lette le notifiche in attesa (nuovo lead,
   // risposta del cliente su una data proposta): il badge nell'header si
   // azzera qui, non con un click separato — coerente con la richiesta
@@ -381,6 +386,12 @@ function DashboardContent() {
           setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
           setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
+          // Stesso bug/fix già applicato in /dashboard/richieste e
+          // /le-mie-richieste: un evento generato dall'altra parte mentre
+          // questa pagina resta aperta lasciava leads/bookings non
+          // aggiornati fino a un ricaricamento manuale.
+          reloadLeads();
+          reloadBookings();
         })
         .catch(() => {})
         .finally(() => markNotificationsRead());

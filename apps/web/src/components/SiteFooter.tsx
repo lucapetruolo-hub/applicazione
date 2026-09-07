@@ -117,6 +117,11 @@ export function SiteFooter() {
               Cookie Policy
             </Text>
           </Link>
+          <Link href="/accessibilita" style={{ textDecoration: "none" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Accessibilità
+            </Text>
+          </Link>
         </XStack>
       </YStack>
     </YStack>

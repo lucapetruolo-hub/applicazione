@@ -37,6 +37,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("register")
   async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput) {
+    // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
+    // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
+    // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
     return this.authService.register(body.email, body.password, body.name, body.role);
   }
 
@@ -49,7 +52,10 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("google/verify")
   async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput) {
-    return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing);
+    return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
+      acceptedLegalTerms: body.acceptedLegalTerms === true,
+      declaredAdult: body.declaredAdult === true,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
@@ -197,5 +203,15 @@ export class AuthController {
   async deleteMe(@Req() req: AuthenticatedRequest) {
     await this.authService.deleteAccount(req.user.userId);
     return { success: true };
+  }
+
+  /**
+   * Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
+   * di Conformità" — diritto alla portabilità, art. 20 GDPR).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get("me/export")
+  async exportMe(@Req() req: AuthenticatedRequest) {
+    return this.authService.exportMyData(req.user.userId);
   }
 }

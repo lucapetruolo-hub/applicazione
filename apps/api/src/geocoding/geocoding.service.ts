@@ -28,8 +28,12 @@ export class GeocodingService {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          // Contatto reale richiesto dalla usage policy di Nominatim.
-          "User-Agent": "Professionisti/1.0 (contact: lucapetruolo@gmail.com)",
+          // Contatto richiesto dalla usage policy di Nominatim — configurabile
+          // via env var (mai un'email personale hardcoded nel sorgente, vedi
+          // CLAUDE.md "Verbale di Conformità"): senza NOMINATIM_CONTACT_EMAIL
+          // impostata ricade su un placeholder non personale, da valorizzare
+          // con un contatto aziendale reale prima del lancio.
+          "User-Agent": `Professionisti/1.0 (contact: ${process.env.NOMINATIM_CONTACT_EMAIL ?? "non-configurato@example.invalid"})`,
         },
       });
       if (!response.ok) return null;
