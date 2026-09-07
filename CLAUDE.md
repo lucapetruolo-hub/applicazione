@@ -7477,3 +7477,225 @@ l'API locale reale (non solo typecheck/build):
 
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `api`, `web`, `mobile`), build di produzione `apps/web` verde (29 route).
+
+---
+
+## 48. Verbale di Conformità — piano d'azione legale/privacy implementato
+
+Richiesta esplicita dell'utente, con un ruolo assegnato ("considerando che
+sei un avvocato specializzato in diritto dell'internet, del web;
+consulente privacy/dpo; webmaster e sviluppatore"): un resoconto completo
+degli obblighi legali applicabili al sito (GDPR, cookie law, D.Lgs.
+70/2003 sul commercio elettronico, Digital Services Act, Codice del
+Consumo per le recensioni, accessibilità) e l'operato da seguire —
+prodotto come Artifact ("Verbale di Conformità": stato attuale, checklist
+delle lacune con severità, piano d'azione con responsabile e tempistica).
+Alla richiesta successiva ("implementiamo il sito seguendo il verbale di
+conformità"), confermato con `AskUserQuestion` che i dati societari reali
+(ragione sociale, P.IVA, sede legale, email privacy) non erano ancora
+disponibili — l'utente ha scelto esplicitamente di procedere con tutti i
+punti implementabili senza quei dati, lasciando gli altri due segnalati
+come "da fare prima del lancio" (vedi in fondo a questa sezione, istruzione
+esplicita dell'utente).
+
+**Punti implementati:**
+
+1. **User-Agent Nominatim con contatto configurabile** — l'header
+   `User-Agent` inviato dal servizio di geocodifica
+   (`apps/api/src/geocoding/geocoding.service.ts`, già in uso per il
+   posizionamento preciso dei professionisti, CLAUDE.md §2) portava
+   un'email personale hardcoded, richiesta dalla Usage Policy di Nominatim
+   per identificare chi genera le richieste — non deve essere un dato
+   personale scelto a caso nel codice. Ora legge
+   `NOMINATIM_CONTACT_EMAIL` da variabile d'ambiente, con un fallback
+   neutro (`non-configurato@example.invalid`) se assente — mai un crash.
+2. **Consenso esplicito a Termini/Privacy in registrazione** — prima la
+   registrazione (email+password o Google) non raccoglieva alcun consenso
+   esplicito, solo implicito nell'atto di registrarsi. Nuovo
+   `LEGAL_CONSENT_VERSION` (`packages/shared`, oggi `"2026-09-02"`,
+   allineato alla data di ultimo aggiornamento di `/privacy`/`/termini`) —
+   unica fonte di verità di "quale versione è stata accettata", da
+   aggiornare ad ogni modifica sostanziale di quelle pagine. Due nuovi
+   campi `User.legalConsentAt`/`legalConsentVersion` (Prisma), valorizzati
+   sia da `AuthService.register()` sia da `verifyGoogleToken()` (nuovo
+   parametro opzionale `legalConsent`, obbligatorio solo alla creazione di
+   un account nuovo — un login su un account esistente non richiede di
+   riaccettare nulla). `/registrati`: due checkbox distinte ("Accetto
+   Termini di Servizio e Privacy Policy" con link `target="_blank"`,
+   "Dichiaro di avere almeno 18 anni") bloccano l'invio del form (email o
+   Google) finché non sono entrambe spuntate.
+3. **Caricamento di Google Identity gated al consenso cookie** — lo script
+   `accounts.google.com/gsi/client` (necessario per "Accedi con Google")
+   veniva caricato incondizionatamente ad ogni visita della pagina di
+   login/registrazione, prima ancora che l'utente avesse accettato o
+   rifiutato i cookie — un problema di sequenza rispetto alla Cookie Law
+   (consenso prima del caricamento di script di terze parti non
+   strettamente necessari). `GoogleSignInButton.tsx` ora attende l'evento
+   `cookie-consent-accepted` (emesso da `CookieBanner.tsx` al click su
+   "Accetta") prima di iniettare lo script; se il consenso è già stato
+   dato in una visita precedente (`hasCookieConsent()`, legge lo stesso
+   flag già salvato da `CookieBanner`), lo script si carica subito. Il
+   bottone resta visivamente disabilitato finché lo script non è pronto.
+4. **Badge "In evidenza" sui profili con boost attivo** — la Verbale
+   segnalava un problema di trasparenza pubblicitaria (DSA art. 26,
+   Codice del Consumo): un professionista che paga per comparire più in
+   alto in ricerca (`VisibilityBoost`, CLAUDE.md §1) non era in alcun modo
+   distinguibile da uno che si trova lì per merito. Nuovo prop `boosted`
+   su `ProfessionalCard` (`packages/ui`): badge "In evidenza" (icona
+   `zap`, `brand.ottone`/nuovo token `brand.ottoneVelo` — stesso principio
+   "ottone solo su pagamento" già stabilito nel redesign, CLAUDE.md §10)
+   accanto al badge "Verificato" già esistente, propagato da
+   `ResultsListWithMap.tsx` e `/professionisti-salvati`.
+5. **Esportazione dati personali** (diritto di portabilità, art. 20 GDPR)
+   — `GET /auth/me/export` (`AuthService.exportMyData`, JWT-guarded)
+   restituisce un JSON strutturato con tutti i dati dell'account
+   (profilo, richieste/prenotazioni proprie, recensioni scritte/ricevute).
+   **Attenzione privacy applicata in fase di progettazione**: l'export
+   delle prenotazioni di un cliente usa una `select` Prisma esplicita che
+   esclude `professionalNote` (nota privata del professionista, mai
+   vista dal cliente in nessun altro punto del prodotto — includerla
+   nell'export sarebbe stata una fuga di dati non previste altrove).
+   Bottone "Esporta i miei dati" in `/account`, scarica un file `.json`.
+6. **Canale di segnalazione contenuti** (notice-and-action, Reg. (UE)
+   2022/2065 art. 16) — nuovo modello Prisma `ContentReport`
+   (`targetType` PROFESSIONAL_PROFILE/REVIEW/CLIENT_REVIEW, `reporterId`
+   obbligatorio: il canale richiede login, semplificazione consapevole
+   rispetto all'ideale DSA di un canale aperto a chiunque, documentata nel
+   codice). Nuovo modulo `apps/api/src/content-reports/`
+   (`POST /reports`, JWT-guarded, throttled 10/min). `ReportContentModal.tsx`
+   (nuovo, `apps/web/src/components`): un solo componente condiviso per i
+   tre tipi di contenuto segnalabile, montato in tre punti — bottone
+   "Segnala" accanto a "Condividi il profilo" sul profilo pubblico
+   (`ProfessionalDetailContent.tsx`, per l'intero profilo), un piccolo
+   "Segnala" per singola recensione nello stesso file, e per singola
+   recensione-sul-cliente in `ClientProfileModal.tsx` (nuova prop `token`,
+   prima componente puramente di visualizzazione). Vista di risoluzione in
+   `/admin` (`AdminService.listContentReports`/`resolveContentReport`,
+   nuovo `GET /admin/reports`/`PATCH /admin/reports/:id`): `targetLabel`
+   risolto "best effort" (nome attività o nome cliente) per non mostrare
+   solo un ID grezzo agli amministratori, sezione "Segnalazioni contenuti"
+   con bottoni Risolvi/Ignora.
+7. **Pagina pubblica `/accessibilita`** — dichiarazione di accessibilità
+   che documenta l'audit reale già svolto durante il redesign (CLAUDE.md
+   §10 Fase 6: Lighthouse 100/100 su pagine chiave, skip link, ruoli ARIA,
+   correzione WCAG 2.5.3), i limiti noti dichiarati onestamente (agenda e
+   mappa, componenti "su misura" non ancora verificati con lo stesso
+   dettaglio), e un canale di segnalazione (email segnaposto, vedi "da
+   fare prima del lancio" sotto). Stesso componente condiviso `LegalPage`
+   già in uso per `/privacy`/`/termini`/`/cookie`. Link aggiunto alla riga
+   legale del footer.
+8. **Registro delle attività di trattamento** (art. 30 GDPR) —
+   `docs/registro-trattamenti.md` (nuovo, documento interno non collegato
+   da nessuna pagina pubblica): un'attività di trattamento per ogni
+   funzione reale del prodotto (registrazione, profilo pubblico,
+   richiesta guidata, prenotazione, recensioni bilaterali, notifiche,
+   waitlist, segnalazione contenuti, amministrazione), con finalità, base
+   giuridica, categorie di dati/interessati, destinatari e conservazione
+   — più una tabella dei responsabili del trattamento esterni reali
+   (Cloudinary, Google, Render, Vercel, Nominatim) e di quelli non ancora
+   attivi (Stripe, Resend, Twilio).
+
+**Correzioni richieste dall'utente nello stesso giro** (bug reali
+segnalati testando dal vivo, non pianificati nel Verbale):
+
+- **Nota privata del professionista unificata** — "le note personali del
+  professionista devono essere le stesse sia quando si apre il riquadro
+  dall'agenda sia quelle inserite tramite richieste ricevute". Prima
+  erano due campi Prisma indipendenti: `Booking.professionalNote`
+  (agenda/`BookingDetailPanel`/`AcceptedJobCard`, esiste solo dopo una
+  prenotazione) e `Lead.professionalNote` (`/dashboard/richieste`, esiste
+  già dalla ricezione del lead, prima ancora di un preventivo) — lo
+  stesso testo poteva divergere a seconda di dove veniva modificato.
+  `Lead.professionalNote` resta l'unica fonte di verità (il Lead esiste
+  da prima): `BookingsService.updateProfessionalNote` ora scrive lì
+  (trovato tramite `booking.quote.guidedRequestId` +
+  `professionalProfileId`, verificato che ogni Booking nata da un
+  preventivo abbia sempre un Lead corrispondente — un `Quote` può essere
+  creata solo se il professionista ha già ricevuto il lead) invece che
+  sulla colonna `Booking.professionalNote`, che resta scritta solo per le
+  prenotazioni dirette da agenda pubblica senza `GuidedRequest`
+  (`bookAgendaSlot`, dormiente da CLAUDE.md §20).
+  `ProfessionalsService.getMyBookings` risolve simmetricamente
+  `professionalNote` dal Lead corrispondente (query batch, mai una per
+  prenotazione) quando disponibile.
+- **Bug reale: "Lavoro terminato" restava ricliccabile** —
+  `/dashboard/richieste`: dopo aver completato un lavoro (che porta
+  `booking.status` a `COMPLETED`), il bottone "Lavoro terminato"
+  ricompariva finché non si ricaricava manualmente la pagina.
+  `reloadLeads()` (chiamata da `onChanged` dopo ogni azione) ricaricava
+  solo l'elenco `leads`, mai `bookings` — il `booking` passato a
+  `RequestCard` (risolto da `bookingByRequestId`, derivato dallo stato
+  `bookings`) restava quindi lo stesso oggetto stale, con `status`
+  ancora `CONFIRMED`. Corretto ricaricando entrambe le liste insieme.
+- **"Anche dalla parte del cliente deve poter cliccare su lavoro
+  terminato come il professionista"** — l'azione esisteva già
+  (`ClientCompleteModal` in `/le-mie-richieste`, gated su
+  `booking.status === "COMPLETED"`, CLAUDE.md §40), ma il cliente non
+  vedeva mai comparire il bottone senza un ricaricamento manuale: sia
+  `/le-mie-richieste` che `/dashboard`/`/dashboard/richieste` ricaricavano
+  le liste leads/bookings solo al primo montaggio, mai durante il poll
+  periodico delle notifiche (ogni 15s) già esistente per i pallini "nuove
+  notifiche" — un evento generato dall'altra parte (professionista che
+  completa un lavoro, cliente che accetta/propone una data, ecc.) mentre
+  la pagina restava aperta non si rifletteva mai in tempo reale.
+  Corretto facendo ricaricare le liste (`reloadLeads()`/`reload()`) allo
+  stesso poll che già aggiorna i pallini, su tutte e tre le pagine.
+- **Tab filtro "Completate"** — nuova pillola in `/dashboard/richieste`
+  (tra "Accettate" e "Scadute"), filtra sullo stadio `completata` (già
+  esistente in `classifyLeadStage`, prima raggiungibile solo dal tab
+  "Tutte") — nessuna modifica al calcolo di conteggio/filtro, entrambi già
+  generici per stadio.
+
+**Verificato end-to-end con l'API locale reale** (non solo typecheck) e un
+agente Playwright dedicato, sei aree distinte tutte confermate **PASS**:
+nota privata sincronizzata scrivendo da un lato e rileggendo dall'altro
+(sia agenda→richieste che richieste→agenda); "Lavoro terminato" verificato
+non più ricliccabile subito dopo la conferma, senza reload; aggiornamento
+"live" osservato per davvero (pagina `/le-mie-richieste` lasciata aperta
+mentre il professionista completava un lavoro via API, bottone "Lavoro
+terminato" comparso da solo dopo ~14s di poll reale, nessuna azione
+utente); tab "Completate" con conteggio e filtro corretti (3 card
+completate isolate correttamente da una non completata); canale
+segnalazione verificato su tutti e tre i tipi di target (profilo,
+recensione, recensione-sul-cliente) più il ciclo admin completo
+(segnalazione reale → visibile `OPEN` in `/admin` → risolta → sparisce dal
+filtro `OPEN`, sia via API sia in UI con bottoni Risolvi/Ignora
+funzionanti); `/accessibilita` raggiungibile con tutte le sezioni attese e
+link presente nel footer. Zero bug applicativi reali trovati in questo
+giro di verifica. Typecheck pulito su tutti i package (`shared`,
+`database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (29 route, incluse le due nuove
+`/accessibilita` e, indirettamente, il conteggio route invariato per le
+altre modifiche essendo tutte su pagine già esistenti).
+
+**Da fare prima del lancio** (istruzione esplicita dell'utente: "i punti
+non implementati inseriscili nell'elenco da fare prima del lancio") —
+punti del Verbale di Conformità non implementabili in questo giro perché
+richiedono dati reali non disponibili in questa sessione, non un problema
+di codice:
+1. **Dati reali del titolare del trattamento** su `/privacy` (ragione
+   sociale, sede legale, P.IVA, email privacy) — oggi segnaposto
+   `[DA COMPILARE]`, già segnalato in CLAUDE.md al momento della prima
+   stesura della pagina.
+2. **Dati reali del prestatore** (D.Lgs. 70/2003 art. 7: ragione sociale,
+   P.IVA, sede legale, PEC) nella riga legale del footer — volutamente
+   omessa fin dal redesign "Vicinato" (CLAUDE.md §10, Fase 4) per lo
+   stesso motivo, non ancora aggiunta.
+3. **Email di contatto per l'accessibilità** — `/accessibilita` ha oggi
+   lo stesso segnaposto `[DA COMPILARE]` per il canale di segnalazione,
+   da sostituire con un indirizzo reale (può coincidere con l'email
+   privacy del punto 1).
+4. **`NOMINATIM_CONTACT_EMAIL`** — variabile d'ambiente da impostare su
+   Render con l'email di contatto reale richiesta dalla Usage Policy di
+   Nominatim (oggi assente, l'header ricade sul fallback neutro
+   `non-configurato@example.invalid`, funzionante ma non conforme alla
+   policy per un uso in produzione).
+5. **Verifica delle condizioni contrattuali B2B/B2C quando Stripe verrà
+   attivato** (già segnalato come rimandato in CLAUDE.md §9: mancano le
+   chiavi reali) — in particolare diritto di recesso per gli abbonamenti
+   SaaS venduti a professionisti (spesso ditte individuali, quindi
+   potenzialmente consumatori ai fini del Codice del Consumo) e requisiti
+   di fatturazione elettronica, da verificare con un commercialista/legale
+   prima di abilitare i pagamenti reali — non affrontabile ora perché
+   dipende da come sarà strutturata l'offerta commerciale reale, non dal
+   solo codice.
