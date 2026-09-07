@@ -7699,3 +7699,187 @@ di codice:
    prima di abilitare i pagamenti reali — non affrontabile ora perché
    dipende da come sarà strutturata l'offerta commerciale reale, non dal
    solo codice.
+
+---
+
+## 49. Ordine libero "Lavoro terminato", data manuale nella proposta cliente, homepage recensioni cliccabili + "Nuovi profili", agenda: vista annuale e ricerca full-text
+
+Sei richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Il cliente può segnalare "Lavoro terminato" indipendentemente
+dall'ordine** — richiesta esplicita dell'utente, ripetuta due volte per
+essere sicuri di coprire entrambi i sintomi: prima `BookingsService.
+clientConfirmComplete` (CLAUDE.md §40, doppio cieco lavoro terminato)
+richiedeva `booking.status === "COMPLETED"`, cioè il cliente poteva
+confermare solo **dopo** che il professionista aveva già cliccato "Lavoro
+terminato" — un cliente che voleva segnalare la fine del lavoro per primo
+restava bloccato. Guardia allentata ad accettare sia `CONFIRMED` sia
+`COMPLETED`, messaggio d'errore aggiornato ("Puoi segnalare come
+terminato solo un lavoro confermato."). **Non toccato deliberatamente**:
+`ReviewsService.create` continua a richiedere `booking.status ===
+"COMPLETED"` per scrivere una recensione — il cliente può confermare
+prima, ma recensire resta subordinato anche alla conferma del
+professionista (o al timeout di 3 giorni che sblocca comunque il "doppio
+cieco", invariato).
+
+**Picker "Altro" nella proposta di data del cliente** — richiesta
+esplicita dell'utente: "quando il cliente risponde ad una proposta
+preventivo nel menu a tendina della data orario, dai la possibilità di
+selezionare 'Altro'". Stesso principio già introdotto per il
+professionista (`counterProposeDate`, CLAUDE.md §47) esteso qui al lato
+cliente (`QuotesService.proposeDate`): se `input.isManual` è vero, la
+fascia non viene più cercata nell'agenda reale del professionista
+(`resolveFreeExactSlot`, che avrebbe sempre rifiutato un orario libero
+inventato) — costruita direttamente da `date`/`startTime`/`endTime` con lo
+stesso principio "wall clock UTC" già in uso in tutto il modulo agenda.
+La logica di riaffermazione della propria proposta attuale
+(`isSameAsCurrentProposal`, introdotta in un giro precedente) resta
+prioritaria e indipendente: prova prima quella, poi eventualmente
+`isManual`, infine la ricerca in agenda. `QuoteCard` (`/le-mie-richieste`)
+aggiunge una voce "Altro (data e orario personalizzati)" nel `<select>`
+esistente, con tre campi (data/ora inizio/ora fine) mostrati solo quando
+selezionata.
+
+**Homepage — "Ultime recensioni" cliccabili + "Nuovi profili" carosello**
+— richiesta esplicita dell'utente: "in home page, ultime recensioni,
+devono essere cliccabili e portare alla recensione in questione, dove
+saranno visualizzate le ultime 5 recensioni inserite; al di sotto
+inserire oggetti nuovo: Nuovi profili su *nome pagina*..." (con screenshot
+di riferimento miodottore.it: card con foto tonda in alto a sinistra, nome
+in grassetto, specialità+città sotto, link "Mostra profilo", frecce
+prev/next).
+- `ReviewsService.getRecentPublic` (`GET /reviews/recent`): limite da 6 a
+  **5**, e ora espone anche `professional.id` (mancava del tutto — senza
+  quello non si può costruire un link verso il profilo).
+- `RecentReviews.tsx`: ogni card avvolta in `next/link` verso
+  `/professionista/{id}#recensione-{reviewId}` — stesso pattern "intera
+  card cliccabile via Link con le prop flex spostate sul Link stesso"
+  già in uso altrove nel sito (es. `/le-mie-richieste`). Nuovo ancoraggio
+  in `ProfessionalDetailContent.tsx`: `<div id={"recensione-"+review.id}
+  style={{scrollMarginTop:96}} />` prima di ogni card recensione (stesso
+  principio già in uso per `#agenda` nello stesso file) — click sulla
+  card in home naviga al profilo e scrolla fino alla recensione esatta.
+- **`NewProfilesCarousel.tsx`** (nuovo, `apps/web/src/components`):
+  riusa la stessa prop `professionals` già scaricata una volta per
+  l'intera home (nessuna nuova chiamata API), riordinata localmente per
+  `createdAt` discendente (stesso principio già in uso per
+  `ProfessionalsShowcase`/`RealShowcase` — l'ordinamento di ricerca vero,
+  boost→rating→recensioni, resta invariato ovunque altrove), primi 21.
+  Nessuna soglia minima come `ProfessionalsShowcase` (quella esiste per
+  non far sembrare vuota una "vetrina in evidenza" — questo è
+  semplicemente l'elenco dei più recenti, corretto anche con pochi
+  profili): la sezione è assente solo se `professionals.length === 0`.
+  Card: avatar 64px (foto vera o iniziali, mai il fallback stock
+  temporaneo di `ProfessionalsShowcase` — quell'eccezione era scoped
+  esplicitamente a quel solo componente) + nome grassetto, categoria,
+  città, "Mostra profilo →" — intera card un `next/link` verso
+  `/professionista/{id}`. Layout responsivo (1 card visibile da
+  cellulare, 3 da desktop) non esprimibile solo con prop Tamagui: `<style
+  jsx>` con card a `width:100%` sotto 700px e `calc((100% - 32px)/3)`
+  sopra, dentro un track `overflow-x:auto` con `scroll-snap-type: x
+  mandatory`. Le freccette riusano la stessa classe globale
+  `.category-carousel-arrow` (`globals.css`, già nascosta su dispositivi
+  touch-only via `@media (hover:none)`) — evita di duplicare quella
+  regola. Montato in `HomeContent.tsx` subito dopo `<RecentReviews />` e
+  prima di `<HomeFaq />`.
+  **Falso positivo in una prima verifica**: un agente Playwright aveva
+  segnalato la sezione rotta su desktop (card impilate verticalmente,
+  frecce senza effetto, click senza navigazione) — causa reale isolata e
+  confermata: non un bug del componente, ma corruzione residua del
+  dev-server locale dopo che una `next build` di produzione era stata
+  lanciata per errore mentre `next dev` era ancora in esecuzione sulla
+  stessa cartella `.next` (le due build condividono la cartella, un
+  `next build` concorrente corrompe gli asset statici del dev server in
+  corso). Un primo riavvio (kill soft + `rm -rf .next`) non era bastato a
+  ripulire del tutto lo stato; un secondo riavvio più aggressivo (kill
+  esplicito dei PID + `rm -rf .next` + riavvio pulito) ha risolto: verificato
+  con un controllo diretto (`document.styleSheets`/computed style) che le
+  regole `<style jsx>` di `NewProfilesCarousel`/`MegaMenu` mancavano del
+  tutto nel CSSOM prima del secondo riavvio e sono tornate presenti dopo —
+  poi riverificato l'intero Feature 2 (3 card visibili a 1280px, freccia
+  che avanza `scrollLeft`, click sull'intera card che naviga a
+  `/professionista/{id}`, 1 card a 390px con zero overflow) tutti PASS.
+  **Lezione per il futuro**: mai lanciare `next build` mentre `next dev`
+  gira sulla stessa cartella dell'app durante una sessione di sviluppo
+  locale — usare una working copy separata o fermare il dev server prima.
+
+**Agenda professionista — calendario "Prenotazioni": vista "Anno" +
+ricerca full-text** — due richieste esplicite dell'utente nello stesso
+messaggio: "in agenda, inserisci anche la possibilità di avere una lista
+annuale" e "sempre in agenda inserisci un riquadro dove l'utente può
+effettuare una ricerca e nei risultati ci sarà non solo la ricerca per
+nome utente o città o via ma qualsiasi prenotazione dove in qualsiasi
+campo c'è la parola o parte della parola che si vuole ricercare".
+- **`CalendarShell.tsx`**: nuovo `CalendarView` `"year"` + prop opzionale
+  `renderYearList?: () => ReactNode` — **puramente opt-in**: il pulsante
+  "Anno" compare nella riga Giorno/Settimana/Mese solo quando la prop è
+  passata. Il calendario "Disponibilità" (che non la passa) resta
+  invariato, zero rischio di regressione lì — verificato esplicitamente
+  che lì compaiono solo 3 pulsanti, 4 su "Prenotazioni". Navigazione
+  ±1 anno (`addYearsUtc`, nuovo helper in `calendarDates.ts`), swipe
+  orizzontale disattivato in "Anno" come già in "Mese" (una lista
+  scorrevole verticalmente, lo swipe orizzontale confliggerebbe).
+- **`buildAgendaListItems()`** (`apps/web/src/app/dashboard/agenda/
+  page.tsx`): unifica Booking reali, lavori esterni e preventivi "in
+  attesa" (stessa logica già usata da `bookingsOnDate`/
+  `externalJobsOnDate`/`pendingQuotesOnDate` per la griglia, qui senza
+  filtro di data) in `AgendaListItem[]`, ciascuno con un `searchText`
+  precalcolato — concatenazione minuscola di **ogni** campo pertinente
+  (nome cliente, telefono, email, indirizzo strutturato completo,
+  categoria, descrizione, nota privata del professionista, nota di
+  annullamento, nome delle voci del preventivo/importo finale, e
+  l'etichetta italiana dello stato stesso — cercare "confermata" trova le
+  prenotazioni confermate, non solo un nome) — richiesta letterale
+  dell'utente "qualsiasi campo" presa alla lettera.
+- **Vista "Anno"** (`renderBookingYearList`): filtra gli eventi
+  sull'anno di `bookingCurrentDate`, raggruppati per mese (solo i mesi
+  con almeno un evento compaiono, stesso principio "niente sezioni
+  vuote" già seguito altrove), tramite il nuovo componente condiviso
+  `AgendaEventsList`/`AgendaEventRow`.
+- **Ricerca** (`agendaSearchQuery`): un `<input>` con icona `search` e
+  tasto "x" per svuotare, accanto al bottone "Lavoro esterno" esistente.
+  Filtro client-side dal vivo (nessuna chiamata di rete, stessi dati già
+  scaricati — coerente con la scala di lancio, §7): quando valorizzata,
+  sostituisce **l'intero** `CalendarShell` (a prescindere da quale vista
+  Giorno/Settimana/Mese/Anno fosse attiva) con lo stesso
+  `AgendaEventsList` in modalità piatta (non raggruppata per mese — un
+  filtro non ha una struttura mensile naturale), o il messaggio "Nessuna
+  prenotazione corrisponde alla ricerca." se non c'è nulla. Filtrare una
+  griglia lasciando celle vuote sparse non avrebbe avuto senso: un
+  filtro produce sempre un **elenco di risultati**, non una griglia
+  parziale — da qui la scelta di riusare lo stesso componente lista
+  della vista Anno invece di provare a nascondere celle nella griglia.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+due agenti Playwright dedicati, entrambi PASS su tutti i controlli:
+- **Lavoro terminato/data manuale**: nessun bug trovato durante
+  l'implementazione stessa (verificato con lo stesso rigore delle altre
+  funzionalità di questo giro, typecheck pulito ad ogni passo).
+- **Homepage**: `GET /reviews/recent` mai oltre 5 risultati, ogni
+  elemento con `professional.id` reale; ciclo completo
+  richiesta→preventivo→accettazione→completamento→conferma→doppia
+  recensione creato via API per un professionista di test, card cliccata
+  in home naviga esattamente a `/professionista/{id}#recensione-{id}`
+  con la recensione visibile in viewport dopo lo scroll. "Nuovi profili":
+  vedi nota sul falso positivo sopra — dopo il riavvio pulito del dev
+  server, 3 card visibili a 1280px, freccia che avanza lo scroll, click
+  sull'intera card che naviga al profilo corretto, 1 card a 390px con
+  zero overflow orizzontale, zero `pageerror`.
+- **Agenda**: seminati 4 lavori esterni per un professionista di test
+  distribuiti su 4 mesi diversi dell'anno corrente, uno completato.
+  Vista "Anno": solo i 4 mesi con eventi compaiono come intestazione
+  (mesi vuoti assenti), range anno naviga di esattamente ±1 con le
+  frecce, click su una riga apre `ExternalJobModal` con i dati corretti.
+  Ricerca: sottostringa sul nome cliente isola la riga corretta;
+  sottostringa presente **solo** nell'indirizzo isola comunque il
+  risultato giusto (prova che la ricerca è davvero su ogni campo, non
+  solo sul nome); sottostringa sullo stato ("programmato"/"completato")
+  filtra correttamente per stato; testo senza corrispondenze mostra il
+  messaggio vuoto corretto; tasto "x" ripristina il calendario normale.
+  Il pulsante "Anno" compare solo su "Prenotazioni", assente su
+  "Disponibilità" (verificato esplicitamente, 3 vs 4 pulsanti). Zero
+  `pageerror`, zero overflow orizzontale a 1280px/390px.
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `ui`, `web`, `mobile`), build di produzione `apps/web` verde
+(29 route).
