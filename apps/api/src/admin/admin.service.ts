@@ -84,24 +84,39 @@ export class AdminService {
       include: { reporter: { select: { email: true, name: true, surname: true } } },
     });
 
-    const targetLabels = await Promise.all(
-      reports.map(async (report): Promise<string | null> => {
+    // `linkedProfessionalProfileId` alimenta il bottone "Vai alla
+    // segnalazione" lato admin (richiesta esplicita dell'utente): per un
+    // profilo segnalato è il target stesso, per una recensione è il
+    // profilo su cui vive (serve a costruire il link pubblico
+    // `/professionista/{id}#recensione-{reviewId}`) — per una recensione
+    // sul cliente resta `null` di proposito: quel contenuto non ha una
+    // pagina pubblica raggiungibile (nessun profilo pubblico del
+    // cliente in questo marketplace, CLAUDE.md §40/§45), un link lì
+    // sarebbe stato un bottone che non porta da nessuna parte.
+    const targetInfo = await Promise.all(
+      reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null }> => {
         if (report.targetType === "PROFESSIONAL_PROFILE") {
           const profile = await this.prisma.professionalProfile.findUnique({ where: { id: report.targetId }, select: { businessName: true } });
-          return profile?.businessName ?? null;
+          return { label: profile?.businessName ?? null, linkedProfessionalProfileId: profile ? report.targetId : null };
         }
         if (report.targetType === "REVIEW") {
           const review = await this.prisma.review.findUnique({
             where: { id: report.targetId },
-            select: { comment: true, booking: { select: { professionalProfile: { select: { businessName: true } } } } },
+            select: { comment: true, booking: { select: { professionalProfile: { select: { id: true, businessName: true } } } } },
           });
-          return review ? `Recensione su ${review.booking.professionalProfile.businessName}` : null;
+          return {
+            label: review ? `Recensione su ${review.booking.professionalProfile.businessName}` : null,
+            linkedProfessionalProfileId: review?.booking.professionalProfile.id ?? null,
+          };
         }
         const clientReview = await this.prisma.clientReview.findUnique({
           where: { id: report.targetId },
           select: { client: { select: { name: true, surname: true } } },
         });
-        return clientReview ? `Recensione su ${[clientReview.client.name, clientReview.client.surname].filter(Boolean).join(" ") || "cliente"}` : null;
+        return {
+          label: clientReview ? `Recensione su ${[clientReview.client.name, clientReview.client.surname].filter(Boolean).join(" ") || "cliente"}` : null,
+          linkedProfessionalProfileId: null,
+        };
       }),
     );
 
@@ -109,7 +124,8 @@ export class AdminService {
       id: report.id,
       targetType: report.targetType,
       targetId: report.targetId,
-      targetLabel: targetLabels[index],
+      targetLabel: targetInfo[index]?.label ?? null,
+      linkedProfessionalProfileId: targetInfo[index]?.linkedProfessionalProfileId ?? null,
       reason: report.reason,
       details: report.details,
       status: report.status,

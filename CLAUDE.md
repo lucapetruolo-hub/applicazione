@@ -8157,3 +8157,97 @@ accordion in sequenza, testo "Cosa succede se..." (l'eyebrow, non le
 singole domande che lo contengono nel testo) assente dalla pagina, zero
 errori console. Typecheck pulito su `apps/web`, build di produzione verde
 (30 route, nessuna nuova).
+
+---
+
+## 54. `/admin` — pulsanti "Segnalazioni contenuti" uniformi + link al contenuto + archivio azioni
+
+Richiesta esplicita dell'utente: *"in segnalazioni contenuti all'interno
+di /admin, sistema i pulsanti già presenti che devono essere uniformi
+nelle dimensioni e nell'aspetto, il colore può essere differente, e
+aggiungi un pulsante dove ti porta alla segnalazione in questione"* —
+seguita, mid-turn, da un secondo requisito: *"quando si prende un'azione
+per le segnalazioni, devono essere sì eliminate dall'elenco, ma andranno a
+formare un elenco visualizzabile con tutte le segnalazioni e l'azione
+intrapresa in modo da avere un archivio delle azioni intraprese"*.
+
+**Causa della disuniformità**: "Risolvi" era un `Button` senza `variant`
+(eredita lo stile di default del componente condiviso — sfondo
+`$blue10` Tamagui stock, altezza dettata da `size="$2"`), "Ignora" era
+`variant="ghost"` (trasparente, altezza fissa 48px imposta dal variant) —
+due bottoni con riempimento e altezza diversi affiancati nella stessa
+riga. Corretto introducendo `ReportActionButton` (`apps/web/src/app/
+admin/page.tsx`), uno stile condiviso (`REPORT_ACTION_STYLE`: 34px
+altezza, padding 16px, radius 999, font 13/700) applicato identicamente a
+tutti i bottoni della riga — mai i quattro `variant` di `Button`
+(pensati per CTA a pagina intera, non per un'azione compatta di riga
+tabella): solo il colore cambia per bottone (`brand.verificato` verde per
+"Risolvi", `brand.filetto` neutro per "Ignora", `brand.cianografia` per
+"Vai alla segnalazione") — esattamente "colore diverso, aspetto/misura
+uguali" come richiesto.
+
+**Link al contenuto segnalato** — `reportTargetHref(report)`: per un
+profilo professionista, `/professionista/{targetId}` (il `targetId` è già
+il profilo stesso); per una recensione, `/professionista/{profiloId}
+#recensione-{reviewId}` (stesso ancoraggio già introdotto per le
+recensioni cliccabili in homepage, CLAUDE.md §49) — richiede però di
+sapere su quale profilo vive la recensione, dato non ancora esposto da
+`AdminService.listContentReports`. Nuovo campo
+`linkedProfessionalProfileId` (backend, `admin.service.ts`): per
+`PROFESSIONAL_PROFILE` è il target stesso, per `REVIEW` è il
+`professionalProfile.id` del booking collegato (una query in più già
+presente per risolvere `businessName`, solo `select` esteso), per
+`CLIENT_REVIEW` resta sempre `null` — **nessun link mostrato** in quel
+caso: una recensione sul cliente non ha una pagina pubblica raggiungibile
+in questo marketplace (nessun profilo pubblico del cliente, CLAUDE.md
+§40/§45), un bottone verso il nulla non sarebbe stato onesto. Nuovo campo
+propagato in `AdminContentReport` (`packages/api-client`).
+
+**Archivio segnalazioni** — richiesta esplicita di non far sparire una
+segnalazione gestita, solo spostarla. `AdminService.listContentReports`
+non riceve più un filtro `status` dalla pagina admin (il parametro
+opzionale resta supportato dall'endpoint, solo non più usato da questo
+chiamante): la pagina scarica **tutte** le segnalazioni in un colpo solo e
+le divide client-side in `openReports` (`status === "OPEN"`, sezione
+"Segnalazioni contenuti" invariata, con i tre bottoni azione) e
+`archivedReports` (le altre, ordinate per `resolvedAt` decrescente —
+l'azione più recente in cima — nuova sezione "Archivio segnalazioni").
+Nuovo componente `ArchivedReportRow`: stessi dati della riga aperta
+(target, motivo, dettagli, autore, data), più la data di gestione
+("Gestita il ..."), stesso bottone "Vai alla segnalazione" quando
+disponibile, ma **nessun controllo interattivo** al posto di
+Risolvi/Ignora — una pillola di sola lettura, stessa dimensione dei
+bottoni (`REPORT_ACTION_STYLE`) con l'etichetta dell'azione già presa
+("Risolta" verde, "Ignorata" neutra) invece di un'azione ancora da
+prendere.
+
+Verificato end-to-end con Postgres locale (non solo lettura di codice) e
+uno script Playwright dedicato: tre segnalazioni di test seminate (una
+per ciascun `targetType`, con una `Review`/`ClientReview`/`Booking` reali
+create ad hoc per popolare `linkedProfessionalProfileId`) — bounding box
+di tutti i bottoni "Risolvi"/"Ignora"/"Vai alla segnalazione" misurati a
+34px di altezza uniforme su ogni riga; bottone "Vai alla segnalazione"
+correttamente assente sulla sola riga `CLIENT_REVIEW`, presente e con
+`href` corretto su `PROFESSIONAL_PROFILE`/`REVIEW` (confermato anche via
+`GET /admin/reports` diretto: `linkedProfessionalProfileId` valorizzato
+solo nei due casi attesi). Click su "Risolvi"/"Ignora" → riga sparita da
+"Segnalazioni contenuti", ricomparsa in "Archivio segnalazioni" con
+l'etichetta "Risolta"/"Ignorata" corretta e la data di gestione.
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`api`, `web`), build di produzione `apps/web` verde (30 route, nessuna
+nuova).
+
+**Nota — richiesta separata ricevuta a metà turno, non ancora
+implementata**: l'utente ha segnalato una duplicazione di contenuto tra
+`/dashboard` (tab "Lavori accettati", `AcceptedJobCard`, redesign §42) e
+`/dashboard/richieste` (le stesse prenotazioni negli stadi `accettata`/
+`completata`, `RequestCard`), chiedendo lo stesso trattamento già
+applicato al tab "Richieste ricevute" in §43 (card completa sostituita da
+un riepilogo compatto + CTA verso l'inbox). Piano proposto e discusso con
+l'utente (`AskUserQuestion`): sostituire `AcceptedJobCard` con righe
+compatte (cliente/categoria/data/stato) + conteggi + un CTA verso
+`/dashboard/richieste` filtrato sugli stadi `accettata`/`completata`,
+rimuovendo la resa a dettaglio completo da `/dashboard` (che resterebbe
+solo su `/dashboard/richieste`). L'utente ha scelto esplicitamente **solo
+pianificare per ora**, nessuna modifica al codice in questo giro — da
+riprendere quando confermato.

@@ -190,6 +190,8 @@ export type AdminContentReport = {
   targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW";
   targetId: string;
   targetLabel: string | null;
+  /** Profilo professionista su cui è raggiungibile il contenuto segnalato (`null` per una recensione sul cliente, priva di pagina pubblica). */
+  linkedProfessionalProfileId: string | null;
   reason: string;
   details: string | null;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
