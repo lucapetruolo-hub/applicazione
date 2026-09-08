@@ -541,7 +541,7 @@ function RichiesteContent() {
             style={{ ...filterInputStyle, flex: "1 1 220px", minWidth: 200 }}
           />
           <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={filterInputStyle}>
-            <option value="recenti">Ordina: Data di ricezione più recente</option>
+            <option value="recenti">Data di ricezione più recente</option>
             <option value="vecchie">Data di ricezione più vecchie</option>
             <option value="aggiornamento">Ultimo aggiornamento</option>
           </select>

@@ -8532,3 +8532,34 @@ Verificato con l'API locale reale (non solo typecheck/build) e Playwright:
 `<select>` con le tre opzioni esatte richieste, nell'ordine indicato
 dall'utente. Typecheck pulito su `apps/web`, build di produzione verde
 (31 route, nessuna nuova).
+
+## 60. Bug reale: click su una richiesta specifica in `/dashboard` non apriva quella richiesta + rifinitura etichetta ordinamento
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Bug reale**: *"sulla dashboard cliccando su uno specifico
+richiesta/lavoro si dovra aprire quella determinata richiesta/lavoro"*.
+`BookingSummaryRow` (§56, riepilogo compatto "Lavori accettati" in
+`/dashboard`) già collegava a `/dashboard/richieste?open=<guidedRequestId>`
+per aprire/scrollare alla card giusta — ma `LeadSummaryRow` (stesso
+riepilogo per "Richieste ricevute") linkava sempre al generico
+`/dashboard/richieste`, senza `?open=`: cliccare una riga specifica portava
+sempre all'inbox intera, mai alla richiesta cliccata. Corretto passando
+`lead.guidedRequest.id` come parametro `?open=`, stesso `useEffect` già
+esistente in `/dashboard/richieste` (letto in CLAUDE.md §47/§56) che
+espande la card e scrolla fino a lì.
+
+**Rifinitura**: *"devi eliminare la scritta 'Ordina', presente in 'ordina:
+data di ricezione piu recente'"* — l'opzione di default del `<select>`
+ordinamento (§59) aveva ancora il prefisso "Ordina: " lasciato dalla
+vecchia etichetta, le altre due opzioni no. Rimosso per coerenza con le
+altre due voci.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright: click sulla riga di una richiesta specifica in `/dashboard`
+naviga a `/dashboard/richieste?open=<id>` (href verificato prima del
+click), la pagina di destinazione scrolla (`scrollY > 0`) e mostra la
+sezione espansa "Dettagli cliente" della card corrispondente — non più
+l'inbox generica in cima. `<select>` ordinamento verificato con le tre
+opzioni senza alcun prefisso "Ordina:". Typecheck pulito su `apps/web`,
+build di produzione verde (31 route, nessuna nuova).

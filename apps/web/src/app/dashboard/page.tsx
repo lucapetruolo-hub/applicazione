@@ -567,8 +567,13 @@ function LeadSummaryRow({
   unreadCount?: number;
 }) {
   const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : lead.guidedRequest.clientName ?? "Cliente";
+  // Deep link diretto alla card specifica (richiesta esplicita dell'utente:
+  // "cliccando su uno specifico richiesta/lavoro si dovrà aprire quella
+  // determinata richiesta/lavoro") — stesso `?open=` già in uso da
+  // BookingSummaryRow qui sotto, letto da /dashboard/richieste per
+  // espandere/scrollare alla card giusta invece di aprire solo l'inbox.
   return (
-    <Link href="/dashboard/richieste" style={{ textDecoration: "none" }}>
+    <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} style={{ textDecoration: "none" }}>
       <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
         <YStack flex={1} minWidth={200} gap="$1">
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
