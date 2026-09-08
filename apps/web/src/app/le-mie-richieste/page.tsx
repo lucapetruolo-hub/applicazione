@@ -13,7 +13,7 @@ import {
   quotePriceTotals,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
-import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -1809,6 +1809,13 @@ function BookingRow({
               : BOOKING_STATUS_LABEL[booking.status]}
           </Text>
           {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          {/* Menu hamburger — richiesta esplicita dell'utente: "Annulla
+              prenotazione" (prima un bottone visibile esternamente sulla
+              card) si trova ora qui dentro, invece di occupare spazio in
+              vista sulla riga della richiesta. */}
+          {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
+            <BookingActionsMenu onCancel={() => setShowCancelModal(true)} />
+          ) : null}
         </XStack>
       </YStack>
       <Text color={brand.grafite70} fontSize="$3">
@@ -1956,16 +1963,9 @@ function BookingRow({
           popup dove chiede se si è sicuri" — prima un testo con doppia
           conferma inline, "poco visibile" rispetto allo stesso pop-up già
           in uso lato professionista, CancelBookingModal — ora identico,
-          solo senza il campo nota). */}
-      {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
-            <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
-              Annulla prenotazione
-            </Text>
-          </Button>
-        </XStack>
-      ) : null}
+          solo senza il campo nota). Il bottone che lo apre è nel menu
+          hamburger dell'intestazione, non più visibile qui esternamente
+          sulla card (richiesta esplicita dell'utente). */}
       {/* Riapertura di una prenotazione annullata (richiesta esplicita
           dell'utente: "una volta annullata dai la possibilità di
           riaprirla") — nessun popup di conferma qui: riaprire non è
@@ -2131,5 +2131,83 @@ function BookingRow({
         />
       ) : null}
     </Surface>
+  );
+}
+
+// Menu hamburger sull'intestazione di "Lavori accettati" (richiesta
+// esplicita dell'utente): stesso pattern click-to-open/chiusura al click
+// esterno già in uso in `ReportsSectionMenu` (/admin), non un componente
+// condiviso in packages/ui — un solo punto di consumo qui. Oggi porta
+// solo "Annulla prenotazione" (prima un bottone visibile esternamente
+// sulla card, richiesta esplicita di spostarlo qui), ma è già una
+// struttura a menu, non un singolo bottone travestito.
+function BookingActionsMenu({ onCancel }: { onCancel: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <YStack ref={containerRef} position="relative">
+      <YStack
+        width={32}
+        height={32}
+        borderRadius={999}
+        alignItems="center"
+        justifyContent="center"
+        cursor="pointer"
+        hoverStyle={{ backgroundColor: brand.gesso }}
+        onPress={() => setIsOpen((open) => !open)}
+        accessibilityRole="button"
+        accessibilityLabel="Azioni sulla prenotazione"
+      >
+        <Icon name="menu" size={18} color={brand.grafite} />
+      </YStack>
+
+      {isOpen ? (
+        <YStack
+          position="absolute"
+          top="100%"
+          right={0}
+          marginTop="$2"
+          minWidth={200}
+          backgroundColor={brand.calce}
+          borderRadius={radiusDoc}
+          overflow="hidden"
+          zIndex={1000}
+          shadowColor="rgba(43,32,19,0.12)"
+          shadowRadius={12}
+          shadowOffset={{ width: 0, height: 4 }}
+          shadowOpacity={1}
+        >
+          <XStack
+            paddingHorizontal="$4"
+            paddingVertical="$3"
+            alignItems="center"
+            gap="$2"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: brand.gesso }}
+            onPress={() => {
+              onCancel();
+              setIsOpen(false);
+            }}
+            accessibilityRole="button"
+          >
+            <Icon name="x" size={16} color={brand.urgenza} />
+            <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
+              Annulla prenotazione
+            </Text>
+          </XStack>
+        </YStack>
+      ) : null}
+    </YStack>
   );
 }

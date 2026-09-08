@@ -8743,3 +8743,33 @@ prenotazione visibile in quel giorno. Nessuna regressione: aprendo
 componente distinto e pre-esistente). Zero errori console. Typecheck
 pulito su `apps/web`, build di produzione verde (31 route, nessuna
 nuova).
+
+## 65. "Annulla prenotazione" spostato in un menu hamburger, lato cliente
+
+Richiesta esplicita dell'utente: *"lato cliente, in lavori accettati, in
+le mie richieste, crea un menu hamburger e all'interno inserisci 'annulla
+prenotazione' che ora si trova esternamente sulla richiesta ed
+eliminalo"*. Il bottone "Annulla prenotazione" in `BookingRow`
+(`/le-mie-richieste`, tab "Lavori accettati", stati `PENDING`/
+`CONFIRMED`) era una riga a sé nel corpo della card — ora sostituito da
+un'icona menu (`menu`) nell'intestazione, accanto alla pillola di stato.
+
+`BookingActionsMenu` (nuovo componente locale al file, stesso pattern
+click-to-open/chiusura al click esterno già in uso in `ReportsSectionMenu`
+(`/admin`, CLAUDE.md §54) — nessun componente condiviso in `packages/ui`,
+un solo punto di consumo qui): oggi porta una sola voce ("Annulla
+prenotazione", icona `x` rossa), ma è già una struttura a menu — un
+click apre `CancelBookingModal` esattamente come prima (stesso `onCancel`,
+nessuna logica toccata), solo il punto di accesso è cambiato. Menu
+mostrato solo quando l'azione è disponibile (`booking.status ===
+"PENDING" || "CONFIRMED"`), stesso gate già in uso per il vecchio bottone.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright: richiesta diretta a un professionista di test → preventivo
+→ accettazione (`Booking` `CONFIRMED`) → nessun bottone "Annulla
+prenotazione" visibile nella card prima di aprire il menu; click
+sull'icona hamburger → voce "Annulla prenotazione" rivelata; click sulla
+voce → `CancelBookingModal` aperto con il testo corretto ("Il
+professionista verrà avvisato dell'annullamento."). Zero errori console.
+Typecheck pulito su `apps/web`, build di produzione verde (31 route,
+nessuna nuova).
