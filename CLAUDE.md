@@ -8001,3 +8001,64 @@ dalla nuova pagina → messaggio salvato in DB (verificato via query
 diretta) → messaggio di successo mostrato; zero overflow orizzontale
 mobile (390px), zero errori console. Typecheck pulito su tutti i package,
 build di produzione `apps/web` verde (31 route, `/contatti` nuova).
+
+---
+
+## 51. Bug reale: popup "Recensisci il cliente"/"Lascia una recensione" si chiudeva subito dopo l'apertura
+
+Segnalato dall'utente: *"quando si clicca su lavoro terminato c'è un bug
+dove esce ma si chiude subito il popup per mettere le recensioni,
+correggi"*. Presente in tutti e tre i punti del prodotto dove "Lavoro
+terminato" apre subito dopo un popup di recensione (doppio cieco,
+CLAUDE.md §40): `AcceptedJobCard` (`/dashboard`), `RequestCard`
+(`/dashboard/richieste`, §41) e `BookingRow`/`ClientCompleteModal`
+(`/le-mie-richieste`, lato cliente).
+
+**Causa reale**: in tutti e tre i file, l'handler che segnala il lavoro
+terminato (`handleComplete`/`handleClientConfirmComplete`) apriva il
+popup di recensione (`setShowClientReviewModal(true)`/
+`setShowReviewModal(true)`) e **subito dopo**, nella stessa funzione,
+chiamava già il callback di ricarica della lista fornito dal genitore
+(`onUpdated()`/`onChanged()`/`onReviewed()`). Quel callback rilegge e
+rifiltra la lista in base al nuovo stato della prenotazione — che il
+completamento ha appena cambiato (`CONFIRMED`→`COMPLETED`) — e nel tab di
+default "In agenda" (`/dashboard`, §42: `bookingMatchesStatus` filtra su
+`status === "CONFIRMED"`) la card appena completata **sparisce
+immediatamente** dalla lista filtrata: il componente che ospita il popup
+(`AcceptedJobCard`) viene smontato da React insieme al proprio stato
+locale, incluso il popup appena aperto — che quindi si chiude un istante
+dopo essere comparso, prima che l'utente possa interagirci. Stesso
+principio, innescato più raramente (solo se l'utente aveva già scelto un
+filtro di stato specifico) nelle altre due pagine — `/dashboard/richieste`
+di default mostra "Tutte" le fasi (bug non innescato lì a meno di un
+filtro attivo), `/le-mie-richieste` di default mostra "Tutti" gli stati
+(stesso discorso).
+
+**Fix**: stesso principio minimale applicato identicamente ai tre file —
+il ricaricamento della lista viene rimandato dal momento "apro il popup"
+al momento "il popup si chiude" (sia per invio riuscito, che già lo
+chiamava, sia per chiusura esplicita senza recensire, che prima non lo
+chiamava affatto): nuova funzione `closeClientReviewModal`/
+`closeReviewModal` passata alla prop `onClose` del popup, che chiude lo
+stato locale **e poi** chiama il reload — mai più mentre il popup deve
+restare aperto. La lista resta quindi stabile (e il componente che ospita
+il popup resta montato) per tutta la durata in cui il popup è visibile,
+mantenendo comunque la garanzia di aggiornamento della lista alla chiusura
+(o tramite il poll periodico ~15s già esistente se si cambia tab senza
+chiudere il popup).
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e uno script Playwright dedicato: richiesta diretta a un professionista di
+test → preventivo → accettazione → conferma (`CONFIRMED`) → click su
+"Lavoro terminato" nel tab di default "In agenda" di `/dashboard`
+(il caso di innesco più affidabile, essendo il filtro attivo di default) →
+popup "Recensisci il cliente" verificato **ancora presente e interagibile**
+sia subito dopo il submit sia dopo un'attesa aggiuntiva di 3 secondi (prima
+del fix sarebbe sparito nello stesso istante del submit); chiusura del
+popup senza recensire → riapertura successiva tramite il nuovo bottone
+"Recensisci il cliente" (già esistente, CLAUDE.md §40) → invio riuscito,
+popup chiuso correttamente e lista aggiornata. Zero errori console reali
+(l'unico osservato, `ERR_TUNNEL_CONNECTION_FAILED`, è la stessa
+limitazione di rete dell'ambiente di sviluppo già documentata altrove in
+questo file). Typecheck pulito su tutti i package (`shared`, `api-client`,
+`web`), build di produzione `apps/web` verde.

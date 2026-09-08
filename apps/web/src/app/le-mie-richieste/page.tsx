@@ -1742,15 +1742,30 @@ function BookingRow({
     // il cliente può ora confermare "a prescindere" dal professionista,
     // quindi qui lo stato potrebbe essere ancora CONFIRMED: aprire il
     // popup di recensione in quel caso fallirebbe subito con un 403.
+    // Bug reale corretto: `onReviewed()` non va chiamato subito quando si
+    // apre il popup di recensione — se il filtro stato attivo esclude
+    // "Completata", ricaricare subito la lista filtra via questa card (e
+    // il popup appena aperto insieme a lei) un istante dopo. In quel caso
+    // il reload è rimandato alla chiusura del popup di recensione (sotto).
     if (booking.status === "COMPLETED" && !booking.hasReview) {
       setShowReviewModal(true);
+    } else {
+      onReviewed();
     }
-    onReviewed();
   }
 
   async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
     await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
     setShowReviewModal(false);
+    onReviewed();
+  }
+
+  function closeReviewModal() {
+    setShowReviewModal(false);
+    // Il lavoro è comunque già stato confermato terminato — la lista va
+    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
+    // resterebbe con lo stato precedente finché non arriva il prossimo poll
+    // periodico.
     onReviewed();
   }
 
@@ -2101,7 +2116,7 @@ function BookingRow({
           subtitle="Com'è andato il lavoro? La tua recensione sarà pubblica non appena anche il professionista avrà lasciato la sua."
           uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
           onSubmit={handleSubmitReview}
-          onClose={() => setShowReviewModal(false)}
+          onClose={closeReviewModal}
         />
       ) : null}
 

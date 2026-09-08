@@ -876,14 +876,27 @@ function RequestCard({
     setShowCompleteModal(false);
     // Subito dopo aver segnalato il lavoro terminato si apre il popup per
     // recensire il cliente (stesso comportamento già in uso in /dashboard).
+    // Bug reale corretto: `onChanged()` non va chiamato qui — se il tab
+    // attivo è "Accettate", ricaricare subito filtra via questa card (lo
+    // stadio passa a "completata") chiudendo il popup di recensione un
+    // istante dopo averlo aperto. Il reload va rimandato alla chiusura del
+    // popup (submit o annulla, sotto).
     setShowClientReviewModal(true);
-    onChanged();
   }
 
   async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
     if (!booking) return;
     await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
     setShowClientReviewModal(false);
+    onChanged();
+  }
+
+  function closeClientReviewModal() {
+    setShowClientReviewModal(false);
+    // Il lavoro è comunque già stato segnalato come terminato — la lista va
+    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
+    // resterebbe visibile come "Accettata" finché non arriva il prossimo
+    // poll periodico.
     onChanged();
   }
 
@@ -1412,7 +1425,7 @@ function RequestCard({
                 subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
                 uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
                 onSubmit={handleSubmitClientReview}
-                onClose={() => setShowClientReviewModal(false)}
+                onClose={closeClientReviewModal}
               />
             ) : null}
             {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}

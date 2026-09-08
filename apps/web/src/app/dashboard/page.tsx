@@ -793,16 +793,29 @@ function AcceptedJobCard({
     await apiClient.completeBooking(token, booking.id, input);
     setShowCompleteModal(false);
     // Subito dopo aver segnalato il lavoro terminato si apre il popup per
-    // recensire il cliente (richiesta esplicita dell'utente) — prima di
-    // ricaricare, altrimenti il modal si perderebbe nel re-render della
-    // lista.
+    // recensire il cliente (richiesta esplicita dell'utente). Bug reale
+    // corretto: `onUpdated()` non va chiamato qui — ricarica subito la
+    // lista, che nel tab di default "In agenda" filtra solo le
+    // prenotazioni CONFIRMED (§42): la card (con dentro il popup appena
+    // aperto) sparirebbe immediatamente dalla lista filtrata, chiudendo il
+    // popup di recensione un istante dopo averlo aperto. Il reload va
+    // rimandato alla chiusura del popup (submit o annulla, sotto).
     setShowClientReviewModal(true);
-    onUpdated();
   }
 
   async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
     await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
     setShowClientReviewModal(false);
+    onUpdated();
+  }
+
+  function closeClientReviewModal() {
+    setShowClientReviewModal(false);
+    // Il lavoro è comunque già stato segnalato come terminato (l'azione
+    // reale, `handleComplete`, è già andata a buon fine) — la lista va
+    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
+    // resterebbe visibile come "Confermato" finché non arriva il prossimo
+    // poll periodico.
     onUpdated();
   }
 
@@ -1220,7 +1233,7 @@ function AcceptedJobCard({
           subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
           uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
           onSubmit={handleSubmitClientReview}
-          onClose={() => setShowClientReviewModal(false)}
+          onClose={closeClientReviewModal}
         />
       ) : null}
       {showCancelModal ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancel} /> : null}
