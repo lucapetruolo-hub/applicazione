@@ -8062,3 +8062,65 @@ popup chiuso correttamente e lista aggiornata. Zero errori console reali
 limitazione di rete dell'ambiente di sviluppo già documentata altrove in
 questo file). Typecheck pulito su tutti i package (`shared`, `api-client`,
 `web`), build di produzione `apps/web` verde.
+
+---
+
+## 52. `/contatti` — proporzioni più vicine al riferimento MioDottore, spazio vuoto sopra il titolo corretto
+
+Richiesta esplicita dell'utente, con screenshot di riferimento
+(MioDottore): *""contatti" deve essere sistemato meglio, seguendo come
+esempio la foto in allegato, con le stesse proporzioni dei caratteri e
+anche della grandezza delle finestre"*, seguita subito da una seconda
+segnalazione con lo stesso testo più un dettaglio aggiuntivo: *"vedo che
+c'è una specie di spazio vuoto fra il titolo Contatti e la parte
+superiore della pagina, correggi"*.
+
+**Causa dello spazio vuoto**: `ContattiContent.tsx` usava `Section`
+(`packages/ui`), lo stesso wrapper condiviso da quasi tutte le altre
+pagine del sito — 64px di padding verticale (96px da `$gtSm` in su).
+Quel padding è pensato per pagine con più sezioni in sequenza (dove il
+ritmo verticale uniforme è il punto), ma su `/contatti` — un solo blocco
+corto — si leggeva come uno spazio vuoto ingiustificato tra header e
+titolo, esattamente come segnalato. Non toccato `Section` stesso (usato
+ovunque nel sito, comportamento corretto lì): la pagina è stata riscritta
+con un wrapper su misura, `paddingTop` molto più contenuto (40px, 56px da
+`$gtSm`) invece dei 64/96px originali.
+
+**Proporzioni avvicinate al riferimento** (senza poter fare un confronto
+pixel-per-pixel — lo screenshot allegato dall'utente non è recuperabile
+in questa sessione, il contenuto delle immagini non sopravvive alla
+compattazione della conversazione): titolo "Contatti" ingrandito a
+34px/44px (era una `H2` generica di `Section`), campi del form
+("finestre", nel linguaggio dell'utente) ingranditi — padding 16×18px
+(era 12×14px), font 16px (era 15px), radius 14px — bottone "Invia"
+ingrandito (17×32px di padding, font 17px, era 14×20px/15px). Pannello
+"Dati dell'azienda" riscritto da tre righe di testo grigio isolate a righe
+con icona colorata (`file-text`/`map-pin`, stesso registro icone
+condiviso) + etichetta + valore, per bilanciare visivamente il pannello
+rispetto al form (che ha molto più contenuto) invece di lasciarlo
+sproporzionatamente vuoto — nessun dato reale aggiunto ai segnaposto
+`[DA COMPILARE: ...]` già esistenti, solo la resa.
+
+**Bug reale trovato e corretto durante la verifica visiva** (non solo
+lettura di codice): il primo tentativo di layout a due colonne (`XStack
+flexWrap="wrap"` con `flex={2}`/`flex={1}` sui due pannelli) si impilava
+verticalmente anche a 1280px di larghezza, dove ci sarebbe stato spazio
+a sufficienza per stare affiancati — stesso identico bug già documentato
+più volte in questo file (CSS/Tamagui: un elemento flex senza
+`flexBasis={0}` esplicito si dimensiona sulla larghezza "a contenuto
+pieno" invece di rispettare la propria frazione flex, facendo scattare il
+wrap del genitore prima del necessario). Corretto aggiungendo
+`flexBasis={0}` a entrambi i pannelli. Corretto anche uno scarto di
+coerenza con il resto del sito: i campi input avevano inizialmente
+uno sfondo `brand.gesso` (lo stesso colore dello sfondo pagina, effetto
+"buco" nella card bianca) invece di `brand.calce` (bianco) già usato da
+`Field.tsx` per ogni altro form del prodotto — corretto per restare
+coerente.
+
+Verificato con l'API locale/build di produzione reale (non solo lettura
+di codice) e Playwright: zero overflow orizzontale su desktop (1280px) e
+mobile (390px), zero errori console; titolo "Contatti" a `y=120`
+(desktop)/`y=104` (mobile) subito sotto l'header, contro il gap
+precedente ben più ampio; due pannelli correttamente affiancati a 1280px
+dopo il fix `flexBasis`, impilati correttamente sotto la soglia mobile.
+Typecheck pulito su `apps/web`, build di produzione verde (30 route).
