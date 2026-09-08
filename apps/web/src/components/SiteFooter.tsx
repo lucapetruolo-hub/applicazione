@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { ContactFormFooter } from "@/components/ContactFormFooter";
+
+const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
@@ -40,11 +42,20 @@ export function SiteFooter() {
             </Text>
           </YStack>
 
-          {/* Colonna "Servizi" (elenco categorie) sostituita con "Contatti"
-              (richiesta esplicita dell'utente, ispirata a un riferimento
-              screenshot) — per ora un form reale funzionante, non un
-              elenco di link. */}
-          <ContactFormFooter />
+          <YStack gap="$2" minWidth={160}>
+            <FooterColumnTitle>Servizi</FooterColumnTitle>
+            {MAIN_CATEGORIES.map((category) => (
+              <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
+                {category.label}
+              </FooterLink>
+            ))}
+            {/* "Contatti" dentro la colonna "Servizi" (richiesta esplicita
+                dell'utente, corretta rispetto a un giro precedente che
+                aveva sostituito l'intera colonna con un form inline) —
+                apre una pagina dedicata in stile MioDottore (screenshot
+                fornito), non più un form compatto nel footer stesso. */}
+            <FooterLink href="/contatti">Contatti</FooterLink>
+          </YStack>
 
           <YStack gap="$2" minWidth={160}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>

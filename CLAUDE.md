@@ -7970,3 +7970,34 @@ residua di "Servizi" nel DOM è il menu di navigazione dell'header,
 flussi. Typecheck pulito su tutti i package (`shared`, `database`,
 `api-client`, `api`, `ui`, `web`), build di produzione `apps/web` verde
 (30 route, `/faq` nuova).
+
+**Correzione, stessa sessione — "Contatti" torna un link dentro "Servizi",
+non più un form inline**: richiesta esplicita dell'utente, arrivata dopo
+aver visto il risultato sopra: la colonna "Servizi" (elenco categorie) deve
+restare **invariata** (non sostituita), con "Contatti" aggiunto come voce
+cliccabile al suo interno — non più un form compresso nel footer, ma un
+link verso una **pagina dedicata** in stile MioDottore (l'opzione "Pagina
+/contatti dedicata", scartata nella scelta iniziale via `AskUserQuestion` a
+favore del form inline, poi ripresa qui). `SiteFooter.tsx`: `ContactFormFooter`
+rimosso dal footer e il file eliminato (nessun altro chiamante); la colonna
+"Servizi" torna a mostrare `MAIN_CATEGORIES` (comportamento pre-§50) più un
+nuovo `FooterLink` "Contatti" → `/contatti` in fondo alla lista.
+- **`/contatti`** (nuova pagina, `apps/web/src/app/contatti/`, stesso
+  pattern page.tsx server + `ContattiContent.tsx` client separato di
+  `/faq`): due riquadri affiancati (`Surface`, impilati su mobile) — "Invia
+  un messaggio" (stessi tre campi ruolo/email/messaggio, stesso backend
+  `POST /contact` già costruito sopra, nessuna modifica lato API) e "Dati
+  dell'azienda" (segnaposto `[DA COMPILARE: ...]`, stessa convenzione già
+  in uso in `/privacy` per i dati societari non ancora disponibili) —
+  ispirati alla struttura a due pannelli dello screenshot fornito
+  dall'utente, senza replicare i link specifici di dominio sanitario del
+  riferimento (es. "Area professionisti sanitari", non pertinenti qui).
+  Aggiunta a `sitemap.ts`.
+Verificato end-to-end con Postgres locale (non solo typecheck/build) e
+Playwright contro il build di produzione reale: colonna "Servizi" con le
+categorie di nuovo presente nel footer (confermato "Idraulico" nel testo),
+link "Contatti" al suo interno naviga a `/contatti`; submit reale del form
+dalla nuova pagina → messaggio salvato in DB (verificato via query
+diretta) → messaggio di successo mostrato; zero overflow orizzontale
+mobile (390px), zero errori console. Typecheck pulito su tutti i package,
+build di produzione `apps/web` verde (31 route, `/contatti` nuova).
