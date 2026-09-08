@@ -18,7 +18,6 @@ import { QualitySection } from "@/components/QualitySection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
-import { WhatIfSection } from "@/components/WhatIfSection";
 import { WhyWeExist } from "@/components/WhyWeExist";
 
 export default function HomeContent({
@@ -83,9 +82,10 @@ export default function HomeContent({
         <PlatformGuarantee />
       </FadeInSection>
 
-      <FadeInSection>
-        <WhatIfSection />
-      </FadeInSection>
+      {/* "Cosa succede se..." non è più mostrato direttamente in home
+          (richiesta esplicita dell'utente): spostato in una pagina FAQ
+          dedicata (/faq, WhatIfSection montata lì), raggiungibile dal
+          link "Domande frequenti" nel footer, colonna "Per i clienti". */}
 
       <FadeInSection>
         <PriceEstimatorTool />

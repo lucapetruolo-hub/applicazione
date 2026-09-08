@@ -57,6 +57,7 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/accedi">Accedi</FooterLink>
+            <FooterLink href="/faq">Domande frequenti</FooterLink>
           </YStack>
 
           <YStack gap="$2" minWidth={160}>
