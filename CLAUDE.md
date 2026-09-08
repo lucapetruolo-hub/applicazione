@@ -8285,3 +8285,47 @@ funzionante, dropdown con la sola voce attesa; click la rivela subito
 sotto le righe aperte, nello stesso riquadro sezione, zero errori console.
 Typecheck pulito su `packages/ui`/`apps/web`, build di produzione verde
 (30 route).
+
+---
+
+## 55. Esempio "Descrivi il lavoro" specifico per categoria
+
+Richiesta esplicita dell'utente: *"quando si richiede un preventivo, in
+base alla categoria che si seleziona, nella sezione descrivi il lavoro,
+l'esempio deve essere inerente alla categoria selezionata ed essere molto
+piu dettagliata sempre inerente alla categoria"*. Prima di questo giro
+`GuidedRequestForm` (`/preventivo`, `/urgente`) mostrava un solo esempio
+fisso nel placeholder della textarea "Descrivi il lavoro" — a tema
+idraulico, indipendentemente dalla categoria realmente scelta e dalla
+modalità normale/urgente (`descriptionPlaceholder`, prop statica passata
+da `PreventivoContent.tsx`/`UrgenteContent.tsx`).
+
+- **`packages/shared/src/categories.ts`**: due nuove costanti,
+  `CATEGORY_DESCRIPTION_EXAMPLES`/`CATEGORY_URGENT_DESCRIPTION_EXAMPLES`
+  (`Record<ProfessionalCategorySlug, string>`, stesso pattern già in uso
+  per `POPULAR_SERVICES` nello stesso file) — un esempio dettagliato (2-3
+  frasi, un contesto realistico) per ciascuna delle 13 categorie, in due
+  varianti: una per una richiesta programmabile (`/preventivo`) e una per
+  un'emergenza reale (`/urgente`, coerente con l'urgenza di quella
+  categoria — es. "chiuso fuori casa" per il fabbro, "blackout con odore
+  di bruciato" per l'elettricista — invece di un generico "serve
+  urgentemente").
+- **`GuidedRequestForm.tsx`**: nuovo `resolvedDescriptionPlaceholder`,
+  derivato da `categorySlug` (già tracciato dal form) e `isUrgent` (prop
+  già esistente) — quando una categoria è selezionata, sceglie l'esempio
+  giusto da una delle due mappe; **prima** che una categoria sia scelta,
+  ricade sul `descriptionPlaceholder` generico già passato dal chiamante
+  (mai un esempio inventato per una categoria non ancora nota — stesso
+  principio di onestà già seguito altrove in questo file). I due
+  chiamanti (`PreventivoContent.tsx`/`UrgenteContent.tsx`) restano
+  invariati, la loro prop resta il solo fallback pre-selezione.
+- Verificato con l'API locale reale (non solo typecheck/build) e
+  Playwright: nessuna categoria → placeholder generico invariato;
+  selezionando Idraulico/Fabbro/Badanti su `/preventivo` → placeholder
+  cambia al testo dettagliato specifico di ciascuna categoria (non solo
+  più lungo, anche diverso nel contenuto); stesso controllo su `/urgente`
+  con Idraulico/Fabbro → placeholder d'emergenza specifico della
+  categoria, distinto dalla variante `/preventivo`. Zero errori console.
+  Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`,
+  `api`, `web`, `mobile`), build di produzione `apps/web` verde
+  (31 route).

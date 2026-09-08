@@ -6,6 +6,8 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import {
   ALL_ITALIAN_CITY_NAMES,
+  CATEGORY_DESCRIPTION_EXAMPLES,
+  CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
   PROFESSIONAL_CATEGORIES,
   isProfessionalCategorySlug,
   type ProfessionalAgenda,
@@ -216,6 +218,13 @@ export function GuidedRequestForm({
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
+  // Esempio del campo "Descrivi il lavoro" specifico per la categoria scelta
+  // (richiesta esplicita dell'utente) — prima di scegliere una categoria
+  // resta il placeholder generico passato dal chiamante, mai un esempio
+  // inventato per una categoria non ancora nota.
+  const resolvedDescriptionPlaceholder = categorySlug
+    ? (isUrgent ? CATEGORY_URGENT_DESCRIPTION_EXAMPLES : CATEGORY_DESCRIPTION_EXAMPLES)[categorySlug]
+    : descriptionPlaceholder;
   // Prefill completo quando si arriva da "Ripeti la richiesta" (pagina
   // Le mie richieste): un lavoro simile al precedente si riparte da qui
   // con descrizione/indirizzo già compilati — restano solo le foto
@@ -693,7 +702,7 @@ export function GuidedRequestForm({
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={descriptionPlaceholder}
+            placeholder={resolvedDescriptionPlaceholder}
             rows={5}
             style={{
               padding: 12,
