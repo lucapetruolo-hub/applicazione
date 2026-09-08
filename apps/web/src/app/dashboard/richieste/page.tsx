@@ -109,32 +109,40 @@ function formatLeadDeadline(expiresAt: string | null): { label: string; urgent: 
   return { label: `Rispondi entro ${diffHours} or${diffHours === 1 ? "a" : "e"}`, urgent };
 }
 
-// Palette per gli stati — richiesta esplicita dell'utente dopo aver visto la
-// pagina reale, con riferimento visivo puntuale (arancione/da quotare,
-// blu/in attesa, verde/accettata, rosso/scadute): eccezione deliberata alla
-// palette chiusa "Vicinato" (CLAUDE.md §19) solo per questi 6 indicatori di
-// stato — stessa logica già usata altrove nel progetto per un'eccezione
-// puntuale e circoscritta (es. CLAUDE.md §31, emoji nell'eyebrow home). Hex
-// letterali locali a questa pagina, non toccano `packages/ui/tokens.ts` né
-// le 4 varianti fisse di `Badge` (quelle restano semantiche "verificato/
-// pro/urgente/nuovo" per il resto del sito).
+// Palette per gli stati — richiesta esplicita dell'utente, poi rivista una
+// seconda volta con una mappatura più puntuale (turchese/completata,
+// blu/da quotare, giallo/in attesa, giallo più scuro/modifiche, verde/
+// accettate, rosso/scadute, rosso firebrick/annullate): eccezione
+// deliberata alla palette chiusa "Vicinato" (CLAUDE.md §19) solo per questi
+// indicatori di stato — stessa logica già usata altrove nel progetto per
+// un'eccezione puntuale e circoscritta (es. CLAUDE.md §31, emoji
+// nell'eyebrow home). Hex letterali locali a questa pagina, non toccano
+// `packages/ui/tokens.ts` né le 4 varianti fisse di `Badge` (quelle restano
+// semantiche "verificato/pro/urgente/nuovo" per il resto del sito).
+// `annullata` e `scaduta` condividono lo stesso significato "non riuscita"
+// ma sono ora distinte anche nel colore (non solo nell'icona): rosso
+// standard per una scadenza, rosso firebrick — più cupo, distinguibile a
+// colpo d'occhio — per un annullamento vero e proprio, richiesto
+// esplicitamente due volte dall'utente nello stesso messaggio. `chiusa`
+// (rifiuto/ritiro, raggruppata sotto "Scadute") non era tra gli stati
+// nominati esplicitamente: resta grigio neutro, invariata.
 const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professionisti/ui").IconName; fg: string; bg: string; border: string }> = {
-  da_quotare: { label: "Da quotare", icon: "zap", fg: "#B8860B", bg: "#FFF3D6", border: "#FF6B35" },
+  da_quotare: { label: "Da quotare", icon: "zap", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
   // "In attesa" da solo era ambiguo sulla singola card (segnalato in
   // revisione UX: "il pro ha già inviato il preventivo, in attesa di
   // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab
   // resta "In attesa" (spazio ridotto nella riga a scorrimento, stesso
   // significato).
-  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
-  modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#8a5a00", bg: "#FFF4E0", border: brand.ottone },
+  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#8A6D00", bg: "#FFF3CD", border: "#FFC107" },
+  modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#7A4F01", bg: "#FFE8A3", border: "#B8860B" },
   accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
-  completata: { label: "Completata", icon: "check", fg: brand.grafite70, bg: brand.gesso, border: brand.grafite70 },
+  completata: { label: "Completata", icon: "check", fg: "#0E7C7B", bg: "#DFF7F5", border: "#20B2AA" },
   // Richiesta esplicita dell'utente: "rendi chiare quelle che sono state
   // annullate" — prima indistinguibile da "accettata" (nessuno stadio
   // dedicato). Icona "x" (già usata per "chiusa", stesso significato
   // "non riuscita") a distinguerla visivamente da "scaduta" pur
-  // condividendo lo stesso rosso semantico.
-  annullata: { label: "Annullata", icon: "x", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
+  // condividendo lo stesso significato semantico "rosso".
+  annullata: { label: "Annullata", icon: "x", fg: "#B22222", bg: "#F8D7DA", border: "#B22222" },
   scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
@@ -962,8 +970,11 @@ function RequestCard({
                 normali: il badge rosso è la variante semantica prevista
                 dal design system proprio per questo flusso. */}
             {gr.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
-            <ServiceBadge online={isOnline} />
+            {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
+                della richiesta (StagePill) precede il badge di modalità
+                (ServiceBadge, "A domicilio"/"Consulenza online"). */}
             <StagePill stage={stage} />
+            <ServiceBadge online={isOnline} />
             {stage === "da_quotare" && leadDeadline ? <DeadlinePill deadline={leadDeadline} /> : null}
           </XStack>
           <YStack alignItems="flex-end">

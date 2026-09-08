@@ -8563,3 +8563,67 @@ sezione espansa "Dettagli cliente" della card corrispondente — non più
 l'inbox generica in cima. `<select>` ordinamento verificato con le tre
 opzioni senza alcun prefisso "Ordina:". Typecheck pulito su `apps/web`,
 build di produzione verde (31 route, nessuna nuova).
+
+## 61. `/dashboard/richieste` — ordine badge invertito + palette stati rivista, testo "dati nascosti" semplificato in `/preventivo`
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Ordine badge invertito + colori di stato rivisti** — richiesta esplicita
+dell'utente: *"nelle schede delle richieste ricevute, inverti la scritta:
+'a domicilio/online' con lo stato della richiesta (scaduta, completata da
+quotare, ecc..), e cambia il colore del riempimento del riquadro e quindi:
+in turchese se è completata, blu se è da quotare, giallo in attesa e
+giallo più scuro modifiche, verde accettate, rosso annullate, rosso
+scadute, rosso firebrick se annullate"* — continuazione della stessa
+eccezione già documentata in questo file (§41, "Rifinitura": `STAGE_STYLE`
+in `apps/web/src/app/dashboard/richieste/page.tsx` è un'eccezione
+deliberata e circoscritta alla regola "solo token `brand.*`", concessa
+perché l'utente ha chiesto colori arbitrari per nome).
+- **Ordine invertito**: nell'intestazione di `RequestCard`, `<StagePill
+  stage={stage} />` ora precede `<ServiceBadge online={isOnline} />`
+  (prima l'ordine era opposto).
+- **Colori aggiornati in `STAGE_STYLE`**: `da_quotare` da arancione a blu
+  (`#0D6EFD`), `in_attesa` da blu a giallo (`#FFC107`/`#FFF3CD`),
+  `modifica_richiesta` a un giallo più scuro/ambra (`#B8860B`/`#FFE8A3`),
+  `completata` da grigio a turchese (`#20B2AA`/`#DFF7F5`), `accettata`
+  invariata (già verde). **`annullata`/`scaduta`, l'unico punto ambiguo
+  del messaggio dell'utente** (menzionato due volte con due rossi
+  diversi — "rosso annullate" poi "rosso firebrick se annullate"):
+  risolto distinguendo i due stati già esistenti in `RequestStage`
+  (`annullata` = prenotazione `CANCELED` dopo l'accettazione, `scaduta` =
+  Lead scaduto, §41) non solo nell'icona (come già erano) ma anche nel
+  colore — `scaduta` resta il rosso standard già esistente (`#DC3545`),
+  `annullata` passa al rosso firebrick (`#B22222`/`#F8D7DA`), più cupo e
+  distinguibile a colpo d'occhio. `chiusa` (rifiuto/ritiro, raggruppata
+  sotto "Scadute") non era tra gli stati nominati esplicitamente: resta
+  grigio neutro, invariata.
+- Verificato con l'API locale reale (non solo lettura di codice) — 8
+  `GuidedRequest`/`Lead`/`Quote`/`Booking` seminati via SQL diretto per
+  coprire tutti gli 8 stadi di `RequestStage` sullo stesso profilo di
+  test, professionista autenticato via JWT — screenshot Playwright su
+  `/dashboard/richieste?tutte` conferma tutti e 7 i colori richiesti
+  esatti (bg misurato via `getComputedStyle`, corrispondenza pixel-per-
+  pixel con gli hex attesi) e l'ordine badge invertito su ogni card
+  (StagePill sempre a sinistra di ServiceBadge, stessa riga). Zero
+  errori console. Typecheck pulito su `apps/web`, build di produzione
+  verde (31 route, nessuna nuova).
+
+**Testo "dati nascosti al professionista" semplificato in una riga sola**
+— richiesta esplicita dell'utente: *"quando si effettua una richiesta di
+preventivo, dove c'è scritto: chi riceverà il professionista, e anche
+quello sotto cioè: Questi dati restano nascosti al professionista finché
+non accetterai un preventivo...; modificalo con solo: I dati di seguito
+rimarranno nascosti al professionista finché non accetterai un
+preventivo."* Nel blocco "Chi riceverà il professionista" di
+`GuidedRequestForm.tsx` (`/preventivo`, `/urgente`, visibile solo in
+modalità "A domicilio" — CLAUDE.md §25), il titolo (`FieldLabel`) e il
+sottotesto separato ("Questi dati restano nascosti al professionista...
+pre-compilati dal tuo account...") sono sostituiti da un'unica riga:
+"I dati di seguito rimarranno nascosti al professionista finché non
+accetterai un preventivo." — nessun riferimento al pre-compilamento
+dall'account, richiesto letteralmente "solo" quel testo. Verificato con
+l'API locale reale e Playwright (login cliente via JWT, non solo lettura
+di codice): vecchio titolo/sottotesto assenti dal DOM di `/preventivo`
+dopo aver selezionato "A domicilio", nuova riga unica presente col testo
+esatto. Zero errori console. Typecheck pulito su `apps/web`, build di
+produzione verde (31 route, nessuna nuova).

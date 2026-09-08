@@ -819,10 +819,8 @@ export function GuidedRequestForm({
         {serviceMode === "HOME" ? (
           <YStack gap="$3">
             <YStack gap="$1">
-              <FieldLabel>Chi riceverà il professionista</FieldLabel>
               <Text fontSize="$2" color={brand.grafite70}>
-                Questi dati restano nascosti al professionista finché non accetterai un preventivo — pre-compilati dal
-                tuo account (modificabili qui anche tu, in {'"Il mio account"'}).
+                I dati di seguito rimarranno nascosti al professionista finché non accetterai un preventivo.
               </Text>
             </YStack>
 
