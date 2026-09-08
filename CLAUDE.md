@@ -8646,3 +8646,42 @@ di codice): vecchio titolo/sottotesto assenti dal DOM di `/preventivo`
 dopo aver selezionato "A domicilio", nuova riga unica presente col testo
 esatto. Zero errori console. Typecheck pulito su `apps/web`, build di
 produzione verde (31 route, nessuna nuova).
+
+## 63. `/dashboard/richieste` — bottone "Rispondi" rinominato "Chat" + "Lavoro terminato" in turchese
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**"Rispondi" → "Chat"**: *"nelle richieste ricevute modifica il nome del
+pulsante "rispondi" con "Chat""*. `RequestCard`
+(`apps/web/src/app/dashboard/richieste/page.tsx`) apre lo stesso
+`TimelineModal` (§21/§46) da due punti diversi a seconda dello stadio
+della richiesta — un `Button variant="ghost"` (stadi `da_quotare`/
+`modifica_richiesta`) e un `Button variant="primary"` (stadio `in_attesa`)
+— entrambi con la stessa etichetta "Rispondi". Sostituita in entrambi i
+punti con "Chat", senza toccare nessun'altra prop/struttura né la stringa
+`formatLeadDeadline` ("Rispondi entro N minuti/ore", il testo della
+`DeadlinePill` sulla scadenza del Lead — un concetto testuale distinto, non
+un bottone, invariato).
+
+**"Lavoro terminato" in turchese**: *"in richieste ricevute colora il
+pulsante "lavoro terminato" in turchese"*. Il bottone (stadio `accettata`,
+`variant="secondary"`, `onPress={() => setShowCompleteModal(true)}`) aveva
+sfondo trasparente con bordo grafite (stile di default di `variant=
+"secondary"`, `packages/ui/src/Button.tsx`) — non toccata la variante
+condivisa (usata altrove nel sito con quel significato neutro), solo
+questo singolo bottone: override diretto delle prop
+`backgroundColor`/`borderColor`/`color` con lo stesso hex già in uso per lo
+stato "Completata" in `STAGE_STYLE` (`#20B2AA`, §61) — coerenza cromatica
+tra il bottone che porta a quello stato e lo stato stesso — più
+`hoverStyle`/`pressStyle` in una tonalità più scura dello stesso turchese.
+
+Verificato con l'API locale reale (non solo lettura di codice) e
+Playwright: richiesta diretta a un professionista di test in stadio
+`da_quotare` → bottone "Chat" presente, zero bottoni con testo "Rispondi"
+nel DOM, testo "Rispondi entro 4 ore" (`DeadlinePill`, invariato) ancora
+presente e distinto; seconda richiesta portata a preventivo inviato e
+accettato (stadio `accettata`, `Booking` `CONFIRMED`) → bottone "Lavoro
+terminato" trovato con `backgroundColor: rgb(32, 178, 170)` (= `#20B2AA`)
+e testo bianco, colore misurato via `getComputedStyle`. Zero errori
+console. Typecheck pulito su `apps/web`, build di produzione verde
+(31 route, nessuna nuova).

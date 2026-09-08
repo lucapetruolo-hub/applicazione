@@ -1270,7 +1270,7 @@ function RequestCard({
                 <Button variant="ghost" size="$3" onPress={openTimeline}>
                   <XStack alignItems="center" gap="$1">
                     <Text fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Rispondi
+                      Chat
                     </Text>
                     <UnreadDot count={effectiveUnreadCount} />
                   </XStack>
@@ -1362,7 +1362,7 @@ function RequestCard({
                 <Button variant="primary" size="$3" onPress={openTimeline}>
                   <XStack alignItems="center" gap="$1">
                     <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Rispondi
+                      Chat
                     </Text>
                     <UnreadDot count={effectiveUnreadCount} />
                   </XStack>
@@ -1384,7 +1384,20 @@ function RequestCard({
                     completamento se non già recensito. */}
                 {booking?.status === "CONFIRMED" ? (
                   <>
-                    <Button variant="secondary" size="$3" onPress={() => setShowCompleteModal(true)}>
+                    {/* Turchese su richiesta esplicita dell'utente — stesso hex
+                        già in uso per lo stato "Completata" in STAGE_STYLE
+                        sopra, coerenza cromatica tra il bottone che porta a
+                        quello stato e lo stato stesso. */}
+                    <Button
+                      variant="secondary"
+                      size="$3"
+                      backgroundColor="#20B2AA"
+                      borderColor="#20B2AA"
+                      color="white"
+                      hoverStyle={{ backgroundColor: "#1A8F89", borderColor: "#1A8F89" }}
+                      pressStyle={{ backgroundColor: "#178077", borderColor: "#178077" }}
+                      onPress={() => setShowCompleteModal(true)}
+                    >
                       Lavoro terminato
                     </Button>
                     <Button variant="ghost" size="$3" onPress={() => setShowCancelModal(true)}>
