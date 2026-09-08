@@ -8564,6 +8564,25 @@ l'inbox generica in cima. `<select>` ordinamento verificato con le tre
 opzioni senza alcun prefisso "Ordina:". Typecheck pulito su `apps/web`,
 build di produzione verde (31 route, nessuna nuova).
 
+## 62. `/dashboard/richieste` — orario di ricezione visibile, non solo la data
+
+Richiesta esplicita dell'utente: *"nella dashboard in richieste ricevute,
+rendi visibile anche la data e l'orario di ricezione di quella
+richiesta"*. L'intestazione di `RequestCard` mostrava già "Ricevuta
+{data}" (es. "Ricevuta 8 set 2026") ma tramite `formatDate`, che scarta
+l'orario — mentre nello stesso file esisteva già `formatDateTime`
+(data+ora, stesso formato già usato altrove nella pagina), mai applicato a
+questa riga. Sostituito `formatDate(lead.createdAt)` con
+`formatDateTime(lead.createdAt)`; `formatDate` era usato solo lì, rimossa
+la funzione ormai morta invece di lasciarla inutilizzata.
+
+Verificato con l'API locale reale (non solo lettura di codice) e
+Playwright: `Lead` seminato con `createdAt` noto (`2026-09-08 15:37:00`)
+→ intestazione della card mostra "Ricevuta 8 set · 15:37" (data e orario
+entrambi presenti, formato coerente col resto della pagina). Zero errori
+console. Typecheck pulito su `apps/web`, build di produzione verde
+(31 route, nessuna nuova).
+
 ## 61. `/dashboard/richieste` — ordine badge invertito + palette stati rivista, testo "dati nascosti" semplificato in `/preventivo`
 
 Due richieste esplicite dell'utente, stesso giro.

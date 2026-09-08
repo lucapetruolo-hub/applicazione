@@ -66,9 +66,6 @@ function slotLabel(slot: ProfessionalAvailableSlot): string {
   const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   return `${dateLabel} · ${slot.startTime}–${slot.endTime}`;
 }
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
-}
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
@@ -979,7 +976,7 @@ function RequestCard({
           </XStack>
           <YStack alignItems="flex-end">
             <Text fontSize={14} color={brand.grafite70}>
-              Ricevuta {formatDate(lead.createdAt)}
+              Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
             {priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
