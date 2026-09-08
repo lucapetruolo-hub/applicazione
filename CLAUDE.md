@@ -8462,3 +8462,48 @@ prenotazione in `/dashboard/agenda` (ricerca full-text per nome cliente,
 § precedente) apre il pop-up con "Consulenza online" visibile subito sotto
 l'orario. Typecheck pulito su tutti i package (`shared`, `api`, `web`),
 build di produzione `apps/web` verde (31 route).
+
+## 58. Puntini sovrapposti sulla mappa risultati — sfalsamento automatico
+
+Richiesta esplicita dell'utente: *"se ci sono più professionisti che sono
+visualizzati sulla mappa sullo stesso punto (di solito avviene quando
+inseriscono solo la città), sfalsali in modo da poterli cliccare con piu
+facilità sulla mappa"*. Più professionisti nella stessa città senza
+indirizzo preciso condividono letteralmente le stesse coordinate (il
+centroide del comune ricavato da `findComuneByName`, CLAUDE.md §2/§13):
+prima di questa correzione i loro puntini `Marker` (Leaflet) si
+sovrapponevano esattamente in `ResultsMap.tsx`, e solo l'ultimo
+renderizzato nel DOM restava effettivamente cliccabile.
+
+- **`offsetOverlappingPositions`** (nuova funzione pura,
+  `apps/web/src/components/ResultsMap.tsx`): raggruppa i professionisti
+  con coordinate per chiave `lat.toFixed(5),lon.toFixed(5)` (~1m di
+  precisione — cattura anche eventuali differenze di arrotondamento in
+  virgola mobile, non solo un'uguaglianza esatta bit-per-bit). Un gruppo
+  con un solo elemento non viene toccato; un gruppo con 2+ elementi viene
+  disposto in un piccolo cerchio (`CLUSTER_OFFSET_DEG = 0.0009`, ~90-100m
+  a queste latitudini — abbastanza per separare visivamente i puntini
+  senza spostarli fuori dal quartiere/comune reale) attorno al punto
+  condiviso, un angolo per elemento (`2π·i/N`). Nessuna modifica alle
+  coordinate salvate su `ProfessionalProfile` — solo la posizione del
+  `Marker` sulla mappa è sfalsata, il dato geografico reale (usato anche
+  dal raggio di ingaggio/fan-out, §13) resta invariato.
+- **`FitBounds`/inquadratura iniziale coerente**: `initialPoints` (usati
+  per centrare/zoomare la mappa all'apertura) sono derivati dalla stessa
+  mappa di posizioni sfalsate (`markerPositions.get(p.id)`), non dalle
+  coordinate originali — la mappa zooma su dove i puntini vengono
+  davvero disegnati, non su un punto (ormai) diverso da quello sovrapposto
+  originale.
+- Verificato end-to-end con l'API locale reale (non solo lettura di
+  codice) e due script Playwright dedicati: 3 professionisti di test
+  seminati con coordinate identiche esatte (`41.5000000, 12.5000000`) —
+  sulla pagina risultati (`/cerca/idraulico`), zero coppie di marker con
+  posizione a schermo identica su tutti i puntini visibili (inclusi due
+  gruppi di dati demo preesistenti nel DB locale con le stesse
+  coordinate, coinvolti per caso nella stessa verifica); i 3 marker del
+  gruppo di test risultano disposti a triangolo attorno al punto comune
+  (coerente con la formula angolare per N=3); click su ciascuno dei 3
+  marker singolarmente apre un banner con il nome dell'attività corretto
+  e distinto per ciascuno (nessun click che finisce "sotto" a un altro
+  marker). Typecheck pulito su `apps/web`, build di produzione verde
+  (31 route, nessuna nuova).

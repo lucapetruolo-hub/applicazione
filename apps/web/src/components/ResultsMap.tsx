@@ -24,6 +24,43 @@ const markerIcon = L.icon({
 
 const ROME_FALLBACK: [number, number] = [41.9028, 12.4964];
 
+// Sfalsamento puntini sovrapposti (richiesta esplicita dell'utente: "se ci
+// sono più professionisti sullo stesso punto — di solito quando inseriscono
+// solo la città — sfalsali in modo da poterli cliccare con più facilità").
+// Più professionisti nella stessa città senza indirizzo preciso condividono
+// letteralmente le stesse coordinate (il centroide del comune, CLAUDE.md
+// §13/§2): senza sfalsamento i loro puntini si sovrappongono esattamente,
+// solo l'ultimo renderizzato resta cliccabile. Raggruppa per coordinata
+// (arrotondata a 5 decimali, ~1m — cattura anche differenze di calcolo in
+// virgola mobile, non solo un'uguaglianza esatta) e dispone ogni gruppo di
+// 2+ professionisti in un piccolo cerchio (~90m di raggio a queste
+// latitudini) attorno al punto originale — sufficiente a separare i puntini
+// senza spostarli fuori dal quartiere/comune reale.
+const CLUSTER_OFFSET_DEG = 0.0009;
+
+function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<string, [number, number]> {
+  const groups = new Map<string, ProfessionalSearchResult[]>();
+  for (const item of items) {
+    const key = `${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`;
+    const group = groups.get(key);
+    if (group) group.push(item);
+    else groups.set(key, [item]);
+  }
+  const positions = new Map<string, [number, number]>();
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      const only = group[0]!;
+      positions.set(only.id, [only.latitude, only.longitude]);
+      continue;
+    }
+    group.forEach((item, index) => {
+      const angle = (2 * Math.PI * index) / group.length;
+      positions.set(item.id, [item.latitude + CLUSTER_OFFSET_DEG * Math.sin(angle), item.longitude + CLUSTER_OFFSET_DEG * Math.cos(angle)]);
+    });
+  }
+  return positions;
+}
+
 function FitBounds({ points, fallbackCenter }: { points: [number, number][]; fallbackCenter?: [number, number] }) {
   const map = useMap();
   // Deve inquadrare SOLO all'apertura: se scattasse ad ogni render andrebbe
@@ -117,7 +154,11 @@ export function ResultsMap({
   // Coordinate 0,0 = professionista senza comune geocodificato ancora: non ha senso metterlo sull'oceano davanti all'Africa.
   const withCoords = professionals.filter((p) => p.latitude !== 0 || p.longitude !== 0);
   const initialWithCoords = (initialProfessionals ?? professionals).filter((p) => p.latitude !== 0 || p.longitude !== 0);
-  const initialPoints: [number, number][] = initialWithCoords.map((p) => [p.latitude, p.longitude]);
+  // Un solo sfalsamento condiviso da marker e inquadratura iniziale: la
+  // mappa deve zoomare esattamente su dove i puntini vengono davvero
+  // disegnati, non sulle coordinate originali sovrapposte.
+  const markerPositions = offsetOverlappingPositions(withCoords);
+  const initialPoints: [number, number][] = initialWithCoords.map((p) => markerPositions.get(p.id) ?? [p.latitude, p.longitude]);
   const center = initialPoints[0] ?? fallbackCenter ?? ROME_FALLBACK;
   const initialZoom = initialPoints.length === 0 && fallbackCenter ? 12 : 6;
 
@@ -133,7 +174,7 @@ export function ResultsMap({
         {withCoords.map((pro) => (
           <Marker
             key={pro.id}
-            position={[pro.latitude, pro.longitude]}
+            position={markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude]}
             icon={markerIcon}
             eventHandlers={{ click: () => setSelected(pro) }}
           />
