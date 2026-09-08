@@ -71,6 +71,10 @@ export function ClientProfileModal({
   onClose: () => void;
 }) {
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  // Media delle stelle ricevute — richiesta esplicita dell'utente
+  // ("metti la media delle stelle ricevute"), calcolata dalle stesse
+  // recensioni già mostrate sotto (nessuna nuova chiamata API).
+  const avgRating = reviews && reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : null;
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -141,14 +145,35 @@ export function ClientProfileModal({
         ) : null}
 
         <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-          Telefono, email e indirizzo saranno visibili qui e in agenda non appena il preventivo verrà accettato.
+          Telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
         </Text>
 
         {reviews && reviews.length > 0 ? (
           <YStack width="100%" gap="$3" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-              Recensioni ricevute ({reviews.length})
-            </Text>
+            <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+              <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+                Recensioni ricevute ({reviews.length})
+              </Text>
+              {avgRating !== null ? (
+                <XStack alignItems="center" gap={4}>
+                  <XStack gap={1}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <Icon
+                        key={value}
+                        name="star"
+                        size={13}
+                        strokeWidth={1.5}
+                        color={brand.ottone}
+                        fill={value <= Math.round(avgRating) ? brand.ottone : "none"}
+                      />
+                    ))}
+                  </XStack>
+                  <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+                    {avgRating.toFixed(1)}
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
             {reviews.map((review) => (
               <YStack key={review.id} gap="$1" width="100%">
                 <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">

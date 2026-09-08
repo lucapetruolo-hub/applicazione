@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -70,6 +70,18 @@ export function BookingDetailPanel({
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const noteChanged = noteDraft !== (booking.professionalNote ?? "");
   const meetingLinkChanged = meetingLinkDraft !== (booking.meetingLink ?? "");
+  // Stesso auto-grow di dashboard/richieste/page.tsx: il CSS
+  // resize:vertical non è trascinabile su mobile (nessun browser touch
+  // lo supporta), la textarea restava bloccata all'altezza iniziale —
+  // corretta con un'altezza calcolata via JS ad ogni cambio testo,
+  // identica su desktop e mobile.
+  const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = noteTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [noteDraft]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -322,6 +334,7 @@ export function BookingDetailPanel({
             Note personali (solo per te)
           </Text>
           <textarea
+            ref={noteTextareaRef}
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
@@ -335,7 +348,8 @@ export function BookingDetailPanel({
               fontSize: 14,
               fontFamily: "inherit",
               color: brand.grafite,
-              resize: "vertical",
+              resize: "none",
+              overflow: "hidden",
             }}
           />
           {noteChanged ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -742,6 +742,19 @@ function RequestCard({
   const [noteDraft, setNoteDraft] = useState(lead.professionalNote ?? "");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const noteChanged = noteDraft !== (lead.professionalNote ?? "");
+  // La textarea "Note personali" si espandeva solo trascinando l'angolo
+  // (CSS resize:vertical) — su mobile quel trascinamento non è
+  // disponibile (nessun browser touch lo supporta), quindi il campo
+  // restava bloccato a 2 righe. Corretto con un auto-grow via JS
+  // (altezza = scrollHeight ad ogni digitazione/cambio nota), identico
+  // su desktop e mobile — richiesta esplicita dell'utente.
+  const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = noteTextareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [noteDraft]);
 
   const clientName = gr.clientAccountDeleted ? "Account eliminato" : (gr.clientName ?? "Cliente");
   // Telefono/email/indirizzo NON arrivano più su `gr` (richiesta esplicita
@@ -1150,14 +1163,41 @@ function RequestCard({
                   {/* Nome e cognome del destinatario indicati sulla
                       richiesta (chi riceverà il professionista sul
                       lavoro, non necessariamente l'intestatario
-                      dell'account — CLAUDE.md §16) — richiesta esplicita
-                      dell'utente, prima visibile solo dentro l'importo
-                      finale/agenda, mai qui. */}
+                      dell'account — CLAUDE.md §16). Ordine della sezione
+                      (nome → indirizzo → numero → e-mail, chat spostata
+                      in fondo) e rimozione della dicitura "Riceverà il
+                      professionista" (resta solo il nome): entrambe
+                      richieste esplicite dell'utente. */}
                   {booking?.recipientName || booking?.recipientSurname ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      Riceverà il professionista: {[booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ")}
+                    <Text fontSize={13.5} fontWeight="700" color={brand.grafite}>
+                      {[booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ")}
                     </Text>
                   ) : null}
+                  {/* Indirizzo cliccabile (link Google Maps, stesso
+                      principio già in uso per tel:/mailto:/wa.me —
+                      nessuna API a pagamento, solo un URL di apertura) —
+                      spostato subito sotto il nome, richiesta esplicita
+                      dell'utente. */}
+                  {isOnline ? (
+                    <Text fontSize={12.5} color={brand.grafite70}>
+                      Zona: {gr.city} (indirizzo nascosto)
+                    </Text>
+                  ) : revealedAddress ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(revealedAddress)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ textDecoration: "none" }}
+                    >
+                      <Text fontSize={12.5} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                        {revealedAddress}
+                      </Text>
+                    </a>
+                  ) : (
+                    <Text fontSize={12.5} color={brand.grafite70}>
+                      {gr.city}
+                    </Text>
+                  )}
                   {/* Numero cliccabile (tel:) con i tasti WhatsApp/Chiama
                       di fianco, non più in una riga separata più sotto —
                       richiesta esplicita dell'utente. */}
@@ -1198,6 +1238,13 @@ function RequestCard({
                       Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo.
                     </Text>
                   ) : null}
+                  {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
+                    <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
+                      Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+                    </Text>
+                  ) : null}
+                  {/* Tasto Chat spostato in fondo alla scheda "Dettagli
+                      cliente" — richiesta esplicita dell'utente. */}
                   <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
                     <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
                       <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
@@ -1208,37 +1255,6 @@ function RequestCard({
                   </XStack>
                 </>
               )}
-              {/* Indirizzo cliccabile (link Google Maps, stesso principio
-                  già in uso per tel:/mailto:/wa.me — nessuna API a
-                  pagamento, solo un URL di apertura) — richiesta esplicita
-                  dell'utente. */}
-              {isOnline ? (
-                <YStack paddingTop="$2" gap={2}>
-                  <Text fontSize={12.5} color={brand.grafite70}>
-                    Zona: {gr.city} (indirizzo nascosto)
-                  </Text>
-                </YStack>
-              ) : revealedAddress ? (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(revealedAddress)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ textDecoration: "none" }}
-                >
-                  <Text fontSize={12.5} fontWeight="600" color={brand.cianografia} textDecorationLine="underline" paddingTop="$2">
-                    {revealedAddress}
-                  </Text>
-                </a>
-              ) : (
-                <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
-                  {gr.city}
-                </Text>
-              )}
-              {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
-                <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
-                  Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
-                </Text>
-              ) : null}
             </YStack>
 
             {/* Sezione 2 — Descrizione lavoro */}
@@ -1319,12 +1335,13 @@ function RequestCard({
               Note personali (solo per te)
             </Text>
             <textarea
+              ref={noteTextareaRef}
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               onBlur={() => noteChanged && handleSaveNote()}
               placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
               rows={2}
-              style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "vertical" }}
+              style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
             />
             {noteChanged ? (
               <Button variant="secondary" size="$2" height={32} alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>

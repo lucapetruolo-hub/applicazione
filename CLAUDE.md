@@ -9012,3 +9012,81 @@ bottone "Pagina 2" (comportamento corretto di `Pagination`, che ritorna
 `null` con una sola pagina). Zero overflow orizzontale su mobile (390px,
 iPhone 13). Zero errori console in tutti i flussi. Typecheck pulito su
 `apps/web`, build di produzione verde (31 route, nessuna nuova).
+
+## 69. "Dettagli cliente" riordinata + Chat in fondo, note personali espandibili su mobile, media stelle nella scheda cliente
+
+Tre richieste esplicite dell'utente, stesso giro.
+
+**"Dettagli cliente" (`/dashboard/richieste`, `RequestCard`) riordinata**
+— *"In richieste ricevute il pulsante chat mettilo in fondo alla scheda
+del dettaglio cliente, e poi ordina meglio in questo ordine: elimina la
+dicitura 'riceverà il professionista' e lascia solo il nome, subito sotto
+l'indirizzo, sotto il numero, sotto l'e-mail"*. La sezione (visibile solo
+dopo l'accettazione del preventivo, CLAUDE.md §45) aveva un ordine
+diverso — nome (con prefisso "Riceverà il professionista:") → numero
+(WhatsApp/Chiama) → email → tasto Chat, poi **fuori** dal blocco
+condizionale l'indirizzo e la riga "Intervento". Riordinata a: nome
+destinatario (solo `{[booking.recipientName, booking.recipientSurname]
+.filter(Boolean).join(" ")}`, prefisso rimosso, reso in grassetto come
+prima riga di dato) → indirizzo (spostato qui da fuori al blocco, stessa
+resa cliccabile Google Maps) → numero → email → riga "Intervento" →
+tasto Chat, ora l'ultimo elemento della scheda. Effetto collaterale
+accettato consapevolmente: indirizzo/riga "Intervento", che prima
+comparivano anche per un account cliente eliminato (erano fuori dal
+ramo `gr.clientAccountDeleted ? ... : ...`), ora seguono lo stesso ramo
+del resto dei dati cliente e quindi non compaiono più in quel caso — più
+coerente (tutti i dettagli del cliente nascosti insieme quando l'account
+non esiste più) di prima, dove solo nome/telefono/email sparivano.
+2. **Media delle stelle nella scheda cliente** (`ClientProfileModal.tsx`,
+   aperta cliccando il nome del cliente) — richiesta esplicita
+   dell'utente: *"oltre alle recensioni ricevute, metti la media delle
+   stelle ricevute"*. Nuovo `avgRating` (media
+   aritmetica di `reviews[].rating`, calcolata client-side dalle stesse
+   recensioni già scaricate, nessuna nuova chiamata) mostrata accanto
+   all'intestazione "Recensioni ricevute (N)": 5 stelle (piene fino a
+   `Math.round(avgRating)`, stesso principio di arrotondamento già seguito
+   da `Rating.tsx` in `packages/ui` per restare semplice, CLAUDE.md §10
+   Fase 3) + il valore numerico a una cifra decimale (es. "4.0").
+3. **Testo aggiornato**: *"modificala la dicitura 'Telefono, email e
+   indirizzo saranno visibili qui e in agenda non appena il preventivo
+   verrà accettato.' con 'Telefono, email e indirizzo saranno visibili
+   all'accettazione del preventivo'"* — sostituito verbatim in
+   `ClientProfileModal.tsx` (il testo quasi identico ma più corto già
+   presente in `RequestCard`, "...saranno visibili qui ad accettazione
+   del preventivo.", non era quello citato dall'utente e resta invariato).
+
+**Note personali non espandibili su mobile** — *"nella visualizzazione
+cellulare le note personali non si riescono ad espandere così come
+succede sulla versione desktop"*. Le due textarea "Note personali (solo
+per te)" (`RequestCard`/`/dashboard/richieste` e
+`BookingDetailPanel`/agenda "Prenotazioni") usavano `resize: "vertical"`
+— l'unico modo di ingrandirle era trascinare l'angolo in basso a destra,
+un gesto che i browser touch (iOS/Android) non supportano affatto per il
+CSS `resize`: il campo restava bloccato all'altezza iniziale su
+cellulare, identico su desktop dov'era invece trascinabile. Corretto con
+un auto-grow via JS, identico sulle due piattaforme: un `ref` sulla
+textarea + un `useEffect` che imposta `el.style.height = "auto"` poi
+`el.style.height = `${el.scrollHeight}px`` ad ogni cambio di `noteDraft`
+— cresce da sola mentre si scrive, mai bisogno di trascinare nulla.
+`resize` passato a `"none"` (il ridimensionamento manuale non ha più
+senso, l'altezza segue sempre il contenuto) + `overflow: "hidden"` (evita
+un lampo di scrollbar interna tra un render e l'altro).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: professionista+cliente di test con due lavori portati a
+`COMPLETED` (con conferma reciproca "doppio cieco" completata su
+entrambi — richiesto rating 3 e 5 sullo stesso cliente da parti diverse
+per un caso di media non banale) — box "Dettagli cliente" con ordine
+verificato via indici di stringa (nome < indirizzo < numero < email <
+Chat, tutti presenti), testo "Riceverà il professionista" assente,
+"Luca Bianchi" (nome completo) presente come prima riga di dato; scheda
+cliente aperta dal nome mostra "4.0" (media di 3 e 5) e "Recensioni
+ricevute (2)", nuovo testo "...visibili all'accettazione del
+preventivo" presente, vecchio testo assente. Textarea "Note personali":
+altezza iniziale 50px (RequestCard)/71px (BookingDetailPanel) → 128px/
+122px dopo un testo lungo, su viewport `devices["iPhone 13"]" (390px),
+altezza sempre coincidente con `scrollHeight` (nessun overflow interno
+residuo), zero overflow orizzontale di pagina. Zero errori console in
+tutti i flussi. Typecheck pulito su tutti i package (`shared`,
+`api-client`, `web`), build di produzione `apps/web` verde (31 route,
+nessuna nuova).
