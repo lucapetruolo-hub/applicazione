@@ -273,6 +273,20 @@ function RichiesteContent() {
   const [zoneFilter, setZoneFilter] = useState("tutte");
   const [openId, setOpenId] = useState<string | null>(null);
 
+  // Deep link "stage" (richiesta esplicita dell'utente, deduplicazione
+  // /dashboard "Lavori accettati" → CTA "Apri tutti i lavori accettati",
+  // CLAUDE.md §56): preseleziona il tab quando si arriva da un link
+  // esterno con `?stage=<chiave>` — una sola volta al mount, a differenza
+  // di `?open=` sotto non serve aspettare i lead (il tab è impostabile
+  // subito, nessun dato da cui dipende).
+  useEffect(() => {
+    const stageParam = searchParams.get("stage");
+    if (stageParam && TABS.some((t) => t.key === stageParam)) {
+      setActiveTab(stageParam as "tutte" | RequestStage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Deep link da /chat (richiesta esplicita dell'utente: "dai la
   // possibilità di andare alla pagina del preventivo/informazioni di
   // quella determinata chat") — `?open=<guidedRequestId>` apre e scrolla

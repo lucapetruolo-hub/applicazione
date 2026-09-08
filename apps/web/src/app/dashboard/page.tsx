@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
@@ -49,26 +49,6 @@ const UNREAD_BADGE_POLL_MS = 15000;
 import { Pagination, sortListItems } from "@/components/ListControls";
 
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
-
-/**
- * Riquadro etichettato (icona + testo mono maiuscolo piccolo sopra, box
- * chiaro sotto) usato nella vista espansa di "Lavori accettati" — richiesta
- * esplicita dell'utente con screenshot di riferimento ("Descrizione
- * lavoro"/"Preventivo"/"Contatti"/"Videochiamata"/"Note personali").
- */
-function DetailSection({ icon, label, children }: { icon: import("@professionisti/ui").IconName; label: string; children: React.ReactNode }) {
-  return (
-    <YStack gap="$2" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$3">
-      <XStack alignItems="center" gap={6}>
-        <Icon name={icon} size={13} color={brand.grafite70} />
-        <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
-          {label}
-        </Text>
-      </XStack>
-      {children}
-    </YStack>
-  );
-}
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -125,69 +105,18 @@ function leadSummaryLabel(lead: ProfessionalLead): string {
   return match?.label ?? "";
 }
 
-type BookingStatusFilter = "all" | "toDo" | "completed" | "canceled";
-function bookingMatchesStatus(booking: ProfessionalBooking, filter: BookingStatusFilter): boolean {
-  if (filter === "all") return true;
-  if (filter === "completed") return booking.status === "COMPLETED";
-  if (filter === "canceled") return booking.status === "CANCELED";
-  return booking.status === "CONFIRMED";
-}
-
 /**
- * Tre pillole "In agenda"/"Completati"/"Tutti" per "Lavori accettati" —
- * richiesta esplicita dell'utente, con screenshot di riferimento: riusa lo
- * stesso `BookingStatusFilter`/`bookingMatchesStatus` già esistenti
- * ("toDo"→In agenda, mai esposto come tab a sé "Annullati": una
- * prenotazione annullata resta comunque raggiungibile sotto "Tutti", stesso
- * comportamento di `acceptedJobs()` da prima di questo redesign).
+ * Etichetta di stato breve per il riepilogo compatto di "Lavori accettati"
+ * (richiesta esplicita dell'utente, revisione UX — stesso principio già
+ * seguito per `leadSummaryLabel` sopra: la dashboard mostra solo il
+ * riepilogo, il dettaglio/le azioni restano su /dashboard/richieste).
  */
-const BOOKING_TABS: { value: BookingStatusFilter; label: string }[] = [
-  { value: "toDo", label: "In agenda" },
-  { value: "completed", label: "Completati" },
-  { value: "all", label: "Tutti" },
-];
-
-/** Filtro data per "Lavori accettati" (richiesta esplicita dell'utente: "questa settimana/prossima settimana/tutto"). */
-type BookingDateFilter = "all" | "thisWeek" | "nextWeek";
-const BOOKING_DATE_FILTER_OPTIONS: { value: BookingDateFilter; label: string }[] = [
-  { value: "all", label: "Tutto" },
-  { value: "thisWeek", label: "Questa settimana" },
-  { value: "nextWeek", label: "Prossima settimana" },
-];
-/** Lunedì 00:00 della settimana di `date` (fuso del browser, coerente con la resa a schermo di `scheduledAt`). */
-function startOfWeek(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d;
-}
-function bookingMatchesDateFilter(booking: ProfessionalBooking, filter: BookingDateFilter): boolean {
-  if (filter === "all") return true;
-  const scheduled = new Date(booking.scheduledAt);
-  const thisWeekStart = startOfWeek(new Date());
-  const thisWeekEnd = new Date(thisWeekStart);
-  thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
-  if (filter === "thisWeek") return scheduled >= thisWeekStart && scheduled < thisWeekEnd;
-  const nextWeekEnd = new Date(thisWeekEnd);
-  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
-  return scheduled >= thisWeekEnd && scheduled < nextWeekEnd;
-}
-
-const ZONE_ALL = "tutte";
-
-/** Pillola "A domicilio"/"Online" sulla card di un lavoro accettato — richiesta esplicita dell'utente. */
-function ServiceModeBadge({ mode }: { mode: "HOME" | "ONLINE" | null }) {
-  if (!mode) return null;
-  const isOnline = mode === "ONLINE";
-  return (
-    <XStack alignItems="center" gap={4} paddingHorizontal={8} paddingVertical={3} borderRadius={999} backgroundColor={brand.gesso}>
-      <Icon name={isOnline ? "video" : "house"} size={11} color={brand.grafite70} />
-      <Text fontSize={11} fontWeight="700" color={brand.grafite70}>
-        {isOnline ? "Online" : "A domicilio"}
-      </Text>
-    </XStack>
-  );
+function bookingSummaryLabel(booking: ProfessionalBooking): string {
+  if (booking.status === "CANCELED") {
+    return `Annullata${booking.canceledBy === "CLIENT" ? " dal cliente" : booking.canceledBy === "PROFESSIONAL" ? " da te" : ""}`;
+  }
+  if (booking.status === "COMPLETED") return "Completato";
+  return "Confermato";
 }
 
 /**
@@ -300,53 +229,10 @@ function DashboardContent() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // "In agenda" di default (richiesta esplicita dell'utente, screenshot di
-  // riferimento) — non più "Tutti", coerente con le tre pillole in cima
-  // alla sezione "Lavori accettati" (BOOKING_TABS).
-  const [bookingsStatusFilter, setBookingsStatusFilter] = useState<BookingStatusFilter>("toDo");
-  const [bookingsPageSize, setBookingsPageSize] = useState(5);
-  const [bookingsPage, setBookingsPage] = useState(1);
-  // Ricerca cliente/indirizzo + filtro data (Questa settimana/Prossima
-  // settimana/Tutto) + zona — richiesta esplicita dell'utente per il
-  // redesign "Lavori accettati", stesso principio "tutto calcolato
-  // client-side" già seguito per ListControls (CLAUDE.md, scala di lancio
-  // §7). Default "Tutto" per la data (non "Questa settimana" come nello
-  // screenshot fornito): un professionista non deve vedere una lista vuota
-  // al primo caricamento solo perché nessun lavoro cade in questa settimana.
-  const [bookingsSearch, setBookingsSearch] = useState("");
-  const [bookingsDateFilter, setBookingsDateFilter] = useState<BookingDateFilter>("all");
-  const [bookingsZoneFilter, setBookingsZoneFilter] = useState(ZONE_ALL);
-
-  // Cambiare filtro/ordinamento/quantità riparte sempre da pagina 1 —
-  // restare su una pagina che potrebbe non esistere più nel nuovo elenco
-  // filtrato sarebbe confuso (richiesta esplicita dell'utente: "se ce ne
-  // sono di più andranno in altre pagine selezionabili").
-  function updateBookingsStatusFilter(value: BookingStatusFilter) {
-    setBookingsStatusFilter(value);
-    setBookingsPage(1);
-  }
-  function updateBookingsDateFilter(value: BookingDateFilter) {
-    setBookingsDateFilter(value);
-    setBookingsPage(1);
-  }
-  function updateBookingsZoneFilter(value: string) {
-    setBookingsZoneFilter(value);
-    setBookingsPage(1);
-  }
-
-  // Cambiare pagina deve riportare la vista in cima alla lista (richiesta
-  // esplicita dell'utente, stesso trattamento di /le-mie-richieste): senza,
-  // si resta scrollati in fondo sul controllo appena cliccato e la nuova
-  // pagina parte fuori dallo schermo. Un solo ref condiviso dalle due tab:
-  // solo una è montata alla volta.
+  // Un solo ref condiviso dalle due tab (solo una è montata alla volta) —
+  // resta per lo scroll-to-top del toast/deep-link, invariato dal redesign
+  // precedente.
   const listTopRef = useRef<HTMLDivElement>(null);
-  function scrollToListTop() {
-    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  function goToBookingsPage(page: number) {
-    setBookingsPage(page);
-    scrollToListTop();
-  }
 
   function reloadBookings() {
     if (!token) return;
@@ -425,23 +311,6 @@ function DashboardContent() {
       });
   }, [token]);
 
-  // Zone disponibili per il filtro "Lavori accettati" (richiesta esplicita
-  // dell'utente), calcolate su tutti i lavori accettati indipendentemente
-  // dal filtro tab/data/ricerca corrente — altrimenti la lista delle zone si
-  // restringerebbe insieme ai risultati filtrati, un comportamento confuso
-  // per un filtro. Bug reale corretto qui: questo hook viveva prima dopo i
-  // return anticipati sotto (isLoading/utente non loggato/ruolo sbagliato/
-  // profilo mancante) — un professionista autenticato con profilo completo
-  // fa "saltare" quei rami al secondo render rispetto al primo, violando le
-  // Rules of Hooks ("Rendered more hooks than during the previous render"),
-  // mai riprodotto in sviluppo perché il fast refresh nasconde l'errore ma
-  // scoperto con una sessione reale end-to-end (Playwright). Ogni hook deve
-  // restare sempre prima di qualunque return anticipato.
-  const bookingZones = useMemo(() => {
-    const set = new Set((bookings ? acceptedJobs(bookings) : []).map((b) => b.city).filter((c): c is string => Boolean(c)));
-    return [...set].sort();
-  }, [bookings]);
-
   if (isLoading) return null;
 
   if (!user || !token) {
@@ -496,30 +365,20 @@ function DashboardContent() {
   const recentLeads = leads ? sortListItems(leads, "updatedAt", { createdAt: (l) => l.createdAt, updatedAt: (l) => l.updatedAt }).slice(0, RECENT_LEADS_COUNT) : null;
   const pendingLeadsCount = leads ? leads.filter((lead) => leadMatchesStatus(lead, "pending")).length : 0;
 
-  const bookingsSearchQuery = bookingsSearch.trim().toLowerCase();
-  const filteredAcceptedJobs = bookings
-    ? acceptedJobs(bookings)
-        .filter((b) => bookingMatchesStatus(b, bookingsStatusFilter))
-        .filter((b) => bookingMatchesDateFilter(b, bookingsDateFilter))
-        .filter((b) => bookingsZoneFilter === ZONE_ALL || b.city === bookingsZoneFilter)
-        .filter((b) => {
-          if (!bookingsSearchQuery) return true;
-          const name = ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "").toLowerCase();
-          const address = (formatBookingAddress(b) ?? b.address ?? "").toLowerCase();
-          return name.includes(bookingsSearchQuery) || address.includes(bookingsSearchQuery);
-        })
-    : [];
-  // Ordinamento fisso per data di intervento (prossimo prima) — nessun
-  // controllo "Ordina per" per questa lista, coerente con lo screenshot di
-  // riferimento fornito dall'utente, che non ne mostra uno.
-  const sortedBookings = sortListItems(filteredAcceptedJobs, "scheduledAt", {
-    createdAt: (b) => b.createdAt,
-    updatedAt: (b) => b.updatedAt,
-    scheduledAt: (b) => b.scheduledAt,
-  });
-  const bookingsTotalPages = Math.max(1, Math.ceil(sortedBookings.length / bookingsPageSize));
-  const bookingsEffectivePage = Math.min(bookingsPage, bookingsTotalPages);
-  const visibleBookings = sortedBookings.slice((bookingsEffectivePage - 1) * bookingsPageSize, bookingsEffectivePage * bookingsPageSize);
+  // Stesso riepilogo compatto, applicato ora anche a "Lavori accettati"
+  // (richiesta esplicita dell'utente: "il contesto duplicato è un errore da
+  // risolvere" — la stessa card completa (ex `AcceptedJobCard`, con
+  // Contatta/Cronologia, Lavoro terminato, Annulla intervento, Recensisci il
+  // cliente) appariva identica qui e su /dashboard/richieste sotto gli
+  // stadi "Accettate"/"Completate"/"Annullate". Filtri/ricerca/paginazione
+  // rimossi: restano solo su /dashboard/richieste, unica fonte di verità
+  // per l'elenco intero e per il dettaglio/le azioni.
+  const acceptedJobsList = bookings ? acceptedJobs(bookings) : null;
+  const RECENT_BOOKINGS_COUNT = 5;
+  const recentBookings = acceptedJobsList
+    ? sortListItems(acceptedJobsList, "updatedAt", { createdAt: (b) => b.createdAt, updatedAt: (b) => b.updatedAt }).slice(0, RECENT_BOOKINGS_COUNT)
+    : null;
+  const toDoBookingsCount = acceptedJobsList ? acceptedJobsList.filter((b) => b.status === "CONFIRMED").length : 0;
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
@@ -583,121 +442,48 @@ function DashboardContent() {
           </YStack>
         ) : (
           <YStack ref={listTopRef} gap="$3">
-            <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-              <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
-                <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
-                  Apri il calendario completo
-                </Text>
-              </Link>
-            </YStack>
-            <Text fontSize="$2" color={brand.grafite70}>
-              Preventivi accettati e lavori in agenda, con i dati del cliente per andare a svolgere l&apos;intervento.
-            </Text>
-
-            {/* Tre pillole "In agenda"/"Completati"/"Tutti" con conteggio —
-                richiesta esplicita dell'utente, screenshot di riferimento —
-                stesso pattern a scorrimento orizzontale già in uso in
-                /dashboard/richieste (una riga sola, mai andare a capo). */}
-            {bookings !== null && acceptedJobs(bookings).length > 0 ? (
-              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingTop: 2, paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
-                {BOOKING_TABS.map((tab) => {
-                  const active = bookingsStatusFilter === tab.value;
-                  const count = acceptedJobs(bookings).filter((b) => bookingMatchesStatus(b, tab.value)).length;
-                  return (
-                    <XStack
-                      key={tab.value}
-                      flexShrink={0}
-                      alignItems="center"
-                      gap={6}
-                      paddingHorizontal="$3"
-                      paddingVertical={10}
-                      borderRadius={999}
-                      backgroundColor={active ? brand.verificato : brand.calce}
-                      borderWidth={1}
-                      borderColor={active ? brand.verificato : brand.filetto}
-                      cursor="pointer"
-                      onPress={() => updateBookingsStatusFilter(tab.value)}
-                      accessibilityRole="button"
-                    >
-                      <Text fontFamily="$body" fontSize={15} fontWeight="800" color={active ? "white" : brand.grafite}>
-                        {tab.label}
-                      </Text>
-                      <YStack
-                        minWidth={20}
-                        height={20}
-                        paddingHorizontal={4}
-                        borderRadius={999}
-                        alignItems="center"
-                        justifyContent="center"
-                        backgroundColor={active ? "rgba(255,255,255,0.28)" : brand.gesso}
-                      >
-                        <Text fontSize={11} fontWeight="800" color={active ? "white" : brand.grafite70}>
-                          {count}
-                        </Text>
-                      </YStack>
-                    </XStack>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            {bookings !== null && acceptedJobs(bookings).length > 0 ? (
-              <XStack gap="$2" flexWrap="wrap">
-                <input
-                  value={bookingsSearch}
-                  onChange={(e) => {
-                    setBookingsSearch(e.target.value);
-                    setBookingsPage(1);
-                  }}
-                  placeholder="Cerca cliente o indirizzo..."
-                  style={{ ...smallInputStyle, flex: "1 1 220px", minWidth: 200, borderRadius: radiusDoc, padding: "10px 12px" }}
-                />
-                <select value={bookingsDateFilter} onChange={(e) => updateBookingsDateFilter(e.target.value as BookingDateFilter)} style={{ ...smallInputStyle, borderRadius: radiusDoc, padding: "10px 12px" }}>
-                  {BOOKING_DATE_FILTER_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <select value={bookingsZoneFilter} onChange={(e) => updateBookingsZoneFilter(e.target.value)} style={{ ...smallInputStyle, borderRadius: radiusDoc, padding: "10px 12px" }}>
-                  <option value={ZONE_ALL}>Tutte le zone</option>
-                  {bookingZones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                </select>
-              </XStack>
-            ) : null}
-            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
             {bookings === null ? (
               <LoadingState />
-            ) : acceptedJobs(bookings).length === 0 ? (
+            ) : acceptedJobsList!.length === 0 ? (
               <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
-            ) : visibleBookings.length === 0 ? (
-              <Text color={brand.grafite70}>Nessun lavoro corrisponde al filtro selezionato.</Text>
             ) : (
-              <YStack gap="$3">
-                {visibleBookings.map((booking) => (
-                  <AcceptedJobCard
-                    key={booking.id}
-                    booking={booking}
-                    token={token}
-                    onUpdated={() => {
-                      reloadBookings();
-                      reloadLeads();
-                    }}
-                    isNew={newBookingIds.has(booking.id)}
-                    unreadCount={combineUnreadCounts(
-                      bookingUnreadCounts.get(booking.id),
-                      booking.guidedRequestId && myProfileId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${myProfileId}`) : undefined,
-                    )}
-                    myProfileId={myProfileId}
-                  />
-                ))}
-              </YStack>
+              <>
+                {/* Stesso riepilogo compatto di "Richieste ricevute" sopra
+                    (revisione UX: la card completa appariva identica qui e
+                    su /dashboard/richieste) — i numeri e le ultime novità
+                    qui, dettaglio/azioni sempre nella pipeline dedicata. */}
+                <Text color={brand.grafite70} fontSize="$3">
+                  {toDoBookingsCount === 0
+                    ? "Nessun lavoro in agenda al momento."
+                    : `${toDoBookingsCount} lavor${toDoBookingsCount === 1 ? "o" : "i"} in agenda, su ${acceptedJobsList!.length} accettat${acceptedJobsList!.length === 1 ? "o" : "i"} in totale.`}
+                </Text>
+                <YStack gap="$2">
+                  {recentBookings?.map((booking) => (
+                    <BookingSummaryRow
+                      key={booking.id}
+                      booking={booking}
+                      isNew={newBookingIds.has(booking.id)}
+                      unreadCount={combineUnreadCounts(
+                        bookingUnreadCounts.get(booking.id),
+                        booking.guidedRequestId && myProfileId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${myProfileId}`) : undefined,
+                      )}
+                    />
+                  ))}
+                </YStack>
+                <XStack gap="$3" flexWrap="wrap" alignItems="center">
+                  <Link href="/dashboard/richieste?stage=accettata" style={{ textDecoration: "none" }}>
+                    <Button variant="secondary" size="$3" height={40}>
+                      Apri tutti i lavori accettati
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/agenda" style={{ textDecoration: "none" }}>
+                    <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                      Apri il calendario completo
+                    </Text>
+                  </Link>
+                </XStack>
+              </>
             )}
-            <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
           </YStack>
         )}
 
@@ -718,540 +504,6 @@ function DashboardContent() {
  */
 function acceptedJobs(bookings: ProfessionalBooking[]): ProfessionalBooking[] {
   return bookings.filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED" || b.status === "CANCELED");
-}
-
-function AcceptedJobCard({
-  booking,
-  token,
-  onUpdated,
-  isNew,
-  unreadCount,
-  myProfileId,
-}: {
-  booking: ProfessionalBooking;
-  token: string;
-  onUpdated: () => void;
-  /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
-  isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questa prenotazione — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
-  unreadCount?: number;
-  /** Proprio profilo, per aprire la cronologia della richiesta (richiesta esplicita dell'utente) — null finché non ancora caricato. */
-  myProfileId: string | null;
-}) {
-  const date = new Date(booking.scheduledAt);
-  const endDate = booking.scheduledEndAt ? new Date(booking.scheduledEndAt) : null;
-  // Indirizzo strutturato (raccolto all'accettazione preventivo) ha
-  // priorità su quello libero, quando presente — vedi formatBookingAddress.
-  const structuredAddress = formatBookingAddress(booking);
-  const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
-  const isCanceled = booking.status === "CANCELED";
-  // Card collassata di default, si apre al click sull'intestazione —
-  // richiesta esplicita dell'utente con screenshot di riferimento (stesso
-  // principio già in uso in /dashboard/richieste). Colore di stato riusato
-  // sia per il filetto laterale sia per la pillola di stato: stessi 3 colori
-  // già in uso per il testo di stato prima di questo redesign, nessun nuovo
-  // colore introdotto.
-  const [isOpen, setIsOpen] = useState(false);
-  const statusColor = isCanceled ? brand.urgenza : booking.status === "COMPLETED" ? brand.grafite70 : brand.verificato;
-  const statusBg = isCanceled ? brand.urgenzaVelo : booking.status === "COMPLETED" ? brand.gesso : "#E6F4EC";
-  const statusLabel = isCanceled
-    ? `Annullata${booking.canceledBy === "CLIENT" ? " dal cliente" : booking.canceledBy === "PROFESSIONAL" ? " da te" : ""}`
-    : booking.status === "COMPLETED"
-      ? "Completato"
-      : "Confermato";
-  const priceTotals = booking.items.length > 0 ? quotePriceTotals(booking.items) : null;
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  // Recensione del professionista sul cliente (richiesta esplicita
-  // dell'utente): si apre da sola subito dopo aver segnalato il lavoro
-  // come terminato, resta comunque raggiungibile manualmente se chiusa
-  // senza recensire (link sotto, visibile finché non esiste già).
-  const [showClientReviewModal, setShowClientReviewModal] = useState(false);
-  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
-  // "in lavori accettati, inserisci un pulsante con scritto vai alla
-  // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
-  const [showTimeline, setShowTimeline] = useState(false);
-  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
-  // conversazione (richiesta esplicita dell'utente) — vedi
-  // useDismissableUnreadCount per il motivo del calcolo differenziale.
-  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
-  // Descrizione/foto della richiesta originale e nota privata del
-  // professionista, richiesta esplicita dell'utente: già mostrate nel
-  // pannello di dettaglio del calendario "Prenotazioni", ora anche qui —
-  // stessi campi già esposti da ProfessionalBooking, nessuna chiamata API
-  // aggiuntiva.
-  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
-  const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const noteChanged = noteDraft !== (booking.professionalNote ?? "");
-  const [meetingLinkDraft, setMeetingLinkDraft] = useState(booking.meetingLink ?? "");
-  const [isSavingMeetingLink, setIsSavingMeetingLink] = useState(false);
-  const meetingLinkChanged = meetingLinkDraft !== (booking.meetingLink ?? "");
-  const whatsAppLink = buildWhatsAppLink(booking.recipientPhone ?? booking.clientPhone);
-
-  async function handleComplete(input: CompleteBookingInput) {
-    await apiClient.completeBooking(token, booking.id, input);
-    setShowCompleteModal(false);
-    // Subito dopo aver segnalato il lavoro terminato si apre il popup per
-    // recensire il cliente (richiesta esplicita dell'utente). Bug reale
-    // corretto: `onUpdated()` non va chiamato qui — ricarica subito la
-    // lista, che nel tab di default "In agenda" filtra solo le
-    // prenotazioni CONFIRMED (§42): la card (con dentro il popup appena
-    // aperto) sparirebbe immediatamente dalla lista filtrata, chiudendo il
-    // popup di recensione un istante dopo averlo aperto. Il reload va
-    // rimandato alla chiusura del popup (submit o annulla, sotto).
-    setShowClientReviewModal(true);
-  }
-
-  async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
-    await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
-    setShowClientReviewModal(false);
-    onUpdated();
-  }
-
-  function closeClientReviewModal() {
-    setShowClientReviewModal(false);
-    // Il lavoro è comunque già stato segnalato come terminato (l'azione
-    // reale, `handleComplete`, è già andata a buon fine) — la lista va
-    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
-    // resterebbe visibile come "Confermato" finché non arriva il prossimo
-    // poll periodico.
-    onUpdated();
-  }
-
-  async function handleCancel(note: string | undefined) {
-    await apiClient.cancelBookingByProfessional(token, booking.id, { note });
-    setShowCancelModal(false);
-    onUpdated();
-  }
-
-  // Riapertura di una prenotazione annullata (richiesta esplicita
-  // dell'utente: "una volta annullata dai la possibilità di riaprirla") —
-  // stesso endpoint condiviso già disponibile lato cliente, nessun popup
-  // di conferma: riaprire non è distruttivo come annullare.
-  const [isReopening, setIsReopening] = useState(false);
-  const [reopenError, setReopenError] = useState<string | null>(null);
-  async function handleReopen() {
-    setReopenError(null);
-    setIsReopening(true);
-    try {
-      await apiClient.reopenBooking(token, booking.id);
-      onUpdated();
-    } catch (err) {
-      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsReopening(false);
-    }
-  }
-
-  async function handleSaveNote() {
-    setIsSavingNote(true);
-    try {
-      await apiClient.updateBookingNote(token, booking.id, { note: noteDraft });
-      onUpdated();
-    } finally {
-      setIsSavingNote(false);
-    }
-  }
-
-  async function handleSaveMeetingLink() {
-    setIsSavingMeetingLink(true);
-    try {
-      await apiClient.updateBookingMeetingLink(token, booking.id, { meetingLink: meetingLinkDraft });
-      onUpdated();
-    } finally {
-      setIsSavingMeetingLink(false);
-    }
-  }
-
-  return (
-    <Surface
-      gap="$3"
-      padding={0}
-      overflow="hidden"
-      borderLeftWidth={4}
-      borderLeftColor={statusColor}
-      backgroundColor={isCanceled ? brand.urgenzaVelo : brand.calce}
-    >
-      {/* Intestazione, sempre visibile — click/tap apre/chiude il resto
-          della card (richiesta esplicita dell'utente, screenshot di
-          riferimento: card collassata di default). */}
-      <YStack gap="$2" padding="$3" cursor="pointer" onPress={() => setIsOpen((v) => !v)} accessibilityRole="button">
-        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
-          <XStack alignItems="center" gap={8} flexShrink={1}>
-            <YStack width={8} height={8} borderRadius={999} backgroundColor={statusColor} />
-            <Text fontFamily="$body" fontSize={13} fontWeight="800" color={statusColor} textTransform="uppercase">
-              {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}
-              {" · "}
-              {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-              {/* Fascia completa (richiesta esplicita dell'utente: "non
-                  visualizzare solo il primo orario ma tutta la fascia
-                  d'orario"), quando l'ora di fine è nota. */}
-              {endDate ? ` – ${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
-            </Text>
-            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
-          </XStack>
-          <YStack alignItems="flex-end" gap={2}>
-            <XStack alignItems="center" gap={6} paddingHorizontal={10} paddingVertical={4} borderRadius={999} backgroundColor={statusBg}>
-              <Text fontFamily="$body" fontSize={12} fontWeight="800" color={statusColor}>
-                {statusLabel}
-              </Text>
-            </XStack>
-            {priceTotals && (priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0) ? (
-              <Text fontFamily="$body" fontSize={17} fontWeight="800" color={brand.grafite}>
-                {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
-                <Text fontSize={12} fontWeight="600" color={brand.grafite70}>
-                  {" "}
-                  stimato
-                </Text>
-              </Text>
-            ) : null}
-          </YStack>
-        </XStack>
-
-        <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-          {booking.categoryLabel ?? "Lavoro"}
-        </Text>
-
-        <ServiceModeBadge mode={booking.serviceMode} />
-
-        <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <XStack alignItems="center" gap={4}>
-            <Icon name="phone" size={13} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontWeight="700" fontSize={15} color={brand.grafite}>
-              {recipientFullName ?? booking.clientName ?? "Cliente"}
-            </Text>
-          </XStack>
-          {booking.clientAccountDeleted ? (
-            // Richiesta esplicita dell'utente: il lavoro resta con traccia
-            // completa (nome del destinatario/contatti raccolti
-            // all'accettazione, indirizzo, voci, note — nessuno di questi
-            // viene dall'account cliente in sé) — solo un'indicazione che
-            // l'account che l'ha originata non esiste più.
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
-              · Account eliminato
-            </Text>
-          ) : null}
-        </XStack>
-        {structuredAddress ?? booking.address ? (
-          <XStack alignItems="center" gap={4}>
-            <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$3" color={brand.grafite70}>
-              {structuredAddress ?? booking.address}
-            </Text>
-          </XStack>
-        ) : null}
-
-        <XStack justifyContent="center">
-          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={brand.grafite70} />
-        </XStack>
-      </YStack>
-
-      {isOpen ? (
-        <YStack gap="$3" padding="$3" paddingTop={0}>
-          {/* Descrizione del lavoro e foto scritte/caricate dal cliente
-              nella richiesta guidata originale — assenti per le
-              prenotazioni dirette da agenda pubblica, che non hanno una
-              GuidedRequest collegata. */}
-          {booking.description ? (
-            <DetailSection icon="file-text" label="Descrizione lavoro">
-              <Text fontSize="$3" color={brand.grafite}>
-                {booking.description}
-              </Text>
-            </DetailSection>
-          ) : null}
-
-          {(booking.photoUrls ?? []).length > 0 ? (
-            <DetailSection icon="camera" label="Foto del cliente">
-              <XStack gap="$2" flexWrap="wrap">
-                {booking.photoUrls.map((url, index) => (
-                  <MediaPreview
-                    key={url}
-                    url={url}
-                    onClick={() => setOpenPhotoIndex(index)}
-                    style={{ width: 56, height: 56, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                  />
-                ))}
-              </XStack>
-            </DetailSection>
-          ) : null}
-
-          {booking.items.length > 0 ? (
-            <DetailSection icon="receipt-text" label="Preventivo">
-              <YStack gap="$1">
-                {booking.items.map((item) => (
-                  <XStack key={item.id} justifyContent="space-between" gap="$2">
-                    <Text fontSize="$3" color={brand.grafite70}>
-                      {item.name}
-                    </Text>
-                    <Text fontSize="$3" color={brand.grafite} fontWeight="600">
-                      {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-                    </Text>
-                  </XStack>
-                ))}
-                {priceTotals ? (
-                  <XStack justifyContent="space-between" gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$1" marginTop="$1">
-                    <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
-                      Totale stimato
-                    </Text>
-                    <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
-                      {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
-                    </Text>
-                  </XStack>
-                ) : null}
-              </YStack>
-            </DetailSection>
-          ) : null}
-
-          {(booking.recipientPhone ?? booking.clientPhone) || booking.clientEmail ? (
-            <DetailSection icon="phone" label="Contatti">
-              <YStack gap="$2">
-                {(booking.recipientPhone ?? booking.clientPhone) ? (
-                  <Text fontSize="$3" color={brand.grafite}>
-                    {booking.recipientPhone ?? booking.clientPhone}
-                  </Text>
-                ) : null}
-                {booking.clientEmail ? (
-                  <Text fontSize="$3" color={brand.grafite}>
-                    {booking.clientEmail}
-                  </Text>
-                ) : null}
-                {(booking.recipientPhone ?? booking.clientPhone) ? (
-                  <XStack gap="$2" flexWrap="wrap">
-                    {whatsAppLink ? (
-                      <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", flex: "1 1 auto" }}>
-                        <XStack alignItems="center" justifyContent="center" gap={6} paddingHorizontal="$4" paddingVertical={10} borderRadius={999} backgroundColor="#E6F4EC">
-                          <Icon name="message-circle" size={14} color={brand.verificato} />
-                          <Text fontSize="$3" fontWeight="700" color={brand.verificato}>
-                            WhatsApp
-                          </Text>
-                        </XStack>
-                      </a>
-                    ) : null}
-                    <a href={`tel:${booking.recipientPhone ?? booking.clientPhone}`} style={{ textDecoration: "none", flex: "1 1 auto" }}>
-                      <XStack alignItems="center" justifyContent="center" gap={6} paddingHorizontal="$4" paddingVertical={10} borderRadius={999} backgroundColor={brand.verificato}>
-                        <Icon name="phone" size={14} color="white" />
-                        <Text fontSize="$3" fontWeight="700" color="white">
-                          Chiama
-                        </Text>
-                      </XStack>
-                    </a>
-                  </XStack>
-                ) : null}
-              </YStack>
-            </DetailSection>
-          ) : null}
-
-          {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
-            <DetailSection icon="coins" label="Importo finale">
-              <YStack gap="$1">
-                {booking.finalItems.map((item) => (
-                  <XStack key={item.id} justifyContent="space-between" gap="$2">
-                    <Text fontSize="$3" color={brand.grafite70}>
-                      {item.name}
-                    </Text>
-                    <Text fontSize="$3" color={brand.grafite}>
-                      €{(item.priceEurCents / 100).toFixed(2)}
-                    </Text>
-                  </XStack>
-                ))}
-                <XStack justifyContent="space-between" gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$1" marginTop="$1">
-                  <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
-                    Totale
-                  </Text>
-                  <Text fontSize="$3" fontWeight="700" color={brand.cianografia}>
-                    €{(booking.finalAmountEurCents / 100).toFixed(2)}
-                  </Text>
-                </XStack>
-              </YStack>
-            </DetailSection>
-          ) : null}
-
-          {isCanceled && booking.cancellationNote ? (
-            <DetailSection icon="x" label="Nota lasciata al cliente">
-              <Text fontSize="$3" color={brand.grafite70}>
-                {booking.cancellationNote}
-              </Text>
-            </DetailSection>
-          ) : null}
-
-          {booking.refundRequested ? (
-            <YStack gap="$1" padding="$3" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={radiusDoc}>
-              <Text fontSize="$3" fontWeight="700" color={brand.urgenza}>
-                Il cliente ha segnalato che non ti sei presentato
-              </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
-                Ha chiesto un rimborso. Contattalo per chiarire la situazione.
-              </Text>
-            </YStack>
-          ) : null}
-
-          {/* Link consulenza video (Meet/Zoom/ecc.), visibile al cliente. */}
-          <DetailSection icon="video" label="Videochiamata">
-            <YStack gap="$2">
-              <input
-                value={meetingLinkDraft}
-                onChange={(e) => setMeetingLinkDraft(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: radiusDoc,
-                  border: `1px solid ${brand.filetto}`,
-                  fontSize: 13,
-                  fontFamily: "inherit",
-                  color: brand.grafite,
-                  backgroundColor: brand.calce,
-                }}
-              />
-              {meetingLinkChanged ? (
-                <Button
-                  variant="secondary"
-                  size="$2"
-                  height={32}
-                  alignSelf="flex-start"
-                  disabled={isSavingMeetingLink}
-                  opacity={isSavingMeetingLink ? 0.6 : 1}
-                  onPress={handleSaveMeetingLink}
-                >
-                  {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
-                </Button>
-              ) : null}
-            </YStack>
-          </DetailSection>
-
-          {/* Nota privata del professionista (mai vista dal cliente). */}
-          <DetailSection icon="pencil" label="Note personali">
-            <YStack gap="$2">
-              <textarea
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
-                rows={2}
-                maxLength={2000}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: radiusDoc,
-                  border: `1px solid ${brand.filetto}`,
-                  fontSize: 13,
-                  fontFamily: "inherit",
-                  color: brand.grafite,
-                  backgroundColor: brand.calce,
-                  resize: "vertical",
-                }}
-              />
-              {noteChanged ? (
-                <Button
-                  variant="secondary"
-                  size="$2"
-                  height={32}
-                  alignSelf="flex-start"
-                  disabled={isSavingNote}
-                  opacity={isSavingNote ? 0.6 : 1}
-                  onPress={handleSaveNote}
-                >
-                  {isSavingNote ? "Salvataggio..." : "Salva nota"}
-                </Button>
-              ) : null}
-            </YStack>
-          </DetailSection>
-
-          {/* `flex={1}`/`minWidth={200}`: senza questi, questa riga (una
-              volta finita sulla propria riga per via del `flexWrap` del
-              genitore) resta larga solo quanto il contenuto dei bottoni
-              invece di adattarsi allo spazio disponibile — il proprio
-              `flexWrap="wrap"` non ha nulla contro cui scattare e i tre
-              bottoni restano tutti su una riga, sforando lo schermo su
-              mobile (stesso principio già documentato altrove in questo
-              file per lo stesso tipo di bug, CLAUDE.md §12). */}
-          <XStack gap="$2" flexWrap="wrap" flex={1} minWidth={200}>
-            {booking.status === "CONFIRMED" ? (
-              <>
-                <Button variant="secondary" size="$2" height={36} onPress={() => setShowCompleteModal(true)}>
-                  Lavoro terminato
-                </Button>
-                <Button variant="ghost" size="$2" height={36} onPress={() => setShowCancelModal(true)}>
-                  <Text color={brand.urgenza} fontWeight="600" fontSize="$2">
-                    Annulla intervento
-                  </Text>
-                </Button>
-              </>
-            ) : null}
-            {booking.status === "COMPLETED" && !booking.hasClientReview ? (
-              <Button variant="ghost" size="$2" height={36} onPress={() => setShowClientReviewModal(true)}>
-                <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                  Recensisci il cliente
-                </Text>
-              </Button>
-            ) : null}
-            {booking.status === "CANCELED" ? (
-              <Button variant="secondary" size="$2" height={36} onPress={handleReopen} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
-                {isReopening ? "Riapertura..." : "Riapri intervento"}
-              </Button>
-            ) : null}
-            {booking.guidedRequestId && myProfileId ? (
-              <Button
-                variant="ghost"
-                size="$2"
-                height={36}
-                onPress={() => {
-                  setShowTimeline(true);
-                  dismissUnread();
-                }}
-              >
-                <XStack alignItems="center" gap="$1">
-                  <Text color={brand.cianografia} fontWeight="600" fontSize="$2">
-                    Contatta/Cronologia
-                  </Text>
-                  <UnreadDot count={effectiveUnreadCount} />
-                </XStack>
-              </Button>
-            ) : null}
-          </XStack>
-          {reopenError ? (
-            <Text color={brand.urgenza} fontSize="$2">
-              {reopenError}
-            </Text>
-          ) : null}
-        </YStack>
-      ) : null}
-
-      {showCompleteModal ? (
-        <CompleteJobModal
-          quotedItems={booking.items}
-          onClose={() => setShowCompleteModal(false)}
-          onComplete={handleComplete}
-          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-        />
-      ) : null}
-      {showClientReviewModal ? (
-        <ReviewModal
-          title="Recensisci il cliente"
-          subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
-          uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
-          onSubmit={handleSubmitClientReview}
-          onClose={closeClientReviewModal}
-        />
-      ) : null}
-      {showCancelModal ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancel} /> : null}
-      {openPhotoIndex !== null ? (
-        <PhotoLightbox photos={booking.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
-      ) : null}
-      {showTimeline && booking.guidedRequestId && myProfileId ? (
-        <TimelineModal
-          token={token}
-          guidedRequestId={booking.guidedRequestId}
-          professionalProfileId={myProfileId}
-          viewerRole="PROFESSIONAL"
-          otherPartyName={booking.clientName}
-          onClose={() => setShowTimeline(false)}
-        />
-      ) : null}
-    </Surface>
-  );
 }
 
 const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO"; label: string; description: string; priceEur: number }[] = [
@@ -1332,6 +584,59 @@ function LeadSummaryRow({
           </XStack>
           <Text fontSize="$2" color={brand.grafite70}>
             {leadSummaryLabel(lead)}
+          </Text>
+        </YStack>
+        <XStack alignItems="center" gap="$2" flexShrink={0}>
+          <UnreadDot count={unreadCount} />
+          <Icon name="chevron-right" size={16} color={brand.grafite70} />
+        </XStack>
+      </XStack>
+    </Link>
+  );
+}
+
+/**
+ * Riepilogo compatto di un lavoro accettato — stesso principio di
+ * `LeadSummaryRow` sopra, applicato a "Lavori accettati" (richiesta
+ * esplicita dell'utente: "il contesto duplicato è un errore da risolvere").
+ * Il deep-link (`?open=`, già introdotto per /chat — CLAUDE.md §47) apre
+ * direttamente la card giusta nella pipeline quando la prenotazione ha una
+ * richiesta guidata di origine; le prenotazioni dirette da agenda pubblica
+ * (`guidedRequestId` assente, dormiente da CLAUDE.md §20) ricadono
+ * sull'inbox generica.
+ */
+function BookingSummaryRow({
+  booking,
+  isNew,
+  unreadCount,
+}: {
+  booking: ProfessionalBooking;
+  /** True se questo lavoro ha un aggiornamento non letto. */
+  isNew?: boolean;
+  /** Numero di aggiornamenti non letti — pallino rosso, stesso significato di LeadSummaryRow. */
+  unreadCount?: number;
+}) {
+  const date = new Date(booking.scheduledAt);
+  const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
+  const clientName = booking.clientAccountDeleted ? "Account eliminato" : (recipientFullName ?? booking.clientName ?? "Cliente");
+  const href = booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : "/dashboard/richieste";
+  return (
+    <Link href={href} style={{ textDecoration: "none" }}>
+      <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
+        <YStack flex={1} minWidth={200} gap="$1">
+          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <Text fontWeight="700" color={brand.grafite}>
+              {clientName}
+            </Text>
+            <Text color={brand.grafite70} fontSize="$3">
+              · {booking.categoryLabel ?? "Lavoro"}
+              {booking.city ? ` · ${booking.city}` : ""}
+            </Text>
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </XStack>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+            {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · {bookingSummaryLabel(booking)}
           </Text>
         </YStack>
         <XStack alignItems="center" gap="$2" flexShrink={0}>

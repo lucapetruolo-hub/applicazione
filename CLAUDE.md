@@ -8329,3 +8329,61 @@ da `PreventivoContent.tsx`/`UrgenteContent.tsx`).
   Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`,
   `api`, `web`, `mobile`), build di produzione `apps/web` verde
   (31 route).
+
+---
+
+## 56. "Lavori accettati" (dashboard professionista) ridotta a riepilogo compatto
+
+Completamento della richiesta di deduplicazione notata in coda a §54:
+*"il contesto duplicato è un errore da risolvere, come pensi sia la
+risoluzione più funzionale e giusta e bella"*. Stesso trattamento già
+applicato al tab "Richieste ricevute" in §43 (`LeadCard` → riepilogo
+compatto + CTA verso `/dashboard/richieste`), applicato ora anche al tab
+"Lavori accettati": la card completa (`AcceptedJobCard`, redesign §42 —
+filtri/ricerca, Descrizione/Preventivo/Contatti/Videochiamata/Note
+personali, bottoni Lavoro terminato/Annulla/Recensisci) appariva identica
+in due punti del sito, `/dashboard` e `/dashboard/richieste` (stadi
+`accettata`/`completata` di `RequestCard`).
+
+- **`AcceptedJobCard` rimossa per intero** da `/dashboard` (~530 righe,
+  con `DetailSection`/`ServiceModeBadge`, usate solo lì) — il dettaglio
+  completo resta **solo** su `/dashboard/richieste`, unica fonte di
+  verità. Rimossi con la card anche filtri/ricerca/paginazione
+  esclusivi del tab (`BookingStatusFilter`/`BOOKING_TABS`/
+  `BookingDateFilter`/`ZONE_ALL`/`bookingZones` e le relative select) —
+  stessa scelta già fatta per "Richieste ricevute" in §43.
+- **`BookingSummaryRow`** (nuovo, mirror di `LeadSummaryRow`): riga
+  compatta cliente/categoria/città + data/ora/stato, con lo stesso
+  pallino di notifica non letta (`combineUnreadCounts`, già in uso). Il
+  link naviga a `/dashboard/richieste?open=<guidedRequestId>` (deep-link
+  già introdotto per `/chat`, CLAUDE.md §47) quando disponibile —
+  apre e scrolla direttamente alla card giusta nella pipeline, non solo
+  all'inbox generica — con fallback a `/dashboard/richieste` per le
+  prenotazioni dirette da agenda pubblica (`guidedRequestId` assente,
+  dormiente da CLAUDE.md §20).
+- Frase di riepilogo ("N lavori in agenda, su M accettati in totale.")
+  identica nello stile a quella già in uso per "Richieste ricevute";
+  elenco delle 5 prenotazioni più recentemente aggiornate
+  (`sortListItems` su `updatedAt`, stesso helper già in uso); CTA
+  "Apri tutti i lavori accettati" verso `/dashboard/richieste?
+  stage=accettata` (nuovo query param opzionale in `RichiesteContent`,
+  stesso principio del già esistente `?open=` — preseleziona il tab
+  `TABS` corrispondente al mount) più "Apri il calendario completo"
+  (invariato, verso `/dashboard/agenda`).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build):
+professionista+cliente di test creati via inserimento diretto in Postgres
++ JWT firmati a mano con lo stesso `JWT_SECRET` (bypassa il rate limit
+5/min di `/auth/register`, urtato più volte in questa sessione — stesso
+problema noto già documentato altrove in questo file), richiesta diretta
+al professionista → preventivo → accettazione → prenotazione con
+`categoryLabel`/`serviceMode`/`city` tutti presenti (nuova proiezione
+Prisma). UI: tab "Lavori accettati" mostra il riepilogo compatto corretto
+(cliente, categoria, città, stato "Confermato"), **assenza** confermata di
+ogni testo della vecchia card di dettaglio ("Descrizione lavoro", bottone
+"Lavoro terminato"); click sulla riga naviga a
+`/dashboard/richieste?open=<id>` con la card espansa e visibile (voce
+preventivo "Manodopera" presente). Zero `pageerror`. Typecheck pulito su
+`apps/web`, build di produzione verde — `/dashboard` passato da 4,69 kB
+(dopo la sola rimozione richieste in §43) a bundle ulteriormente ridotto
+con la rimozione di `AcceptedJobCard`.
