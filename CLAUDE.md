@@ -8507,3 +8507,28 @@ renderizzato nel DOM restava effettivamente cliccabile.
   e distinto per ciascuno (nessun click che finisce "sotto" a un altro
   marker). Typecheck pulito su `apps/web`, build di produzione verde
   (31 route, nessuna nuova).
+
+## 59. `/dashboard/richieste` — voci di ordinamento sostituite
+
+Richiesta esplicita dell'utente: *"dai filtri in richieste ricevute, dove
+c'è scritto 'ordina: piu recenti', modifica tutto e inserisci le seguenti
+voci: Data di ricezione piu recente, data di ricezione più vecchie, ultimo
+aggiornamento"*. Il `<select>` "Ordina" di `RequestCard`
+(`apps/web/src/app/dashboard/richieste/page.tsx`) aveva tre opzioni
+(Più recenti/Più vecchie/Prezzo crescente, quest'ultima un ordinamento per
+`quotePriceTotals`) — sostituite integralmente dalle tre richieste
+letteralmente dall'utente: "Data di ricezione più recente" (default,
+invariato nel comportamento — ordina per `createdAt` discendente, solo
+l'etichetta è cambiata), "Data di ricezione più vecchie" (`createdAt`
+ascendente, invariato), "Ultimo aggiornamento" (nuovo: `ProfessionalLead.
+updatedAt` discendente — campo già esposto dal backend, riflette il più
+recente tra un evento sul Lead stesso e uno sul preventivo collegato, già
+documentato in `packages/shared/src/dashboard.ts`). L'ordinamento "Prezzo
+crescente" è stato rimosso (non richiesto), `quotePriceTotals` resta
+importato/usato altrove nello stesso file (mostra il range del preventivo
+in ogni card).
+
+Verificato con l'API locale reale (non solo typecheck/build) e Playwright:
+`<select>` con le tre opzioni esatte richieste, nell'ordine indicato
+dall'utente. Typecheck pulito su `apps/web`, build di produzione verde
+(31 route, nessuna nuova).

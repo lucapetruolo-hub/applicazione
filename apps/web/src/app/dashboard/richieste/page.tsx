@@ -150,7 +150,7 @@ const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "scaduta", label: "Scadute" },
 ];
 
-type SortMode = "recenti" | "vecchie" | "prezzo";
+type SortMode = "recenti" | "vecchie" | "aggiornamento";
 
 function StagePill({ stage }: { stage: RequestStage }) {
   const s = STAGE_STYLE[stage];
@@ -420,15 +420,7 @@ function RichiesteContent() {
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    else if (sortMode === "prezzo") {
-      list.sort((a, b) => {
-        const ra = a.quote ? quotePriceTotals(a.quote.items) : null;
-        const rb = b.quote ? quotePriceTotals(b.quote.items) : null;
-        const va = ra && (ra.totalMinEurCents > 0 || ra.totalMaxEurCents > 0) ? ra.totalMinEurCents : Infinity;
-        const vb = rb && (rb.totalMinEurCents > 0 || rb.totalMaxEurCents > 0) ? rb.totalMinEurCents : Infinity;
-        return va - vb;
-      });
-    }
+    else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return list;
   }, [leads, activeTab, zoneFilter, search, sortMode, stageByLeadId]);
 
@@ -549,9 +541,9 @@ function RichiesteContent() {
             style={{ ...filterInputStyle, flex: "1 1 220px", minWidth: 200 }}
           />
           <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={filterInputStyle}>
-            <option value="recenti">Ordina: Più recenti</option>
-            <option value="vecchie">Più vecchie</option>
-            <option value="prezzo">Prezzo crescente</option>
+            <option value="recenti">Ordina: Data di ricezione più recente</option>
+            <option value="vecchie">Data di ricezione più vecchie</option>
+            <option value="aggiornamento">Ultimo aggiornamento</option>
           </select>
           <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={filterInputStyle}>
             <option value="tutte">Tutte le zone</option>
