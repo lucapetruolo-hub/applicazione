@@ -8839,3 +8839,122 @@ preventivo ancora inviato) mostra "Richiesta per: martedì 10 novembre ·
 15:00–16:00" nella stessa anteprima non espansa. Zero overflow orizzontale
 su mobile (390px, iPhone 13), zero errori console. Typecheck pulito su
 `apps/web`, build di produzione verde (31 route, nessuna nuova).
+
+## 67. Dettagli cliente più leggibili, toast persistenti, popup "salva dati account", menu hamburger "Elimina richiesta" lato cliente, Modifica/Rifiuta affiancati nel preventivo ricevuto
+
+Cinque richieste esplicite dell'utente, stesso giro.
+
+**"Dettagli cliente" con sfondo colorato + contatti tutti cliccabili** —
+richiesta esplicita: *"lato professionista, nelle richieste ricevute fai
+visualizzare meglio la sezione dettagli cliente magari colorando lo
+sfondo di quella sezione, e poi i tasti whatsapp e chiama mettili di
+fianco al numero, e rendi cliccabile sia il numero, sia l'email, sia
+l'indirizzo"*. `RequestCard` (`/dashboard/richieste`): la sezione
+"Dettagli cliente" (visibile solo quando i dati sono rivelati, dopo
+l'accettazione del preventivo — CLAUDE.md §45) è ora avvolta in un
+riquadro colorato (`brand.gesso` + bordo `brand.filetto`, stesso token
+già in uso per il riquadro "Orario richiesto" nello stesso file) invece
+di un semplice blocco di testo su sfondo trasparente. I bottoni
+"WhatsApp"/"Chiama" (già esistenti, `buildWhatsAppLink`) si spostano
+dalla propria riga a fianco del numero di telefono, entrambi come link
+`<a>` cliccabili (`tel:`/`wa.me`) invece di pillole non collegate al
+testo del numero — il numero stesso diventa un link `tel:` cliccabile
+(prima era solo testo). Email resa cliccabile (`mailto:`); indirizzo
+reso cliccabile con un link verso Google Maps
+(`https://www.google.com/maps/search/?api=1&query=...`) — nessuna nuova
+integrazione mappe, solo un link esterno standard.
+
+**Toast di notifica persistenti fino alla chiusura esplicita** —
+richiesta esplicita: *"quando esce una notifica push, non è ben
+comprensibile, rendila visualizzabile fino a che non si visualizza e
+apre effettivamente quell'aggiornamento"*. `ToastStack.tsx` (§ "Popup
+'toast' per nuove notifiche", introdotto in precedenza) auto-chiudeva
+ogni popup dopo 6 secondi — troppo poco per leggere ed eventualmente
+cliccare sul contenuto. Rimosso l'auto-dismiss (`AUTO_DISMISS_MS`/
+`setTimeout`); ogni toast resta visibile finché non viene chiuso
+esplicitamente — click sul corpo del toast (naviga alla pagina/tab
+pertinente, comportamento già esistente) oppure sul nuovo bottone "x"
+dedicato (icona `x`, `stopPropagation` per non attivare anche la
+navigazione).
+
+**Popup "salva questi dati come predefiniti" anche per un campo
+modificato, non solo per dati mancanti** — richiesta esplicita: *"se il
+cliente quando compila la richiesta di preventivo, dal campo 'nome',
+'cognome' ecc.., se viene cambiato qualche campo rispetto a quelli
+salvati e precompilati, chiedi se si vogliono salvare i nuovi dati"* +
+*"quando si clicca su invia richiesta fai uscire il popup che chiede"*.
+Il popup esisteva già (§16) ma scattava solo quando l'account non aveva
+ancora ALCUN dato salvato (`accountMissingFields`) — un cliente che
+modificava un singolo campo già precompilato (es. cambia telefono per
+questa specifica richiesta) non veniva mai interpellato.
+`GuidedRequestForm.tsx`: `accountMissingFields` rinominato
+`accountDataDiffers`, nuovo `accountSnapshotRef` (istantanea dei valori
+REALI dell'account al momento del prefill, non dei valori del form —
+che può ricadere su valori arrivati da `?data=`/altri query param).
+All'invio riuscito (solo in modalità `HOME`, coerente con §25: in
+modalità `ONLINE` questi campi non esistono nel form), confronto
+campo-per-campo tra lo snapshot e i valori appena inviati — se anche uno
+solo differisce (dato mancante compreso, stesso comportamento di prima
+in quel caso), il popup compare.
+
+**Menu hamburger "Elimina richiesta" lato cliente** — richiesta
+esplicita: *"lato cliente, nelle mie richieste e nelle mie richieste
+successivamente, inserisci il pulsante hamburger come presente nel
+lavori accettati, dove all'interno inserisci 'elimina richiesta', ed
+eliminala ora dove e presente esternamente con il tasto 'elimina'"*.
+`BookingActionsMenu` (già esistente per "Annulla prenotazione" su
+`BookingRow`, §65) generalizzato in `ActionsMenu` (props
+`accessibilityLabel`/`items: {icon, text, color, onPress}[]`) — stesso
+componente riusato ora da entrambi i punti. `GuidedRequestCard`: il
+vecchio link testuale esterno "Elimina" (visibile quando `canDelete`)
+sostituito da `<ActionsMenu items={[{ icon: "trash-2", text: "Elimina
+richiesta", ... }]} />` nell'intestazione della card, accanto alla
+pillola di stato — click apre lo stesso flusso di doppia conferma già
+esistente (`confirmingDelete`), invariato nella logica.
+
+**Nel preventivo ricevuto: "Modifica"/"Rifiuta" affiancati come
+bottoni** — richiesta esplicita: *"lato cliente, in richieste ricevute
+e successivamente richieste ricevute, la scritta cliccabile 'rifiuta
+preventivo' mettila di lato a destra a 'modifica data/orario', e
+rendilo piu come un pulsante; e modifica il pulsante 'modifica
+data/orario' in 'modifica'"* — applicata a `QuoteCard`
+(`/le-mie-richieste`, unico punto dove i due controlli coesistono nello
+stesso preventivo ricevuto: "Modifica data/orario"→"Modifica" e
+"Rifiuta preventivo" erano rispettivamente un `Button variant=
+"secondary"` e un link di testo sottolineato rosso su una riga separata
+sotto). "Rifiuta" ora un `Button variant="ghost"` (stesso pattern già in
+uso per "Rifiuta" lato professionista in `/dashboard/richieste`, testo
+rosso in grassetto dentro un vero elemento bottone) nella stessa riga di
+"Accetta preventivo"/"Modifica", a destra.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build)
+e Playwright, quattro script dedicati:
+- **Dettagli cliente**: sfondo colorato confermato non-trasparente,
+  numero/email/indirizzo tutti confermati come `<a href="tel:...">`/
+  `<a href="mailto:...">`/link Google Maps cliccabili, WhatsApp/Chiama
+  confermati sulla stessa riga del numero (bounding box Y entro 15px).
+- **Toast persistente**: creata una nuova richiesta diretta mentre il
+  professionista restava sulla home (non `/dashboard`, che marca subito
+  le notifiche come lette — `markNotificationsRead()` al mount
+  vanificherebbe il test) — toast comparso a **45s** (poll periodico
+  confermato via log di rete), ancora presente **53s** dopo l'invio
+  (ben oltre i vecchi 6s di auto-dismiss), chiuso correttamente al click
+  sul nuovo bottone "x" (`[aria-label="Chiudi la notifica"]`).
+- **Popup salva dati account**: due casi — dati account invariati
+  (nessuna modifica ai campi precompilati) → popup assente; un campo
+  modificato (telefono) → popup presente con il testo "Vuoi salvare
+  questi dati (nome, telefono, indirizzo) come predefiniti..."; click su
+  "Sì, salva" → nuovo telefono persistito correttamente sull'account
+  (confermato via query diretta al DB).
+- **Menu hamburger "Elimina richiesta"**: testo esterno "Elimina" assente
+  dopo la modifica, icona hamburger presente e funzionante, voce
+  "Elimina richiesta" rivelata al click, conferma "Eliminare questa
+  richiesta?" mostrata correttamente al click sulla voce di menu.
+- **QuoteCard Modifica/Rifiuta**: bottone "Modifica" (senza "data/orario")
+  e bottone "Rifiuta" (non più testo sottolineato) entrambi confermati
+  come elementi con `role="button"`, sulla stessa riga (Y entro 10px),
+  "Rifiuta" a destra di "Modifica".
+
+Zero errori console in tutti i flussi. Typecheck pulito su tutti i
+package (`shared`, `api-client`, `web`), build di produzione `apps/web`
+verde (31 route, nessuna nuova).

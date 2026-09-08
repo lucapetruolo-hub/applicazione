@@ -180,14 +180,20 @@ export function GuidedRequestForm({
     setPostalCode((prev) => prev || user.postalCode || "");
     setProvince((prev) => prev || user.province || "");
     setCity((prev) => prev || user.city || "");
-    // Richiesta esplicita dell'utente: "se non sono ancora presenti in
-    // impostazioni account dopo il salva chiedi se vuole che diventino i
-    // dati predefiniti" — memorizza se l'account NON aveva già questi dati
-    // (non se il cliente li ha poi modificati nel form), per proporre il
-    // salvataggio come predefiniti solo dopo l'invio riuscito.
-    setAccountMissingFields(
-      !user.name || !user.surname || !user.phone || !user.street || !user.houseNumber || !user.postalCode || !user.city || !user.province,
-    );
+    // Istantanea dei valori REALI dell'account (non del form, che può
+    // ricadere su valori arrivati dall'URL) — confrontata al momento
+    // dell'invio per rilevare sia campi mancanti sia campi modificati.
+    accountSnapshotRef.current = {
+      name: user.name ?? "",
+      surname: user.surname ?? "",
+      phone: user.phone ?? "",
+      street: user.street ?? "",
+      houseNumber: user.houseNumber ?? "",
+      addressExtra: user.addressExtra ?? "",
+      postalCode: user.postalCode ?? "",
+      city: user.city ?? "",
+      province: user.province ?? "",
+    };
   }, [user]);
 
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
@@ -249,11 +255,19 @@ export function GuidedRequestForm({
   const [postalCode, setPostalCode] = useState(searchParams.get("cap") ?? "");
   const [province, setProvince] = useState(searchParams.get("provincia") ?? "");
   const prefilledFromAccountRef = useRef(false);
-  // True se, al momento del prefill, l'account non aveva ancora questi dati
-  // — richiesta esplicita dell'utente: dopo l'invio riuscito, in quel caso
-  // si propone di salvare i dati appena inseriti come predefiniti
-  // dell'account (così non andranno reinseriti la prossima volta).
-  const [accountMissingFields, setAccountMissingFields] = useState(false);
+  // Istantanea dei valori reali dell'account al momento del prefill (non i
+  // valori di stato, che ricadono su "" per i campi mancanti) — usata al
+  // momento dell'invio per capire se il cliente ha modificato o aggiunto
+  // qualcosa rispetto a quanto già salvato: richiesta esplicita
+  // dell'utente ("se viene cambiato qualche campo rispetto a quelli
+  // salvati e precompilati, chiedi se si vogliono salvare i nuovi dati"),
+  // che estende il caso già gestito di "l'account non li aveva ancora".
+  const accountSnapshotRef = useRef<Record<string, string> | null>(null);
+  // True se, al momento dell'invio, almeno un campo differisce da quanto
+  // già salvato nell'account (mancante in origine, oppure modificato nel
+  // form) — in quel caso si propone di salvare i dati appena inseriti
+  // come predefiniti dell'account.
+  const [accountDataDiffers, setAccountDataDiffers] = useState(false);
   const [savingDefaults, setSavingDefaults] = useState(false);
   const [defaultsSaved, setDefaultsSaved] = useState(false);
   const [defaultsDeclined, setDefaultsDeclined] = useState(false);
@@ -335,7 +349,7 @@ export function GuidedRequestForm({
               ? `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? " disponibili ora" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
           </Text>
-          {accountMissingFields && !defaultsDeclined ? (
+          {accountDataDiffers && !defaultsDeclined ? (
             <YStack
               width="100%"
               gap="$2"
@@ -352,8 +366,8 @@ export function GuidedRequestForm({
               ) : (
                 <>
                   <Text fontSize="$3" color={brand.grafite}>
-                    Vuoi salvare questi dati (nome, telefono, indirizzo) come predefiniti nel tuo account, per non
-                    doverli reinserire la prossima volta?
+                    Vuoi salvare questi dati (nome, telefono, indirizzo) come predefiniti nel tuo account, così
+                    restano aggiornati per la prossima richiesta?
                   </Text>
                   {defaultsError ? (
                     <Text color={brand.urgenza} fontSize="$2">
@@ -486,6 +500,27 @@ export function GuidedRequestForm({
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
       });
+      // Solo per un intervento a domicilio: i campi destinatario/indirizzo
+      // restano vuoti (mai riempiti) per una richiesta Online, confrontarli
+      // avrebbe proposto di "salvare" dati vuoti su un account che magari
+      // li aveva già — richiesta esplicita dell'utente, ma applicabile solo
+      // ai campi realmente compilabili in questo invio.
+      if (serviceMode === "HOME") {
+        const snapshot = accountSnapshotRef.current;
+        const current: Record<string, string> = {
+          name: recipientName.trim(),
+          surname: recipientSurname.trim(),
+          phone: recipientPhone.trim(),
+          street: street.trim(),
+          houseNumber: houseNumber.trim(),
+          addressExtra: addressExtra.trim(),
+          postalCode: postalCode.trim(),
+          city: city.trim(),
+          province: province.trim(),
+        };
+        const differs = !snapshot || Object.keys(current).some((key) => current[key] !== (snapshot[key] ?? ""));
+        setAccountDataDiffers(differs);
+      }
       setResult({ matchedProfessionals: response.matchedProfessionals });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");

@@ -13,7 +13,7 @@ import {
   quotePriceTotals,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
-import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -900,9 +900,22 @@ function GuidedRequestCard({
               ) : null}
             </YStack>
             <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
-              <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
-                {STATUS_LABEL[request.status]}
-              </Text>
+              <XStack alignItems="center" gap="$2">
+                <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
+                  {STATUS_LABEL[request.status]}
+                </Text>
+                {/* Menu hamburger con "Elimina richiesta" (richiesta esplicita
+                    dell'utente, stesso pattern già in uso in "Lavori
+                    accettati") al posto del vecchio tasto "Elimina" esterno,
+                    rimosso — la conferma a due passaggi resta invariata,
+                    mostrata più sotto quando confirmingDelete è vero. */}
+                {canDelete ? (
+                  <ActionsMenu
+                    accessibilityLabel="Azioni sulla richiesta"
+                    items={[{ icon: "trash-2", text: "Elimina richiesta", color: brand.urgenza, onPress: () => setConfirmingDelete(true) }]}
+                  />
+                ) : null}
+              </XStack>
               {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             </YStack>
           </YStack>
@@ -1019,18 +1032,7 @@ function GuidedRequestCard({
                     Annulla
                   </Button>
                 </>
-              ) : (
-                <Text
-                  color={brand.urgenza}
-                  fontWeight="600"
-                  fontSize="$3"
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  onPress={() => setConfirmingDelete(true)}
-                >
-                  Elimina
-                </Text>
-              )}
+              ) : null}
             </XStack>
           ) : null}
           {error ? (
@@ -1481,48 +1483,40 @@ function QuoteCard({
 
       {quote.status === "SENT" ? (
         <>
-          {/* Gerarchia dei bottoni (segnalato in revisione UX): "Accetta"
-              primario, "Modifica data/orario" secondario, "Rifiuta" spostato
-              su una riga propria sotto e reso discreto (testo grigio, non più
-              rosso in grassetto affiancato al primario) — il rosso resta
-              riservato alla sola conferma effettiva del rifiuto. */}
+          {/* Gerarchia dei bottoni: "Accetta" primario, "Modifica" (prima
+              "Modifica data/orario") secondario, "Rifiuta" affiancato a
+              destra dello stesso — richiesta esplicita dell'utente, stesso
+              trattamento (ghost + testo rosso in grassetto) già in uso per
+              il bottone omonimo lato professionista ("Rifiuta richiesta",
+              /dashboard/richieste) invece del testo sottolineato di prima. */}
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
               {isAccepting ? "Accettazione..." : "Accetta preventivo"}
             </Button>
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
-                Modifica data/orario
+                Modifica
+              </Button>
+            ) : null}
+            {!isChoosingDate && !confirmingReject ? (
+              <Button variant="ghost" size="$3" height={40} onPress={() => setConfirmingReject(true)}>
+                <Text color={brand.urgenza} fontWeight="700" fontSize="$3">
+                  Rifiuta
+                </Text>
               </Button>
             ) : null}
           </XStack>
-          {!isChoosingDate ? (
+          {!isChoosingDate && confirmingReject ? (
             <XStack gap="$2" alignItems="center">
-              {!confirmingReject ? (
-                <Text
-                  color={brand.grafite70}
-                  fontWeight="500"
-                  fontSize="$2"
-                  textDecorationLine="underline"
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  onPress={() => setConfirmingReject(true)}
-                >
-                  Rifiuta preventivo
-                </Text>
-              ) : (
-                <>
-                  <Text fontSize="$2" color={brand.urgenza}>
-                    Rifiutare questo preventivo?
-                  </Text>
-                  <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
-                    {isRejecting ? "Rifiuto..." : "Conferma"}
-                  </Button>
-                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
-                    Annulla
-                  </Button>
-                </>
-              )}
+              <Text fontSize="$2" color={brand.urgenza}>
+                Rifiutare questo preventivo?
+              </Text>
+              <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
+                {isRejecting ? "Rifiuto..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
+                Annulla
+              </Button>
             </XStack>
           ) : null}
           {isChoosingDate ? (
@@ -1814,7 +1808,10 @@ function BookingRow({
               card) si trova ora qui dentro, invece di occupare spazio in
               vista sulla riga della richiesta. */}
           {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
-            <BookingActionsMenu onCancel={() => setShowCancelModal(true)} />
+            <ActionsMenu
+              accessibilityLabel="Azioni sulla prenotazione"
+              items={[{ icon: "x", text: "Annulla prenotazione", color: brand.urgenza, onPress: () => setShowCancelModal(true) }]}
+            />
           ) : null}
         </XStack>
       </YStack>
@@ -2141,7 +2138,20 @@ function BookingRow({
 // solo "Annulla prenotazione" (prima un bottone visibile esternamente
 // sulla card, richiesta esplicita di spostarlo qui), ma è già una
 // struttura a menu, non un singolo bottone travestito.
-function BookingActionsMenu({ onCancel }: { onCancel: () => void }) {
+/**
+ * Menu hamburger generico (click-to-open, chiusura al click esterno) —
+ * introdotto per "Annulla prenotazione" (Lavori accettati, §65), reso
+ * generico per riuso identico su "Elimina richiesta" (Le mie richieste),
+ * richiesta esplicita dell'utente ("inserisci il pulsante hamburger come
+ * presente nel lavori accettati").
+ */
+function ActionsMenu({
+  accessibilityLabel,
+  items,
+}: {
+  accessibilityLabel: string;
+  items: { icon: IconName; text: string; color: string; onPress: () => void }[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -2167,7 +2177,7 @@ function BookingActionsMenu({ onCancel }: { onCancel: () => void }) {
         hoverStyle={{ backgroundColor: brand.gesso }}
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel="Azioni sulla prenotazione"
+        accessibilityLabel={accessibilityLabel}
       >
         <Icon name="menu" size={18} color={brand.grafite} />
       </YStack>
@@ -2188,24 +2198,27 @@ function BookingActionsMenu({ onCancel }: { onCancel: () => void }) {
           shadowOffset={{ width: 0, height: 4 }}
           shadowOpacity={1}
         >
-          <XStack
-            paddingHorizontal="$4"
-            paddingVertical="$3"
-            alignItems="center"
-            gap="$2"
-            cursor="pointer"
-            hoverStyle={{ backgroundColor: brand.gesso }}
-            onPress={() => {
-              onCancel();
-              setIsOpen(false);
-            }}
-            accessibilityRole="button"
-          >
-            <Icon name="x" size={16} color={brand.urgenza} />
-            <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
-              Annulla prenotazione
-            </Text>
-          </XStack>
+          {items.map((item) => (
+            <XStack
+              key={item.text}
+              paddingHorizontal="$4"
+              paddingVertical="$3"
+              alignItems="center"
+              gap="$2"
+              cursor="pointer"
+              hoverStyle={{ backgroundColor: brand.gesso }}
+              onPress={() => {
+                item.onPress();
+                setIsOpen(false);
+              }}
+              accessibilityRole="button"
+            >
+              <Icon name={item.icon} size={16} color={item.color} />
+              <Text fontSize="$3" color={item.color} fontWeight="600">
+                {item.text}
+              </Text>
+            </XStack>
+          ))}
         </YStack>
       ) : null}
     </YStack>

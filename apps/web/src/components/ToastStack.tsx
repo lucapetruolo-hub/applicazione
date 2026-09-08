@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationDestination } from "@/lib/notificationSections";
-
-const AUTO_DISMISS_MS = 6000;
 
 function ToastCard({
   id,
@@ -23,12 +20,11 @@ function ToastCard({
   onDismiss: (id: string) => void;
   onOpen: (type: string) => void;
 }) {
-  useEffect(() => {
-    const timer = setTimeout(() => onDismiss(id), AUTO_DISMISS_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
+  // Niente più sparizione automatica dopo pochi secondi (richiesta esplicita
+  // dell'utente: "non è ben comprensibile, rendila visualizzabile fino a
+  // che non si visualizza e apre effettivamente quell'aggiornamento") — il
+  // banner resta a schermo finché non viene aperto (click sul corpo) o
+  // chiuso esplicitamente con la "x", mai da solo.
   const destination = notificationDestination(type);
 
   return (
@@ -63,6 +59,22 @@ function ToastCard({
       <Text fontSize="$3" color={brand.grafite} fontWeight="600" flex={1}>
         {message}
       </Text>
+      {/* Tasto di chiusura esplicito: senza sparizione automatica il
+          banner non ha più un modo di andarsene da solo — questa "x"
+          lo chiude senza aprire l'aggiornamento (stopPropagation, mai
+          navigare dal solo tasto di chiusura). */}
+      <XStack
+        padding={4}
+        cursor="pointer"
+        onPress={(e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          onDismiss(id);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Chiudi la notifica"
+      >
+        <Icon name="x" size={16} color={brand.grafite70} />
+      </XStack>
     </XStack>
   );
 }
@@ -71,7 +83,10 @@ function ToastCard({
  * Popup "toast" per nuove notifiche (richiesta esplicita dell'utente:
  * "Fantastico, hai ricevuto un nuovo preventivo" / "Wow, hanno accettato
  * un tuo preventivo") — pila in alto al centro, si accumula se arrivano
- * più eventi ravvicinati, ogni toast si chiude da solo dopo 6s o al click.
+ * più eventi ravvicinati. Resta a schermo finché non viene aperto (click
+ * sul corpo, naviga all'aggiornamento) o chiuso esplicitamente con la "x"
+ * — mai una sparizione automatica (richiesta esplicita dell'utente: 6s
+ * erano troppo pochi per accorgersene e capire di cosa si trattava).
  * Montato una sola volta nel layout globale (come SiteHeader): i toast
  * restano visibili durante la navigazione tra pagine, non solo su
  * dashboard/le-mie-richieste.

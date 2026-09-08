@@ -1099,8 +1099,22 @@ function RequestCard({
           ) : null}
 
           <XStack flexWrap="wrap" gap="$4" paddingTop="$3">
-            {/* Sezione 1 — Dettagli cliente */}
-            <YStack flex={1} minWidth={260} gap="$2">
+            {/* Sezione 1 — Dettagli cliente. Sfondo colorato (richiesta
+                esplicita dell'utente: "fai visualizzare meglio la sezione
+                dettagli cliente magari colorando lo sfondo") — stesso
+                trattamento già in uso per "Sezione 3 — Preventivo" più
+                sotto in questo file, per coerenza visiva tra le due
+                sezioni "a riquadro" della card. */}
+            <YStack
+              flex={1}
+              minWidth={260}
+              gap="$2"
+              padding="$3"
+              borderRadius={radiusDoc}
+              backgroundColor={brand.gesso}
+              borderWidth={1}
+              borderColor={brand.filetto}
+            >
               <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Dettagli cliente
               </Text>
@@ -1144,15 +1158,40 @@ function RequestCard({
                       Riceverà il professionista: {[booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ")}
                     </Text>
                   ) : null}
+                  {/* Numero cliccabile (tel:) con i tasti WhatsApp/Chiama
+                      di fianco, non più in una riga separata più sotto —
+                      richiesta esplicita dell'utente. */}
                   {revealedPhone ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      {revealedPhone}
-                    </Text>
+                    <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
+                        <Text fontSize={13} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                          {revealedPhone}
+                        </Text>
+                      </a>
+                      {whatsAppLink ? (
+                        <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                          <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor="#25d366">
+                            <Text fontSize={11.5} fontWeight="700" color="white">
+                              WhatsApp
+                            </Text>
+                          </XStack>
+                        </a>
+                      ) : null}
+                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
+                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor={brand.cianografia}>
+                          <Text fontSize={11.5} fontWeight="700" color="white">
+                            Chiama
+                          </Text>
+                        </XStack>
+                      </a>
+                    </XStack>
                   ) : null}
                   {revealedEmail ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      {revealedEmail}
-                    </Text>
+                    <a href={`mailto:${revealedEmail}`} style={{ textDecoration: "none" }}>
+                      <Text fontSize={13} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                        {revealedEmail}
+                      </Text>
+                    </a>
                   ) : null}
                   {!booking ? (
                     <Text fontSize={12.5} color={brand.grafite70} fontStyle="italic">
@@ -1160,24 +1199,6 @@ function RequestCard({
                     </Text>
                   ) : null}
                   <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
-                    {whatsAppLink ? (
-                      <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor="#25d366">
-                          <Text fontSize={12.5} fontWeight="700" color="white">
-                            WhatsApp
-                          </Text>
-                        </XStack>
-                      </a>
-                    ) : null}
-                    {revealedPhone ? (
-                      <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografia}>
-                          <Text fontSize={12.5} fontWeight="700" color="white">
-                            Chiama
-                          </Text>
-                        </XStack>
-                      </a>
-                    ) : null}
                     <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
                       <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
                         Chat
@@ -1187,6 +1208,10 @@ function RequestCard({
                   </XStack>
                 </>
               )}
+              {/* Indirizzo cliccabile (link Google Maps, stesso principio
+                  già in uso per tel:/mailto:/wa.me — nessuna API a
+                  pagamento, solo un URL di apertura) — richiesta esplicita
+                  dell'utente. */}
               {isOnline ? (
                 <YStack paddingTop="$2" gap={2}>
                   <Text fontSize={12.5} color={brand.grafite70}>
@@ -1194,9 +1219,16 @@ function RequestCard({
                   </Text>
                 </YStack>
               ) : revealedAddress ? (
-                <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
-                  {revealedAddress}
-                </Text>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(revealedAddress)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ textDecoration: "none" }}
+                >
+                  <Text fontSize={12.5} fontWeight="600" color={brand.cianografia} textDecorationLine="underline" paddingTop="$2">
+                    {revealedAddress}
+                  </Text>
+                </a>
               ) : (
                 <Text fontSize={12.5} color={brand.grafite70} paddingTop="$2">
                   {gr.city}
