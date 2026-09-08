@@ -8387,3 +8387,78 @@ preventivo "Manodopera" presente). Zero `pageerror`. Typecheck pulito su
 `apps/web`, build di produzione verde — `/dashboard` passato da 4,69 kB
 (dopo la sola rimozione richieste in §43) a bundle ulteriormente ridotto
 con la rimozione di `AcceptedJobCard`.
+
+## 57. `/admin` — menu laterale desktop + tabelle in formato colonna, badge modalità intervento nel dettaglio prenotazione
+
+Due richieste esplicite dell'utente nello stesso giro.
+
+**`/admin` — menu laterale + tabelle**: *"nella pagina /admin, deve essere
+piu funzionale allo scopo, da desktop ci deve essere un menu laterale che
+non va a modificare l'attuale posizione dell'elenco centrale, dove in
+questo menu ci saranno cliccabili: utenti registrati, segnalazioni,
+messaggi, lista d'attesa"* + *"e dovranno essere in formato colonna in
+modo da poter copiare ad esempio solo le e-mail"*.
+
+- **Menu laterale** (`AdminSidebar`, `apps/web/src/app/admin/page.tsx`):
+  quattro link (`#utenti-registrati`/`#segnalazioni`/`#messaggi`/
+  `#lista-attesa`) verso altrettante `<div id="..." style={{scrollMarginTop:
+  96}} />` inserite subito prima di ciascuna sezione — stesso pattern di
+  ancoraggio già in uso altrove nel sito (`#agenda`, `#recensione-{id}`).
+  Reso in CSS grezzo (`.admin-sidebar`, `apps/web/src/app/globals.css`,
+  non `<style jsx>`: stessa convenzione già seguita per classi riusate da
+  più file) con `position: fixed` — **deliberatamente fuori dal flusso di
+  layout**: è l'unico modo di garantire "non deve modificare l'attuale
+  posizione dell'elenco centrale" in senso letterale (un `flex`/`grid`
+  affiancato avrebbe comunque spostato la colonna centrale di quanto
+  larga è la sidebar). Visibile solo da `min-width: 1300px` (soglia scelta
+  per lasciare margine sufficiente a sinistra della colonna centrale,
+  `maxWidth={800}` centrata, senza sovrapporla) — sotto quella soglia
+  `display: none`, nessun impatto su tablet/mobile.
+- **Tabelle a colonne**: `UserGroup` (elenco "Utenti registrati") e la
+  sezione "Lista d'attesa" riscritte da righe `XStack` con testo
+  concatenato a vere `<table>` HTML (`.admin-table`, stesso file CSS) —
+  un `<td>` per campo (Email, Nome, Attività se professionista/Registrato
+  il) rende ogni cella selezionabile/copiabile in isolamento: un
+  triplo-click su un indirizzo email non trascina più il nome affiancato,
+  cosa che un flex con testo concatenato non garantisce. `ReportRow`/
+  `ArchivedReportRow`/`ContactMessageRow` (Segnalazioni contenuti/Messaggi
+  di contatto) **lasciate invariate** nella resa a righe: contenuto più
+  ricco (testo libero, bottoni azione), meno naturale in una tabella a
+  colonne strette — solo le due liste "pure dati" (utenti, waitlist) sono
+  state convertite. Nessuna `textTransform="uppercase"` introdotta (regola
+  di progetto §19): le intestazioni `<th>` usano `font-weight` per
+  distinguersi, mai il maiuscolo.
+- Verificato con Postgres locale reale (non solo lettura di codice) e
+  Playwright, tre controlli mirati sui due requisiti letterali dell'utente:
+  posizione X dell'intestazione centrale identica prima/dopo un click sul
+  menu (320px in entrambi i casi — "non modifica la posizione"), scroll
+  verso la sezione "Lista d'attesa" corretto (`scrollY` >0, intestazione
+  vicina alla cima dopo lo scroll), testo di una cella email letto in
+  isolamento via `innerText` su quel solo `<td>` (nessun campo vicino
+  incluso). Sidebar assente sotto 1300px (1100px/390px, zero overflow
+  orizzontale su entrambi). Typecheck pulito su `apps/web`, build di
+  produzione verde (31 route, nessuna nuova).
+
+**Modalità intervento (online/domicilio) nel dettaglio prenotazione
+dell'agenda** — richiesta esplicita dell'utente: *"nell'agenda
+professionista quando clicco su un appuntamento, inserisci la scritta se
+si tratta di un appuntamento online o a domicilio, (come visualizzato
+nelle richieste ricevute)"*. `Booking.serviceMode` (copiato dalla
+`GuidedRequest` di origine, CLAUDE.md §23) era già esposto da
+`ProfessionalsService.getMyBookings`/`ProfessionalBooking` ma non ancora
+mostrato in `BookingDetailPanel.tsx` (il pop-up aperto cliccando un
+evento nel calendario "Prenotazioni") — solo `RequestCard`
+(`/dashboard/richieste`, `ServiceBadge`) lo mostrava. Aggiunta una riga
+con icona (`video`/`house`) + etichetta ("Consulenza online"/"A
+domicilio") subito sotto data/ora, stesso lessico già in uso altrove nel
+prodotto — assente per le prenotazioni precedenti a questa funzionalità
+(`serviceMode` nullable) o dirette da agenda pubblica senza
+`GuidedRequest` collegata (`bookAgendaSlot`, dormiente da CLAUDE.md §20).
+Verificato end-to-end con l'API locale reale (non solo typecheck/build):
+richiesta guidata `ONLINE` diretta a un professionista specifico →
+preventivo con data manuale → accettazione → `GET
+/professionals/me/bookings` conferma `serviceMode: "ONLINE"` → click sulla
+prenotazione in `/dashboard/agenda` (ricerca full-text per nome cliente,
+§ precedente) apre il pop-up con "Consulenza online" visibile subito sotto
+l'orario. Typecheck pulito su tutti i package (`shared`, `api`, `web`),
+build di produzione `apps/web` verde (31 route).

@@ -104,3 +104,76 @@ a {
     display: none !important;
   }
 }
+
+/* /admin — menu laterale desktop (richiesta esplicita dell'utente: "un
+   menu laterale che non va a modificare l'attuale posizione dell'elenco
+   centrale") + tabelle a colonne ("dovranno essere in formato colonna in
+   modo da poter copiare ad esempio solo le e-mail"). `position: fixed`
+   tiene il menu fuori dal flusso di layout: la colonna centrale (già
+   centrata a sé, `maxWidth={800}`) resta esattamente dov'era, il menu si
+   sovrappone al margine sinistro invece di spingerla. Una vera `<table>`
+   HTML rende ogni cella selezionabile/copiabile senza trascinare i campi
+   vicini — un flex con testo concatenato non lo garantisce (un
+   triplo-click su un indirizzo email lì selezionerebbe anche il nome
+   affiancato). Visibile solo da una larghezza per cui c'è margine
+   sufficiente a sinistra della colonna centrale senza sovrapporla. */
+.admin-sidebar {
+  display: none;
+}
+@media (min-width: 1300px) {
+  .admin-sidebar {
+    display: flex;
+    position: fixed;
+    top: 120px;
+    left: 32px;
+    width: 200px;
+    flex-direction: column;
+    gap: 4px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 12px;
+  }
+}
+.admin-sidebar-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.admin-sidebar-link:hover {
+  background: #fdefe1;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  background: #ffffff;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6459;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  vertical-align: top;
+}
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tr:nth-child(even) td {
+  background: #fdefe1;
+}

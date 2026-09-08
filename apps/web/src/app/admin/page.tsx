@@ -115,7 +115,9 @@ export default function AdminPage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+      <AdminSidebar />
       <YStack width="100%" maxWidth={800} gap="$6">
+        <div id="utenti-registrati" style={{ scrollMarginTop: 96 }} />
         <H1 size="$8">Utenti registrati</H1>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
@@ -131,6 +133,7 @@ export default function AdminPage() {
         ) : null}
 
         <YStack gap="$3">
+          <div id="segnalazioni" style={{ scrollMarginTop: 96 }} />
           <XStack justifyContent="space-between" alignItems="center">
             <H2 size="$6">Segnalazioni contenuti</H2>
             <ReportsSectionMenu showArchivedReports={showArchivedReports} onToggleArchive={() => setShowArchivedReports((v) => !v)} />
@@ -170,6 +173,7 @@ export default function AdminPage() {
         </YStack>
 
         <YStack gap="$3">
+          <div id="messaggi" style={{ scrollMarginTop: 96 }} />
           <H2 size="$6">Messaggi di contatto</H2>
           {contactMessagesError ? (
             <Text color={brand.urgenza}>{contactMessagesError}</Text>
@@ -193,6 +197,7 @@ export default function AdminPage() {
         </YStack>
 
         <YStack gap="$3">
+          <div id="lista-attesa" style={{ scrollMarginTop: 96 }} />
           <H2 size="$6">Lista d&apos;attesa (&quot;Arriviamo presto nella tua zona&quot;)</H2>
           {waitlistError ? (
             <Text color={brand.urgenza}>{waitlistError}</Text>
@@ -201,30 +206,56 @@ export default function AdminPage() {
           ) : waitlist.length === 0 ? (
             <Text color={brand.grafite70}>Nessuna email raccolta finora.</Text>
           ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
-              {waitlist.map((row, index) => (
-                <YStack
-                  key={row.email}
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  flexWrap="wrap"
-                  gap="$2"
-                  paddingHorizontal="$3"
-                  paddingVertical="$3"
-                  backgroundColor={index % 2 === 0 ? "transparent" : brand.gesso}
-                >
-                  <Text fontWeight="600">{row.email}</Text>
-                  <Text fontSize="$2" color={brand.grafite70}>
-                    {new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
-                  </Text>
-                </YStack>
-              ))}
-            </YStack>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Iscritto il</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waitlist.map((row) => (
+                    <tr key={row.email}>
+                      <td>{row.email}</td>
+                      <td>{new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </YStack>
       </YStack>
     </YStack>
+  );
+}
+
+/**
+ * Menu laterale desktop (richiesta esplicita dell'utente: "un menu
+ * laterale che non va a modificare l'attuale posizione dell'elenco
+ * centrale... utenti registrati, segnalazioni, messaggi, lista d'attesa")
+ * — quattro link di ancoraggio verso le sezioni già esistenti sulla
+ * stessa pagina, `position: fixed` (`.admin-sidebar`, globals.css) così
+ * non tocca il flusso di layout della colonna centrale. Visibile solo da
+ * una larghezza per cui c'è margine sufficiente a sinistra di quella
+ * colonna senza sovrapporla.
+ */
+function AdminSidebar() {
+  const items = [
+    { href: "#utenti-registrati", label: "Utenti registrati" },
+    { href: "#segnalazioni", label: "Segnalazioni" },
+    { href: "#messaggi", label: "Messaggi" },
+    { href: "#lista-attesa", label: "Lista d'attesa" },
+  ];
+  return (
+    <nav className="admin-sidebar" aria-label="Sezioni amministrazione">
+      {items.map((item) => (
+        <a key={item.href} href={item.href} className="admin-sidebar-link">
+          {item.label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -235,32 +266,28 @@ function UserGroup({ title, rows, showBusiness }: { title: string; rows: AdminUs
       {rows.length === 0 ? (
         <Text color={brand.grafite70}>Nessuno finora.</Text>
       ) : (
-        <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
-          {rows.map((row, index) => (
-            <YStack
-              key={row.email ?? index}
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              flexWrap="wrap"
-              gap="$2"
-              paddingHorizontal="$3"
-              paddingVertical="$3"
-              backgroundColor={index % 2 === 0 ? "transparent" : brand.gesso}
-            >
-              <YStack gap="$1" minWidth={200}>
-                <Text fontWeight="600">{row.email ?? "—"}</Text>
-                <Text fontSize="$2" color={brand.grafite70}>
-                  {[row.name, row.surname].filter(Boolean).join(" ") || "—"}
-                  {showBusiness && row.businessName ? ` · ${row.businessName}` : ""}
-                </Text>
-              </YStack>
-              <Text fontSize="$2" color={brand.grafite70}>
-                {new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
-              </Text>
-            </YStack>
-          ))}
-        </YStack>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nome</th>
+                {showBusiness ? <th>Attività</th> : null}
+                <th>Registrato il</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={row.email ?? index}>
+                  <td>{row.email ?? "—"}</td>
+                  <td>{[row.name, row.surname].filter(Boolean).join(" ") || "—"}</td>
+                  {showBusiness ? <td>{row.businessName ?? "—"}</td> : null}
+                  <td>{new Date(row.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </YStack>
   );

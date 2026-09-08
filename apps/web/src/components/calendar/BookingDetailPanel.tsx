@@ -150,6 +150,20 @@ export function BookingDetailPanel({
                 d'orario"), quando l'ora di fine è nota. */}
             {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
           </Text>
+          {/* Tipo di intervento (a domicilio/online), richiesta esplicita
+              dell'utente: stesso trattamento già visibile in "Richieste
+              ricevute" (RequestCard/ServiceBadge, /dashboard/richieste) —
+              assente per le prenotazioni precedenti a questa funzionalità
+              (GuidedRequest.serviceMode nullable) o dirette da agenda
+              pubblica senza GuidedRequest collegata. */}
+          {booking.serviceMode ? (
+            <XStack alignItems="center" gap={6} marginTop={2}>
+              <Icon name={booking.serviceMode === "ONLINE" ? "video" : "house"} size={14} color={brand.cianografia} strokeWidth={1.5} />
+              <Text fontFamily="$body" fontSize="$3" fontWeight="600" color={brand.grafite}>
+                {booking.serviceMode === "ONLINE" ? "Consulenza online" : "A domicilio"}
+              </Text>
+            </XStack>
+          ) : null}
         </YStack>
 
         {/* Dati del cliente utili al professionista per andare a svolgere il
