@@ -8685,3 +8685,61 @@ terminato" trovato con `backgroundColor: rgb(32, 178, 170)` (= `#20B2AA`)
 e testo bianco, colore misurato via `getComputedStyle`. Zero errori
 console. Typecheck pulito su `apps/web`, build di produzione verde
 (31 route, nessuna nuova).
+
+## 64. Bug reale: "Vedi in agenda" (richieste ricevute) non mostrava la prenotazione
+
+Segnalato dall'utente: *"nelle richieste ricevute da un account
+professionista in un preventivo accettato, se clicco su vedi in agenda,
+non lo visualizzo in agenda, correggi"*. Causa reale (riprodotta, non solo
+ipotizzata): il bottone "Vedi in agenda" (`RequestCard`, stadi
+`accettata`/`completata`/`annullata`) era un semplice `<Link
+href="/dashboard/agenda">` senza alcun parametro — `/dashboard/agenda`
+apre di default sul calendario "Prenotazioni" (già corretto, giro
+precedente in questo file) ma sempre sulla **data odierna**
+(`bookingCurrentDate` inizializzata a `todayUtc()`, nessun supporto a
+deep-link). Una prenotazione con `scheduledAt` anche solo di qualche
+settimana nel futuro/passato esisteva perfettamente in agenda ma non
+compariva mai nella vista mostrata al primo caricamento — sembrava
+"mancante" perché occorreva già sapere di dover navigare manualmente fino
+alla data giusta.
+
+- **`apps/web/src/app/dashboard/richieste/page.tsx`**: il link diventa
+  `/dashboard/agenda?booking={booking.id}` quando `booking` è disponibile
+  (sempre vero per questi tre stadi), invariato altrimenti.
+- **`apps/web/src/app/dashboard/agenda/page.tsx`**: nuovo `useSearchParams`
+  (richiede di avvolgere il componente in `<Suspense>`, stesso gotcha già
+  documentato altrove in questo file per `/le-mie-richieste`/
+  `/password-dimenticata` — la pagina esportava prima un unico componente
+  `DashboardAgendaPage` senza wrapper, ora `DashboardAgendaPage` è solo il
+  guscio `<Suspense>`, `DashboardAgendaContent` porta tutta la logica
+  esistente invariata). Un nuovo `useEffect`, eseguito una sola volta non
+  appena `bookings` è caricato (`consumedBookingDeepLinkRef`, evita di
+  ripetere il salto se `bookings` si ricarica mentre l'utente ha già
+  navigato altrove): se `?booking=` corrisponde a una prenotazione reale,
+  porta `activeTab` su "prenotazioni", `bookingView` su "Giorno" (sempre
+  visibile a prescindere da come cade nella settimana/mese), naviga
+  `bookingCurrentDate` alla data esatta (`startOfDayUtc(new
+  Date(match.scheduledAt))`, stesso helper già in uso in
+  `apps/web/src/lib/calendarDates.ts`) e apre subito
+  `BookingDetailPanel` (`setSelectedBooking(match)`) — non basta arrivare
+  sulla data giusta, l'utente deve vedere concretamente la prenotazione
+  aperta, non doverla ancora cercare/cliccare tra le altre di quel giorno.
+  Nessun parametro → nessun comportamento nuovo (stesso stato iniziale di
+  prima).
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright: professionista+cliente di test, richiesta diretta →
+preventivo con data 19 ottobre 2026 (oltre un mese da "oggi", 8 settembre
+2026 in questo ambiente) → accettata dal cliente → `Booking` `CONFIRMED`
+con quella data. Click su "Vedi in agenda" da `/dashboard/richieste`
+(card espansa, stadio "accettata") → naviga a
+`/dashboard/agenda?booking=<id>` → pannello di dettaglio aperto
+automaticamente con "lunedì 19 ottobre 2026 · 09:00–11:00", nome cliente,
+contatti, indirizzo e preventivo tutti corretti — prima del fix la stessa
+navigazione sarebbe atterrata sulla data odierna, senza alcuna
+prenotazione visibile in quel giorno. Nessuna regressione: aprendo
+`/dashboard/agenda` senza `?booking=` nessun pannello si apre da solo
+(l'unico `role="dialog"` presente in quel caso è il banner cookie,
+componente distinto e pre-esistente). Zero errori console. Typecheck
+pulito su `apps/web`, build di produzione verde (31 route, nessuna
+nuova).

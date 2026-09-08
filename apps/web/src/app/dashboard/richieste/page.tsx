@@ -1421,7 +1421,13 @@ function RequestCard({
                     </Text>
                   </Button>
                 ) : null}
-                <Link href="/dashboard/agenda">
+                {/* Bug reale corretto: il link portava sempre alla data odierna
+                    del calendario "Prenotazioni" invece che alla data vera
+                    della prenotazione (spesso settimane avanti/indietro),
+                    facendola sembrare assente dall'agenda. Il parametro
+                    `?booking=` (letto da /dashboard/agenda) naviga alla data
+                    esatta e apre subito il pannello di dettaglio. */}
+                <Link href={booking ? `/dashboard/agenda?booking=${booking.id}` : "/dashboard/agenda"}>
                   <Button variant="secondary" backgroundColor={brand.verificato} size="$3">
                     <Text color="white" fontWeight="700" fontSize="$3">
                       Vedi in agenda

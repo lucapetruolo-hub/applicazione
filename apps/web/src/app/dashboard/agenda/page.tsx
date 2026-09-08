@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ExternalJob, ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -19,6 +19,7 @@ import {
   monthLabel,
   parseIsoDate,
   slotAppliesOnDateStr,
+  startOfDayUtc,
   todayUtc,
   toIsoDate,
 } from "@/lib/calendarDates";
@@ -128,8 +129,17 @@ function formatAgendaTimeRange(startIso: string, endIso: string | null): string 
 }
 
 export default function DashboardAgendaPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardAgendaContent />
+    </Suspense>
+  );
+}
+
+function DashboardAgendaContent() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // "Prenotazioni" di default all'apertura (richiesta esplicita dell'utente):
   // è la vista con l'informazione più urgente al primo sguardo (gli
@@ -295,6 +305,40 @@ export default function DashboardAgendaPage() {
       .then(setBookings)
       .catch((err) => setBookingsError(err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni."));
   }, [token]);
+
+  // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
+  // bug reale segnalato dall'utente: il link portava sempre alla data
+  // odierna del calendario "Prenotazioni", che il più delle volte non è
+  // la data del preventivo appena accettato (spesso settimane avanti/
+  // indietro) — la prenotazione esisteva ma non compariva da nessuna
+  // parte nella vista mostrata, sembrando "mancante". Una volta che
+  // `bookings` è caricato, se l'id in URL corrisponde a una prenotazione
+  // reale: la vista "Prenotazioni" naviga alla sua data esatta (vista
+  // "Giorno", sempre visibile a prescindere da settimana/mese) e apre
+  // subito il pannello di dettaglio — non basta "essere sulla data
+  // giusta", l'utente deve vedere concretamente la prenotazione aperta.
+  // `consumedRef` evita di ripetere il salto se `bookings` si ricarica
+  // (es. dopo un'azione sul pannello) mentre l'utente ha già navigato
+  // altrove.
+  const consumedBookingDeepLinkRef = useRef(false);
+  useEffect(() => {
+    if (consumedBookingDeepLinkRef.current) return;
+    if (!bookings) return;
+    const targetId = searchParams.get("booking");
+    if (!targetId) {
+      consumedBookingDeepLinkRef.current = true;
+      return;
+    }
+    const match = bookings.find((b) => b.id === targetId);
+    if (match) {
+      setActiveTab("prenotazioni");
+      setBookingView("day");
+      setBookingCurrentDate(startOfDayUtc(new Date(match.scheduledAt)));
+      setSelectedBooking(match);
+    }
+    consumedBookingDeepLinkRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings]);
 
   useEffect(() => {
     if (!token) return;
