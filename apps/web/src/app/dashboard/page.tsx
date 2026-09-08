@@ -48,6 +48,12 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 const UNREAD_BADGE_POLL_MS = 15000;
 import { Pagination, sortListItems } from "@/components/ListControls";
 
+// Massimo 10 righe per pagina nei riepiloghi compatti di "Richieste
+// ricevute"/"Lavori accettati" (richiesta esplicita dell'utente): il resto
+// resta raggiungibile con le pagine numerate di Pagination, invece di
+// sparire semplicemente oltre la decima riga.
+const DASHBOARD_LIST_PAGE_SIZE = 10;
+
 const smallInputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
 function SectionTitle({ children }: { children: string }) {
@@ -228,11 +234,29 @@ function DashboardContent() {
   // nessun altro endpoint qui lo espone già essendo sempre "il proprio".
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Pagina corrente dei due riepiloghi compatti (richiesta esplicita
+  // dell'utente: "mostra un massimo di 10, il resto in altre pagine
+  // cliccabili") — indipendente per tab, non si azzera cambiando scheda.
+  const [leadsPage, setLeadsPage] = useState(1);
+  const [bookingsPage, setBookingsPage] = useState(1);
 
   // Un solo ref condiviso dalle due tab (solo una è montata alla volta) —
   // resta per lo scroll-to-top del toast/deep-link, invariato dal redesign
-  // precedente.
+  // precedente. Riusato anche per il cambio pagina (stesso principio già
+  // in uso in /le-mie-richieste: senza, si resta scrollati sul controllo
+  // appena cliccato mentre la nuova pagina parte fuori dallo schermo).
   const listTopRef = useRef<HTMLDivElement>(null);
+  function scrollToListTop() {
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function goToLeadsPage(page: number) {
+    setLeadsPage(page);
+    scrollToListTop();
+  }
+  function goToBookingsPage(page: number) {
+    setBookingsPage(page);
+    scrollToListTop();
+  }
 
   function reloadBookings() {
     if (!token) return;
@@ -357,12 +381,15 @@ function DashboardContent() {
 
   // Riepilogo compatto invece dell'elenco completo (richiesta esplicita
   // dell'utente, revisione UX: la stessa card appariva due volte tra
-  // /dashboard e /dashboard/richieste) — solo le 5 richieste più
-  // recentemente aggiornate, con un link all'inbox completa per il
-  // dettaglio/le azioni. Filtri/ordinamento/paginazione restano solo su
-  // /dashboard/richieste, unica fonte di verità per l'elenco intero.
-  const RECENT_LEADS_COUNT = 5;
-  const recentLeads = leads ? sortListItems(leads, "updatedAt", { createdAt: (l) => l.createdAt, updatedAt: (l) => l.updatedAt }).slice(0, RECENT_LEADS_COUNT) : null;
+  // /dashboard e /dashboard/richieste) — ordinate per ultimo aggiornamento,
+  // con un link all'inbox completa per il dettaglio/le azioni. Filtri/
+  // ordinamento restano solo su /dashboard/richieste, unica fonte di verità
+  // per quelli; la paginazione (max 10 per pagina, richiesta esplicita
+  // dell'utente) resta invece anche qui, sullo stesso riepilogo.
+  const sortedLeads = leads ? sortListItems(leads, "updatedAt", { createdAt: (l) => l.createdAt, updatedAt: (l) => l.updatedAt }) : null;
+  const leadsTotalPages = sortedLeads ? Math.max(1, Math.ceil(sortedLeads.length / DASHBOARD_LIST_PAGE_SIZE)) : 1;
+  const leadsEffectivePage = Math.min(leadsPage, leadsTotalPages);
+  const recentLeads = sortedLeads?.slice((leadsEffectivePage - 1) * DASHBOARD_LIST_PAGE_SIZE, leadsEffectivePage * DASHBOARD_LIST_PAGE_SIZE) ?? null;
   const pendingLeadsCount = leads ? leads.filter((lead) => leadMatchesStatus(lead, "pending")).length : 0;
 
   // Stesso riepilogo compatto, applicato ora anche a "Lavori accettati"
@@ -370,14 +397,16 @@ function DashboardContent() {
   // risolvere" — la stessa card completa (ex `AcceptedJobCard`, con
   // Contatta/Cronologia, Lavoro terminato, Annulla intervento, Recensisci il
   // cliente) appariva identica qui e su /dashboard/richieste sotto gli
-  // stadi "Accettate"/"Completate"/"Annullate". Filtri/ricerca/paginazione
-  // rimossi: restano solo su /dashboard/richieste, unica fonte di verità
-  // per l'elenco intero e per il dettaglio/le azioni.
+  // stadi "Accettate"/"Completate"/"Annullate". Filtri/ricerca rimossi:
+  // restano solo su /dashboard/richieste, unica fonte di verità per il
+  // dettaglio/le azioni — la paginazione resta invece anche qui.
   const acceptedJobsList = bookings ? acceptedJobs(bookings) : null;
-  const RECENT_BOOKINGS_COUNT = 5;
-  const recentBookings = acceptedJobsList
-    ? sortListItems(acceptedJobsList, "updatedAt", { createdAt: (b) => b.createdAt, updatedAt: (b) => b.updatedAt }).slice(0, RECENT_BOOKINGS_COUNT)
+  const sortedBookings = acceptedJobsList
+    ? sortListItems(acceptedJobsList, "updatedAt", { createdAt: (b) => b.createdAt, updatedAt: (b) => b.updatedAt })
     : null;
+  const bookingsTotalPages = sortedBookings ? Math.max(1, Math.ceil(sortedBookings.length / DASHBOARD_LIST_PAGE_SIZE)) : 1;
+  const bookingsEffectivePage = Math.min(bookingsPage, bookingsTotalPages);
+  const recentBookings = sortedBookings?.slice((bookingsEffectivePage - 1) * DASHBOARD_LIST_PAGE_SIZE, bookingsEffectivePage * DASHBOARD_LIST_PAGE_SIZE) ?? null;
   const toDoBookingsCount = acceptedJobsList ? acceptedJobsList.filter((b) => b.status === "CONFIRMED").length : 0;
 
   return (
@@ -422,6 +451,7 @@ function DashboardContent() {
                     ? "Nessuna richiesta in attesa di risposta al momento."
                     : `${pendingLeadsCount} richiest${pendingLeadsCount === 1 ? "a" : "e"} in attesa della tua risposta, su ${leads.length} ricevut${leads.length === 1 ? "a" : "e"} in totale.`}
                 </Text>
+                <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
                 <YStack gap="$2">
                   {recentLeads?.map((lead) => (
                     <LeadSummaryRow
@@ -432,6 +462,7 @@ function DashboardContent() {
                     />
                   ))}
                 </YStack>
+                <Pagination page={leadsEffectivePage} totalPages={leadsTotalPages} onPageChange={goToLeadsPage} />
                 <Link href="/dashboard/richieste" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
                   <Button variant="secondary" size="$3" height={40}>
                     Apri tutte le richieste ricevute
@@ -457,6 +488,7 @@ function DashboardContent() {
                     ? "Nessun lavoro in agenda al momento."
                     : `${toDoBookingsCount} lavor${toDoBookingsCount === 1 ? "o" : "i"} in agenda, su ${acceptedJobsList!.length} accettat${acceptedJobsList!.length === 1 ? "o" : "i"} in totale.`}
                 </Text>
+                <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
                 <YStack gap="$2">
                   {recentBookings?.map((booking) => (
                     <BookingSummaryRow
@@ -470,6 +502,7 @@ function DashboardContent() {
                     />
                   ))}
                 </YStack>
+                <Pagination page={bookingsEffectivePage} totalPages={bookingsTotalPages} onPageChange={goToBookingsPage} />
                 <XStack gap="$3" flexWrap="wrap" alignItems="center">
                   <Link href="/dashboard/richieste?stage=accettata" style={{ textDecoration: "none" }}>
                     <Button variant="secondary" size="$3" height={40}>
@@ -567,6 +600,12 @@ function LeadSummaryRow({
   unreadCount?: number;
 }) {
   const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : lead.guidedRequest.clientName ?? "Cliente";
+  // Data/ora di ricezione (richiesta esplicita dell'utente: "inserisci
+  // anche la data e l'orario nelle richieste ricevute") — stesso campo e
+  // stesso formato già usati per la data/ora di ricezione su
+  // /dashboard/richieste (CLAUDE.md §62) e per la data della prenotazione
+  // in BookingSummaryRow qui sotto.
+  const receivedDate = new Date(lead.createdAt);
   // Deep link diretto alla card specifica (richiesta esplicita dell'utente:
   // "cliccando su uno specifico richiesta/lavoro si dovrà aprire quella
   // determinata richiesta/lavoro") — stesso `?open=` già in uso da
@@ -588,7 +627,8 @@ function LeadSummaryRow({
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
           <Text fontSize="$2" color={brand.grafite70}>
-            {leadSummaryLabel(lead)}
+            {receivedDate.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+            {receivedDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · {leadSummaryLabel(lead)}
           </Text>
         </YStack>
         <XStack alignItems="center" gap="$2" flexShrink={0}>

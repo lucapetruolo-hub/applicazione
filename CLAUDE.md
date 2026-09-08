@@ -8958,3 +8958,57 @@ e Playwright, quattro script dedicati:
 Zero errori console in tutti i flussi. Typecheck pulito su tutti i
 package (`shared`, `api-client`, `web`), build di produzione `apps/web`
 verde (31 route, nessuna nuova).
+
+## 68. `/dashboard` — riepiloghi limitati a 10 righe con paginazione + data/ora di ricezione in "Richieste ricevute"
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Paginazione dei riepiloghi compatti** — *"in dashboard fai visualizzare
+un massimo di 10 sia in richieste ricevute che lavori accettati, il resto
+mettile in altre pagine cliccabili"*. I riepiloghi compatti introdotti in
+CLAUDE.md §43/§56 (sostituti delle card complete, deduplicate rispetto a
+`/dashboard/richieste`) mostravano sempre e solo le 5 righe più
+recentemente aggiornate, con un link all'inbox completa per vedere il
+resto — non c'era modo di raggiungere la sesta richiesta/lavoro senza
+lasciare `/dashboard`. Sostituito con paginazione vera, stesso componente
+`Pagination` già in uso su `/le-mie-richieste`/`/dashboard/richieste`
+(importato ma mai collegato in questo file finora) — nuova costante
+condivisa `DASHBOARD_LIST_PAGE_SIZE = 10`, stato `leadsPage`/
+`bookingsPage` (indipendente per tab, non si azzera cambiando scheda),
+`goToLeadsPage`/`goToBookingsPage` che aggiornano la pagina **e**
+scrollano in cima alla lista (`listTopRef`, stesso principio già in uso
+altrove: senza, si resta scrollati sul controllo appena cliccato mentre
+la nuova pagina parte fuori dallo schermo). `Pagination` compare sia sopra
+che sotto ciascuna lista, stessa convenzione già stabilita per le altre
+liste paginate del sito. Filtri/ordinamento (`ListControls`) restano
+**solo** su `/dashboard/richieste`, unica fonte di verità per quelli — qui
+resta solo l'ordinamento fisso per ultimo aggiornamento già esistente, più
+la paginazione. Il bottone "Apri tutte le richieste ricevute"/"Apri tutti
+i lavori accettati" resta comunque disponibile per chi vuole i filtri
+completi dell'inbox dedicata.
+
+**Data/ora di ricezione in "Richieste ricevute"** — *"in dashboard
+inserisci anche la data e l'orario nelle richieste ricevute"*.
+`LeadSummaryRow` mostrava solo l'etichetta di stato (`leadSummaryLabel`,
+es. "In attesa di preventivo"), mai quando la richiesta fosse arrivata —
+a differenza di `BookingSummaryRow` nello stesso file, che mostra già
+data+ora (`scheduledAt`) accanto allo stato. Aggiunta la stessa resa
+(`toLocaleDateString`/`toLocaleTimeString` "it-IT", weekday abbreviato +
+giorno+mese · orario) usando `lead.createdAt` (data/ora di ricezione del
+lead, stesso campo già mostrato per esteso in `RequestCard` su
+`/dashboard/richieste`, CLAUDE.md §62) — la riga diventa "mar 8 set ·
+22:57 · In attesa di preventivo" invece del solo stato.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: professionista di test con 12 richieste dirette (10 create via
+API, 2 seminate via SQL diretto dopo aver urtato il rate limit 5/min di
+`/guided-requests`) — pagina 1 mostra esattamente 10 righe (non 12), 2
+bottoni "Pagina 2" (sopra e sotto la lista), click su "Pagina 2" mostra le
+2 righe restanti, click su "Pagina 1" torna alle 10 originali; ogni riga
+mostra ora "gg mmm · HH:MM · stato" (pattern verificato via regex sul
+testo della pagina). Tab "Lavori accettati" con un solo lavoro accettato
+(preventivo inviato e accettato via API) → 1 riga visibile, nessun
+bottone "Pagina 2" (comportamento corretto di `Pagination`, che ritorna
+`null` con una sola pagina). Zero overflow orizzontale su mobile (390px,
+iPhone 13). Zero errori console in tutti i flussi. Typecheck pulito su
+`apps/web`, build di produzione verde (31 route, nessuna nuova).
