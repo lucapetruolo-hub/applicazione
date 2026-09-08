@@ -683,7 +683,10 @@ function DashboardContent() {
                     key={booking.id}
                     booking={booking}
                     token={token}
-                    onUpdated={reloadBookings}
+                    onUpdated={() => {
+                      reloadBookings();
+                      reloadLeads();
+                    }}
                     isNew={newBookingIds.has(booking.id)}
                     unreadCount={combineUnreadCounts(
                       bookingUnreadCounts.get(booking.id),
