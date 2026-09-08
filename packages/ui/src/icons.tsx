@@ -56,6 +56,7 @@ import {
   Send,
   Share2,
   Flag,
+  Menu,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -112,6 +113,7 @@ export const ICONS = {
   send: Send,
   "share-2": Share2,
   flag: Flag,
+  menu: Menu,
 } as const;
 
 export type IconName = keyof typeof ICONS;

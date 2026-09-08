@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { AdminContactMessage, AdminContentReport, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
-import { Button, H1, H2, Paragraph, Text, YStack, brand } from "@professionisti/ui";
+import { Button, H1, H2, Icon, Paragraph, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -35,6 +35,13 @@ export default function AdminPage() {
         (a, b) => new Date(b.resolvedAt ?? b.createdAt).getTime() - new Date(a.resolvedAt ?? a.createdAt).getTime(),
       )
     : null;
+  // Richiesta esplicita dell'utente: l'archivio non è più una sezione a
+  // parte, ma una vista alternativa nascosta dentro "Segnalazioni
+  // contenuti", raggiunta da un menu a tendina (bottone "☰" in alto a
+  // destra della sezione) — un'unica azione per ora ("Archivio
+  // segnalazioni"), stesso principio "azioni disponibili in un menu"
+  // già in uso altrove nel prodotto (§ AccountMenu).
+  const [showArchivedReports, setShowArchivedReports] = useState(false);
 
   // Messaggi dal form "Contatti" del footer (richiesta esplicita
   // dell'utente, al posto dell'elenco categorie "Servizi") — solo quelli
@@ -124,7 +131,10 @@ export default function AdminPage() {
         ) : null}
 
         <YStack gap="$3">
-          <H2 size="$6">Segnalazioni contenuti</H2>
+          <XStack justifyContent="space-between" alignItems="center">
+            <H2 size="$6">Segnalazioni contenuti</H2>
+            <ReportsSectionMenu showArchivedReports={showArchivedReports} onToggleArchive={() => setShowArchivedReports((v) => !v)} />
+          </XStack>
           {reportsError ? (
             <Text color={brand.urgenza}>{reportsError}</Text>
           ) : openReports === null ? (
@@ -138,21 +148,25 @@ export default function AdminPage() {
               ))}
             </YStack>
           )}
-        </YStack>
 
-        <YStack gap="$3">
-          <H2 size="$6">Archivio segnalazioni</H2>
-          {reportsError ? null : archivedReports === null ? (
-            <LoadingState />
-          ) : archivedReports.length === 0 ? (
-            <Text color={brand.grafite70}>Nessuna segnalazione gestita finora.</Text>
-          ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
-              {archivedReports.map((report, index) => (
-                <ArchivedReportRow key={report.id} report={report} zebra={index % 2 !== 0} />
-              ))}
+          {showArchivedReports ? (
+            <YStack gap="$2" paddingTop="$2">
+              <Text fontWeight="700" color={brand.grafite70}>
+                Archivio segnalazioni
+              </Text>
+              {reportsError ? null : archivedReports === null ? (
+                <LoadingState />
+              ) : archivedReports.length === 0 ? (
+                <Text color={brand.grafite70}>Nessuna segnalazione gestita finora.</Text>
+              ) : (
+                <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+                  {archivedReports.map((report, index) => (
+                    <ArchivedReportRow key={report.id} report={report} zebra={index % 2 !== 0} />
+                  ))}
+                </YStack>
+              )}
             </YStack>
-          )}
+          ) : null}
         </YStack>
 
         <YStack gap="$3">
@@ -248,6 +262,84 @@ function UserGroup({ title, rows, showBusiness }: { title: string; rows: AdminUs
           ))}
         </YStack>
       )}
+    </YStack>
+  );
+}
+
+/**
+ * Menu a tendina "☰" in alto a destra della sezione "Segnalazioni
+ * contenuti" (richiesta esplicita dell'utente) — stesso pattern
+ * click-to-open/chiusura al click esterno già in uso in `AccountMenu.tsx`.
+ * Una sola azione per ora ("Archivio segnalazioni"), pensato per
+ * ospitarne altre in futuro senza dover reintrodurre un menu ad hoc.
+ */
+function ReportsSectionMenu({ showArchivedReports, onToggleArchive }: { showArchivedReports: boolean; onToggleArchive: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <YStack ref={containerRef} position="relative">
+      <YStack
+        width={36}
+        height={36}
+        borderRadius={999}
+        alignItems="center"
+        justifyContent="center"
+        cursor="pointer"
+        hoverStyle={{ backgroundColor: brand.gesso }}
+        onPress={() => setIsOpen((open) => !open)}
+        accessibilityRole="button"
+        accessibilityLabel="Azioni sulle segnalazioni"
+      >
+        <Icon name="menu" size={20} color={brand.grafite} />
+      </YStack>
+
+      {isOpen ? (
+        <YStack
+          position="absolute"
+          top="100%"
+          right={0}
+          marginTop="$2"
+          minWidth={240}
+          backgroundColor={brand.calce}
+          borderRadius={radiusDoc}
+          overflow="hidden"
+          zIndex={1000}
+          shadowColor="rgba(43,32,19,0.12)"
+          shadowRadius={12}
+          shadowOffset={{ width: 0, height: 4 }}
+          shadowOpacity={1}
+        >
+          <XStack
+            paddingHorizontal="$4"
+            paddingVertical="$3"
+            alignItems="center"
+            gap="$2"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: brand.gesso }}
+            onPress={() => {
+              onToggleArchive();
+              setIsOpen(false);
+            }}
+            accessibilityRole="button"
+          >
+            <Icon name="archive" size={16} color={brand.grafite70} />
+            <Text fontSize="$3" color={brand.grafite}>
+              {showArchivedReports ? "Nascondi archivio segnalazioni" : "Archivio segnalazioni"}
+            </Text>
+          </XStack>
+        </YStack>
+      ) : null}
     </YStack>
   );
 }

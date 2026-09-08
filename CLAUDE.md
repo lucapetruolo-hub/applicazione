@@ -8251,3 +8251,37 @@ rimuovendo la resa a dettaglio completo da `/dashboard` (che resterebbe
 solo su `/dashboard/richieste`). L'utente ha scelto esplicitamente **solo
 pianificare per ora**, nessuna modifica al codice in questo giro — da
 riprendere quando confermato.
+
+**Correzione, stesso giro — l'archivio torna dentro "Segnalazioni
+contenuti", dietro un menu**: richiesta esplicita dell'utente: *"l'archivio
+segnalazioni deve essere inserito all'interno delle segnalazioni
+contenuti, tramite un pulsante all'estrema destra tipo le 3 barre che
+premendo questo pulsante si aprono le azioni che possono essere
+intraprese, e lì dentro inserire 'archivio segnalazioni'"*. La sezione
+"Archivio segnalazioni" del giro precedente sopra (un secondo `<H2>` a sé
+stante, sempre visibile) è stata sostituita da una vista nascosta dentro
+la stessa sezione "Segnalazioni contenuti", rivelata da un bottone "☰" in
+alto a destra dell'intestazione.
+- Nuova icona condivisa `menu` (`packages/ui/src/icons.tsx`/`icons.web.tsx`,
+  lucide `Menu` — le classiche 3 barre orizzontali).
+- `ReportsSectionMenu` (`apps/web/src/app/admin/page.tsx`): stesso pattern
+  click-to-open/chiusura al click esterno già in uso in `AccountMenu.tsx`
+  (nessun componente condiviso nuovo in `packages/ui`, resta locale a
+  questa pagina — un solo punto di consumo). Un'unica voce per ora
+  ("Archivio segnalazioni"/"Nascondi archivio segnalazioni" a seconda
+  dello stato, icona `archive` già nel registro), pensato per ospitare
+  altre azioni in futuro senza reintrodurre un menu ad hoc.
+- `showArchivedReports` (stato booleano in `AdminPage`, non più derivato
+  implicitamente dal semplice fatto di scaricare tutte le segnalazioni):
+  quando vero, la lista archiviata compare **sotto** le segnalazioni
+  aperte, ancora dentro lo stesso `<YStack>` della sezione — non più un
+  secondo `<H2>` di pari livello, solo un'etichetta più piccola
+  ("Archivio segnalazioni", `fontWeight="700"`) sopra le righe di sola
+  lettura già esistenti (`ArchivedReportRow`, invariata).
+Verificato con Postgres locale reale (non solo lettura di codice) e
+Playwright: testo "Archivio segnalazioni" assente dalla pagina finché il
+menu non viene aperto e la voce cliccata; bottone "☰" presente e
+funzionante, dropdown con la sola voce attesa; click la rivela subito
+sotto le righe aperte, nello stesso riquadro sezione, zero errori console.
+Typecheck pulito su `packages/ui`/`apps/web`, build di produzione verde
+(30 route).
