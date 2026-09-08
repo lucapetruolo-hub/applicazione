@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
-
-const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
+import { ContactFormFooter } from "@/components/ContactFormFooter";
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
@@ -42,14 +40,11 @@ export function SiteFooter() {
             </Text>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
-            <FooterColumnTitle>Servizi</FooterColumnTitle>
-            {MAIN_CATEGORIES.map((category) => (
-              <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
-                {category.label}
-              </FooterLink>
-            ))}
-          </YStack>
+          {/* Colonna "Servizi" (elenco categorie) sostituita con "Contatti"
+              (richiesta esplicita dell'utente, ispirata a un riferimento
+              screenshot) — per ora un form reale funzionante, non un
+              elenco di link. */}
+          <ContactFormFooter />
 
           <YStack gap="$2" minWidth={160}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>

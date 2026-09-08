@@ -8,6 +8,7 @@ import type {
   ClientConfirmCompleteInput,
   ClientReviewInput,
   CompleteBookingInput,
+  ContactMessageInput,
   ConversationEvent,
   CreateContentReportInput,
   ExternalJob,
@@ -196,6 +197,16 @@ export type AdminContentReport = {
   resolvedAt: string | null;
   reporterEmail: string | null;
   reporterName: string | null;
+};
+
+/** Messaggio dal form "Contatti" del footer, vista admin (richiesta esplicita dell'utente). */
+export type AdminContactMessage = {
+  id: string;
+  role: "CLIENT" | "PROFESSIONAL" | "OTHER";
+  email: string;
+  content: string;
+  resolved: boolean;
+  createdAt: string;
 };
 
 export type CurrentUser = {
@@ -834,6 +845,23 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{ ok: true }>("/waitlist", {
         method: "POST",
         body: JSON.stringify({ email, website }),
+      }),
+
+    /** Form "Contatti" del footer (richiesta esplicita dell'utente). `website`: honeypot anti-spam. */
+    sendContactMessage: (input: ContactMessageInput) =>
+      request<{ ok: true }>("/contact", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+
+    /** Messaggi dal form "Contatti", vista admin. */
+    adminListContactMessages: (token: string) =>
+      request<AdminContactMessage[]>("/admin/contact-messages", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminResolveContactMessage: (token: string, id: string) =>
+      request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     /** Numeri reali della piattaforma (richiesta esplicita dell'utente, "social proof" in homepage) — mai finti. */

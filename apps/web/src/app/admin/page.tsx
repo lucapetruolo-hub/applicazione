@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminContentReport, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
+import type { AdminContactMessage, AdminContentReport, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
 import { Button, H1, H2, Paragraph, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -26,12 +26,27 @@ export default function AdminPage() {
   const [reports, setReports] = useState<AdminContentReport[] | null>(null);
   const [reportsError, setReportsError] = useState<string | null>(null);
 
+  // Messaggi dal form "Contatti" del footer (richiesta esplicita
+  // dell'utente, al posto dell'elenco categorie "Servizi") — solo quelli
+  // ancora da gestire, stesso principio già seguito per le segnalazioni
+  // contenuti sopra.
+  const [contactMessages, setContactMessages] = useState<AdminContactMessage[] | null>(null);
+  const [contactMessagesError, setContactMessagesError] = useState<string | null>(null);
+
   function reloadReports() {
     if (!token) return;
     apiClient
       .adminListContentReports(token, "OPEN")
       .then(setReports)
       .catch((err) => setReportsError(err instanceof Error ? err.message : "Errore nel caricamento."));
+  }
+
+  function reloadContactMessages() {
+    if (!token) return;
+    apiClient
+      .adminListContactMessages(token)
+      .then(setContactMessages)
+      .catch((err) => setContactMessagesError(err instanceof Error ? err.message : "Errore nel caricamento."));
   }
 
   useEffect(() => {
@@ -45,6 +60,7 @@ export default function AdminPage() {
       .then(setWaitlist)
       .catch((err) => setWaitlistError(err instanceof Error ? err.message : "Errore nel caricamento."));
     reloadReports();
+    reloadContactMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user]);
 
@@ -109,6 +125,29 @@ export default function AdminPage() {
             <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
               {reports.map((report, index) => (
                 <ReportRow key={report.id} report={report} zebra={index % 2 !== 0} token={token} onResolved={reloadReports} />
+              ))}
+            </YStack>
+          )}
+        </YStack>
+
+        <YStack gap="$3">
+          <H2 size="$6">Messaggi di contatto</H2>
+          {contactMessagesError ? (
+            <Text color={brand.urgenza}>{contactMessagesError}</Text>
+          ) : contactMessages === null ? (
+            <LoadingState />
+          ) : contactMessages.length === 0 ? (
+            <Text color={brand.grafite70}>Nessun messaggio da gestire.</Text>
+          ) : (
+            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+              {contactMessages.map((message, index) => (
+                <ContactMessageRow
+                  key={message.id}
+                  message={message}
+                  zebra={index % 2 !== 0}
+                  token={token}
+                  onResolved={reloadContactMessages}
+                />
               ))}
             </YStack>
           )}
@@ -246,6 +285,57 @@ function ReportRow({
             Ignora
           </Button>
         </YStack>
+      </YStack>
+    </YStack>
+  );
+}
+
+const CONTACT_ROLE_LABEL: Record<AdminContactMessage["role"], string> = {
+  CLIENT: "Cliente",
+  PROFESSIONAL: "Professionista",
+  OTHER: "Altro",
+};
+
+function ContactMessageRow({
+  message,
+  zebra,
+  token,
+  onResolved,
+}: {
+  message: AdminContactMessage;
+  zebra: boolean;
+  token: string;
+  onResolved: () => void;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function resolve() {
+    setIsSubmitting(true);
+    try {
+      await apiClient.adminResolveContactMessage(token, message.id);
+      onResolved();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <YStack gap="$2" paddingHorizontal="$3" paddingVertical="$3" backgroundColor={zebra ? brand.gesso : "transparent"}>
+      <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
+        <YStack gap="$1" minWidth={220} flex={1}>
+          <Text fontWeight="600">
+            {message.email} · {CONTACT_ROLE_LABEL[message.role]}
+          </Text>
+          <Text fontSize="$2" color={brand.grafite}>
+            {message.content}
+          </Text>
+          <Text fontSize="$1" color={brand.grafite70}>
+            {new Date(message.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+          </Text>
+        </YStack>
+        <Button size="$2" disabled={isSubmitting} onPress={resolve}>
+          Segna come gestito
+        </Button>
       </YStack>
     </YStack>
   );

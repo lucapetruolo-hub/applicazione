@@ -46,6 +46,27 @@ export const waitlistSignupSchema = z.object({
 });
 export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
 
+/**
+ * Messaggio di contatto (footer, colonna "Contatti" al posto dell'elenco
+ * categorie "Servizi" — richiesta esplicita dell'utente, ispirata a un
+ * riferimento screenshot). Nessun account richiesto per inviarlo, stesso
+ * principio già seguito per `waitlistSignupSchema` sopra.
+ */
+export const contactMessageRoleSchema = z.enum(["CLIENT", "PROFESSIONAL", "OTHER"]);
+export const contactMessageSchema = z.object({
+  role: contactMessageRoleSchema,
+  email: z.string().email("Email non valida"),
+  content: z.string().min(1, "Scrivi un messaggio.").max(4000, "Messaggio troppo lungo."),
+  // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
+  website: z.string().max(200).optional(),
+});
+export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
+
+export const resolveContactMessageSchema = z.object({
+  resolved: z.boolean(),
+});
+export type ResolveContactMessageInput = z.infer<typeof resolveContactMessageSchema>;
+
 /** Login via email + password (CLAUDE.md §8). */
 export const emailPasswordSchema = z.object({
   email: z.string().email("Email non valida"),

@@ -128,4 +128,35 @@ export class AdminService {
     const updated = await this.prisma.contentReport.update({ where: { id }, data: { status, resolvedAt: new Date() } });
     return { id: updated.id, status: updated.status };
   }
+
+  /**
+   * Messaggi dal form "Contatti" (footer, richiesta esplicita dell'utente al
+   * posto dell'elenco categorie "Servizi") — solo quelli non ancora gestiti,
+   * stesso principio già seguito per le segnalazioni contenuti (§ sopra).
+   */
+  async listContactMessages(): Promise<
+    { id: string; role: string; email: string; content: string; resolved: boolean; createdAt: string }[]
+  > {
+    const messages = await this.prisma.contactMessage.findMany({
+      where: { resolved: false },
+      orderBy: { createdAt: "desc" },
+    });
+    return messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      email: m.email,
+      content: m.content,
+      resolved: m.resolved,
+      createdAt: m.createdAt.toISOString(),
+    }));
+  }
+
+  async resolveContactMessage(id: string): Promise<{ id: string; resolved: boolean }> {
+    const message = await this.prisma.contactMessage.findUnique({ where: { id } });
+    if (!message) {
+      throw new NotFoundException("Messaggio non trovato.");
+    }
+    const updated = await this.prisma.contactMessage.update({ where: { id }, data: { resolved: true } });
+    return { id: updated.id, resolved: updated.resolved };
+  }
 }

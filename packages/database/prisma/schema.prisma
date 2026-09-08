@@ -1083,6 +1083,32 @@ model WaitlistSignup {
 }
 
 // ---------------------------------------------------------------------------
+// Messaggio di contatto (richiesta esplicita dell'utente: colonna "Contatti"
+// nel footer al posto dell'elenco categorie "Servizi", ispirata a un
+// riferimento screenshot). Nessun account richiesto per inviarlo (stesso
+// principio già seguito per WaitlistSignup, sopra) — l'invio email reale
+// (Resend/Twilio) resta rimandato (CLAUDE.md §9): il messaggio viene
+// comunque salvato per davvero e reso visibile in /admin, non un form
+// finto che non fa nulla.
+enum ContactMessageRole {
+  CLIENT
+  PROFESSIONAL
+  OTHER
+}
+
+model ContactMessage {
+  id        String             @id @default(uuid())
+  role      ContactMessageRole
+  email     String
+  content   String
+  resolved  Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  @@index([resolved, createdAt])
+  @@map("contact_messages")
+}
+
+// ---------------------------------------------------------------------------
 // Segnalazione contenuti (notice-and-action, richiesta esplicita dell'utente
 // — "Verbale di Conformità": Reg. (UE) 2022/2065 (Digital Services Act),
 // art. 16, richiede un meccanismo per segnalare contenuti illeciti anche a

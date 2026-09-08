@@ -30,4 +30,15 @@ export class AdminController {
   resolveContentReport(@Param("id") id: string, @Body(new ZodValidationPipe(resolveContentReportSchema)) body: ResolveContentReportInput) {
     return this.adminService.resolveContentReport(id, body.status);
   }
+
+  /** Messaggi dal form "Contatti" del footer (richiesta esplicita dell'utente). */
+  @Get("contact-messages")
+  listContactMessages() {
+    return this.adminService.listContactMessages();
+  }
+
+  @Patch("contact-messages/:id")
+  resolveContactMessage(@Param("id") id: string) {
+    return this.adminService.resolveContactMessage(id);
+  }
 }

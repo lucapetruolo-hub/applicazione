@@ -7699,6 +7699,12 @@ di codice:
    prima di abilitare i pagamenti reali — non affrontabile ora perché
    dipende da come sarà strutturata l'offerta commerciale reale, non dal
    solo codice.
+6. **Rimuovere il blocco "Presto disponibile" dalla homepage**
+   (`WaitlistBlock`, `ProfessionalsShowcase.tsx`, mostrato quando ci sono
+   meno di `MIN_PROFESSIONALS_TO_SHOWCASE` (12) professionisti reali) —
+   richiesta esplicita dell'utente (§50): non ancora rimosso, resta
+   visibile finché l'offerta reale di professionisti non è sufficiente a
+   sostituirlo con la vetrina vera (`RealShowcase`).
 
 ---
 
@@ -7883,3 +7889,84 @@ due agenti Playwright dedicati, entrambi PASS su tutti i controlli:
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `api`, `ui`, `web`, `mobile`), build di produzione `apps/web` verde
 (29 route).
+
+---
+
+## 50. Footer — "Contatti" al posto dell'elenco "Servizi", pagina FAQ dedicata
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Pagina `/faq` dedicata**: la sezione "Cosa succede se..." (§34) non deve
+più comparire direttamente in homepage. Nuova pagina `/faq`
+(`apps/web/src/app/faq/`, con `FaqContent.tsx` client-side separato — un
+Server Component che renderizza Tamagui direttamente fallisce in build,
+stesso gotcha già documentato altrove in questo file per
+`/password-dimenticata`) monta sia `HomeFaq` (le due domande generali già
+mostrate in home, invariate) sia `WhatIfSection` (spostata qui per
+intero, nessun testo duplicato) — raggiungibile dal nuovo link "Domande
+frequenti" in fondo alla colonna "Per i clienti" del footer. Aggiunta a
+`sitemap.ts`.
+
+**Footer — colonna "Servizi" sostituita da "Contatti"**: richiesta
+esplicita dell'utente con uno screenshot di riferimento (pagina "Contatti"
+di MioDottore: form ruolo/email/messaggio + dati azienda, mostrata sopra
+il footer vero). Chiarito con `AskUserQuestion` prima di procedere (tre
+opzioni: form reale funzionante, soli link di contatto, o pagina dedicata)
+— l'utente ha scelto il form reale funzionante.
+- **`ContactMessage`** (nuovo modello Prisma): `role`
+  (`ContactMessageRole`: CLIENT/PROFESSIONAL/OTHER), `email`, `content`,
+  `resolved` (default `false`). Nessun account richiesto per inviarlo,
+  stesso principio già seguito per `WaitlistSignup`.
+- **`apps/api/src/contact/`** (nuovo modulo, stesso pattern di
+  `waitlist/`): `POST /contact` pubblico, throttled (5/min, stesso limite
+  di `/waitlist`), honeypot anti-spam identico (`contactMessageSchema.website`,
+  campo nascosto in UI — se valorizzato il controller finge un successo
+  senza salvare nulla).
+- **`AdminService.listContactMessages`/`resolveContactMessage`** (nuovi,
+  `apps/api/src/admin/`): `GET /admin/contact-messages` (solo i non
+  risolti, stesso principio già seguito per le segnalazioni contenuti
+  aperte), `PATCH /admin/contact-messages/:id` (segna risolto). Nuova
+  sezione "Messaggi di contatto" in `/admin` (`ContactMessageRow`, stesso
+  layout a righe zebrate + bottone di risoluzione già in uso per
+  `ReportRow`).
+- **Nessun invio email reale** (Resend/Twilio restano rimandati, CLAUDE.md
+  §9): il messaggio viene comunque salvato per davvero e reso visibile in
+  /admin — un canale funzionante, non un form che non fa nulla, coerente
+  con la regola di progetto "mai un'azione automatica/UI che non fa
+  nulla".
+- **`ContactFormFooter.tsx`** (nuovo, `apps/web/src/components`): form
+  compatto (select ruolo, email, textarea messaggio, bottone "Invia"),
+  dimensionato per stare in una colonna del footer (`minWidth={220}
+  maxWidth={280}`) — stesso stato idle/loading/done/error già in uso in
+  `WaitlistBlock` (`ProfessionalsShowcase.tsx`).
+
+**Nota sull'esitazione "Presto disponibile"**: durante lo stesso giro,
+un primo tentativo aveva anche rimosso il blocco "Presto disponibile"
+(`WaitlistBlock`, mostrato in homepage quando ci sono meno di
+`MIN_PROFESSIONALS_TO_SHOWCASE` professionisti reali) su una richiesta
+iniziale dell'utente — poi corretta esplicitamente nello stesso turno
+("lascia in homepage 'presto disponibile', da eliminare prima del
+lancio"): quel blocco resta quindi invariato in questo giro, la sua
+rimozione è rimandata esplicitamente a prima del lancio (nuovo promemoria
+in coda alla lista "Da fare prima del lancio", §9/§48).
+
+Verificato end-to-end con Postgres locale (non solo typecheck/build):
+`POST /contact` con payload valido → riga salvata; stesso payload con
+honeypot valorizzato → risposta di successo identica ma nessuna riga
+scritta (confermato via query diretta); email non valida → 400 con
+messaggio esplicito. Ciclo admin completo: utente promosso ADMIN via SQL
+diretto (ambiente locale, nessun `ADMIN_BOOTSTRAP_SECRET` configurato in
+questa sessione) → `GET /admin/contact-messages` mostra il messaggio →
+`PATCH /admin/contact-messages/:id` lo risolve → sparisce dalla lista (che
+mostra solo i non risolti). UI con Playwright contro il build di
+produzione reale (web+API locali): submit del form dal footer reale →
+messaggio salvato in DB (verificato via query diretta, non solo assunto
+dal messaggio di successo a schermo) → visibile nella sezione "Messaggi di
+contatto" di `/admin` con token JWT reale iniettato in `localStorage` →
+bottone "Segna come gestito" lo rimuove dalla lista. Colonna "Servizi"
+(elenco categorie) confermata assente dal footer (l'unica occorrenza
+residua di "Servizi" nel DOM è il menu di navigazione dell'header,
+`MegaMenu`, invariato e fuori scope). Zero errori console in tutti i
+flussi. Typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `api`, `ui`, `web`), build di produzione `apps/web` verde
+(30 route, `/faq` nuova).
