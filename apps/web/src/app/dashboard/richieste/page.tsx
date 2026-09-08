@@ -755,6 +755,30 @@ function RequestCard({
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canDelete = gr.clientAccountDeleted || quoteWithdrawn;
 
+  // Data/ora dell'intervento visibile già nell'anteprima non espansa
+  // (richiesta esplicita dell'utente: "deve essere visualizzata già la
+  // data e ora dell'intervento o la richiesta di quella specifica
+  // data/intervento cosi che sia subito visibile") — priorità: la
+  // prenotazione reale se esiste, altrimenti la data proposta nel
+  // preventivo inviato, altrimenti la fascia richiesta dal cliente fin
+  // dall'invio (se nata da una fascia generica dell'agenda pubblica,
+  // stesso campo già mostrato in /le-mie-richieste).
+  const collapsedDateTime = booking?.scheduledAt
+    ? { label: "Intervento", text: formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) }
+    : lead.quote?.estimatedStartDate
+      ? { label: "Preventivo per", text: formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) }
+      : gr.preferredDate && gr.preferredTimeSlot
+        ? {
+            label: "Richiesta per",
+            text: `${new Date(`${gr.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              timeZone: "UTC",
+            })} · ${gr.preferredTimeSlot.replace("-", "–")}`,
+          }
+        : null;
+
   function updateItem(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   }
@@ -978,7 +1002,15 @@ function RequestCard({
             <Text fontSize={14} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
-            {priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
+            {/* Per una richiesta completata, l'importo finale (esatto, da
+                "Lavoro terminato") sostituisce il range preventivato: è
+                l'informazione rilevante a lavoro concluso — richiesta
+                esplicita dell'utente. */}
+            {stage === "completata" && booking?.finalAmountEurCents != null ? (
+              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+                {formatEurCents(booking.finalAmountEurCents)}
+              </Text>
+            ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEurCents(priceRange.totalMinEurCents)}
                 {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
@@ -1005,6 +1037,14 @@ function RequestCard({
             {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
           </Text>
         </XStack>
+        {collapsedDateTime ? (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="calendar" size={14} color={brand.grafite70} />
+            <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+              {collapsedDateTime.label}: {collapsedDateTime.text}
+            </Text>
+          </XStack>
+        ) : null}
 
         <XStack justifyContent="center" paddingTop="$1">
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
@@ -1093,6 +1133,17 @@ function RequestCard({
                     </Text>
                     <Icon name="chevron-right" size={13} color={brand.cianografia} strokeWidth={2} />
                   </XStack>
+                  {/* Nome e cognome del destinatario indicati sulla
+                      richiesta (chi riceverà il professionista sul
+                      lavoro, non necessariamente l'intestatario
+                      dell'account — CLAUDE.md §16) — richiesta esplicita
+                      dell'utente, prima visibile solo dentro l'importo
+                      finale/agenda, mai qui. */}
+                  {booking?.recipientName || booking?.recipientSurname ? (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      Riceverà il professionista: {[booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ")}
+                    </Text>
+                  ) : null}
                   {revealedPhone ? (
                     <Text fontSize={13} color={brand.grafite70}>
                       {revealedPhone}

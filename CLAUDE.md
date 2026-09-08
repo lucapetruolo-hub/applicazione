@@ -8773,3 +8773,69 @@ voce → `CancelBookingModal` aperto con il testo corretto ("Il
 professionista verrà avvisato dell'annullamento."). Zero errori console.
 Typecheck pulito su `apps/web`, build di produzione verde (31 route,
 nessuna nuova).
+
+## 66. Verifica negoziazione data/orario (nessun bug trovato) + dettagli cliente/data intervento/importo finale nell'anteprima non espansa
+
+Segnalazione dell'utente indagata a fondo, nessuna modifica di codice
+risultata necessaria: *"lato professionista, quando si modifica un
+preventivo ad esempio si modifica la data o l'orario penso che quando poi
+si accetta la nuova data/orario non venga correttamente salvata in
+agenda, sia se modifica la data/orario il professionista sia se la
+richiesta di modifica proviene dal cliente"*. Verificati tutti e tre i
+percorsi di negoziazione reali (`QuotesService.proposeDate`/
+`confirmProposedDate`, `counterProposeDate`, `createOrUpdate`) con
+quattro test end-to-end indipendenti contro l'API/DB locali — tre via
+chiamate dirette e uno **interamente tramite interazione reale col
+browser** (form "Modifica data/orario" → opzione "Altro (data e orario
+personalizzati)" → invio → conferma professionista via bottone "Accetta
+nuova data"): in ogni caso `Booking.scheduledAt`/`scheduledEndAt`
+riflette esattamente la data/ora accettata per ultima, e la fascia
+compare correttamente sul calendario "Prenotazioni" di `/dashboard/agenda`
+alla data giusta (confermato con uno screenshot su ottobre 2026). Nessun
+bug riprodotto: il codice di negoziazione/salvataggio in agenda era già
+corretto prima di questo giro.
+
+Nello stesso turno, due richieste esplicite dell'utente sull'anteprima
+non espansa delle card di `/dashboard/richieste` (`RequestCard`):
+
+1. *"nelle richieste ricevute in dettagli cliente deve essere visualizzato
+   anche il nome e cognome inseriti nel preventivo, e nell'anteprima delle
+   richieste ricevute quando ancora non si espande la finestra deve essere
+   visualizzata già la data e ora dell'intervento o la richiesta di quella
+   specifica data/intervento cosi che sia subito visibile"*:
+   - **"Dettagli cliente"** (sezione espansa): nuova riga "Riceverà il
+     professionista: {nome} {cognome}" da `booking.recipientName`/
+     `recipientSurname` (chi riceve materialmente il professionista sul
+     lavoro, non necessariamente l'intestatario dell'account — CLAUDE.md
+     §16/§45) — visibile solo quando esiste una `Booking` (stesso cancello
+     di privacy già in vigore per telefono/email/indirizzo, §45: questi
+     dati restano nascosti finché il preventivo non è accettato).
+   - **Anteprima non espansa**: nuova riga con icona `calendar`, priorità
+     a tre livelli — `booking.scheduledAt` ("Intervento: ...", una
+     prenotazione reale esiste), altrimenti `lead.quote.estimatedStartDate`
+     ("Preventivo per: ...", un preventivo è stato inviato ma non ancora
+     accettato/confermato), altrimenti `guidedRequest.preferredDate`/
+     `preferredTimeSlot` ("Richiesta per: ...", la fascia richiesta dal
+     cliente fin dall'invio quando nata da una fascia generica dell'agenda
+     pubblica — stesso campo già mostrato in `/le-mie-richieste`, mai
+     prima qui). Nessuna riga quando nessuno dei tre è disponibile.
+2. *"e sempre nella finestre non ancora espanse, dove ora è visualizzato
+   l'importo del preventivo, per le richieste completate inserisci
+   l'importo finale"*: nell'angolo in alto a destra della card (dove già
+   compariva il range preventivato), per lo stadio `completata` con
+   `booking.finalAmountEurCents` valorizzato (importo esatto da "Lavoro
+   terminato", CLAUDE.md §40) sostituisce il range — per ogni altro stadio
+   il range preventivato resta invariato.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: preventivo negoziato fino ad accettazione (2026-10-05
+11:00–12:00) → completato con importo finale 95,00€ → card "Completata"
+mostra "95.00 €" (non il range preventivato) e "Intervento: lunedì 5
+ottobre · 11:00–12:00" già nell'anteprima non espansa, "Riceverà il
+professionista: Luca Bianchi" visibile aprendo "Dettagli cliente"; una
+seconda richiesta di test (stadio `da_quotare`, nata da una fascia
+generica con `preferredDate`/`preferredTimeSlot` valorizzati, nessun
+preventivo ancora inviato) mostra "Richiesta per: martedì 10 novembre ·
+15:00–16:00" nella stessa anteprima non espansa. Zero overflow orizzontale
+su mobile (390px, iPhone 13), zero errori console. Typecheck pulito su
+`apps/web`, build di produzione verde (31 route, nessuna nuova).
