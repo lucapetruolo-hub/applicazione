@@ -8124,3 +8124,36 @@ mobile (390px), zero errori console; titolo "Contatti" a `y=120`
 precedente ben più ampio; due pannelli correttamente affiancati a 1280px
 dopo il fix `flexBasis`, impilati correttamente sotto la soglia mobile.
 Typecheck pulito su `apps/web`, build di produzione verde (30 route).
+
+---
+
+## 53. `/faq` — le due sezioni unite in un'unica lista, senza il titolo "Cosa succede se..."
+
+Richiesta esplicita dell'utente: *"nelle domande frequenti, unisci le due
+sezioni presenti quindi eliminando il titolo 'cosa succede se'"*. La
+pagina `/faq` (§50) montava due blocchi distinti — `HomeFaq` (le due
+domande generiche, senza intestazione propria) e `WhatIfSection` (le
+quattro domande "Cosa succede se...", con una propria eyebrow "Cosa
+succede se..." sopra) — ciascuno nel proprio `<Section>`, quindi visibili
+come due gruppi separati con un secondo titolo tra loro.
+
+- `HomeFaq.tsx`: `FAQ_ITEMS` reso `export` (il componente `HomeFaq`
+  stesso resta invariato e continua a essere montato da solo in homepage,
+  CLAUDE.md §24 — usa `FAQ_ITEMS` internamente, nessuna regressione lì).
+- `WhatIfSection.tsx`: il componente che renderizzava `<Section
+  eyebrow="Cosa succede se...">` è stato rimosso (nessun altro punto del
+  prodotto lo montava, verificato con una ricerca su tutto `apps/web`) —
+  il file espone ora solo `WHAT_IF_ITEMS`, l'array di domande/risposte,
+  come unica fonte di dati.
+- `FaqContent.tsx`: concatena `FAQ_ITEMS` e `WHAT_IF_ITEMS` in un unico
+  array e li rende come un solo accordion (stesso markup/CSS già in uso
+  in `HomeFaq.tsx`, portato qui) dentro l'unico `<Section title="Domande
+  frequenti">` già esistente — nessuna seconda eyebrow, nessun secondo
+  blocco visivo: le 6 domande scorrono come un'unica lista continua.
+
+Verificato con Postgres locale/build di produzione reale (non solo
+lettura di codice) e Playwright: `/faq` mostra esattamente 6 voci
+accordion in sequenza, testo "Cosa succede se..." (l'eyebrow, non le
+singole domande che lo contengono nel testo) assente dalla pagina, zero
+errori console. Typecheck pulito su `apps/web`, build di produzione verde
+(30 route, nessuna nuova).

@@ -8,7 +8,7 @@ import { Section, brand } from "@professionisti/ui";
 // il ramo "Accedi per inviare la richiesta" del form) — la domanda resta
 // utile ma la risposta deve restare vera, mai una promessa che il
 // prodotto non mantiene.
-const FAQ_ITEMS = [
+export const FAQ_ITEMS = [
   {
     question: "Quanto costa usare il servizio?",
     answer: "È gratis per chi cerca un professionista. Paghi solo il lavoro che fai fare.",
