@@ -267,7 +267,11 @@ export class BookingsService {
       }),
     ]);
 
-    await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", { bookingId, finalAmountEurCents });
+    await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", {
+      bookingId,
+      finalAmountEurCents,
+      guidedRequestId: booking.quote?.guidedRequestId,
+    });
 
     if (booking.quote) {
       const totalEuro = (finalAmountEurCents / 100).toFixed(2);
@@ -359,7 +363,11 @@ export class BookingsService {
       data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL" },
     });
 
-    await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", { bookingId, cancellationNote });
+    await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
+      bookingId,
+      cancellationNote,
+      guidedRequestId: booking.quote?.guidedRequestId,
+    });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del
     // professionista — CANCELED non conta come appuntamento onorato/mancato
@@ -491,6 +499,7 @@ export class BookingsService {
     const otherPartyUserId = isClient ? booking.professionalProfile.userId : booking.clientId;
     await this.notificationsService.notify(otherPartyUserId, isClient ? "BOOKING_REOPENED_BY_CLIENT" : "BOOKING_REOPENED_BY_PROFESSIONAL", {
       bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
     });
     if (isProfessional) {
       await this.professionalMetricsService.touchActivity(booking.professionalProfileId);
@@ -541,6 +550,7 @@ export class BookingsService {
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "BOOKING_NO_SHOW_REPORTED", {
       bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
     });
 
     if (booking.quote) {

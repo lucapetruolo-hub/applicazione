@@ -152,6 +152,19 @@ export function ResultsListWithMap({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showFilters]);
 
+  // "Ordinato per pertinenza" cliccabile (richiesta esplicita dell'utente):
+  // un piccolo popup spiega il criterio reale di ordinamento invece di
+  // restare solo un'etichetta passiva (Verbale Cognitivo F1.3).
+  const [showSortInfo, setShowSortInfo] = useState(false);
+  useEffect(() => {
+    if (!showSortInfo) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowSortInfo(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showSortInfo]);
+
   // Solo le lingue effettivamente parlate tra i professionisti nei
   // risultati correnti (richiesta esplicita dell'utente), filtrate dal
   // testo digitato.
@@ -388,11 +401,32 @@ export function ResultsListWithMap({
         </div>
       ) : null}
 
-      {showMap ? (
-        <button type="button" className="mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
-          {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
-          {mobileMapOpen ? "Nascondi mappa" : "Mostra mappa"}
-        </button>
+      {showSortInfo ? (
+        <div
+          className="filters-backdrop"
+          onClick={() => setShowSortInfo(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Come sono ordinati i risultati"
+        >
+          <div className="sort-info-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="filters-modal-header">
+              <span className="filters-modal-title">Ordinato per pertinenza</span>
+              <button type="button" className="filters-modal-close" onClick={() => setShowSortInfo(false)} aria-label="Chiudi">
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+            <div className="sort-info-body">
+              <p>I risultati sono ordinati per pertinenza, sempre nello stesso modo:</p>
+              <ol>
+                <li>prima i professionisti con visibilità in evidenza (un servizio a pagamento, sempre segnalato con il badge "In evidenza");</li>
+                <li>a parità di posizione, la valutazione media più alta;</li>
+                <li>a parità di valutazione, il numero di recensioni ricevute.</li>
+              </ol>
+              <p>Nessun professionista può comprare una posizione più alta della valutazione reale che ha ottenuto.</p>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {showMap ? (
@@ -451,18 +485,33 @@ export function ResultsListWithMap({
           </XStack>
 
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$2">
-            <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
-              <SlidersHorizontal size={16} strokeWidth={1.5} />
-              Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-            </button>
-            {/* Etichetta di ordinamento senza selettore (Verbale Cognitivo
-                F1.3, richiesta esplicita dell'utente: "senza aggiungere il
-                selettore") — rassicura sul fatto che un criterio esiste ed
-                è dichiarato, anche restando lo stesso ordinamento di
-                default (boost pagato → valutazione → recensioni). */}
-            <Text fontSize="$1" color={brand.grafite70}>
+            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+              <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+                <SlidersHorizontal size={16} strokeWidth={1.5} />
+                Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </button>
+              {/* "Mappa"/"Nascondi mappa" sulla stessa riga di "Filtri"
+                  (richiesta esplicita dell'utente: "metti sulla stessa riga
+                  prima il tasto 'filtri' e poi 'mostra mappa'"), solo
+                  mobile — nascosto da 700px in su via CSS (`.filters-toggle`
+                  stessa classe, la mappa è già sempre visibile a fianco
+                  della lista da desktop). Etichetta da chiusa rinominata in
+                  "Mappa" (richiesta esplicita), quella da aperta invariata. */}
+              {showMap ? (
+                <button type="button" className="filters-toggle mobile-map-toggle" onClick={() => setMobileMapOpen((v) => !v)}>
+                  {mobileMapOpen ? <X size={16} strokeWidth={1.5} /> : <MapIcon size={16} strokeWidth={1.5} />}
+                  {mobileMapOpen ? "Nascondi mappa" : "Mappa"}
+                </button>
+              ) : null}
+            </XStack>
+            {/* Etichetta di ordinamento (Verbale Cognitivo F1.3) resa
+                cliccabile (richiesta esplicita dell'utente): apre un popup
+                che spiega il criterio reale, invece di restare solo
+                un'etichetta passiva — stesso ordinamento di default,
+                invariato (boost pagato → valutazione → recensioni). */}
+            <button type="button" className="sort-info-trigger" onClick={() => setShowSortInfo(true)}>
               Ordinato per pertinenza
-            </Text>
+            </button>
           </XStack>
           {header}
           {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro) => (
@@ -501,9 +550,9 @@ export function ResultsListWithMap({
         }
         .mobile-map-toggle,
         .filters-toggle {
-          width: 100%;
-          padding: 12px 16px;
-          border-radius: 4px;
+          width: auto;
+          padding: 10px 16px;
+          border-radius: 999px;
           border: 1px solid ${brand.filetto};
           background: ${brand.calce};
           color: ${brand.grafite};
@@ -514,6 +563,16 @@ export function ResultsListWithMap({
           align-items: center;
           justify-content: center;
           gap: 8px;
+        }
+        .sort-info-trigger {
+          background: none;
+          border: none;
+          padding: 0;
+          font-size: 13px;
+          color: ${brand.grafite70};
+          text-decoration: underline;
+          text-decoration-style: dotted;
+          cursor: pointer;
         }
         @media (min-width: 700px) {
           /* Desktop: il bottone sta in cima alla colonna lista (e' spostato
@@ -540,6 +599,31 @@ export function ResultsListWithMap({
           justify-content: center;
           z-index: 1000;
           padding: 16px;
+        }
+        .sort-info-modal {
+          width: 100%;
+          max-width: 380px;
+          max-height: calc(100vh - 32px);
+          border-radius: 8px;
+          border: 1px solid ${brand.filetto};
+          background: ${brand.calce};
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .sort-info-body {
+          padding: 16px 20px 20px;
+          font-size: 14px;
+          line-height: 1.5;
+          color: ${brand.grafite};
+          overflow-y: auto;
+        }
+        .sort-info-body ol {
+          margin: 8px 0;
+          padding-left: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
         .filters-modal {
           width: 100%;
@@ -729,7 +813,21 @@ export function ResultsListWithMap({
         @media (min-width: 700px) {
           .results-layout {
             flex-direction: row;
-            align-items: flex-start;
+            /* "stretch" (non "flex-start", richiesta esplicita dell'utente:
+               "rendi fissa la mappa sulla destra... anche se scrollo fra i
+               vari profili"): con "flex-start" la colonna mappa si
+               dimensionava sulla sola altezza del proprio contenuto (la
+               mappa sticky stessa, ~760px, calc(100vh - 140px)) invece
+               che su quella della lista (spesso molto più alta, es.
+               1800px) — position:sticky sul figlio si stacca (e la
+               mappa scompare scorrendo) non appena la colonna-contenitore,
+               alta solo quanto la mappa, finisce, quindi restava "incollata"
+               solo per una manciata di pixel di scroll invece che per
+               l'intera lista. "stretch" allunga la colonna mappa fino
+               all'altezza della colonna lista (le due diventano pari), dando
+               allo sticky lo spazio verticale in cui restare davvero
+               agganciato per tutta la durata dello scroll. */
+            align-items: stretch;
             gap: 20px;
           }
           .mobile-map-toggle {

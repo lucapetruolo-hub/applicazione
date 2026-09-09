@@ -59,12 +59,41 @@ export function clientSectionCounts(notifications: UnreadNotification[]): { rich
   };
 }
 
-function payloadString(n: UnreadNotification, key: string): string | null {
-  if (n.payload && typeof n.payload === "object" && key in n.payload) {
-    const value = (n.payload as Record<string, unknown>)[key];
+function getPayloadValue(payload: unknown, key: string): string | null {
+  if (payload && typeof payload === "object" && key in payload) {
+    const value = (payload as Record<string, unknown>)[key];
     if (typeof value === "string") return value;
   }
   return null;
+}
+
+function payloadString(n: UnreadNotification, key: string): string | null {
+  return getPayloadValue(n.payload, key);
+}
+
+/**
+ * Path completo (con query) a cui portare il click su una notifica —
+ * richiesta esplicita dell'utente: "sia quella popup [toast] che quella del
+ * pulsante della campanella deve portare alla richiesta specifica in
+ * richieste ricevute non in dashboard". Scoped al lato professionista, la
+ * sola metà nominata dall'utente: `/dashboard/richieste` (la pipeline
+ * completa, CLAUDE.md §41, che mostra sia le richieste da quotare sia i
+ * lavori accettati/completati nello stesso posto) sostituisce sempre la
+ * generica `/dashboard?tab=...` quando il payload porta un
+ * `guidedRequestId` (arricchito lato backend anche per i tipi booking-only
+ * che prima avevano solo `bookingId`) — mai più la pagina /dashboard per un
+ * click su una notifica professionista. Lato cliente resta il
+ * comportamento generico pagina+tab già esistente (`notificationDestination`),
+ * non toccato: `/le-mie-richieste?open=` naviga solo tra le "Le mie
+ * richieste", non tra "Lavori accettati", un deep-link lì rischierebbe di
+ * atterrare sul tab sbagliato per le notifiche di lavoro.
+ */
+export function notificationDeepLink(type: string, payload: unknown): string | null {
+  const destination = notificationDestination(type);
+  if (!destination) return null;
+  if (destination.page !== "/dashboard") return `${destination.page}?tab=${destination.tab}`;
+  const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+  return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
 }
 
 /**

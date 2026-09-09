@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Icon, Rating, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Rating, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
+import { CategoryCarousel } from "./CategoryCarousel";
 
 type RecentReview = {
   id: string;
@@ -15,12 +15,26 @@ type RecentReview = {
   professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
 };
 
+const CARD_WIDTH = 300;
+
 /**
  * Riprova sociale reale in home (audit, punto J): le ultime recensioni
  * pubbliche della piattaforma, dallo stesso criterio "doppio cieco" della
  * pagina profilo (GET /reviews/recent). Mai una recensione inventata: se
  * non ce ne sono ancora, la sezione non viene proprio renderizzata — lo
  * stesso principio "niente dati finti" seguito per prezzi e vetrina.
+ *
+ * Riscritta come carosello su un'unica riga in stile messaggio (richiesta
+ * esplicita dell'utente): ogni recensione è una "nuvoletta" di chat (sfondo
+ * pieno, angoli arrotondati) con la firma del professionista recensito in
+ * basso a destra — stesso pattern del carosello categorie
+ * (`CategoryCarousel`), riusato invece di duplicare frecce/scroll. A
+ * differenza della card precedente (l'intera card era un `<Link>` verso
+ * `#recensione-{id}`), solo la firma è ora cliccabile e porta al profilo
+ * del professionista (pagina intera, non l'ancora della singola
+ * recensione) — richiesta esplicita dell'utente: "se si clicca sul nome
+ * del professionista deve portare alla pagina del professionista e non
+ * alla recensione".
  */
 export function RecentReviews() {
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
@@ -36,86 +50,63 @@ export function RecentReviews() {
 
   return (
     <Section eyebrow="Recensioni verificate" title="Chi ha già trovato il professionista giusto" maxWidth={1080}>
-      <XStack flexWrap="wrap" gap="$4" width="100%" justifyContent="center">
-        {reviews.map((review) => {
-          const accent = CATEGORY_ACCENT[review.professional.categorySlug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#F1F5F9", fg: "#334155" };
-          return (
-            // Richiesta esplicita dell'utente: le card devono essere
-            // cliccabili, portando alla recensione in questione sul profilo
-            // pubblico del professionista (ancora #recensione-{id}, vedi
-            // ProfessionalDetailContent.tsx). L'intera card è il target
-            // cliccabile — il wrapper <Link> porta le stesse proprietà
-            // flex che prima stavano sulla Surface, così il layout non
-            // cambia (stesso pattern già in uso altrove per una card intera
-            // cliccabile con next/link, es. /le-mie-richieste).
-            <Link
-              key={review.id}
-              href={`/professionista/${review.professional.id}#recensione-${review.id}`}
-              style={{ textDecoration: "none", color: "inherit", flexGrow: 1, flexBasis: 280, maxWidth: 360, width: 320, minWidth: 0 }}
-            >
-              <Surface width="100%" padding={0} overflow="hidden" cursor="pointer" hoverStyle={{ borderColor: brand.cianografia }}>
-              {/* Foto del professionista grande quanto l'intera card, non
-                  un'icona piccola in un angolo — richiesta esplicita
-                  dell'utente: "deve essere la prima cosa che salta
-                  all'occhio". Colonna a larghezza fissa dentro una riga
-                  flex, si allunga da sola all'altezza della card (default
-                  `alignItems: stretch` di un XStack, mai impostato qui
-                  esplicitamente) — nessun ingrandimento della card stessa,
-                  solo il contenuto testuale si stringe nella colonna
-                  restante. Fallback identico al resto del sito quando il
-                  professionista non ha caricato un'immagine profilo:
-                  l'icona colorata di categoria, qui a piena altezza invece
-                  che nel cerchio piccolo di `CategoryIconBadge`. */}
-              <XStack width="100%">
-                <YStack width={132} flexShrink={0}>
-                  {review.professional.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={review.professional.imageUrl}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  ) : (
-                    <YStack width="100%" height="100%" minHeight={132} alignItems="center" justifyContent="center" backgroundColor={accent.bg}>
-                      <CategoryIcon slug={review.professional.categorySlug} size={40} color={accent.fg} />
-                    </YStack>
-                  )}
-                </YStack>
-                <YStack flex={1} minWidth={0} padding="$4" gap="$3">
-                  {/* Bug reale trovato in verifica (agente Playwright): a
-                      larghezza massima della card, la colonna testo (ridotta
-                      dalla nuova foto a piena altezza a sinistra) non aveva
-                      più spazio per stelle+badge affiancati senza `flexWrap`
-                      — "Lavoro confermato" sforava il bordo destro della
-                      card. Il badge va a capo sotto le stelle quando non c'è
-                      spazio, invece di sforare. */}
-                  <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-                    <Rating value={review.rating} size={14} />
-                    <XStack alignItems="center" gap="$1">
-                      <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
-                        Lavoro confermato
-                      </Text>
-                    </XStack>
-                  </XStack>
+      <CategoryCarousel>
+        {reviews.map((review) => (
+          <div key={review.id} style={{ flexShrink: 0, width: CARD_WIDTH, scrollSnapAlign: "start" }}>
+            <YStack gap="$2">
+              <XStack alignItems="center" gap="$2">
+                <Rating value={review.rating} size={13} />
+                <XStack alignItems="center" gap="$1">
+                  <Icon name="badge-check" size={12} color={brand.verificato} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
+                    Lavoro confermato
+                  </Text>
+                </XStack>
+              </XStack>
+
+              {/* Nuvoletta di chat: sfondo pieno, mai bianco (si deve
+                  distinguere dalla `Surface` bianca usata ovunque altrove
+                  nel sito), coda in basso a sinistra via bordo triangolare
+                  — stesso principio "CSS puro per un dettaglio che Tamagui
+                  non rende bene" già seguito altrove nel prodotto (es.
+                  CalendarShell, MegaMenu). */}
+              <div style={{ position: "relative" }}>
+                <YStack backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$3" minHeight={104}>
                   <Text fontSize={14} lineHeight={21} color={brand.grafite} fontStyle="italic">
                     {review.isAutomatic ? "(recensione automatica)" : `“${review.comment ?? ""}”`}
                   </Text>
-                  <YStack gap={2} borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$2">
-                    <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                      {review.professional.businessName}
-                    </Text>
-                    <Text fontSize={12} color={brand.grafite70}>
-                      {review.professional.categoryLabel} · {review.professional.city}
-                    </Text>
-                  </YStack>
+                  {/* Firma: nome del professionista recensito, piccolo, in
+                      basso a destra della nuvoletta — solo questo testo è
+                      cliccabile, verso il profilo pubblico intero. */}
+                  <XStack justifyContent="flex-end" marginTop="$2">
+                    <Link href={`/professionista/${review.professional.id}`} style={{ textDecoration: "none" }}>
+                      <Text fontSize={12} fontWeight="700" color={brand.cianografia}>
+                        — {review.professional.businessName}
+                      </Text>
+                    </Link>
+                  </XStack>
                 </YStack>
-              </XStack>
-              </Surface>
-            </Link>
-          );
-        })}
-      </XStack>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 16,
+                    bottom: -8,
+                    width: 0,
+                    height: 0,
+                    borderLeft: "8px solid transparent",
+                    borderRight: "8px solid transparent",
+                    borderTop: `8px solid ${brand.gesso}`,
+                  }}
+                />
+              </div>
+
+              <Text fontSize={12} color={brand.grafite70}>
+                {review.professional.categoryLabel} · {review.professional.city}
+              </Text>
+            </YStack>
+          </div>
+        ))}
+      </CategoryCarousel>
     </Section>
   );
 }

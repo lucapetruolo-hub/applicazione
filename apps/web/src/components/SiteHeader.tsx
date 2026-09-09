@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
+import { HeaderSearchBar } from "./HeaderSearchBar";
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
 
@@ -22,6 +24,13 @@ import { NotificationBell } from "./NotificationBell";
 export function SiteHeader() {
   const { user, isLoading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  // Richiesta esplicita dell'utente: "una volta effettuata la ricerca
+  // sposta le due stringhe di ricerca 'cosa cerchi' e 'città' con il
+  // tasto 'cerca' sopra sulla barra fissa in alto, nascondendo i tasti
+  // 'servizi' 'come funziona' 'prezzi'" — scoped a `/cerca`/`/cerca/[categoria]`,
+  // le uniche due pagine con un banner di ricerca proprio nel corpo.
+  const isSearchResultsPage = pathname === "/cerca" || pathname.startsWith("/cerca/");
 
   useEffect(() => {
     function onScroll() {
@@ -72,21 +81,35 @@ export function SiteHeader() {
               <Logo size={26} variant="mark" />
             </XStack>
           </Link>
-          <XStack alignItems="center" gap="$5">
-            <MegaMenu />
-            <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
-              <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-                  Come funziona
-                </Text>
-              </Link>
-              <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-                <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-                  Prezzi
-                </Text>
-              </Link>
+          {isSearchResultsPage ? (
+            // "Servizi" (MegaMenu, trigger desktop + drawer mobile) nascosto
+            // del tutto in questa modalità: la ricerca condensata prende il
+            // suo posto su desktop; su schermi stretti (dove la ricerca
+            // condensata non ha spazio a sufficienza, §"Ricerca spostata
+            // nell'header fisso") il banner completo nel corpo pagina
+            // (SearchHeader.tsx) resta l'unico modo di cercare, invariato.
+            <XStack display="none" $gtMd={{ display: "flex" }}>
+              <Suspense fallback={null}>
+                <HeaderSearchBar />
+              </Suspense>
             </XStack>
-          </XStack>
+          ) : (
+            <XStack alignItems="center" gap="$5">
+              <MegaMenu />
+              <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
+                <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
+                  <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                    Come funziona
+                  </Text>
+                </Link>
+                <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+                  <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                    Prezzi
+                  </Text>
+                </Link>
+              </XStack>
+            </XStack>
+          )}
         </XStack>
 
         <XStack alignItems="center" gap="$4" $xs={{ gap: "$3" }}>

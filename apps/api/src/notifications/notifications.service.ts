@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -64,5 +64,26 @@ export class NotificationsService {
       createdAt: n.createdAt.toISOString(),
       readAt: n.readAt ? n.readAt.toISOString() : null,
     }));
+  }
+
+  /**
+   * Elimina una singola notifica dalla cronologia (richiesta esplicita
+   * dell'utente: "dai la possibilità di eliminare quelle notifiche...
+   * sia tramite slide sulla notifica che con un piccolo pulsante") — solo
+   * la propria, mai quella di un altro utente. Nessuna doppia conferma:
+   * a differenza delle azioni distruttive su dati di business (richieste,
+   * preventivi), qui si tratta di un record di stato di lettura effimero,
+   * non di un dato che documenta un lavoro reale.
+   */
+  async delete(userId: string, notificationId: string): Promise<void> {
+    const notification = await this.prisma.notification.findUnique({ where: { id: notificationId } });
+    if (!notification) throw new NotFoundException("Notifica non trovata.");
+    if (notification.userId !== userId) throw new ForbiddenException("Questa notifica non è tua.");
+    await this.prisma.notification.delete({ where: { id: notificationId } });
+  }
+
+  /** Elimina tutte le notifiche dell'utente in un colpo (richiesta esplicita dell'utente). */
+  async deleteAll(userId: string): Promise<void> {
+    await this.prisma.notification.deleteMany({ where: { userId } });
   }
 }

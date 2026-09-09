@@ -893,6 +893,20 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       }),
+
+    /** Elimina una singola notifica dalla cronologia (swipe o pulsante nel dropdown della campanella). */
+    deleteNotification: (token: string, id: string) =>
+      request<void>(`/notifications/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Elimina tutte le notifiche in un colpo. */
+    deleteAllNotifications: (token: string) =>
+      request<void>("/notifications", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
   };
 }
 

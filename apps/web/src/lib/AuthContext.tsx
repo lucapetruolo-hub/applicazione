@@ -8,7 +8,7 @@ import { notificationCopy } from "./notificationCopy";
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
 /** `type` porta la notifica di origine — usato da ToastStack per sapere dove navigare al click (richiesta esplicita dell'utente). */
-export type NotificationToast = { id: string; icon: string; message: string; type: string };
+export type NotificationToast = { id: string; icon: string; message: string; type: string; payload: unknown };
 export type UnreadNotification = { id: string; type: string; payload: unknown; createdAt: string };
 
 type AuthContextValue = {
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Caso comune: un solo evento in questo giro di poll, stesso
         // messaggio simpatico specifico di sempre.
         const { icon, message } = notificationCopy(freshOnes[0]!.type);
-        setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type }]);
+        setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type, payload: freshOnes[0]!.payload }]);
       } else if (freshOnes.length > 1) {
         // Più eventi arrivati nello stesso giro (48s): un toast per
         // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
@@ -202,7 +202,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // destinazione sbagliata, al più non la più recente del gruppo).
         setToasts((prev) => [
           ...prev,
-          { id: `batch-${Date.now()}`, icon: "🔔", message: `Hai ${freshOnes.length} nuovi aggiornamenti.`, type: freshOnes[0]!.type },
+          {
+            id: `batch-${Date.now()}`,
+            icon: "🔔",
+            message: `Hai ${freshOnes.length} nuovi aggiornamenti.`,
+            type: freshOnes[0]!.type,
+            payload: freshOnes[0]!.payload,
+          },
         ]);
       }
     } catch {

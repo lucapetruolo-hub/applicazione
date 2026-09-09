@@ -9502,3 +9502,265 @@ ricompilato e riavviato pulito, né in `next dev`). Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (31 route, nessuna
 nuova).
+
+---
+
+## 72. Campanella: apertura a sinistra, eliminazione notifiche, deep-link alla richiesta specifica, "Elimina tutte"; ricerca spostata nella barra fissa; homepage recensioni a carosello + riordino; risultati mobile: riga Filtri+Mappa, popup "Ordinato per pertinenza"; mappa desktop davvero sticky
+
+Sei richieste esplicite dell'utente, stesso giro di lavoro (arrivate in più
+messaggi consecutivi mentre le precedenti erano ancora in corso).
+
+**Campanella (`NotificationBell.tsx`) — apertura a sinistra + eliminazione
+per singola notifica**: *"il pulsante delle notifiche falle aprire a
+sinistra poiché aprendole a destra sforerà lo schermo e dai la possibilità
+di eliminare quelle notifiche da quel menù sia tramite slide sulla
+notifica che con un piccolo pulsante in alto a destra per ogni
+notifica"*. La campanella siede vicino al bordo destro dell'header — un
+dropdown ancorato a sinistra (`left={0}`, come nel giro precedente §71) si
+estendeva verso destra e usciva dal viewport. Corretto ancorandolo a
+destra (`right={0}`): il pannello si estende ora verso sinistra dal
+bottone, restando sempre dentro lo schermo.
+- **Backend**: nuovo `NotificationsService.delete(userId, notificationId)`
+  (verifica di proprietà, `ForbiddenException`/`NotFoundException` — stesso
+  pattern già in uso per `ProfessionalsService.deleteLead`/
+  `BookingsService.deleteForClient`) + `DELETE /notifications/:id`.
+  Nessuna doppia conferma (a differenza della maggior parte delle azioni
+  distruttive nel prodotto): una notifica è un record di stato di lettura
+  effimero, non un dato di business da proteggere.
+- **`apiClient.deleteNotification`** (nuovo). `NotificationBell.tsx`:
+  ogni riga (`NotificationRow`, nuovo componente interno) è ora eliminabile
+  in due modi, entrambi richiesti esplicitamente:
+  - **Pulsante "x"** in alto a destra della riga (`position:"absolute"`,
+    `stopPropagation` per non aprire anche la notifica).
+  - **Swipe orizzontale**: gli handler touch (`onTouchStart`/`onTouchMove`/
+    `onTouchEnd`) vivono su un `<div>` grezzo che avvolge la riga — stesso
+    principio già documentato altrove in questo file (§11, agenda: "gli
+    eventi touch nativi restano più affidabili su un nodo DOM diretto
+    piuttosto che passati attraverso il layer react-native-web di
+    Tamagui") — non su un componente Tamagui direttamente. Soglia
+    `SWIPE_DELETE_THRESHOLD_PX = 70`, dominanza dell'asse orizzontale
+    (`|dx| > 10 && |dx| > |dy|×1.5`, stessa formula già in uso in
+    `CalendarShell.tsx`), feedback visivo di trascinamento
+    (`transform: translateX(...)`) durante il gesto, mai
+    `preventDefault` (lo scroll verticale della lista resta intatto).
+    **Verificato con eventi touch a livello CDP** (`Input.dispatchTouchEvent`
+    via `page.context().newCDPSession(page)`), non con `dispatchEvent`
+    JS grezzo: un primo tentativo con `new TouchEvent(...)` +
+    `element.dispatchEvent(...)` non attivava gli handler React (eventi
+    non "trusted", verificato che arrivassero comunque a un listener
+    nativo su `document` ma non al gestore React delegato) — bug noto di
+    fedeltà degli eventi sintetici in ambienti headless, non un difetto
+    del componente: con `Input.dispatchTouchEvent` (eventi realmente
+    "trusted", stessa pipeline usata da un tocco reale) lo swipe ha
+    eliminato correttamente la notifica sia in UI sia sul server.
+
+**"Elimina tutte le notifiche in un colpo"** — richiesta esplicita
+dell'utente, arrivata subito dopo la precedente. Nuovo
+`NotificationsService.deleteAll(userId)` (`deleteMany`) +
+`DELETE /notifications` (rotta radice, distinta da `DELETE
+/notifications/:id` per forma del path, nessuna ambiguità di routing) +
+`apiClient.deleteAllNotifications`. Link testuale "Elimina tutte" nell'
+intestazione del dropdown, visibile solo quando la cronologia ha almeno
+una voce.
+
+**Click su una notifica (toast o campanella) porta alla richiesta
+specifica in "Richieste ricevute", non alla `/dashboard` generica** —
+richiesta esplicita dell'utente: *"quando clicchi sulle notifiche che sia
+quella popup o quella del pulsante della campanella deve portare alla
+richiesta specifica in richieste ricevute non in dashboard"*. Prima
+entrambi i punti di click (`ToastStack`/`NotificationBell`) usavano
+`notificationDestination(type)` → `${page}?tab=${tab}` (generico,
+`/dashboard?tab=richieste`). Nuova funzione
+`notificationDeepLink(type, payload)` (`notificationSections.ts`):
+per le notifiche lato professionista (l'unica metà nominata
+esplicitamente dall'utente, "richieste ricevute" contrapposto a
+"dashboard") costruisce sempre `/dashboard/richieste?open=<guidedRequestId>`
+(la pipeline completa, §41, dove `RequestCard` espande e scrolla alla
+card giusta — stesso deep-link già usato da `/chat`, §47/§56/§60), non
+più `/dashboard`. Lato cliente resta il comportamento generico
+(`/le-mie-richieste?tab=...`, non toccato): il suo `?open=` naviga solo
+tra le "Le mie richieste", non tra "Lavori accettati" — un deep-link lì
+avrebbe rischiato di atterrare sul tab sbagliato per le notifiche di
+lavoro, mentre `/dashboard/richieste` ospita già entrambe le sezioni nello
+stesso posto.
+- **Arricchimento payload lato backend**: alcuni tipi di notifica
+  professionista portavano solo `bookingId` (mai `guidedRequestId`) —
+  `JOB_COMPLETED`, `BOOKING_CANCELED_BY_PROFESSIONAL`,
+  `BOOKING_NO_SHOW_REPORTED`, `BOOKING_REOPENED_BY_CLIENT`/
+  `BY_PROFESSIONAL` — impossibile costruire il deep-link per questi senza
+  un secondo giro di rete. Aggiunto `guidedRequestId:
+  booking.quote?.guidedRequestId` a tutti e cinque i punti `notify(...)`
+  in `bookings.service.ts` (`booking.quote` era già incluso nella query in
+  ognuno di questi metodi, nessuna query aggiuntiva necessaria).
+- **`ToastStack.tsx`**: il toast (`NotificationToast`, `AuthContext.tsx`)
+  ora porta anche `payload` (già disponibile in `UnreadNotification` al
+  momento della creazione del toast, prima solo scartato) —
+  `openNotification(type, payload)` usa `notificationDeepLink`.
+
+**Ricerca spostata nella barra fissa in alto (desktop), Servizi/Come
+funziona/Prezzi nascosti** — richiesta esplicita dell'utente: *"una volta
+effettuata la ricerca sposta le due stringhe di ricerca 'cosa cerchi' e
+'città' con il tasto 'cerca' sopra sulla barra fissa in alto, nascondendo
+i tasti 'servizi' 'come funziona' 'prezzi'"*.
+- **`SearchBar.tsx`** (`packages/ui`) guadagna un `compact?: boolean`: resa
+  condensata a riga singola (tab modalità solo icona 28×28, campi
+  `size="$3"` a 150px fissi, bottone "Cerca" 36px) — stesso stato/logica
+  di ricerca del componente esistente (`searchOnModeChange`), nessuna
+  duplicazione.
+- **`HeaderSearchBar.tsx`** (nuovo, `apps/web`): legge
+  `usePathname()`/`useSearchParams()` per calcolare categoria (dal segmento
+  URL `/cerca/[categoria]`), città (`?citta=`) e modalità (`?online=`) —
+  stesso `handleSearch` (`buildSearchDestination` + `router.push` +
+  `router.refresh()`) già in uso in `SearchHeader.tsx`. Una `key` sul
+  `<SearchBar>` derivata da `pathname+city+online+query` forza il remount
+  quando si naviga verso un'altra categoria: `SearchBar` tiene
+  query/città/modalità in uno stato locale inizializzato solo al mount, e
+  `HeaderSearchBar` è montato una sola volta nel layout globale (dentro
+  `SiteHeader`) — senza la key sarebbe rimasto fermo ai valori della prima
+  visita.
+- **`SiteHeader.tsx`**: `usePathname()` calcola `isSearchResultsPage`
+  (`/cerca` o `/cerca/[categoria]`). Solo in quel caso, da `$gtMd` in su, il
+  gruppo "Servizi" (MegaMenu, trigger desktop + drawer mobile) +
+  "Come funziona"/"Prezzi" è sostituito da
+  `<Suspense fallback={null}><HeaderSearchBar /></Suspense>` (necessario:
+  `useSearchParams` richiede un boundary Suspense, stesso gotcha già
+  documentato più volte in questo file). Sotto `$gtMd` (mobile/tablet)
+  MegaMenu resta invariato — cramire categoria+città+bottone in
+  un'intestazione già stretta (bell+account menu, §71) avrebbe rischiato
+  overflow, e il banner completo nel corpo pagina resta l'unico punto di
+  ricerca lì.
+- **`SearchHeader.tsx`** (il banner completo nel corpo di `/cerca`/
+  `/cerca/[categoria]`): nascosto da `$gtMd` in su (`$gtMd={{display:
+  "none"}}`) — "spostato", non duplicato: su desktop la ricerca vive ora
+  solo nell'header fisso, su schermi stretti resta l'unico banner di
+  ricerca (mode toggle incluso, invariato).
+- Verificato con l'API locale reale e Playwright (17 controlli, tutti
+  PASS): su `/` (non una pagina di ricerca) "Come funziona"/"Prezzi"/
+  "Servizi" restano visibili in alto; su `/cerca/idraulico` (desktop)
+  spariscono dall'header (il testo "Come funziona"/"Servizi" del footer,
+  distinto per posizione Y, resta intatto — nessun secondo punto del sito
+  toccato), il campo "Cosa cerchi?" condensato è precompilato con
+  "Idraulico", digitare una città e cliccare "Cerca" naviga correttamente
+  a `?citta=Milano`, il banner completo nel corpo non è più visibile;
+  navigando via `goto` verso `/cerca/elettricista` il campo condensato si
+  aggiorna da solo a "Elettricista" (conferma della `key` di remount); da
+  mobile (390px) il banner completo resta visibile e il campo condensato
+  nell'header è assente. Zero overflow orizzontale in tutti i casi.
+
+**Homepage — "Recensioni verificate" a carosello in stile messaggio,
+firma cliccabile verso il profilo, riordino sezioni** — richiesta
+esplicita dell'utente: *"modifica 'recensioni verificate' in stile
+carosello su un'unica riga e visualizzate stile messaggio quindi con uno
+sfondo tipo messaggio per il testo scritto con scritto il nome di chi ha
+scritto il commento stile firma in piccolo in basso a destra del
+commento. e se si clicca sul nome del professionista deve portare alla
+pagina del professionista e non alla recensione. poi sposta sempre in
+homepage 'recensioni verificate' e 'nuovi profili' appena sotto le
+categorie"*.
+- **`RecentReviews.tsx`** riscritta: la griglia `flexWrap` di card intere
+  cliccabili (introdotta in §49, ognuna un `<Link>` verso
+  `#recensione-{id}`) diventa una riga a scorrimento orizzontale — riusa
+  `CategoryCarousel.tsx` (stesso componente già in uso per le categorie e
+  per "Nuovi profili", §49, invece di duplicare frecce/scroll). Ogni
+  recensione è ora una "nuvoletta" di chat: sfondo pieno `brand.gesso`
+  (mai bianco, per distinguersi dalla `Surface` bianca usata ovunque nel
+  resto del sito), angoli arrotondati (`radiusDoc`), coda triangolare in
+  basso a sinistra (bordo CSS, stesso principio "CSS puro per un dettaglio
+  che Tamagui non rende bene" già seguito altrove nel prodotto). La firma
+  ("— {businessName}") è l'**unico elemento cliccabile** della card
+  (prima l'intera card lo era, verso l'ancora della recensione): un
+  `next/link` verso `/professionista/{id}` **senza** `#recensione-{id}` —
+  richiesta esplicita "e non alla recensione". Le stelle/badge
+  "Lavoro confermato" restano sopra la nuvoletta, categoria+città sotto,
+  invariati nel contenuto.
+- **`HomeContent.tsx`**: `RecentReviews`/`NewProfilesCarousel` spostate
+  subito dopo la sezione "Categorie" (prima erano più in basso, dopo
+  "Come funziona"/`WhyWeExist`) — nessun'altra sezione toccata, solo
+  l'ordine di montaggio delle due `FadeInSection`.
+- Verificato con l'API locale reale (non solo lettura di codice) — script
+  dedicato con un ciclo completo richiesta→preventivo→accettazione→
+  completamento→conferma→doppia recensione per generare una recensione
+  reale pubblica (`GET /reviews/recent`) — e Playwright: "Recensioni
+  verificate" compare subito dopo "Categorie" (Y crescente,
+  "Nuovi profili" ancora più sotto); il testo della recensione siede su
+  uno sfondo colorato non trasparente (bolla confermata via
+  `getComputedStyle`); il link firma esiste, non contiene `#`, e cliccarlo
+  naviga a `/professionista/{id}` puro. Zero `pageerror`. Account di test
+  ripuliti a fine verifica (`DELETE /auth/me`).
+
+**Risultati di ricerca da mobile — "Filtri" e "Mappa" sulla stessa riga,
+etichetta rinominata, "Ordinato per pertinenza" cliccabile** — richiesta
+esplicita dell'utente: *"da cellulare, quando effettui una ricerca metti
+sulla stessa riga prima il tasto 'filtri' e poi 'mostra mappa', modifica
+la scritta da 'mostra mappa' a 'mappa', e rendi la scritta ordinato per
+pertinenza cliccabile dove esce un popup che spiega"*.
+- **`ResultsListWithMap.tsx`**: il bottone mappa (`mobileMapOpen`), prima
+  una riga a sé stante `width:100%` renderizzata PRIMA della colonna
+  mappa (fuori da `.results-list-col`), è stato spostato dentro la stessa
+  `XStack` di "Filtri", subito dopo — entrambi condividono ora la classe
+  `.filters-toggle` (base CSS cambiata da `width:100%` a `width:auto`,
+  pillola compatta anche da mobile, non solo da `$gtMd` come prima) più
+  `.mobile-map-toggle` sul bottone mappa (solo per `display:none` da
+  desktop, invariato). Etichetta da chiuso rinominata "Mostra mappa" →
+  "Mappa" (richiesta letterale); "Nascondi mappa" da aperto **non**
+  toccato, non nominato dall'utente.
+- **"Ordinato per pertinenza"** (Verbale Cognitivo F1.3, §70) passa da
+  `<Text>` passivo a `<button className="sort-info-trigger">`: click apre
+  un popup centrato (stesso pattern overlay `role="dialog"` già in uso per
+  il pannello Filtri nello stesso file — chiusura su Escape o click sul
+  backdrop) che spiega il criterio reale ("prima i professionisti in
+  evidenza [boost pagato, sempre segnalato dal badge], poi valutazione,
+  poi numero di recensioni — nessuno può comprare una posizione più alta
+  della valutazione reale") — stesso ordinamento di sempre, solo reso
+  comprensibile invece di restare un'etichetta muta.
+- Verificato con l'API locale reale e Playwright, viewport `iPhone 13`:
+  "Filtri" e "Mappa" sulla stessa riga (Y quasi identica), "Filtri" a
+  sinistra di "Mappa"; vecchio testo "Mostra mappa" assente dal DOM; click
+  su "Ordinato per pertinenza" apre il popup col testo atteso, Escape lo
+  chiude; il bottone mappa resta funzionante (apre/chiude, cambia in
+  "Nascondi mappa"); zero overflow orizzontale prima e dopo le
+  interazioni.
+
+**Mappa desktop davvero fissa durante lo scroll della lista** — richiesta
+esplicita dell'utente: *"da desktop quando effettui una ricerca rendi
+fissa la mappa sulla destra in modo che anche se scrollo fra i vari
+profili, la mappa rimane sempre visibile sulla destra"*. La mappa aveva
+già `position: sticky` (introdotto in una fase precedente del redesign,
+mai rimosso) ma restava "incollata" solo per una manciata di pixel di
+scroll prima di scomparire — bug reale, non solo percepito: `.results-layout`
+usava `align-items: flex-start` nel layout a righe desktop, che fa
+dimensionare ogni colonna flex sulla sola altezza del proprio contenuto.
+`.results-map-col` (il contenitore/"blocco di scorrimento" dello sticky)
+si dimensionava quindi sulla sola altezza della mappa stessa
+(`calc(100vh - 140px)`, ~760px) invece che su quella, ben maggiore, della
+colonna lista accanto (spesso 1500-2000px+ con molti risultati) — uno
+sticky element ha margine di "aggancio" solo per la porzione di
+contenitore che eccede la propria altezza: con contenitore ≈ altezza
+propria, quel margine era quasi zero, e la mappa si staccava/scompariva
+dopo pochissimo scroll. Corretto cambiando `align-items` da `flex-start` a
+`stretch` (il default flessibile per l'asse trasversale, mai impostato
+esplicitamente prima): `.results-map-col` si allunga ora fino all'altezza
+di `.results-list-col` (le due colonne diventano pari), dando allo sticky
+tutto lo spazio verticale necessario per restare visibilmente agganciato
+per l'intera durata dello scroll attraverso i risultati — si stacca solo,
+correttamente, una volta superata la fine reale della lista (comportamento
+CSS `position:sticky` intrinseco e atteso, coerente col riferimento
+miodottore.it citato altrove in questo file per lo stesso componente: più
+risultati ci sono, più a lungo la mappa resta agganciata).
+Verificato con l'API locale reale e Playwright (non solo lettura di
+codice): `.results-map-col` e `.results-list-col` hanno ora la stessa
+altezza (`getBoundingClientRect().height` identica, confermato); scrollando
+progressivamente (400/800/1200px) la mappa resta esattamente al proprio
+`top: 24px` finché il contenitore lo consente, poi si stacca in modo
+prevedibile e proporzionale solo in prossimità della fine della lista —
+comportamento riprodotto e confermato coerente con la matematica di CSS
+sticky (non un bug residuo). Zero overflow orizzontale introdotto dal
+cambio.
+
+Verificato in blocco per l'intero giro: typecheck pulito su tutti i
+package (`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`),
+build di produzione `apps/web` verde (31 route, nessuna nuova). Sessione
+locale end-to-end (Postgres+API+web) riavviata da zero a metà lavoro
+(container riciclato per limite di sessione, working tree sopravvissuto)
+— tutti i test end-to-end sopra rieseguiti con successo sull'ambiente
+ripristinato.

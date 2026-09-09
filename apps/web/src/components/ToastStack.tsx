@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { notificationDestination } from "@/lib/notificationSections";
+import { notificationDeepLink } from "@/lib/notificationSections";
 
 function ToastCard({
   id,
   icon,
   message,
   type,
+  payload,
   onDismiss,
   onOpen,
 }: {
@@ -17,15 +18,16 @@ function ToastCard({
   icon: string;
   message: string;
   type: string;
+  payload: unknown;
   onDismiss: (id: string) => void;
-  onOpen: (type: string) => void;
+  onOpen: (type: string, payload: unknown) => void;
 }) {
   // Niente più sparizione automatica dopo pochi secondi (richiesta esplicita
   // dell'utente: "non è ben comprensibile, rendila visualizzabile fino a
   // che non si visualizza e apre effettivamente quell'aggiornamento") — il
   // banner resta a schermo finché non viene aperto (click sul corpo) o
   // chiuso esplicitamente con la "x", mai da solo.
-  const destination = notificationDestination(type);
+  const destination = notificationDeepLink(type, payload);
 
   return (
     <XStack
@@ -47,7 +49,7 @@ function ToastCard({
         // l'aggiornamento a cui si riferisce, non solo chiuderlo — naviga
         // alla pagina/tab giusti (se il tipo di notifica ne conosce uno) e
         // lo chiude comunque, stesso effetto di prima per i tipi ignoti.
-        if (destination) onOpen(type);
+        if (destination) onOpen(type, payload);
         onDismiss(id);
       }}
       accessibilityRole="button"
@@ -97,10 +99,10 @@ export function ToastStack() {
 
   if (toasts.length === 0) return null;
 
-  function openNotification(type: string) {
-    const destination = notificationDestination(type);
+  function openNotification(type: string, payload: unknown) {
+    const destination = notificationDeepLink(type, payload);
     if (!destination) return;
-    router.push(`${destination.page}?tab=${destination.tab}`);
+    router.push(destination);
   }
 
   // `position="fixed"` non è un valore tipizzato per il prop `position` di
@@ -112,7 +114,16 @@ export function ToastStack() {
     <div style={{ position: "fixed", top: 16, left: 0, right: 0, zIndex: 2000, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <YStack alignItems="center" gap="$2" pointerEvents="box-none">
         {toasts.map((toast) => (
-          <ToastCard key={toast.id} id={toast.id} icon={toast.icon} message={toast.message} type={toast.type} onDismiss={dismissToast} onOpen={openNotification} />
+          <ToastCard
+            key={toast.id}
+            id={toast.id}
+            icon={toast.icon}
+            message={toast.message}
+            type={toast.type}
+            payload={toast.payload}
+            onDismiss={dismissToast}
+            onOpen={openNotification}
+          />
         ))}
       </YStack>
     </div>

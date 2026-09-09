@@ -74,6 +74,17 @@ export default function HomeContent({
         </Section>
       </FadeInSection>
 
+      {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
+          categorie (richiesta esplicita dell'utente) — prima erano più in
+          basso, dopo "Come funziona"/WhyWeExist. */}
+      <FadeInSection>
+        <RecentReviews />
+      </FadeInSection>
+
+      <FadeInSection>
+        <NewProfilesCarousel professionals={professionals} />
+      </FadeInSection>
+
       <FadeInSection>
         <QualitySection />
       </FadeInSection>
@@ -99,14 +110,6 @@ export default function HomeContent({
 
       <FadeInSection>
         <WhyWeExist />
-      </FadeInSection>
-
-      <FadeInSection>
-        <RecentReviews />
-      </FadeInSection>
-
-      <FadeInSection>
-        <NewProfilesCarousel professionals={professionals} />
       </FadeInSection>
 
       <FadeInSection>

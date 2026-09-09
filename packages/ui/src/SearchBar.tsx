@@ -34,6 +34,15 @@ export type SearchBarProps = {
    * locale e la ricerca parte dal bottone, come prima.
    */
   searchOnModeChange?: boolean;
+  /**
+   * Resa condensata a riga singola, pensata per stare dentro la barra
+   * fissa in alto (64px) invece che in un pannello a sé — richiesta
+   * esplicita dell'utente: "una volta effettuata la ricerca sposta le due
+   * stringhe di ricerca... sopra sulla barra fissa in alto". Niente
+   * sfondo/padding/ombra della card, tab modalità solo icona, campi e
+   * bottone più piccoli, nessun testo di aiuto sotto.
+   */
+  compact?: boolean;
 };
 
 const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
@@ -49,11 +58,90 @@ export function SearchBar({
   professionalSuggestions = [],
   citySuggestions = [],
   searchOnModeChange = false,
+  compact = false,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
   const [mode, setMode] = useState<SearchMode>(initialMode);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
+
+  if (compact) {
+    return (
+      <XStack gap="$2" alignItems="center">
+        <XStack gap="$1" backgroundColor={brand.gesso} borderRadius="$10" padding={2}>
+          {MODE_TABS.map((tab) => {
+            const active = tab.key === mode;
+            return (
+              <XStack
+                key={tab.key}
+                width={28}
+                height={28}
+                borderRadius="$10"
+                backgroundColor={active ? brand.cianografia : "transparent"}
+                cursor="pointer"
+                alignItems="center"
+                justifyContent="center"
+                onPress={() => handleModeChange(tab.key)}
+                accessibilityRole="button"
+                accessibilityLabel={tab.label}
+              >
+                <Icon name={tab.icon} size={13} color={active ? "white" : brand.grafite70} />
+              </XStack>
+            );
+          })}
+        </XStack>
+        <XStack width={150}>
+          <Autocomplete
+            items={professionalSuggestions}
+            getKey={(item) => item.id}
+            getLabel={(item) => item.name}
+            onSelect={handleSelectProfessional}
+            value={query}
+            onChangeText={handleQueryChange}
+            placeholder="Cosa cerchi?"
+            size="$3"
+            maxResults={professionalSuggestions.length}
+            renderItem={(item) => (
+              <YStack gap="$1">
+                <Text fontWeight="600">{item.name}</Text>
+                <Text fontSize="$2" color="$color10">
+                  {item.subtitle}
+                </Text>
+              </YStack>
+            )}
+          />
+        </XStack>
+        <XStack width={150}>
+          <Autocomplete
+            items={citySuggestions}
+            getKey={(item) => item}
+            getLabel={(item) => item}
+            onSelect={(selectedCity) => setCity(selectedCity)}
+            value={city}
+            onChangeText={setCity}
+            placeholder="Città"
+            size="$3"
+            minChars={3}
+          />
+        </XStack>
+        <Button
+          variant="primary"
+          size="$3"
+          height={36}
+          onPress={() =>
+            onSearch({
+              query,
+              city,
+              mode,
+              professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+            })
+          }
+        >
+          Cerca
+        </Button>
+      </XStack>
+    );
+  }
 
   function handleModeChange(next: SearchMode) {
     if (next === mode) return;

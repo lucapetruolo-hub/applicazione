@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { NotificationsService } from "./notifications.service";
 
@@ -27,5 +27,17 @@ export class NotificationsController {
   @Get("history")
   history(@Req() req: AuthenticatedRequest) {
     return this.notificationsService.history(req.user.userId);
+  }
+
+  /** Elimina tutte le notifiche in un colpo (richiesta esplicita dell'utente). */
+  @Delete()
+  removeAll(@Req() req: AuthenticatedRequest) {
+    return this.notificationsService.deleteAll(req.user.userId);
+  }
+
+  /** Elimina una singola notifica (swipe o pulsante nel dropdown della campanella). */
+  @Delete(":id")
+  remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.notificationsService.delete(req.user.userId, id);
   }
 }

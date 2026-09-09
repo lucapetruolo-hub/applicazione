@@ -36,7 +36,19 @@ export function SearchHeader({
   }
 
   return (
-    <YStack width="100%" backgroundColor={brand.cianografiaVelo} paddingVertical="$5" paddingHorizontal="$4" alignItems="center">
+    // Nascosto da $gtMd in su (richiesta esplicita dell'utente: "sposta le
+    // due stringhe di ricerca... sopra sulla barra fissa in alto"): su
+    // desktop la ricerca vive ora nell'header fisso (SiteHeader.tsx +
+    // HeaderSearchBar.tsx), questo banner resta solo su schermi stretti
+    // dove la versione condensata nell'header non ha spazio a sufficienza.
+    <YStack
+      width="100%"
+      backgroundColor={brand.cianografiaVelo}
+      paddingVertical="$5"
+      paddingHorizontal="$4"
+      alignItems="center"
+      $gtMd={{ display: "none" }}
+    >
       <YStack width="100%" maxWidth={680}>
         <SearchBar
           onSearch={handleSearch}
