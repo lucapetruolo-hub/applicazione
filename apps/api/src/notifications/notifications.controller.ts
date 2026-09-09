@@ -22,4 +22,10 @@ export class NotificationsController {
   markAllRead(@Req() req: AuthenticatedRequest) {
     return this.notificationsService.markAllRead(req.user.userId);
   }
+
+  /** Cronologia completa (lette + non lette), per il pulsante a campanella nell'header — vedi NotificationsService.history. */
+  @Get("history")
+  history(@Req() req: AuthenticatedRequest) {
+    return this.notificationsService.history(req.user.userId);
+  }
 }

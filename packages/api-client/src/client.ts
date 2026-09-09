@@ -886,6 +886,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    /** Cronologia completa (lette + non lette), per il pulsante a campanella nell'header. */
+    notificationHistory: (token: string) =>
+      request<{ id: string; type: string; payload: unknown; createdAt: string; readAt: string | null }[]>("/notifications/history", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
   };
 }
 

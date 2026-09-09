@@ -6,6 +6,7 @@ import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@pr
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { MegaMenu } from "./MegaMenu";
+import { NotificationBell } from "./NotificationBell";
 
 /**
  * Header sticky (brief "Vicinato", CLAUDE.md §19): niente più hairline —
@@ -90,7 +91,10 @@ export function SiteHeader() {
 
         <XStack alignItems="center" gap="$4" $xs={{ gap: "$3" }}>
           {isLoading ? null : user ? (
-            <AccountMenu />
+            <XStack alignItems="center" gap="$2">
+              <NotificationBell />
+              <AccountMenu />
+            </XStack>
           ) : (
             <Link href="/accedi" style={{ textDecoration: "none" }}>
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
@@ -115,9 +119,27 @@ export function SiteHeader() {
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena
                   dimensione sforava ancora di qualche px anche dopo aver
-                  ridotto il logo — stesso bug segnalato dall'utente. */}
+                  ridotto il logo — stesso bug segnalato dall'utente. Per un
+                  cliente già autenticato, la campanella notifiche (nuova,
+                  a sinistra del nome) aggiunge ~44px alla riga: sotto $xs
+                  l'etichetta si accorcia in "Preventivo" solo in quel caso
+                  (mai per un visitatore anonimo, che non ha la campanella e
+                  quindi non ha lo stesso problema di spazio) per restare
+                  entro la larghezza del viewport senza nasconderlo del
+                  tutto. */}
               <Button variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
-                Richiedi preventivo
+                {user ? (
+                  <>
+                    <Text display="none" $gtXs={{ display: "flex" }} color="white" fontWeight="600">
+                      Richiedi preventivo
+                    </Text>
+                    <Text display="flex" $gtXs={{ display: "none" }} color="white" fontWeight="600">
+                      Preventivo
+                    </Text>
+                  </>
+                ) : (
+                  "Richiedi preventivo"
+                )}
               </Button>
             </Link>
           ) : null}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2 } from "lucide-react";
-import { Avatar, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
@@ -19,6 +19,18 @@ const inputStyle = {
   width: "100%",
 };
 const smallInputStyle = { ...inputStyle, width: 76, textAlign: "center" as const };
+
+// Intestazione di sezione — stesso pattern già in uso in /dashboard/profilo
+// (chunking alla Miller, "Verbale Cognitivo" F5.2): una pagina lunga senza
+// sezioni percepibili è confusa quanto una pagina disordinata. Applicato
+// qui allo stesso identico problema, mai risolto in questa pagina finora.
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+      {children}
+    </Text>
+  );
+}
 
 function FieldRow({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
@@ -295,303 +307,329 @@ export default function AccountPage() {
           aperto") — la navigazione tra le voci resta disponibile dal
           menu a tendina dell'header (AccountMenu), che le elenca già
           tutte. */}
-      <XStack width="100%" maxWidth={640} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <YStack flex={1} gap="$5" minWidth={280}>
-          <YStack gap="$1">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-              Impostazioni dell&apos;account
-            </Text>
-            <Text fontSize="$2" color={brand.grafite70}>
-              * Campo obbligatorio
-            </Text>
-          </YStack>
+      <YStack width="100%" maxWidth={640} gap="$5">
+        <YStack gap="$1">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            Impostazioni dell&apos;account
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            * Campo obbligatorio
+          </Text>
+        </YStack>
 
-          <YStack gap="$4">
-            {/*
-              Solo per i clienti: un professionista ha già la propria
-              immagine profilo (pubblica, ProfessionalProfile.imageUrl) in
-              /dashboard/profilo — mostrarla anche qui sarebbe ridondante e
-              fuorviante, perché questa (User.imageUrl) non è quella
-              mostrata pubblicamente sul profilo/nei risultati di ricerca.
-              Richiesta esplicita dell'utente.
-            */}
-            {!user.isProfessional ? (
-              <FieldRow label="Immagine profilo">
-                <XStack alignItems="center" gap="$3">
-                  <YStack
-                    width={72}
-                    height={72}
-                    borderRadius={36}
-                    overflow="hidden"
-                    borderWidth={1}
-                    borderColor={brand.filetto}
-                    alignItems="center"
-                    justifyContent="center"
-                    backgroundColor={brand.gesso}
+        {/* Sezione "Profilo" — immagine (solo cliente), nome/cognome/data di
+            nascita: spezzata in blocchi Surface percepibili invece
+            dell'unico scroll continuo di prima, stesso principio già
+            applicato a /dashboard/profilo. */}
+        <Surface gap="$4">
+          <SectionTitle>Profilo</SectionTitle>
+
+          {/*
+            Solo per i clienti: un professionista ha già la propria
+            immagine profilo (pubblica, ProfessionalProfile.imageUrl) in
+            /dashboard/profilo — mostrarla anche qui sarebbe ridondante e
+            fuorviante, perché questa (User.imageUrl) non è quella
+            mostrata pubblicamente sul profilo/nei risultati di ricerca.
+            Richiesta esplicita dell'utente.
+          */}
+          {!user.isProfessional ? (
+            <FieldRow label="Immagine profilo">
+              <XStack alignItems="center" gap="$3">
+                <YStack
+                  width={72}
+                  height={72}
+                  borderRadius={36}
+                  overflow="hidden"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor={brand.gesso}
+                >
+                  {user.imageUrl ? (
+                    <Avatar name={[user.name, user.surname].filter(Boolean).join(" ") || "?"} imageUrl={user.imageUrl} size={72} />
+                  ) : (
+                    <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
+                  )}
+                </YStack>
+                <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
+                  <Button
+                    variant="secondary"
+                    size="$2"
+                    height={36}
+                    disabled={isUploadingImage}
+                    opacity={isUploadingImage ? 0.6 : 1}
+                    onPress={() => imageInputRef.current?.click()}
                   >
-                    {user.imageUrl ? (
-                      <Avatar name={[user.name, user.surname].filter(Boolean).join(" ") || "?"} imageUrl={user.imageUrl} size={72} />
-                    ) : (
-                      <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
-                    )}
-                  </YStack>
-                  <YStack gap="$1" flex={1} maxWidth={300} alignItems="flex-start">
-                    <Button
-                      variant="secondary"
-                      size="$2"
-                      height={36}
-                      disabled={isUploadingImage}
-                      opacity={isUploadingImage ? 0.6 : 1}
-                      onPress={() => imageInputRef.current?.click()}
-                    >
-                      {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
-                    </Button>
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      disabled={isUploadingImage}
-                      style={{ display: "none" }}
-                    />
-                    {imageError ? (
-                      <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
-                        {imageError}
-                      </Text>
-                    ) : null}
-                  </YStack>
-                </XStack>
-              </FieldRow>
-            ) : null}
-
-            <FieldRow label="Nome" required>
-              <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
-            </FieldRow>
-
-            <FieldRow label="Cognome">
-              <input value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
-            </FieldRow>
-
-            <FieldRow label="Data di nascita">
-              <XStack gap="$2">
-                <input
-                  value={birthDay}
-                  onChange={(e) => setBirthDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  placeholder="DD"
-                  inputMode="numeric"
-                  style={smallInputStyle}
-                />
-                <input
-                  value={birthMonth}
-                  onChange={(e) => setBirthMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  placeholder="MM"
-                  inputMode="numeric"
-                  style={smallInputStyle}
-                />
-                <input
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="YYYY"
-                  inputMode="numeric"
-                  style={{ ...smallInputStyle, width: 96 }}
-                />
+                    {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
+                  </Button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={isUploadingImage}
+                    style={{ display: "none" }}
+                  />
+                  {imageError ? (
+                    <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                      {imageError}
+                    </Text>
+                  ) : null}
+                </YStack>
               </XStack>
             </FieldRow>
+          ) : null}
 
-            <FieldRow label="Password">
-              {isEditingPassword ? (
-                <YStack gap="$2" maxWidth={320}>
-                  {user.hasPassword ? (
-                    <input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Password attuale"
-                      autoComplete="current-password"
-                      style={inputStyle}
-                    />
-                  ) : null}
+          <FieldRow label="Nome" required>
+            <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          </FieldRow>
+
+          <FieldRow label="Cognome">
+            <input value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
+          </FieldRow>
+
+          <FieldRow label="Data di nascita">
+            <XStack gap="$2">
+              <input
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                placeholder="DD"
+                inputMode="numeric"
+                style={smallInputStyle}
+              />
+              <input
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                placeholder="MM"
+                inputMode="numeric"
+                style={smallInputStyle}
+              />
+              <input
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="YYYY"
+                inputMode="numeric"
+                style={{ ...smallInputStyle, width: 96 }}
+              />
+            </XStack>
+          </FieldRow>
+        </Surface>
+
+        <Surface gap="$4">
+          <SectionTitle>Contatti</SectionTitle>
+
+          <FieldRow label="Email" required>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+          </FieldRow>
+
+          <FieldRow label="Telefono">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Es. +39 333 1234567"
+              style={inputStyle}
+            />
+          </FieldRow>
+        </Surface>
+
+        <Surface gap="$4">
+          <SectionTitle>Indirizzo predefinito</SectionTitle>
+          <Text fontSize="$2" color={brand.grafite70} marginTop={-8}>
+            Usato solo per pre-compilare i tuoi dati quando richiedi un preventivo — resta comunque modificabile
+            per ogni singola richiesta.
+          </Text>
+
+          <FieldRow label="Via">
+            <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={inputStyle} />
+          </FieldRow>
+
+          <FieldRow label="Numero civico">
+            <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={{ ...inputStyle, maxWidth: 140 }} />
+          </FieldRow>
+
+          <FieldRow label="Scala, piano, interno">
+            <input
+              value={addressExtra}
+              onChange={(e) => setAddressExtra(e.target.value)}
+              placeholder="Es. Scala B, piano 3, interno 12"
+              style={inputStyle}
+            />
+          </FieldRow>
+
+          <FieldRow label="CAP">
+            <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
+          </FieldRow>
+
+          <FieldRow label="Città">
+            <input value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
+          </FieldRow>
+
+          <FieldRow label="Provincia">
+            <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
+          </FieldRow>
+        </Surface>
+
+        {profileError ? (
+          <Text color={brand.urgenza} fontSize="$3">
+            {profileError}
+          </Text>
+        ) : null}
+        {profileSaved ? (
+          <Text color={brand.verificato} fontSize="$3">
+            Dati salvati!
+          </Text>
+        ) : null}
+
+        <XStack gap="$4" alignItems="center">
+          <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
+            {isSavingProfile ? "Salvataggio..." : "Salva"}
+          </Button>
+          <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
+            Annulla
+          </Text>
+        </XStack>
+
+        <Surface gap="$4">
+          <SectionTitle>Accesso e sicurezza</SectionTitle>
+
+          <FieldRow label="Password">
+            {isEditingPassword ? (
+              <YStack gap="$2" maxWidth={320}>
+                {user.hasPassword ? (
                   <input
                     type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nuova password (almeno 8 caratteri)"
-                    autoComplete="new-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Password attuale"
+                    autoComplete="current-password"
                     style={inputStyle}
                   />
-                  {passwordError ? (
-                    <Text color={brand.urgenza} fontSize="$3">
-                      {passwordError}
-                    </Text>
-                  ) : null}
-                  <XStack gap="$3" alignItems="center">
-                    <Button
-                      variant="secondary"
-                      size="$3"
-                      height={40}
-                      onPress={handleChangePassword}
-                      disabled={isSavingPassword}
-                      opacity={isSavingPassword ? 0.6 : 1}
-                    >
-                      {isSavingPassword ? "Salvataggio..." : "Salva password"}
-                    </Button>
-                    <Text
-                      color={brand.grafite70}
-                      fontWeight="600"
-                      cursor="pointer"
-                      accessibilityRole="button"
-                      onPress={() => {
-                        setIsEditingPassword(false);
-                        setPasswordError(null);
-                        setCurrentPassword("");
-                        setNewPassword("");
-                      }}
-                    >
-                      Annulla
-                    </Text>
-                  </XStack>
-                </YStack>
-              ) : (
-                <Text
-                  color={brand.cianografia}
-                  fontWeight="600"
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  onPress={() => setIsEditingPassword(true)}
-                >
-                  {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
-                </Text>
-              )}
-              {!isEditingPassword && passwordSaved ? (
-                <Text color={brand.verificato} fontSize="$3">
-                  Password aggiornata!
-                </Text>
-              ) : null}
-            </FieldRow>
-          </YStack>
-
-          <YStack height={1} backgroundColor={brand.filetto} />
-
-          <YStack gap="$4">
-            <FieldRow label="Telefono">
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Es. +39 333 1234567"
-                style={inputStyle}
-              />
-            </FieldRow>
-
-            <FieldRow label="Email" required>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-            </FieldRow>
-          </YStack>
-
-          <YStack height={1} backgroundColor={brand.filetto} />
-
-          <YStack gap="$4">
-            <YStack gap="$1">
-              <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
-                Indirizzo
-              </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
-                Usato solo per pre-compilare i tuoi dati quando richiedi un preventivo — resta comunque modificabile
-                per ogni singola richiesta.
-              </Text>
-            </YStack>
-
-            <FieldRow label="Via">
-              <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={inputStyle} />
-            </FieldRow>
-
-            <FieldRow label="Numero civico">
-              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={{ ...inputStyle, maxWidth: 140 }} />
-            </FieldRow>
-
-            <FieldRow label="Scala, piano, interno">
-              <input
-                value={addressExtra}
-                onChange={(e) => setAddressExtra(e.target.value)}
-                placeholder="Es. Scala B, piano 3, interno 12"
-                style={inputStyle}
-              />
-            </FieldRow>
-
-            <FieldRow label="CAP">
-              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
-            </FieldRow>
-
-            <FieldRow label="Città">
-              <input value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
-            </FieldRow>
-
-            <FieldRow label="Provincia">
-              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
-            </FieldRow>
-          </YStack>
-
-          <YStack height={1} backgroundColor={brand.filetto} />
-
-          {profileError ? (
-            <Text color={brand.urgenza} fontSize="$3">
-              {profileError}
-            </Text>
-          ) : null}
-          {profileSaved ? (
-            <Text color={brand.verificato} fontSize="$3">
-              Dati salvati!
-            </Text>
-          ) : null}
-
-          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-            <XStack gap="$4" alignItems="center">
-              <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
-                {isSavingProfile ? "Salvataggio..." : "Salva"}
-              </Button>
-              <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
-                Annulla
-              </Text>
-            </XStack>
-
-            <XStack gap="$4" alignItems="center" flexWrap="wrap">
-              <XStack
-                gap="$1"
-                alignItems="center"
-                cursor={isExporting ? "default" : "pointer"}
-                opacity={isExporting ? 0.6 : 1}
-                onPress={isExporting ? undefined : handleExportData}
-                accessibilityRole="button"
-                accessibilityLabel="Esporta i miei dati"
-              >
-                <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
-                <Text color={brand.grafite70} fontWeight="600">
-                  {isExporting ? "Esportazione..." : "Esporta i miei dati"}
-                </Text>
-              </XStack>
-
-              {!isConfirmingDelete ? (
-                <XStack
-                  gap="$1"
-                  alignItems="center"
-                  cursor="pointer"
-                  onPress={() => setIsConfirmingDelete(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Elimina il mio account"
-                >
-                  <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
-                  <Text color={brand.urgenza} fontWeight="600">
-                    Elimina il mio account
+                ) : null}
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nuova password (almeno 8 caratteri)"
+                  autoComplete="new-password"
+                  style={inputStyle}
+                />
+                {passwordError ? (
+                  <Text color={brand.urgenza} fontSize="$3">
+                    {passwordError}
+                  </Text>
+                ) : null}
+                <XStack gap="$3" alignItems="center">
+                  <Button
+                    variant="secondary"
+                    size="$3"
+                    height={40}
+                    onPress={handleChangePassword}
+                    disabled={isSavingPassword}
+                    opacity={isSavingPassword ? 0.6 : 1}
+                  >
+                    {isSavingPassword ? "Salvataggio..." : "Salva password"}
+                  </Button>
+                  <Text
+                    color={brand.grafite70}
+                    fontWeight="600"
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setIsEditingPassword(false);
+                      setPasswordError(null);
+                      setCurrentPassword("");
+                      setNewPassword("");
+                    }}
+                  >
+                    Annulla
                   </Text>
                 </XStack>
-              ) : null}
+              </YStack>
+            ) : (
+              <Text
+                color={brand.cianografia}
+                fontWeight="600"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => setIsEditingPassword(true)}
+              >
+                {user.hasPassword ? "Aggiorna password" : "Impostare la password"}
+              </Text>
+            )}
+            {!isEditingPassword && passwordSaved ? (
+              <Text color={brand.verificato} fontSize="$3">
+                Password aggiornata!
+              </Text>
+            ) : null}
+          </FieldRow>
+        </Surface>
+
+        {/* "Zona pericolosa" — separata visivamente (bordo/sfondo neutro,
+            testo rosso solo sull'azione distruttiva) dal resto del form:
+            esportazione dati e cancellazione account non sono "impostazioni"
+            come le altre, meritano di distinguersi a colpo d'occhio invece
+            di stare appese in fondo alla stessa lista di FieldRow. */}
+        <Surface gap="$4" borderColor={brand.filetto}>
+          <SectionTitle>Dati e account</SectionTitle>
+
+          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+            <YStack gap={2} flex={1} minWidth={200}>
+              <Text fontWeight="600" color={brand.grafite}>
+                Esporta i tuoi dati
+              </Text>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Scarica un file con tutte le informazioni collegate al tuo account.
+              </Text>
+            </YStack>
+            <XStack
+              gap="$1"
+              alignItems="center"
+              cursor={isExporting ? "default" : "pointer"}
+              opacity={isExporting ? 0.6 : 1}
+              onPress={isExporting ? undefined : handleExportData}
+              accessibilityRole="button"
+              accessibilityLabel="Esporta i miei dati"
+            >
+              <Download size={15} strokeWidth={1.5} color={brand.grafite70} />
+              <Text color={brand.grafite70} fontWeight="600">
+                {isExporting ? "Esportazione..." : "Esporta"}
+              </Text>
             </XStack>
           </XStack>
-
           {exportError ? (
             <Text color={brand.urgenza} fontSize="$3">
               {exportError}
             </Text>
           ) : null}
+
+          <YStack height={1} backgroundColor={brand.filetto} />
+
+          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+            <YStack gap={2} flex={1} minWidth={200}>
+              <Text fontWeight="600" color={brand.urgenza}>
+                Elimina il mio account
+              </Text>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Azione definitiva, non reversibile.
+              </Text>
+            </YStack>
+            {!isConfirmingDelete ? (
+              <XStack
+                gap="$1"
+                alignItems="center"
+                cursor="pointer"
+                onPress={() => setIsConfirmingDelete(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Elimina il mio account"
+              >
+                <Trash2 size={15} strokeWidth={1.5} color={brand.urgenza} />
+                <Text color={brand.urgenza} fontWeight="600">
+                  Elimina
+                </Text>
+              </XStack>
+            ) : null}
+          </XStack>
 
           {isConfirmingDelete ? (
             <YStack gap="$3" padding="$4" backgroundColor="#FBEAE8" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza}>
@@ -637,8 +675,8 @@ export default function AccountPage() {
               </XStack>
             </YStack>
           ) : null}
-        </YStack>
-      </XStack>
+        </Surface>
+      </YStack>
 
       {cropImageSrc ? <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} /> : null}
     </YStack>

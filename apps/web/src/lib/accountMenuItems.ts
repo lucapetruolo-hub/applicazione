@@ -24,6 +24,12 @@ export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] 
         { href: "/chat", label: "Chat" },
         { href: "/dashboard/profilo", label: "Profilo pubblico" },
         { href: "/dashboard/agenda", label: "Agenda" },
+        // Richiesta esplicita dell'utente: un professionista può anche
+        // avere bisogno di un altro servizio (un idraulico che cerca un
+        // elettricista, ecc.) — nulla nel backend lo impediva già
+        // (GuidedRequestsService.create non ha alcun controllo di ruolo),
+        // mancava solo il collegamento nel menu.
+        { href: "/le-mie-richieste", label: "Le mie richieste" },
         { href: "/account", label: "Impostazioni dell'account" },
       ]
     : [

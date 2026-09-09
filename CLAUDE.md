@@ -9364,3 +9364,141 @@ correttamente dietro "Modifica", `accent-color` di brand), F3.1 (badge
 in tutti i flussi. Typecheck pulito su tutti i package (`shared`, `api`,
 `api-client`, `ui`, `web`, `mobile`), build di produzione `apps/web`
 verde (31 route, nessuna nuova).
+
+---
+
+## 71. Campanella cronologia notifiche, riepilogo /account a sezioni, "Le mie richieste" per i professionisti, rifiniture
+
+Cinque richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Pulsante a campanella con cronologia notifiche** — richiesta esplicita
+dell'utente: "di fianco al nome in alto a destra, crea una specie di
+pulsantino con una campanella dove conterrà la cronologia delle
+notifiche, e cliccando su una di quella notifiche ti portera all oggetto
+in questione" (posizione poi corretta: "alla sinistra del nome"). Prima
+d'ora esistevano solo `GET /notifications/unread-count` (solo il numero)
+e `GET /notifications/unread` (le sole non lette, per il popup "toast") —
+nessun endpoint restituiva la cronologia completa (lette comprese).
+- **`NotificationsService.history`** (nuovo, `GET /notifications/history`,
+  JWT-guarded): tutte le notifiche dell'utente (lette+non lette),
+  `createdAt desc`, limite 30 — stessa scala di lancio già seguita
+  ovunque nel progetto (§7), nessuna paginazione. Nessuna migrazione
+  Prisma: il modello `Notification` aveva già `readAt` (distingue
+  letta/non letta).
+- **`apps/web/src/components/NotificationBell.tsx`** (nuovo): pulsante
+  icona (`bell-ring`, già nel registro condiviso — introdotto in un giro
+  precedente ma mai usato prima d'ora) con lo stesso pallino rosso
+  numerico già in uso su `AccountMenu`. Click apre un dropdown (stesso
+  pattern click-to-open/chiusura-su-click-esterno di `AccountMenu`/
+  `ReportsSectionMenu`) che scarica la cronologia al volo — un elemento
+  per notifica, icona+testo da `notificationCopy(type)` (stessa mappa già
+  in uso per i toast), tempo relativo ("5 min fa"/"2 ore fa"/"3 giorni
+  fa"/data), sfondo `brand.gesso` + pallino cianografia per le non lette.
+  Click su un elemento con una destinazione nota (`notificationDestination
+  (type)`, stessa funzione già riusata da `ToastStack`) naviga a
+  `${page}?tab=${tab}` e chiude il dropdown; un evento senza destinazione
+  nota resta comunque leggibile ma non cliccabile. Aprire il dropdown
+  segna subito tutte le notifiche come lette (`markNotificationsRead()`,
+  stesso principio "visualizzare = confermare" già seguito ovunque nel
+  prodotto) — azzera anche il pallino già esistente su `AccountMenu`,
+  stesso stato condiviso.
+- **`SiteHeader.tsx`**: montato a sinistra del nome, dentro una nuova
+  `XStack` che avvolge `NotificationBell`+`AccountMenu` — non più
+  `AccountMenu` da sola nello slot destro dell'header.
+- **Bug reale scoperto durante la verifica: overflow orizzontale su
+  mobile per un cliente autenticato** (non solo lettura di codice — la
+  prima verifica Playwright su viewport 390px lo ha trovato con 35px di
+  overflow su `/`, `/account` e `/le-mie-richieste`): la nuova campanella
+  (36px + gap) spingeva la riga header (altezza fissa 64px, nessun
+  `flexWrap` possibile senza spezzare il layout) oltre la larghezza dello
+  schermo — il bottone "Richiedi preventivo" (visibile solo per un
+  cliente, mai per un professionista) finiva parzialmente fuori
+  viewport. Corretto **solo per un cliente già autenticato** (l'unico
+  caso con la campanella presente — un visitatore anonimo non ha
+  overflow, il suo bottone resta invariato su ogni larghezza): sotto
+  `$xs` l'etichetta si accorcia da "Richiedi preventivo" a "Preventivo"
+  (due `Text` con `display`/`$gtXs` opposti, stesso pattern già in uso
+  per `Logo` full/mark) — verificato che l'overflow scenda a 0px su
+  tutte e tre le pagine dopo il fix, nessuna regressione per un
+  visitatore anonimo (etichetta invariata).
+
+**`/account` riorganizzata in sezioni `Surface`** — richiesta esplicita
+dell'utente ("migliora la pagina impostazioni dell'account"): la pagina
+era un unico form piatto senza alcuna sezione percepibile (lo stesso
+problema già risolto altrove per `/dashboard/profilo`, "Verbale
+Cognitivo" F5.2, mai applicato qui). Spezzata in blocchi `Surface` con
+titolo — "Profilo" (immagine solo cliente, nome/cognome/data di nascita),
+"Contatti" (email/telefono), "Indirizzo predefinito" (invariato nel
+contenuto/nota esplicativa), "Accesso e sicurezza" (password) — più una
+sezione "Dati e account" distinta in fondo per esportazione dati/
+cancellazione account (prima appese come semplice riga di link sotto il
+form principale): ogni azione ora ha una riga propria con una breve
+descrizione, l'eliminazione mantiene lo stesso avviso/conferma a doppio
+passaggio invariato. Nessuna logica toccata (stessi handler/validazioni),
+solo la resa visiva.
+
+**Voce di menu "Le mie richieste" anche per i professionisti** — richiesta
+esplicita dell'utente ("nel profilo professionista rendi visibile il menu
+'le mie richieste'"): `getAccountMenuItems` (`accountMenuItems.ts`) non
+la includeva per un professionista, pur non essendoci alcun blocco
+lato backend (`GuidedRequestsService.create` non ha alcun controllo di
+ruolo) — un professionista può già avere bisogno di un altro servizio
+(un idraulico che cerca un elettricista, ecc.), mancava solo il
+collegamento nel menu. Aggiunta tra "Agenda" e "Impostazioni
+dell'account".
+
+**Pillole filtro `/dashboard/richieste` ridotte + badge non più tagliato
+in alto** — segnalato dall'utente ("diminuisci un po la dimensione...
+poichè non ben visibili che sforano la parte superiore"): le pillole
+"Tutte"/"Da quotare"/ecc. (§41) erano grandi (padding 14, font 17) e il
+pallino di conteggio (`top={-6}`) veniva tagliato dal contenitore
+scorrevole (`CategoryCarousel`, `overflow-x:auto` che forza implicitamente
+anche `overflow-y` a `auto`, clippando qualunque contenuto sporga sopra
+il bordo). Corretto riducendo pillole (padding 9, font 13.5) e pallino
+(18px invece di 24px, `top={-5}`), più `paddingTop: 8` sulla riga
+scorrevole di `CategoryCarousel.tsx` (il padding resta dentro l'area non
+clippata, a differenza del contenuto che sporge oltre) — corregge lo
+stesso identico problema per qualunque altro consumatore futuro del
+componente, non solo questa pagina.
+
+**"Elimina richiesta" → conferma spostata sotto il pulsante hamburger,
+testo aggiornato** — richiesta esplicita dell'utente, poi precisata
+("non modificare il pulsante successivo altrimenti si crea una
+incomprensione del tasto da premere"): in `/le-mie-richieste`
+(`GuidedRequestCard`), il popup di conferma a due passaggi (§67) era in
+fondo alla card, lontano dal menu hamburger che lo apriva — spostato a
+comparire **subito sotto il pulsante hamburger stesso**, come un vero
+menu a due stati (elenco → conferma, stesso dropdown, mai un secondo
+popup separato): stato locale `isDeleteMenuOpen` sostituisce il generico
+`ActionsMenu` per questo solo caso (serviva un "secondo passo" di
+contenuto che il componente condiviso non esponeva — `ActionsMenu` resta
+invariato e in uso per "Annulla prenotazione", CLAUDE.md §65). Voce del
+menu rinominata da "Elimina richiesta" a "Annulla richiesta" (coerente
+con la semantica reale, §14: `GuidedRequestsService.remove` è già un
+soft-close, non una cancellazione fisica) — **il pulsante di conferma
+successivo resta invariato** ("Conferma"/"Annulla", mai rinominato:
+l'utente ha esplicitamente chiesto di non farlo, per non creare
+ambiguità su quale pulsante premere). Il vecchio blocco di conferma in
+fondo alla card è stato rimosso, resta solo "Modifica"/"Non
+modificabile".
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+due agenti Playwright dedicati (desktop 1280px + mobile 390px, sia contro
+un primo build sia — dopo aver scoperto e corretto l'overflow — contro un
+secondo build pulito, compreso un riavvio completo del server di
+produzione per escludere artefatti di build/processo residui): campanella
+visibile a sinistra del nome, dropdown con cronologia e testo
+`notificationCopy`, click che naviga a `/dashboard?tab=richieste`;
+`/account` con tutte e 5 le sezioni; voce "Le mie richieste" visibile e
+funzionante nel menu di un professionista, nessun muro di login; pillole
+filtro più piccole con badge non più tagliato; menu hamburger "Annulla
+richiesta" con conferma "Eliminare questa richiesta?"/"Conferma"/
+"Annulla" ancorata subito sotto il pulsante. Zero overflow orizzontale
+mobile (0px su tre pagine, dopo il fix), zero errori console reali (un
+errore di idratazione React osservato in un primo giro di verifica è
+stato isolato e ricondotto a un riavvio incompleto del server di
+produzione tra una build e l'altra — non riprodotto su un server appena
+ricompilato e riavviato pulito, né in `next dev`). Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (31 route, nessuna
+nuova).

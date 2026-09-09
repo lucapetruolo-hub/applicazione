@@ -61,6 +61,7 @@ export function CategoryCarousel({ children }: { children: ReactNode }) {
           flex: 1,
           minWidth: 0,
           scrollSnapType: "x proximity",
+          paddingTop: 8,
           paddingBottom: 4,
         }}
       >

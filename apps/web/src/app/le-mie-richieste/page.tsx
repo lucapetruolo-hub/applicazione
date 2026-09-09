@@ -565,6 +565,14 @@ function GuidedRequestCard({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Menu hamburger "Annulla richiesta" (richiesta esplicita dell'utente: il
+  // popup di conferma deve comparire subito sotto al pulsante hamburger,
+  // non in fondo alla card come prima) — stato locale invece del generico
+  // `ActionsMenu` (chiuso a sé, non esporrebbe un secondo "passo" di
+  // contenuto): stesso menu resta aperto e cambia contenuto (elenco →
+  // conferma) invece di chiudersi al click sulla voce.
+  const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false);
+  const deleteMenuRef = useRef<HTMLDivElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
@@ -608,6 +616,16 @@ function GuidedRequestCard({
     () => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)),
     [request.quotes],
   );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (deleteMenuRef.current && !deleteMenuRef.current.contains(event.target as Node)) {
+        setIsDeleteMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function startEditing() {
     setDescription(request.description);
@@ -904,16 +922,101 @@ function GuidedRequestCard({
                 <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
                   {STATUS_LABEL[request.status]}
                 </Text>
-                {/* Menu hamburger con "Elimina richiesta" (richiesta esplicita
+                {/* Menu hamburger con "Annulla richiesta" (richiesta esplicita
                     dell'utente, stesso pattern già in uso in "Lavori
-                    accettati") al posto del vecchio tasto "Elimina" esterno,
-                    rimosso — la conferma a due passaggi resta invariata,
-                    mostrata più sotto quando confirmingDelete è vero. */}
+                    accettati") al posto del vecchio tasto "Elimina" esterno.
+                    Il popup di conferma compare qui sotto, ancorato al
+                    pulsante stesso (richiesta esplicita dell'utente),
+                    invece che in fondo alla card come prima — stesso menu,
+                    contenuto che cambia da elenco a conferma senza
+                    chiudersi. */}
                 {canDelete ? (
-                  <ActionsMenu
-                    accessibilityLabel="Azioni sulla richiesta"
-                    items={[{ icon: "trash-2", text: "Elimina richiesta", color: brand.urgenza, onPress: () => setConfirmingDelete(true) }]}
-                  />
+                  <YStack ref={deleteMenuRef} position="relative">
+                    <YStack
+                      width={32}
+                      height={32}
+                      borderRadius={999}
+                      alignItems="center"
+                      justifyContent="center"
+                      cursor="pointer"
+                      hoverStyle={{ backgroundColor: brand.gesso }}
+                      onPress={() => setIsDeleteMenuOpen((open) => !open)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Azioni sulla richiesta"
+                    >
+                      <Icon name="menu" size={18} color={brand.grafite} />
+                    </YStack>
+
+                    {isDeleteMenuOpen ? (
+                      <YStack
+                        position="absolute"
+                        top="100%"
+                        right={0}
+                        marginTop="$2"
+                        minWidth={confirmingDelete ? 240 : 200}
+                        backgroundColor={brand.calce}
+                        borderRadius={radiusDoc}
+                        overflow="hidden"
+                        zIndex={1000}
+                        shadowColor="rgba(43,32,19,0.12)"
+                        shadowRadius={12}
+                        shadowOffset={{ width: 0, height: 4 }}
+                        shadowOpacity={1}
+                      >
+                        {confirmingDelete ? (
+                          // Richiesta esplicita dell'utente: la voce del menu
+                          // diventa "Annulla richiesta", ma il pulsante di
+                          // conferma successivo NON va rinominato ("altrimenti
+                          // si crea una incomprensione del tasto da premere")
+                          // — resta "Conferma"/"Annulla" come prima.
+                          <YStack padding="$3" gap="$2">
+                            <Text fontSize="$2" color={brand.grafite}>
+                              Eliminare questa richiesta?
+                            </Text>
+                            <XStack gap="$2">
+                              <Button
+                                variant="urgent"
+                                size="$2"
+                                height={34}
+                                onPress={handleDelete}
+                                disabled={isDeleting}
+                                opacity={isDeleting ? 0.6 : 1}
+                              >
+                                {isDeleting ? "Eliminazione..." : "Conferma"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="$2"
+                                height={34}
+                                onPress={() => {
+                                  setConfirmingDelete(false);
+                                  setIsDeleteMenuOpen(false);
+                                }}
+                              >
+                                Annulla
+                              </Button>
+                            </XStack>
+                          </YStack>
+                        ) : (
+                          <XStack
+                            paddingHorizontal="$4"
+                            paddingVertical="$3"
+                            alignItems="center"
+                            gap="$2"
+                            cursor="pointer"
+                            hoverStyle={{ backgroundColor: brand.gesso }}
+                            onPress={() => setConfirmingDelete(true)}
+                            accessibilityRole="button"
+                          >
+                            <Icon name="trash-2" size={16} color={brand.urgenza} />
+                            <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
+                              Annulla richiesta
+                            </Text>
+                          </XStack>
+                        )}
+                      </YStack>
+                    ) : null}
+                  </YStack>
                 ) : null}
               </XStack>
               {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
@@ -1009,6 +1112,10 @@ function GuidedRequestCard({
             </Link>
           </XStack>
 
+          {/* Conferma eliminazione spostata sotto il pulsante hamburger
+              (richiesta esplicita dell'utente) — qui resta solo
+              "Modifica"/"Non modificabile", niente più il blocco di
+              conferma duplicato in fondo alla card. */}
           {canDelete ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
               {canEditDetails ? (
@@ -1020,19 +1127,6 @@ function GuidedRequestCard({
                   Non modificabile: hai già ricevuto un preventivo.
                 </Text>
               )}
-              {confirmingDelete ? (
-                <>
-                  <Text fontSize="$2" color={brand.urgenza}>
-                    Eliminare questa richiesta?
-                  </Text>
-                  <Button variant="urgent" size="$2" height={36} onPress={handleDelete} disabled={isDeleting} opacity={isDeleting ? 0.6 : 1}>
-                    {isDeleting ? "Eliminazione..." : "Conferma"}
-                  </Button>
-                  <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDelete(false)}>
-                    Annulla
-                  </Button>
-                </>
-              ) : null}
             </XStack>
           ) : null}
           {error ? (

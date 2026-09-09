@@ -43,4 +43,26 @@ export class NotificationsService {
   async markAllRead(userId: string): Promise<void> {
     await this.prisma.notification.updateMany({ where: { userId, readAt: null }, data: { readAt: new Date() } });
   }
+
+  /**
+   * Cronologia completa (lette + non lette), per il pulsante a campanella
+   * nell'header — a differenza di `listUnread` (solo non lette, per il
+   * popup "toast") qui serve vedere anche gli eventi già letti, come
+   * cronologia navigabile. Limitata a 30: stessa scala di lancio già
+   * seguita ovunque nel progetto (CLAUDE.md §7), nessuna paginazione.
+   */
+  async history(userId: string): Promise<{ id: string; type: string; payload: Prisma.JsonValue; createdAt: string; readAt: string | null }[]> {
+    const notifications = await this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    });
+    return notifications.map((n) => ({
+      id: n.id,
+      type: n.type,
+      payload: n.payload,
+      createdAt: n.createdAt.toISOString(),
+      readAt: n.readAt ? n.readAt.toISOString() : null,
+    }));
+  }
 }

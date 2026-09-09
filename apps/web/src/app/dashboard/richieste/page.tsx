@@ -504,8 +504,8 @@ function RichiesteContent() {
               <XStack key={tab.key} flexShrink={0} position="relative">
                 <XStack
                   alignItems="center"
-                  paddingHorizontal="$4"
-                  paddingVertical={14}
+                  paddingHorizontal="$3"
+                  paddingVertical={9}
                   borderRadius={999}
                   backgroundColor={active ? brand.cianografia : brand.calce}
                   borderWidth={1}
@@ -514,18 +514,18 @@ function RichiesteContent() {
                   onPress={() => setActiveTab(tab.key)}
                   accessibilityRole="button"
                 >
-                  <Text fontFamily="$body" fontSize={17} fontWeight="800" color={active ? "white" : brand.grafite}>
+                  <Text fontFamily="$body" fontSize={13.5} fontWeight="800" color={active ? "white" : brand.grafite}>
                     {tab.label}
                   </Text>
                 </XStack>
                 {count > 0 ? (
                   <YStack
                     position="absolute"
-                    top={-6}
-                    right={-6}
-                    minWidth={24}
-                    height={24}
-                    paddingHorizontal={5}
+                    top={-5}
+                    right={-5}
+                    minWidth={18}
+                    height={18}
+                    paddingHorizontal={4}
                     borderRadius={999}
                     backgroundColor={brand.urgenza}
                     alignItems="center"
@@ -533,7 +533,7 @@ function RichiesteContent() {
                     borderWidth={2}
                     borderColor={brand.gesso}
                   >
-                    <Text fontSize={12} fontWeight="800" color="white">
+                    <Text fontSize={10} fontWeight="800" color="white">
                       {count}
                     </Text>
                   </YStack>
