@@ -595,8 +595,8 @@ function DashboardAgendaContent() {
           return;
         }
       }
-      setSlots((prev) => [
-        ...prev,
+      const next = [
+        ...slots,
         ...targetDates.map((date) => ({
           dayOfWeek,
           date,
@@ -607,7 +607,9 @@ function DashboardAgendaContent() {
           homeMax,
           onlineMax,
         })),
-      ]);
+      ];
+      setSlots(next);
+      void persistSlots(next);
     } else if (editIndex !== null) {
       const original = slots[editIndex];
       if (!original) return;
@@ -641,26 +643,26 @@ function DashboardAgendaContent() {
           }
         }
 
-        setSlots((prev) =>
-          prev.map((s, i) =>
-            matchingIndexes.has(i)
-              ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
-              : s,
-          ),
+        const next = slots.map((s, i) =>
+          matchingIndexes.has(i)
+            ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
+            : s,
         );
+        setSlots(next);
+        void persistSlots(next);
       } else {
         const liveError = slotEditorLiveError(dayOfWeek, editIndex);
         if (liveError) {
           setError(liveError);
           return;
         }
-        setSlots((prev) =>
-          prev.map((s, i) =>
-            i === editIndex
-              ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
-              : s,
-          ),
+        const next = slots.map((s, i) =>
+          i === editIndex
+            ? { ...s, start: draftStart, end: draftEnd, allowsHome: draftAllowsHome, allowsOnline: draftAllowsOnline, homeMax, onlineMax }
+            : s,
         );
+        setSlots(next);
+        void persistSlots(next);
       }
     }
     setEditingKey(null);
@@ -673,9 +675,11 @@ function DashboardAgendaContent() {
   // dell'utente. La doppia conferma per le fasce con prenotazioni future
   // vive ora dentro il pop-up stesso (stato locale lì).
   function deleteSlot(index: number) {
-    setSlots((prev) => prev.filter((_, i) => i !== index));
+    const next = slots.filter((_, i) => i !== index);
+    setSlots(next);
     setEditingKey(null);
     setError(null);
+    void persistSlots(next);
   }
 
   function toggleSelectionMode() {
@@ -761,11 +765,13 @@ function DashboardAgendaContent() {
    */
   function deleteSelectedSlots() {
     const selectedIndexes = new Set(Array.from(selectedSlotKeys).map((k) => Number(k.slice(0, k.indexOf(":")))));
-    setSlots((prev) => prev.filter((_, i) => !selectedIndexes.has(i)));
+    const next = slots.filter((_, i) => !selectedIndexes.has(i));
+    setSlots(next);
     setSelectionMode(false);
     setSelectedSlotKeys(new Set());
     setConfirmingBulkDelete(false);
     setError(null);
+    void persistSlots(next);
   }
 
   async function toggleException(dateStr: string) {
@@ -784,9 +790,18 @@ function DashboardAgendaContent() {
     }
   }
 
-  async function handleSubmit() {
+  // Salvataggio diretto ad ogni operazione (richiesta esplicita
+  // dell'utente, "Verbale Cognitivo" F4.1: il bottone "Salva agenda" a sé
+  // stante era ridondante — impostare un orario passa già dal proprio
+  // "Salva" nel pop-up dedicato, eliminare una fascia ha già una conferma
+  // dedicata) — nessun bottone di salvataggio generale della pagina: ogni
+  // funzione che cambia `slots` calcola il nuovo array e lo passa qui
+  // subito dopo `setSlots`, mai un salvataggio rimandato a un secondo
+  // click. Riceve l'array esplicito (non legge `slots` dallo stato) per
+  // evitare una closure stale nelle chiamate ravvicinate.
+  async function persistSlots(nextSlots: SlotDraft[]) {
     setError(null);
-    for (const slot of slots) {
+    for (const slot of nextSlots) {
       if (slot.end <= slot.start) {
         setError("L'orario di fine deve essere dopo l'orario di inizio in ogni fascia.");
         return;
@@ -797,7 +812,7 @@ function DashboardAgendaContent() {
     try {
       await apiClient.upsertMyAvailability(
         token as string,
-        slots.map((slot) => ({
+        nextSlots.map((slot) => ({
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.start,
           endTime: slot.end,
@@ -1504,15 +1519,20 @@ function DashboardAgendaContent() {
                 </Text>
               </XStack>
             ) : null}
-            {saved ? (
+            {/* Nessun bottone "Salva agenda" (richiesta esplicita
+                dell'utente, F4.1): ogni operazione (impostare un orario,
+                eliminare una fascia, propagare una modifica) salva già da
+                sola — questo è solo un indicatore passivo dello stato del
+                salvataggio in corso, non un'azione da compiere. */}
+            {isSubmitting ? (
+              <Text color={brand.grafite70} fontSize="$3">
+                Salvataggio...
+              </Text>
+            ) : saved ? (
               <Text color={brand.verificato} fontSize="$3">
                 Agenda salvata!
               </Text>
             ) : null}
-
-            <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1} alignSelf="flex-start">
-              {isSubmitting ? "Salvataggio..." : "Salva agenda"}
-            </Button>
           </>
         ) : (
           <>

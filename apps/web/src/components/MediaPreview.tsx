@@ -29,11 +29,20 @@ export function MediaPreview({
   alt = "",
   style,
   onClick,
+  forceVideo,
 }: {
   url: string;
   alt?: string;
   style?: CSSProperties;
   onClick?: MouseEventHandler<HTMLImageElement | HTMLVideoElement>;
+  /**
+   * Forza il tipo video indipendentemente dall'estensione dell'URL — serve
+   * per gli URL `blob:` di un file selezionato ma non ancora caricato
+   * (nessuna estensione riconoscibile da `isVideoUrl`, che guarda solo la
+   * stringa dell'URL): il chiamante che conosce già il `File.type` reale lo
+   * passa qui invece di lasciar indovinare all'URL.
+   */
+  forceVideo?: boolean;
 }) {
   const [broken, setBroken] = useState(false);
   const mergedStyle = { ...DEFAULT_STYLE, ...style };
@@ -56,7 +65,7 @@ export function MediaPreview({
     );
   }
 
-  if (isVideoUrl(url)) {
+  if (forceVideo || isVideoUrl(url)) {
     return (
       // eslint-disable-next-line jsx-a11y/media-has-caption
       <video src={url} muted playsInline onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />

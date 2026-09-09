@@ -276,6 +276,31 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
    hardcodare chiavi — solo variabili d'ambiente, mai committate.
 8. Aggiornare questo file quando cambia una decisione tecnica: è la memoria
    persistente del progetto, non un documento statico.
+9. **Principio fisso — visibilità dei contatti del cliente** ("Verbale
+   Cognitivo" F6.3, richiesta esplicita dell'utente di fissarlo per
+   iscritto: la stessa domanda era stata invertita tre volte nella
+   cronologia del prodotto — subito visibile → solo dopo l'accettazione →
+   di nuovo subito → di nuovo solo dopo l'accettazione, §12/§16/§45/§48 —
+   senza mai un principio scritto a fermare l'oscillazione): **telefono,
+   email e indirizzo del cliente sono visibili al professionista solo
+   dopo un impegno reciproco confermato** (un preventivo accettato → una
+   `Booking` creata), mai prima. Prima di quel momento il professionista
+   vede solo città, descrizione del lavoro, foto/video e la cronologia
+   della conversazione (chat) — mai un dato di contatto diretto. Non
+   invertire questa regola una quarta volta senza discuterne
+   esplicitamente con l'utente: se sembra necessario un'eccezione, è un
+   segnale che va posta la domanda invece di cambiare il codice.
+10. **Regola "zero emoji nell'interfaccia" (§10, Fase 2) abrogata** —
+    decisione esplicita dell'utente, in risposta al rilievo F8.1 del
+    "Verbale Cognitivo" (che anzi la elogiava com'era: "nessuna azione,
+    tenerla come riferimento"). La regola resta descritta più sotto solo
+    come cronologia di una decisione passata, non più vincolante da qui in
+    avanti: un'emoji nell'interfaccia non è più da evitare per principio —
+    resta comunque buon senso non abusarne, coerente con il tono caldo
+    "Vicinato" (§19) già scelto per il prodotto. Nessun codice esistente
+    modificato da questo solo cambio di regola (il sito ha oggi zero emoji
+    tranne l'eccezione già documentata in coda a §31): riguarda solo lo
+    sviluppo futuro.
 
 ---
 
@@ -9129,3 +9154,213 @@ digitare altro testo la fa crescere ulteriormente (112px desktop/192px
 mobile), zero overflow orizzontale di pagina su desktop (1280px) e
 mobile (`devices["iPhone 13"]`, 390px). Typecheck pulito su `apps/web`,
 build di produzione verde (31 route, nessuna nuova).
+
+---
+
+## 70. Correzioni dal "Verbale Cognitivo" (audit UX/cyberpsicologia)
+
+Richiesta esplicita dell'utente: correggere una selezione di rilievi
+dall'audit UX/cyberpsicologia pubblicato in precedenza come Artifact
+("Verbale Cognitivo", `https://claude.ai/code/artifact/12626204-38f4-45d0
+-9507-9dcf5b393398`), scelti dall'utente per numero (F1.1, F1.3, F1.4,
+F2.1, F2.2, F2.4, F3.1, F4.1, F4.3, F5.1, F6.1, F6.3, F7.2, F8.1) più due
+richieste aggiuntive nate durante lo stesso giro (riordino di
+`/dashboard/profilo`, F5.2 assorbita nello stesso intervento).
+
+**F2.2 — gate di autenticazione spostato al momento dell'invio (priorità
+più alta del verbale)**: prima, sia `/preventivo` che `/urgente`
+sostituivano l'intero modulo con una schermata "Un ultimo passo: accedi o
+crea l'account gratuito" per un visitatore anonimo — zero campi
+compilabili prima del login, proprio nel flusso a più alta intenzione
+(un'emergenza reale). Corretto con un gate **in-page**, mai una
+navigazione fuori dal modulo (che avrebbe perso testo già scritto e foto
+già selezionate):
+- **`apps/web/src/components/InlineAuthGate.tsx`** (nuovo): login e
+  registrazione (email+password o Google) dentro un overlay
+  (`role="dialog"`, chiudibile), stessa logica/copy già in uso su
+  `/accedi`/`/registrati` (inclusi i due consensi obbligatori
+  `acceptedLegalTerms`/`declaredAdult` in registrazione, CLAUDE.md §48) ma
+  senza mai lasciare la pagina. Ruolo sempre `CLIENT` (questo gate compare
+  solo nel flusso "richiedi un preventivo"). Su `verifyGoogle` in modalità
+  login, `createIfMissing: false` passa automaticamente a "Registrati" se
+  l'email non corrisponde a nessun account, stesso comportamento già
+  in uso su `/accedi` (CLAUDE.md §20).
+- **`GuidedRequestForm.tsx`**: rimosso il vecchio blocco a schermo intero
+  con `if (!user || !token) return <...>`; `handleSubmit` valida ora tutti
+  i campi come prima e, solo alla fine, se manca un token, apre
+  `InlineAuthGate` (`showAuthGate`) invece di fallire. Un `pendingSubmit`
+  + `useEffect([pendingSubmit, token])` riprende l'invio vero e proprio
+  (`doSubmit(token)`) non appena il token diventa disponibile nel
+  contesto — mai il vecchio `token` nullo catturato dalla chiusura di
+  `handleSubmit` (classico bug di stale closure, evitato leggendo il
+  token dalla dipendenza dell'effetto, non dalla chiusura originale).
+- **Foto/video selezionabili anche da anonimo**: `handlePhotoChange`
+  carica subito su Cloudinary solo se `token` è già presente; altrimenti
+  tiene il file localmente (`URL.createObjectURL`, mai caricato) e lo
+  invia solo dentro `doSubmit`, una volta garantito un token valido (dopo
+  il gate). `MediaPreview.tsx` guadagna una prop `forceVideo` per
+  distinguere foto/video negli URL `blob:` locali (nessuna estensione
+  riconoscibile dall'euristica esistente basata sull'URL).
+  Verificato end-to-end con l'API locale reale e Playwright (non solo
+  lettura di codice): modulo compilato per intero da anonimo (categoria,
+  descrizione, indirizzo, foto), invio → gate aperto → registrazione
+  inline → richiesta creata con successo, foto caricata correttamente
+  (intercettato `POST /guided-requests/photos` per il solo limite
+  ambientale "Cloudinary non configurato in locale", stesso principio già
+  documentato altrove in questo file), zero errori console.
+
+**F2.1 — categoria non più scelta due volte nello stesso istante**:
+il `<select>` "Seleziona una categoria..." e l'intera griglia di pillole
+comparivano entrambi, sempre, sotto e sopra i 700px. Ora il `<select>`
+resta visibile solo sotto 700px (`@media (min-width: 700px) { display:
+none }`, `<style jsx>` scoped sul solo wrapper del select) — sopra quella
+soglia solo la griglia, mai entrambi insieme sulla stessa viewport.
+
+**F2.4 — "A domicilio" preselezionato**: `initialServiceMode` (già
+derivato da `?modalita=` in URL) ricade ora su `"HOME"` invece di `null`
+quando l'URL non impone nulla — il toggle non parte più senza alcuna
+opzione evidenziata.
+
+**F1.1 — banner cookie: da overlay centrale a barra sottile ancorata in
+basso**: `CookieBanner.tsx` copriva la barra di ricerca/i bottoni "Filtri"
+su mobile (card centrata, 16px di margine). Riscritto come barra a piena
+larghezza ancorata al vero bordo inferiore (`bottom:0, left:0, right:0`,
+niente margini laterali), `maxHeight: "15vh"` di garanzia, padding/font
+ridotti. Verificato: altezza reale ~100px su un viewport 390×664 (~15%),
+zero sovrapposizione con "Filtri" nella pagina risultati.
+
+**F1.3/F1.4 — etichetta di ordinamento + striscia di fiducia nei
+risultati**: in `ResultsListWithMap.tsx`, sopra il bottone "Filtri",
+aggiunta una riga "Ordinato per pertinenza" (**senza** selettore, come
+richiesto esplicitamente dall'utente — l'ordinamento resta boost→
+rating→recensioni, invariato) e una striscia con gli stessi tre badge di
+fiducia già presenti nel footer ("Profili verificati", "Recensioni solo
+da lavori confermati", "Gratis per chi cerca") — prima visibili solo in
+fondo a ogni pagina, ora anche vicino al primo elenco di risultati.
+
+**F3.1 — badge "Nuovo profilo"**: richiesta esplicita dell'utente,
+sostituisce l'alternativa generica del verbale ("posticipare la comparsa
+in ricerca") con un badge letterale, visibile per **30 giorni dalla
+creazione del profilo a prescindere da quanto è già stato compilato**
+(chiarimento esplicito successivo dell'utente: non sparisce al primo
+campo riempito). `computeIsNewProfile(createdAt)` (nuovo,
+`apps/api/src/common/new-profile.util.ts`), calcolato nei tre soli punti
+che già costruiscono un `ProfessionalSearchResult`
+(`ProfessionalsService.search`/`getById`,
+`SavedProfessionalsService.listForUser`) — nuovo campo `isNewProfile`
+propagato a `ProfessionalCard` (pillola verde con icona `sparkles`,
+accanto a "Verificato"/"In evidenza") e al profilo pubblico (`Badge
+variant="nuovo"`).
+
+**F4.1 — spinta a completare l'agenda appena dopo l'iscrizione + agenda
+autosalvante**: due parti, entrambe richieste esplicite dell'utente.
+1. `/dashboard/profilo`: nuovo `isFirstProfileSave` (vero solo se, al
+   primo caricamento della pagina, non esisteva ancora alcun profilo) —
+   solo in quel caso, dopo "Salva profilo", invece del redirect automatico
+   a `/dashboard` compare un overlay "Profilo salvato! Vuoi impostare già
+   ora i giorni e le fasce orarie in cui sei disponibile?" con due bottoni
+   ("Sì, imposta la disponibilità" → `/dashboard/agenda`, "Più tardi" →
+   `/dashboard`, comportamento di prima). Un professionista che modifica
+   un profilo già esistente non vede mai questo prompt.
+2. `/dashboard/agenda`: **rimosso il bottone "Salva agenda"** — ogni
+   operazione (impostare/modificare una fascia dal pop-up, propagare una
+   modifica a tutte le occorrenze del mese, eliminazione singola o in
+   blocco) salva già da sola sul server, subito. `handleSubmit` diventato
+   `persistSlots(nextSlots)`, ora invocato con l'array esplicito appena
+   calcolato da ciascuno dei quattro punti che prima si limitavano a
+   `setSlots(...)` (creazione/propagazione fascia in `commitSlotEdit`,
+   `deleteSlot`, `deleteSelectedSlots`) — mai una closure stale sullo
+   stato `slots`. Resta solo un indicatore passivo ("Salvataggio..."/
+   "Agenda salvata!"), non un'azione da compiere.
+   Verificato end-to-end con l'API locale reale e Playwright: primo
+   salvataggio profilo → overlay mostrato → click "Sì" → naviga
+   correttamente a `/dashboard/agenda`; bottone "Salva agenda" assente;
+   `GET /professionals/me/availability` confermato via API dopo
+   un'operazione in UI, senza alcun click su un salvataggio a livello di
+   pagina.
+
+**F4.3 — pillole di filtro scorrevoli con frecce in "Richieste
+ricevute"**: le 8 pillole (Tutte/Da quotare/.../Scadute) eccedevano la
+larghezza di un laptop comune (1280px) senza alcun indizio visivo
+("Scadute" appariva tagliata). Riusato `CategoryCarousel.tsx` (stesso
+componente già in uso per i caroselli della home) al posto del semplice
+`overflow-x:auto` — frecce prev/next più scroll touch nativo, nessun
+codice duplicato.
+
+**F5.1 — slider "Raggio di ingaggio" colorati + bloccati dietro
+"Modifica"**: erano gli unici due controlli del sito ancora sul blu
+nativo del browser. `EngagementRadiusSection.tsx`: `accentColor:
+brand.verificato`/`brand.ottone` sui due slider (stesso colore già usato
+per il pallino "Richieste standard"/"Richieste urgenti" accanto).
+Combinato con una richiesta esplicita dell'utente arrivata a metà dello
+stesso lavoro: gli slider non sono più modificabili direttamente — un
+bottone "Modifica" li sblocca (`isEditing`), poi "Salva"/"Annulla"
+confermano o ripristinano i valori originali — riduce il rischio di
+trascinare per sbaglio uno slider decisivo per il fan-out dei lead durante
+un normale scroll della pagina.
+
+**Riordino `/dashboard/profilo` + F5.2 (sezioni percepibili)**: tre
+richieste esplicite dell'utente sullo stesso file, assorbendo anche
+F5.2 ("una pagina lunghissima senza sezioni percepibili, due bottoni
+Salva scollegati"): Bio (etichetta "Bio", non più "Bio (opzionale)")
+spostata subito sotto la scelta della categoria; Città/Indirizzo spostati
+subito sotto il nome attività; "Raggio di ingaggio" spostato sopra il
+bottone "Salva profilo" del form principale (restando comunque un
+salvataggio indipendente, ora reso esplicito dal flusso Modifica/Salva
+sopra). L'intera pagina è stata inoltre suddivisa in blocchi `Surface`
+con un proprio titolo di sezione ("Identità", "Categoria e
+presentazione", "Prestazioni offerte", "Lingue parlate", "Portfolio") —
+chunking alla Miller, invece dell'unico scroll continuo di soli
+`FieldLabel` di prima.
+
+**F6.1 — meccanismo "doppio cieco" spiegato nel modulo recensione**:
+`ReviewModal.tsx` guadagna un micro-testo ("La tua recensione sarà
+visibile appena anche l'altra parte avrà lasciato la sua — o comunque
+entro qualche giorno.") — prima il meccanismo (CLAUDE.md §40, sblocco
+automatico dopo 3 giorni) non era spiegato da nessuna parte nel momento
+in cui serve, rischiando di sembrare un bug a chi scrive una recensione e
+non la vede comparire.
+
+**F6.3 — principio scritto sulla visibilità dei contatti del cliente**:
+la stessa policy era stata invertita tre volte nella cronologia del
+prodotto senza mai un principio esplicito a fermare l'oscillazione.
+Aggiunta una nuova regola vincolante in §5 ("Regole di sviluppo",
+punto 9): i dati di contatto del cliente sono visibili al professionista
+solo dopo un impegno reciproco confermato, mai prima — non invertire
+senza discuterne esplicitamente con l'utente.
+
+**F7.2 — notifiche multiple ravvicinate raggruppate in un solo toast**:
+non trattato come "nessuna azione" nonostante il verbale lo classificasse
+"da monitorare" — l'utente ha chiesto la correzione subito, dato che il
+rischio era già raggiungibile con un volume ordinario (i toast non
+scompaiono più da soli da una correzione precedente, quindi 2+ eventi
+nello stesso giro di poll da 45s impilano più popup, ognuno da chiudere
+singolarmente). `AuthContext.checkForNewNotifications`: con una sola
+notifica nuova nel giro, comportamento invariato (messaggio specifico di
+`notificationCopy`); con più di una, un solo toast aggregato ("Hai N
+nuovi aggiornamenti.") invece di N — il click naviga alla
+pagina/tab del primo evento del gruppo. I tre livelli passivi (badge
+header/menu/card, mai interruttivi) restano invariati, non facevano
+parte del rischio reale descritto dal rilievo.
+
+**F8.1 — regola "zero emoji" abrogata**: decisione esplicita dell'utente
+(il rilievo la elogiava così com'era, "nessuna azione"). Aggiunta come
+punto 10 in §5: non più vincolante per lo sviluppo futuro, buon senso
+resta comunque la guida. Nessun codice esistente toccato da questo solo
+cambio di regola.
+
+Verificato in blocco con l'API locale reale (non solo typecheck/build) e
+tre script Playwright dedicati: F2.2 end-to-end completo (anonimo →
+compilazione → gate → registrazione inline → invio riuscito, foto
+inclusa), F2.1/F2.4 (select nascosto sopra 700px, "A domicilio"
+preselezionato), F1.1 (banner ancorato in basso, altezza ~15vh, nessuna
+sovrapposizione con "Filtri"), F1.3/F1.4 (etichetta e striscia di fiducia
+presenti), F27/F5.2 (ordine sezioni corretto, "Bio" senza "(opzionale)"),
+F4.1 (prompt dopo il primo salvataggio, navigazione a `/dashboard/agenda`,
+bottone "Salva agenda" assente), F5.1 (slider disabilitati/abilitati
+correttamente dietro "Modifica", `accent-color` di brand), F3.1 (badge
+"Nuovo profilo" visibile sia sul profilo pubblico sia via
+`GET /professionals/search`, `isNewProfile: true`). Zero errori console
+in tutti i flussi. Typecheck pulito su tutti i package (`shared`, `api`,
+`api-client`, `ui`, `web`, `mobile`), build di produzione `apps/web`
+verde (31 route, nessuna nuova).

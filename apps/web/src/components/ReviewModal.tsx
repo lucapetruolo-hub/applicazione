@@ -140,6 +140,20 @@ export function ReviewModal({
 
         <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
 
+        {/* Spiegazione del meccanismo "doppio cieco" nel modulo stesso
+            (richiesta esplicita dell'utente, "Verbale Cognitivo" F6.1): un
+            meccanismo corretto ma invisibile rischia di sembrare un bug a
+            chi scrive la propria recensione e non la vede comparire subito
+            — CLAUDE.md §40, sblocco automatico dopo 3 giorni se l'altra
+            parte non recensisce mai. */}
+        <XStack gap="$2" alignItems="flex-start" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
+          <Icon name="shield" size={15} color={brand.grafite70} strokeWidth={1.5} />
+          <Text flex={1} fontSize="$2" color={brand.grafite70}>
+            La tua recensione sarà visibile appena anche l&apos;altra parte avrà lasciato la sua — o comunque entro
+            qualche giorno.
+          </Text>
+        </XStack>
+
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.grafite70}>
             Foto o video (opzionale, fino a {MAX_REVIEW_MEDIA})

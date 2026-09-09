@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, X } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Autocomplete, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
@@ -20,6 +20,18 @@ const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 function FieldLabel({ children }: { children: string }) {
   return (
     <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+      {children}
+    </Text>
+  );
+}
+
+// Intestazione di sezione (richiesta esplicita dell'utente + "Verbale
+// Cognitivo" F5.2: una singola pagina lunghissima senza sezioni percepibili
+// — spezzata in blocchi (Surface, chunking alla Miller) ognuno col proprio
+// titolo, invece di un unico scroll continuo di soli FieldLabel).
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -79,20 +91,32 @@ export default function DashboardProfiloPage() {
   const [portfolioPhotoError, setPortfolioPhotoError] = useState<string | null>(null);
   const portfolioPhotoInputRef = useRef<HTMLInputElement>(null);
   // Posizione + raggi di ingaggio: sezione a parte (EngagementRadiusSection,
-  // proprio bottone "Salva"), non fa parte del form principale sopra. Serve
-  // una posizione reale già geocodificata (latitude/longitude diverse da
-  // 0,0) per avere senso su una mappa — un professionista che non ha ancora
-  // salvato il profilo principale non la vede, coerente con la guardia già
-  // in uso per il resto di questa pagina prima che esista un profilo.
+  // proprio bottone "Modifica"/"Salva"), non fa parte del form principale
+  // sopra. Serve una posizione reale già geocodificata (latitude/longitude
+  // diverse da 0,0) per avere senso su una mappa — un professionista che
+  // non ha ancora salvato il profilo principale non la vede, coerente con
+  // la guardia già in uso per il resto di questa pagina prima che esista un
+  // profilo. Spostata sopra al bottone "Salva profilo" del form principale
+  // (richiesta esplicita dell'utente), ma resta un salvataggio indipendente.
   const [engagementLocation, setEngagementLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [engagementRadiusKm, setEngagementRadiusKm] = useState(25);
   const [urgentEngagementRadiusKm, setUrgentEngagementRadiusKm] = useState(25);
+  // Vero solo se, al primo caricamento, non esisteva ancora alcun profilo:
+  // distingue "questo è il primo salvataggio in assoluto" da "una modifica
+  // a un profilo già esistente" — serve a decidere se, dopo il salvataggio,
+  // proporre di impostare subito la disponibilità (richiesta esplicita
+  // dell'utente, "Verbale Cognitivo" F4.1) invece di tornare direttamente
+  // alla dashboard come già accadeva. Default `false` (mai proporre il
+  // prompt per un fetch fallito/non ancora tornato).
+  const [isFirstProfileSave, setIsFirstProfileSave] = useState(false);
+  const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     apiClient
       .getMyProfessionalProfile(token)
       .then((profile) => {
+        setIsFirstProfileSave(!profile);
         if (profile) {
           setBusinessName(profile.businessName);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
@@ -216,7 +240,16 @@ export default function DashboardProfiloPage() {
         })),
       });
       setSaved(true);
-      setTimeout(() => router.push("/dashboard"), 900);
+      // Solo alla primissima creazione del profilo (richiesta esplicita
+      // dell'utente, F4.1): invece di tornare subito alla dashboard,
+      // propone di impostare già ora i giorni/le fasce orarie di
+      // disponibilità — il momento con la motivazione più alta di tutto
+      // il ciclo di vita dell'account, appena dopo essersi iscritti.
+      if (isFirstProfileSave) {
+        setShowAgendaPrompt(true);
+      } else {
+        setTimeout(() => router.push("/dashboard"), 900);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -316,91 +349,67 @@ export default function DashboardProfiloPage() {
           </Text>
         </YStack>
 
-        <YStack gap="$2">
-          <FieldLabel>Immagine profilo</FieldLabel>
-          <YStack flexDirection="row" alignItems="center" gap="$3">
-            <YStack
-              width={72}
-              height={72}
-              borderRadius={36}
-              backgroundColor={brand.gesso}
-              alignItems="center"
-              justifyContent="center"
-              overflow="hidden"
-              borderWidth={1}
-              borderColor={brand.filetto}
-            >
-              {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
-              )}
-            </YStack>
-            <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
-              <Button
-                variant="secondary"
-                size="$3"
-                height={40}
-                disabled={isUploadingImage}
-                opacity={isUploadingImage ? 0.6 : 1}
-                onPress={() => imageInputRef.current?.click()}
+        {/* Sezione "Identità" — immagine, nome attività, città/indirizzo
+            (spostati qui subito sotto il nome, richiesta esplicita
+            dell'utente) e "Verbale Cognitivo" F5.2: pagina lunghissima
+            spezzata in blocchi percepibili invece di un unico scroll. */}
+        <Surface gap="$4">
+          <SectionTitle>Identità</SectionTitle>
+
+          <YStack gap="$2">
+            <FieldLabel>Immagine profilo</FieldLabel>
+            <YStack flexDirection="row" alignItems="center" gap="$3">
+              <YStack
+                width={72}
+                height={72}
+                borderRadius={36}
+                backgroundColor={brand.gesso}
+                alignItems="center"
+                justifyContent="center"
+                overflow="hidden"
+                borderWidth={1}
+                borderColor={brand.filetto}
               >
-                {isUploadingImage ? "Caricamento..." : imageUrl ? "Cambia immagine" : "Carica immagine"}
-              </Button>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                disabled={isUploadingImage}
-                style={{ display: "none" }}
-              />
-              {imageError ? (
-                <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
-                  {imageError}
-                </Text>
-              ) : null}
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
+                )}
+              </YStack>
+              <YStack gap="$1" flex={1} maxWidth={400} alignItems="flex-start">
+                <Button
+                  variant="secondary"
+                  size="$3"
+                  height={40}
+                  disabled={isUploadingImage}
+                  opacity={isUploadingImage ? 0.6 : 1}
+                  onPress={() => imageInputRef.current?.click()}
+                >
+                  {isUploadingImage ? "Caricamento..." : imageUrl ? "Cambia immagine" : "Carica immagine"}
+                </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={isUploadingImage}
+                  style={{ display: "none" }}
+                />
+                {imageError ? (
+                  <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                    {imageError}
+                  </Text>
+                ) : null}
+              </YStack>
             </YStack>
           </YStack>
-        </YStack>
 
-        <YStack gap="$2">
-          <FieldLabel>Nome attività</FieldLabel>
-          <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
-        </YStack>
-
-        <YStack gap="$2">
-          <FieldLabel>Categoria</FieldLabel>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-            {PROFESSIONAL_CATEGORIES.map((category) => {
-              const active = categorySlug === category.slug;
-              return (
-                <XStack
-                  key={category.slug}
-                  alignItems="center"
-                  gap="$2"
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  borderRadius="$2"
-                  borderWidth={1}
-                  borderColor={active ? brand.cianografia : brand.filetto}
-                  backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                  cursor="pointer"
-                  onPress={() => setCategorySlug(category.slug)}
-                  accessibilityRole="button"
-                >
-                  <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
-                  <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
-                    {category.label}
-                  </Text>
-                </XStack>
-              );
-            })}
+          <YStack gap="$2">
+            <FieldLabel>Nome attività</FieldLabel>
+            <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
           </YStack>
-        </YStack>
 
-        <YStack gap="$3">
           <YStack gap="$1">
             <FieldLabel>Posizione</FieldLabel>
             <Text fontSize="$2" color={brand.grafite70}>
@@ -440,7 +449,89 @@ export default function DashboardProfiloPage() {
               intero nel tuo profilo pubblico o nella tua card.
             </Text>
           </YStack>
-        </YStack>
+        </Surface>
+
+        {/* Sezione "Categoria e presentazione" — la Bio si sposta qui,
+            subito sotto la scelta della categoria (richiesta esplicita
+            dell'utente), "(opzionale)" tolto dall'etichetta pur restando
+            un campo facoltativo lato validazione. */}
+        <Surface gap="$4">
+          <SectionTitle>Categoria e presentazione</SectionTitle>
+
+          <YStack gap="$2">
+            <FieldLabel>Categoria</FieldLabel>
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+              {PROFESSIONAL_CATEGORIES.map((category) => {
+                const active = categorySlug === category.slug;
+                return (
+                  <XStack
+                    key={category.slug}
+                    alignItems="center"
+                    gap="$2"
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius="$2"
+                    borderWidth={1}
+                    borderColor={active ? brand.cianografia : brand.filetto}
+                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
+                    cursor="pointer"
+                    onPress={() => setCategorySlug(category.slug)}
+                    accessibilityRole="button"
+                  >
+                    <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
+                    <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                      {category.label}
+                    </Text>
+                  </XStack>
+                );
+              })}
+            </YStack>
+          </YStack>
+
+          <YStack gap="$2">
+            <FieldLabel>Bio</FieldLabel>
+            <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
+              <XStack alignItems="center" gap="$2">
+                <Icon name="sparkles" size={14} color={brand.cianografia} />
+                <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                  Consigli per una bio più professionale
+                </Text>
+              </XStack>
+              <YStack gap="$1">
+                {BIO_TIPS.map((tip) => (
+                  <XStack key={tip} gap="$2" alignItems="flex-start">
+                    <Text fontSize="$2" color={brand.cianografia}>
+                      ·
+                    </Text>
+                    <Text fontSize="$2" color={brand.grafite70} flex={1}>
+                      {tip}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+              {!bio.trim() ? (
+                <Text
+                  fontSize="$2"
+                  fontWeight="600"
+                  color={brand.cianografia}
+                  alignSelf="flex-start"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  onPress={() => setBio(BIO_EXAMPLE)}
+                >
+                  Usa un esempio come punto di partenza
+                </Text>
+              ) : null}
+            </YStack>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Presenta la tua attività in poche righe."
+              rows={4}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </YStack>
+        </Surface>
 
         <YStack
           flexDirection="row"
@@ -481,8 +572,8 @@ export default function DashboardProfiloPage() {
           </YStack>
         </YStack>
 
-        <YStack gap="$2">
-          <FieldLabel>Prestazioni offerte</FieldLabel>
+        <Surface gap="$3">
+          <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize="$2" color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
             costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
@@ -572,10 +663,10 @@ export default function DashboardProfiloPage() {
           <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
             + Aggiungi prestazione
           </Button>
-        </YStack>
+        </Surface>
 
-        <YStack gap="$2">
-          <FieldLabel>Lingue parlate</FieldLabel>
+        <Surface gap="$3">
+          <SectionTitle>Lingue parlate</SectionTitle>
           <Text fontSize="$2" color={brand.grafite70}>
             Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
           </Text>
@@ -642,9 +733,10 @@ export default function DashboardProfiloPage() {
               + Aggiungi
             </Button>
           </XStack>
-        </YStack>
+        </Surface>
 
-        <YStack gap="$2">
+        <Surface gap="$2">
+          <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
           <Text fontSize="$2" color={brand.grafite70}>
             Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
@@ -712,51 +804,22 @@ export default function DashboardProfiloPage() {
               {portfolioPhotoError}
             </Text>
           ) : null}
-        </YStack>
+        </Surface>
 
-        <YStack gap="$2">
-          <FieldLabel>Bio (opzionale)</FieldLabel>
-          <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
-            <XStack alignItems="center" gap="$2">
-              <Icon name="sparkles" size={14} color={brand.cianografia} />
-              <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
-                Consigli per una bio più professionale
-              </Text>
-            </XStack>
-            <YStack gap="$1">
-              {BIO_TIPS.map((tip) => (
-                <XStack key={tip} gap="$2" alignItems="flex-start">
-                  <Text fontSize="$2" color={brand.cianografia}>
-                    ·
-                  </Text>
-                  <Text fontSize="$2" color={brand.grafite70} flex={1}>
-                    {tip}
-                  </Text>
-                </XStack>
-              ))}
-            </YStack>
-            {!bio.trim() ? (
-              <Text
-                fontSize="$2"
-                fontWeight="600"
-                color={brand.cianografia}
-                alignSelf="flex-start"
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => setBio(BIO_EXAMPLE)}
-              >
-                Usa un esempio come punto di partenza
-              </Text>
-            ) : null}
-          </YStack>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Presenta la tua attività in poche righe."
-            rows={4}
-            style={{ ...inputStyle, resize: "vertical" }}
+        {/* Raggio di ingaggio spostato qui, subito sopra il bottone "Salva
+            profilo" (richiesta esplicita dell'utente) — resta un
+            salvataggio indipendente (proprio bottone "Modifica"/"Salva",
+            §F5.1), ma la vicinanza visiva rende chiaro che sono due azioni
+            distinte invece di lasciarlo isolato più in basso nella pagina. */}
+        {token && engagementLocation ? (
+          <EngagementRadiusSection
+            token={token}
+            latitude={engagementLocation.latitude}
+            longitude={engagementLocation.longitude}
+            initialEngagementRadiusKm={engagementRadiusKm}
+            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
           />
-        </YStack>
+        ) : null}
 
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">
@@ -774,23 +837,57 @@ export default function DashboardProfiloPage() {
         </Button>
       </YStack>
 
-      {/* Sezione a parte, proprio bottone "Salva": richiede una posizione
-          già geocodificata, quindi visibile solo dopo il primo salvataggio
-          del profilo principale (città scelta → coordinate reali). */}
-      {token && engagementLocation ? (
-        <YStack width="100%" maxWidth={560}>
-          <EngagementRadiusSection
-            token={token}
-            latitude={engagementLocation.latitude}
-            longitude={engagementLocation.longitude}
-            initialEngagementRadiusKm={engagementRadiusKm}
-            initialUrgentEngagementRadiusKm={urgentEngagementRadiusKm}
-          />
-        </YStack>
-      ) : null}
-
       {cropImageSrc ? (
         <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
+      ) : null}
+
+      {showAgendaPrompt ? (
+        // Stesso pattern overlay già in uso ovunque nel prodotto
+        // (role="dialog", backdrop, stopPropagation) — richiesta esplicita
+        // dell'utente: subito dopo il primo salvataggio del profilo,
+        // chiedere se impostare già ora giorni/fasce orarie di
+        // disponibilità, portando poi ad /dashboard/agenda.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Imposta la tua disponibilità"
+          onClick={() => router.push("/dashboard")}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 300,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
+              <YStack gap="$2">
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="calendar" size={20} color={brand.cianografia} />
+                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                    Profilo salvato!
+                  </Text>
+                </XStack>
+                <Text fontSize="$3" color={brand.grafite70}>
+                  Vuoi impostare già ora i giorni e le fasce orarie in cui sei disponibile? Comparirà sul tuo
+                  profilo pubblico e i clienti potranno contattarti con molta più facilità.
+                </Text>
+              </YStack>
+              <XStack gap="$3" flexWrap="wrap">
+                <Button variant="primary" onPress={() => router.push("/dashboard/agenda")}>
+                  Sì, imposta la disponibilità
+                </Button>
+                <Button variant="ghost" onPress={() => router.push("/dashboard")}>
+                  Più tardi
+                </Button>
+              </XStack>
+            </YStack>
+          </div>
+        </div>
       ) : null}
     </YStack>
   );

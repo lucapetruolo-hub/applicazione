@@ -3,6 +3,7 @@ import type { PrismaClient } from "@professionisti/database";
 import type { ProfessionalSearchResult, ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
+import { computeIsNewProfile } from "../common/new-profile.util";
 
 @Injectable()
 export class SavedProfessionalsService {
@@ -76,6 +77,7 @@ export class SavedProfessionalsService {
         nextAvailableSlotOnline: null,
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
+        isNewProfile: computeIsNewProfile(profile.createdAt),
       } satisfies ProfessionalSearchResult;
     });
   }

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
-import { ProfessionalCard, YStack, brand } from "@professionisti/ui";
+import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import type { MapBounds } from "./ResultsMap";
 
@@ -424,10 +424,46 @@ export function ResultsListWithMap({
               un bottone full-width li' diventava una terza "colonna"
               schiacciata che sfalsava lista e mappa (bug segnalato
               dall'utente). */}
-          <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
-            <SlidersHorizontal size={16} strokeWidth={1.5} />
-            Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </button>
+          {/* Striscia segnali di fiducia (Verbale Cognitivo F1.4): stessi tre
+              badge già in fondo ad ogni pagina (SiteFooter), riproposti qui
+              vicino al primo elenco di risultati — dove la domanda "posso
+              fidarmi?" si forma davvero, non solo dopo aver superato
+              l'intera lista. */}
+          <XStack flexWrap="wrap" gap="$3" alignItems="center">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+                Profili verificati
+              </Text>
+            </XStack>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="shield" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+                Recensioni solo da lavori confermati
+              </Text>
+            </XStack>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="sparkles" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+                Gratis per chi cerca
+              </Text>
+            </XStack>
+          </XStack>
+
+          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$2">
+            <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
+              <SlidersHorizontal size={16} strokeWidth={1.5} />
+              Filtri{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+            </button>
+            {/* Etichetta di ordinamento senza selettore (Verbale Cognitivo
+                F1.3, richiesta esplicita dell'utente: "senza aggiungere il
+                selettore") — rassicura sul fatto che un criterio esiste ed
+                è dichiarato, anche restando lo stesso ordinamento di
+                default (boost pagato → valutazione → recensioni). */}
+            <Text fontSize="$1" color={brand.grafite70}>
+              Ordinato per pertinenza
+            </Text>
+          </XStack>
           {header}
           {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro) => (
             <ProfessionalCard
@@ -441,6 +477,7 @@ export function ResultsListWithMap({
               completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
               boosted={pro.boosted}
+              isNewProfile={pro.isNewProfile}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}

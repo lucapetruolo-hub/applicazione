@@ -235,6 +235,16 @@ export type ProfessionalSearchResult = {
    * questo campo).
    */
   completedThisMonth: number;
+  /**
+   * Vero per i primi 30 giorni dalla creazione del profilo (richiesta
+   * esplicita dell'utente — "Verbale Cognitivo" F3.1: un profilo appena
+   * creato appare "vuoto" invece che "nuovo"), mostrato come badge "Nuovo
+   * profilo" — resta visibile per tutta la finestra a prescindere da
+   * quanto il professionista ha già compilato nel frattempo (chiarimento
+   * esplicito dell'utente: non sparisce al primo campo riempito).
+   * Calcolato server-side (ProfessionalsService.computeIsNewProfile).
+   */
+  isNewProfile: boolean;
 };
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */

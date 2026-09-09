@@ -54,6 +54,25 @@ export function EngagementRadiusSection({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Richiesta esplicita dell'utente: gli slider non sono più modificabili
+  // direttamente — "Modifica" li sblocca, "Salva" conferma e li richiude.
+  // Riduce il rischio di trascinare per sbaglio uno slider decisivo per il
+  // fan-out dei lead (proprio la funzione che decide quante richieste
+  // riceve un professionista) durante un normale scroll della pagina.
+  const [isEditing, setIsEditing] = useState(false);
+
+  function handleStartEditing() {
+    setError(null);
+    setSaved(false);
+    setIsEditing(true);
+  }
+
+  function handleCancelEditing() {
+    setEngagementRadiusKm(initialEngagementRadiusKm);
+    setUrgentEngagementRadiusKm(initialUrgentEngagementRadiusKm);
+    setError(null);
+    setIsEditing(false);
+  }
 
   async function handleSave() {
     setIsSaving(true);
@@ -62,6 +81,7 @@ export function EngagementRadiusSection({
     try {
       await apiClient.updateEngagementRadius(token, { engagementRadiusKm, urgentEngagementRadiusKm });
       setSaved(true);
+      setIsEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -105,6 +125,12 @@ export function EngagementRadiusSection({
           step={1}
           value={engagementRadiusKm}
           onChange={(e) => setEngagementRadiusKm(Number(e.target.value))}
+          disabled={!isEditing}
+          // Traccia/maniglia colorate come il resto del sito (Verbale
+          // Cognitivo F5.1: erano gli unici due controlli rimasti sul blu
+          // nativo del browser) — stesso verde già usato per il pallino
+          // "Richieste standard" accanto.
+          style={{ accentColor: brand.verificato, width: "100%", opacity: isEditing ? 1 : 0.55 }}
           aria-label="Raggio di ingaggio per le richieste standard, in chilometri"
         />
       </YStack>
@@ -126,6 +152,8 @@ export function EngagementRadiusSection({
           step={1}
           value={urgentEngagementRadiusKm}
           onChange={(e) => setUrgentEngagementRadiusKm(Number(e.target.value))}
+          disabled={!isEditing}
+          style={{ accentColor: brand.ottone, width: "100%", opacity: isEditing ? 1 : 0.55 }}
           aria-label="Raggio di ingaggio per le richieste urgenti, in chilometri"
         />
       </YStack>
@@ -141,9 +169,20 @@ export function EngagementRadiusSection({
         </Text>
       ) : null}
 
-      <Button variant="secondary" onPress={handleSave} disabled={isSaving} opacity={isSaving ? 0.6 : 1} alignSelf="flex-start">
-        {isSaving ? "Salvataggio..." : "Salva"}
-      </Button>
+      {isEditing ? (
+        <XStack gap="$3" flexWrap="wrap">
+          <Button variant="secondary" onPress={handleSave} disabled={isSaving} opacity={isSaving ? 0.6 : 1} alignSelf="flex-start">
+            {isSaving ? "Salvataggio..." : "Salva"}
+          </Button>
+          <Button variant="ghost" onPress={handleCancelEditing} disabled={isSaving} alignSelf="flex-start">
+            Annulla
+          </Button>
+        </XStack>
+      ) : (
+        <Button variant="secondary" onPress={handleStartEditing} alignSelf="flex-start">
+          Modifica
+        </Button>
+      )}
     </Surface>
   );
 }

@@ -85,6 +85,14 @@ export type ProfessionalCardProps = {
    * pagamento/boost (CLAUDE.md §10).
    */
   boosted?: boolean;
+  /**
+   * Profilo appena creato, ancora senza bio/prestazioni/portfolio/
+   * recensioni — richiesta esplicita dell'utente ("Verbale Cognitivo"
+   * F3.1: "creando una sorta di badge con scritto 'Nuovo profilo'"),
+   * calcolato lato server (vedi ProfessionalsService) invece che dedotto
+   * qui da campi non tutti disponibili su questo tipo leggero.
+   */
+  isNewProfile?: boolean;
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
   services?: ProfessionalCardService[];
@@ -120,6 +128,7 @@ export function ProfessionalCard({
   completedThisMonth,
   verified,
   boosted,
+  isNewProfile,
   remoteAvailable,
   services,
   availabilityPreview,
@@ -222,6 +231,14 @@ export function ProfessionalCard({
                   <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.ottone}>
                     In evidenza
+                  </Text>
+                </XStack>
+              ) : null}
+              {isNewProfile ? (
+                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                  <Icon name="sparkles" size={13} color={brand.cianografia} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
+                    Nuovo profilo
                   </Text>
                 </XStack>
               ) : null}

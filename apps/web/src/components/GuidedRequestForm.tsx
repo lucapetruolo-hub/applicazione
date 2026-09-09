@@ -17,6 +17,7 @@ import { Autocomplete, Button, Icon, Text, XStack, YStack, brand, radiusDoc } fr
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
+import { InlineAuthGate } from "@/components/InlineAuthGate";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -120,8 +121,13 @@ export function GuidedRequestForm({
   // esplicita dell'utente: "differenzia sempre se si è partiti con una
   // consulenza online". Solo un prefill (resta modificabile): il backend
   // rivalida comunque che la fascia scelta offra davvero quella modalità.
+  // "A domicilio" preselezionato quando l'URL non impone già una modalità
+  // (richiesta esplicita dell'utente, "Verbale Cognitivo" F2.4: un default
+  // ben scelto non toglie controllo — resta comunque modificabile — ma
+  // rimuove una micro-decisione non necessaria essendo l'opzione più
+  // frequente).
   const modalitaParam = searchParams.get("modalita");
-  const initialServiceMode = modalitaParam === "HOME" || modalitaParam === "ONLINE" ? modalitaParam : null;
+  const initialServiceMode: "HOME" | "ONLINE" = modalitaParam === "HOME" || modalitaParam === "ONLINE" ? modalitaParam : "HOME";
 
   // Quando si arriva dal profilo di un professionista — sia dal bottone
   // generico "Richiedi un preventivo a [nome]" sia dal click diretto su una
@@ -142,7 +148,7 @@ export function GuidedRequestForm({
   // richiesta resi obbligatori in un giro precedente (indirizzo, foto).
   // Dichiarato qui (prima dell'effetto sotto, che lo referenzia) invece che
   // vicino agli altri stati del form.
-  const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE" | null>(initialServiceMode);
+  const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE">(initialServiceMode);
   // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
 
@@ -275,9 +281,37 @@ export function GuidedRequestForm({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
+  // resta locale — anteprima via `URL.createObjectURL`, mai caricata su
+  // Cloudinary finché non esiste un token — e viene caricata solo al
+  // momento dell'invio effettivo (`doSubmit`). Una volta autenticati, ogni
+  // nuova selezione carica subito come prima (`file: null`, `url` è già
+  // l'URL Cloudinary reale). Richiesta esplicita dell'utente, "Verbale
+  // Cognitivo" F2.2: anche le foto devono restare compilabili da anonimo.
+  const [photos, setPhotos] = useState<{ url: string; file: File | null; isVideo: boolean }[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Gate di autenticazione spostato al momento dell'invio (F2.2): il modulo
+  // resta sempre compilabile da anonimo, il gate compare solo qui, senza
+  // mai far perdere quanto già scritto/selezionato (nessuna navigazione).
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  // Vero tra "l'utente si è appena autenticato dal gate" e "l'effetto sotto
+  // ha potuto rileggere il nuovo token dal contesto" — l'invio vero riparte
+  // da lì, mai dalla chiusura di handleSubmit (che avrebbe ancora in mano
+  // il vecchio `token` nullo, un problema di closure stale).
+  const [pendingSubmit, setPendingSubmit] = useState(false);
+
+  // Riparte da sola non appena il token diventa disponibile dopo il gate
+  // (login/registrazione appena completati dentro InlineAuthGate, senza
+  // mai lasciare questa pagina) — legge il token corrente dal contesto,
+  // mai quello (nullo) catturato dalla chiusura di handleSubmit.
+  useEffect(() => {
+    if (!pendingSubmit || !token) return;
+    setPendingSubmit(false);
+    setShowAuthGate(false);
+    void doSubmit(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, token]);
   // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
   // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
   // stile iPhone) invece di aprire direttamente una delle due opzioni —
@@ -288,53 +322,6 @@ export function GuidedRequestForm({
 
   if (isLoading) {
     return null;
-  }
-
-  if (!user || !token) {
-    const redirect = `${basePath}${initialCategory ? `?categoria=${initialCategory}` : ""}`;
-    return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
-            Un ultimo passo: accedi o crea l&apos;account gratuito
-          </Text>
-          {/* Spiegare il valore PRIMA del muro (psicologia della conversione,
-              audit): l'utente deve sapere cosa ottiene in cambio dei 30
-              secondi di registrazione, non solo che "serve un account". */}
-          <YStack width="100%" gap="$3" backgroundColor={brand.calce} borderRadius="$5" padding="$4" borderWidth={1} borderColor={brand.filetto}>
-            <XStack alignItems="center" gap="$3">
-              <Icon name="send" size={18} color={brand.cianografia} strokeWidth={1.5} />
-              <Text flex={1} fontSize="$3" color={brand.grafite}>
-                La tua richiesta arriva subito ai professionisti compatibili della tua zona
-              </Text>
-            </XStack>
-            <XStack alignItems="center" gap="$3">
-              <Icon name="badge-check" size={18} color={brand.cianografia} strokeWidth={1.5} />
-              <Text flex={1} fontSize="$3" color={brand.grafite}>
-                Ricevi e confronti i preventivi in un unico posto, gratis
-              </Text>
-            </XStack>
-            <XStack alignItems="center" gap="$3">
-              <Icon name="shield" size={18} color={brand.cianografia} strokeWidth={1.5} />
-              <Text flex={1} fontSize="$3" color={brand.grafite}>
-                I tuoi contatti restano nascosti finché non accetti un preventivo
-              </Text>
-            </XStack>
-          </YStack>
-          <Text color={brand.grafite70} textAlign="center" fontSize="$3">
-            Bastano 30 secondi: email o Google, nessuna carta richiesta.
-          </Text>
-          <XStack gap="$3" flexWrap="wrap" justifyContent="center">
-            <Link href={`/accedi?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
-              <Button variant="primary">Accedi</Button>
-            </Link>
-            <Link href={`/registrati?redirect=${encodeURIComponent(redirect)}`} style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Crea account gratuito</Button>
-            </Link>
-          </XStack>
-        </YStack>
-      </YStack>
-    );
   }
 
   if (result) {
@@ -432,10 +419,6 @@ export function GuidedRequestForm({
       setError("Seleziona una categoria.");
       return;
     }
-    if (!serviceMode) {
-      setError("Indica se l'intervento è a domicilio o online.");
-      return;
-    }
     if (description.trim().length < 10) {
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
@@ -475,13 +458,40 @@ export function GuidedRequestForm({
         return;
       }
     }
-    if (photoUrls.length === 0) {
+    if (photos.length === 0) {
       setError("Aggiungi almeno una foto o un video.");
       return;
     }
+    // Gate di autenticazione spostato qui, all'ultimo passo prima
+    // dell'invio (F2.2): tutto il resto del modulo — categoria,
+    // descrizione, foto — resta compilabile da anonimo. Il gate si apre
+    // sopra la pagina, nulla di quanto già scritto/selezionato va perso.
+    if (!user || !token) {
+      setShowAuthGate(true);
+      return;
+    }
+    await doSubmit(token);
+  }
+
+  async function doSubmit(activeToken: string) {
     setIsSubmitting(true);
     try {
-      const response = await apiClient.createGuidedRequest(token as string, {
+      // Le foto scelte prima di autenticarsi sono ancora solo locali
+      // (`file` valorizzato, `url` è un blob: di anteprima): caricate su
+      // Cloudinary solo ora che un token è garantito disponibile. Quelle
+      // già caricate (utente già loggato al momento della selezione)
+      // restano invariate.
+      const uploadedUrls: string[] = [];
+      for (const photo of photos) {
+        if (photo.file) {
+          const uploaded = await apiClient.uploadGuidedRequestPhoto(activeToken, photo.file);
+          uploadedUrls.push(uploaded.imageUrl);
+          URL.revokeObjectURL(photo.url);
+        } else {
+          uploadedUrls.push(photo.url);
+        }
+      }
+      const response = await apiClient.createGuidedRequest(activeToken, {
         categorySlug: categorySlug as ProfessionalCategorySlug,
         description: description.trim(),
         city: city.trim() || undefined,
@@ -494,8 +504,8 @@ export function GuidedRequestForm({
         postalCode: postalCode.trim() || undefined,
         province: province.trim() || undefined,
         isUrgent,
-        serviceMode: serviceMode as "HOME" | "ONLINE",
-        photoUrls,
+        serviceMode,
+        photoUrls: uploadedUrls,
         professionalProfileId,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
@@ -532,30 +542,43 @@ export function GuidedRequestForm({
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (!file || photos.length >= MAX_PHOTOS) return;
 
     setPhotoError(null);
-    setIsUploadingPhoto(true);
-    try {
-      // Cloudinary ridimensiona e comprime lato server (stessa trasformazione
-      // dell'immagine profilo professionista): una foto da cellulare può
-      // pesare diversi MB, qui viene ridotta prima di finire nel database
-      // come URL — richiesta esplicita dell'utente ("ridimensionala per
-      // occupare meno memoria").
-      const result = await apiClient.uploadGuidedRequestPhoto(token as string, file);
-      setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_PHOTOS));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-    } finally {
-      setIsUploadingPhoto(false);
+    if (token) {
+      setIsUploadingPhoto(true);
+      try {
+        // Cloudinary ridimensiona e comprime lato server (stessa
+        // trasformazione dell'immagine profilo professionista): una foto
+        // da cellulare può pesare diversi MB, qui viene ridotta prima di
+        // finire nel database come URL — richiesta esplicita dell'utente
+        // ("ridimensionala per occupare meno memoria").
+        const result = await apiClient.uploadGuidedRequestPhoto(token, file);
+        setPhotos((prev) => [...prev, { url: result.imageUrl, file: null, isVideo: false }].slice(0, MAX_PHOTOS));
+      } catch (err) {
+        setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+      return;
     }
+    // Anonimo: nessun token per caricare su Cloudinary — resta locale con
+    // un'anteprima via blob:, caricata davvero solo al momento dell'invio
+    // (doSubmit, dopo il gate F2.2).
+    const previewUrl = URL.createObjectURL(file);
+    setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo: file.type.startsWith("video/") }].slice(0, MAX_PHOTOS));
   }
 
   function removePhoto(url: string) {
-    setPhotoUrls((prev) => prev.filter((u) => u !== url));
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.url === url);
+      if (target?.file) URL.revokeObjectURL(target.url);
+      return prev.filter((p) => p.url !== url);
+    });
   }
 
   return (
+    <>
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={560} gap="$5">
         <YStack gap="$2">
@@ -589,30 +612,45 @@ export function GuidedRequestForm({
         ) : (
           <YStack gap="$2">
             <FieldLabel>Categoria</FieldLabel>
-            {/* Menu a tendina come scorciatoia alla griglia sotto — stessa
-                selezione (categorySlug), utile su schermi piccoli o quando si
-                sa già cosa cercare invece di scorrere le caselle — richiesta
-                esplicita dell'utente. */}
-            <select
-              value={categorySlug}
-              onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
-              style={{
-                padding: 12,
-                borderRadius: 4,
-                border: `1px solid ${brand.filetto}`,
-                fontSize: 15,
-                fontFamily: "inherit",
-                backgroundColor: brand.calce,
-                color: brand.grafite,
-              }}
-            >
-              <option value="">Seleziona una categoria...</option>
-              {PROFESSIONAL_CATEGORIES.map((category) => (
-                <option key={category.slug} value={category.slug}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
+            {/* Menu a tendina come scorciatoia alla griglia sotto, ma non
+                più visibile insieme ad essa (Verbale Cognitivo F2.1: la
+                stessa scelta presentata due volte nello stesso istante
+                raddoppia il carico percettivo iniziale) — nascosto via CSS
+                sopra una soglia di larghezza dove la griglia intera è già
+                comoda, mostrato solo sotto come scorciatoia mobile. */}
+            <div className="guided-category-select">
+              <select
+                value={categorySlug}
+                onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
+                style={{
+                  padding: 12,
+                  borderRadius: 4,
+                  border: `1px solid ${brand.filetto}`,
+                  fontSize: 15,
+                  fontFamily: "inherit",
+                  backgroundColor: brand.calce,
+                  color: brand.grafite,
+                  width: "100%",
+                }}
+              >
+                <option value="">Seleziona una categoria...</option>
+                {PROFESSIONAL_CATEGORIES.map((category) => (
+                  <option key={category.slug} value={category.slug}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+              <style jsx>{`
+                .guided-category-select {
+                  display: block;
+                }
+                @media (min-width: 700px) {
+                  .guided-category-select {
+                    display: none;
+                  }
+                }
+              `}</style>
+            </div>
             <YStack flexDirection="row" flexWrap="wrap" gap="$2">
               {PROFESSIONAL_CATEGORIES.map((category) => {
                 const active = categorySlug === category.slug;
@@ -757,9 +795,18 @@ export function GuidedRequestForm({
             Una foto o un video aiutano il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-            {photoUrls.map((url) => (
-              <YStack key={url} width={88} height={88} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                <MediaPreview url={url} />
+            {photos.map((photo) => (
+              <YStack
+                key={photo.url}
+                width={88}
+                height={88}
+                borderRadius="$3"
+                overflow="hidden"
+                position="relative"
+                borderWidth={1}
+                borderColor={brand.filetto}
+              >
+                <MediaPreview url={photo.url} forceVideo={photo.isVideo} />
                 <YStack
                   position="absolute"
                   top={4}
@@ -771,7 +818,7 @@ export function GuidedRequestForm({
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
-                  onPress={() => removePhoto(url)}
+                  onPress={() => removePhoto(photo.url)}
                   accessibilityRole="button"
                   accessibilityLabel="Rimuovi foto"
                 >
@@ -779,7 +826,7 @@ export function GuidedRequestForm({
                 </YStack>
               </YStack>
             ))}
-            {photoUrls.length < MAX_PHOTOS ? (
+            {photos.length < MAX_PHOTOS ? (
               <YStack
                 width={88}
                 height={88}
@@ -923,5 +970,12 @@ export function GuidedRequestForm({
         </Button>
       </YStack>
     </YStack>
+    {showAuthGate ? (
+      <InlineAuthGate
+        onAuthenticated={() => setPendingSubmit(true)}
+        onClose={() => setShowAuthGate(false)}
+      />
+    ) : null}
+    </>
   );
 }

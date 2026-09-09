@@ -210,6 +210,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 </Text>
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
                 {professional.boosted ? <Badge variant="pro">In evidenza</Badge> : null}
+                {professional.isNewProfile ? <Badge variant="nuovo">Nuovo profilo</Badge> : null}
               </XStack>
               <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
                 {professional.categoryLabel} · {professional.city}

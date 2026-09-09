@@ -185,13 +185,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       for (const n of freshOnes) {
         seen.add(n.id);
       }
-      if (freshOnes.length > 0) {
+      if (freshOnes.length === 1) {
+        // Caso comune: un solo evento in questo giro di poll, stesso
+        // messaggio simpatico specifico di sempre.
+        const { icon, message } = notificationCopy(freshOnes[0]!.type);
+        setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type }]);
+      } else if (freshOnes.length > 1) {
+        // Più eventi arrivati nello stesso giro (48s): un toast per
+        // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
+        // volta, dato che i toast non spariscono più da soli (richiesta
+        // esplicita dell'utente) — proprio il rischio di "notification
+        // fatigue" segnalato nel Verbale Cognitivo (F7.2). Un solo toast
+        // aggregato al posto di N: il click apre la pagina/tab del primo
+        // evento del gruppo (i tipi coinvolti puntano comunque sempre a una
+        // delle stesse due pagine, /dashboard o /le-mie-richieste — mai una
+        // destinazione sbagliata, al più non la più recente del gruppo).
         setToasts((prev) => [
           ...prev,
-          ...freshOnes.map((n) => {
-            const { icon, message } = notificationCopy(n.type);
-            return { id: n.id, icon, message, type: n.type };
-          }),
+          { id: `batch-${Date.now()}`, icon: "🔔", message: `Hai ${freshOnes.length} nuovi aggiornamenti.`, type: freshOnes[0]!.type },
         ]);
       }
     } catch {

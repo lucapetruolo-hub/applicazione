@@ -25,6 +25,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
+import { computeIsNewProfile } from "../common/new-profile.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -148,6 +149,7 @@ export class ProfessionalsService {
         nextAvailableSlotOnline: preview?.nextAvailableSlotOnline ?? null,
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
+        isNewProfile: computeIsNewProfile(profile.createdAt),
       } satisfies ProfessionalSearchResult;
     });
 
@@ -438,6 +440,7 @@ export class ProfessionalsService {
       nextAvailableSlotOnline: null,
       createdAt: profile.createdAt.toISOString(),
       completedThisMonth: countCompletedThisMonth(profile.bookings),
+      isNewProfile: computeIsNewProfile(profile.createdAt),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
       reviews: reviews.map((review) => ({

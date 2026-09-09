@@ -93,6 +93,7 @@ export default function ProfessionistiSalvatiPage() {
                     completedThisMonth={pro.completedThisMonth}
                     verified={pro.verified}
                     boosted={pro.boosted}
+                    isNewProfile={pro.isNewProfile}
                     services={pro.services}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}

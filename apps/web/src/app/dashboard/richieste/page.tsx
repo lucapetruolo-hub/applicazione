@@ -28,6 +28,7 @@ import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/li
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
+import { CategoryCarousel } from "@/components/CategoryCarousel";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -489,8 +490,13 @@ function RichiesteContent() {
         {/* Tab filtro — riga unica scorrevole orizzontalmente (richiesta
             esplicita dell'utente, con riferimento visivo puntuale): niente
             flexWrap, altrimenti le pillole andrebbero a capo invece di
-            scorrere su schermi stretti. */}
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingTop: 6, paddingBottom: 8, WebkitOverflowScrolling: "touch" }}>
+            scorrere su schermi stretti. Frecce prev/next riusate da
+            CategoryCarousel (stesso pattern già in uso per i caroselli
+            della home) — "Verbale Cognitivo" F4.3: su un laptop comune
+            (1280px) le 8 pillole eccedevano la larghezza disponibile senza
+            alcun indizio visivo (l'ultima, "Scadute", appariva tagliata),
+            lo scroll da solo era già possibile ma invisibile. */}
+        <CategoryCarousel>
           {TABS.map((tab) => {
             const active = activeTab === tab.key;
             const count = tabCounts[tab.key] ?? 0;
@@ -535,7 +541,7 @@ function RichiesteContent() {
               </XStack>
             );
           })}
-        </div>
+        </CategoryCarousel>
 
         {/* Barra filtri */}
         <XStack gap="$2" flexWrap="wrap">
