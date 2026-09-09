@@ -749,11 +749,13 @@ function RequestCard({
   // (altezza = scrollHeight ad ogni digitazione/cambio nota), identico
   // su desktop e mobile — richiesta esplicita dell'utente.
   const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    const el = noteTextareaRef.current;
+  const autoGrowNote = (el: HTMLTextAreaElement | null) => {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => {
+    autoGrowNote(noteTextareaRef.current);
   }, [noteDraft]);
 
   const clientName = gr.clientAccountDeleted ? "Account eliminato" : (gr.clientName ?? "Cliente");
@@ -1335,7 +1337,10 @@ function RequestCard({
               Note personali (solo per te)
             </Text>
             <textarea
-              ref={noteTextareaRef}
+              ref={(el) => {
+                noteTextareaRef.current = el;
+                autoGrowNote(el);
+              }}
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
               onBlur={() => noteChanged && handleSaveNote()}

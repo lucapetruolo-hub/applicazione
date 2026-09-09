@@ -9090,3 +9090,42 @@ residuo), zero overflow orizzontale di pagina. Zero errori console in
 tutti i flussi. Typecheck pulito su tutti i package (`shared`,
 `api-client`, `web`), build di produzione `apps/web` verde (31 route,
 nessuna nuova).
+
+**Bug reale, correzione della correzione sopra: il riquadro "Note
+personali" in `/dashboard/richieste` non si allargava più affatto** —
+segnalato dall'utente: "il riquadro delle note personali non ha più la
+possibilità di allargarsi". Causa reale, specifica a `RequestCard`
+(non presente in `BookingDetailPanel`, che non ne soffriva): l'auto-grow
+introdotto sopra dipendeva da un `useEffect(() => {...}, [noteDraft])` —
+ma la sezione "Note personali" vive dentro il corpo espandibile della
+card (`{isOpen ? (...) : null}`), un sottoalbero JSX condizionale
+all'interno dello **stesso** componente sempre montato (non un
+componente separato smontato/rimontato come `BookingDetailPanel`, che
+riceve `key={selectedBooking.id}` e quindi rimonta per intero ad ogni
+apertura, facendo scattare l'effetto "al mount" indipendentemente dalle
+dipendenze). Aprendo la card, la `<textarea>` viene creata per la prima
+volta nel DOM ma `noteDraft` non cambia in quell'istante (era già
+impostato al montaggio del componente) — l'effetto quindi non si
+riattiva mai e l'altezza resta bloccata ai 2 righi di default
+(`rows={2}`, ~50px) finché non si digita almeno un carattere: una nota
+già lunga restava visibilmente tagliata al primo apertura, e senza più
+la maniglia di trascinamento manuale (`resize:none`, rimosso nella
+correzione precedente) non c'era alcun modo di vederla per intero prima
+di scrivere qualcosa. Corretto estraendo la logica di ridimensionamento
+in `autoGrowNote(el)` (funzione, non solo effetto) e richiamandola anche
+da una **ref callback** sulla `<textarea>` (`ref={(el) => {
+noteTextareaRef.current = el; autoGrowNote(el); }}`): ora l'altezza
+corretta viene applicata nell'istante stesso in cui il nodo DOM viene
+creato — al primo montaggio della sezione (apertura della card) così
+come a ogni digitazione successiva (via l'`useEffect` esistente,
+invariato) — senza dipendere dal timing dei re-render del componente
+padre. Verificato end-to-end con l'API locale reale (non solo lettura di
+codice): nota di ~400 caratteri impostata su un lead di test via
+`PATCH /professionals/me/leads/:id/note`, altezza della textarea
+misurata subito dopo l'apertura della card **prima** di questa
+correzione (50px, contenuto tagliato — riprodotto con `git stash`) e
+**dopo** (64px, testo interamente visibile senza aver digitato nulla);
+digitare altro testo la fa crescere ulteriormente (112px desktop/192px
+mobile), zero overflow orizzontale di pagina su desktop (1280px) e
+mobile (`devices["iPhone 13"]`, 390px). Typecheck pulito su `apps/web`,
+build di produzione verde (31 route, nessuna nuova).
