@@ -58,6 +58,7 @@ import {
   Share2,
   Flag,
   Menu,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export const ICONS = {
@@ -115,6 +116,7 @@ export const ICONS = {
   "share-2": Share2,
   flag: Flag,
   menu: Menu,
+  "sliders-horizontal": SlidersHorizontal,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -145,6 +145,43 @@ const STAGE_STYLE: Record<RequestStage, { label: string; icon: import("@professi
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
 
+/**
+ * Testo di ricerca concatenato per un lead — richiesta esplicita
+ * dell'utente: "la ricerca falla avvenire... in qualsiasi campo", non solo
+ * nome cliente/città come prima. Stesso principio già applicato alla
+ * ricerca full-text dell'agenda (`buildAgendaListItems`, CLAUDE.md §49):
+ * ogni campo "utile a un umano" entra nel testo cercabile, mai solo i due
+ * più ovvi. Include anche i dati rivelati dopo l'accettazione (indirizzo/
+ * contatti sulla `booking`, quando esiste) — un professionista deve poter
+ * ritrovare una richiesta già accettata cercando l'indirizzo del cliente.
+ */
+function leadSearchText(lead: ProfessionalLead, stage: RequestStage | undefined, booking: ProfessionalBooking | undefined): string {
+  const gr = lead.guidedRequest;
+  const recipientName = booking ? [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") : "";
+  return [
+    gr.clientName,
+    gr.categoryLabel,
+    gr.description,
+    gr.city,
+    gr.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
+    gr.isUrgent ? "urgente" : null,
+    stage ? STAGE_STYLE[stage].label : null,
+    lead.declineNote,
+    lead.professionalNote,
+    lead.quote?.notes,
+    ...(lead.quote?.items.map((i) => i.name) ?? []),
+    recipientName,
+    booking?.clientPhone,
+    booking?.clientEmail,
+    booking ? formatBookingAddress(booking) : null,
+    booking?.description,
+    booking?.cancellationNote,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "tutte", label: "Tutte" },
   { key: "da_quotare", label: "Da quotare" },
@@ -277,6 +314,13 @@ function RichiesteContent() {
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
   const [zoneFilter, setZoneFilter] = useState("tutte");
+  // Toggle "A domicilio"/"Online" esterno al pop-up Filtri — richiesta
+  // esplicita dell'utente: gli altri filtri (ricerca/ordina/zona) vanno
+  // raggruppati dentro un pulsante "Filtri", ma questo resta fuori,
+  // sempre visibile, stesso principio dei tab "A domicilio"/"Online" già
+  // in uso in `SearchBar`/`ProfessionalCard` per la stessa distinzione.
+  const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
   // Deep link "stage" (richiesta esplicita dell'utente, deduplicazione
@@ -391,6 +435,11 @@ function RichiesteContent() {
     return [...set].sort();
   }, [leads]);
 
+  // Conteggio dei filtri del pop-up "Filtri" (ricerca/ordina/zona) — il
+  // toggle "A domicilio/Online" resta fuori dal pop-up e ha il proprio
+  // stato sempre visibile, non contribuisce qui.
+  const filtersActiveCount = (search.trim() ? 1 : 0) + (zoneFilter !== "tutte" ? 1 : 0) + (sortMode !== "recenti" ? 1 : 0);
+
   const stageByLeadId = useMemo(() => {
     const map = new Map<string, RequestStage>();
     (leads ?? []).forEach((l) => map.set(l.id, classifyLeadStage(l)));
@@ -416,19 +465,17 @@ function RichiesteContent() {
       });
     }
     if (zoneFilter !== "tutte") list = list.filter((l) => l.guidedRequest.city === zoneFilter);
+    if (serviceModeFilter !== "tutte") list = list.filter((l) => l.guidedRequest.serviceMode === serviceModeFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      // Indirizzo non più disponibile a questo livello (richiesta esplicita
-      // dell'utente: nessun dato di contatto/indirizzo prima
-      // dell'accettazione) — il filtro cerca ora su nome cliente e città.
-      list = list.filter((l) => (l.guidedRequest.clientName ?? "").toLowerCase().includes(q) || l.guidedRequest.city.toLowerCase().includes(q));
+      list = list.filter((l) => leadSearchText(l, stageByLeadId.get(l.id), bookingByRequestId.get(l.guidedRequest.id)).includes(q));
     }
     list = [...list];
     if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return list;
-  }, [leads, activeTab, zoneFilter, search, sortMode, stageByLeadId]);
+  }, [leads, activeTab, zoneFilter, serviceModeFilter, search, sortMode, stageByLeadId, bookingByRequestId]);
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     return (
@@ -543,28 +590,145 @@ function RichiesteContent() {
           })}
         </CategoryCarousel>
 
-        {/* Barra filtri */}
-        <XStack gap="$2" flexWrap="wrap">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cerca cliente o indirizzo..."
-            style={{ ...filterInputStyle, flex: "1 1 220px", minWidth: 200 }}
-          />
-          <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={filterInputStyle}>
-            <option value="recenti">Data di ricezione più recente</option>
-            <option value="vecchie">Data di ricezione più vecchie</option>
-            <option value="aggiornamento">Ultimo aggiornamento</option>
-          </select>
-          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={filterInputStyle}>
-            <option value="tutte">Tutte le zone</option>
-            {zones.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </select>
+        {/* Barra filtri — richiesta esplicita dell'utente: ricerca/ordina/
+            zona raggruppati dentro un pulsante "Filtri" (pop-up, stesso
+            pattern overlay già in uso altrove nel prodotto — role="dialog",
+            chiusura su Escape/click sul backdrop), il toggle "A domicilio/
+            Online" resta invece fuori, sempre visibile. */}
+        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <XStack
+            alignItems="center"
+            gap={6}
+            paddingHorizontal="$4"
+            paddingVertical={12}
+            borderRadius={radiusDoc}
+            backgroundColor={brand.calce}
+            borderWidth={1}
+            borderColor={brand.filetto}
+            cursor="pointer"
+            onPress={() => setShowFiltersModal(true)}
+            accessibilityRole="button"
+          >
+            <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
+            <Text fontWeight="700" fontSize={14} color={brand.grafite}>
+              Filtri{filtersActiveCount > 0 ? ` (${filtersActiveCount})` : ""}
+            </Text>
+          </XStack>
+
+          <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
+            {(
+              [
+                { key: "tutte", label: "Tutte" },
+                { key: "HOME", label: "A domicilio" },
+                { key: "ONLINE", label: "Online" },
+              ] as const
+            ).map((opt) => {
+              const active = serviceModeFilter === opt.key;
+              return (
+                <XStack
+                  key={opt.key}
+                  alignItems="center"
+                  paddingHorizontal="$3"
+                  paddingVertical={12}
+                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  cursor="pointer"
+                  onPress={() => setServiceModeFilter(opt.key)}
+                  accessibilityRole="button"
+                >
+                  <Text fontSize={13.5} fontWeight="700" color={active ? "white" : brand.grafite}>
+                    {opt.label}
+                  </Text>
+                </XStack>
+              );
+            })}
+          </XStack>
         </XStack>
+
+        {showFiltersModal ? (
+          <div
+            onClick={() => setShowFiltersModal(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filtri"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(20,24,30,0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+              overflowY: "auto",
+            }}
+          >
+            <YStack
+              onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+              width="100%"
+              maxWidth={420}
+              backgroundColor={brand.calce}
+              borderRadius="$3"
+              padding="$5"
+              gap="$4"
+              marginVertical="$6"
+            >
+              <XStack justifyContent="space-between" alignItems="center">
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                  Filtri
+                </Text>
+                <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} accessibilityRole="button" accessibilityLabel="Chiudi">
+                  <Icon name="x" size={20} color={brand.grafite70} />
+                </XStack>
+              </XStack>
+
+              <YStack gap="$3">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cerca in ogni campo della richiesta..."
+                  style={{ ...filterInputStyle, width: "100%" }}
+                />
+                <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
+                  <option value="recenti">Data di ricezione più recente</option>
+                  <option value="vecchie">Data di ricezione più vecchie</option>
+                  <option value="aggiornamento">Ultimo aggiornamento</option>
+                </select>
+                <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                  <option value="tutte">Tutte le zone</option>
+                  {zones.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+              </YStack>
+
+              {filtersActiveCount > 0 ? (
+                <XStack
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={() => {
+                    setSearch("");
+                    setSortMode("recenti");
+                    setZoneFilter("tutte");
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
+                    Reimposta filtri
+                  </Text>
+                </XStack>
+              ) : null}
+
+              <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
+                Mostra {visibleLeads.length} {visibleLeads.length === 1 ? "richiesta" : "richieste"}
+              </Button>
+            </YStack>
+          </div>
+        ) : null}
 
         {/* Elenco */}
         {visibleLeads.length === 0 ? (
@@ -1790,6 +1954,15 @@ function RequestCard({
               </XStack>
             </YStack>
           ) : null}
+
+          {/* Freccetta per richiudere la scheda anche dal fondo — richiesta
+              esplicita dell'utente: prima l'unico modo era cliccare di nuovo
+              l'intestazione in alto, scomodo su una scheda espansa lunga.
+              Stessa icona/interazione di quella in cima (che resta invariata,
+              cliccare l'intestazione continua a funzionare). */}
+          <XStack justifyContent="center" paddingTop="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel="Richiudi la scheda">
+            <Icon name="chevron-up" size={18} color={brand.grafite70} />
+          </XStack>
         </YStack>
       ) : null}
 

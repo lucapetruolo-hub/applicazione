@@ -9855,3 +9855,75 @@ link verso `/professionista/{id}` (nessuna regressione sul comportamento
 ripuliti a fine verifica (`DELETE /auth/me`). Typecheck pulito su tutti i
 package (`shared`, `api-client`, `ui`, `web`), build di produzione
 `apps/web` verde (31 route, nessuna nuova).
+
+---
+
+## 75. `/dashboard/richieste` — richiudi scheda dal fondo, ricerca in ogni campo, filtri raggruppati in un pop-up + toggle esterno
+
+Tre richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Freccetta per richiudere la scheda anche dal fondo** — richiesta
+esplicita: *"dai la possibilità di richiudere la scheda aperta tramite
+una freccette uguale a quella per aprirla, mettendola anche in fondo alla
+scheda quando è aperta"*. Prima l'unico modo di richiudere una `RequestCard`
+espansa era ricliccare l'intestazione in alto — scomodo su una scheda
+lunga (voci preventivo, dettagli cliente, cronologia). Aggiunta una
+seconda `<Icon name="chevron-up">` cliccabile (`onPress={onToggle}`,
+stesso handler già in uso per l'intestazione, nessuna logica duplicata)
+in fondo al corpo espanso della card, subito prima della sua chiusura.
+
+**Ricerca in ogni campo della richiesta, non solo nome/indirizzo** —
+richiesta esplicita: *"al posto di fare la ricerca solo nel nome e
+indirizzo fai la ricerca in qualsiasi campo"*, mantenendo invariato il
+filtro per tab già esistente (Tutte/Da quotare/ecc.). Nuovo helper
+`leadSearchText(lead, stage, booking)` — stesso principio "concatena ogni
+campo pertinente in una stringa minuscola" già stabilito in
+`apps/web/src/app/dashboard/agenda/page.tsx` (`buildAgendaListItems`,
+CLAUDE.md §49) — include: nome cliente, categoria, descrizione, città,
+"consulenza online"/"a domicilio", "urgente" se pertinente, l'etichetta
+italiana dello stato (`STAGE_STYLE[stage].label`, così cercare "accettate"
+trova le richieste in quello stato), nota di rifiuto, nota privata del
+professionista, note/voci del preventivo, e — quando disponibile (dopo
+l'accettazione) — nome completo del destinatario, telefono, email,
+indirizzo strutturato, descrizione/nota di annullamento della
+prenotazione. Il filtro (`visibleLeads`) confronta ora
+`leadSearchText(...).includes(q)` invece del solo controllo su
+`clientName`/`city`.
+
+**Filtri raggruppati in un pop-up "Filtri" + toggle esterno
+domicilio/online** — richiesta esplicita: *"i filtri presenti...
+raggruppale in un pulsante 'filtri', e aggiungi un toggle esternamente per
+selezionare 'domicilio/online'"*. La vecchia barra inline (campo ricerca +
+due `<select>` ordina/zona sempre visibili) è sostituita da:
+- Un pulsante "Filtri" (icona `sliders-horizontal`, nuova voce nel
+  registro icone condiviso `packages/ui/src/icons.tsx`/`icons.web.tsx` —
+  `SlidersHorizontal` di lucide, stesso pattern di ogni altra icona
+  registrata) con un conteggio tra parentesi (`filtersActiveCount`: ricerca
+  non vuota + zona diversa da "tutte" + ordinamento diverso dal default,
+  il toggle esterno non contribuisce) — apre un pop-up (stesso pattern
+  overlay `role="dialog"` già in uso altrove nel prodotto) con ricerca,
+  ordinamento e zona, più "Reimposta filtri" (visibile solo con almeno un
+  filtro attivo) e un bottone "Mostra N richieste" che chiude il pop-up.
+- Un toggle a pillola **esterno** al pop-up, sempre visibile (Tutte/A
+  domicilio/Online), nuovo stato `serviceModeFilter` che filtra
+  `guidedRequest.serviceMode` indipendentemente dagli altri filtri.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: due richieste dirette a un professionista di test (una "A
+domicilio" con una parola unica nella descrizione, "ZIBALDONE", mai nel
+nome/indirizzo — una "Online"). Ricerca di "ZIBALDONE" nel pop-up Filtri
+→ badge "Filtri (1)" corretto, "Mostra 1 richiesta", solo la card
+pertinente resta visibile (trovata tramite la descrizione, non
+nome/città — conferma della ricerca su ogni campo); "Reimposta filtri" →
+badge sparisce. Toggle esterno "Online" → solo la descrizione della
+richiesta online resta visibile, quella "A domicilio" nascosta, e
+viceversa con "A domicilio" selezionato — "Tutte" mostra di nuovo
+entrambe. Freccetta di chiusura in fondo alla scheda espansa: presente
+dopo l'apertura, la scheda si richiude correttamente al click (la
+freccetta stessa sparisce insieme al corpo collassato). Zero overflow
+orizzontale, zero errori console reali (l'unico osservato,
+`ERR_TUNNEL_CONNECTION_FAILED`, è la stessa limitazione di rete
+dell'ambiente di sviluppo già documentata altrove in questo file).
+Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`, `web`,
+`mobile`), build di produzione `apps/web` verde (31 route, nessuna
+nuova).
