@@ -37,6 +37,18 @@ const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // più permissivo solo per questo endpoint (richiesta esplicita
 // dell'utente: "dai la possibilità di caricare anche i video").
 const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
+// Documenti ammessi solo per l'allegato "File" della chat (richiesta
+// esplicita dell'utente: "in modo che puo essere caricata anche la fattura
+// o ricevuta") — elenco chiuso di formati realmente usati per fatture/
+// ricevute, non un generico "qualunque file" (rischio di sicurezza non
+// giustificato da questa richiesta).
+const ALLOWED_TIMELINE_DOCUMENT_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
 
 @Controller("guided-requests")
 export class GuidedRequestsController {
@@ -97,6 +109,11 @@ export class GuidedRequestsController {
   // da ENTRAMBE le parti: nessun controllo di titolarità qui (solo JWT),
   // la verifica "sei tu il cliente o il professionista di questo thread"
   // avviene dopo, al momento di POST :id/timeline con l'URL ottenuto qui.
+  // A differenza di "photos"/"portfolio-photos" (solo immagine/video),
+  // questo endpoint accetta anche un documento (PDF/Word/Excel) — l'unico
+  // allegato di chat che deve poter portare "anche la fattura o ricevuta"
+  // (richiesta esplicita dell'utente), non generalizzato agli altri upload
+  // del prodotto.
   @UseGuards(JwtAuthGuard)
   @UseFilters(MulterExceptionFilter)
   @Post("timeline-photos")
@@ -104,8 +121,10 @@ export class GuidedRequestsController {
     FileInterceptor("image", {
       limits: { fileSize: MAX_MEDIA_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
-        if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("video/")) {
-          callback(new BadRequestException("Il file caricato deve essere un'immagine o un video."), false);
+        const isMedia = file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/");
+        const isDocument = ALLOWED_TIMELINE_DOCUMENT_MIME_TYPES.includes(file.mimetype);
+        if (!isMedia && !isDocument) {
+          callback(new BadRequestException("Il file caricato deve essere un'immagine, un video o un documento (PDF, Word, Excel)."), false);
           return;
         }
         callback(null, true);
@@ -114,7 +133,7 @@ export class GuidedRequestsController {
   )
   async uploadTimelinePhoto(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException("Nessuna immagine o video caricato.");
+      throw new BadRequestException("Nessun file caricato.");
     }
     const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates");
     return { imageUrl };

@@ -1,3 +1,4 @@
+import { extname } from "node:path";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -76,16 +77,37 @@ export class CloudinaryService {
     }
 
     const isVideo = file.mimetype.startsWith("video/");
+    const isImage = file.mimetype.startsWith("image/");
+    // Un terzo caso oltre a immagine/video (richiesta esplicita dell'utente:
+    // allegare in chat "anche la fattura o ricevuta"): un documento
+    // (PDF/Word/Excel, vedi ALLOWED_DOCUMENT_MIME_TYPES nel controller) non
+    // è né l'uno né l'altro — `resource_type: "raw"` lo carica così com'è,
+    // senza alcuna trasformazione (ridimensionare/comprimere un PDF non ha
+    // senso allo stesso modo di un'immagine).
+    const resourceType: "image" | "video" | "raw" = isVideo ? "video" : isImage ? "image" : "raw";
+    const transformation = isImage
+      ? [{ width: 800, height: 800, crop: "limit" as const, quality: "auto", fetch_format: "auto" }]
+      : isVideo
+        ? [{ quality: "auto" }]
+        : undefined;
+    // Caricato via stream (buffer, nessun nome file passato a Cloudinary):
+    // per un documento "raw" Cloudinary non ha altro modo di sapere che
+    // estensione dare all'URL restituito, a differenza di immagini/video
+    // (dove il formato si rileva dal contenuto stesso) — senza questo,
+    // `isDocumentUrl`/`documentTypeLabel` lato web (basati sull'estensione
+    // dell'URL) non riconoscerebbero mai il file come documento. Ricavata
+    // dal nome originale caricato dal browser (`file.originalname`, sempre
+    // presente su un upload Multer), non da una mappa mimetype→estensione.
+    const rawExtension = resourceType === "raw" ? extname(file.originalname).replace(/^\./, "").toLowerCase() : undefined;
 
     try {
       return await new Promise<string>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder,
-            resource_type: isVideo ? "video" : "image",
-            transformation: isVideo
-              ? [{ quality: "auto" }]
-              : [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
+            resource_type: resourceType,
+            ...(transformation ? { transformation } : {}),
+            ...(rawExtension ? { format: rawExtension } : {}),
           },
           (error, result) => {
             if (error || !result) {

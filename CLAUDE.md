@@ -10301,3 +10301,107 @@ flussi. Account di test ripuliti a fine verifica (`DELETE /auth/me`).
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
 (31 route, nessuna nuova).
+
+---
+
+## 80. Chat: graffetta con menu Fotocamera/Foto e video/File (documenti) + data intervento riposizionata in "Richieste ricevute"
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Allegati in chat — graffetta con tre opzioni, documenti inclusi** —
+richiesta esplicita: "nelle chat, al posto del file più, metti il simbolo
+di una graffetta per allegare, e fai selezionare: fotocamera, foto/video,
+File. in modo che puo essere caricata anche la fattura o ricevuta"
+(chiarito subito dopo: "intendevo il tasto +", il vecchio pulsante "+" di
+`TimelineModal.tsx` già in uso ovunque nel prodotto per aprire la
+cronologia condivisa cliente↔professionista — CLAUDE.md §21/§46/§47).
+
+- **Tre input invece di uno**: `mediaInputRef` unico (accept
+  "image/*,video/*", nessun `capture`, CLAUDE.md §12) sostituito da tre
+  ref/`<input type="file">` nascosti — `cameraInputRef` (accept "image/*"
+  `capture="environment"`, apre direttamente la fotocamera), `galleryInputRef`
+  (stesso accept di prima, nessun `capture`, apre la libreria foto/video) e
+  `documentInputRef` (accept ".pdf,.doc,.docx,.xls,.xlsx", nessun
+  `capture`). Stesso `handleMediaChange` per tutti e tre, il backend
+  convalida comunque il tipo reale caricato.
+- **Menu a comparsa** (`isAttachMenuOpen`, stesso pattern click-to-open/
+  chiusura-al-click-esterno già in uso per `ActionsMenu`/
+  `ReportsSectionMenu`, qui aperto **verso l'alto** — `bottom="100%"` — dato
+  che il composer vive in fondo al popup): click sulla graffetta (icona
+  `paperclip`, già registrata nel set di icone condivise ma mai usata prima
+  d'ora) rivela tre voci — Fotocamera/Foto o video/File — ciascuna apre il
+  proprio input.
+- **Backend — nuovo tipo di allegato oltre a immagine/video, solo per
+  questo endpoint**: `POST /guided-requests/timeline-photos`
+  (`apps/api/src/guided-requests/guided-requests.controller.ts`) accetta
+  ora anche `ALLOWED_TIMELINE_DOCUMENT_MIME_TYPES` (PDF, Word, Excel — set
+  chiuso, non un generico "qualunque file": nessuna richiesta di supportare
+  eseguibili o altro, solo "fattura o ricevuta") oltre a `image/*`/`video/*`
+  — **non** esteso agli altri endpoint upload del prodotto (`photos`,
+  `portfolio-photos`, ecc.), resta un'eccezione scoped alla sola chat.
+- **`CloudinaryService.uploadMedia`**: terzo `resource_type` ("raw") per un
+  file che non è né immagine né video — nessuna trasformazione (ridimensionare/
+  comprimere un documento non ha senso). Estensione del file (`.pdf`,
+  ecc.) ricavata da `file.originalname` (sempre presente su un Multer
+  upload) e passata come opzione `format` a Cloudinary: senza, un upload
+  "raw" via stream/buffer (nessun nome file trasmesso a Cloudinary di
+  default) tornerebbe un URL senza estensione riconoscibile, e
+  `isDocumentUrl` lato web (basato sull'estensione dell'URL, stesso
+  principio già in uso per `isVideoUrl`) non lo riconoscerebbe mai come
+  documento.
+- **`apps/web/src/lib/media.ts`**: nuovi `isDocumentUrl`/`documentTypeLabel`
+  (estensione dell'URL, stesso pattern di `isVideoUrl`).
+  **`MediaPreview.tsx`**: nuovo ramo di rendering per un documento — icona
+  `file-text` + etichetta estensione (es. "PDF") su sfondo neutro, invece di
+  tentare (e fallire) un `<img>` su un URL non-immagine; nuova prop
+  `forceDocument` (stesso principio di `forceVideo`, per un URL `blob:`
+  locale prima dell'upload — non ancora usata da nessun chiamante in questo
+  giro, aggiunta per coerenza dell'interfaccia).
+- **Click su un documento nella chat**: un documento non è "ingrandibile"
+  in `PhotoLightbox` (pensato per immagini/video) — `TimelineModal.
+  openMediaAt` lo apre direttamente in una nuova scheda (`window.open`)
+  invece di aprire il lightbox; le sole foto/video dello stesso evento
+  restano navigabili nel lightbox (indice ricalcolato sul solo
+  sottoinsieme visualizzabile, un documento nello stesso evento non entra
+  mai nel carosello).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+due script Playwright dedicati: upload diretto via `curl` conferma che un
+PDF ora supera il filtro tipo-file dell'endpoint (arriva fino all'errore
+"non è ancora configurato", stesso esito di un'immagine — prima sarebbe
+stato rifiutato con "deve essere un'immagine o un video"), mentre un file
+`.txt` resta correttamente rifiutato con il nuovo messaggio combinato. UI:
+vecchio pulsante "+" assente, graffetta presente, le tre voci del menu
+visibili e cliccabili, i tre input nascosti con `accept`/`capture` corretti
+verificati via DOM; selezionare un PDF tramite "File" raggiunge davvero
+l'endpoint reale (stesso errore "Cloudinary non configurato" già
+documentato altrove in questo file per ogni altro upload in locale,
+non un rifiuto di tipo). Con l'upload intercettato (`page.route`) per
+simulare una risposta Cloudinary reale: l'anteprima nel composer e la
+miniatura nel messaggio inviato mostrano entrambe la tessera "PDF" (non
+un'icona di immagine rotta), click sulla tessera apre una nuova scheda del
+browser (mai `PhotoLightbox`). Zero errori console reali. Account di test
+ripuliti a fine verifica (`DELETE /auth/me`). Typecheck pulito su tutti i
+package (`shared`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (31 route, nessuna nuova).
+
+**Data dell'intervento riposizionata in "Richieste ricevute"** — richiesta
+esplicita dell'utente, con screenshot annotato (cerchi rossi sulla
+posizione attuale, striscia rossa sulla posizione desiderata): in
+`RequestCard` (`/dashboard/richieste`), la riga "Intervento:
+{data}"/"Preventivo per: ..."/"Richiesta per: ..." (CLAUDE.md §66) viveva
+in due punti — nell'anteprima non espansa, in fondo (subito sopra la
+freccetta di apertura/chiusura), e dentro il riquadro "Dettagli cliente",
+anch'essa in fondo (subito sopra il tasto Chat). Entrambe spostate subito
+**sotto il nome** del proprio riquadro: nell'anteprima, subito dopo il
+nome cliente (prima della riga categoria/città); dentro "Dettagli
+cliente", subito dopo il nome cliccabile (prima di nome/cognome
+destinatario, indirizzo, telefono, email). Nessuna logica toccata, solo
+l'ordine di rendering dei blocchi già esistenti.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright (bounding box dei blocchi confrontati in ordine y): nell'anteprima
+non espansa, "Intervento: ..." risulta correttamente tra il nome cliente e
+la riga categoria/città; dentro "Dettagli cliente", risulta subito dopo il
+nome cliccabile e ben distante (non più adiacente) dal tasto Chat.
+Screenshot di conferma. Typecheck pulito, build di produzione verde.

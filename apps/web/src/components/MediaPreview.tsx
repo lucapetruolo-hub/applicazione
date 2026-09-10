@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type MouseEventHandler } from "react";
 import { Icon, brand } from "@professionisti/ui";
-import { isVideoUrl } from "@/lib/media";
+import { isVideoUrl, isDocumentUrl, documentTypeLabel } from "@/lib/media";
 
 const DEFAULT_STYLE: CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
 
@@ -30,11 +30,12 @@ export function MediaPreview({
   style,
   onClick,
   forceVideo,
+  forceDocument,
 }: {
   url: string;
   alt?: string;
   style?: CSSProperties;
-  onClick?: MouseEventHandler<HTMLImageElement | HTMLVideoElement>;
+  onClick?: MouseEventHandler<HTMLImageElement | HTMLVideoElement | HTMLDivElement>;
   /**
    * Forza il tipo video indipendentemente dall'estensione dell'URL — serve
    * per gli URL `blob:` di un file selezionato ma non ancora caricato
@@ -43,6 +44,8 @@ export function MediaPreview({
    * passa qui invece di lasciar indovinare all'URL.
    */
   forceVideo?: boolean;
+  /** Stesso principio di `forceVideo`, per un documento (PDF/Word/Excel) selezionato ma non ancora caricato. */
+  forceDocument?: boolean;
 }) {
   const [broken, setBroken] = useState(false);
   const mergedStyle = { ...DEFAULT_STYLE, ...style };
@@ -61,6 +64,32 @@ export function MediaPreview({
         onClick={onClick as MouseEventHandler<HTMLDivElement>}
       >
         <Icon name="camera" size={20} color={brand.grafite70} />
+      </div>
+    );
+  }
+
+  // Un documento (PDF/Word/Excel, allegabile in chat — richiesta esplicita
+  // dell'utente: "in modo che puo essere caricata anche la fattura o
+  // ricevuta") non è un'immagine renderizzabile in un `<img>`: mostra
+  // invece una tessera con icona + estensione, coerente col resto del
+  // registro icone/token brand del prodotto.
+  if (forceDocument || isDocumentUrl(url)) {
+    return (
+      <div
+        style={{
+          ...mergedStyle,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+          backgroundColor: brand.gesso,
+          cursor: onClick ? "pointer" : undefined,
+        }}
+        onClick={onClick as MouseEventHandler<HTMLDivElement>}
+      >
+        <Icon name="file-text" size={20} color={brand.cianografia} />
+        <span style={{ fontSize: 9, fontWeight: 700, color: brand.grafite70 }}>{documentTypeLabel(url)}</span>
       </div>
     );
   }

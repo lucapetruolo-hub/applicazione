@@ -1221,6 +1221,18 @@ function RequestCard({
         <Text fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
           {clientName}
         </Text>
+        {/* Data/ora dell'intervento spostata subito sotto il nome
+            (richiesta esplicita dell'utente, con screenshot annotato) —
+            prima stava in fondo, appena sopra la freccetta di
+            apertura/chiusura scheda. */}
+        {collapsedDateTime ? (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="calendar" size={14} color={brand.grafite70} />
+            <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+              {collapsedDateTime.label}: {collapsedDateTime.text}
+            </Text>
+          </XStack>
+        ) : null}
         <XStack alignItems="center" gap="$1">
           <Icon name="wrench" size={15} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
@@ -1236,14 +1248,6 @@ function RequestCard({
             {isOnline ? `Zona: ${gr.city}` : (revealedAddress ?? gr.city)}
           </Text>
         </XStack>
-        {collapsedDateTime ? (
-          <XStack alignItems="center" gap="$1">
-            <Icon name="calendar" size={14} color={brand.grafite70} />
-            <Text fontSize={15} fontWeight="700" color={brand.grafite}>
-              {collapsedDateTime.label}: {collapsedDateTime.text}
-            </Text>
-          </XStack>
-        ) : null}
 
         <XStack justifyContent="center" paddingTop="$1">
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
@@ -1346,6 +1350,15 @@ function RequestCard({
                     </Text>
                     <Icon name="chevron-right" size={13} color={brand.cianografia} strokeWidth={2} />
                   </XStack>
+                  {/* Data/ora dell'intervento spostata subito sotto il nome
+                      cliccabile (richiesta esplicita dell'utente, con
+                      screenshot annotato) — prima stava in fondo alla
+                      scheda, appena sopra il tasto Chat. */}
+                  {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
+                    <Text fontSize={12.5} fontWeight="700" color={brand.grafite}>
+                      Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+                    </Text>
+                  ) : null}
                   {/* Nome e cognome del destinatario indicati sulla
                       richiesta (chi riceverà il professionista sul
                       lavoro, non necessariamente l'intestatario
@@ -1422,11 +1435,6 @@ function RequestCard({
                   {!booking ? (
                     <Text fontSize={12.5} color={brand.grafite70} fontStyle="italic">
                       Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo.
-                    </Text>
-                  ) : null}
-                  {booking?.scheduledAt && (stage === "accettata" || stage === "completata" || stage === "annullata") ? (
-                    <Text fontSize={12.5} fontWeight="700" color={brand.grafite} paddingTop="$1">
-                      Intervento: {formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
                     </Text>
                   ) : null}
                   {/* Tasto Chat spostato in fondo alla scheda "Dettagli

@@ -7,6 +7,13 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { isDocumentUrl } from "@/lib/media";
+
+// Documenti accettati dall'opzione "File" del menu allegati (richiesta
+// esplicita dell'utente: "in modo che puo essere caricata anche la fattura
+// o ricevuta") — stesso elenco chiuso già validato lato server
+// (ALLOWED_TIMELINE_DOCUMENT_MIME_TYPES, guided-requests.controller.ts).
+const DOCUMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx";
 
 const MAX_UPDATE_MEDIA = 5;
 // Intervallo di polling mentre il popup è aperto (richiesta esplicita
@@ -113,7 +120,16 @@ export function TimelineModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [openPhoto, setOpenPhoto] = useState<{ photos: string[]; index: number } | null>(null);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
+  // Tre input distinti al posto di un unico "+" (richiesta esplicita
+  // dell'utente: "al posto del file più, metti il simbolo di una graffetta
+  // per allegare, e fai selezionare: fotocamera, foto/video, File"):
+  // stesso `handleMediaChange` per tutti e tre, solo `accept`/`capture`
+  // cambia — il backend valida comunque il tipo reale del file caricato.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const attachMenuContainerRef = useRef<HTMLDivElement>(null);
   // Popup ad altezza fissata (`maxHeight="85vh"` sulla card) con SOLO la
   // regione messaggi scorrevole al suo interno — non più l'intero popup
   // dentro il backdrop (bug reale segnalato dall'utente: "rendendola più
@@ -203,6 +219,17 @@ export function TimelineModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, openPhoto]);
 
+  useEffect(() => {
+    if (!isAttachMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (attachMenuContainerRef.current && !attachMenuContainerRef.current.contains(event.target as Node)) {
+        setIsAttachMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isAttachMenuOpen]);
+
   async function handleMediaChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -214,7 +241,7 @@ export function TimelineModal({
       const result = await apiClient.uploadTimelinePhoto(token, file);
       setMediaUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_UPDATE_MEDIA));
     } catch (err) {
-      setMediaError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
+      setMediaError(err instanceof Error ? err.message : "Errore durante il caricamento del file.");
     } finally {
       setIsUploadingMedia(false);
     }
@@ -222,6 +249,22 @@ export function TimelineModal({
 
   function removeMedia(url: string) {
     setMediaUrls((prev) => prev.filter((u) => u !== url));
+  }
+
+  // Click su una miniatura di un evento: un documento (PDF/Word/Excel) non
+  // è "ingrandibile" in un lightbox fatto per immagini/video — si apre
+  // direttamente in una nuova scheda. Le sole foto/video dell'evento
+  // restano navigabili in `PhotoLightbox` (indice ricalcolato sul solo
+  // sottoinsieme visualizzabile, un documento eventualmente presente nello
+  // stesso evento non fa mai parte del carosello).
+  function openMediaAt(urls: string[], url: string) {
+    if (isDocumentUrl(url)) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const viewable = urls.filter((u) => !isDocumentUrl(u));
+    const index = viewable.indexOf(url);
+    setOpenPhoto({ photos: viewable, index: index === -1 ? 0 : index });
   }
 
   async function handleSubmit() {
@@ -351,11 +394,11 @@ export function TimelineModal({
                       ) : null}
                       {event.mediaUrls.length > 0 ? (
                         <XStack gap="$2" flexWrap="wrap">
-                          {event.mediaUrls.map((url, index) => (
+                          {event.mediaUrls.map((url) => (
                             <MediaPreview
                               key={url}
                               url={url}
-                              onClick={() => setOpenPhoto({ photos: event.mediaUrls, index })}
+                              onClick={() => openMediaAt(event.mediaUrls, url)}
                               style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
                             />
                           ))}
@@ -418,28 +461,110 @@ export function TimelineModal({
               </YStack>
             ))}
             {mediaUrls.length < MAX_UPDATE_MEDIA ? (
-              <YStack
-                width={56}
-                height={56}
-                borderRadius="$2"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                cursor="pointer"
-                opacity={isUploadingMedia ? 0.6 : 1}
-                onPress={() => !isUploadingMedia && mediaInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto o video"
-              >
-                <Text fontSize="$6" color={brand.grafite70}>
-                  {isUploadingMedia ? "…" : "+"}
-                </Text>
+              // Graffetta + menu (richiesta esplicita dell'utente: "al
+              // posto del file più, metti il simbolo di una graffetta per
+              // allegare, e fai selezionare: fotocamera, foto/video, File.
+              // in modo che puo essere caricata anche la fattura o
+              // ricevuta") — sostituisce il vecchio tasto "+" con un unico
+              // input nascosto. Menu aperto verso l'alto (`bottom="100%"`):
+              // il tasto vive in fondo al popup, un menu verso il basso
+              // rischierebbe di finire tagliato dal bordo della card.
+              <YStack ref={attachMenuContainerRef} position="relative">
+                <YStack
+                  width={56}
+                  height={56}
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  borderStyle="dashed"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  opacity={isUploadingMedia ? 0.6 : 1}
+                  onPress={() => !isUploadingMedia && setIsAttachMenuOpen((open) => !open)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Allega foto, video o documento"
+                >
+                  {isUploadingMedia ? (
+                    <Text fontSize="$5" color={brand.grafite70}>
+                      …
+                    </Text>
+                  ) : (
+                    <Icon name="paperclip" size={20} color={brand.grafite70} />
+                  )}
+                </YStack>
+
+                {isAttachMenuOpen ? (
+                  <YStack
+                    position="absolute"
+                    bottom="100%"
+                    left={0}
+                    marginBottom="$2"
+                    minWidth={190}
+                    backgroundColor={brand.calce}
+                    borderRadius="$3"
+                    overflow="hidden"
+                    zIndex={1200}
+                    shadowColor="rgba(43,32,19,0.16)"
+                    shadowRadius={14}
+                    shadowOffset={{ width: 0, height: 6 }}
+                    shadowOpacity={1}
+                  >
+                    {[
+                      { icon: "camera" as const, label: "Fotocamera", ref: cameraInputRef },
+                      { icon: "video" as const, label: "Foto o video", ref: galleryInputRef },
+                      { icon: "file-text" as const, label: "File", ref: documentInputRef },
+                    ].map((item) => (
+                      <XStack
+                        key={item.label}
+                        paddingHorizontal="$4"
+                        paddingVertical="$3"
+                        alignItems="center"
+                        gap="$2"
+                        cursor="pointer"
+                        hoverStyle={{ backgroundColor: brand.gesso }}
+                        onPress={() => {
+                          setIsAttachMenuOpen(false);
+                          item.ref.current?.click();
+                        }}
+                        accessibilityRole="button"
+                      >
+                        <Icon name={item.icon} size={16} color={brand.grafite} />
+                        <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                          {item.label}
+                        </Text>
+                      </XStack>
+                    ))}
+                  </YStack>
+                ) : null}
               </YStack>
             ) : null}
           </XStack>
-          <input ref={mediaInputRef} type="file" accept="image/*,video/*" onChange={handleMediaChange} disabled={isUploadingMedia} style={{ display: "none" }} />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleMediaChange}
+            disabled={isUploadingMedia}
+            style={{ display: "none" }}
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleMediaChange}
+            disabled={isUploadingMedia}
+            style={{ display: "none" }}
+          />
+          <input
+            ref={documentInputRef}
+            type="file"
+            accept={DOCUMENT_ACCEPT}
+            onChange={handleMediaChange}
+            disabled={isUploadingMedia}
+            style={{ display: "none" }}
+          />
           {mediaError ? (
             <Text color={brand.urgenza} fontSize="$2">
               {mediaError}
