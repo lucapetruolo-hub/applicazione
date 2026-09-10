@@ -246,3 +246,97 @@ a {
 .admin-table tr:nth-child(even) td {
   background: #fdefe1;
 }
+
+/* Evidenziazione dell'elemento raggiunto da un deep link (click su una
+   notifica) — richiesta esplicita dell'utente: "evidenziandola leggermente
+   per qualche secondo con transizione della luce". Una dissolvenza di
+   sfondo+bagliore verde smeraldo (stesso accento cianografia già usato in
+   tutto il sito), mai un bordo/riquadro fisso — si spegne da sola, la
+   classe viene rimossa via JS dopo il timeout (apps/web/src/lib/
+   deepLinkHighlight.ts). */
+@keyframes deep-link-highlight {
+  0% {
+    background-color: rgba(24, 154, 99, 0.14);
+    box-shadow: 0 0 0 3px rgba(24, 154, 99, 0.35);
+  }
+  70% {
+    background-color: rgba(24, 154, 99, 0.08);
+    box-shadow: 0 0 0 3px rgba(24, 154, 99, 0.16);
+  }
+  100% {
+    background-color: rgba(24, 154, 99, 0);
+    box-shadow: 0 0 0 0 rgba(24, 154, 99, 0);
+  }
+}
+.deep-link-highlight {
+  animation: deep-link-highlight 2.5s ease-out;
+  border-radius: 20px;
+}
+
+/* /registrati — pagina di registrazione resa più "innovativa" (richiesta
+   esplicita dell'utente, stesso principio già seguito per la campanella
+   notifiche qui sopra: ingresso animato invece di comparire di scatto, un
+   tocco di profondità in più). Due forme sfumate decorative dietro la card
+   del form — mai testo/contenuto reale dentro, solo colore — vivono nel
+   proprio contenitore assoluto con `overflow:hidden` dedicato, mai
+   sull'intera pagina scrollabile: stesso bug già documentato altrove in
+   questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
+   overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
+   prima stesura invece di dover essere corretto in un secondo momento. */
+.auth-page-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-page-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(70px);
+}
+.auth-page-blob--one {
+  width: 380px;
+  height: 380px;
+  top: -160px;
+  right: -110px;
+  background: #189a63;
+  opacity: 0.28;
+}
+.auth-page-blob--two {
+  width: 320px;
+  height: 320px;
+  bottom: -140px;
+  left: -110px;
+  background: #d9a441;
+  opacity: 0.18;
+}
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.auth-card-in {
+  animation: auth-card-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Le due card di scelta ruolo (RoleChoiceScreen) restano piatte a riposo
+   (coerente con "nessuna ombra di default" del resto del sito, CLAUDE.md
+   §19) e guadagnano un lieve sollevamento solo all'interazione — l'ombra
+   "vera" resta quindi riservata a un elemento davvero in primo piano al
+   passaggio del mouse, non un default sempre presente. */
+.auth-role-card {
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.auth-role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(43, 36, 24, 0.09);
+  border-color: #189a63;
+}

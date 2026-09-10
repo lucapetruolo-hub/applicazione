@@ -28,6 +28,7 @@ import { classifyLeadStage, describeClosedReason, type RequestStage } from "@/li
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
+import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
@@ -355,7 +356,12 @@ function RichiesteContent() {
     // dedicato, stesso compromesso pragmatico già in uso altrove nel
     // progetto per attese di rendering minime.
     setTimeout(() => {
-      document.getElementById(`request-${match.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const elementId = `request-${match.id}`;
+      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Richiesta esplicita dell'utente: non solo scrollare, evidenziare
+      // brevemente la card raggiunta (transizione di luce, si spegne da
+      // sola dopo qualche secondo).
+      highlightDeepLinkTarget(elementId);
     }, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, searchParams]);

@@ -77,6 +77,14 @@ export class ProfessionalsController {
     return this.professionalsService.getServicePriceIndex();
   }
 
+  // Pubblico allo stesso modo (nessun dato sensibile, solo lingua+conteggio
+  // aggregato): alimenta l'elenco lingue selezionabile in /dashboard/profilo
+  // (richiesta esplicita dell'utente, "in ordine delle più inserite già").
+  @Get("languages/popular")
+  getLanguagePopularity() {
+    return this.professionalsService.getLanguagePopularity();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   getMyProfile(@Req() req: AuthenticatedRequest) {

@@ -2040,9 +2040,6 @@ function SlotEditorModal({
               ) : null}
             </XStack>
           </YStack>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Numero massimo di prenotazioni per ciascuna modalità. 1 = fascia esatta. Più di 1 = fascia generica, sempre a richiesta di preventivo.
-          </Text>
         </YStack>
 
         {canRepeatForMonth ? (

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Download, Trash2 } from "lucide-react";
+import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
 import { Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -19,6 +19,58 @@ const inputStyle = {
   width: "100%",
 };
 const smallInputStyle = { ...inputStyle, width: 76, textAlign: "center" as const };
+
+/** Campo password con "occhio" mostra/nascondi — richiesta esplicita
+ * dell'utente, gli input grezzi di questa pagina non ne avevano ancora
+ * uno (a differenza di /registrati e /accedi, che lo hanno già). */
+function PasswordField({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  visible,
+  onToggleVisible,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  autoComplete: string;
+  visible: boolean;
+  onToggleVisible: () => void;
+}) {
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      <input
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        style={{ ...inputStyle, paddingRight: 40 }}
+      />
+      <button
+        type="button"
+        onClick={onToggleVisible}
+        aria-label={visible ? "Nascondi password" : "Mostra password"}
+        style={{
+          position: "absolute",
+          top: "50%",
+          right: 10,
+          transform: "translateY(-50%)",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          color: brand.grafite70,
+        }}
+      >
+        {visible ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+      </button>
+    </div>
+  );
+}
 
 // Intestazione di sezione — stesso pattern già in uso in /dashboard/profilo
 // (chunking alla Miller, "Verbale Cognitivo" F5.2): una pagina lunga senza
@@ -86,6 +138,11 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  // Richiesta esplicita dell'utente: "occhio" per vedere quanto scritto in
+  // ognuno dei tre campi, stesso pattern già in uso su /registrati e /accedi.
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -483,30 +540,30 @@ export default function AccountPage() {
             {isEditingPassword ? (
               <YStack gap="$2" maxWidth={320}>
                 {user.hasPassword ? (
-                  <input
-                    type="password"
+                  <PasswordField
                     value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    onChange={setCurrentPassword}
                     placeholder="Password attuale"
                     autoComplete="current-password"
-                    style={inputStyle}
+                    visible={showCurrentPassword}
+                    onToggleVisible={() => setShowCurrentPassword((v) => !v)}
                   />
                 ) : null}
-                <input
-                  type="password"
+                <PasswordField
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={setNewPassword}
                   placeholder="Nuova password (almeno 8 caratteri)"
                   autoComplete="new-password"
-                  style={inputStyle}
+                  visible={showNewPassword}
+                  onToggleVisible={() => setShowNewPassword((v) => !v)}
                 />
-                <input
-                  type="password"
+                <PasswordField
                   value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  onChange={setConfirmNewPassword}
                   placeholder="Ripeti la nuova password"
                   autoComplete="new-password"
-                  style={inputStyle}
+                  visible={showConfirmNewPassword}
+                  onToggleVisible={() => setShowConfirmNewPassword((v) => !v)}
                 />
                 {passwordError ? (
                   <Text color={brand.urgenza} fontSize="$3">
@@ -535,6 +592,9 @@ export default function AccountPage() {
                       setCurrentPassword("");
                       setNewPassword("");
                       setConfirmNewPassword("");
+                      setShowCurrentPassword(false);
+                      setShowNewPassword(false);
+                      setShowConfirmNewPassword(false);
                     }}
                   >
                     Annulla

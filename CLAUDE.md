@@ -10153,3 +10153,151 @@ le pillole.
 
 Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`,
 `web`), build di produzione `apps/web` verde (31 route, nessuna nuova).
+
+---
+
+## 79. Pagina `/registrati` più "innovativa", campanella notifiche con scroll+evidenzia, occhio password in /account, elenco lingue selezionabile in /dashboard/profilo, testo capienza agenda rimosso
+
+Sei richieste esplicite dell'utente, stesso giro di lavoro.
+
+**`/registrati` resa più "innovativa"** — richiesta esplicita dell'utente
+("rendi più innovativa questa pagina"), stesso principio già seguito per
+`NotificationBell.tsx` (CLAUDE.md §76: vetro smerigliato, ingresso animato)
+ma qui applicato a una pagina intera, non un pannello. Nuovo
+`AuthPageBackground` (condiviso da `RoleChoiceScreen`/`RegistratiForm`): due
+forme sfumate decorative (`brand.cianografia`/`brand.ottone`, `filter:
+blur`) in un contenitore assoluto con `overflow:hidden` dedicato — mai
+sull'intera colonna scrollabile, stesso bug già documentato altrove in
+questo file (§20) evitato fin dalla prima stesura. Contenuto avvolto in
+`<Surface floating>` (radius `radiusDocLg`, ombra soffice già esistente
+per le superfici "flottanti", CLAUDE.md §19) con ingresso animato
+(`.auth-card-in`, scala+dissolvenza) invece di comparire di scatto. Nuovo
+`AuthIconBadge` (cerchio a gradiente cianografia→cianografiaScuro,
+icona `sparkles`/`search`/`hard-hat` a seconda del contesto) in cima ad
+ogni card. Le due card di scelta ruolo guadagnano un lieve sollevamento
+solo all'hover (`.auth-role-card`, transform+ombra — mai un default,
+coerente con "nessuna ombra di default" del resto del sito). Nuovo
+indicatore di percorso ("Passo 1 di 2"/"Passo 2 di 2") al posto delle
+eyebrow generiche precedenti — informazione reale sul flusso, non solo
+decorazione. Nuove `TrustChips` (due pillole "I tuoi dati sono
+protetti"/"Gratis, nessuna carta richiesta") sotto il bottone "Registrati".
+Nessuna logica toccata (stessi handler `handleRegister`/
+`handleGoogleCredential`/`chooseRole`), solo la resa visiva.
+
+**Campanella notifiche — click che scrolla ed evidenzia l'esatto
+aggiornamento** — richiesta esplicita dell'utente: "quando clicco su una
+notifica dal pulsante della campanella, non deve solo portarmi alla
+pagina esatta ma anche all'altezza di dove è presente quella determinata
+variazione, magari evidenziandola leggermente per qualche secondo con
+transizione della luce". Il deep-link professionista (`/dashboard/richieste
+?open=<guidedRequestId>`) già scrollava alla card giusta (CLAUDE.md §47);
+il lato cliente (`notificationDeepLink`) invece cambiava solo tab
+(`?tab=richieste|lavori`), senza mai portare a un elemento preciso.
+- **`notificationDeepLink`** (`notificationSections.ts`): ora aggiunge
+  `&open=<guidedRequestId>` anche ai destinatari cliente (il
+  `guidedRequestId` è già presente nel payload di ogni tipo di notifica
+  cliente pertinente — arricchito lato backend in un giro precedente per
+  gli eventi "lavori", JOB_COMPLETED/BOOKING_CANCELED_BY_PROFESSIONAL/
+  BOOKING_REOPENED_BY_PROFESSIONAL, verificato con una ricerca su
+  `bookings.service.ts`).
+- **`/le-mie-richieste`**: l'effetto deep-link esistente (tab "richieste")
+  ora ignora `?open=` quando `tab=lavori` è esplicito in URL (altrimenti i
+  due effetti competerebbero: un `guidedRequestId` di una prenotazione è
+  sempre anche l'id di una richiesta valida, essendo la stessa entità di
+  origine). Nuovo secondo effetto per la tab "Lavori accettati": trova la
+  `Booking` con `guidedRequestId` corrispondente, seleziona la tab,
+  azzera il filtro se necessario, calcola la pagina corretta e scrolla —
+  stesso pattern esatto del primo effetto. Nuovo `id={`booking-${booking.id}`}`
+  sul wrapper di ogni `BookingRow` (mancava, a differenza di
+  `GuidedRequestCard`, che già aveva `id={`request-${request.id}`}`).
+- **Evidenziazione** — nuovo `apps/web/src/lib/deepLinkHighlight.ts`
+  (`highlightDeepLinkTarget(elementId)`): manipola `classList` del nodo
+  DOM direttamente (nessuno stato React per elemento), aggiunge
+  `.deep-link-highlight` (nuova classe, `globals.css` — dissolvenza di
+  sfondo+bagliore verde smeraldo via `@keyframes`, 2,5s, mai un
+  bordo/riquadro fisso) e la rimuove dopo 2,6s. Richiamata dopo ogni
+  `scrollIntoView` sui tre punti di deep-link (`/dashboard/richieste`,
+  `/le-mie-richieste` tab "richieste" e tab "lavori" — quest'ultima nuova).
+  Un `void el.offsetWidth` forza un reflow prima di riaggiungere la
+  classe: senza, un secondo click sullo stesso elemento entro la finestra
+  di evidenziazione non farebbe ripartire l'animazione CSS (la classe
+  sarebbe già presente). Beneficio automatico anche per il click sui
+  popup "toast" (CLAUDE.md §72, stessa `notificationDeepLink`, stesso
+  `router.push`): nessuna modifica necessaria a `ToastStack.tsx`.
+
+**Occhio mostra/nascondi su tutti e tre i campi password in `/account`** —
+richiesta esplicita dell'utente (l'ordine attuale→nuova→ripeti era già
+corretto). I tre `<input type="password">` grezzi (mai `Field` di
+`@professionisti/ui`, a differenza di `/registrati`/`/accedi`, che
+avevano già l'occhio) non ne avevano uno. Nuovo `PasswordField` (locale al
+file): wrapper `position:relative` con un `<button>` icona (`Eye`/`EyeOff`
+di `lucide-react`, già importato direttamente nel file — web-only,
+CLAUDE.md §10 Fase 2) che alterna `type="password"`/`type="text"`. Tre
+nuovi stati (`showCurrentPassword`/`showNewPassword`/
+`showConfirmNewPassword`), azzerati anche al click su "Annulla".
+
+**Elenco lingue selezionabile in `/dashboard/profilo`, ordinato per uso
+reale** — due richieste esplicite dell'utente sullo stesso campo: "mostra
+già un elenco delle lingue e si deve selezionare una di quelle" + "fra i
+primi 10 risultati non saranno in ordine alfabetico ma in ordine delle
+più inserite già". Prima il campo era un semplice `<input>` libero (Invio
+o "+ Aggiungi" per aggiungere qualunque testo).
+- **Backend** — nuovo `ProfessionalsService.getLanguagePopularity()`
+  (stesso pattern di `getServicePriceIndex`, CLAUDE.md §26: dato reale,
+  mai un ordine inventato): scarica i soli `spokenLanguages` di ogni
+  profilo non-demo/non-eliminato e conta le occorrenze in memoria (Prisma
+  non aggrega elementi di un array lato query), ordina per conteggio
+  discendente poi alfabetico. Nuovo `GET /professionals/languages/popular`
+  (pubblico, nessun dato sensibile, stesso trattamento di
+  `services/price-index` — prima di `:id` nell'ordine delle rotte) +
+  `apiClient.getLanguagePopularity()`.
+- **Frontend** — nuova costante `CANDIDATE_LANGUAGES` (~30 lingue reali,
+  mercato italiano + principali lingue mondiali: solo l'elenco dei nomi,
+  mai l'ordine, è statico). Il campo (ora "Cerca una lingua...") mostra un
+  dropdown alla messa a fuoco (stesso pattern click-fuori/blur-ritardato
+  già in uso in `Autocomplete.tsx`, qui reimplementato localmente per
+  poter applicare un ordinamento diverso da quello fisso alfabetico del
+  componente condiviso — non toccato, usato altrove per città/categorie):
+  candidati = elenco curato + ogni lingua reale già in uso ma non presente
+  lì (mai perdere un dato reale), filtrati per sottostringa se si digita,
+  ordinati per conteggio reale (`languagePopularity`, scaricato una sola
+  volta al mount) poi alfabetico, primi 10. Click su una voce aggiunge la
+  lingua; l'input libero + "+ Aggiungi" restano come ripiego per una
+  lingua rara non nell'elenco curato, comportamento invariato.
+
+**Testo esplicativo capienza rimosso dal pop-up fascia agenda** — richiesta
+esplicita dell'utente: "elimina questa dicitura: 'Numero massimo di
+prenotazioni per ciascuna modalità. 1 = fascia esatta. Più di 1 = fascia
+generica, sempre a richiesta di preventivo.'" — rimossa dal pop-up
+`SlotEditorModal` (`/dashboard/agenda`), nessuna modifica alla logica
+sottostante (i due campi capienza domicilio/online restano identici).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+uno script Playwright dedicato (27/27 controlli PASS) più due script
+mirati aggiuntivi: `/registrati` (entrambe le schermate, desktop+mobile,
+zero overflow orizzontale, zero pageerror); `/account` (3 campi password
+con occhio funzionante, verificato che il click passa `type="password"`
+a `type="text"`); `/dashboard/profilo` (dropdown lingue verificato con
+precisione — non un match generico sul testo "Inglese" già presente
+altrove nella pagina come esempio, ma un elemento `role="button"`
+cliccabile la cui selezione produce davvero un chip rimovibile
+verificato via `aria-label="Rimuovi Rumeno"`; ordinamento per popolarità
+reale confermato aggiungendo temporaneamente "Filippino" a 3 profili reali
+via SQL — `GET /professionals/languages/popular` conferma `count: 3`, e
+il dropdown per un quarto professionista mostra "Filippino" davanti a
+ogni lingua alfabeticamente precedente con conteggio zero, poi ripristinato
+allo stato originale); agenda (testo esplicativo assente dal DOM dopo
+apertura del pop-up fascia). Campanella: creato un ciclo reale
+richiesta→preventivo→accettazione→completamento tra un professionista e
+un cliente di test (diretto al profilo specifico, evita la selezione dei
+lead per rating) — click su NEW_LEAD (professionista) naviga a
+`/dashboard/richieste?open=<id>`, scrolla alla card esatta e la evidenzia
+(classe applicata subito, rimossa dopo ~2,6s, verificato con un'attesa di
+3s); click su JOB_COMPLETED (cliente) naviga a `?tab=lavori&open=<id>`,
+scrolla ed evidenzia la prenotazione esatta; click su NEW_QUOTE (cliente)
+naviga a `?tab=richieste&open=<id>` sulla card corretta — nessuna
+interferenza tra i due nuovi effetti. Zero errori console in tutti i
+flussi. Account di test ripuliti a fine verifica (`DELETE /auth/me`).
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+(31 route, nessuna nuova).

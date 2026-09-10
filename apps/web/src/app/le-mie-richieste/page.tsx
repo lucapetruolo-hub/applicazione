@@ -41,6 +41,7 @@ import {
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
+import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -206,6 +207,13 @@ function LeMieRichiesteContent() {
   // derivato più sotto dopo i guard di autenticazione: un useEffect non
   // può dipendere da un valore calcolato dopo un return condizionale).
   useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    // Un `?tab=lavori` esplicito (nuovo deep link "lavori", sotto) non deve
+    // far scattare anche questo effetto: lo stesso `guidedRequestId` in
+    // `open=` è sempre anche l'id di una richiesta valida (una prenotazione
+    // nasce sempre da una GuidedRequest), quindi senza questo guard i due
+    // effetti competerebbero sullo stesso parametro.
+    if (tabParam === "lavori") return;
     const targetId = searchParams.get("open");
     if (!targetId || !requests) return;
     if (!requests.some((r) => r.id === targetId)) return;
@@ -219,10 +227,48 @@ function LeMieRichiesteContent() {
     if (index === -1) return;
     setRequestsPage(Math.floor(index / requestsPageSize) + 1);
     setTimeout(() => {
-      document.getElementById(`request-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const elementId = `request-${targetId}`;
+      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Richiesta esplicita dell'utente: non solo scrollare, evidenziare
+      // brevemente la card raggiunta.
+      highlightDeepLinkTarget(elementId);
     }, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, requestsStatusFilter, requestsSort, requestsPageSize, searchParams]);
+
+  // Stesso deep link, ma verso la tab "Lavori accettati" (richiesta
+  // esplicita dell'utente: click su una notifica di lavoro — completato,
+  // annullato dal professionista, riaperto — deve portare all'esatta
+  // prenotazione, non solo alla tab). `open=` porta qui il
+  // `guidedRequestId` della richiesta originale (stesso payload già
+  // arricchito lato backend per questi eventi, bookings.service.ts): si
+  // cerca la Booking corrispondente per risalire al suo id reale.
+  useEffect(() => {
+    if (searchParams.get("tab") !== "lavori") return;
+    const targetGuidedRequestId = searchParams.get("open");
+    if (!targetGuidedRequestId || !bookings) return;
+    const match = bookings.find((b) => b.guidedRequestId === targetGuidedRequestId);
+    if (!match) return;
+    setActiveTab("lavori");
+    if (clientBookingsStatusFilter !== "all") {
+      setClientBookingsStatusFilter("all");
+      return;
+    }
+    const sorted = sortListItems(bookings, clientBookingsSort, {
+      createdAt: (b) => b.createdAt,
+      updatedAt: (b) => b.updatedAt,
+      scheduledAt: (b) => b.scheduledAt,
+    });
+    const index = sorted.findIndex((b) => b.id === match.id);
+    if (index === -1) return;
+    setClientBookingsPage(Math.floor(index / clientBookingsPageSize) + 1);
+    setTimeout(() => {
+      const elementId = `booking-${match.id}`;
+      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      highlightDeepLinkTarget(elementId);
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings, clientBookingsStatusFilter, clientBookingsSort, clientBookingsPageSize, searchParams]);
 
   // Stesso principio di /dashboard: cambiare filtro/ordinamento/quantità
   // riparte sempre da pagina 1.
@@ -478,17 +524,18 @@ function LeMieRichiesteContent() {
                 <Text color={brand.grafite70}>Nessuna prenotazione corrisponde al filtro selezionato.</Text>
               ) : (
                 visibleClientBookings.map((booking) => (
-                  <BookingRow
-                    key={booking.id}
-                    booking={booking}
-                    token={token}
-                    onReviewed={reload}
-                    isNew={newClientBookingIds.has(booking.id)}
-                    unreadCount={combineUnreadCounts(
-                      bookingUnreadCounts.get(booking.id),
-                      booking.guidedRequestId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${booking.professionalProfileId}`) : undefined,
-                    )}
-                  />
+                  <div key={booking.id} id={`booking-${booking.id}`}>
+                    <BookingRow
+                      booking={booking}
+                      token={token}
+                      onReviewed={reload}
+                      isNew={newClientBookingIds.has(booking.id)}
+                      unreadCount={combineUnreadCounts(
+                        bookingUnreadCounts.get(booking.id),
+                        booking.guidedRequestId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${booking.professionalProfileId}`) : undefined,
+                      )}
+                    />
+                  </div>
                 ))
               )}
               <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />

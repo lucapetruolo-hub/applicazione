@@ -214,6 +214,41 @@ export class ProfessionalsService {
   }
 
   /**
+   * Conteggio reale di quante volte ogni lingua compare già in
+   * `ProfessionalProfile.spokenLanguages` su tutta la piattaforma — richiesta
+   * esplicita dell'utente: quando si aggiunge una lingua parlata in
+   * `/dashboard/profilo`, i primi risultati mostrati non devono essere in
+   * ordine alfabetico ma "in ordine delle più inserite già". Stesso principio
+   * di `getServicePriceIndex` sopra (dato reale, mai un ordine inventato),
+   * stessa esclusione demo/eliminati. Prisma non aggrega elementi di un array
+   * lato query: si scaricano i soli array (mai l'intero profilo) e si conta
+   * in memoria — scala già accettata altrove nel progetto per lo stesso
+   * motivo (CLAUDE.md §7, singola città/poche categorie).
+   */
+  async getLanguagePopularity(): Promise<{ name: string; count: number }[]> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { isDemo: false, deletedAt: null },
+      select: { spokenLanguages: true },
+    });
+
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const profile of profiles) {
+      for (const lang of profile.spokenLanguages) {
+        const trimmed = lang.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        const existing = counts.get(key);
+        if (existing) existing.count += 1;
+        else counts.set(key, { label: trimmed, count: 1 });
+      }
+    }
+
+    return Array.from(counts.values())
+      .map((c) => ({ name: c.label, count: c.count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "it"));
+  }
+
+  /**
    * Anteprima "prossimi orari liberi" per la mini-agenda della card di
    * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it).
    * Un'unica query batch per l'intera pagina di risultati invece di una per

@@ -14,6 +14,46 @@ import { MediaPreview } from "@/components/MediaPreview";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
+// Elenco di candidati per il selettore "Lingue parlate" (richiesta esplicita
+// dell'utente: mostrare già un elenco selezionabile invece del solo campo
+// libero) — nomi di lingue reali, non un dato inventato: solo l'ORDINE con
+// cui compaiono viene dal conteggio reale d'uso sulla piattaforma
+// (`languagePopularity`, sotto), mai questo elenco statico da solo. Lingue
+// più rilevanti per il mercato italiano (comunitarie + comunità straniere
+// più diffuse in Italia) più le principali lingue mondiali.
+const CANDIDATE_LANGUAGES = [
+  "Italiano",
+  "Inglese",
+  "Francese",
+  "Spagnolo",
+  "Tedesco",
+  "Rumeno",
+  "Albanese",
+  "Arabo",
+  "Cinese",
+  "Portoghese",
+  "Russo",
+  "Polacco",
+  "Ucraino",
+  "Hindi",
+  "Urdu",
+  "Bengalese",
+  "Wolof",
+  "Tigrino",
+  "Amarico",
+  "Bulgaro",
+  "Moldavo",
+  "Ungherese",
+  "Filippino",
+  "Vietnamita",
+  "Giapponese",
+  "Coreano",
+  "Turco",
+  "Greco",
+  "Serbo",
+  "Croato",
+];
+
 const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 
@@ -79,6 +119,13 @@ export default function DashboardProfiloPage() {
   // rimovibile/estendibile — stesso pattern chip di subTags/servizi.
   const [spokenLanguages, setSpokenLanguages] = useState<string[]>(["Italiano"]);
   const [newLanguage, setNewLanguage] = useState("");
+  const [isLanguageFieldFocused, setIsLanguageFieldFocused] = useState(false);
+  // Conteggio reale di quante volte ogni lingua è già stata inserita da un
+  // altro professionista sulla piattaforma (richiesta esplicita dell'utente:
+  // "fra i primi 10 risultati non saranno in ordine alfabetico ma in ordine
+  // delle più inserite già") — mai un ordine inventato, stesso principio già
+  // seguito per il micro-tool prezzi in homepage.
+  const [languagePopularity, setLanguagePopularity] = useState<{ name: string; count: number }[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +157,10 @@ export default function DashboardProfiloPage() {
   // prompt per un fetch fallito/non ancora tornato).
   const [isFirstProfileSave, setIsFirstProfileSave] = useState(false);
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
+
+  useEffect(() => {
+    apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -335,6 +386,26 @@ export default function DashboardProfiloPage() {
   function removePortfolioPhoto(url: string) {
     setPortfolioUrls((prev) => prev.filter((u) => u !== url));
   }
+
+  // Elenco suggerito per "Lingue parlate" — richiesta esplicita dell'utente:
+  // mostrato già a fuoco (non solo dopo aver digitato), ordinato per numero
+  // reale di volte in cui quella lingua è già stata inserita da altri
+  // professionisti (mai alfabetico), primi 10 risultati. Candidati =
+  // l'elenco curato più ogni lingua reale già in uso ma non presente lì
+  // (mai perdere un dato reale solo perché non era nella lista statica).
+  const languagePopularityMap = new Map(languagePopularity.map((l) => [l.name.toLowerCase(), l.count]));
+  const languageCandidates = new Set(CANDIDATE_LANGUAGES);
+  for (const l of languagePopularity) languageCandidates.add(l.name);
+  const languageQuery = newLanguage.trim().toLowerCase();
+  const languageSuggestions = Array.from(languageCandidates)
+    .filter((lang) => !spokenLanguages.includes(lang))
+    .filter((lang) => !languageQuery || lang.toLowerCase().includes(languageQuery))
+    .sort((a, b) => {
+      const countDiff = (languagePopularityMap.get(b.toLowerCase()) ?? 0) - (languagePopularityMap.get(a.toLowerCase()) ?? 0);
+      if (countDiff !== 0) return countDiff;
+      return a.localeCompare(b, "it");
+    })
+    .slice(0, 10);
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" gap="$5">
@@ -702,37 +773,83 @@ export default function DashboardProfiloPage() {
               </XStack>
             ))}
           </XStack>
-          <XStack gap="$2" alignItems="center">
-            <input
-              value={newLanguage}
-              onChange={(e) => setNewLanguage(e.target.value)}
-              placeholder="Es. Inglese"
-              style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                const trimmed = newLanguage.trim();
-                if (trimmed && !spokenLanguages.includes(trimmed)) {
-                  setSpokenLanguages((prev) => [...prev, trimmed]);
-                }
-                setNewLanguage("");
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="$3"
-              height={40}
-              onPress={() => {
-                const trimmed = newLanguage.trim();
-                if (trimmed && !spokenLanguages.includes(trimmed)) {
-                  setSpokenLanguages((prev) => [...prev, trimmed]);
-                }
-                setNewLanguage("");
-              }}
-            >
-              + Aggiungi
-            </Button>
-          </XStack>
+          <YStack position="relative" gap="$2">
+            <XStack gap="$2" alignItems="center">
+              <input
+                value={newLanguage}
+                onChange={(e) => setNewLanguage(e.target.value)}
+                onFocus={() => setIsLanguageFieldFocused(true)}
+                onBlur={() => setTimeout(() => setIsLanguageFieldFocused(false), 150)}
+                placeholder="Cerca una lingua..."
+                style={{ ...smallInputStyle, flex: 1, minWidth: 160 }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  const trimmed = newLanguage.trim();
+                  if (trimmed && !spokenLanguages.includes(trimmed)) {
+                    setSpokenLanguages((prev) => [...prev, trimmed]);
+                  }
+                  setNewLanguage("");
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="$3"
+                height={40}
+                onPress={() => {
+                  const trimmed = newLanguage.trim();
+                  if (trimmed && !spokenLanguages.includes(trimmed)) {
+                    setSpokenLanguages((prev) => [...prev, trimmed]);
+                  }
+                  setNewLanguage("");
+                }}
+              >
+                + Aggiungi
+              </Button>
+            </XStack>
+
+            {/* Elenco selezionabile — richiesta esplicita dell'utente: già
+                visibile a fuoco, ordinato per quante volte quella lingua è
+                già stata inserita da altri professionisti (dato reale), non
+                in ordine alfabetico. */}
+            {isLanguageFieldFocused && languageSuggestions.length > 0 ? (
+              <YStack
+                position="absolute"
+                top="100%"
+                left={0}
+                right={0}
+                marginTop="$1"
+                backgroundColor={brand.calce}
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderRadius="$3"
+                overflow="hidden"
+                zIndex={10}
+                shadowColor="rgba(43,32,19,0.1)"
+                shadowRadius={12}
+                shadowOffset={{ width: 0, height: 4 }}
+                shadowOpacity={1}
+              >
+                {languageSuggestions.map((lang) => (
+                  <XStack
+                    key={lang}
+                    padding="$3"
+                    cursor="pointer"
+                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    onPress={() => {
+                      setSpokenLanguages((prev) => [...prev, lang]);
+                      setNewLanguage("");
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text fontSize="$3" color={brand.grafite}>
+                      {lang}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+            ) : null}
+          </YStack>
         </Surface>
 
         <Surface gap="$2">

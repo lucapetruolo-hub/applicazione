@@ -4,7 +4,7 @@ import { Suspense, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, Field, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -14,6 +14,76 @@ export default function RegistratiPage() {
     <Suspense fallback={null}>
       <RegistratiForm />
     </Suspense>
+  );
+}
+
+/**
+ * Sfondo condiviso da RoleChoiceScreen/RegistratiForm — richiesta esplicita
+ * dell'utente di rendere la pagina "più innovativa" (stesso principio già
+ * seguito per NotificationBell, CLAUDE.md §76): due forme sfumate
+ * decorative dietro la card del form invece dello sfondo pesca piatto di
+ * prima. Le forme vivono in un proprio contenitore assoluto con
+ * `overflow:hidden` dedicato (`.auth-page-blobs`, apps/web/globals.css) —
+ * mai sull'intera colonna scrollabile, stesso bug già documentato altrove
+ * in questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
+ * overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
+ * prima stesura.
+ */
+function AuthPageBackground({ children }: { children: ReactNode }) {
+  return (
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4" position="relative">
+      <div className="auth-page-blobs" aria-hidden="true">
+        <div className="auth-page-blob auth-page-blob--one" />
+        <div className="auth-page-blob auth-page-blob--two" />
+      </div>
+      <YStack width="100%" alignItems="center" position="relative" zIndex={1}>
+        {children}
+      </YStack>
+    </YStack>
+  );
+}
+
+/** Badge circolare con icona su sfondo a gradiente — in cima ad ogni card
+ * di questa pagina, stesso principio "un tocco di profondità in più" già
+ * usato per il pannello della campanella notifiche. */
+function AuthIconBadge({ icon }: { icon: "sparkles" | "search" | "hard-hat" }) {
+  return (
+    <div
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: 999,
+        background: `linear-gradient(135deg, ${brand.cianografia}, ${brand.cianografiaScuro})`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <Icon name={icon} size={26} color="white" strokeWidth={1.5} />
+    </div>
+  );
+}
+
+/** Due chip di fiducia compatte, stesso principio della striscia già in uso
+ * nella pagina risultati di ricerca (CLAUDE.md §70, F1.4) — qui in versione
+ * ridotta a due voci pertinenti al momento della registrazione. */
+function TrustChips() {
+  return (
+    <XStack flexWrap="wrap" gap="$2" justifyContent="center">
+      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+        <Icon name="shield" size={13} color={brand.grafite70} strokeWidth={1.5} />
+        <Text fontSize={12} color={brand.grafite70}>
+          I tuoi dati sono protetti
+        </Text>
+      </XStack>
+      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+        <Icon name="heart-handshake" size={13} color={brand.grafite70} strokeWidth={1.5} />
+        <Text fontSize={12} color={brand.grafite70}>
+          Gratis, nessuna carta richiesta
+        </Text>
+      </XStack>
+    </XStack>
   );
 }
 
@@ -37,15 +107,18 @@ function RoleChoiceScreen({
   noAccountFound?: boolean;
 }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={480} gap="$5">
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
-            Registrati
-          </Text>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Come vuoi registrarti?
-          </Text>
+    <AuthPageBackground>
+      <Surface floating className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon="sparkles" />
+          <YStack alignItems="center" gap="$1">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia} textAlign="center">
+              Passo 1 di 2
+            </Text>
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              Come vuoi registrarti?
+            </Text>
+          </YStack>
         </YStack>
 
         {noAccountFound ? (
@@ -58,6 +131,7 @@ function RoleChoiceScreen({
 
         <YStack gap="$3">
           <XStack
+            className="auth-role-card"
             alignItems="center"
             gap="$3"
             padding="$4"
@@ -84,6 +158,7 @@ function RoleChoiceScreen({
           </XStack>
 
           <XStack
+            className="auth-role-card"
             alignItems="center"
             gap="$3"
             padding="$4"
@@ -118,8 +193,8 @@ function RoleChoiceScreen({
             </Text>
           </Link>
         </Text>
-      </YStack>
-    </YStack>
+      </Surface>
+    </AuthPageBackground>
   );
 }
 
@@ -266,18 +341,23 @@ function RegistratiForm() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={420} gap="$5">
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
-            {isProfessional ? "Professionisti" : "Registrati"}
-          </Text>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            {isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}
-          </Text>
-          {isProfessional ? (
-            <Text color={brand.grafite70}>Gratis per iniziare: completa il profilo e inizia a ricevere richieste.</Text>
-          ) : null}
+    <AuthPageBackground>
+      <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon={isProfessional ? "hard-hat" : "search"} />
+          <YStack alignItems="center" gap="$1">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia} textAlign="center">
+              Passo 2 di 2
+            </Text>
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              {isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}
+            </Text>
+            {isProfessional ? (
+              <Text color={brand.grafite70} textAlign="center">
+                Gratis per iniziare: completa il profilo e inizia a ricevere richieste.
+              </Text>
+            ) : null}
+          </YStack>
         </YStack>
 
         <GoogleSignInButton onCredential={handleGoogleCredential} disabled={!canSubmitConsent} />
@@ -382,6 +462,8 @@ function RegistratiForm() {
           >
             {isSubmitting ? "Creazione account..." : "Registrati"}
           </Button>
+
+          <TrustChips />
         </YStack>
 
         <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
@@ -392,7 +474,7 @@ function RegistratiForm() {
             </Text>
           </Link>
         </Text>
-      </YStack>
-    </YStack>
+      </Surface>
+    </AuthPageBackground>
   );
 }

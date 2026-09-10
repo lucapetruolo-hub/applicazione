@@ -91,8 +91,19 @@ function payloadString(n: UnreadNotification, key: string): string | null {
 export function notificationDeepLink(type: string, payload: unknown): string | null {
   const destination = notificationDestination(type);
   if (!destination) return null;
-  if (destination.page !== "/dashboard") return `${destination.page}?tab=${destination.tab}`;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+  if (destination.page !== "/dashboard") {
+    // Richiesta esplicita dell'utente: il click non deve solo cambiare tab,
+    // deve portare all'esatta altezza dell'aggiornamento — `?open=` (già
+    // gestito da /le-mie-richieste per la tab "richieste") porta ora anche
+    // il `guidedRequestId` di origine per gli eventi "lavori" (JOB_COMPLETED,
+    // BOOKING_CANCELED_BY_PROFESSIONAL, ecc. lo portano già nel payload,
+    // arricchito lato backend — vedi bookings.service.ts), disambiguato dal
+    // `tab` esplicito già presente in URL.
+    return guidedRequestId
+      ? `${destination.page}?tab=${destination.tab}&open=${guidedRequestId}`
+      : `${destination.page}?tab=${destination.tab}`;
+  }
   return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
 }
 

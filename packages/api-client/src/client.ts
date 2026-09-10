@@ -420,6 +420,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         { cache: "no-store" },
       ),
 
+    /** Conteggio reale di quante volte ogni lingua è già stata inserita da un professionista — alimenta l'elenco selezionabile in /dashboard/profilo. */
+    getLanguagePopularity: () =>
+      request<{ name: string; count: number }[]>("/professionals/languages/popular", { cache: "no-store" }),
+
     /** Riprova sociale reale per la home: ultime recensioni pubbliche (doppio cieco), mai dati finti. */
     getRecentReviews: () =>
       request<
