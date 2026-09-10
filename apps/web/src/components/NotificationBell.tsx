@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
-import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationCopy } from "@/lib/notificationCopy";
 import { notificationDeepLink } from "@/lib/notificationSections";
@@ -114,9 +114,23 @@ function NotificationRow({
         accessibilityRole={destination ? "button" : undefined}
         accessibilityLabel={destination ? `${copy.message} — apri` : copy.message}
       >
-        <Text fontSize={18} lineHeight={20}>
-          {copy.icon}
-        </Text>
+        {/* Icona in un chip colorato invece del solo emoji isolato — resa
+            più "da app moderna" (richiesta esplicita dell'utente), lo
+            stesso principio già in uso per le icone categoria colorate
+            altrove nel prodotto. */}
+        <YStack
+          width={36}
+          height={36}
+          borderRadius={999}
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor={isUnread ? brand.cianografiaVelo : brand.gesso}
+          flexShrink={0}
+        >
+          <Text fontSize={17} lineHeight={19}>
+            {copy.icon}
+          </Text>
+        </YStack>
         <YStack flex={1} flexBasis={0} gap={2} paddingRight={20}>
           <Text fontSize="$2" color={brand.grafite} fontWeight={isUnread ? "700" : "500"}>
             {copy.message}
@@ -125,8 +139,14 @@ function NotificationRow({
             {timeAgo(item.createdAt)}
           </Text>
         </YStack>
-        {isUnread ? <YStack width={8} height={8} borderRadius={999} backgroundColor={brand.cianografia} marginTop={6} /> : null}
+        {isUnread ? <YStack width={7} height={7} borderRadius={999} backgroundColor={brand.cianografia} marginTop={7} /> : null}
       </XStack>
+      {/* Accento a sinistra sulle non lette — sostituisce il solo sfondo
+          tinto come unico indizio di "non letta", più riconoscibile a
+          colpo d'occhio in una lista scorrevole. */}
+      {isUnread ? (
+        <YStack position="absolute" top={0} bottom={0} left={0} width={3} backgroundColor={brand.cianografia} />
+      ) : null}
       {/* Pulsante di eliminazione — richiesta esplicita dell'utente: "un
           piccolo pulsante in alto a destra per ogni notifica", oltre allo
           swipe già gestito sopra sulla riga intera. */}
@@ -230,22 +250,25 @@ export function NotificationBell() {
       >
         <Icon name="bell-ring" size={20} color={brand.grafite} />
         {unreadCount > 0 ? (
-          <YStack
-            position="absolute"
-            top={2}
-            right={2}
-            backgroundColor={brand.urgenza}
-            borderRadius={999}
-            minWidth={16}
-            height={16}
-            paddingHorizontal={3}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Text fontSize={10} fontWeight="700" color="white" lineHeight={12}>
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Text>
-          </YStack>
+          // Anello pulsante attorno al pallino (richiesta esplicita
+          // dell'utente, resa più "da sito di ultima generazione"): un
+          // `<div>` grezzo per la keyframe animation (globals.css), non
+          // ottenibile con le sole prop Tamagui.
+          <div className="notification-bell-ping" style={{ position: "absolute", top: 2, right: 2, borderRadius: 999 }}>
+            <YStack
+              backgroundColor={brand.urgenza}
+              borderRadius={999}
+              minWidth={16}
+              height={16}
+              paddingHorizontal={3}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text fontSize={10} fontWeight="700" color="white" lineHeight={12}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </Text>
+            </YStack>
+          </div>
         ) : null}
       </XStack>
 
@@ -260,14 +283,24 @@ export function NotificationBell() {
         // con `left`/`right` fissi sotto 480px, ancorato al vero viewport
         // indipendentemente da dove sta la campanella nell'header.
         <div className="notification-bell-panel" style={{ width: 340, maxWidth: "90vw", zIndex: 1000 }}>
+        {/* Pannello ridisegnato in stile "vetro smerigliato" (richiesta
+            esplicita dell'utente: "rendilo più innovativo come i siti di
+            ultima generazione") — sfondo bianco translucido +
+            `backdrop-filter: blur` (classe CSS, non esprimibile con le
+            sole prop Tamagui) invece del bianco pieno di prima, ingresso
+            animato (scala + dissolvenza) invece di comparire di scatto,
+            angoli più morbidi (radiusDocLg) e ombra più profonda/diffusa. */}
         <YStack
-          maxHeight={420}
+          className="notification-bell-panel-inner"
+          maxHeight={440}
           overflow="hidden"
-          backgroundColor={brand.calce}
-          borderRadius={radiusDoc}
-          shadowColor="rgba(43,32,19,0.12)"
-          shadowRadius={16}
-          shadowOffset={{ width: 0, height: 6 }}
+          backgroundColor="rgba(255,255,255,0.86)"
+          borderRadius={radiusDocLg}
+          borderWidth={1}
+          borderColor="rgba(255,255,255,0.6)"
+          shadowColor="rgba(43,32,19,0.18)"
+          shadowRadius={28}
+          shadowOffset={{ width: 0, height: 12 }}
           shadowOpacity={1}
         >
           <XStack
@@ -278,9 +311,14 @@ export function NotificationBell() {
             alignItems="center"
             justifyContent="space-between"
           >
-            <Text fontFamily="$body" fontWeight="700" fontSize="$3" color={brand.grafite}>
-              Notifiche
-            </Text>
+            <XStack alignItems="center" gap="$2">
+              <YStack width={26} height={26} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo}>
+                <Icon name="bell-ring" size={13} color={brand.cianografia} />
+              </YStack>
+              <Text fontFamily="$body" fontWeight="700" fontSize="$3" color={brand.grafite}>
+                Notifiche
+              </Text>
+            </XStack>
             {history && history.length > 0 ? (
               <XStack cursor="pointer" onPress={handleDeleteAll} accessibilityRole="button" accessibilityLabel="Elimina tutte le notifiche">
                 <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
@@ -289,15 +327,20 @@ export function NotificationBell() {
               </XStack>
             ) : null}
           </XStack>
-          <YStack maxHeight={360} overflow="scroll">
+          <YStack maxHeight={380} overflow="scroll">
             {isLoading ? (
               <Text padding="$4" fontSize="$2" color={brand.grafite70}>
                 Caricamento...
               </Text>
             ) : !history || history.length === 0 ? (
-              <Text padding="$4" fontSize="$2" color={brand.grafite70}>
-                Nessuna notifica per ora.
-              </Text>
+              <YStack padding="$5" alignItems="center" gap="$2">
+                <Text fontSize={26} lineHeight={30}>
+                  🔔
+                </Text>
+                <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+                  Nessuna notifica per ora.
+                </Text>
+              </YStack>
             ) : (
               history.map((item) => <NotificationRow key={item.id} item={item} onOpen={handleItemClick} onDelete={handleDelete} />)
             )}

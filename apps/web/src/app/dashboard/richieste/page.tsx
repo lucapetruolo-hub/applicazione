@@ -435,10 +435,12 @@ function RichiesteContent() {
     return [...set].sort();
   }, [leads]);
 
-  // Conteggio dei filtri del pop-up "Filtri" (ricerca/ordina/zona) — il
-  // toggle "A domicilio/Online" resta fuori dal pop-up e ha il proprio
-  // stato sempre visibile, non contribuisce qui.
-  const filtersActiveCount = (search.trim() ? 1 : 0) + (zoneFilter !== "tutte" ? 1 : 0) + (sortMode !== "recenti" ? 1 : 0);
+  // Conteggio dei filtri del pop-up "Filtri" (ordina/zona) — la ricerca è
+  // ora esterna al pop-up, con il proprio campo sempre visibile (il testo
+  // digitato è già la propria indicazione di stato), e il toggle "A
+  // domicilio/Online" resta anch'esso fuori: nessuno dei due contribuisce
+  // al conteggio qui.
+  const filtersActiveCount = (zoneFilter !== "tutte" ? 1 : 0) + (sortMode !== "recenti" ? 1 : 0);
 
   const stageByLeadId = useMemo(() => {
     const map = new Map<string, RequestStage>();
@@ -590,11 +592,19 @@ function RichiesteContent() {
           })}
         </CategoryCarousel>
 
-        {/* Barra filtri — richiesta esplicita dell'utente: ricerca/ordina/
-            zona raggruppati dentro un pulsante "Filtri" (pop-up, stesso
-            pattern overlay già in uso altrove nel prodotto — role="dialog",
-            chiusura su Escape/click sul backdrop), il toggle "A domicilio/
-            Online" resta invece fuori, sempre visibile. */}
+        {/* Barra filtri — richiesta esplicita dell'utente: la ricerca resta
+            esterna, sempre visibile (non dentro il pop-up "Filtri"), mentre
+            ordina/zona restano raggruppati nel pulsante "Filtri" (pop-up,
+            stesso pattern overlay già in uso altrove nel prodotto —
+            role="dialog", chiusura su Escape/click sul backdrop). Il toggle
+            "A domicilio/Online" resta anch'esso fuori, sempre visibile. */}
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cerca in ogni campo della richiesta..."
+          style={{ ...filterInputStyle, width: "100%" }}
+        />
+
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <XStack
             alignItems="center"
@@ -685,12 +695,6 @@ function RichiesteContent() {
               </XStack>
 
               <YStack gap="$3">
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cerca in ogni campo della richiesta..."
-                  style={{ ...filterInputStyle, width: "100%" }}
-                />
                 <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="recenti">Data di ricezione più recente</option>
                   <option value="vecchie">Data di ricezione più vecchie</option>
@@ -711,7 +715,6 @@ function RichiesteContent() {
                   justifyContent="center"
                   cursor="pointer"
                   onPress={() => {
-                    setSearch("");
                     setSortMode("recenti");
                     setZoneFilter("tutte");
                   }}

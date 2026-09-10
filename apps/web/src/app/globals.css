@@ -149,6 +149,43 @@ a {
   }
 }
 
+/* Campanella notifiche — resa più "moderna" (richiesta esplicita
+   dell'utente): pannello con ingresso animato (scala + dissolvenza dal
+   basso verso l'alto invece di comparire di scatto) e sfondo a vetro
+   smerigliato (`backdrop-filter`, non ottenibile con le sole prop
+   Tamagui/react-native-web — stesso principio "CSS puro per un dettaglio
+   che Tamagui non rende bene" già seguito altrove in questo file), più un
+   anello pulsante attorno al pallino di notifiche non lette per farlo
+   notare senza doverci passare sopra. `prefers-reduced-motion` è già
+   gestito globalmente più sotto in questo file (le durate collassano a
+   istantanee), nessun guard aggiuntivo necessario qui. */
+@keyframes notification-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.notification-bell-panel-inner {
+  animation: notification-panel-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+@keyframes notification-ping {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+  }
+}
+.notification-bell-ping {
+  animation: notification-ping 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
 .admin-sidebar {
   display: none;
 }

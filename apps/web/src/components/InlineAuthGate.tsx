@@ -54,7 +54,6 @@ function ConsentCheckbox({ checked, onToggle, children }: { checked: boolean; on
 export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: () => void; onClose: () => void }) {
   const { login } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -96,7 +95,6 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
     const result = registerSchema.safeParse({
       email: email.trim(),
       password,
-      name: name.trim() || undefined,
       role: "CLIENT",
       acceptedLegalTerms,
       declaredAdult,
@@ -210,9 +208,6 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
           ) : null}
 
           <YStack gap="$3">
-            {mode === "register" ? (
-              <Field label="Nome" value={name} onChangeText={setName} placeholder="Il tuo nome" autoComplete="given-name" accessibilityLabel="Nome" />
-            ) : null}
             <Field
               label="Email"
               value={email}

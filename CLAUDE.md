@@ -9927,3 +9927,106 @@ dell'ambiente di sviluppo già documentata altrove in questo file).
 Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`, `web`,
 `mobile`), build di produzione `apps/web` verde (31 route, nessuna
 nuova).
+
+---
+
+## 76. Campanella notifiche in stile "ultima generazione", registrazione senza campo Nome, /account riorganizzato, ricerca esterna al pop-up Filtri
+
+Cinque richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Campanella notifiche ridisegnata** — richiesta esplicita: *"il campo
+notifiche con la campanella e la finestra che si apre rendilo più
+innovativo come i siti di ultima generazione"*. `NotificationBell.tsx`:
+- Pannello a "vetro smerigliato" (`backdrop-filter: blur(14px)
+  saturate(160%)` + sfondo bianco translucido `rgba(255,255,255,0.86)`,
+  nuova classe `.notification-bell-panel-inner` in `globals.css` — stesso
+  principio "CSS puro per un dettaglio che Tamagui non rende bene" già
+  seguito altrove) invece del bianco pieno di prima, con un ingresso
+  animato (scala+dissolvenza, `@keyframes notification-panel-in`) invece
+  di comparire di scatto — angoli più morbidi (`radiusDocLg`, 32px) e ombra
+  più profonda/diffusa.
+- Anello pulsante (`@keyframes notification-ping`, stesso principio di un
+  "ping" da notifica push moderna) attorno al pallino rosso quando ci sono
+  notifiche non lette.
+- Ogni riga (`NotificationRow`) mostra ora l'icona in un chip circolare
+  colorato (tinta `cianografiaVelo` se non letta) invece del solo emoji
+  isolato, più un accento verticale a sinistra sulle righe non lette
+  (oltre allo sfondo tinto già esistente) — più riconoscibile a colpo
+  d'occhio in una lista scorrevole.
+- Intestazione del pannello con un piccolo chip icona accanto al titolo
+  "Notifiche"; stato vuoto arricchito con un'icona campana + testo
+  centrato invece del solo testo grigio isolato.
+`prefers-reduced-motion` resta gestito dalla regola globale già esistente
+in `globals.css` (le durate collassano a istantanee), nessun guard
+aggiuntivo necessario per le nuove animazioni.
+
+**Campo "Nome" rimosso dalla registrazione** — richiesta esplicita
+dell'utente ("Quando si crea un account elimina la stringa 'nome'"),
+chiarita con `AskUserQuestion` (tre punti del codice avevano quel testo,
+con etichette leggermente diverse: `/registrati` aveva "Nome (opzionale)",
+`InlineAuthGate` aveva "Nome" senza suffisso) — l'utente ha scelto di
+**rimuovere del tutto il campo dalla registrazione**, non solo
+l'etichetta. `registerSchema.name` era già opzionale a livello di schema
+(nessuna migrazione/modifica backend necessaria): rimossi lo stato
+`name`/`setName` e il `<Field>` corrispondente sia da
+`apps/web/src/app/registrati/page.tsx` sia da
+`apps/web/src/components/InlineAuthGate.tsx` (il gate di login inline
+introdotto in CLAUDE.md §70/F2.2) — in entrambi i casi il payload inviato
+a `registerSchema.safeParse`/`apiClient.register` non passa più `name`
+(sempre `undefined` per un account appena creato), il nome resta
+aggiungibile in un secondo momento da "Impostazioni dell'account". Sul
+prelievo dati automatico da Google, seconda parte della stessa richiesta,
+l'utente ha scelto di **non** aggiungere permessi extra: l'app continua a
+prelevare solo nome/cognome/email/foto (già disponibili oggi dal login
+base di Google) — telefono/data di nascita/indirizzo restano da inserire
+manualmente, nessun nuovo scope OAuth richiesto (avrebbe comportato un
+consenso Google aggiuntivo e un fallback comunque necessario, dato che
+Google non garantisce quei dati anche col permesso).
+
+**`/account` — password attuale→nuova→ripeti, Salva/Annulla in fondo alla
+pagina** — due richieste esplicite dell'utente. (1) *"Quando si vuole
+impostare una nuova password, fai inserire prima la vecchia password poi
+la nuova e poi ripeti password"*: l'ordine "attuale→nuova" era già
+corretto, mancava il terzo campo di conferma — aggiunto
+`confirmNewPassword` (nuovo stato), validato in `handleChangePassword`
+("Le password non coincidono." se non combacia, stesso pattern già in uso
+in `/registrati`), azzerato insieme agli altri due campi sia al
+salvataggio riuscito sia su "Annulla". (2) *"I pulsanti 'salva' e
+'annulla' mettili in fondo la pagina"*: il blocco Salva/Annulla del form
+principale (Profilo/Contatti/Indirizzo predefinito) è stato spostato dalla
+posizione precedente — a metà pagina, prima delle sezioni "Accesso e
+sicurezza"/"Dati e account" — alla fine della pagina, dopo `Zona
+pericolosa`/"Dati e account". Password e cancellazione account
+mantengono le proprie azioni indipendenti, non toccate da questo
+spostamento.
+
+**Ricerca esterna al pop-up "Filtri" in `/dashboard/richieste`** —
+correzione immediata alla scelta di design del giro precedente (§75):
+*"il campo di ricerca in richieste ricevute lascialo esternamente non
+all'interno del pulsante filtri"*. Il campo di ricerca torna ad essere
+sempre visibile sopra la riga "Filtri"/toggle domicilio-online (non più
+dentro il pop-up) — `filtersActiveCount` ora conta solo ordinamento/zona
+(la ricerca ha il proprio campo visibile, il testo digitato è già la sua
+indicazione di stato), e "Reimposta filtri" nel pop-up resetta solo
+ordinamento/zona, non la ricerca (che resta comunque sempre modificabile
+direttamente dal campo esterno).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: registrazione client senza campo `name` riuscita (`POST
+/auth/register` senza quella chiave, account creato correttamente);
+`/registrati` e la relativa UI confermano zero occorrenze di "Nome"/"Nome
+(opzionale)" nel form, Email resta il primo campo; popup "Ordinato per
+pertinenza" verificato senza la frase sul badge "In evidenza"; pannello
+notifiche aperto con `backdrop-filter: blur(14px) saturate(1.6)`,
+`border-radius: 32px`, sfondo translucido confermati via
+`getComputedStyle`, stato vuoto visibile; `/account` con i tre campi
+password nell'ordine esatto "Password attuale"/"Nuova password (almeno 8
+caratteri)"/"Ripeti la nuova password" (via `placeholder` di ciascun
+input), bottone "Salva" del form principale confermato posizionato sotto
+la sezione "Dati e account" (coordinata Y maggiore). Zero errori console
+reali in tutti i flussi (l'unico osservato, `ERR_TUNNEL_CONNECTION_FAILED`,
+è la stessa limitazione di rete dell'ambiente di sviluppo già documentata
+altrove in questo file). Account di test ripuliti a fine verifica
+(`DELETE /auth/me`). Typecheck pulito su tutti i package (`shared`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione
+`apps/web` verde (31 route, nessuna nuova).

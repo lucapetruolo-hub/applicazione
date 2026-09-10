@@ -419,7 +419,7 @@ export function ResultsListWithMap({
             <div className="sort-info-body">
               <p>I risultati sono ordinati per pertinenza, sempre nello stesso modo:</p>
               <ol>
-                <li>prima i professionisti con visibilità in evidenza (un servizio a pagamento, sempre segnalato con il badge "In evidenza");</li>
+                <li>prima i professionisti con visibilità in evidenza;</li>
                 <li>a parità di posizione, la valutazione media più alta;</li>
                 <li>a parità di valutazione, il numero di recensioni ricevute.</li>
               </ol>

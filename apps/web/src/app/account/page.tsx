@@ -85,6 +85,7 @@ export default function AccountPage() {
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -239,6 +240,10 @@ export default function AccountPage() {
       setPasswordError("La nuova password deve avere almeno 8 caratteri.");
       return;
     }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Le password non coincidono.");
+      return;
+    }
 
     setIsSavingPassword(true);
     try {
@@ -250,6 +255,7 @@ export default function AccountPage() {
       setPasswordSaved(true);
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmNewPassword("");
       setIsEditingPassword(false);
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -470,26 +476,6 @@ export default function AccountPage() {
           </FieldRow>
         </Surface>
 
-        {profileError ? (
-          <Text color={brand.urgenza} fontSize="$3">
-            {profileError}
-          </Text>
-        ) : null}
-        {profileSaved ? (
-          <Text color={brand.verificato} fontSize="$3">
-            Dati salvati!
-          </Text>
-        ) : null}
-
-        <XStack gap="$4" alignItems="center">
-          <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
-            {isSavingProfile ? "Salvataggio..." : "Salva"}
-          </Button>
-          <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
-            Annulla
-          </Text>
-        </XStack>
-
         <Surface gap="$4">
           <SectionTitle>Accesso e sicurezza</SectionTitle>
 
@@ -511,6 +497,14 @@ export default function AccountPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Nuova password (almeno 8 caratteri)"
+                  autoComplete="new-password"
+                  style={inputStyle}
+                />
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Ripeti la nuova password"
                   autoComplete="new-password"
                   style={inputStyle}
                 />
@@ -540,6 +534,7 @@ export default function AccountPage() {
                       setPasswordError(null);
                       setCurrentPassword("");
                       setNewPassword("");
+                      setConfirmNewPassword("");
                     }}
                   >
                     Annulla
@@ -676,6 +671,33 @@ export default function AccountPage() {
             </YStack>
           ) : null}
         </Surface>
+
+        {/* Salva/Annulla del form profilo (Profilo/Contatti/Indirizzo
+            predefinito) spostati in fondo alla pagina — richiesta esplicita
+            dell'utente: prima stavano a metà pagina, prima delle sezioni
+            "Accesso e sicurezza"/"Dati e account", separati dal resto del
+            contenuto della pagina che restava sotto di loro. La password e
+            l'eliminazione account hanno già le proprie azioni indipendenti
+            più in alto, non toccate da questo spostamento. */}
+        {profileError ? (
+          <Text color={brand.urgenza} fontSize="$3">
+            {profileError}
+          </Text>
+        ) : null}
+        {profileSaved ? (
+          <Text color={brand.verificato} fontSize="$3">
+            Dati salvati!
+          </Text>
+        ) : null}
+
+        <XStack gap="$4" alignItems="center">
+          <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
+            {isSavingProfile ? "Salvataggio..." : "Salva"}
+          </Button>
+          <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
+            Annulla
+          </Text>
+        </XStack>
       </YStack>
 
       {cropImageSrc ? <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} /> : null}

@@ -165,7 +165,6 @@ function RegistratiForm() {
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -220,7 +219,6 @@ function RegistratiForm() {
     const result = registerSchema.safeParse({
       email: email.trim(),
       password,
-      name: name.trim() || undefined,
       role,
       acceptedLegalTerms,
       declaredAdult,
@@ -295,7 +293,6 @@ function RegistratiForm() {
         ) : null}
 
         <YStack gap="$4">
-          <Field label="Nome (opzionale)" value={name} onChangeText={setName} placeholder="Il tuo nome" accessibilityLabel="Nome" />
           <Field
             label="Email"
             value={email}
