@@ -628,9 +628,9 @@ function RichiesteContent() {
           <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
             {(
               [
-                { key: "tutte", label: "Tutte" },
-                { key: "HOME", label: "A domicilio" },
-                { key: "ONLINE", label: "Online" },
+                { key: "tutte", label: "Tutte", icon: null },
+                { key: "HOME", label: "A domicilio", icon: "house" },
+                { key: "ONLINE", label: "Online", icon: "video" },
               ] as const
             ).map((opt) => {
               const active = serviceModeFilter === opt.key;
@@ -638,6 +638,7 @@ function RichiesteContent() {
                 <XStack
                   key={opt.key}
                   alignItems="center"
+                  gap={6}
                   paddingHorizontal="$3"
                   paddingVertical={12}
                   backgroundColor={active ? brand.cianografia : brand.calce}
@@ -645,6 +646,10 @@ function RichiesteContent() {
                   onPress={() => setServiceModeFilter(opt.key)}
                   accessibilityRole="button"
                 >
+                  {/* Stesse icone già usate su ServiceBadge (house/video) per
+                      la stessa distinzione — richiesta esplicita dell'utente
+                      di coerenza tra il filtro e le richieste mostrate. */}
+                  {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
                   <Text fontSize={13.5} fontWeight="700" color={active ? "white" : brand.grafite}>
                     {opt.label}
                   </Text>

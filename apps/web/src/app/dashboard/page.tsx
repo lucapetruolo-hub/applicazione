@@ -665,6 +665,15 @@ function BookingSummaryRow({
   const recipientFullName = [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || null;
   const clientName = booking.clientAccountDeleted ? "Account eliminato" : (recipientFullName ?? booking.clientName ?? "Cliente");
   const href = booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : "/dashboard/richieste";
+  // Indirizzo/telefono restano sempre visibili una volta confermato il
+  // lavoro — richiesta esplicita dell'utente, "ad esempio anche nelle
+  // richieste completate" — non solo un click di distanza in "Richieste
+  // ricevute" (dove restano comunque disponibili con WhatsApp/Chiama/
+  // mailto): qui una riga in sola lettura, coerente col resto del
+  // riepilogo compatto (CLAUDE.md §56), senza reintrodurre l'intera
+  // sezione "Dettagli cliente" già presente altrove.
+  const revealedPhone = booking.recipientPhone ?? booking.clientPhone;
+  const revealedAddress = formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${booking.city ?? ""}` : null);
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
       <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
@@ -683,6 +692,26 @@ function BookingSummaryRow({
             {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
             {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · {bookingSummaryLabel(booking)}
           </Text>
+          {revealedAddress || revealedPhone ? (
+            <XStack alignItems="center" gap="$3" flexWrap="wrap">
+              {revealedAddress ? (
+                <XStack alignItems="center" gap={4}>
+                  <Icon name="map-pin" size={12} color={brand.grafite70} />
+                  <Text fontSize="$1" color={brand.grafite70}>
+                    {revealedAddress}
+                  </Text>
+                </XStack>
+              ) : null}
+              {revealedPhone ? (
+                <XStack alignItems="center" gap={4}>
+                  <Icon name="phone" size={12} color={brand.grafite70} />
+                  <Text fontSize="$1" color={brand.grafite70}>
+                    {revealedPhone}
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
+          ) : null}
         </YStack>
         <XStack alignItems="center" gap="$2" flexShrink={0}>
           <UnreadDot count={unreadCount} />

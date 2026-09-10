@@ -10101,3 +10101,55 @@ funzionante e leggibile. Zero errori console reali in entrambi i flussi.
 Account di test ripuliti a fine verifica (`DELETE /auth/me`). Typecheck
 pulito su tutti i package (`shared`, `api-client`, `ui`, `web`), build di
 produzione `apps/web` verde (31 route, nessuna nuova).
+
+---
+
+## 78. Indirizzo/telefono sempre visibili in "Lavori accettati" (dashboard compatta) + icone sul toggle domicilio/online in "Richieste ricevute"
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Indirizzo e telefono nel riepilogo compatto di `/dashboard`** — l'utente ha
+segnalato: "una volta confermato il preventivo, lascia sempre
+visualizzabili l'indirizzo e numero di telefono, ad esempio anche nelle
+richieste completate (ora non si vede)". Verificato prima con un ciclo
+end-to-end reale (richiesta→preventivo→accettazione→completamento) che
+`/dashboard/richieste` (la pipeline completa, §41) già mostra
+correttamente indirizzo/telefono/email per una richiesta `COMPLETATA` —
+nessun cancello per stadio su quei campi, solo sulla presenza di una
+`Booking` (screenshot confermato). Chiesto quindi all'utente dove
+esattamente mancassero: **"in lavori completati"** — il riepilogo
+compatto "Lavori accettati" di `/dashboard` (`BookingSummaryRow`,
+introdotto in §56 per deduplicare la card completa già presente su
+`/dashboard/richieste`), che non mostrava alcun dato di contatto, solo
+nome/categoria/data/stato, con un click-through verso la pipeline per i
+dettagli.
+- `BookingSummaryRow` (`apps/web/src/app/dashboard/page.tsx`): nuova riga
+  con icona `map-pin`/`phone` (indirizzo — `formatBookingAddress(booking)`
+  con lo stesso fallback a `booking.address` già in uso in `RequestCard`
+  — e `booking.recipientPhone ?? booking.clientPhone`), mostrata solo se
+  almeno uno dei due è presente. Testo semplice, non un link `tel:`/Google
+  Maps (quelli restano un click di distanza su `/dashboard/richieste`,
+  dove il resto dei contatti — WhatsApp/Chiama/email — vive già): qui
+  serve solo *visibilità* immediata, non un secondo set di azioni
+  duplicate nel riepilogo compatto.
+- Verificato end-to-end con l'API locale reale (non solo lettura di
+  codice): stesso ciclo di test (richiesta diretta → preventivo →
+  accettazione → completamento) → riga "Via Test 12 12 — 40100 Bologna
+  (BO)" + "3331234567" visibile subito sotto data/ora/stato nel riepilogo
+  "Lavori accettati" di `/dashboard`, desktop e mobile (390px, zero
+  overflow orizzontale in entrambi i casi). Account di test ripuliti a
+  fine verifica (`DELETE /auth/me`).
+
+**Icone sul toggle "Tutte/A domicilio/Online" in `/dashboard/richieste`**
+— richiesta esplicita dell'utente: "nel filtro a domicilio/online
+inserisci le icone relative come quelle presenti nelle richieste". Le
+pillole del toggle (introdotto in §75) avevano solo testo; `ServiceBadge`
+(usato sulle singole card per la stessa distinzione) usa già le icone
+`house`/`video` — aggiunte identiche alle due pillole "A domicilio"/
+"Online" del toggle (nessuna icona sulla pillola "Tutte", che non
+rappresenta una modalità specifica), colore bianco quando la pillola è
+attiva. Verificato con Playwright: icone presenti e visibili su entrambe
+le pillole.
+
+Typecheck pulito su tutti i package (`shared`, `api-client`, `ui`,
+`web`), build di produzione `apps/web` verde (31 route, nessuna nuova).
