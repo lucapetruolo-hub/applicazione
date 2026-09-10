@@ -117,6 +117,38 @@ a {
    triplo-click su un indirizzo email lì selezionerebbe anche il nome
    affiancato). Visibile solo da una larghezza per cui c'è margine
    sufficiente a sinistra della colonna centrale senza sovrapporla. */
+/* Pannello a tendina della campanella notifiche (NotificationBell.tsx):
+   bug reale segnalato dall'utente ("da mobile esce fuori lo schermo") — il
+   pannello era `position:absolute, right:0` relativo al solo contenitore
+   36x36 del pulsante campanella, non al vero bordo destro del viewport. La
+   campanella non è l'ultimo elemento dell'header (a destra c'è ancora
+   AccountMenu, CLAUDE.md §71): il suo bordo destro può trovarsi ben lontano
+   dal bordo reale dello schermo, quindi un pannello largo 340px che si
+   estende a sinistra da lì può sforare abbondantemente il bordo sinistro su
+   un telefono stretto — non risolvibile con `maxWidth`, che vincola solo la
+   larghezza, non la posizione di ancoraggio. Sotto 480px il pannello passa a
+   `position:fixed` con `left`/`right` entrambi impostati (mai un `width`
+   esplicito in quel caso): si allarga sempre a piena larghezza meno 16px per
+   lato, ancorato al vero bordo del viewport, indipendente da dove si trova
+   la campanella nell'header. */
+.notification-bell-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+}
+@media (max-width: 480px) {
+  .notification-bell-panel {
+    position: fixed;
+    top: 72px;
+    left: 16px;
+    right: 16px;
+    margin-top: 0;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .admin-sidebar {
   display: none;
 }

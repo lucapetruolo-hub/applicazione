@@ -9764,3 +9764,58 @@ locale end-to-end (Postgres+API+web) riavviata da zero a metà lavoro
 (container riciclato per limite di sessione, working tree sopravvissuto)
 — tutti i test end-to-end sopra rieseguiti con successo sull'ambiente
 ripristinato.
+
+---
+
+## 73. Bug reale: pannello della campanella notifiche ancora fuori schermo su mobile
+
+Segnalato dall'utente dopo il giro precedente (§72, "aprendole a destra
+sforerà lo schermo"): *"Ridimensiona meglio la finestra della campanella,
+da mobile esce fuori lo schermo"* — il fix precedente (ancorare il
+pannello a destra con `right={0}`) non bastava: restava comunque fuori
+viewport su un telefono reale.
+
+**Causa reale**: `right={0}` era relativo al contenitore posizionato
+(`position:"relative"`) che avvolge **solo il pulsante campanella**
+(36×36px) — non al vero bordo destro del viewport. La campanella non è
+l'ultimo elemento dell'header: a destra c'è ancora `AccountMenu` (nome +
+avatar, CLAUDE.md §71), quindi il bordo destro della campanella si trova
+ben più a sinistra del bordo reale dello schermo. Un pannello largo 340px
+che si estende a sinistra da quel punto (non dal vero bordo destro)
+poteva quindi sforare abbondantemente il bordo **sinistro** dello schermo
+su un telefono stretto — `maxWidth="90vw"` non risolveva nulla perché
+vincola solo la larghezza del pannello, non la posizione del suo punto di
+ancoraggio.
+
+**Fix**: il pannello (`NotificationBell.tsx`) è ora avvolto in un `<div
+className="notification-bell-panel">` grezzo invece che in una `YStack`
+Tamagui con `position="absolute"`/`right={0}` — stesso principio "CSS
+puro per un posizionamento che Tamagui/react-native-web non rende bene"
+già seguito altrove nel prodotto (header sticky, `.admin-sidebar`,
+`ToastStack`). La classe (`globals.css`) resta `position:absolute,
+top:100%, right:0` (comportamento invariato da desktop, dove funziona
+correttamente) ma sotto **480px** passa a `position:fixed` con `left:16px`
+e `right:16px` entrambi impostati (mai un `width` esplicito in quel
+ramo): il pannello si allarga sempre a piena larghezza del viewport meno
+32px totali, ancorato al vero bordo dello schermo — indipendente da dove
+si trova la campanella nell'header, corretto a prescindere da quanto è
+largo `AccountMenu` accanto.
+
+Verificato con l'API locale reale (non solo lettura di codice) e uno
+script Playwright dedicato su **cinque larghezze mobile** (320/360/375/
+390/430px, non solo 390px come nel giro precedente che aveva dato un
+falso "zero overflow" — il bug esisteva comunque, il controllo precedente
+non era abbastanza specifico): bounding box del pannello misurato ad ogni
+larghezza — mai un pixel oltre il bordo sinistro o destro dello schermo
+su nessuna delle cinque (es. a 320px: `x:16, width:288, right:304`, ben
+dentro i 320px disponibili). Un residuo di 3px di overflow di pagina
+osservato a 320px è stato isolato e confermato **non correlato**
+(elemento vuoto di un carosello della homepage, legittimamente fuori
+schermo dentro il proprio contenitore `overflow-x:auto`, stesso principio
+già documentato altrove in questo file per `ProfessionalsShowcase`/
+`CategoryCarousel` — non il pannello della campanella, verificato
+esplicitamente `isPanel:false`/`isPanelChild:false`). Comportamento
+desktop invariato (nessuna regressione: sopra 480px la regola CSS non si
+applica, resta `position:absolute, right:0`). Typecheck pulito su
+`apps/web`, build di produzione verde (31 route, nessuna nuova). Account
+di test ripulito a fine verifica (`DELETE /auth/me`).

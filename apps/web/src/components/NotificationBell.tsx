@@ -250,22 +250,21 @@ export function NotificationBell() {
       </XStack>
 
       {isOpen ? (
+        // Bug reale corretto (segnalazione utente: "da mobile esce fuori lo
+        // schermo"): `right:0` era relativo al solo contenitore 36x36 della
+        // campanella, non al vero bordo destro del viewport — la campanella
+        // non è l'ultimo elemento dell'header (AccountMenu sta ancora più a
+        // destra, CLAUDE.md §71), quindi un pannello largo 340px poteva
+        // sforare abbondantemente il bordo sinistro su schermi stretti.
+        // `.notification-bell-panel` (globals.css) passa a `position:fixed`
+        // con `left`/`right` fissi sotto 480px, ancorato al vero viewport
+        // indipendentemente da dove sta la campanella nell'header.
+        <div className="notification-bell-panel" style={{ width: 340, maxWidth: "90vw", zIndex: 1000 }}>
         <YStack
-          position="absolute"
-          top="100%"
-          // Ancorato a destra (richiesta esplicita dell'utente: "aprendole
-          // a destra sforerà lo schermo") — la campanella sta vicino al
-          // bordo destro dell'header, il pannello si estende quindi verso
-          // sinistra da lì invece di uscire dal viewport.
-          right={0}
-          marginTop="$2"
-          width={340}
-          maxWidth="90vw"
           maxHeight={420}
           overflow="hidden"
           backgroundColor={brand.calce}
           borderRadius={radiusDoc}
-          zIndex={1000}
           shadowColor="rgba(43,32,19,0.12)"
           shadowRadius={16}
           shadowOffset={{ width: 0, height: 6 }}
@@ -304,6 +303,7 @@ export function NotificationBell() {
             )}
           </YStack>
         </YStack>
+        </div>
       ) : null}
     </YStack>
   );
