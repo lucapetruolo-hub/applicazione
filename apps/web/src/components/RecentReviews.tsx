@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Icon, Rating, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Avatar, Icon, Rating, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CategoryCarousel } from "./CategoryCarousel";
 
@@ -75,14 +75,18 @@ export function RecentReviews() {
                   <Text fontSize={14} lineHeight={21} color={brand.grafite} fontStyle="italic">
                     {review.isAutomatic ? "(recensione automatica)" : `“${review.comment ?? ""}”`}
                   </Text>
-                  {/* Firma: nome del professionista recensito, piccolo, in
-                      basso a destra della nuvoletta — solo questo testo è
-                      cliccabile, verso il profilo pubblico intero. */}
-                  <XStack justifyContent="flex-end" marginTop="$2">
+                  {/* Firma: foto + nome del professionista recensito,
+                      piccola, in basso a destra della nuvoletta — l'intero
+                      blocco (foto+nome) è cliccabile, verso il profilo
+                      pubblico intero, mai verso la singola recensione. */}
+                  <XStack justifyContent="flex-end" alignItems="center" gap="$2" marginTop="$2">
                     <Link href={`/professionista/${review.professional.id}`} style={{ textDecoration: "none" }}>
-                      <Text fontSize={12} fontWeight="700" color={brand.cianografia}>
-                        — {review.professional.businessName}
-                      </Text>
+                      <XStack alignItems="center" gap="$2">
+                        <Avatar name={review.professional.businessName} imageUrl={review.professional.imageUrl} size={24} />
+                        <Text fontSize={12} fontWeight="700" color={brand.cianografia}>
+                          — {review.professional.businessName}
+                        </Text>
+                      </XStack>
                     </Link>
                   </XStack>
                 </YStack>

@@ -9819,3 +9819,39 @@ desktop invariato (nessuna regressione: sopra 480px la regola CSS non si
 applica, resta `position:absolute, right:0`). Typecheck pulito su
 `apps/web`, build di produzione verde (31 route, nessuna nuova). Account
 di test ripulito a fine verifica (`DELETE /auth/me`).
+
+---
+
+## 74. Homepage — foto del professionista nelle "Recensioni verificate"
+
+Richiesta esplicita dell'utente: *"Nella homepage nelle recensioni
+inserisci anche la foto del professionista a cui è stata fatta la
+recensione"*. La riscrittura a carosello stile chat del §72 aveva perso
+la foto del professionista che il §45 aveva già introdotto (allora in un
+layout a due colonne, sostituito interamente dal nuovo design a
+nuvolette) — la firma in fondo a ogni nuvoletta mostrava solo il nome
+dell'attività, mai una foto.
+
+`RecentReviews.tsx`: la firma ("— {businessName}", unico elemento
+cliccabile della nuvoletta verso il profilo pubblico, mai verso la
+recensione — invariato dal §72) ora affianca un `Avatar` (`packages/ui`,
+24px, foto vera se `review.professional.imageUrl` è presente altrimenti
+iniziali — stesso componente già in uso ovunque nel prodotto per questo
+esatto principio, "foto vera o iniziali, mai un placeholder generico")
+prima del testo, entrambi dentro lo stesso `next/link`. Nessuna modifica
+al backend: `GET /reviews/recent` esponeva già `professional.imageUrl`
+dal giro del §45, mai consumato dal componente riscritto in §72.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di
+codice): ciclo completo richiesta diretta→preventivo→accettazione→
+completamento→conferma→doppia recensione per un professionista di test,
+`imageUrl` impostato direttamente via SQL (Cloudinary non configurato in
+locale, stesso limite già documentato altrove in questo file) a
+un'immagine reale — `GET /reviews/recent` conferma `imageUrl` esposto
+correttamente. UI con Playwright: la firma nella nuvoletta contiene un
+`<img>` 24×24 con lo `src` esatto della foto impostata, dentro lo stesso
+link verso `/professionista/{id}` (nessuna regressione sul comportamento
+"solo la firma è cliccabile, mai verso la recensione"). Account di test
+ripuliti a fine verifica (`DELETE /auth/me`). Typecheck pulito su tutti i
+package (`shared`, `api-client`, `ui`, `web`), build di produzione
+`apps/web` verde (31 route, nessuna nuova).
