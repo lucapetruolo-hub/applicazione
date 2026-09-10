@@ -41,6 +41,19 @@ function agendaDateLabel(dateStr: string): string {
   return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
 }
 
+/** Data relativa per le recensioni — stesso principio già in uso in
+ * `NotificationBell.tsx`, non condiviso da lì (granularità diversa: qui
+ * basta il giorno, mai i minuti/ore di una notifica). */
+function reviewTimeAgo(iso: string): string {
+  const diffDays = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (diffDays < 1) return "oggi";
+  if (diffDays === 1) return "ieri";
+  if (diffDays < 30) return `${diffDays} giorni fa`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths} ${diffMonths === 1 ? "mese" : "mesi"} fa`;
+  return new Date(iso).toLocaleDateString("it-IT", { month: "short", year: "numeric" });
+}
+
 export function ProfessionalDetailContent({ professional }: { professional: ProfessionalDetail }) {
   const { user, token } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
@@ -190,7 +203,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
-      <YStack width="100%" maxWidth={780} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
+      <YStack width="100%" maxWidth={860} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
+        {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
+            visualizzazione di un profilo pubblico"): prima nome/badge/
+            rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
+            pesca della pagina, senza alcun trattamento a card, mentre ogni
+            altra sezione sotto (Prestazioni/Agenda/Recensioni) era già
+            avvolta in una `Surface` — incoerenza visiva mai risolta prima
+            d'ora. Un solo blocco coeso invece di elementi sparsi. */}
+        <Surface gap="$4">
         <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
           <XStack gap="$3" alignItems="flex-start" flex={1}>
             <YStack
@@ -287,11 +308,29 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
         {professional.bio ? <Text color={brand.grafite70}>{professional.bio}</Text> : null}
 
+        {/* Lingue parlate — dato già raccolto (`ProfessionalProfile.
+            spokenLanguages`, usato dal pannello filtri di ricerca) ma mai
+            mostrato qui: bug di esposizione corretto in questo giro, stesso
+            principio "dato reale già disponibile, solo mai renderizzato"
+            già seguito più volte in questo file. */}
+        {professional.spokenLanguages.length > 0 ? (
+          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
+            <Text fontSize="$2" color={brand.grafite70}>
+              Parla {professional.spokenLanguages.join(", ")}
+            </Text>
+          </XStack>
+        ) : null}
+        </Surface>
+
         {professional.services.length > 0 ? (
           <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-              Prestazioni
-            </Text>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                Prestazioni
+              </Text>
+            </XStack>
             <Surface padding={0} overflow="hidden">
               {professional.services.map((service, index) => (
                 <XStack
@@ -318,9 +357,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             portfolioUrls sul professionista. */}
         {(professional.portfolioUrls ?? []).length > 0 ? (
           <YStack gap="$3">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-              Lavori svolti
-            </Text>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="camera" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                Lavori svolti
+              </Text>
+            </XStack>
             <XStack gap="$2" flexWrap="wrap">
               {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
                 <YStack
@@ -348,9 +390,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
                 (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
             <div id="agenda" style={{ scrollMarginTop: 96 }} />
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-              Agenda
-            </Text>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                Agenda
+              </Text>
+            </XStack>
             <Text fontSize="$2" color={brand.grafite70}>
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
@@ -566,9 +611,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-              Recensioni
-            </Text>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="star" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                Recensioni
+              </Text>
+            </XStack>
             {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} /> : null}
           </YStack>
           {professional.reviews.length === 0 ? (
@@ -591,6 +639,21 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         {review.rating}/5
                       </Text>
                     </XStack>
+                    {/* Stesso segnale di fiducia già usato per le recensioni
+                        in homepage ("Lavoro confermato", RecentReviews.tsx) —
+                        qui era assente, ora coerente su entrambe le
+                        superfici: ogni recensione nasce comunque solo da una
+                        prenotazione confermata (regola di prodotto
+                        invariata), mancava solo di dirlo esplicitamente. */}
+                    <XStack alignItems="center" gap={4}>
+                      <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
+                      <Text fontSize="$1" fontWeight="700" color={brand.verificato}>
+                        Lavoro confermato
+                      </Text>
+                    </XStack>
+                    <Text fontSize="$1" color={brand.grafite70}>
+                      · {reviewTimeAgo(review.createdAt)}
+                    </Text>
                     {review.isAutomatic ? (
                       <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
                         (recensione automatica)

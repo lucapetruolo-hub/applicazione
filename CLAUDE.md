@@ -10030,3 +10030,74 @@ altrove in questo file). Account di test ripuliti a fine verifica
 (`DELETE /auth/me`). Typecheck pulito su tutti i package (`shared`,
 `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione
 `apps/web` verde (31 route, nessuna nuova).
+
+---
+
+## 77. Profilo pubblico professionista migliorato + emoji campana rimossa dallo stato vuoto
+
+Due richieste esplicite dell'utente, stesso giro di lavoro.
+
+**Profilo pubblico — visualizzazione migliorata** — richiesta esplicita
+("migliora la visualizzazione di un profilo pubblico di un
+professionista"), affrontata come un pass di polish visivo mirato,
+seguito da uno screenshot di verifica reale (non solo lettura di codice)
+prima di decidere cosa correggere:
+- **Scheda identità unificata** — nome/badge/rating/"ha completato N
+  interventi"/condividi/segnala/sottotag/bio galleggiavano prima
+  direttamente sullo sfondo pesca della pagina, senza alcun trattamento a
+  card, mentre ogni sezione sotto (Prestazioni/Agenda/Recensioni) era già
+  avvolta in una `Surface` — incoerenza mai risolta prima d'ora. Ora tutto
+  il blocco identità è in un'unica `Surface`, coerente con il resto della
+  pagina.
+- **Bug reale corretto: lingue parlate mai mostrate** —
+  `ProfessionalDetail.spokenLanguages` (già raccolto dal professionista in
+  `/dashboard/profilo`, già usato dal pannello filtri di ricerca, CLAUDE.md
+  §23) non veniva mai renderizzato sul profilo pubblico. Aggiunta una riga
+  "Parla Italiano, Inglese, ..." (icona `message-circle`) nella scheda
+  identità.
+- **Icone nei titoli di sezione** (`Prestazioni`/`Lavori svolti`/`Agenda`/
+  `Recensioni`) — stessa tinta `cianografia` dei link/CTA del sito, per
+  dare un po' di ritmo visivo a una pagina che prima era solo testo
+  in grassetto uno via l'altro.
+- **Recensioni — segnalatore di fiducia + data relativa** — ogni card
+  recensione mostra ora "✓ Lavoro confermato" (stessa etichetta/icona
+  `badge-check` già usata per le recensioni in homepage, `RecentReviews.tsx`,
+  CLAUDE.md §49 — qui era assente, ora coerente su entrambe le superfici:
+  il vincolo di prodotto — solo da prenotazione confermata — è invariato,
+  mancava solo di dichiararlo) più la data relativa (nuovo helper
+  `reviewTimeAgo`, granularità a giorni — "oggi"/"ieri"/"N giorni fa"/"N
+  mesi fa"/mese+anno oltre l'anno — usa `review.createdAt`, già esposto dal
+  tipo ma mai mostrato).
+- `maxWidth` della pagina aumentato da 780 a 860px per un filo più di
+  respiro, nessuna ristrutturazione a due colonne (valutata ma scartata
+  per il rischio/tempo di verifica su un file da 660+ righe con molta
+  logica di stato — agenda con offset di finestra, tab modalità — non
+  toccata in questo giro).
+
+**Icona campana rimossa dallo stato vuoto della campanella notifiche** —
+segnalazione immediata dell'utente dopo aver visto il redesign del giro
+precedente (§76): l'emoji 🔔 nello stato "Nessuna notifica per ora."
+rendeva colorata/"vecchio stile" (resa gialla dal font emoji del sistema,
+in contrasto con la palette Vicinato del resto del pannello). Sostituita
+con la stessa icona lineare `bell-ring` già in uso nell'header del
+pannello, in un chip circolare neutro (`brand.gesso`) — coerente con il
+registro icone del resto del sito, nessun colore fuori palette.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright: professionista di test con bio/sottotag/3 lingue parlate/4
+prestazioni/2 recensioni reali (ciclo completo richiesta→preventivo→
+accettazione→completamento→conferma→doppia recensione) — screenshot
+desktop (1280px) e mobile (`devices["iPhone 13"]`) confermano la scheda
+identità come unico blocco card, "Parla Italiano, Inglese, Rumeno"
+visibile, icone sui quattro titoli di sezione, "✓ Lavoro confermato ·
+oggi" su entrambe le recensioni. Un overflow orizzontale di 20px osservato
+su mobile è stato isolato: proviene dal bottone "Richiedi un preventivo a
+{nome lunghissimo di test}" (nome di test scelto apposta lungo,
+"Ferrari Idraulica Showcase"), un elemento non toccato da questo giro —
+stesso tipo di artefatto da nome di test già documentato più volte in
+questo file (es. CLAUDE.md §12/§21), non una regressione introdotta qui.
+Bell: emoji assente dal DOM dopo la correzione, stato vuoto ancora
+funzionante e leggibile. Zero errori console reali in entrambi i flussi.
+Account di test ripuliti a fine verifica (`DELETE /auth/me`). Typecheck
+pulito su tutti i package (`shared`, `api-client`, `ui`, `web`), build di
+produzione `apps/web` verde (31 route, nessuna nuova).

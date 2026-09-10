@@ -333,10 +333,14 @@ export function NotificationBell() {
                 Caricamento...
               </Text>
             ) : !history || history.length === 0 ? (
-              <YStack padding="$5" alignItems="center" gap="$2">
-                <Text fontSize={26} lineHeight={30}>
-                  🔔
-                </Text>
+              // Icona lineare al posto dell'emoji campana (richiesta
+              // esplicita dell'utente: "troppo old style") — stesso chip
+              // circolare tinta già in uso nell'intestazione del pannello,
+              // coerente con il registro icone del resto del sito.
+              <YStack padding="$5" alignItems="center" gap="$3">
+                <YStack width={44} height={44} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.gesso}>
+                  <Icon name="bell-ring" size={20} color={brand.grafite70} strokeWidth={1.5} />
+                </YStack>
                 <Text fontSize="$2" color={brand.grafite70} textAlign="center">
                   Nessuna notifica per ora.
                 </Text>
