@@ -12,6 +12,7 @@ import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { LoadingState } from "@/components/LoadingState";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ExternalJobModal } from "@/components/ExternalJobModal";
+import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 import {
   datesInMonth,
   datesInMonthForGivenWeekday,
@@ -59,12 +60,24 @@ function isSlotGeneric(slot: SlotDraft): boolean {
   return (slot.homeMax ?? 0) > 1 || (slot.onlineMax ?? 0) > 1;
 }
 
+// Richiesta esplicita dell'utente: "colora le caselle degli appuntamento in
+// base ai colori che sono stati usati per le schede in richieste ricevute"
+// — riusa `REQUEST_STAGE_STYLE` (packages/lib/requestStage.ts, unica fonte
+// di verità, prima locale a `/dashboard/richieste`) invece dei token
+// `brand.*` usati fin qui, mappando ogni `BookingStatus` sullo stadio con lo
+// stesso significato pratico: CONFIRMED→accettata (verde), COMPLETED→
+// completata (turchese), CANCELED→annullata (rosso firebrick). PENDING
+// (prenotazione creata ma non ancora confermata dal professionista — solo
+// dal flusso di prenotazione diretta, dormiente da CLAUDE.md §20) riusa lo
+// stesso giallo "in attesa" — stessa semantica "in attesa di un'azione".
+// NO_SHOW non ha uno stadio dedicato in "richieste ricevute": riusa lo
+// stesso rosso di `annullata` (entrambi "il lavoro non si è svolto").
 const BOOKING_STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
-  PENDING: brand.ottone,
-  CONFIRMED: brand.verificato,
-  COMPLETED: brand.grafite70,
-  CANCELED: brand.urgenza,
-  NO_SHOW: brand.urgenza,
+  PENDING: REQUEST_STAGE_STYLE.in_attesa.border,
+  CONFIRMED: REQUEST_STAGE_STYLE.accettata.border,
+  COMPLETED: REQUEST_STAGE_STYLE.completata.border,
+  CANCELED: REQUEST_STAGE_STYLE.annullata.border,
+  NO_SHOW: REQUEST_STAGE_STYLE.annullata.border,
 };
 
 // Lavori presi al di fuori della piattaforma (richiesta esplicita

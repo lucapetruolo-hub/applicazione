@@ -10405,3 +10405,77 @@ non espansa, "Intervento: ..." risulta correttamente tra il nome cliente e
 la riga categoria/città; dentro "Dettagli cliente", risulta subito dopo il
 nome cliccabile e ben distante (non più adiacente) dal tasto Chat.
 Screenshot di conferma. Typecheck pulito, build di produzione verde.
+
+---
+
+## 81. Agenda — caselle appuntamento colorate come le schede di "Richieste ricevute"
+
+Richiesta esplicita dell'utente: *"in agenda colora le caselle degli
+appuntamento in base ai colori che sono stati usati per le schede in
+richieste ricevute"*. Il calendario "Prenotazioni" (`/dashboard/agenda`)
+coloriva finora ogni `Booking` per `BookingStatus` (CLAUDE.md §11) sui soli
+token `brand.*` — `PENDING` ottone, `CONFIRMED` verde, `COMPLETED` grigio,
+`CANCELED`/`NO_SHOW` rosso — una palette diversa da quella, più ricca e
+distintiva per stato, già usata per le pillole di `RequestStage` in
+`/dashboard/richieste` (`STAGE_STYLE`, §41 "Rifinitura"/§61: eccezione
+deliberata alla regola "solo token `brand.*`", colori arbitrari scelti
+esplicitamente dall'utente per nome).
+
+- **`REQUEST_STAGE_STYLE`** (nuovo export, `apps/web/src/lib/
+  requestStage.ts` — prima ospitava solo `classifyLeadStage`/
+  `describeClosedReason`): la palette a 8 voci, spostata qui da
+  `dashboard/richieste/page.tsx` (che ora la importa con un alias locale
+  `const STAGE_STYLE = REQUEST_STAGE_STYLE;`, zero altri riferimenti
+  toccati nel file) — un'unica fonte di verità condivisa tra le due
+  pagine, invece di duplicare gli stessi hex in due punti.
+- **Mappatura da `BookingStatus` (unico dato disponibile su una
+  `Booking` reale) al colore dello stadio con lo stesso significato
+  pratico** — nessuno degli 8 `RequestStage` corrisponde 1:1 a un
+  `BookingStatus`, serve un giudizio di equivalenza semantica:
+  - `CONFIRMED` → `accettata` (verde `#28A745`) — un preventivo accettato
+    non ancora concluso, stesso stadio "in corso" di `RequestStage`.
+  - `COMPLETED` → `completata` (turchese `#20B2AA`) — stesso significato
+    letterale.
+  - `CANCELED` → `annullata` (rosso firebrick `#B22222`) — stesso
+    significato letterale, stesso colore già usato in "richieste
+    ricevute" per una prenotazione annullata dopo l'accettazione.
+  - `PENDING` (prenotazione creata ma non ancora confermata dal
+    professionista — solo dal flusso di prenotazione diretta da agenda
+    pubblica, dormiente da CLAUDE.md §20, l'unico percorso che crea ancora
+    questo stato) → `in_attesa` (giallo `#FFC107`) — nessuno stadio
+    "prenotazione da confermare" esiste in `RequestStage` (lì "in attesa"
+    significa "il preventivo aspetta una risposta del cliente"), ma
+    condivide lo stesso significato astratto "in attesa di un'azione di
+    qualcuno", il giallo resta il colore più coerente.
+  - `NO_SHOW` → riusa lo stesso `annullata` (firebrick): non ha alcun
+    analogo in `RequestStage` (che non distingue "annullato" da "cliente
+    non presentato"), stesso principio "il lavoro non si è svolto" già
+    condiviso con `CANCELED`.
+- **`BookingDetailPanel.tsx`** (il pop-up aperto cliccando una casella):
+  aveva una propria copia indipendente della stessa vecchia mappatura
+  (`STATUS_COLOR`, usata per colorare l'etichetta di stato nel pannello,
+  es. "Confermata" in verde) — allineata alla stessa `REQUEST_STAGE_STYLE`,
+  stesso principio "un solo posto scrive i colori, chi li consuma importa".
+- **Deliberatamente non toccati**: `EXTERNAL_JOB_STATUS_COLOR` (lavori
+  esterni, bordo tratteggiato grafite/verde/rosso) e `PENDING_QUOTE_COLOR`
+  (preventivi non ancora accettati, bordo tratteggiato ottone) — due
+  categorie visivamente e semanticamente distinte dalle vere `Booking`
+  (§45/§46, "per non confondere le tre categorie"), non sono "caselle
+  degli appuntamento" nel senso letterale della richiesta ma promemoria di
+  natura diversa già colorati apposta in modo differente (tratteggio, non
+  solo colore) per restare riconoscibili a colpo d'occhio.
+- Verificato end-to-end con l'API locale reale (non solo lettura di
+  codice) e Playwright: professionista di test con 4 `Booking` seminate
+  direttamente via SQL, una per stato (CONFIRMED/COMPLETED/CANCELED/
+  PENDING) — vista Settimana: bordo sinistro delle tre caselle visibili
+  (CONFIRMED/COMPLETED/CANCELED) misurato via `getComputedStyle` esatto
+  su `rgb(40, 167, 69)`/`rgb(32, 178, 170)`/`rgb(178, 34, 34)`, coincidenti
+  bit per bit con gli hex `#28A745`/`#20B2AA`/`#B22222` di
+  `REQUEST_STAGE_STYLE`; click sulla casella CONFIRMED apre
+  `BookingDetailPanel` con l'etichetta "Confermata" nello stesso identico
+  verde. Vista Mese: i 4 pallini di conteggio giorno (incluso quello della
+  prenotazione PENDING, in una settimana successiva) confermano tutti e 4
+  i colori attesi, incluso il giallo `#FFC107` per PENDING. Zero errori
+  console. Account di test ripuliti a fine verifica (`DELETE /auth/me`).
+  Typecheck pulito su `apps/web`, build di produzione verde (31 route,
+  nessuna nuova).

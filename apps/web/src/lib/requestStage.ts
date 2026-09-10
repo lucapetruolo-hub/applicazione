@@ -1,4 +1,5 @@
 import type { ProfessionalLead } from "@professionisti/shared";
+import { brand, type IconName } from "@professionisti/ui";
 
 /**
  * I 7 stati di pipeline mostrati in `/dashboard/richieste` — derivati
@@ -34,6 +35,38 @@ export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
   if (quote.bookingStatus === "CANCELED") return "annullata";
   return "accettata";
 }
+
+/**
+ * Palette per stadio — eccezione deliberata e circoscritta alla regola
+ * "solo token `brand.*`" (CLAUDE.md §19), concessa perché l'utente ha
+ * chiesto colori arbitrari per nome per queste pillole (§41 "Rifinitura",
+ * §61). Spostata qui (era locale a `/dashboard/richieste`) perché
+ * `/dashboard/agenda` la riusa per colorare le caselle prenotazione dello
+ * stesso significato — un'unica fonte di verità invece di duplicare gli
+ * hex in due file, richiesta esplicita dell'utente: "in agenda colora le
+ * caselle degli appuntamento in base ai colori che sono stati usati per le
+ * schede in richieste ricevute".
+ */
+export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: IconName; fg: string; bg: string; border: string }> = {
+  da_quotare: { label: "Da quotare", icon: "zap", fg: "#0D6EFD", bg: "#E7F1FF", border: "#0D6EFD" },
+  // "In attesa" da solo era ambiguo sulla singola card (segnalato in
+  // revisione UX: "il pro ha già inviato il preventivo, in attesa di
+  // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab
+  // resta "In attesa" (spazio ridotto nella riga a scorrimento, stesso
+  // significato).
+  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#8A6D00", bg: "#FFF3CD", border: "#FFC107" },
+  modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#7A4F01", bg: "#FFE8A3", border: "#B8860B" },
+  accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
+  completata: { label: "Completata", icon: "check", fg: "#0E7C7B", bg: "#DFF7F5", border: "#20B2AA" },
+  // Richiesta esplicita dell'utente: "rendi chiare quelle che sono state
+  // annullate" — prima indistinguibile da "accettata" (nessuno stadio
+  // dedicato). Icona "x" (già usata per "chiusa", stesso significato
+  // "non riuscita") a distinguerla visivamente da "scaduta" pur
+  // condividendo lo stesso significato semantico "rosso".
+  annullata: { label: "Annullata", icon: "x", fg: "#B22222", bg: "#F8D7DA", border: "#B22222" },
+  scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
+  chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
+};
 
 /** Motivo per cui un preventivo/richiesta "chiusa" non è più azionabile — mostrato al posto delle azioni. */
 export function describeClosedReason(lead: ProfessionalLead): string {

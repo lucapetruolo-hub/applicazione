@@ -5,6 +5,7 @@ import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type 
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
@@ -14,12 +15,15 @@ const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   NO_SHOW: "Cliente non presentato",
 };
 
+// Stessa palette di "richieste ricevute" (`REQUEST_STAGE_STYLE`), stesso
+// significato pratico della mappatura già applicata alle caselle del
+// calendario in `/dashboard/agenda/page.tsx` — vedi commento lì.
 const STATUS_COLOR: Record<ProfessionalBooking["status"], string> = {
-  PENDING: brand.ottone,
-  CONFIRMED: brand.verificato,
-  COMPLETED: brand.grafite70,
-  CANCELED: brand.urgenza,
-  NO_SHOW: brand.urgenza,
+  PENDING: REQUEST_STAGE_STYLE.in_attesa.border,
+  CONFIRMED: REQUEST_STAGE_STYLE.accettata.border,
+  COMPLETED: REQUEST_STAGE_STYLE.completata.border,
+  CANCELED: REQUEST_STAGE_STYLE.annullata.border,
+  NO_SHOW: REQUEST_STAGE_STYLE.annullata.border,
 };
 
 /**
