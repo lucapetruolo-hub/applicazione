@@ -80,6 +80,47 @@ a {
   animation: loading-pulse 1.4s ease-in-out infinite;
 }
 
+/* Tre pallini che rimbalzano in sequenza (richiesta esplicita dell'utente:
+   "dai un segnale all'utente che stai caricando, ad esempio con
+   un'animazione dei pallini") — segnale di caricamento file più
+   riconoscibile del semplice "…" statico usato prima in ogni punto del
+   sito con un upload in corso (foto/video sulla richiesta guidata,
+   recensioni, lavoro completato, chat, portfolio, immagine profilo).
+   `animation-delay` sfalsato sui tre pallini (`.uploading-dot:nth-child`)
+   dà l'effetto "in sequenza"; `prefers-reduced-motion` è già gestito dalla
+   regola globale più sotto in questo file (le durate collassano a
+   istantanee), nessun guard aggiuntivo necessario. */
+@keyframes uploading-dot-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.uploading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.uploading-dot {
+  border-radius: 50%;
+  animation: uploading-dot-bounce 1.1s ease-in-out infinite;
+}
+.uploading-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+.uploading-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.uploading-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+
 /* Riga categorie scorrevole in homepage (CategoryCarousel, richiesta
    esplicita dell'utente: "si può scorrere a destra e sinistra sia con una
    freccetta che scorrendo col dito"): scorrimento nativo del browser (touch

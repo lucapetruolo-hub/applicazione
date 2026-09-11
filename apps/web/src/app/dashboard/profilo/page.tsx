@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
+import { UploadingDots } from "@/components/UploadingDots";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -457,7 +458,18 @@ export default function DashboardProfiloPage() {
                   opacity={isUploadingImage ? 0.6 : 1}
                   onPress={() => imageInputRef.current?.click()}
                 >
-                  {isUploadingImage ? "Caricamento..." : imageUrl ? "Cambia immagine" : "Carica immagine"}
+                  {isUploadingImage ? (
+                    <XStack alignItems="center" gap="$2">
+                      <Text color={brand.grafite} fontWeight="600">
+                        Caricamento
+                      </Text>
+                      <UploadingDots dotSize={4} color={brand.grafite} />
+                    </XStack>
+                  ) : imageUrl ? (
+                    "Cambia immagine"
+                  ) : (
+                    "Carica immagine"
+                  )}
                 </Button>
                 <input
                   ref={imageInputRef}
@@ -899,11 +911,15 @@ export default function DashboardProfiloPage() {
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi foto"
               >
-                <Text fontSize="$7" color={brand.grafite70}>
-                  {isUploadingPortfolioPhoto ? "…" : "+"}
-                </Text>
+                {isUploadingPortfolioPhoto ? (
+                  <UploadingDots dotSize={7} />
+                ) : (
+                  <Text fontSize="$7" color={brand.grafite70}>
+                    +
+                  </Text>
+                )}
                 <Text fontSize="$1" color={brand.grafite70}>
-                  Aggiungi
+                  {isUploadingPortfolioPhoto ? "Caricamento" : "Aggiungi"}
                 </Text>
               </YStack>
             ) : null}

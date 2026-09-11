@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { CompleteBookingInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
+import { UploadingDots } from "@/components/UploadingDots";
 
 const MAX_COMPLETION_PHOTOS = 5;
 
@@ -331,9 +332,13 @@ export function CompleteJobModal({
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi foto"
               >
-                <Text fontSize="$6" color={brand.grafite70}>
-                  {isUploadingPhoto ? "…" : "+"}
-                </Text>
+                {isUploadingPhoto ? (
+                  <UploadingDots dotSize={6} />
+                ) : (
+                  <Text fontSize="$6" color={brand.grafite70}>
+                    +
+                  </Text>
+                )}
               </YStack>
             ) : null}
           </YStack>

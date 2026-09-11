@@ -23,3 +23,25 @@ export function documentTypeLabel(url: string): string {
   const match = DOCUMENT_EXTENSIONS.find((ext) => clean.endsWith(ext));
   return match ? match.slice(1).toUpperCase() : "FILE";
 }
+
+/**
+ * Forza il download di un URL Cloudinary (`fl_attachment`, header
+ * `Content-Disposition: attachment` nella risposta) invece di lasciare che
+ * il browser lo apra semplicemente inline in una nuova scheda — richiesta
+ * esplicita dell'utente per l'opzione "File" della chat ("in modo che
+ * l'altro successivamente possa scaricare quel file"). Il solo attributo
+ * HTML `download` su un `<a>` non è garantito cross-origin (Cloudinary è
+ * un'origine diversa dal sito): alcuni browser ignorano `download` per un
+ * URL esterno e navigano semplicemente alla risorsa. `fl_attachment` è il
+ * flag di trasformazione ufficiale di Cloudinary per questo, funziona per
+ * qualunque resource_type (image/video/raw). URL non riconosciuto come
+ * URL di delivery Cloudinary (`/upload/`) → ritornato invariato, mai un
+ * link rotto.
+ */
+export function cloudinaryDownloadUrl(url: string): string {
+  const marker = "/upload/";
+  const index = url.indexOf(marker);
+  if (index === -1) return url;
+  const insertAt = index + marker.length;
+  return `${url.slice(0, insertAt)}fl_attachment/${url.slice(insertAt)}`;
+}

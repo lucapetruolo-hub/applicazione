@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
+import { UploadingDots } from "@/components/UploadingDots";
 
 const MAX_REVIEW_MEDIA = 5;
 
@@ -197,9 +198,13 @@ export function ReviewModal({
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi foto"
               >
-                <Text fontSize="$6" color={brand.grafite70}>
-                  {isUploadingPhoto ? "…" : "+"}
-                </Text>
+                {isUploadingPhoto ? (
+                  <UploadingDots dotSize={6} />
+                ) : (
+                  <Text fontSize="$6" color={brand.grafite70}>
+                    +
+                  </Text>
+                )}
               </YStack>
             ) : null}
           </YStack>

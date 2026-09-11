@@ -7,7 +7,8 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { isDocumentUrl } from "@/lib/media";
+import { UploadingDots } from "@/components/UploadingDots";
+import { cloudinaryDownloadUrl, documentTypeLabel, isDocumentUrl } from "@/lib/media";
 
 // Documenti accettati dall'opzione "File" del menu allegati (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
@@ -130,6 +131,78 @@ export function TimelineModal({
   const documentInputRef = useRef<HTMLInputElement>(null);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const attachMenuContainerRef = useRef<HTMLDivElement>(null);
+  // Fotocamera vera sia da telefono che da computer (richiesta esplicita
+  // dell'utente: "devi aprire la fotocamera del telefono o del computer").
+  // Su un telefono, `cameraInputRef` con `capture="environment"` apre già
+  // l'app fotocamera nativa del sistema operativo — è il modo più
+  // affidabile, nessuna interfaccia da costruire. Su un computer, quello
+  // stesso attributo non ha alcun effetto garantito (non esiste un'app
+  // fotocamera di sistema equivalente per ogni browser/OS): serve una vera
+  // cattura in-app via `getUserMedia`. `videoRef`/`cameraStream`/
+  // `cameraError` sostengono l'overlay `CameraCaptureOverlay` più sotto in
+  // questo file, montato solo su richiesta (mai un permesso fotocamera
+  // chiesto in anticipo senza un'azione esplicita dell'utente).
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  function stopCameraStream() {
+    cameraStream?.getTracks().forEach((track) => track.stop());
+    setCameraStream(null);
+  }
+
+  async function handleCameraOption() {
+    setIsAttachMenuOpen(false);
+    // Stesso principio "touch primario" già in uso altrove nel progetto
+    // per distinguere telefono/computer — un telefono ha già un'app
+    // fotocamera di sistema più affidabile di qualunque overlay costruito
+    // qui, un computer no.
+    const isMobile =
+      typeof navigator !== "undefined" && (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 2);
+    if (isMobile) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      // Nessuna webcam API disponibile (browser molto vecchio, contesto non
+      // sicuro): ripiega sul selettore file nativo invece di restare bloccati
+      // su un'azione che non può funzionare.
+      cameraInputRef.current?.click();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      setCameraStream(stream);
+    } catch {
+      // Permesso negato o nessuna webcam collegata: stesso ripiego sul
+      // selettore file nativo, mai lasciare l'utente bloccato su un errore
+      // senza alternativa.
+      cameraInputRef.current?.click();
+    }
+  }
+
+  useEffect(() => {
+    if (videoRef.current && cameraStream) videoRef.current.srcObject = cameraStream;
+  }, [cameraStream]);
+
+  useEffect(() => stopCameraStream, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    stopCameraStream();
+    if (!blob) {
+      setMediaError("Impossibile catturare la foto dalla fotocamera.");
+      return;
+    }
+    await uploadFile(new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" }));
+  }
   // Popup ad altezza fissata (`maxHeight="85vh"` sulla card) con SOLO la
   // regione messaggi scorrevole al suo interno — non più l'intero popup
   // dentro il backdrop (bug reale segnalato dall'utente: "rendendola più
@@ -213,11 +286,21 @@ export function TimelineModal({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !openPhoto) onClose();
+      if (e.key !== "Escape") return;
+      // Stesso principio già in uso per `openPhoto`: un Escape mentre la
+      // cattura fotocamera è aperta deve chiudere solo quella, non anche
+      // il popup sottostante (stesso bug del "doppio Escape" già corretto
+      // altrove in questo file per PhotoLightbox/BookingDetailPanel).
+      if (cameraStream) {
+        stopCameraStream();
+        return;
+      }
+      if (!openPhoto) onClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, openPhoto]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, openPhoto, cameraStream]);
 
   useEffect(() => {
     if (!isAttachMenuOpen) return;
@@ -230,11 +313,12 @@ export function TimelineModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isAttachMenuOpen]);
 
-  async function handleMediaChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  // Estratto da `handleMediaChange` (che resta il gestore dei tre `<input
+  // type="file">`): riusato anche dalla cattura fotocamera desktop
+  // (`CameraCaptureOverlay`, sotto), che produce un `File` senza passare
+  // da un `<input>` — stessa identica pipeline di upload/errore per
+  // entrambe le sorgenti.
+  async function uploadFile(file: File) {
     setMediaError(null);
     setIsUploadingMedia(true);
     try {
@@ -247,19 +331,38 @@ export function TimelineModal({
     }
   }
 
+  async function handleMediaChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadFile(file);
+  }
+
   function removeMedia(url: string) {
     setMediaUrls((prev) => prev.filter((u) => u !== url));
   }
 
   // Click su una miniatura di un evento: un documento (PDF/Word/Excel) non
-  // è "ingrandibile" in un lightbox fatto per immagini/video — si apre
-  // direttamente in una nuova scheda. Le sole foto/video dell'evento
-  // restano navigabili in `PhotoLightbox` (indice ricalcolato sul solo
-  // sottoinsieme visualizzabile, un documento eventualmente presente nello
-  // stesso evento non fa mai parte del carosello).
+  // è "ingrandibile" in un lightbox fatto per immagini/video — richiesta
+  // esplicita dell'utente: deve poter essere scaricato da chi lo riceve,
+  // non solo aperto in anteprima (un PDF si apriva prima nel visualizzatore
+  // integrato del browser in una nuova scheda, senza un vero salvataggio).
+  // Un `<a download>` creato al volo, con `fl_attachment` (Cloudinary,
+  // `cloudinaryDownloadUrl`) forza il download anche cross-origine, dove il
+  // solo attributo HTML `download` non è garantito da ogni browser. Le sole
+  // foto/video dell'evento restano navigabili in `PhotoLightbox` (indice
+  // ricalcolato sul solo sottoinsieme visualizzabile, un documento
+  // eventualmente presente nello stesso evento non fa mai parte del
+  // carosello).
   function openMediaAt(urls: string[], url: string) {
     if (isDocumentUrl(url)) {
-      window.open(url, "_blank", "noopener,noreferrer");
+      const link = document.createElement("a");
+      link.href = cloudinaryDownloadUrl(url);
+      link.download = `allegato.${documentTypeLabel(url).toLowerCase()}`;
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       return;
     }
     const viewable = urls.filter((u) => !isDocumentUrl(u));
@@ -486,9 +589,7 @@ export function TimelineModal({
                   accessibilityLabel="Allega foto, video o documento"
                 >
                   {isUploadingMedia ? (
-                    <Text fontSize="$5" color={brand.grafite70}>
-                      …
-                    </Text>
+                    <UploadingDots dotSize={5} />
                   ) : (
                     <Icon name="paperclip" size={20} color={brand.grafite70} />
                   )}
@@ -511,9 +612,29 @@ export function TimelineModal({
                     shadowOpacity={1}
                   >
                     {[
-                      { icon: "camera" as const, label: "Fotocamera", ref: cameraInputRef },
-                      { icon: "video" as const, label: "Foto o video", ref: galleryInputRef },
-                      { icon: "file-text" as const, label: "File", ref: documentInputRef },
+                      {
+                        icon: "camera" as const,
+                        label: "Fotocamera",
+                        onPress: () => {
+                          void handleCameraOption();
+                        },
+                      },
+                      {
+                        icon: "video" as const,
+                        label: "Foto o video",
+                        onPress: () => {
+                          setIsAttachMenuOpen(false);
+                          galleryInputRef.current?.click();
+                        },
+                      },
+                      {
+                        icon: "file-text" as const,
+                        label: "File",
+                        onPress: () => {
+                          setIsAttachMenuOpen(false);
+                          documentInputRef.current?.click();
+                        },
+                      },
                     ].map((item) => (
                       <XStack
                         key={item.label}
@@ -523,10 +644,7 @@ export function TimelineModal({
                         gap="$2"
                         cursor="pointer"
                         hoverStyle={{ backgroundColor: brand.gesso }}
-                        onPress={() => {
-                          setIsAttachMenuOpen(false);
-                          item.ref.current?.click();
-                        }}
+                        onPress={item.onPress}
                         accessibilityRole="button"
                       >
                         <Icon name={item.icon} size={16} color={brand.grafite} />
@@ -590,6 +708,57 @@ export function TimelineModal({
       </YStack>
 
       {openPhoto ? <PhotoLightbox photos={openPhoto.photos} initialIndex={openPhoto.index} onClose={() => setOpenPhoto(null)} /> : null}
+
+      {cameraStream ? (
+        // Cattura webcam da computer, stesso pattern overlay DOM grezzo già
+        // in uso altrove nel prodotto (`role="dialog"`, chiusura su
+        // Escape/click sul backdrop) — sopra a `TimelineModal` stesso
+        // (z-index maggiore), unico modo di restare visibile sopra un
+        // popup già aperto.
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            // Sempre `stopPropagation`, non solo su target===currentTarget:
+            // questo overlay vive annidato dentro il `<div role="dialog"
+            // onClick={onClose}>` di TimelineModal stesso (nessun click sul
+            // backdrop reale lì, chiude su qualunque click che gli
+            // arrivi) — senza fermare la bolla qui, cliccare "Scatta
+            // foto"/"Annulla" (o qualunque punto di questo overlay)
+            // richiudeva anche il popup sottostante per intero, bug reale
+            // riprodotto con Playwright durante la verifica.
+            e.stopPropagation();
+            if (e.target === e.currentTarget) stopCameraStream();
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: 16,
+          }}
+        >
+          <YStack backgroundColor={brand.calce} borderRadius="$4" padding="$4" gap="$3" maxWidth={480} width="100%">
+            <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
+              Scatta una foto
+            </Text>
+            <div style={{ borderRadius: 8, overflow: "hidden", backgroundColor: "#000" }}>
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", display: "block" }} />
+            </div>
+            <XStack gap="$3" justifyContent="flex-end">
+              <Button variant="ghost" onPress={stopCameraStream}>
+                Annulla
+              </Button>
+              <Button variant="primary" onPress={capturePhoto}>
+                Scatta foto
+              </Button>
+            </XStack>
+          </YStack>
+        </div>
+      ) : null}
     </div>
   );
 }

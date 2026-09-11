@@ -20,6 +20,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { LoadingState } from "@/components/LoadingState";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
+import { UploadingDots } from "@/components/UploadingDots";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
@@ -198,6 +199,23 @@ function LeMieRichiesteContent() {
   const [clientBookingsPageSize, setClientBookingsPageSize] = useState(5);
   const [clientBookingsPage, setClientBookingsPage] = useState(1);
 
+  // Bug reale segnalato dall'utente: cliccare una notifica (che arriva su
+  // questa pagina con `?open=<id>` in URL) e poi cambiare un filtro
+  // riportava indietro la pagina/il filtro appena scelti, "impallando" la
+  // schermata — `?open=` non veniva mai ripulito dall'URL, quindi i due
+  // effetti sotto (con `requestsStatusFilter`/`requestsSort`/
+  // `requestsPageSize` tra le dipendenze, necessari per il loro stesso
+  // flusso in due passaggi: azzera il filtro → aspetta il re-render →
+  // calcola pagina/scrolla) si riattivavano ad OGNI cambio di filtro
+  // successivo dell'utente, forzando di nuovo filtro="Tutte"/pagina
+  // giusta/scroll verso la card di quella prima notifica, all'infinito.
+  // Un ref "già consumato" (stesso principio già in uso in
+  // `/dashboard/agenda`, `consumedBookingDeepLinkRef`) fa eseguire il
+  // salto una sola volta per ciascun `targetId`: dopo il primo
+  // scroll+evidenziazione riuscito, i filtri tornano liberi.
+  const consumedRequestOpenRef = useRef<string | null>(null);
+  const consumedBookingOpenRef = useRef<string | null>(null);
+
   // Deep link da /chat (richiesta esplicita dell'utente: "dai la
   // possibilità di andare alla pagina del preventivo/informazioni di
   // quella determinata chat") — `?open=<guidedRequestId>` porta sul tab
@@ -216,6 +234,7 @@ function LeMieRichiesteContent() {
     if (tabParam === "lavori") return;
     const targetId = searchParams.get("open");
     if (!targetId || !requests) return;
+    if (consumedRequestOpenRef.current === targetId) return;
     if (!requests.some((r) => r.id === targetId)) return;
     setActiveTab("richieste");
     if (requestsStatusFilter !== "all") {
@@ -225,6 +244,7 @@ function LeMieRichiesteContent() {
     const sorted = sortListItems(requests, requestsSort, { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt });
     const index = sorted.findIndex((r) => r.id === targetId);
     if (index === -1) return;
+    consumedRequestOpenRef.current = targetId;
     setRequestsPage(Math.floor(index / requestsPageSize) + 1);
     setTimeout(() => {
       const elementId = `request-${targetId}`;
@@ -247,6 +267,7 @@ function LeMieRichiesteContent() {
     if (searchParams.get("tab") !== "lavori") return;
     const targetGuidedRequestId = searchParams.get("open");
     if (!targetGuidedRequestId || !bookings) return;
+    if (consumedBookingOpenRef.current === targetGuidedRequestId) return;
     const match = bookings.find((b) => b.guidedRequestId === targetGuidedRequestId);
     if (!match) return;
     setActiveTab("lavori");
@@ -261,6 +282,7 @@ function LeMieRichiesteContent() {
     });
     const index = sorted.findIndex((b) => b.id === match.id);
     if (index === -1) return;
+    consumedBookingOpenRef.current = targetGuidedRequestId;
     setClientBookingsPage(Math.floor(index / clientBookingsPageSize) + 1);
     setTimeout(() => {
       const elementId = `booking-${match.id}`;
@@ -869,9 +891,13 @@ function GuidedRequestCard({
                   accessibilityRole="button"
                   accessibilityLabel="Aggiungi foto"
                 >
-                  <Text fontSize="$6" color={brand.grafite70}>
-                    {isUploadingPhoto ? "…" : "+"}
-                  </Text>
+                  {isUploadingPhoto ? (
+                    <UploadingDots dotSize={6} />
+                  ) : (
+                    <Text fontSize="$6" color={brand.grafite70}>
+                      +
+                    </Text>
+                  )}
                 </YStack>
               ) : null}
             </YStack>

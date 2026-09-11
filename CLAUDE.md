@@ -10580,3 +10580,129 @@ ricerca) il blocco centrato è del tutto assente dal DOM e
 "Come funziona"/"Servizi" restano visibili come prima; da mobile (390px)
 zero overflow orizzontale introdotto. Typecheck pulito su `apps/web`,
 build di produzione verde (31 route, nessuna nuova).
+
+## 83. Fotocamera desktop nella chat, download vero dei documenti allegati, indicatore di caricamento "pallini" ovunque, bug reale: deep-link dalle notifiche che "impallava" i filtri
+
+Quattro richieste/segnalazioni esplicite dell'utente, stesso giro.
+
+**Fotocamera vera anche da computer** — richiesta esplicita: "quando si
+clicca fotocamera, devi aprire la fotocamera del telefono o del computer".
+Il pulsante "Fotocamera" del menu allegati in chat (`TimelineModal.tsx`,
+CLAUDE.md §80) già apriva la vera app fotocamera su un telefono
+(`<input capture="environment">`, comportamento nativo del browser
+mobile) ma su un computer quello stesso attributo non ha alcun effetto
+garantito — nessun browser desktop apre un'app fotocamera di sistema
+equivalente. Nuovo overlay `CameraCaptureOverlay` (stesso pattern DOM
+grezzo `role="dialog"` già in uso ovunque nel prodotto): rilevato un
+dispositivo non mobile (`/Mobi|Android|iPhone|iPad/i.test(navigator.
+userAgent)` più `navigator.maxTouchPoints`), il click su "Fotocamera"
+chiama `navigator.mediaDevices.getUserMedia({video:true})` invece di
+aprire il selettore file — anteprima video live + bottone "Scatta foto"
+che disegna il fotogramma corrente su un `<canvas>` offscreen, lo
+converte in `Blob`/`File` (JPEG) e lo carica con la stessa pipeline di
+upload già esistente (`uploadFile`, estratta da `handleMediaChange` per
+essere riusata da entrambe le sorgenti). Permesso negato, nessuna webcam
+o browser senza questa API → ripiego silenzioso sul selettore file
+nativo, mai un vicolo cieco. Stream della webcam fermato esplicitamente
+(`getTracks().forEach(t => t.stop())`) alla chiusura/cattura/unmount,
+mai lasciata accesa in background.
+
+**Bug reale scoperto durante la verifica: cliccare "Scatta foto"
+richiudeva anche l'intera chat sottostante** — non ipotizzato, riprodotto
+con Playwright (webcam finta via `--use-fake-device-for-media-stream`,
+permesso concesso in automatico): il backdrop dell'overlay fotocamera
+vive annidato dentro il `<div role="dialog" onClick={onClose}>` di
+`TimelineModal` stesso, che chiude su **qualunque** click che gli arrivi
+(non solo sul proprio sfondo — nessun controllo `target===currentTarget`
+lì). Senza fermare la propagazione, ogni click dentro l'overlay
+fotocamera (incluso il bottone "Scatta foto") risaliva fino al backdrop
+di `TimelineModal` e lo chiudeva per intero. Corretto con
+`e.stopPropagation()` incondizionato sul click del backdrop
+dell'overlay fotocamera (non solo quando il target coincide col
+backdrop, come nel resto del prodotto — qui serve anche per i click che
+avvengono più in profondità, sui bottoni). Verificato: cattura foto ora
+lascia `TimelineModal` aperto, errore di upload ("Cloudinary non
+configurato", ambiente locale) visibile correttamente sotto — prima del
+fix l'intero popup spariva senza errore, un fallimento silenzioso.
+
+**"File" scaricabile davvero dal destinatario** — richiesta esplicita:
+"quando clicca su file si deve dare la possibilità di mandare un file in
+modo che l'altro successivamente possa scaricare quel file". Un
+documento (PDF/Word/Excel) allegato in chat si apriva prima in una nuova
+scheda del browser (`window.open`), che per un PDF lo mostra nel
+visualizzatore integrato senza un vero salvataggio esplicito. Nuovo
+`cloudinaryDownloadUrl` (`apps/web/src/lib/media.ts`): inserisce il flag
+`fl_attachment` nell'URL di delivery Cloudinary (`Content-Disposition:
+attachment` nella risposta) — il solo attributo HTML `download` su un
+`<a>` non è garantito cross-origine (Cloudinary è un'origine diversa dal
+sito, alcuni browser lo ignorano per URL esterni e navigano semplicemente
+alla risorsa). `TimelineModal.openMediaAt`: per un documento, crea un
+`<a href={cloudinaryDownloadUrl(url)} download>` al volo e lo clicca
+programmaticamente invece di `window.open` — forza il download in ogni
+browser.
+
+**Indicatore di caricamento "a pallini" ovunque nel sito** — richiesta
+esplicita: "quando si aggiunge un qualsiasi file in qualsiasi campo come
+le foto/video sulla richiesta preventivo o in chat, quando si carica
+qualcosa dai un segnale all'utente che stai caricando, ad esempio con
+un'animazione dei pallini". Il solo "…" statico (o "Caricamento...") era
+usato in 8 punti diversi del prodotto con un upload in corso —
+sostituito ovunque da un nuovo componente condiviso
+`apps/web/src/components/UploadingDots.tsx`: tre pallini che rimbalzano
+in sequenza (`@keyframes uploading-dot-bounce`, `globals.css`,
+`animation-delay` sfalsato per pallino), rispetta `prefers-reduced-
+motion` tramite la regola globale già esistente in quel file. Applicato
+al riquadro "+" delle gallerie foto/video (`GuidedRequestForm.tsx`,
+`ReviewModal.tsx`, `CompleteJobModal.tsx`, `ClientCompleteModal.tsx`,
+`le-mie-richieste/page.tsx`, portfolio in `dashboard/profilo/page.tsx`),
+all'icona graffetta della chat (`TimelineModal.tsx`) e ai due bottoni
+"Carica immagine"/"Cambia immagine" (`account/page.tsx`,
+`dashboard/profilo/page.tsx`, dove sostituisce il testo "Caricamento...").
+
+**Bug reale: cliccare una notifica poi cambiare un filtro "impallava" la
+pagina** — segnalato dall'utente: "ho cliccato su una notifica (ricezione
+di un preventivo lato cliente) dopodiché ho provato a cambiare i filtri
+in le mie richieste, e ho visto il bug". Causa reale, riprodotta con
+Playwright (non solo ipotizzata): il deep-link `?open=<id>` (CLAUDE.md
+§79, apre/scrolla/evidenzia la card giusta arrivando da una notifica) non
+veniva mai ripulito dall'URL dopo il primo utilizzo — e gli `useEffect`
+che lo consumano hanno `requestsStatusFilter`/`requestsSort`/
+`requestsPageSize` tra le proprie dipendenze (necessario per il loro
+stesso flusso in due passaggi: azzerare il filtro a "Tutte" per non
+nascondere la card target, aspettare il re-render, solo allora
+calcolare pagina e scrollare). Senza un modo di sapere "questo target è
+già stato raggiunto", **ogni** cambio di filtro/ordinamento/quantità
+successivo da parte dell'utente riattivava l'intero effetto: azzerava di
+nuovo il filtro appena scelto, ricalcolava la pagina e ri-scrollava/
+ri-evidenziava la stessa card di prima, sovrascrivendo silenziosamente
+ogni interazione dell'utente con un loop percepito come "la pagina
+resta bloccata". Stesso identico bug trovato anche lato professionista
+(`/dashboard/richieste`), lì ancora più subdolo: l'effetto dipende da
+`leads`, il cui riferimento cambia ad ogni poll da 15s (§46/§47) — la
+stessa forzatura scattava quindi periodicamente **da sola**, anche senza
+alcuna interazione dell'utente.
+
+Corretto in entrambi i file con un ref "già consumato" (stesso principio
+già stabilito in `/dashboard/agenda`, `consumedBookingDeepLinkRef`,
+CLAUDE.md §64): `consumedRequestOpenRef`/`consumedBookingOpenRef` (lato
+cliente, `le-mie-richieste/page.tsx`) e `consumedRequestOpenRef` (lato
+professionista, `dashboard/richieste/page.tsx`) memorizzano l'id
+dell'ultimo target effettivamente raggiunto — un controllo in cima
+all'effetto (`if (consumedRequestOpenRef.current === targetId) return;`)
+lo rende un'azione compiuta una sola volta per ciascun deep-link, non
+più un vincolo persistente che si riafferma ad ogni cambio di stato o
+poll successivo. Il ref si aggiorna al valore del nuovo target solo
+quando arriva un `?open=` diverso (es. click su una seconda notifica),
+quindi un deep-link successivo funziona ancora normalmente.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di
+codice) e Playwright: fotocamera desktop aperta con una webcam finta
+(anteprima video attiva, `videoWidth > 0`), cattura riuscita senza più
+chiudere il popup sottostante, errore di upload chiaro visibile
+correttamente; deep-link verso una richiesta specifica in
+`/le-mie-richieste` (scroll iniziale confermato, `scrollY: 300`), due
+cambi successivi del filtro di stato confermati **senza** alcun
+ri-scroll forzato (`scrollY` resta a 0 dopo ogni cambio, prima sarebbe
+tornato a scattare verso la card). Zero errori console reali in tutti i
+flussi. Typecheck pulito su `apps/web`, build di produzione verde
+(31 route, nessuna nuova).

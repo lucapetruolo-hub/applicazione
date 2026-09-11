@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
+import { UploadingDots } from "@/components/UploadingDots";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -843,11 +844,15 @@ export function GuidedRequestForm({
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi foto"
               >
-                <Text fontSize="$7" color={brand.grafite70}>
-                  {isUploadingPhoto ? "…" : "+"}
-                </Text>
+                {isUploadingPhoto ? (
+                  <UploadingDots dotSize={7} />
+                ) : (
+                  <Text fontSize="$7" color={brand.grafite70}>
+                    +
+                  </Text>
+                )}
                 <Text fontSize="$1" color={brand.grafite70}>
-                  Aggiungi
+                  {isUploadingPhoto ? "Caricamento" : "Aggiungi"}
                 </Text>
               </YStack>
             ) : null}

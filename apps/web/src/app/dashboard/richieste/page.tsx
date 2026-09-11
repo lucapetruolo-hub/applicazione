@@ -328,12 +328,21 @@ function RichiesteContent() {
   // quella determinata chat") — `?open=<guidedRequestId>` apre e scrolla
   // alla card giusta appena i lead sono caricati, a prescindere dal filtro
   // per stadio corrente (passato a "tutte" per non nascondere la card).
+  // Bug reale segnalato dall'utente (stesso in `/le-mie-richieste`, corretto
+  // nello stesso giro): `leads` è tra le dipendenze e cambia riferimento ad
+  // ogni poll da 15s (§46) — senza un ref "già consumato", questo effetto
+  // riforzava `setActiveTab("tutte")` e riapriva/ri-scrollava la stessa
+  // card ad ogni tick, sovrascrivendo qualunque tab/scroll l'utente avesse
+  // scelto nel frattempo.
+  const consumedRequestOpenRef = useRef<string | null>(null);
   useEffect(() => {
     if (!leads) return;
     const targetGuidedRequestId = searchParams.get("open");
     if (!targetGuidedRequestId) return;
+    if (consumedRequestOpenRef.current === targetGuidedRequestId) return;
     const match = leads.find((l) => l.guidedRequest.id === targetGuidedRequestId);
     if (!match) return;
+    consumedRequestOpenRef.current = targetGuidedRequestId;
     setActiveTab("tutte");
     setOpenId(match.id);
     // Il DOM della card esiste solo dopo che React ha renderizzato lo stato

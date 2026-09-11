@@ -8,6 +8,7 @@ import { Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professio
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { UploadingDots } from "@/components/UploadingDots";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -424,7 +425,18 @@ export default function AccountPage() {
                     opacity={isUploadingImage ? 0.6 : 1}
                     onPress={() => imageInputRef.current?.click()}
                   >
-                    {isUploadingImage ? "Caricamento..." : user.imageUrl ? "Cambia immagine" : "Carica immagine"}
+                    {isUploadingImage ? (
+                      <XStack alignItems="center" gap="$2">
+                        <Text color={brand.grafite} fontWeight="600">
+                          Caricamento
+                        </Text>
+                        <UploadingDots dotSize={4} color={brand.grafite} />
+                      </XStack>
+                    ) : user.imageUrl ? (
+                      "Cambia immagine"
+                    ) : (
+                      "Carica immagine"
+                    )}
                   </Button>
                   <input
                     ref={imageInputRef}
