@@ -10768,3 +10768,43 @@ già verificato nel §82), sul bottone "Mostra mappa"/"Mappa" da mobile
 (larghezza cresce correttamente, altezza resta sostanziale dopo
 l'espansione). Zero errori console. Typecheck pulito su `apps/web`,
 build di produzione verde (31 route, nessuna nuova).
+
+## 85. Riepilogo compatto di `/dashboard` colorato come `/dashboard/richieste`
+
+Richiesta esplicita dell'utente: "la dashboard del professionista rendila
+più colorata e omogenea alle richieste ricevute, quindi rendile colorate
+come le richieste ricevute, quindi sfondo bianco per ogni richiesta e il
+colore in base allo stato della richiesta, e puoi colorare anche la
+scritta dello stato della richiesta (completata, in attesa, ecc..)". Il
+riepilogo compatto di `/dashboard` (`LeadSummaryRow`/`BookingSummaryRow`,
+CLAUDE.md §43/§56) usava uno sfondo uniforme `brand.gesso` (pesca chiaro,
+lo stesso sfondo della pagina) senza alcun accento cromatico legato allo
+stato — a differenza della pipeline completa `/dashboard/richieste`, dove
+ogni card ha già da tempo un bordo colorato per stadio
+(`REQUEST_STAGE_STYLE`, CLAUDE.md §41/§61).
+
+- **`bookingStageStyle`** (nuovo, `apps/web/src/lib/requestStage.ts`):
+  mappa `ProfessionalBooking["status"]` allo stesso stile `{label, icon,
+  fg, bg, border}` già usato per gli stadi di `ProfessionalLead` — stessa
+  mappatura status→stadio già introdotta per colorare le caselle
+  dell'agenda (§81, `BookingDetailPanel.tsx`/`dashboard/agenda/page.tsx`),
+  qui centralizzata in un solo punto di verità invece di una terza copia
+  duplicata degli stessi hex.
+- **`LeadSummaryRow`**: sfondo passato da `brand.gesso` a `brand.calce`
+  (bianco, il vero "bianco" del sito), bordo sinistro colorato
+  (`borderLeftWidth={3} borderLeftColor={style.border}`, `style` da
+  `REQUEST_STAGE_STYLE[classifyLeadStage(lead)]`) e la sola porzione di
+  testo con lo stato (`leadSummaryLabel(lead)`, invariata come testo —
+  solo il colore cambia) resa con `style.fg` in grassetto, separata dal
+  resto della riga data/ora (che resta grigio neutro).
+- **`BookingSummaryRow`**: stesso trattamento, `style` da
+  `bookingStageStyle(booking.status)`.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e Playwright: professionista di test con 3 richieste ricevute (due
+"Scadute", bordo/testo rosso; una "Preventivo inviato", bordo/testo verde)
+e 1 lavoro "Confermato" (bordo/testo verde) — screenshot di entrambe le
+tab confermano sfondo bianco per ogni card, bordo sinistro colorato
+coerente con lo stato, ed etichetta di stato nello stesso colore. Zero
+errori console. Typecheck pulito su `apps/web`, build di produzione verde
+(31 route, nessuna nuova).

@@ -24,6 +24,7 @@ import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
+import { bookingStageStyle, classifyLeadStage, REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 import {
   combineUnreadCounts,
   mergeCounts,
@@ -611,9 +612,25 @@ function LeadSummaryRow({
   // determinata richiesta/lavoro") — stesso `?open=` già in uso da
   // BookingSummaryRow qui sotto, letto da /dashboard/richieste per
   // espandere/scrollare alla card giusta invece di aprire solo l'inbox.
+  // Sfondo bianco + bordo/testo di stato colorati in base allo stadio
+  // (richiesta esplicita dell'utente: "rendile colorate come le richieste
+  // ricevute... sfondo bianco per ogni richiesta e il colore in base allo
+  // stato") — stessa palette `REQUEST_STAGE_STYLE` già in uso su
+  // /dashboard/richieste (CLAUDE.md §41/§61) e sulle caselle dell'agenda
+  // (§81), non un nuovo schema di colori inventato per questa vista.
+  const style = REQUEST_STAGE_STYLE[classifyLeadStage(lead)];
   return (
     <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} style={{ textDecoration: "none" }}>
-      <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
+      <XStack
+        alignItems="center"
+        gap="$2"
+        backgroundColor={brand.calce}
+        borderRadius="$3"
+        borderLeftWidth={3}
+        borderLeftColor={style.border}
+        padding="$3"
+        flexWrap="wrap"
+      >
         <YStack flex={1} minWidth={200} gap="$1">
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
             <Text fontWeight="700" color={brand.grafite}>
@@ -626,10 +643,15 @@ function LeadSummaryRow({
             {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
-          <Text fontSize="$2" color={brand.grafite70}>
-            {receivedDate.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
-            {receivedDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · {leadSummaryLabel(lead)}
-          </Text>
+          <XStack alignItems="center" gap="$1" flexWrap="wrap">
+            <Text fontSize="$2" color={brand.grafite70}>
+              {receivedDate.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+              {receivedDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+            </Text>
+            <Text fontSize="$2" fontWeight="700" color={style.fg}>
+              {leadSummaryLabel(lead)}
+            </Text>
+          </XStack>
         </YStack>
         <XStack alignItems="center" gap="$2" flexShrink={0}>
           <UnreadDot count={unreadCount} />
@@ -674,9 +696,21 @@ function BookingSummaryRow({
   // sezione "Dettagli cliente" già presente altrove.
   const revealedPhone = booking.recipientPhone ?? booking.clientPhone;
   const revealedAddress = formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${booking.city ?? ""}` : null);
+  // Stessa colorazione per stadio di LeadSummaryRow sopra (richiesta
+  // esplicita dell'utente, stessa palette di /dashboard/richieste).
+  const style = bookingStageStyle(booking.status);
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
-      <XStack alignItems="center" gap="$2" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" flexWrap="wrap">
+      <XStack
+        alignItems="center"
+        gap="$2"
+        backgroundColor={brand.calce}
+        borderRadius="$3"
+        borderLeftWidth={3}
+        borderLeftColor={style.border}
+        padding="$3"
+        flexWrap="wrap"
+      >
         <YStack flex={1} minWidth={200} gap="$1">
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
             <Text fontWeight="700" color={brand.grafite}>
@@ -688,10 +722,15 @@ function BookingSummaryRow({
             </Text>
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
-          <Text fontSize="$2" color={brand.grafite70}>
-            {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
-            {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} · {bookingSummaryLabel(booking)}
-          </Text>
+          <XStack alignItems="center" gap="$1" flexWrap="wrap">
+            <Text fontSize="$2" color={brand.grafite70}>
+              {date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
+              {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+            </Text>
+            <Text fontSize="$2" fontWeight="700" color={style.fg}>
+              {bookingSummaryLabel(booking)}
+            </Text>
+          </XStack>
           {revealedAddress || revealedPhone ? (
             <XStack alignItems="center" gap="$3" flexWrap="wrap">
               {revealedAddress ? (

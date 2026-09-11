@@ -1,4 +1,4 @@
-import type { ProfessionalLead } from "@professionisti/shared";
+import type { ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
 import { brand, type IconName } from "@professionisti/ui";
 
 /**
@@ -67,6 +67,24 @@ export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: Ic
   scaduta: { label: "Scaduta", icon: "clock", fg: "#DC3545", bg: "#FBEAEA", border: "#DC3545" },
   chiusa: { label: "Chiusa", icon: "x", fg: brand.grafite70, bg: brand.gesso, border: brand.filetto },
 };
+
+/**
+ * Stesso stile per un lavoro accettato (`ProfessionalBooking`, non un
+ * `ProfessionalLead`) — richiesta esplicita dell'utente: "rendi la
+ * dashboard del professionista più colorata e omogenea alle richieste
+ * ricevute... il colore in base allo stato della richiesta". Nessuno
+ * stadio di `RequestStage` corrisponde 1:1 a un `BookingStatus`, ma
+ * condividono lo stesso significato pratico — stessa mappatura già in uso
+ * per colorare le caselle dell'agenda (`BookingDetailPanel.tsx`,
+ * `dashboard/agenda/page.tsx`, CLAUDE.md §81), qui spostata a un solo
+ * punto di verità invece di una terza copia duplicata degli stessi hex.
+ */
+export function bookingStageStyle(status: ProfessionalBooking["status"]): (typeof REQUEST_STAGE_STYLE)[RequestStage] {
+  if (status === "COMPLETED") return REQUEST_STAGE_STYLE.completata;
+  if (status === "CANCELED" || status === "NO_SHOW") return REQUEST_STAGE_STYLE.annullata;
+  if (status === "PENDING") return REQUEST_STAGE_STYLE.in_attesa;
+  return REQUEST_STAGE_STYLE.accettata; // CONFIRMED
+}
 
 /** Motivo per cui un preventivo/richiesta "chiusa" non è più azionabile — mostrato al posto delle azioni. */
 export function describeClosedReason(lead: ProfessionalLead): string {
