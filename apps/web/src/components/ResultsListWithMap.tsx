@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHo
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
 
 // Leaflet legge `window` al modulo: mai importato lato server (CLAUDE.md
@@ -557,8 +558,8 @@ export function ResultsListWithMap({
               nextAvailableSlotHome={pro.nextAvailableSlotHome}
               nextAvailableSlotOnline={pro.nextAvailableSlotOnline}
               defaultMode={defaultMode}
-              onPress={() => router.push(`/professionista/${pro.id}`)}
-              onSlotPress={() => router.push(`/professionista/${pro.id}#agenda`)}
+              onPress={() => navigateWithTransition(() => router.push(`/professionista/${pro.id}`))}
+              onSlotPress={() => navigateWithTransition(() => router.push(`/professionista/${pro.id}#agenda`))}
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
             />
           ))}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Camera, X } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -443,8 +444,7 @@ export default function DashboardProfiloPage() {
                 borderColor={brand.filetto}
               >
                 {imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <Image src={imageUrl} alt="" width={72} height={72} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <Camera size={28} strokeWidth={1.5} color={brand.grafite70} />
                 )}

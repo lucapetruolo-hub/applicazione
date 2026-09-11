@@ -18,6 +18,7 @@ import { QualitySection } from "@/components/QualitySection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
+import { navigateWithTransition } from "@/lib/viewTransition";
 import { WhyWeExist } from "@/components/WhyWeExist";
 
 export default function HomeContent({
@@ -49,7 +50,12 @@ export default function HomeContent({
           <CategoryCarousel>
             {PROFESSIONAL_CATEGORIES.map((c) => (
               <div key={c.slug} style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
-                <CategoryTile slug={c.slug} label={c.label} count={countBySlug.get(c.slug)} onPress={() => router.push(`/cerca/${c.slug}`)} />
+                <CategoryTile
+                  slug={c.slug}
+                  label={c.label}
+                  count={countBySlug.get(c.slug)}
+                  onPress={() => navigateWithTransition(() => router.push(`/cerca/${c.slug}`))}
+                />
               </div>
             ))}
             <div style={{ flexShrink: 0, scrollSnapAlign: "start" }}>

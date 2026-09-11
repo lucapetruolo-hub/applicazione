@@ -48,7 +48,25 @@ a {
    qualcosa: le transizioni diventano istantanee (la UI raggiunge comunque
    lo stato finale corretto, es. il contenuto di FadeInSection resta
    visibile), non vengono nascoste o disabilitate. */
+/* View Transitions API tra pagine (ricerca→profilo, header — scope
+   deliberato, vedi apps/web/src/lib/viewTransition.ts): durata coerente
+   con `motionBase` (220ms) già usato altrove nel sito invece del cross-fade
+   di default del browser (~250ms senza controllo esplicito). Gli
+   pseudo-elementi `::view-transition-*` non sono selezionabili da `*`
+   (non fanno parte dell'albero DOM), servono regole esplicite — anche per
+   il guard `prefers-reduced-motion` sotto, la regola universale `*` più in
+   basso non li copre. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
   *,
   *::before,
   *::after {

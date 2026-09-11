@@ -6,6 +6,7 @@ import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
 import { Button, Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { navigateWithTransition } from "@/lib/viewTransition";
 
 /**
  * Hero della homepage: la ricerca professionisti (A domicilio/Online + città
@@ -28,7 +29,7 @@ export function HomeHero() {
   const [urgentOnly, setUrgentOnly] = useState(false);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    router.push(buildSearchDestination({ ...params, urgentOnly }));
+    navigateWithTransition(() => router.push(buildSearchDestination({ ...params, urgentOnly })));
   }
 
   return (

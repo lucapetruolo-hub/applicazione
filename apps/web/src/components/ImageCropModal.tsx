@@ -181,6 +181,12 @@ export function ImageCropModal({
             touchAction: "none",
           }}
         >
+          {/* `<img>` grezzo deliberato, non `next/image`: `imageSrc` è un
+              `blob:`/data URL locale (il file appena scelto, prima
+              dell'upload — non supportato dal loader di `next/image`), e
+              serve un `ref` diretto su un vero elemento DOM per leggere
+              `naturalWidth`/`naturalHeight` in `handleImageLoad` (usati per
+              la matematica di drag/zoom del ritaglio). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgRef}

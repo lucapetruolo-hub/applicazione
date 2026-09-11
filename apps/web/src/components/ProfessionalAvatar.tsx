@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "./CategoryIconBadge";
 
@@ -17,8 +18,9 @@ export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44 }: Profes
 
   return (
     <YStack width={size} height={size} borderRadius={size} overflow="hidden" flexShrink={0}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      {/* `next/image` (dimensione nota in anticipo, `size`): lazy-loading e
+          formati moderni automatici, a differenza del vecchio <img> grezzo. */}
+      <Image src={imageUrl} alt="" width={size} height={size} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
     </YStack>
   );
 }

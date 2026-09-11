@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    // Cloudinary (immagini profilo/portfolio, CLAUDE.md §2) è l'unica
+    // origine remota servita tramite `next/image` nel sito — il cloud
+    // name varia per ambiente (env var, mai nel codice), l'host resta
+    // sempre `res.cloudinary.com`.
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
+  },
   experimental: {
     // Niente cache client-side delle pagine (Router Cache): le pagine
     // risultati devono rileggere i searchParams ad ogni navigazione, anche

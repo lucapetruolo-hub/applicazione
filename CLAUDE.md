@@ -10808,3 +10808,148 @@ tab confermano sfondo bianco per ogni card, bordo sinistro colorato
 coerente con lo stato, ed etichetta di stato nello stesso colore. Zero
 errori console. Typecheck pulito su `apps/web`, build di produzione verde
 (31 route, nessuna nuova).
+
+## 86. next/image per gli avatar, PWA (manifest + service worker minimale), View Transitions API sulla ricerca
+
+Richiesta esplicita dell'utente: l'utente ha incollato un elenco di 5
+"gap di modernità" segnalati da Anthropic Cowork (PWA/installabilità,
+dark mode, View Transitions API, `next/image` non usato, performance
+Lighthouse non verificata in produzione) e, tramite `AskUserQuestion`, ha
+scelto tutti e quattro i punti concretamente implementabili in questa
+sessione (PWA, `next/image`, View Transitions) — il quinto, dark mode, è
+il più intensivo in termini di design (richiede una palette scura
+completa per il sistema "Vicinato", non solo un'inversione dei colori) ed
+è stato deliberatamente lasciato per un giro separato successivo, non
+ancora iniziato.
+
+**`next/image` al posto di `<img>` — solo dove il caso reale lo giustifica,
+non un rimpiazzo cieco**: valutati singolarmente i 5 usi grezzi di `<img>`
+del prodotto, non un rimpiazzo di massa:
+- **Sostituiti**: `ProfessionalAvatar.tsx` (avatar professionista in card/
+  ricerca) e l'avatar 72×72 di `/dashboard/profilo` — dimensioni fisse
+  note, nessun requisito di `blob:`/aspect-ratio dinamico, i due casi
+  "puliti" con solo beneficio (lazy-loading, resize automatico, formato
+  ottimizzato) e nessun costo.
+- **Lasciati `<img>` grezzi, deliberatamente, con motivo documentato nel
+  codice stesso**: `MediaPreview.tsx` (deve reggere URL `blob:` locali
+  prima dell'upload — `next/image` non li supporta), `ImageCropModal.tsx`
+  (richiede un riferimento DOM diretto per la matematica di ritaglio via
+  canvas), `PhotoLightbox.tsx` (dimensioni intrinseche sconosciute a
+  priori, un vincolo che `next/image` non gestisce bene senza `fill` +
+  contenitore dimensionato ad hoc).
+- **`next.config.mjs`**: `images.remotePatterns` esteso con
+  `res.cloudinary.com` (unico host esterno da cui il prodotto serve
+  immagini reali, CLAUDE.md §2) — senza questa dichiarazione esplicita
+  Next.js rifiuta di ottimizzare qualunque URL Cloudinary.
+
+**PWA minimale — manifest + service worker, cache solo sugli asset
+statici**: coerente con il principio "niente dati mai stantii" già
+documentato più volte in questo file (§9, "Ricerca sempre aggiornata" —
+bug reale già risolto una volta: professionisti eliminati visibili in
+ricerca per colpa di una cache troppo aggressiva) — il service worker
+cachea **solo** `/_next/static/*` (JS/CSS con hash nel nome, quindi
+immutabili per costruzione) più le tre icone di sistema, **mai** una
+pagina HTML né una risposta API: nessun rischio di rivedere dati vecchi
+offline.
+- `apps/web/src/app/manifest.ts` (convenzione file-based di Next.js,
+  risolve a `/manifest.webmanifest`): nome, `short_name`, `theme_color`
+  (`#189A63`, lo stesso verde smeraldo "Vicinato"), `background_color`
+  (`#FDEFE1`, lo stesso pesca di sfondo), `display: "standalone"`, due
+  icone 192/512 più una variante `purpose: "maskable"`.
+- `apps/web/src/app/icon-192.png/route.tsx` e `.../icon-512.png/route.tsx`
+  (nuovi route handler `runtime: "edge"`, `next/og` `ImageResponse`):
+  stesso marchio verde a due tratti bianchi già disegnato per
+  `apple-icon.tsx` (CLAUDE.md §10 Fase 2), riportato a due dimensioni
+  aggiuntive richieste dallo standard manifest — le convenzioni
+  file-based riservate di Next.js (`icon`/`apple-icon`) non coprono
+  dimensioni arbitrarie multiple, da qui i due route handler dedicati.
+- `apps/web/public/sw.js` (service worker grezzo, nessuna libreria
+  Workbox aggiunta: la logica è minima, tre righe di `fetch` con un
+  filtro esplicito sui soli path statici) + `ServiceWorkerRegistration.tsx`
+  (client component, `useEffect` con `navigator.serviceWorker.register`,
+  fallisce in silenzio se non supportato — mai un errore bloccante).
+- `apps/web/src/app/layout.tsx`: nuovo `export const viewport: Viewport`
+  (separato da `metadata`, richiesto da Next.js 14 per `themeColor`) +
+  `<ServiceWorkerRegistration />` montato come primo figlio di
+  `<Providers>`.
+
+**View Transitions API — scope deliberatamente limitato ai percorsi di
+ricerca ad alto traffico, non un rimpiazzo di `next/link`/`useRouter`
+in tutto il sito**: valutato il raggio d'azione reale (~40 file usano
+`next/link`/`useRouter` nel prodotto) contro il rischio concreto
+(modificatori di click, `target="_blank"`, download, usi non-navigazionali
+di `Link`) per un beneficio puramente estetico — scelta di scope esplicita
+e documentata nel commento dello stesso file di utility, coerente con lo
+stesso principio "non un giro esaustivo, priorità ai punti più critici"
+già seguito altrove nel progetto.
+- `apps/web/src/lib/viewTransition.ts` (nuovo): `navigateWithTransition
+  (navigate)` — avvolge una navigazione in `document.startViewTransition`
+  quando l'API è disponibile (Chrome/Edge), altrimenti esegue la
+  navigazione com'era prima, zero differenza di comportamento su Safari/
+  Firefox. Nessuna libreria aggiunta: API nativa del browser, Next.js
+  14.2.x non ha il supporto sperimentale integrato (disponibile solo da
+  Next 15+, non usabile qui).
+- Applicata ai cinque punti di ingresso alla ricerca a più alto traffico:
+  `HomeHero.tsx` (barra di ricerca dell'hero homepage), `HeaderSearchBar.tsx`
+  (versione condensata nella barra fissa, §72), `SearchHeader.tsx`
+  (banner completo mobile nel corpo pagina), `HomeContent.tsx` (click su
+  una `CategoryTile`), `ResultsListWithMap.tsx` (click su una
+  `ProfessionalCard`/pillola mini-agenda verso il profilo pubblico) — i
+  due bottoni CTA "Richiedi preventivo"/"Richiesta urgente" in
+  `HomeHero.tsx` restano deliberatamente non wrappati, stesso principio di
+  scope già applicato al bottone "Altro servizio" in `HomeContent.tsx`.
+- `globals.css`: `::view-transition-old(root), ::view-transition-new(root)
+  { animation-duration: 220ms; }` (stessa durata `motionBase` già in uso
+  altrove nel redesign, CLAUDE.md §10 Fase "motion") + una regola dentro
+  il blocco `@media (prefers-reduced-motion: reduce)` già esistente che
+  azzera le pseudo-classi `::view-transition-*` — nessun controllo `matchMedia`
+  aggiuntivo in JS, il browser stesso disabilita l'animazione per chi ha
+  quella preferenza di sistema, coerente col meccanismo globale già in uso
+  per ogni altra transizione del sito.
+- **Bug reale trovato e corretto durante la verifica** (non da lettura di
+  codice, da un test Playwright che disabilitava l'API per simulare un
+  browser non supportato): il guardrail iniziale controllava
+  `"startViewTransition" in document` — l'operatore `in` verifica solo la
+  **presenza** della chiave di proprietà nella catena dei prototipi, non
+  che il suo valore sia davvero una funzione chiamabile. In ogni browser
+  realmente sprovvisto dell'API (Safari, Firefox) la chiave è del tutto
+  assente e il controllo funziona per caso — ma resta il controllo
+  sbagliato: più robusto e senza alcun costo verificare
+  `typeof document.startViewTransition === "function"`, corretto in
+  `navigateWithTransition`.
+
+Verificato con l'API/Postgres locali reali (non solo typecheck/build) e
+uno script Playwright dedicato (18/19 controlli PASS): manifest risolve a
+`/manifest.webmanifest` con nome/icone corretti, entrambe le icone
+192/512 rispondono `200 image/png`, meta `theme-color` corretto, service
+worker registrato (`/sw.js`), zero errori console reali sulla home;
+`ProfessionalAvatar` genera correttamente un `<img src="/_next/image?
+url=...&w=128&q=75">` sul profilo pubblico (URL costruito esattamente,
+verificato assegnando temporaneamente un `imageUrl` reale ospitato su
+`res.cloudinary.com` a un professionista di test, poi ripristinato a
+`null` a fine verifica) — la sola richiesta di ottimizzazione risulta in
+403 per la policy di rete dell'ambiente di sviluppo che blocca l'host
+esterno (stessa identica limitazione già documentata altrove in questo
+file per tile OpenStreetMap/script Google Identity/foto randomuser.me,
+non un difetto della configurazione `next/image`); click su una
+`CategoryTile` e sulla ricerca condensata dell'header invocano entrambi
+`document.startViewTransition` (spia installata su `startViewTransition`
+stesso, non solo dedotta dal risultato della navigazione); un utente con
+`prefers-reduced-motion: reduce` naviga normalmente senza errori; un
+browser privo dell'API (metodo del prototipo forzato a `undefined`, non
+solo `delete` — che è un no-op su una proprietà ereditata, causa del primo
+falso positivo in questo stesso giro di verifica) degrada in modo pulito
+alla navigazione normale, senza eccezioni. Typecheck pulito su tutti i
+package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (33 route, tre nuove:
+`/icon-192.png`, `/icon-512.png`, `/manifest.webmanifest`).
+
+**Non ancora implementato in questo giro (item 5/5 della lista Cowork,
+esplicitamente rimandato dall'utente)**: dark mode — richiede un vero
+lavoro di design sulla palette "Vicinato" (non solo invertire i colori
+esistenti), toccando probabilmente `packages/ui/src/tokens.ts` e il
+pattern `prefers-color-scheme`/`data-theme` in tutto il sito data la
+pervasività dei token `brand.*`. Audit Lighthouse reale su Vercel in
+produzione (distinto dal punteggio locale già misurato e documentato in
+CLAUDE.md §10 Fase 6, CPU throttling simulato non rappresentativo)
+resta anch'esso da rifare a deploy attivo.

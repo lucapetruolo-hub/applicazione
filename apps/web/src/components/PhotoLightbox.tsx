@@ -148,6 +148,12 @@ export function PhotoLightbox({
           style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 8 }}
         />
       ) : (
+        // `<img>` grezzo deliberato, non `next/image`: la foto può avere
+        // qualunque aspect ratio (caricata dall'utente, mai tracciata nel
+        // modello dati) — `maxWidth`/`maxHeight` + `objectFit: contain`
+        // si affidano al dimensionamento intrinseco nativo del browser,
+        // che `next/image` richiederebbe di conoscere in anticipo
+        // (width/height espliciti o `fill` con contenitore già dimensionato).
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={photos[index]}

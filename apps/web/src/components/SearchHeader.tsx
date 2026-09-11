@@ -5,6 +5,7 @@ import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
 import { SearchBar, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { navigateWithTransition } from "@/lib/viewTransition";
 
 export function SearchHeader({
   initialQuery,
@@ -31,8 +32,10 @@ export function SearchHeader({
     // nella cache della sessione: forziamo un refresh esplicito dopo il push
     // (in coda al push, cosi' vale sia per la navigazione nuova sia per una
     // eventuale risposta gia' in cache).
-    router.push(destination);
-    router.refresh();
+    navigateWithTransition(() => {
+      router.push(destination);
+      router.refresh();
+    });
   }
 
   return (

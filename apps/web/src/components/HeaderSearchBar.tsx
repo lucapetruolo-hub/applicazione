@@ -5,6 +5,7 @@ import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategory
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { navigateWithTransition } from "@/lib/viewTransition";
 
 /**
  * Versione condensata della ricerca, montata nella barra fissa in alto
@@ -33,8 +34,10 @@ export function HeaderSearchBar() {
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     const destination = buildSearchDestination(params);
-    router.push(destination);
-    router.refresh();
+    navigateWithTransition(() => {
+      router.push(destination);
+      router.refresh();
+    });
   }
 
   return (

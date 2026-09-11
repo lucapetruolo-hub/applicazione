@@ -100,6 +100,12 @@ export function MediaPreview({
       <video src={url} muted playsInline onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />
     );
   }
+  // `<img>` grezzo deliberato, non `next/image`: `url` può essere un
+  // `blob:` locale (anteprima di un file selezionato ma non ancora
+  // caricato, `forceVideo`/`forceDocument` esistono proprio per questo
+  // caso) — non supportato dal loader di `next/image` — e questo
+  // componente è usato in 13 punti del sito con dimensioni/aspect ratio
+  // diversi passati via `style`, mai una dimensione nota in anticipo.
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt={alt} onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />;
 }
