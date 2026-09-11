@@ -10706,3 +10706,65 @@ ri-scroll forzato (`scrollY` resta a 0 dopo ogni cambio, prima sarebbe
 tornato a scattare verso la card). Zero errori console reali in tutti i
 flussi. Typecheck pulito su `apps/web`, build di produzione verde
 (31 route, nessuna nuova).
+
+## 84. Correzione al fix §82: la mappa dei risultati si rimpiccioliva con pochi risultati
+
+Segnalazione immediata dell'utente dopo aver visto il fix precedente in
+produzione: "c'è un bug, quando ad esempio effettuando la ricerca c'è un
+solo risultato, la mappa di lato si ridimensiona da sola, diventando più
+piccola, correggi". Il fix del §82 (sincronizzare via JS l'altezza esatta
+di `.results-map-col` a quella, eventualmente più corta, di
+`.results-list-col`) risolveva davvero lo scorrimento della mappa ma
+introduceva un secondo bug reale: con un solo risultato, l'area mappa
+renderizzata si rimpiccioliva visibilmente invece di restare alla sua
+dimensione normale (~760px, `calc(100vh - 140px)`).
+
+**Causa: i due requisiti ("mai spostarsi durante lo scroll" e "mai
+rimpicciolirsi") sono in tensione reale sotto `position: sticky` puro**,
+non conciliabili contemporaneamente con un semplice "sincronizza
+l'altezza del contenitore a quella della lista": lo slack di uno sticky è
+sempre `altezza contenitore - altezza elemento` — l'unico modo di avere
+margine di manovra (slack > 0) senza mai ridurre l'altezza della mappa è
+dare al contenitore un'altezza **maggiore** di quella naturale della
+mappa, mai minore o uguale (uguale = zero slack = comportamento
+"normale", non sticky, esattamente il bug originale del §82).
+
+**Fix**: tornato ad `align-items: stretch` su `.results-layout` (il
+meccanismo originale pre-sessione, mai la causa del rimpicciolimento —
+allunga sempre ENTRAMBE le colonne all'altezza della più alta delle due,
+non riduce mai nulla), rimosso del tutto l'ResizeObserver/la custom
+property `--map-col-height`. Aggiunto un margine minimo di sicurezza
+puramente in CSS: `.results-map-col { min-height: calc(100vh - 140px +
+280px); }` — sempre **almeno** ~280px di slack reale in più oltre
+all'altezza naturale della mappa (mai `height` secca, solo `min-height`:
+non riduce mai nulla sotto il contenuto naturale, cresce solo quando
+serve). Per una lista più lunga della mappa (caso comune), il
+comportamento resta identico a prima (stretch allunga già la colonna
+mappa a un'altezza superiore a 760px, il margine minimo aggiunto non ha
+alcun effetto essendo già superato). Nessuna soluzione CSS pura elimina
+la deriva in modo matematicamente assoluto per un elenco arbitrariamente
+corto (richiederebbe un margine infinito) — 280px è un compromesso
+pragmatico, coerente con lo stesso pattern già visibile su siti di
+riferimento come miodottore.it (pannello mappa con un'altezza minima
+comoda indipendente dal numero di risultati, non un adattamento esatto).
+
+Verificato con l'API locale reale (non solo lettura di codice) e
+Playwright: categoria+città con un solo risultato (`idraulico`/Firenze) —
+altezza renderizzata della mappa (`.results-map-sticky`) confermata
+**costante a 760px su ogni posizione di scroll testata** (0→1500px,
+mai una volta diversa — rimpicciolimento eliminato del tutto);
+`mapColHeight: 1040` (= 760 + 280, il margine applicato correttamente);
+la mappa resta agganciata (`top: 24`) per un tratto di scroll reale
+(100→300px, contro lo zero assoluto di prima del fix del §82) prima di
+staccarsi gradualmente fino a `top: -382` — range di scroll realmente
+disponibile su quella pagina risultati misurato a soli 758px totali,
+quindi la mappa resta effettivamente ferma per la quasi totalità dello
+scroll utile. Screenshot di controllo a inizio e fine scroll: la mappa
+mantiene sempre la sua dimensione piena, nessuna sovrapposizione né vuoto
+anomalo prima del footer. Nessuna regressione sul caso lista lunga
+(15 risultati, `top: 24` costante per l'intera finestra testata, come
+già verificato nel §82), sul bottone "Mostra mappa"/"Mappa" da mobile
+(colonna sempre 320px, invariata) né su "Espandi mappa" da desktop
+(larghezza cresce correttamente, altezza resta sostanziale dopo
+l'espansione). Zero errori console. Typecheck pulito su `apps/web`,
+build di produzione verde (31 route, nessuna nuova).

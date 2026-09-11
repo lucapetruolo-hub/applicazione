@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X, Zap } from "lucide-react";
@@ -69,56 +69,29 @@ export function ResultsListWithMap({
   const [shouldMountMap, setShouldMountMap] = useState(false);
 
   // Bug reale segnalato dall'utente: "scorrendo verso il basso la mappa va
-  // leggermente in basso... non deve spostarsi per niente". `align-items:
-  // stretch` (fix precedente, §72) allunga OGNI colonna del layout
-  // all'altezza della PIÙ ALTA delle due — funziona quando la lista è più
-  // alta della mappa (tipico, molti risultati: entrambe le colonne
-  // diventano alte quanto la lista, dando slack alla sticky), ma fallisce
-  // quando la lista è più corta della mappa stessa (es. 1-3 risultati): in
-  // quel caso la colonna mappa resta comunque alta quanto il proprio unico
-  // figlio (~760px, `calc(100vh - 140px)`) — è già la più alta delle due,
-  // stretch non aggiunge nulla — e lo sticky non ha alcuno spazio (slack =
-  // altezza contenitore - altezza elemento = 0) per restare davvero
-  // "incollato": si comporta come un elemento normale e scorre via con la
-  // pagina. Corretto sincronizzando esplicitamente via JS l'altezza della
-  // colonna mappa a quella REALE della colonna lista (`ResizeObserver`,
-  // qualunque sia la più alta delle due) invece di affidarsi al
-  // "stretch al massimo dei due" di flexbox: se la lista è più corta della
-  // mappa, la colonna mappa resta forzatamente più bassa del proprio
-  // contenuto — lo sticky, con un contenitore più basso di sé stesso, resta
-  // semplicemente ancorato a `top: 24px` per l'intera durata in cui il
-  // contenitore (per quanto corto) è ancora in vista, lo stesso identico
-  // comportamento di `position: fixed` in quell'intervallo, senza bisogno
-  // di alcuna logica di scroll manuale in JS.
-  const mapColRef = useRef<HTMLDivElement | null>(null);
-  const listColRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const listEl = listColRef.current;
-    const mapEl = mapColRef.current;
-    if (!listEl || !mapEl || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      const height = entries[0]?.contentRect.height;
-      // Custom property, non `style.height` diretto: l'inline style
-      // avrebbe una specificità più alta di qualunque regola CSS e si
-      // applicherebbe anche da mobile (dove `.results-map-col.mobile-open`
-      // non è sotto la soglia `@media (min-width:700px)`), forzando un
-      // vuoto enorme sotto la mappa fissa a 320px quando la lista è lunga.
-      // La custom property è invece letta SOLO dentro la media query
-      // desktop (vedi CSS sotto), zero effetto sul layout mobile.
-      // `height` esplicita (non `min-height`): quando la lista è più corta
-      // della mappa, la colonna mappa resta comunque più bassa del proprio
-      // stesso contenuto (l'elemento sticky, `overflow` di default
-      // "visible", eccede visivamente il proprio contenitore) — un
-      // contenitore sticky più basso dell'elemento sticky stesso fa sì che
-      // lo sticky resti ancorato a `top: 24px` per l'intera durata in cui
-      // quel contenitore (per quanto corto) è ancora nei paraggi dello
-      // scroll, esattamente il comportamento "non si sposta mai" richiesto.
-      if (height) mapEl.style.setProperty("--map-col-height", `${Math.ceil(height)}px`);
-    });
-    observer.observe(listEl);
-    return () => observer.disconnect();
-  }, []);
-
+  // leggermente in basso... non deve spostarsi per niente". Un primo
+  // tentativo (sincronizzare via JS l'altezza della colonna mappa a quella
+  // ESATTA della colonna lista, qualunque fosse la più bassa delle due) ha
+  // introdotto un SECONDO bug reale, anch'esso segnalato dall'utente: con
+  // un solo risultato la mappa si rimpiccioliva visibilmente invece di
+  // restare alla sua dimensione normale — impostare la colonna più bassa
+  // del contenuto della mappa (per costringere lo sticky a restare
+  // ancorato) faceva effettivamente rimpicciolire l'area mappa renderizzata,
+  // non solo il suo contenitore. I due requisiti ("mai spostarsi" e "mai
+  // rimpicciolirsi") sono in tensione reale sotto `position: sticky` puro:
+  // lo slack di uno sticky è sempre `altezza contenitore - altezza
+  // elemento`, e l'unico modo di avere slack senza mai ridurre l'altezza
+  // della mappa è dare alla colonna un'altezza MAGGIORE di quella naturale
+  // della mappa (mai minore) — un margine di sicurezza, non un
+  // adattamento esatto alla lista. `align-items: stretch` (già in uso
+  // prima di questo giro di fix, mai la causa del rimpicciolimento: si
+  // limita ad allungare ENTRAMBE le colonne all'altezza della più alta
+  // delle due, non riduce mai nulla) resta quindi il meccanismo di base;
+  // aggiunto solo un margine minimo fisso (`--map-slack`, letto nel CSS
+  // sotto) che garantisce sempre almeno ~280px di slack reale allo sticky
+  // anche con un solo risultato — sufficiente a coprire lo scroll
+  // realistico di una pagina di risultati corta (che di per sé ha poco
+  // altro da scorrere) senza introdurre un vuoto enorme sotto la mappa.
   useEffect(() => {
     if (mobileMapOpen) setShouldMountMap(true);
   }, [mobileMapOpen]);
@@ -481,10 +454,7 @@ export function ResultsListWithMap({
       ) : null}
 
       {showMap ? (
-        <div
-          ref={mapColRef}
-          className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}
-        >
+        <div className={`results-map-col${mobileMapOpen ? " mobile-open" : ""}${mapExpanded ? " expanded" : ""}`}>
           <div className="results-map-sticky">
             <button type="button" className="map-expand-toggle" onClick={() => setMapExpanded((v) => !v)}>
               {mapExpanded ? <Minimize2 size={14} strokeWidth={1.5} /> : <Maximize2 size={14} strokeWidth={1.5} />}
@@ -504,7 +474,7 @@ export function ResultsListWithMap({
         </div>
       ) : null}
 
-      <div className="results-list-col" ref={listColRef}>
+      <div className="results-list-col">
         <YStack gap="$3">
           {/* Il bottone filtri vive DENTRO la colonna lista (sopra
               l'intestazione), non come figlio diretto del layout a righe:
@@ -867,16 +837,12 @@ export function ResultsListWithMap({
         @media (min-width: 700px) {
           .results-layout {
             flex-direction: row;
-            /* "flex-start", non più "stretch" (che aveva causato il bug del
-               "la mappa si sposta leggermente durante lo scroll", vedi
-               commento sul ResizeObserver più sopra in questo file):
-               l'altezza reale della colonna mappa è ora sincronizzata via
-               JS (min-height) a quella della colonna lista, qualunque sia
-               la più alta delle due — "stretch" allungherebbe di nuovo
-               entrambe le colonne al massimo delle due, vanificando quella
-               sincronizzazione quando la mappa è naturalmente più alta
-               della lista (pochi risultati). */
-            align-items: flex-start;
+            /* "stretch": allunga ENTRAMBE le colonne all'altezza della PIÙ
+               ALTA delle due (mai riduce nulla — la mappa non rimpicciolisce
+               mai, vedi commento sul margine di slack più sopra in questo
+               file). Quando la lista è più alta della mappa (molti
+               risultati) dà già slack reale allo sticky per costruzione. */
+            align-items: stretch;
             gap: 20px;
           }
           .mobile-map-toggle {
@@ -891,11 +857,14 @@ export function ResultsListWithMap({
             flex-shrink: 0;
             order: 2;
             transition: max-width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-            /* Sincronizzata via JS (ResizeObserver) all'altezza reale della
-               colonna lista — solo qui, mai da mobile (vedi commento sulla
-               custom property più sopra in questo file). "auto" come
-               fallback finché l'effetto non ha ancora misurato nulla. */
-            height: var(--map-col-height, auto);
+            /* Margine minimo di slack (richiesta esplicita dell'utente: la
+               mappa non deve spostarsi durante lo scroll NÉ rimpicciolirsi
+               con pochi risultati) — mai sotto l'altezza naturale della
+               mappa stessa (min-height, mai height secca: non riduce
+               mai nulla), garantisce sempre almeno ~280px di spazio in più
+               oltre a quello della mappa perché lo sticky abbia margine di
+               manovra anche quando la lista è più corta della mappa. */
+            min-height: calc(100vh - 140px + 280px);
           }
           .results-map-col.expanded {
             width: 58%;
