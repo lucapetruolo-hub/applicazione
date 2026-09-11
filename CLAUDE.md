@@ -10953,3 +10953,63 @@ pervasività dei token `brand.*`. Audit Lighthouse reale su Vercel in
 produzione (distinto dal punteggio locale già misurato e documentato in
 CLAUDE.md §10 Fase 6, CPU throttling simulato non rappresentativo)
 resta anch'esso da rifare a deploy attivo.
+
+---
+
+## 87. Chat: allegato non ancora inviato scaricabile subito + nomi cliccabili verso "la pagina relativa"
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Bug reale: l'anteprima di un file appena allegato (non ancora inviato)
+non aveva alcun `onClick`** — segnalato dall'utente ("quando si inserisce
+un file nella chat, non la fa scaricare, dovrebbe farlo scaricare il
+file"). Il click su un documento già inviato (dentro un messaggio della
+cronologia) funzionava già correttamente (`openMediaAt`, §80: `<a
+download>` con `fl_attachment` di Cloudinary, forza il download anche
+cross-origine) — ma la stessa miniatura nel **composer**, prima ancora di
+premere "Invia aggiornamento", era completamente muta al click: nessun
+`onClick` passato a `<MediaPreview url={url} />` in quella sola posizione
+(`TimelineModal.tsx`). Corretto riusando lo stesso `openMediaAt(mediaUrls,
+url)` già esistente, applicato ora anche sulla lista `mediaUrls` del
+composer (non solo su quella di un evento già salvato) — stesso
+comportamento in entrambi i casi: scarica se è un documento, apre
+`PhotoLightbox` se è foto/video.
+
+**Nomi cliccabili in chat → "la pagina relativa"** — richiesta esplicita
+dell'utente: "nella chat, se si clicca o sul nome del cliente o sul nome
+del professionista deve aprirsi la pagina relativa". Il professionista
+ha sempre un profilo pubblico reale (`/professionista/{id}`,
+`professionalProfileId` è già un prop obbligatorio di ogni istanza di
+`TimelineModal`) — click sul nome del professionista naviga lì
+incondizionatamente (`useRouter().push`), funziona su tutti e 5 i punti
+di montaggio del componente senza bisogno di plumbing aggiuntivo. Il
+cliente **non** ha un profilo pubblico in questo marketplace (CLAUDE.md
+§20/§45): "la pagina relativa" per lui è la stessa `ClientProfileModal`
+già usata altrove per lo stesso identico cliente. Nuovo prop opzionale
+`onOpenClientProfile?: () => void` su `TimelineModal` — collegato solo in
+`/dashboard/richieste` (`RequestCard`), dove `ClientProfileModal` era già
+disponibile con lo stesso stato (`showClientProfile`/`setShowClientProfile`)
+usato altrove nella stessa card: nessuna duplicazione, un semplice
+`onOpenClientProfile={() => setShowClientProfile(true)}`. Negli altri
+punti di montaggio (`/dashboard/agenda` non ha ancora `clientBirthDate`/
+`clientImageUrl`/`clientReviews` su `ProfessionalBooking` per costruire la
+scheda completa; `/le-mie-richieste` è il cliente stesso che guarda il
+proprio nome, nessuna "pagina relativa" ha senso lì; `/chat` è un'inbox
+generica senza quei dati) il prop resta non passato — il nome cliente
+compare senza sottolineatura/cursore, click senza effetto, comportamento
+invariato e mai rotto.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice)
+e uno script Playwright dedicato — professionista+cliente di test,
+richiesta diretta al profilo specifico (evita la selezione dei lead per
+rating): upload di un PDF intercettato (`page.route`, stesso principio
+già in uso altrove in questo file per simulare una risposta Cloudinary
+reale in locale, dove le credenziali non sono configurate) — click sulla
+miniatura **prima** dell'invio scarica per davvero (evento `download` del
+browser confermato, `suggestedFilename=test-invoice.pdf`), click sullo
+stesso documento **dopo** l'invio scarica ancora (nessuna regressione sul
+percorso già esistente); click sul nome del professionista in una bolla
+naviga esattamente a `/professionista/{professionalProfileId}`; click sul
+nome del cliente in una bolla apre `[role="dialog"][aria-label="Scheda
+cliente"]`. Zero errori console reali. Account di test ripuliti a fine
+verifica (`DELETE /auth/me`). Typecheck pulito su `apps/web`.

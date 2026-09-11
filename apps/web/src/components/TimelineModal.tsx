@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { ConversationEvent } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -74,6 +75,7 @@ export function TimelineModal({
   professionalProfileId,
   viewerRole,
   otherPartyName,
+  onOpenClientProfile,
   onClose,
 }: {
   token: string;
@@ -94,8 +96,22 @@ export function TimelineModal({
    * (es. account eliminato, dato non ancora noto).
    */
   otherPartyName?: string | null;
+  /**
+   * Richiesta esplicita dell'utente: "se si clicca sul nome del cliente...
+   * deve aprirsi la pagina relativa" — il cliente non ha un profilo
+   * pubblico in questo marketplace (solo i professionisti ne hanno uno,
+   * CLAUDE.md §20/§45), quindi "la pagina relativa" è la stessa
+   * `ClientProfileModal` già usata altrove per lo stesso identico cliente
+   * (es. `RequestCard`, `/dashboard/richieste`) — passata dal chiamante
+   * che ha già i dati per aprirla, mai duplicata qui. Assente (nessun
+   * click) nei punti dove il viewer è il cliente stesso (`le-mie-
+   * richieste`, "Cliente" è "me") o dove il chiamante non ha ancora
+   * l'identità del cliente a disposizione.
+   */
+  onOpenClientProfile?: () => void;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const { user } = useAuth();
   // Il proprio nome (per le nuvolette del lato "mio") si ricava
   // dall'account loggato — stesso fallback già in uso in AccountMenu per
@@ -475,6 +491,18 @@ export function TimelineModal({
                 // qualunque chat), quelli dell'altra parte a sinistra —
                 // richiesta esplicita dell'utente.
                 const isMine = event.actor === viewerRole;
+                // Nome cliccabile → "la pagina relativa" (richiesta esplicita
+                // dell'utente): il professionista ha sempre un profilo
+                // pubblico reale (`professionalProfileId` è già garantito da
+                // ogni chiamante); il cliente no, quindi lì il click esiste
+                // solo se il chiamante ha passato `onOpenClientProfile` (ha
+                // già i dati per aprire la stessa scheda usata altrove).
+                const nameOnPress =
+                  event.actor === "PROFESSIONAL"
+                    ? () => router.push(`/professionista/${professionalProfileId}`)
+                    : event.actor === "CLIENT" && onOpenClientProfile
+                      ? onOpenClientProfile
+                      : undefined;
                 return (
                   <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
                     <YStack
@@ -487,7 +515,16 @@ export function TimelineModal({
                       paddingHorizontal="$3"
                       paddingVertical="$2.5"
                     >
-                      <Text fontFamily="$body" fontWeight="700" fontSize={11} color={ACTOR_COLOR[event.actor]}>
+                      <Text
+                        fontFamily="$body"
+                        fontWeight="700"
+                        fontSize={11}
+                        color={ACTOR_COLOR[event.actor]}
+                        textDecorationLine={nameOnPress ? "underline" : undefined}
+                        cursor={nameOnPress ? "pointer" : undefined}
+                        onPress={nameOnPress}
+                        accessibilityRole={nameOnPress ? "button" : undefined}
+                      >
                         {displayNameFor(event.actor)}
                       </Text>
                       {event.message ? (
@@ -543,7 +580,16 @@ export function TimelineModal({
           <XStack gap="$2" flexWrap="wrap">
             {mediaUrls.map((url) => (
               <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                <MediaPreview url={url} />
+                {/* Bug reale corretto: l'anteprima di un file appena
+                    allegato (non ancora inviato) non aveva alcun
+                    `onClick` — un documento restava "muto" al click invece
+                    di scaricarsi (segnalato dall'utente: "quando si
+                    inserisce un file nella chat, non la fa scaricare").
+                    Stesso `openMediaAt` già in uso per i messaggi inviati:
+                    scarica se è un documento, apre il lightbox se è
+                    foto/video — qui applicato sulla sola lista `mediaUrls`
+                    del composer invece che su quella di un evento. */}
+                <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
                 <YStack
                   position="absolute"
                   top={2}

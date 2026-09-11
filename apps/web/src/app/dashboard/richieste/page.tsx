@@ -1999,6 +1999,7 @@ function RequestCard({
           professionalProfileId={myProfileId}
           viewerRole="PROFESSIONAL"
           otherPartyName={gr.clientName}
+          onOpenClientProfile={() => setShowClientProfile(true)}
           onClose={() => setShowTimeline(false)}
         />
       ) : null}
