@@ -58,6 +58,7 @@ export function SiteHeader() {
         transition: `box-shadow ${motionFast} ${motionEasing}`,
       }}
     >
+      <div style={{ position: "relative", width: "100%" }}>
       <XStack
         width="100%"
         height={64}
@@ -81,19 +82,7 @@ export function SiteHeader() {
               <Logo size={26} variant="mark" />
             </XStack>
           </Link>
-          {isSearchResultsPage ? (
-            // "Servizi" (MegaMenu, trigger desktop + drawer mobile) nascosto
-            // del tutto in questa modalità: la ricerca condensata prende il
-            // suo posto su desktop; su schermi stretti (dove la ricerca
-            // condensata non ha spazio a sufficienza, §"Ricerca spostata
-            // nell'header fisso") il banner completo nel corpo pagina
-            // (SearchHeader.tsx) resta l'unico modo di cercare, invariato.
-            <XStack display="none" $gtMd={{ display: "flex" }}>
-              <Suspense fallback={null}>
-                <HeaderSearchBar />
-              </Suspense>
-            </XStack>
-          ) : (
+          {isSearchResultsPage ? null : (
             <XStack alignItems="center" gap="$5">
               <MegaMenu />
               <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
@@ -168,6 +157,39 @@ export function SiteHeader() {
           ) : null}
         </XStack>
       </XStack>
+      {isSearchResultsPage ? (
+        // "Servizi" (MegaMenu, trigger desktop + drawer mobile) nascosto del
+        // tutto in questa modalità: la ricerca condensata prende il suo
+        // posto su desktop. Richiesta esplicita dell'utente: centrata
+        // orizzontalmente nella barra, non più incollata a sinistra accanto
+        // al logo — wrapper posizionato assolutamente rispetto al `<div>`
+        // relativo che avvolge l'intera riga header (sopra), indipendente
+        // dalla larghezza reale di logo/account menu ai due lati. Su
+        // schermi stretti (dove la ricerca condensata non ha spazio a
+        // sufficienza, §"Ricerca spostata nell'header fisso") il banner
+        // completo nel corpo pagina (SearchHeader.tsx) resta l'unico modo
+        // di cercare, invariato — stessa soglia `$gtMd` di prima, ora sulla
+        // XStack interna anziché sul wrapper di posizionamento.
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <XStack display="none" $gtMd={{ display: "flex" }} pointerEvents="auto">
+            <Suspense fallback={null}>
+              <HeaderSearchBar />
+            </Suspense>
+          </XStack>
+        </div>
+      ) : null}
+      </div>
     </div>
   );
 }

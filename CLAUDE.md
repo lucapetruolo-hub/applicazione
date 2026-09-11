@@ -10479,3 +10479,104 @@ esplicitamente dall'utente per nome).
   console. Account di test ripuliti a fine verifica (`DELETE /auth/me`).
   Typecheck pulito su `apps/web`, build di produzione verde (31 route,
   nessuna nuova).
+
+## 82. Bug reale: la mappa dei risultati si spostava durante lo scroll + ricerca centrata nell'header fisso
+
+Due richieste esplicite dell'utente, stesso giro.
+
+**Mappa risultati mai più in movimento** — segnalato dall'utente: "quando
+effetto una ricerca, scorrendo verso il basso la mappa va leggermente in
+basso, correggi facendo in modo che la mappa non si sposti per niente
+anche scrollando fra i vari professionisti". Causa reale, riprodotta con
+Playwright (misurando `getBoundingClientRect()` della mappa a più
+posizioni di scroll, non solo ipotizzata): il fix precedente per la
+stessa mappa (§72, "mappa desktop davvero sticky") usava `align-items:
+stretch` su `.results-layout` per allungare `.results-map-col` fino
+all'altezza di `.results-list-col`, dando allo `position: sticky` interno
+lo spazio ("slack") necessario per restare davvero agganciato durante lo
+scroll — funziona quando la lista è più alta della mappa (il caso
+comune, molti risultati), ma **fallisce del tutto quando la lista è più
+corta della mappa stessa** (es. 1-3 risultati, tutt'altro che raro nella
+combinazione categoria+città più stretta): `align-items: stretch`
+allunga OGNI colonna del layout all'altezza della PIÙ ALTA delle due, ma
+se la mappa (che contiene solo sé stessa, `calc(100vh - 140px)` ≈ 760px)
+è già la più alta, stretch non aggiunge nulla alla sua colonna — lo
+sticky si ritrova con zero slack (altezza contenitore = altezza
+elemento) e si comporta come un elemento normale, scorrendo via con la
+pagina invece di restare fermo. Riprodotto empiricamente: su una
+categoria+città con un solo risultato, la mappa scendeva da `top:96px` a
+`top:-382px` scorrendo la pagina di 600px.
+
+Corretto sostituendo `align-items: stretch` con una sincronizzazione
+esplicita via JS (`ResizeObserver` su `.results-list-col`, nuovo
+`useEffect` in `ResultsListWithMap.tsx`): l'altezza reale della colonna
+mappa viene impostata a quella della colonna lista, **qualunque sia la
+più alta delle due** — non più "il massimo dei due" di flexbox. Quando la
+lista è più corta della mappa, la colonna mappa diventa esplicitamente
+più bassa del proprio stesso contenuto (l'elemento sticky, con
+`overflow` di default "visible", eccede visivamente il proprio
+contenitore) — un contenitore sticky più basso dell'elemento sticky
+stesso fa sì che lo sticky resti ancorato a `top: 24px` per l'intera
+durata in cui quel contenitore (per quanto corto) è ancora nei paraggi
+dello scroll, lo stesso comportamento di `position: fixed` in
+quell'intervallo, senza alcuna logica di scroll manuale in JS — e poiché
+la pagina non ha più un'altezza artificialmente gonfiata dalla sola
+colonna mappa, in questo caso lo scroll stesso è quasi inesistente (la
+mappa "non si sposta" perché letteralmente non c'è quasi nulla da
+scorrere). Quando la lista è più alta (caso comune), il comportamento
+resta identico a prima (sincronizzazione via JS invece che via CSS
+stretch, stesso risultato: `mapColHeight === listColHeight`, ampio slack
+per lo sticky). La custom property CSS `--map-col-height` (non
+`style.height` diretto sull'elemento, che avrebbe una specificità più
+alta di qualunque regola CSS e si applicherebbe anche da mobile) è
+consumata **solo** dentro la media query desktop (`@media (min-width:
+700px) { .results-map-col { height: var(--map-col-height, auto); } }`)
+— da mobile (`.results-map-col.mobile-open`, fuori da quella media
+query) il layout non viene toccato, la mappa resta fissa a 320px come
+prima, verificato per evitare un vuoto enorme sotto la mappa quando la
+lista è lunga.
+
+Verificato con l'API locale reale (non solo lettura di codice) e
+Playwright, seminando scenari reali sul DB: categoria+città con un solo
+risultato (`idraulico`/Firenze) → `top` della mappa costante a 96px per
+tutta la finestra di scroll testata (0→1500px, prima -382px a metà
+corsa); stessa categoria senza filtro città (15 risultati, lista
+~2457px) → sticky invariato, agganciato a `top:24px` per l'intera durata
+testata, nessuna regressione. Bottone "Mappa" da mobile (viewport
+390px): colonna mappa resta a 320px anche con una lista lunga (nessun
+vuoto introdotto dalla sincronizzazione desktop). Bottone "Espandi
+mappa" da desktop: la colonna si allarga correttamente e l'altezza resta
+sincronizzata dopo l'espansione. Zero errori console nuovi.
+
+**Ricerca centrata nella barra fissa in alto** — richiesta esplicita
+dell'utente: "quando effettuo una ricerca, la barra di ricerca che si
+sposta in sopra, posizionala centralmente" — riferito a
+`HeaderSearchBar` (§72, la versione condensata della `SearchBar` che
+prende il posto di "Servizi"/"Come funziona"/"Prezzi" nell'header fisso
+quando si è su `/cerca`/`/cerca/[categoria]`), prima ancorata a sinistra
+subito dopo il logo. `SiteHeader.tsx`: la riga header principale è ora
+avvolta in un `<div style={{position:"relative", width:"100%"}}>`
+(wrapper grezzo, stesso principio "CSS puro dove Tamagui non copre il
+caso" già in uso per lo sticky dell'header stesso), e
+`HeaderSearchBar` è stata spostata **fuori** dal gruppo sinistro (logo +
+nav) in un secondo blocco posizionato `position:"absolute", left:"50%",
+transform:"translateX(-50%)"` relativo a quel wrapper — centrato
+orizzontalmente nell'intera barra, indipendentemente dalla larghezza
+reale di logo/campanella/account-menu ai due lati (che restano diversi a
+seconda che l'utente sia loggato o meno, quindi un centraggio "a
+metà tra i due gruppi" via flexbox non sarebbe stato affidabile).
+`pointerEvents:"none"` sul wrapper esterno evita di bloccare i click su
+logo/account-menu quando il blocco centrato li sfiora a larghezze
+borderline; `pointerEvents:"auto"` sulla `XStack` interna con la
+`SearchBar` vera e propria ripristina la cliccabilità. Stessa soglia
+`$gtMd` di prima per la visibilità (da mobile resta solo il banner
+completo `SearchHeader.tsx` nel corpo pagina, invariato).
+
+Verificato con Playwright (non solo lettura di codice): su
+`/cerca/idraulico` a 1280px, il wrapper centrato risulta esattamente a
+`centerX: 640` (il centro esatto del viewport), non si sovrappone né al
+logo né al link "Accedi"/bottone CTA a destra; su `/` (non una pagina di
+ricerca) il blocco centrato è del tutto assente dal DOM e
+"Come funziona"/"Servizi" restano visibili come prima; da mobile (390px)
+zero overflow orizzontale introdotto. Typecheck pulito su `apps/web`,
+build di produzione verde (31 route, nessuna nuova).
