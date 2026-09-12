@@ -207,101 +207,108 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
             </XStack>
           ) : null}
 
-          <YStack gap="$3">
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="nome@esempio.it"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="username"
-              accessibilityLabel="Email"
-            />
-            <Field
-              label="Password"
-              rightElement={
-                <Text
-                  cursor="pointer"
-                  onPress={() => setShowPassword((v) => !v)}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-                >
-                  <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-                </Text>
-              }
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              secureTextEntry={!showPassword}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              accessibilityLabel="Password"
-              onSubmitEditing={mode === "login" ? handleLogin : undefined}
-            />
-            {mode === "register" ? (
+          {/* Stesso bug/fix già documentato in /registrati (CLAUDE.md): un
+              <form> reale dà a Safari/iOS il confine semantico necessario
+              per non rivalutare "vuoi salvare la password?" ad ogni
+              carattere — onSubmit fa solo preventDefault, l'invio vero
+              resta sull'onPress del bottone qui sotto, invariato. */}
+          <form onSubmit={(e) => e.preventDefault()}>
+            <YStack gap="$3">
               <Field
-                label="Conferma password"
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="nome@esempio.it"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="username"
+                accessibilityLabel="Email"
+              />
+              <Field
+                label="Password"
                 rightElement={
                   <Text
                     cursor="pointer"
-                    onPress={() => setShowConfirmPassword((v) => !v)}
+                    onPress={() => setShowPassword((v) => !v)}
                     accessibilityRole="button"
-                    accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
+                    accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
                   >
-                    <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
+                    <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
                   </Text>
                 }
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Ripeti la password"
-                secureTextEntry={!showConfirmPassword}
-                autoComplete="new-password"
-                accessibilityLabel="Conferma password"
-                onSubmitEditing={handleRegister}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Password"
+                secureTextEntry={!showPassword}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                accessibilityLabel="Password"
+                onSubmitEditing={mode === "login" ? handleLogin : undefined}
               />
-            ) : null}
+              {mode === "register" ? (
+                <Field
+                  label="Conferma password"
+                  rightElement={
+                    <Text
+                      cursor="pointer"
+                      onPress={() => setShowConfirmPassword((v) => !v)}
+                      accessibilityRole="button"
+                      accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
+                    >
+                      <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
+                    </Text>
+                  }
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Ripeti la password"
+                  secureTextEntry={!showConfirmPassword}
+                  autoComplete="new-password"
+                  accessibilityLabel="Conferma password"
+                  onSubmitEditing={handleRegister}
+                />
+              ) : null}
 
-            {mode === "register" ? (
-              <YStack gap="$2">
-                <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
-                  Accetto Privacy Policy e Termini di Servizio.
-                </ConsentCheckbox>
-                <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
-                  Dichiaro di avere almeno 18 anni.
-                </ConsentCheckbox>
-              </YStack>
-            ) : null}
+              {mode === "register" ? (
+                <YStack gap="$2">
+                  <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
+                    Accetto Privacy Policy e Termini di Servizio.
+                  </ConsentCheckbox>
+                  <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
+                    Dichiaro di avere almeno 18 anni.
+                  </ConsentCheckbox>
+                </YStack>
+              ) : null}
 
-            {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {error}
-              </Text>
-            ) : null}
+              {error ? (
+                <Text color={brand.urgenza} fontSize="$3">
+                  {error}
+                </Text>
+              ) : null}
 
-            <Button
-              variant="primary"
-              onPress={mode === "login" ? handleLogin : handleRegister}
-              disabled={isSubmitting || !canSubmitRegister}
-              opacity={isSubmitting || !canSubmitRegister ? 0.6 : 1}
-            >
-              {isSubmitting ? "Un momento..." : mode === "login" ? "Accedi e invia la richiesta" : "Crea account e invia la richiesta"}
-            </Button>
-
-            <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
-              {mode === "login" ? "Non hai ancora un account? " : "Hai già un account? "}
-              <Text
-                color={brand.cianografia}
-                fontWeight="600"
-                cursor="pointer"
-                onPress={() => {
-                  setError(null);
-                  setMode((m) => (m === "login" ? "register" : "login"));
-                }}
+              <Button
+                variant="primary"
+                onPress={mode === "login" ? handleLogin : handleRegister}
+                disabled={isSubmitting || !canSubmitRegister}
+                opacity={isSubmitting || !canSubmitRegister ? 0.6 : 1}
               >
-                {mode === "login" ? "Registrati" : "Accedi"}
+                {isSubmitting ? "Un momento..." : mode === "login" ? "Accedi e invia la richiesta" : "Crea account e invia la richiesta"}
+              </Button>
+
+              <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+                {mode === "login" ? "Non hai ancora un account? " : "Hai già un account? "}
+                <Text
+                  color={brand.cianografia}
+                  fontWeight="600"
+                  cursor="pointer"
+                  onPress={() => {
+                    setError(null);
+                    setMode((m) => (m === "login" ? "register" : "login"));
+                  }}
+                >
+                  {mode === "login" ? "Registrati" : "Accedi"}
+                </Text>
               </Text>
-            </Text>
-          </YStack>
+            </YStack>
+          </form>
         </YStack>
       </div>
     </div>

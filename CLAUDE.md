@@ -11342,3 +11342,88 @@ Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 5. **Emissione fatture reali** (`Invoice`, schema pronto, nessuna UI di
    generazione in questo giro) — dipende dalle risposte del punto 1
    (chi emette cosa a chi).
+
+---
+
+## 89. Bug reale: "Vuoi salvare la password?" chiesto ad ogni carattere in registrazione (iOS)
+
+Segnalato dall'utente: "Ogni volta che voglio fare una registrazione di
+un nuovo utente sia che sia professionista che cliente quando inserisco
+la password ogni carattere l'iPhone mi fa comparire sempre 'vuoi salvare
+la password'" — invece che una sola volta, all'invio del modulo.
+
+**Causa reale, due punti concorrenti**, entrambi presenti su ogni
+superficie di registrazione del sito (`/registrati` e `InlineAuthGate`,
+il gate di login/registrazione inline usato quando un utente anonimo
+invia "Richiedi un preventivo"/"Richiesta urgente", CLAUDE.md §70/F2.2):
+
+1. **Nessun elemento HTML `<form>` reale**: ogni campo/bottone del sito
+   è un componente Tamagui (`YStack`/`XStack`/`Input`/`Button`, resi via
+   react-native-web) — nessuno di questi renderizza mai un `<form>`
+   nativo, l'invio del modulo avviene sempre tramite `onPress` JS diretto
+   sul bottone "Registrati". Senza un `<form>` reale, l'euristica di
+   Safari/iOS per decidere "quando proporre di salvare una password" non
+   ha un confine di "invio" (evento `submit`) a cui ancorarsi — con due
+   campi password adiacenti (Password + Conferma password, entrambi
+   `autoComplete="new-password"`, il pattern esatto che WebKit riconosce
+   come "creazione di una password nuova") l'euristica può rivalutare la
+   password ad ogni tocco di tasto invece che una sola volta, mostrando
+   ripetutamente il banner.
+2. **Bug reale trovato leggendo il codice, non solo ipotizzato**: il
+   campo Email di `/registrati` non aveva **alcun** `autoComplete` — a
+   differenza di `/accedi`, dove `autoComplete="username"` era già stato
+   aggiunto in un giro precedente (§79/§20, "Email non salvata dal
+   browser") — e a differenza di `InlineAuthGate`, che ce l'aveva già.
+   Senza quell'attributo sul campo identificativo, Safari non può
+   riconoscere l'intero gruppo di campi come un modulo di creazione
+   account coerente ("identità + password nuova"), un secondo fattore
+   che contribuisce alla stessa euristica confusa del punto 1.
+
+**Fix**: in entrambi i file (`apps/web/src/app/registrati/page.tsx`,
+`apps/web/src/components/InlineAuthGate.tsx`) i campi email/password/
+conferma password (più le due caselle di consenso e il bottone di invio)
+sono ora avvolti in un vero `<form onSubmit={(e) => e.preventDefault()}>`
+grezzo — stesso principio "HTML puro dove Tamagui non copre il caso" già
+seguito altrove nel prodotto (header sticky, `.admin-sidebar`, ecc.): il
+`<form>` non gestisce l'invio vero (che resta sull'`onPress` del bottone,
+invariato, per non rischiare un doppio invio se un submit nativo scattasse
+comunque) — serve solo a dare al browser il confine semantico corretto.
+Aggiunto anche `autoComplete="username"` al campo Email di `/registrati`,
+mancante del tutto (bug indipendente, corretto nello stesso giro). Un
+tentativo di aggiungere anche `name="new-password"`/`name="confirm-new-
+password"` espliciti (ulteriore rinforzo raccomandato dalla spec WHATWG
+sull'autofill) è stato scartato: il tipo TypeScript di `Input`
+(`packages/ui/src/Field.tsx`, da Tamagui/react-native-web) non espone
+`name` come prop valida — a differenza di `autoComplete`, che React
+Native dichiara nativamente in `TextInputProps` — e forzarlo avrebbe
+richiesto allargare il tipo condiviso di `Field` per un rinforzo
+marginale rispetto al `<form>`+`autoComplete` già corretti, che restano
+la mitigazione realmente documentata per questa classe di bug.
+
+**Verificato** (non solo lettura di codice) con l'API/Postgres locali
+reali e Playwright, viewport mobile (390px): su `/registrati` per
+**entrambi i ruoli** (`?ruolo=cliente` e `?ruolo=professionista`) — i due
+campi password risultano ora dentro un vero `<form>`, con
+`autocomplete="new-password"` su entrambi; il campo Email risulta
+`autocomplete="username"` (prima assente) e condivide lo stesso `<form>`
+dei campi password (non due alberi separati); digitare nei campi password
+continua a funzionare normalmente (nessuna regressione sull'input). Stessa
+verifica di struttura ripetuta con successo sul codice di
+`InlineAuthGate.tsx` (typecheck pulito, stesso identico pattern di
+`<form>` applicato) — **non verificabile end-to-end tramite l'invio reale
+del modulo in questo ambiente**: il gate si apre solo dopo un tentativo di
+invio di "Richiedi un preventivo" da anonimo, e quel modulo richiede
+almeno una foto (CLAUDE.md, "Tutti i campi di 'Richiedi un preventivo'
+obbligatori"), il cui upload richiede credenziali Cloudinary non
+configurate in locale (stessa limitazione già documentata più volte in
+questo file). Verificato anche che `/accedi` (un solo campo password, mai
+segnalato come affetto dal bug) resta invariato,
+`autocomplete="current-password"` come prima. **Nota**: il comportamento
+nativo effettivo di Safari/iOS (il banner di sistema "Vuoi salvare la
+password?") non è riproducibile in questo ambiente di sviluppo (nessun
+motore WebKit reale disponibile, solo Chromium) — la verifica ha
+confermato che gli attributi/la struttura DOM corretti (che sono la
+mitigazione effettivamente raccomandata per questa classe di bug) sono
+ora presenti, non che il banner smetta di comparire su un iPhone reale.
+Typecheck pulito su `apps/web`, build di produzione verde (35 route,
+nessuna nuova).
