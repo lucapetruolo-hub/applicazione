@@ -710,3 +710,95 @@ export const resolveContentReportSchema = z.object({
   status: z.enum(["RESOLVED", "DISMISSED"]),
 });
 export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;
+
+// ---------------------------------------------------------------------------
+// MANOVIA — dati fiscali professionista, pagamenti lavoro, commissioni,
+// DAC7, rimborsi, contestazioni (CLAUDE.md §88).
+// ---------------------------------------------------------------------------
+
+export const professionalEntityTypes = ["INDIVIDUAL", "BUSINESS"] as const;
+export type ProfessionalEntityTypeValue = (typeof professionalEntityTypes)[number];
+
+/**
+ * Aggiornamento del profilo fiscale — tutti i campi facoltativi (nessun
+ * dato è mai obbligatorio a livello di schema: la specifica lascia
+ * esplicitamente aperto se un professionista debba avere per forza la
+ * P.IVA, "il software non deve mai decidere se una persona ha bisogno di
+ * una partita IVA"), la UI guida quali campi mostrare in base a
+ * `entityType`. `representative` presente solo per un'impresa/società.
+ */
+export const professionalFiscalProfileSchema = z.object({
+  entityType: z.enum(professionalEntityTypes).optional(),
+  fiscalFirstName: z.string().max(80).optional(),
+  fiscalLastName: z.string().max(80).optional(),
+  fiscalCodiceFiscale: z.string().max(20).optional(),
+  dateOfBirth: z.string().optional(),
+  placeOfBirth: z.string().max(120).optional(),
+  countryOfBirth: z.string().max(2).optional(),
+  businessName: z.string().max(200).optional(),
+  legalForm: z.string().max(100).optional(),
+  vatNumber: z.string().max(20).optional(),
+  businessRegistrationNumber: z.string().max(50).optional(),
+  taxResidenceCountry: z.string().max(2).optional(),
+  foreignTin: z.string().max(50).optional(),
+  registeredStreet: z.string().max(200).optional(),
+  registeredCity: z.string().max(120).optional(),
+  registeredPostalCode: z.string().max(12).optional(),
+  registeredProvince: z.string().max(50).optional(),
+  registeredCountry: z.string().max(2).optional(),
+  representative: z
+    .object({
+      firstName: z.string().min(1, "Nome obbligatorio."),
+      lastName: z.string().min(1, "Cognome obbligatorio."),
+      codiceFiscale: z.string().max(20).optional(),
+      role: z.string().max(100).optional(),
+    })
+    .optional(),
+});
+export type ProfessionalFiscalProfileInput = z.infer<typeof professionalFiscalProfileSchema>;
+
+export const fiscalVerificationStatuses = ["UNVERIFIED", "PENDING_VERIFICATION", "VERIFIED", "REJECTED", "REQUIRES_UPDATE"] as const;
+export const setFiscalVerificationSchema = z.object({
+  status: z.enum(fiscalVerificationStatuses),
+  note: z.string().max(500).optional(),
+});
+export type SetFiscalVerificationInput = z.infer<typeof setFiscalVerificationSchema>;
+
+export const requestRefundSchema = z.object({
+  amountEurCents: z.number().int().positive("L'importo deve essere maggiore di zero."),
+  reason: z.string().max(500).optional(),
+});
+export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
+
+export const decideRefundSchema = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+});
+export type DecideRefundInput = z.infer<typeof decideRefundSchema>;
+
+export const openDisputeSchema = z.object({
+  reason: z.string().min(3, "Indica il motivo della contestazione.").max(500),
+});
+export type OpenDisputeInput = z.infer<typeof openDisputeSchema>;
+
+export const resolveDisputeSchema = z.object({
+  status: z.enum(["RESOLVED_CLIENT", "RESOLVED_PROFESSIONAL", "CLOSED"]),
+  resolutionNote: z.string().max(1000).optional(),
+});
+export type ResolveDisputeInput = z.infer<typeof resolveDisputeSchema>;
+
+export const createFeeRuleSchema = z.object({
+  name: z.string().min(1, "Nome obbligatorio."),
+  percentageBasisPoints: z.number().int().min(0).max(10_000),
+  fixedFeeEurCents: z.number().int().min(0).default(0),
+  minFeeEurCents: z.number().int().min(0).optional(),
+  maxFeeEurCents: z.number().int().min(0).optional(),
+  categoryId: z.string().optional(),
+  professionalProfileId: z.string().optional(),
+  effectiveFrom: z.string().optional(),
+});
+export type CreateFeeRuleInput = z.infer<typeof createFeeRuleSchema>;
+
+export const setDac7RuleSchema = z.object({
+  includeDirectPayments: z.boolean(),
+});
+export type SetDac7RuleInput = z.infer<typeof setDac7RuleSchema>;

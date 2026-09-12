@@ -10,7 +10,9 @@ import type {
   CompleteBookingInput,
   ContactMessageInput,
   ConversationEvent,
+  CreateFeeRuleInput,
   CreateContentReportInput,
+  DecideRefundInput,
   ExternalJob,
   ExternalJobInput,
   ExternalJobUpdateInput,
@@ -19,16 +21,22 @@ import type {
   GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
+  OpenDisputeInput,
   ProfessionalAgenda,
   ProfessionalAvailableSlot,
   ProfessionalBooking,
   ProfessionalDetail,
+  ProfessionalFiscalProfileInput,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
   ProposeQuoteDateInput,
   QuoteSelfInput,
+  RequestRefundInput,
+  ResolveDisputeInput,
   ReviewInput,
+  SetDac7RuleInput,
+  SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
   UpdateBookingMeetingLinkInput,
@@ -247,6 +255,115 @@ export type CurrentUser = {
   postalCode: string | null;
   city: string | null;
   province: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// MANOVIA — dati fiscali professionista, pagamenti lavoro, commissioni,
+// DAC7, rimborsi, contestazioni (CLAUDE.md §88).
+// ---------------------------------------------------------------------------
+
+export type JobPaymentMethod = "MANOVIA" | "DIRECT";
+export type JobPaymentStatus = "PENDING" | "AWAITING_CONFIRMATION" | "CONFIRMED" | "DISPUTED" | "REFUNDED" | "FAILED";
+
+export type JobPayment = {
+  id: string;
+  bookingId: string;
+  paymentMethod: JobPaymentMethod;
+  status: JobPaymentStatus;
+  grossAmountEurCents: number;
+  platformFeeEurCents: number;
+  netAmountEurCents: number;
+  currency: string;
+  directReportedAt: string | null;
+  directConfirmedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FiscalVerificationStatus = "UNVERIFIED" | "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED" | "REQUIRES_UPDATE";
+
+export type ProfessionalFiscalProfile = {
+  id: string;
+  professionalProfileId: string;
+  entityType: "INDIVIDUAL" | "BUSINESS" | null;
+  fiscalFirstName: string | null;
+  fiscalLastName: string | null;
+  fiscalCodiceFiscale: string | null;
+  dateOfBirth: string | null;
+  placeOfBirth: string | null;
+  countryOfBirth: string | null;
+  businessName: string | null;
+  legalForm: string | null;
+  vatNumber: string | null;
+  businessRegistrationNumber: string | null;
+  taxResidenceCountry: string | null;
+  foreignTin: string | null;
+  registeredStreet: string | null;
+  registeredCity: string | null;
+  registeredPostalCode: string | null;
+  registeredProvince: string | null;
+  registeredCountry: string | null;
+  verificationStatus: FiscalVerificationStatus;
+  verificationNote: string | null;
+  verifiedAt: string | null;
+  stripeConnectAccountId: string | null;
+  stripeChargesEnabled: boolean;
+  stripePayoutsEnabled: boolean;
+  representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  fieldName: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  changedByUserId: string | null;
+  reason: string | null;
+  createdAt: string;
+};
+
+export type AdminFiscalView = { businessName: string; fiscalProfile: ProfessionalFiscalProfile | null; auditLog: AuditLogEntry[] };
+
+export type PlatformFeeRule = {
+  id: string;
+  name: string;
+  percentageBasisPoints: number;
+  fixedFeeEurCents: number;
+  minFeeEurCents: number | null;
+  maxFeeEurCents: number | null;
+  categoryId: string | null;
+  professionalProfileId: string | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+};
+
+export type Dac7ReportingStatus = "OPEN" | "DATA_COLLECTION" | "VALIDATION" | "READY" | "EXPORTED" | "SUBMITTED" | "REJECTED" | "CORRECTED";
+
+export type Dac7ReportingPeriod = {
+  id: string;
+  year: number;
+  quarter: number | null;
+  status: Dac7ReportingStatus;
+  reportVersion: number;
+  generatedAt: string | null;
+  submittedAt: string | null;
+};
+
+export type Dac7Record = {
+  id: string;
+  professionalProfileId: string;
+  considerationEurCents: number;
+  numberOfTransactions: number;
+  feesWithheldEurCents: number;
+  missingFiscalData: boolean;
+};
+
+export type AdminFinanceSummary = {
+  revenueBySource: { source: string; totalEurCents: number }[];
+  jobPaymentsByMethod: { method: JobPaymentMethod; count: number; totalGrossEurCents: number }[];
+  jobPaymentsByStatus: { status: JobPaymentStatus; count: number }[];
 };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -911,6 +1028,102 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    // -------------------------------------------------------------------
+    // MANOVIA — dati fiscali, pagamento del lavoro, commissioni, DAC7,
+    // rimborsi, contestazioni (CLAUDE.md §88).
+    // -------------------------------------------------------------------
+
+    myFiscalProfile: (token: string) =>
+      request<ProfessionalFiscalProfile | null>("/professionals/me/fiscal-profile", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    updateMyFiscalProfile: (token: string, input: ProfessionalFiscalProfileInput) =>
+      request<ProfessionalFiscalProfile>("/professionals/me/fiscal-profile", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Onboarding Stripe Connect (gated — vedi CLAUDE.md §88): torna l'URL Stripe a cui reindirizzare, o lancia un errore chiaro se non configurato. */
+    createStripeConnectLink: (token: string) =>
+      request<{ url: string }>("/professionals/me/fiscal-profile/stripe-connect", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminFiscalProfile: (token: string, professionalProfileId: string) =>
+      request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSetFiscalVerification: (token: string, professionalProfileId: string, input: SetFiscalVerificationInput) =>
+      request<ProfessionalFiscalProfile>(`/admin/professionals/${professionalProfileId}/fiscal/verification`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    bookingJobPayment: (token: string, bookingId: string) =>
+      request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    initiateManoviaCheckout: (token: string, bookingId: string) =>
+      request<{ url: string }>(`/bookings/${bookingId}/job-payment/manovia-checkout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    requestJobRefund: (token: string, bookingId: string, input: RequestRefundInput) =>
+      request<{ id: string }>(`/bookings/${bookingId}/job-payment/refund`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    openJobDispute: (token: string, bookingId: string, input: OpenDisputeInput) =>
+      request<{ id: string }>(`/bookings/${bookingId}/job-payment/dispute`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListRefunds: (token: string) => request<unknown[]>("/admin/refunds", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminDecideRefund: (token: string, id: string, input: DecideRefundInput) =>
+      request<unknown>(`/admin/refunds/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminListDisputes: (token: string) => request<unknown[]>("/admin/disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminResolveDispute: (token: string, id: string, input: ResolveDisputeInput) =>
+      request<unknown>(`/admin/disputes/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminListFeeRules: (token: string) => request<PlatformFeeRule[]>("/admin/fee-rules", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminCreateFeeRule: (token: string, input: CreateFeeRuleInput) =>
+      request<PlatformFeeRule>("/admin/fee-rules", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminCloseFeeRule: (token: string, id: string) =>
+      request<PlatformFeeRule>(`/admin/fee-rules/${id}/close`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminGetDac7Rule: (token: string) => request<{ includeDirectPayments: boolean }>("/admin/dac7/rule", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSetDac7Rule: (token: string, input: SetDac7RuleInput) =>
+      request<{ includeDirectPayments: boolean }>("/admin/dac7/rule", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminListDac7Periods: (token: string) => request<Dac7ReportingPeriod[]>("/admin/dac7/periods", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminGetDac7Period: (token: string, id: string) =>
+      request<Dac7ReportingPeriod & { records: Dac7Record[] }>(`/admin/dac7/periods/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminAggregateDac7Now: (token: string) =>
+      request<{ quarterPeriod: Dac7ReportingPeriod; yearPeriod: Dac7ReportingPeriod }>("/admin/dac7/periods/aggregate-now", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    adminExportDac7Period: (token: string, id: string) =>
+      request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminMarkDac7Submitted: (token: string, id: string) =>
+      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminCorrectDac7Period: (token: string, id: string) =>
+      request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/correct`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
   };
 }
 

@@ -28,25 +28,25 @@ enum UserRole {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  role         UserRole  @default(CLIENT)
+  id                  String    @id @default(uuid())
+  role                UserRole  @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email        String?   @unique
-  passwordHash String?
-  phone        String?   @unique
-  googleId     String?   @unique
+  email               String?   @unique
+  passwordHash        String?
+  phone               String?   @unique
+  googleId            String?   @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
-  name         String?
-  surname      String?
-  birthDate    DateTime?
+  name                String?
+  surname             String?
+  birthDate           DateTime?
   // Immagine profilo, facoltativa — richiesta esplicita dell'utente: prima
   // solo ProfessionalProfile.imageUrl esisteva, i client non potevano
   // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
   // nessun nuovo servizio di storage.
-  imageUrl     String?
+  imageUrl            String?
   // Indirizzo di default dell'account (richiesta esplicita dell'utente:
   // "possono essere inserite nella finestra impostazioni dell'account, in
   // modo che quando si richiede un preventivo escano automaticamente
@@ -55,14 +55,14 @@ model User {
   // sempre modificabili per singola richiesta (un cliente può avere lavori
   // in indirizzi diversi da una richiesta all'altra, stesso principio già
   // documentato per GuidedRequest.address prima di questo campo).
-  street       String?
-  houseNumber  String?
-  addressExtra String?
-  postalCode   String?
-  city         String?
-  province     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  street              String?
+  houseNumber         String?
+  addressExtra        String?
+  postalCode          String?
+  city                String?
+  province            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
   // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
   // prenotazioni/recensioni create da questo utente hanno FK dirette su
@@ -73,7 +73,7 @@ model User {
   // password) al posto della delete: la riga resta solo come ancora per le
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
-  deletedAt    DateTime?
+  deletedAt           DateTime?
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
@@ -111,6 +111,7 @@ model Category {
 
   professionalProfiles ProfessionalProfile[]
   guidedRequests       GuidedRequest[]
+  feeRules             PlatformFeeRule[]
 
   @@map("categories")
 }
@@ -198,6 +199,15 @@ model ProfessionalProfile {
   metrics                ProfessionalMetrics?
   timelineEvents         ConversationEvent[]
   externalJobs           ExternalJob[]
+  // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
+  // file ("MANOVIA — fiscale, pagamenti, DAC7"). Modello separato,
+  // deliberatamente MAI incluso in ProfessionalSearchResult/ProfessionalDetail
+  // (separazione dati pubblici/fiscali richiesta esplicitamente dalla
+  // specifica).
+  fiscalProfile          ProfessionalFiscalProfile?
+  feeRules               PlatformFeeRule[]
+  revenueEntries         ManoviaRevenue[]
+  dac7Records            Dac7Record[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -856,6 +866,11 @@ model Booking {
 
   review       Review?
   clientReview ClientReview?
+  // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
+  // JobPayment in fondo a questo file. Nullable: una Booking creata prima
+  // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
+  // dormiente da CLAUDE.md §20), può non averne ancora una.
+  jobPayment   JobPayment?
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
@@ -1145,4 +1160,450 @@ model ContentReport {
 
   @@index([status, createdAt])
   @@map("content_reports")
+}
+
+// ---------------------------------------------------------------------------
+// MANOVIA — fiscale, pagamenti, DAC7, fatture, rimborsi, contestazioni,
+// audit log (CLAUDE.md §88). Specifica tecnica fornita per intero
+// dall'utente (attribuita a un consulente esterno, "ChatGPT" — usa
+// letteralmente "Manovia" per riferirsi a questo stesso sito), 75 sezioni:
+// distingue pagamento mediato dalla piattaforma ("MANOVIA", con commissione
+// trattenuta via Stripe Connect) da pagamento diretto cliente↔professionista
+// fuori piattaforma ("DIRECT", commissione zero ma il lavoro resta comunque
+// tracciato — mai eliminato); introduce la distinzione professionista
+// persona fisica/impresa con dati fiscali completi; DAC7 (rendicontazione
+// fiscale UE per piattaforme digitali di servizi, anche offline); commissioni
+// configurabili e mai hardcoded, con storico versionato; audit log su ogni
+// dato finanziario/fiscale; separazione rigorosa tra dati pubblici e dati
+// fiscali. Richiesta esplicita dell'utente di implementare l'intera
+// specifica ("Bisogna implementare tutto"), confermato esplicitamente di
+// procedere PRIMA di avere una validazione scritta di un commercialista sui
+// ~20 punti che la specifica stessa segnala come da confermare prima del
+// lancio reale (es. il ruolo fiscale esatto di Manovia — intermediario,
+// mandatario, commissionario; chi emette fattura al cliente; se la
+// "consideration" DAC7 include anche i pagamenti diretti; trattamento IVA
+// della commissione) — "Non ancora, procediamo comunque", risposta esplicita
+// dell'utente.
+//
+// Stato di attivazione — stesso principio già seguito in questo progetto
+// per Stripe/Cloudinary (CLAUDE.md §9): il modello dati e la logica sono
+// completi, ma nessun movimento di denaro reale (Stripe Connect) né alcun
+// invio reale di una dichiarazione DAC7 può avvenire finché non esistono
+// SIA le credenziali reali SIA — soprattutto qui, a differenza di
+// Stripe/Cloudinary — una validazione scritta di un commercialista sui
+// punti fiscali sopra: un errore di configurazione su quei due può solo
+// bloccare una funzionalità, un errore su questi può esporre l'utente/la
+// piattaforma a conseguenze fiscali reali. Ogni percorso che tocca denaro
+// reale risponde con un errore esplicito ("non configurato") invece di un
+// crash silenzioso, mai eseguito realmente in questo ambiente di sviluppo.
+//
+// Decisione architetturale esplicita: nessun modello "Job" parallelo creato
+// — il concetto di "Job" della specifica (REQUESTED→...→CLOSED) coincide
+// con il ciclo di vita GuidedRequest→Quote→Booking già esistente in questo
+// progetto (una Booking confermata È il job). Introdurre una seconda
+// entità avrebbe duplicato lo stato in due fonti di verità diverse per lo
+// stesso concetto — esattamente il tipo di duplicazione che il resto di
+// questo file evita sistematicamente. JobPayment (sotto) si collega quindi
+// 1:1 a Booking, non a una nuova tabella.
+//
+// Decisione architetturale esplicita sui ruoli: la specifica elenca ruoli
+// aggiuntivi (SUPER_ADMIN, ACCOUNTANT/TAX_OPERATOR, SUPPORT) — non
+// introdotti in questo giro: l'area admin esistente (UserRole.ADMIN,
+// AdminGuard, CLAUDE.md §9 "Pannello admin minimale") resta l'unico
+// gate per le nuove viste finanza/DAC7, coerente con la scala e la
+// filosofia "minimale" già scelta per l'intero pannello admin — introdurre
+// una gerarchia di permessi granulare per un pannello con un solo
+// amministratore reale oggi sarebbe uno scope aggiuntivo non richiesto.
+// ---------------------------------------------------------------------------
+
+enum ProfessionalEntityType {
+  INDIVIDUAL // Persona fisica (con o senza P.IVA)
+  BUSINESS // Impresa/società (ditta individuale, SRL, ecc.)
+}
+
+enum FiscalVerificationStatus {
+  UNVERIFIED
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REQUIRES_UPDATE
+}
+
+// Dati fiscali del professionista — modello separato da ProfessionalProfile
+// (mai incluso in un endpoint pubblico/di ricerca): la specifica richiede
+// esplicitamente una separazione rigorosa tra dati pubblici del profilo e
+// dati fiscali. Un solo modello copre sia persona fisica che impresa
+// (campi dell'altra categoria restano null), invece di due tabelle
+// separate: `entityType` decide quali campi sono pertinenti, evitando una
+// join in più nei pochi punti che leggono "qualunque tipo di professionista".
+model ProfessionalFiscalProfile {
+  id                    String                  @id @default(uuid())
+  professionalProfileId String                  @unique
+  entityType            ProfessionalEntityType?
+
+  // --- Persona fisica ---
+  fiscalFirstName     String?
+  fiscalLastName      String?
+  fiscalCodiceFiscale String?
+  dateOfBirth         DateTime?
+  placeOfBirth        String?
+  countryOfBirth      String?
+
+  // --- Impresa/società ---
+  businessName               String? // Ragione sociale
+  legalForm                  String? // Es. "Ditta individuale", "SRL"
+  vatNumber                  String? // Partita IVA
+  businessRegistrationNumber String? // Numero REA/CCIAA
+
+  // --- Comuni a entrambi (residenza fiscale — richiesta DAC7 sempre,
+  // indipendentemente dal possesso di P.IVA, principio generale DAC7) ---
+  taxResidenceCountry  String? // Codice ISO del paese di residenza fiscale
+  foreignTin           String? // TIN estero, se la residenza fiscale è fuori Italia
+  registeredStreet     String?
+  registeredCity       String?
+  registeredPostalCode String?
+  registeredProvince   String?
+  registeredCountry    String?
+
+  // Distinto esplicitamente dal KYC di Stripe Connect (stripeChargesEnabled/
+  // stripePayoutsEnabled sotto) — la specifica lo richiede esplicitamente:
+  // "non trattare mai la verifica KYC di Stripe come equivalente automatico
+  // della verifica fiscale Manovia". Impostabile solo da un admin.
+  verificationStatus FiscalVerificationStatus @default(UNVERIFIED)
+  verificationNote   String? // Motivo di un REJECTED/REQUIRES_UPDATE, mostrato al professionista
+  verifiedAt         DateTime?
+
+  // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
+  stripeConnectAccountId   String? @unique
+  stripeChargesEnabled     Boolean @default(false)
+  stripePayoutsEnabled     Boolean @default(false)
+  stripeRequirementsStatus String? // riassunto testuale dei requisiti mancanti restituiti da Stripe
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile   @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  representative      FiscalRepresentative?
+
+  @@map("professional_fiscal_profiles")
+}
+
+// Legale rappresentante di un'impresa/società — sub-entità separata
+// dall'azienda/venditore stessa (richiesta esplicita della specifica), mai
+// confusa con l'entità fiscale principale: esiste solo quando entityType
+// è BUSINESS.
+model FiscalRepresentative {
+  id              String   @id @default(uuid())
+  fiscalProfileId String   @unique
+  firstName       String
+  lastName        String
+  codiceFiscale   String?
+  role            String? // es. "Amministratore unico"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("fiscal_representatives")
+}
+
+enum JobPaymentMethod {
+  MANOVIA // Pagamento mediato dalla piattaforma (Stripe Connect, commissione trattenuta automaticamente)
+  DIRECT // Pagamento diretto fuori piattaforma — commissione zero, ma il lavoro resta comunque tracciato (mai eliminato)
+}
+
+enum JobPaymentStatus {
+  PENDING // Creato, nessun pagamento ancora avvenuto
+  AWAITING_CONFIRMATION // DIRECT: il professionista ha auto-dichiarato l'importo, in attesa di conferma del cliente
+  CONFIRMED // MANOVIA: transfer riuscito — DIRECT: confermato dal cliente
+  DISPUTED
+  REFUNDED
+  FAILED
+}
+
+// Pagamento del LAVORO (distinto da Payment sopra, che è per lead/
+// abbonamento/boost pagati dal professionista a Manovia — un concetto
+// diverso). 1:1 con una Booking, sempre creata quando una Booking viene
+// confermata, anche per un pagamento DIRECT (richiesta esplicita della
+// specifica: "non eliminare mai un job solo perché il pagamento è
+// diretto"). Importo sempre spezzato in tre — lordo/commissione/netto — mai
+// un solo valore, per non perdere la componente di commissione una volta
+// applicata la regola.
+model JobPayment {
+  id            String           @id @default(uuid())
+  bookingId     String           @unique
+  paymentMethod JobPaymentMethod
+  status        JobPaymentStatus @default(PENDING)
+
+  grossAmountEurCents Int // Importo totale del servizio (quanto paga il cliente)
+  platformFeeEurCents Int    @default(0) // Commissione Manovia — 0 per DIRECT
+  netAmountEurCents   Int // Quanto riceve il professionista (gross - fee)
+  currency            String @default("EUR")
+
+  // Regola di commissione applicata, fissata (snapshot) al momento della
+  // creazione — mai ricalcolata retroattivamente se la regola cambia dopo
+  // (richiesta esplicita della specifica).
+  appliedFeeRuleId String?
+
+  // --- MANOVIA (Stripe Connect) ---
+  stripePaymentIntentId String? @unique
+  stripeTransferId      String? @unique
+
+  // --- DIRECT (auto-dichiarazione + conferma cliente) ---
+  directReportedAt   DateTime?
+  directReportedById String? // User.id di chi ha dichiarato l'importo (di norma il professionista)
+  directConfirmedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking        Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  appliedFeeRule PlatformFeeRule? @relation(fields: [appliedFeeRuleId], references: [id])
+  revenueEntries ManoviaRevenue[]
+  refunds        Refund[]
+  disputes       Dispute[]
+  invoices       Invoice[]
+
+  @@map("job_payments")
+}
+
+// Regola di commissione — mai hardcoded nel codice (richiesta esplicita
+// della specifica, §75). Percentuale in basis points (1000 = 10,00%) +
+// eventuale importo fisso, con min/max opzionali, e finestra di validità
+// temporale: una nuova regola con `effectiveFrom` più recente rimpiazza
+// quella precedente per i NUOVI JobPayment — quelli già creati restano
+// legati alla regola già applicata via JobPayment.appliedFeeRuleId, mai
+// ricalcolati. Scope opzionale per categoria o per singolo professionista
+// (entrambi null = regola globale di default).
+model PlatformFeeRule {
+  id                    String    @id @default(uuid())
+  name                  String
+  percentageBasisPoints Int       @default(0)
+  fixedFeeEurCents      Int       @default(0)
+  minFeeEurCents        Int?
+  maxFeeEurCents        Int?
+  categoryId            String?
+  professionalProfileId String?
+  effectiveFrom         DateTime  @default(now())
+  effectiveTo           DateTime?
+  createdAt             DateTime  @default(now())
+
+  category            Category?            @relation(fields: [categoryId], references: [id])
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id])
+  jobPayments         JobPayment[]
+
+  @@index([professionalProfileId, effectiveFrom])
+  @@index([categoryId, effectiveFrom])
+  @@map("platform_fee_rules")
+}
+
+enum ManoviaRevenueSource {
+  JOB_COMMISSION
+  SUBSCRIPTION
+  VISIBILITY_BOOST
+  LEAD
+}
+
+// Ricavo REALE di Manovia, distinto dal denaro che transita per un
+// JobPayment (che nella maggior parte dei casi va al professionista) —
+// richiesta esplicita della specifica: "manovia_revenue separata dai
+// pagamenti del job". Una riga per ogni volta che Manovia trattiene o
+// incassa qualcosa di proprio.
+model ManoviaRevenue {
+  id                    String               @id @default(uuid())
+  source                ManoviaRevenueSource
+  amountEurCents        Int
+  professionalProfileId String?
+  jobPaymentId          String?
+  subscriptionId        String?
+  visibilityBoostId     String?
+  paymentId             String?
+  recordedAt            DateTime             @default(now())
+
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id])
+  jobPayment          JobPayment?          @relation(fields: [jobPaymentId], references: [id])
+
+  @@index([source, recordedAt])
+  @@map("manovia_revenue")
+}
+
+enum Dac7ReportingStatus {
+  OPEN
+  DATA_COLLECTION
+  VALIDATION
+  READY
+  EXPORTED
+  SUBMITTED
+  REJECTED
+  CORRECTED
+}
+
+// Periodo di rendicontazione DAC7 — creato automaticamente da un job
+// schedulato (stesso principio già in uso per la scadenza dei Lead,
+// CLAUDE.md §14) per ogni trimestre solare (aggregazione interna) e per
+// l'anno intero (la dichiarazione vera è annuale, scadenza 31 gennaio
+// dell'anno successivo, calcolata mai hardcodata). `reportVersion`
+// incrementa ad ogni correzione dopo un SUBMITTED/REJECTED — mai
+// sovrascritto in place (richiesta esplicita della specifica).
+model Dac7ReportingPeriod {
+  id            String              @id @default(uuid())
+  year          Int
+  quarter       Int? // 1-4, null = aggregato annuale
+  status        Dac7ReportingStatus @default(OPEN)
+  reportVersion Int                 @default(1)
+  generatedAt   DateTime?
+  submittedAt   DateTime?
+  exportFileUrl String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  records Dac7Record[]
+
+  @@unique([year, quarter])
+  @@map("dac7_reporting_periods")
+}
+
+// Aggregato per professionista+periodo — "consideration" nel senso DAC7
+// (compenso al netto della commissione piattaforma). Se il professionista
+// non ha ancora un ProfessionalFiscalProfile VERIFIED al momento della
+// generazione, la riga viene comunque creata (mai perdere il dato
+// aggregato) ma segnalata (`missingFiscalData`) per la validazione manuale
+// prima dell'invio — mai bloccare la sola raccolta dati per un dato
+// fiscale incompleto.
+model Dac7Record {
+  id                    String   @id @default(uuid())
+  reportingPeriodId     String
+  professionalProfileId String
+  considerationEurCents Int      @default(0)
+  numberOfTransactions  Int      @default(0)
+  feesWithheldEurCents  Int      @default(0)
+  missingFiscalData     Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  reportingPeriod     Dac7ReportingPeriod @relation(fields: [reportingPeriodId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([reportingPeriodId, professionalProfileId])
+  @@map("dac7_records")
+}
+
+// Configurazione delle regole DAC7 — mai hardcoded nel codice (richiesta
+// esplicita della specifica, §75). Riga singola di configurazione attiva
+// alla volta: cambiarla influenza solo i FUTURI calcoli, i Dac7Record già
+// generati non vengono mai ricalcolati automaticamente.
+model Dac7Rule {
+  id                    String   @id @default(uuid())
+  // Se true, la "consideration" DAC7 include anche i pagamenti DIRECT (non
+  // mediati da Manovia) — punto esplicitamente segnalato dalla specifica
+  // come da confermare con un commercialista prima del lancio (§74):
+  // default prudenziale `true` (la guida DAC7 UE considera "facilitata"
+  // un'attività anche quando il pagamento avviene fuori piattaforma), ma
+  // resta un valore di configurazione modificabile da admin, mai
+  // un'assunzione fissa nel codice.
+  includeDirectPayments Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+
+  @@map("dac7_rules")
+}
+
+enum InvoiceType {
+  MANOVIA_TO_PROFESSIONAL // Fattura/nota Manovia verso il professionista per la commissione trattenuta
+  PROFESSIONAL_TO_CLIENT // Riferimento al documento che il professionista emette al cliente — Manovia non lo emette mai
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  VOID
+}
+
+model Invoice {
+  id                    String        @id @default(uuid())
+  type                  InvoiceType
+  jobPaymentId          String?
+  professionalProfileId String
+  amountEurCents        Int
+  status                InvoiceStatus @default(DRAFT)
+  issuedAt              DateTime?
+  documentUrl           String?
+  createdAt             DateTime      @default(now())
+
+  jobPayment JobPayment? @relation(fields: [jobPaymentId], references: [id])
+
+  @@map("invoices")
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSED
+  REJECTED
+}
+
+model Refund {
+  id             String       @id @default(uuid())
+  jobPaymentId   String
+  amountEurCents Int
+  reason         String?
+  status         RefundStatus @default(REQUESTED)
+  requestedById  String
+  stripeRefundId String?
+  createdAt      DateTime     @default(now())
+  processedAt    DateTime?
+
+  jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_CLIENT
+  RESOLVED_PROFESSIONAL
+  CLOSED
+}
+
+model Dispute {
+  id             String        @id @default(uuid())
+  jobPaymentId   String
+  openedById     String
+  reason         String
+  status         DisputeStatus @default(OPEN)
+  resolutionNote String?
+  createdAt      DateTime      @default(now())
+  resolvedAt     DateTime?
+
+  jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
+
+  @@map("disputes")
+}
+
+// Log di audit generico per ogni modifica a un dato finanziario/fiscale —
+// richiesta esplicita della specifica ("mai sovrascrivere un dato fiscale
+// senza uno storico versionato", "ogni cambio di payment_method deve
+// produrre un audit log"). Punto unico di scrittura (AuditLogService.record,
+// stessa convenzione di NotificationsService.notify()), mai un
+// trigger/middleware Prisma. `entityType`+`entityId` identificano la riga
+// toccata (es. "JobPayment"/<id>), `fieldName` la singola colonna quando
+// pertinente (null per un evento sull'intera riga, es. creazione). Nessuna
+// relazione Prisma verso User per `changedByUserId` (stessa scelta per
+// `requestedById`/`openedById`/`directReportedById` sopra): sono
+// riferimenti di sola tracciabilità, non vincoli referenziali — evita di
+// appesantire il modello User con altre quattro relazioni inverse per
+// colonne che servono solo a un log.
+model AuditLog {
+  id              String   @id @default(uuid())
+  entityType      String
+  entityId        String
+  fieldName       String?
+  oldValue        String?
+  newValue        String?
+  changedByUserId String?
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_logs")
 }

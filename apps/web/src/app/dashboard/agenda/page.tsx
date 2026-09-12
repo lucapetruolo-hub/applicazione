@@ -1650,6 +1650,7 @@ function DashboardAgendaContent() {
           onOpenFullRequest={
             selectedBooking.guidedRequestId ? () => router.push(`/dashboard/richieste?open=${selectedBooking.guidedRequestId}`) : undefined
           }
+          token={token}
         />
       ) : null}
 

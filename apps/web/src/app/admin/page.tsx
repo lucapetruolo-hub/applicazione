@@ -247,6 +247,12 @@ function AdminSidebar() {
     { href: "#segnalazioni", label: "Segnalazioni" },
     { href: "#messaggi", label: "Messaggi" },
     { href: "#lista-attesa", label: "Lista d'attesa" },
+    // Pagina separata (non un'ancora sulla stessa pagina, a differenza
+    // delle voci sopra): finanza/DAC7/regole di commissione/verifiche
+    // fiscali (CLAUDE.md §88) sono abbastanza contenuto da meritare una
+    // pagina propria, coerente con la stessa scelta già fatta per non
+    // sovraccaricare ulteriormente questa pagina.
+    { href: "/admin/finanza", label: "Finanza e DAC7" },
   ];
   return (
     <nav className="admin-sidebar" aria-label="Sezioni amministrazione">

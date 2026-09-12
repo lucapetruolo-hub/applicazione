@@ -2,10 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import type { JobPayment } from "@professionisti/api-client";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
+import { apiClient } from "@/lib/apiClient";
+
+function euro(cents: number): string {
+  return `${(cents / 100).toFixed(2)} €`;
+}
+
+const JOB_PAYMENT_STATUS_LABEL: Record<JobPayment["status"], string> = {
+  PENDING: "In attesa",
+  AWAITING_CONFIRMATION: "In attesa di conferma del cliente",
+  CONFIRMED: "Confermato",
+  DISPUTED: "Contestato",
+  REFUNDED: "Rimborsato",
+  FAILED: "Non riuscito",
+};
 
 const STATUS_LABEL: Record<ProfessionalBooking["status"], string> = {
   PENDING: "In attesa di conferma",
@@ -43,9 +58,12 @@ export function BookingDetailPanel({
   isSavingMeetingLink,
   onOpenTimeline,
   onOpenFullRequest,
+  token,
 }: {
   booking: ProfessionalBooking;
   onClose: () => void;
+  /** Per leggere il pagamento del lavoro (JobPayment, CLAUDE.md §88) — facoltativo, se assente il blocco "Pagamento" resta nascosto. */
+  token?: string | null;
   onAction: (status: "CONFIRMED" | "COMPLETED" | "CANCELED") => void;
   isActionPending: boolean;
   /** Nota privata del professionista (mai vista dal cliente) — richiesta esplicita dell'utente. */
@@ -72,6 +90,18 @@ export function BookingDetailPanel({
   const [noteDraft, setNoteDraft] = useState(booking.professionalNote ?? "");
   const [meetingLinkDraft, setMeetingLinkDraft] = useState(booking.meetingLink ?? "");
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
+  // Pagamento del lavoro (CLAUDE.md §88) — esiste solo dopo il completamento
+  // (creato da BookingsService.completeWithFinalAmount), quindi la chiamata
+  // è inutile per ogni altro stato: `null` resta lo stato corretto finché
+  // non completato, mai un dato "vuoto finto".
+  const [jobPayment, setJobPayment] = useState<JobPayment | null | undefined>(undefined);
+  useEffect(() => {
+    if (!token || booking.status !== "COMPLETED") return;
+    apiClient
+      .bookingJobPayment(token, booking.id)
+      .then(setJobPayment)
+      .catch(() => setJobPayment(null));
+  }, [token, booking.id, booking.status]);
   const noteChanged = noteDraft !== (booking.professionalNote ?? "");
   const meetingLinkChanged = meetingLinkDraft !== (booking.meetingLink ?? "");
   // Stesso auto-grow di dashboard/richieste/page.tsx: il CSS
@@ -181,6 +211,21 @@ export function BookingDetailPanel({
             </XStack>
           ) : null}
         </YStack>
+
+        {jobPayment ? (
+          <YStack gap="$1" backgroundColor={brand.gesso} padding="$3" borderRadius="$2">
+            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+              Pagamento
+            </Text>
+            <Text color={brand.grafite} fontSize="$3">
+              {jobPayment.paymentMethod === "MANOVIA" ? "Tramite Manovia" : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
+            </Text>
+            <Text color={brand.grafite70} fontSize="$3">
+              Lordo {euro(jobPayment.grossAmountEurCents)}
+              {jobPayment.platformFeeEurCents > 0 ? ` · Commissione ${euro(jobPayment.platformFeeEurCents)} · Netto ${euro(jobPayment.netAmountEurCents)}` : ""}
+            </Text>
+          </YStack>
+        ) : null}
 
         {/* Dati del cliente utili al professionista per andare a svolgere il
             lavoro (richiesta esplicita dell'utente): telefono/email come

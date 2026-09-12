@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
+import { JobPaymentsService } from "../job-payments/job-payments.service";
+import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
 // Prezzi dei pacchetti di visibilità (CLAUDE.md §6): boost locale a canone,
 // badge reputazione e storia di successo come acquisto singolo. Validità 30
@@ -22,7 +24,11 @@ const SUBSCRIPTION_PRICE_ENV: Record<"PRO" | "BUSINESS", string> = {
 export class BillingService {
   private readonly stripe: Stripe | null;
 
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly jobPaymentsService: JobPaymentsService,
+    private readonly professionalFiscalService: ProfessionalFiscalService,
+  ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
 
@@ -184,6 +190,15 @@ export class BillingService {
         });
       }
 
+      // Pagamento del lavoro tramite Manovia (CLAUDE.md §88) — distinto dai
+      // tre casi sopra (che sono sempre il professionista che paga Manovia):
+      // qui è il cliente che paga il lavoro, la piattaforma trattiene la
+      // commissione via Stripe Connect (application_fee_amount, già
+      // impostato alla creazione della Checkout Session).
+      if (metadata.kind === "job_payment") {
+        await this.jobPaymentsService.handleManoviaCheckoutCompleted(session);
+      }
+
       if (metadata.kind === "boost" && metadata.professionalProfileId && metadata.boostType) {
         const endsAt = new Date();
         endsAt.setDate(endsAt.getDate() + BOOST_DURATION_DAYS);
@@ -206,6 +221,22 @@ export class BillingService {
           },
         });
       }
+    }
+
+    // Sincronizza lo stato di onboarding Stripe Connect (CLAUDE.md §88):
+    // Stripe emette questo evento ad ogni cambiamento di requirements/
+    // charges_enabled/payouts_enabled durante e dopo l'onboarding guidato.
+    if (event.type === "account.updated") {
+      const account = event.data.object as Stripe.Account;
+      const requirementsStatus = account.requirements?.currently_due?.length
+        ? account.requirements.currently_due.join(", ")
+        : null;
+      await this.professionalFiscalService.syncStripeConnectStatus(
+        account.id,
+        Boolean(account.charges_enabled),
+        Boolean(account.payouts_enabled),
+        requirementsStatus,
+      );
     }
 
     return { received: true };

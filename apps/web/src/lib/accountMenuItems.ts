@@ -24,6 +24,12 @@ export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] 
         { href: "/chat", label: "Chat" },
         { href: "/dashboard/profilo", label: "Profilo pubblico" },
         { href: "/dashboard/agenda", label: "Agenda" },
+        // Dati fiscali (persona fisica/impresa) + pagamenti del lavoro
+        // (MANOVIA-mediato/diretto) + Stripe Connect — CLAUDE.md §88, pagina
+        // separata da /dashboard/profilo (dati pubblici) per la stessa
+        // ragione per cui il backend separa rigorosamente dati pubblici e
+        // dati fiscali.
+        { href: "/dashboard/fiscale", label: "Dati fiscali e pagamenti" },
         // Richiesta esplicita dell'utente: un professionista può anche
         // avere bisogno di un altro servizio (un idraulico che cerca un
         // elettricista, ecc.) — nulla nel backend lo impediva già

@@ -5,6 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { JobPaymentsService } from "../job-payments/job-payments.service";
 
 @Injectable()
 export class BookingsService {
@@ -13,6 +14,7 @@ export class BookingsService {
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
+    private readonly jobPaymentsService: JobPaymentsService,
   ) {}
 
   /**
@@ -289,6 +291,18 @@ export class BookingsService {
     await this.professionalMetricsService.recordJobCompleted(professionalProfile.id);
     await this.professionalMetricsService.recordAppointmentOutcome(professionalProfile.id, true);
 
+    // Pagamento del lavoro (CLAUDE.md §88) — creato solo ora, il primo
+    // momento in cui l'importo lordo reale è noto (un preventivo ha solo un
+    // range stimato). Default DIRECT/in attesa di conferma del cliente,
+    // mai bloccante: nessun professionista deve dipendere da Stripe Connect
+    // configurato per poter chiudere un lavoro.
+    await this.jobPaymentsService.createOnCompletion({
+      bookingId,
+      grossAmountEurCents: finalAmountEurCents,
+      reportedByUserId: professionalUserId,
+      alreadyConfirmedByClient: booking.clientConfirmedCompletedAt !== null,
+    });
+
     return { bookingId, status: "COMPLETED" as const, finalAmountEurCents };
   }
 
@@ -332,6 +346,13 @@ export class BookingsService {
         "Il cliente ha confermato che il lavoro è terminato.",
       );
     }
+
+    // Conferma anche il pagamento DIRECT (CLAUDE.md §88) — la stessa
+    // conferma "lavoro terminato" vale come conferma di aver pagato
+    // direttamente il professionista, coerente col flusso già esistente
+    // (nessun passaggio separato richiesto al cliente). No-op se il
+    // pagamento è già passato a MANOVIA o non esiste ancora.
+    await this.jobPaymentsService.confirmDirect(bookingId, clientId);
 
     return { bookingId };
   }

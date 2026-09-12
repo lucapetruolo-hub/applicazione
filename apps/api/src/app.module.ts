@@ -23,6 +23,11 @@ import { StatsModule } from "./stats/stats.module";
 import { ExternalJobsModule } from "./external-jobs/external-jobs.module";
 import { ContentReportsModule } from "./content-reports/content-reports.module";
 import { ContactModule } from "./contact/contact.module";
+import { AuditLogModule } from "./audit-log/audit-log.module";
+import { PlatformFeeRulesModule } from "./platform-fee-rules/platform-fee-rules.module";
+import { ProfessionalFiscalModule } from "./professional-fiscal/professional-fiscal.module";
+import { JobPaymentsModule } from "./job-payments/job-payments.module";
+import { Dac7Module } from "./dac7/dac7.module";
 
 @Module({
   imports: [
@@ -62,6 +67,12 @@ import { ContactModule } from "./contact/contact.module";
     ExternalJobsModule,
     ContentReportsModule,
     ContactModule,
+    // MANOVIA — fiscale, pagamenti, DAC7 (CLAUDE.md §88).
+    AuditLogModule,
+    PlatformFeeRulesModule,
+    ProfessionalFiscalModule,
+    JobPaymentsModule,
+    Dac7Module,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

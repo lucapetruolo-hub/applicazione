@@ -10,4 +10,17 @@ export type {
   ClientBooking,
   ClientGuidedRequest,
   CurrentUser,
+  // MANOVIA — fiscale, pagamenti, DAC7 (CLAUDE.md §88).
+  JobPayment,
+  JobPaymentMethod,
+  JobPaymentStatus,
+  FiscalVerificationStatus,
+  ProfessionalFiscalProfile,
+  AuditLogEntry,
+  AdminFiscalView,
+  PlatformFeeRule,
+  Dac7ReportingStatus,
+  Dac7ReportingPeriod,
+  Dac7Record,
+  AdminFinanceSummary,
 } from "./client";

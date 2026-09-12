@@ -11013,3 +11013,332 @@ naviga esattamente a `/professionista/{professionalProfileId}`; click sul
 nome del cliente in una bolla apre `[role="dialog"][aria-label="Scheda
 cliente"]`. Zero errori console reali. Account di test ripuliti a fine
 verifica (`DELETE /auth/me`). Typecheck pulito su `apps/web`.
+
+---
+
+## 88. MANOVIA — fiscale, pagamenti, DAC7, fatture, rimborsi, contestazioni, audit log
+
+Richiesta esplicita dell'utente: implementare per intero una specifica
+tecnica di ~75 sezioni fornita in chat, attribuita a un consulente esterno
+("ChatGPT" — *"considera che ogni volta che scrive 'manovia', intende il
+nome del sito che stiamo modificando"*). La specifica copre in dettaglio:
+distinzione tra pagamento mediato dalla piattaforma ("MANOVIA", con
+commissione trattenuta) e pagamento diretto cliente↔professionista fuori
+piattaforma ("DIRETTO", commissione zero ma il lavoro resta comunque
+tracciato); professionista persona fisica vs impresa/società con dati
+fiscali completi; DAC7 (rendicontazione fiscale UE per piattaforme
+digitali che facilitano servizi, anche offline); Stripe Connect per i
+pagamenti al professionista; commissioni configurabili e mai hardcoded,
+con storico versionato; audit log su ogni dato finanziario/fiscale;
+separazione rigorosa tra dati pubblici e dati fiscali; fatture, rimborsi,
+contestazioni; un elenco di ~20 domande esplicitamente segnalate dalla
+specifica come da sottoporre per iscritto a un commercialista prima del
+lancio reale (es. il ruolo fiscale esatto di Manovia — intermediario,
+mandatario, commissionario; chi emette fattura al cliente; se la
+"consideration" DAC7 include anche i pagamenti diretti; trattamento IVA
+della commissione).
+
+Prima di procedere, confermato esplicitamente con l'utente tramite
+`AskUserQuestion` lo scope e la sequenza: alla domanda su quale pezzo
+iniziare, risposta **"Bisogna implementare tutto"**; alla domanda se
+esistesse già una validazione scritta di un commercialista sui punti
+fiscali sopra, risposta esplicita **"Non ancora, procediamo comunque"**.
+
+**Stato di attivazione — stesso principio già seguito in questo progetto
+per Stripe/Cloudinary (CLAUDE.md §9), qui più stringente**: il modello dati
+e la logica sono completi e testati, ma nessun movimento di denaro reale
+(Stripe Connect) né alcun invio reale di una dichiarazione DAC7 può
+avvenire finché non esistono SIA le credenziali reali SIA — a differenza
+di Stripe/Cloudinary, dove basta la configurazione tecnica — una
+validazione scritta di un commercialista sui punti fiscali sopra: un
+errore di configurazione sugli altri due può solo bloccare una
+funzionalità, un errore qui può esporre l'utente/la piattaforma a
+conseguenze fiscali reali. Ogni percorso che tocca denaro reale risponde
+con un errore esplicito invece di un crash silenzioso, mai eseguito
+realmente in questo ambiente di sviluppo.
+
+**Decisione architetturale esplicita — nessun modello "Job" parallelo**:
+il concetto di "Job" della specifica (stati REQUESTED→...→CLOSED) coincide
+con il ciclo di vita `GuidedRequest`→`Quote`→`Booking` già esistente in
+questo progetto (una `Booking` confermata È il job) — introdurre una
+seconda entità avrebbe duplicato lo stato in due fonti di verità diverse
+per lo stesso concetto, esattamente il tipo di duplicazione che questo
+file evita sistematicamente altrove. `JobPayment` (nuovo modello) si
+collega quindi 1:1 a `Booking`, non a una nuova tabella.
+
+**Decisione esplicita sui ruoli**: la specifica elenca ruoli aggiuntivi
+(SUPER_ADMIN, ACCOUNTANT/TAX_OPERATOR, SUPPORT) — non introdotti in questo
+giro: l'area admin esistente (`UserRole.ADMIN`, `AdminGuard`, CLAUDE.md
+§9 "Pannello admin minimale") resta l'unico gate per le nuove viste
+finanza/DAC7, coerente con la scala e la filosofia "minimale" già scelta
+per l'intero pannello admin.
+
+### Schema (`packages/database/prisma/schema.prisma`)
+
+Nuova sezione dedicata in fondo al file, `prisma db push --accept-data-loss`
+applicato in locale (nessuna migrazione distruttiva su dati reali,
+ambiente di sviluppo):
+
+- **`ProfessionalFiscalProfile`** (1:1 con `ProfessionalProfile`,
+  **mai** esposto da alcun endpoint pubblico/di ricerca — separazione
+  rigorosa dati pubblici/fiscali richiesta esplicitamente dalla
+  specifica): `entityType` (INDIVIDUAL/BUSINESS), campi persona fisica
+  (nome/cognome fiscale, codice fiscale, data/luogo/paese di nascita),
+  campi impresa (ragione sociale, forma giuridica, P.IVA, REA/CCIAA),
+  campi comuni (residenza fiscale, TIN estero, indirizzo sede — richiesti
+  sempre, indipendentemente dal possesso di P.IVA, principio generale
+  DAC7), `verificationStatus` (UNVERIFIED/PENDING_VERIFICATION/VERIFIED/
+  REJECTED/REQUIRES_UPDATE — **distinto esplicitamente dal KYC Stripe**,
+  la specifica lo richiede: "non trattare mai la verifica KYC di Stripe
+  come equivalente automatico della verifica fiscale Manovia"), campi
+  Stripe Connect (`stripeConnectAccountId`/`stripeChargesEnabled`/
+  `stripePayoutsEnabled`/`stripeRequirementsStatus`).
+- **`FiscalRepresentative`** (1:1 con `ProfessionalFiscalProfile`): legale
+  rappresentante di un'impresa/società, sub-entità separata dall'azienda
+  stessa (richiesta esplicita della specifica) — esiste solo per
+  `entityType: BUSINESS`.
+- **`JobPayment`** (1:1 con `Booking`): `paymentMethod`
+  (MANOVIA/DIRECT), `status` (PENDING/AWAITING_CONFIRMATION/CONFIRMED/
+  DISPUTED/REFUNDED/FAILED), importo sempre spezzato in tre —
+  `grossAmountEurCents`/`platformFeeEurCents`/`netAmountEurCents` — mai un
+  solo valore, per non perdere la componente di commissione una volta
+  applicata la regola. `appliedFeeRuleId` è uno **snapshot** della regola
+  usata al momento della creazione: una regola futura diversa non
+  ricalcola mai retroattivamente un `JobPayment` già esistente (richiesta
+  esplicita della specifica). Campi separati per i due metodi (Stripe
+  payment intent/transfer id per MANOVIA; reported/confirmed at+by per
+  DIRECT).
+- **`PlatformFeeRule`**: percentuale in basis points + fisso + min/max,
+  scope opzionale per categoria o singolo professionista (altrimenti
+  regola globale), finestra di validità temporale (`effectiveFrom`/
+  `effectiveTo`) — **mai hardcoded nel codice** (richiesta esplicita della
+  specifica, §75 "regola finale per il developer"), sempre un dato in
+  tabella, modificabile da admin senza deploy.
+- **`ManoviaRevenue`**: ricavo REALE di Manovia, distinto dal denaro che
+  transita per un `JobPayment` (che nella maggior parte va al
+  professionista) — richiesta esplicita della specifica: "manovia_revenue
+  separata dai pagamenti del job". Una riga per ogni volta che Manovia
+  trattiene o incassa qualcosa di proprio (oggi: solo la commissione di un
+  `JobPayment` MANOVIA confermato — gli altri `source` dell'enum,
+  SUBSCRIPTION/VISIBILITY_BOOST/LEAD, restano definiti per uso futuro ma
+  non ancora collegati al `Payment` esistente di CLAUDE.md §1/§6, fuori
+  scope di questo giro).
+- **`Dac7ReportingPeriod`**/**`Dac7Record`**: periodo di rendicontazione
+  (trimestre per l'aggregazione interna, anno per la dichiarazione vera —
+  scadenza 31 gennaio dell'anno successivo, calcolata mai hardcodata) +
+  aggregato per professionista ("consideration" = compenso al netto della
+  commissione). `reportVersion` incrementa **solo** dopo un
+  SUBMITTED/REJECTED corretto — mai un ricalcolo in place di un periodo
+  già inviato. `missingFiscalData` segnala (mai blocca) un professionista
+  senza `ProfessionalFiscalProfile` VERIFIED al momento dell'aggregazione.
+- **`Dac7Rule`**: riga di configurazione singola — oggi un solo flag,
+  `includeDirectPayments` (default `true`, coerente con la guida DAC7 UE
+  che considera "facilitata" un'attività anche quando il pagamento
+  avviene fuori piattaforma), **esplicitamente uno dei punti che la
+  specifica segnala come da confermare con un commercialista** prima del
+  lancio — mai hardcoded, sempre riscrivibile da admin.
+- **`Invoice`** (MANOVIA_TO_PROFESSIONAL/PROFESSIONAL_TO_CLIENT — Manovia
+  non emette mai il secondo tipo di documento, resta solo un riferimento),
+  **`Refund`**, **`Dispute`**: schema completo definito e collegato a
+  `JobPayment`, con i service descritti sotto — nessuna UI di creazione
+  fattura in questo giro (l'emissione fiscale reale richiede prima le
+  risposte del commercialista, §74 della specifica: chi emette cosa a chi
+  non è ancora deciso).
+- **`AuditLog`**: log generico (`entityType`+`entityId`+`fieldName`
+  opzionale+old/new value+`changedByUserId`+`reason`) — richiesta esplicita
+  della specifica: "mai sovrascrivere un dato fiscale senza uno storico
+  versionato", "ogni cambio di payment_method deve produrre un audit
+  log". `requestedById`/`openedById`/`directReportedById`/
+  `changedByUserId` sono stringhe di sola tracciabilità, deliberatamente
+  **senza** relazione Prisma verso `User` (evita di appesantire quel
+  modello con altre quattro relazioni inverse per colonne che servono
+  solo a un log).
+
+### Backend (`apps/api/src`)
+
+Sei nuovi moduli NestJS, ciascuno con lo stesso pattern "gated dietro
+`STRIPE_SECRET_KEY`/credenziali" già stabilito da `BillingService`
+(CLAUDE.md §9) dove pertinente:
+
+- **`audit-log/`** — `AuditLogService.record()`, punto unico di scrittura
+  (stessa convenzione di `NotificationsService.notify()`), richiamato
+  esplicitamente da ogni service che tocca un campo finanziario/fiscale.
+- **`platform-fee-rules/`** — `PlatformFeeRulesService`: `resolveRule()`
+  (priorità professionista specifico → categoria → globale, tra più
+  regole valide vince quella con `effectiveFrom` più recente),
+  `computeFee()` (percentuale+fisso+min/max, mai una percentuale scritta a
+  mano altrove nel codice). `OnModuleInit` semina una regola globale di
+  default (10%, stesso pattern `CategoriesSeedService` — CLAUDE.md §2:
+  "un ambiente nuovo non deve mai trovarsi senza NESSUNA regola di
+  commissione, letta come 0% sarebbe silenziosamente sbagliato") — valore
+  di partenza arbitrario in questa sessione, da rivedere con l'utente/un
+  commercialista prima del lancio reale.
+- **`professional-fiscal/`** — `ProfessionalFiscalService`:
+  `GET`/`PUT /professionals/me/fiscal-profile` (ogni campo modificato
+  produce un `AuditLog` per-campo, non un evento generico; modificare un
+  dato già VERIFIED lo riporta automaticamente a REQUIRES_UPDATE — "un
+  admin aveva verificato il dato PRECEDENTE, non quello nuovo"),
+  `POST .../stripe-connect` (crea l'account Connect Express alla prima
+  chiamata, poi genera sempre un nuovo Account Link — quelli scadono dopo
+  pochi minuti). `GET`/`PATCH /admin/professionals/:id/fiscal[/verification]`
+  per la vista/azione admin, con la cronologia audit allegata.
+- **`job-payments/`** — `JobPaymentsService`: `createOnCompletion()`
+  (chiamato da `BookingsService.completeWithFinalAmount`, il primo momento
+  in cui l'importo lordo reale è noto — un preventivo ha solo un range
+  stimato — mai prima, stesso principio "poco dato è meglio di un dato
+  falso a zero" di `ProfessionalMetrics`, CLAUDE.md §15) crea il
+  `JobPayment` come **DIRECT/AWAITING_CONFIRMATION di default**: nessun
+  professionista dipende da Stripe Connect configurato per poter chiudere
+  un lavoro. `confirmDirect()` (chiamato da
+  `BookingsService.clientConfirmComplete`, stessa azione "Lavoro
+  terminato" già esistente lato cliente, CLAUDE.md §40 — nessuna nuova
+  azione richiesta all'utente per il percorso di default) lo porta a
+  CONFIRMED. Se il cliente aveva già confermato PRIMA che il
+  professionista completasse (ordine libero già garantito da CLAUDE.md
+  §40), il `JobPayment` nasce già CONFIRMED invece di restare per sempre
+  in attesa. `initiateManoviaCheckout()` (azione del **cliente**): richiede
+  che il professionista abbia completato l'onboarding Stripe Connect
+  (`stripeChargesEnabled`), ricalcola la commissione con la regola attiva
+  in quel momento, apre una Stripe Checkout Session in modalità
+  "destination charge" (`application_fee_amount` + `transfer_data.destination`
+  verso il conto Connect del professionista) — stesso webhook Stripe già
+  in uso per abbonamenti/lead/boost (`BillingService.handleWebhookEvent`,
+  esteso con un nuovo ramo `metadata.kind === "job_payment"` che delega a
+  `JobPaymentsService.handleManoviaCheckoutCompleted`, più un ramo
+  `account.updated` che sincronizza lo stato Stripe Connect via
+  `ProfessionalFiscalService.syncStripeConnectStatus`) — **un solo
+  endpoint webhook sullo stesso account Stripe**, mai due paralleli.
+  `RefundsService`/`DisputesService` nello stesso modulo: richiesta →
+  decisione admin (mai automatica) — per MANOVIA con Stripe configurato
+  tenta un vero `stripe.refunds.create`, per DIRECT è solo un cambio di
+  stato (nessun denaro è mai passato dalla piattaforma da rimborsare
+  davvero). `financeSummary()` per il riepilogo admin (ricavo per fonte,
+  pagamenti per metodo/stato).
+- **`dac7/`** — `Dac7Service`: `aggregateQuarter()`/`aggregateYear()`
+  ricalcolano da zero (mai un incremento in place) le righe `Dac7Record`
+  di un periodo dai `JobPayment` CONFIRMED nel range, sommando
+  `netAmountEurCents` (= la "consideration" ricevuta dal venditore) —
+  `Dac7Rule.includeDirectPayments` decide se includere anche i DIRECT.
+  **Bug reale corretto durante l'implementazione**: `upsert` con
+  `quarter: null` nella chiave composita `@@unique([year, quarter])` non è
+  supportabile da Prisma (un membro nullo di una chiave unica composita
+  non identifica una riga sola in SQL — più NULL sono considerati
+  distinti) — risolto con un `findFirst`+`create` manuale per il solo
+  caso annuale, unico punto del file che se ne discosta.
+  `@Cron(EVERY_DAY_AT_1AM)` tiene aggiornati trimestre e anno correnti
+  (mai i periodi passati, quelli si aggiornano solo per correzione
+  esplicita) — più `POST /admin/dac7/periods/aggregate-now` per
+  ricalcolare subito, senza aspettare il cron notturno (utile in admin e
+  per la verifica). `generateExport()` produce una **bozza JSON interna**
+  con i campi richiesti da DAC7 (identità, TIN/P.IVA, indirizzo,
+  consideration, numero di transazioni, commissioni trattenute) —
+  dichiaratamente **non il tracciato ufficiale DPI23** dell'Agenzia delle
+  Entrate (questa sessione non ha accesso alla specifica esatta di quel
+  formato): produrre un file che finge di essere quel formato senza
+  esserlo davvero sarebbe più dannoso che non produrlo affatto.
+  `markSubmitted()`/`correctPeriod()` restano azioni **manuali**
+  dell'admin — nessuna integrazione reale con il Desktop Telematico.
+
+Tutti i nuovi controller admin (`AdminProfessionalFiscalController`,
+`AdminJobPaymentsController`, `AdminFeeRulesController`, `Dac7Controller`)
+importano `AdminModule` per riusare la stessa `AdminGuard` già in uso su
+`/admin/*` (esportata esplicitamente da `AdminModule` per questo scopo,
+prima non lo era) — nessuna duplicazione della logica di verifica ruolo.
+
+### Frontend
+
+- **`/dashboard/fiscale`** (nuova pagina, voce "Dati fiscali e pagamenti"
+  nel menu account professionista): scelta persona fisica/impresa, campi
+  condizionali per tipo (+ sotto-form legale rappresentante per
+  un'impresa), residenza fiscale, stato di verifica (badge sulle sole 4
+  varianti semantiche fisse del progetto — verde/rosso/blu, mai un quinto
+  colore inventato), sezione "Pagamenti tramite Manovia" con il bottone
+  di attivazione Stripe Connect (mostra l'errore "non configurato" pulito
+  in questo ambiente, stesso pattern già in uso per Cloudinary/Stripe
+  altrove nel sito). Testo esplicito in cima alla pagina: nessun dato qui
+  è mai obbligatorio per usare la piattaforma — un professionista può
+  continuare a farsi pagare direttamente senza compilarla.
+- **`BookingDetailPanel.tsx`** (calendario "Prenotazioni",
+  `/dashboard/agenda`): nuovo blocco "Pagamento" (metodo, stato, lordo/
+  commissione/netto), visibile solo quando `booking.status === "COMPLETED"`
+  (l'unico momento in cui un `JobPayment` può esistere) — nuovo prop
+  `token` opzionale che il componente usa per un self-fetch, stesso
+  pattern già in uso per `ClientProfileModal` (un componente "semi
+  autonomo" che riceve `token` invece di ricevere ogni dato già pronto dal
+  genitore, per non appesantire ulteriormente lo stato già complesso di
+  `/dashboard/agenda/page.tsx`).
+- **`/admin/finanza`** (nuova pagina, link "Finanza e DAC7" aggiunto in
+  fondo alla sidebar admin esistente — pagina separata da `/admin`, non
+  un'ancora in più: troppo contenuto per la stessa pagina, stesso
+  principio già seguito altrove per pagine dense): riepilogo ricavo per
+  fonte/pagamenti per metodo/stato, tabella regole di commissione (riusa
+  la classe CSS `.admin-table` già esistente, CLAUDE.md §57), tabella
+  periodi DAC7 con azioni (Dettaglio/Esporta/Segna come inviato/Correggi)
+  — testo esplicito che nessuna azione qui invia realmente nulla
+  all'Agenzia delle Entrate.
+
+### Verificato
+
+End-to-end con l'API locale reale (non solo typecheck/build) — **due
+script Playwright dedicati, 50/50 controlli PASS complessivi**, non solo
+letture di codice:
+
+- **Backend (33/33)**: ciclo completo richiesta diretta a un professionista
+  specifico → preventivo → accettazione → completamento con importo finale
+  → `JobPayment` creato correttamente come DIRECT/AWAITING_CONFIRMATION
+  (lordo=importo finale, commissione=0, netto=lordo) → conferma cliente →
+  CONFIRMED; tentativo di pagamento MANOVIA senza Stripe Connect
+  configurato rifiutato con messaggio chiaro (mai un crash); profilo
+  fiscale creato/letto/modificato con audit log verificato non vuoto,
+  verifica admin che riporta correttamente a REQUIRES_UPDATE dopo una
+  modifica successiva ai dati; aggregazione DAC7 forzata → `Dac7Record`
+  con `considerationEurCents` esattamente uguale al netto del pagamento
+  confermato, `numberOfTransactions: 1`, `missingFiscalData: false` (dopo
+  verifica); export DAC7 con identità fiscale e importo corretti; ciclo
+  completo di stato del periodo EXPORTED→SUBMITTED→CORRECTED con
+  `reportVersion` incrementato; regola di commissione globale (10%)
+  confermata seminata all'avvio, creazione di una regola aggiuntiva
+  riuscita; richiesta di rimborso → rifiuto admin; apertura contestazione
+  (JobPayment passa a DISPUTED) → risoluzione admin; riepilogo finanza
+  coerente con i dati reali. Account di test ripuliti a fine script.
+- **Frontend (17/17)**: `/dashboard/fiscale` — intestazione, selezione
+  tipo persona fisica, compilazione e salvataggio reale (verificato anche
+  via chiamata API diretta, non solo dal messaggio di conferma a schermo),
+  bottone Stripe Connect che mostra l'errore "non configurato" corretto
+  senza alcun crash; `/admin/finanza` — tutte le sezioni presenti, regola
+  di commissione di default visibile in tabella, aggregazione DAC7
+  avviata dalla UI con un periodo risultante in tabella. Zero errori
+  console reali in entrambe le pagine (l'unico rumore osservato,
+  connessioni bloccate verso host esterni come `accounts.google.com`/
+  `randomuser.me`, è la stessa limitazione di rete dell'ambiente di
+  sviluppo già documentata altrove in questo file, non causata da questa
+  funzionalità).
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+(35 route, due nuove: `/dashboard/fiscale`, `/admin/finanza`).
+
+### Da fare prima del lancio (aggiunta alla lista già esistente, CLAUDE.md §9/§48)
+
+1. **Risposte scritte di un commercialista alle ~20 domande fiscali della
+   specifica originale** (§74) — in particolare: ruolo fiscale esatto di
+   Manovia (intermediario/mandatario/commissionario), chi emette fattura
+   al cliente, trattamento IVA della commissione, se la "consideration"
+   DAC7 deve includere i pagamenti DIRETTI (`Dac7Rule.includeDirectPayments`,
+   oggi un default prudenziale ma non validato) — **nessuna di queste
+   decisioni è stata presa da questo codice**, solo modellata come dato
+   configurabile in attesa della risposta.
+2. **Credenziali Stripe Connect reali** (`STRIPE_SECRET_KEY`,
+   `STRIPE_WEBHOOK_SECRET` — già richieste per Stripe Checkout, CLAUDE.md
+   §9, riusate qui) prima che un professionista possa davvero attivare i
+   pagamenti tramite Manovia.
+3. **Integrazione reale con il tracciato ufficiale DPI23** dell'Agenzia
+   delle Entrate (Desktop Telematico) — l'export attuale è una bozza JSON
+   interna, non il formato ufficiale.
+4. **Percentuale/regole di commissione reali** — il 10% globale seminato
+   di default è un valore di partenza arbitrario di questa sessione, da
+   sostituire con quanto deciso col commercialista/il modello di business
+   reale.
+5. **Emissione fatture reali** (`Invoice`, schema pronto, nessuna UI di
+   generazione in questo giro) — dipende dalle risposte del punto 1
+   (chi emette cosa a chi).
