@@ -150,6 +150,19 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
         return;
       }
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      // Il backend rifiuta con questo messaggio esatto SOLO quando sta per
+      // creare davvero un account nuovo (nessun account trovato per
+      // quell'email) e il consenso non è ancora stato dato — un account
+      // già esistente viene invece riconosciuto ed effettua subito
+      // l'accesso, consenso o meno (richiesta esplicita dell'utente: "se
+      // c'è un account già presente aprilo e basta"). Solo in quel caso si
+      // apre il popup, PRIMA di ripetere la chiamata che crea l'account
+      // per davvero — mai una creazione senza consenso.
+      if (isRegister && !viaModal && message === "Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.") {
+        setGoogleConsentError(null);
+        setPendingGoogleIdToken(idToken);
+        return;
+      }
       if (viaModal) {
         setGoogleConsentError(message);
       } else {
@@ -166,15 +179,12 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
       await completeGoogleAuth(idToken, false, undefined, undefined, false);
       return;
     }
-    // mode === "register": se le due caselle erano già spuntate (es. l'utente
-    // era già passato a "Registrati" e le aveva spuntate prima di cliccare
-    // Google), niente popup ridondante — si procede subito.
-    if (acceptedLegalTerms && declaredAdult) {
-      await completeGoogleAuth(idToken, true, acceptedLegalTerms, declaredAdult, false);
-      return;
-    }
-    setGoogleConsentError(null);
-    setPendingGoogleIdToken(idToken);
+    // mode === "register": un solo tentativo con lo stato di consenso
+    // corrente — il backend riconosce da solo un account già esistente
+    // (login diretto, nessun consenso richiesto) o segnala che serve il
+    // consenso solo se sta per creare l'account per davvero — vedi
+    // completeGoogleAuth sopra.
+    await completeGoogleAuth(idToken, true, acceptedLegalTerms, declaredAdult, false);
   }
 
   async function handleConfirmGoogleConsent() {

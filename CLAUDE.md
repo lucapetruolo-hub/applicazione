@@ -11517,3 +11517,75 @@ manualmente): bottone Google cliccabile da subito, popup si apre con
 caselle non spuntate, zero chiamate premature. Zero errori console reali
 in tutti gli scenari. Typecheck pulito su `apps/web`, build di produzione
 verde (35 route, nessuna nuova).
+
+**Correzione, stesso giro — ordine popup/creazione account + accesso
+diretto se l'account esiste già**: richiesta esplicita dell'utente, subito
+dopo aver visto la prima versione: "Il popup deve aprirsi prima di
+effettuare la registrazione con google, e poi se si effettua la
+registrazione con Google e c'è un account già presente aprilo e basta".
+Nella prima stesura il popup si apriva **sempre** al click su Google se le
+caselle non erano già spuntate — anche quando risultava poi che un account
+con quella email esisteva già, costringendo inutilmente a "riconfermare"
+un consenso già dato in passato invece di limitarsi ad accedere. Corretto
+appoggiandosi a una distinzione già presente lato backend
+(`AuthService.verifyGoogleToken`, mai toccata in questo giro): il consenso
+è obbligatorio **solo** quando sta per creare davvero un account nuovo
+(`!existingUser && !legalConsent`) — un account già esistente non lo
+richiede mai, a prescindere dallo stato delle caselle sul form.
+
+- **`completeGoogleAuth` (entrambi i file) non pre-verifica più
+  l'esistenza dell'account con una chiamata separata**: il primo tentativo
+  usa sempre lo stato di consenso corrente delle caselle (spuntate o no) —
+  se l'account esiste già, il backend risponde con successo al primo
+  colpo, **il popup non compare mai** ("aprilo e basta"). Solo se il
+  backend rifiuta con il messaggio esatto "Devi accettare Privacy Policy e
+  Termini di Servizio e dichiarare di avere almeno 18 anni." (nessun
+  account trovato, consenso mancante) si apre il popup — **prima** di
+  ripetere la chiamata che crea l'account per davvero: la seconda chiamata
+  (dopo la conferma nel popup, con `acceptedLegalTerms`/`declaredAdult`
+  garantiti `true` dal gate del bottone "Accetta e continua") è l'unica che
+  arriva a creare la riga `User`, mai la prima. Stesso identico
+  meccanismo in `/registrati` (`handleGoogleCredential` → un solo
+  tentativo diretto) e in `InlineAuthGate` modalità "register" raggiunta
+  manualmente (stessa logica, `isRegister: true`).
+- **`InlineAuthGate` modalità "login"** (il caso di ingresso di default,
+  prima di sapere se l'utente ha già un account): resta `createIfMissing:
+  false` come prima (mai silenziosamente creare un account su un
+  tentativo di "Accedi", stesso principio già stabilito per `/accedi`) —
+  ma quando risulta "Nessun account trovato con questa email.", invece di
+  tentare subito una seconda chiamata "di prova" con `createIfMissing:
+  true` (che avrebbe comunque fallito, sapendo già con certezza che
+  l'account non esiste), passa direttamente a modalità "register" e apre
+  il popup — **una chiamata in meno** rispetto a un possibile approccio
+  "prova-e-poi-apri", visto che l'assenza dell'account è già confermata.
+- **Nessuna migrazione/modifica al backend**: la distinzione
+  "account esistente non richiede consenso" esisteva già in
+  `AuthService.verifyGoogleToken` fin dalla sua introduzione (§48,
+  "Verbale di Conformità" — `if (!existingUser && !legalConsent...)`),
+  solo il frontend non la sfruttava ancora correttamente.
+
+Verificato end-to-end con l'API/Postgres locali reali e Playwright — 18/18
+controlli PASS su quattro nuovi scenari (stesso principio di verifica del
+giro precedente: `window.google` stub-ato, `/auth/google/verify`
+intercettato per simulare le risposte reali del backend). **Scenario E**
+(`/registrati`, account già esistente, caselle non spuntate): popup mai
+mostrato, **una sola** chiamata (nessuna verifica preliminare separata),
+inviata con lo stato di consenso corrente (`false`/`false`) — il backend
+avrebbe comunque accettato, essendo un account esistente. **Scenario F**
+(`/registrati`, account nuovo, caselle non spuntate): primo tentativo
+rifiutato dal mock con il messaggio esatto di consenso mancante → popup
+aperto **solo dopo** quel rifiuto (una sola chiamata fatta finora, la
+respinta — "popup aperto PRIMA di effettuare la registrazione" verificato
+alla lettera: nessuna chiamata di successo è ancora avvenuta quando il
+popup compare) → conferma → seconda chiamata con consenso `true`/`true`,
+quella che nella realtà creerebbe l'account. **Scenario G**
+(`InlineAuthGate`, modalità "register" raggiunta dal link, account già
+esistente): popup mai mostrato, una sola chiamata con
+`createIfMissing: true` e consenso ancora `false`/`false` (il backend
+avrebbe comunque accettato). **Scenario H** (`InlineAuthGate`, modalità
+"login" che scopre l'assenza dell'account): popup aperto subito dopo
+l'unica chiamata fallita (404), nessuna chiamata di tentativo intermedia,
+conferma → seconda chiamata con `createIfMissing: true` e consenso
+completo. Rieseguiti anche gli scenari B e C del giro precedente (ancora
+validi, nessuna regressione): entrambi confermati verdi. Typecheck pulito
+su `apps/web`, build di produzione verde (35 route, nessuna nuova).
