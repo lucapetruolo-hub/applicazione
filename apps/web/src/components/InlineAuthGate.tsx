@@ -6,6 +6,7 @@ import { Button, Field, Icon, Text, XStack, YStack, brand } from "@professionist
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 
 /**
  * Casella di spunta compatta per le due dichiarazioni obbligatorie in
@@ -63,6 +64,14 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
   const [declaredAdult, setDeclaredAdult] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Richiesta esplicita dell'utente: "Continua con Google" deve restare
+  // sempre cliccabile fin da subito, anche in modalità "Registrati" (prima
+  // disabilitato finché non si spuntavano le due caselle qui sotto) — il
+  // consenso, quando non ancora dato, viene chiesto in un popup DOPO il
+  // login Google, non prima. `pendingGoogleIdToken` valorizzato = popup
+  // aperto, in attesa di conferma.
+  const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
+  const [googleConsentError, setGoogleConsentError] = useState<string | null>(null);
 
   async function handleLogin() {
     setError(null);
@@ -122,42 +131,66 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
     }
   }
 
-  async function handleGoogleCredential(idToken: string) {
-    setError(null);
-    if (mode === "register" && !(acceptedLegalTerms && declaredAdult)) {
-      setError("Accetta Privacy Policy e Termini di Servizio e dichiara di avere almeno 18 anni per continuare.");
-      return;
-    }
+  async function completeGoogleAuth(idToken: string, isRegister: boolean, accepted: boolean | undefined, adult: boolean | undefined, viaModal: boolean) {
     setIsSubmitting(true);
     try {
       // In modalità "Accedi", createIfMissing=false (stesso principio già in
       // uso su /accedi): non deve iscrivere silenziosamente un account nuovo
       // su un'email mai registrata. Se capita, si passa a "Registrati" con
-      // lo stesso Google Sign-In, invece di rimandare a una pagina diversa.
-      const { token } = await apiClient.verifyGoogle(
-        idToken,
-        "CLIENT",
-        mode === "register",
-        mode === "register" ? acceptedLegalTerms : undefined,
-        mode === "register" ? declaredAdult : undefined,
-      );
+      // lo stesso Google Sign-In (stesso idToken già ottenuto, nessun secondo
+      // click richiesto), aprendo subito il popup di consenso.
+      const { token } = await apiClient.verifyGoogle(idToken, "CLIENT", isRegister, accepted, adult);
       await login(token);
       onAuthenticated();
     } catch (err) {
-      if (mode === "login" && err instanceof Error && err.message === "Nessun account trovato con questa email.") {
+      if (!isRegister && err instanceof Error && err.message === "Nessun account trovato con questa email.") {
         setMode("register");
-        setError("Nessun account trovato con questa email: crea un account gratuito per continuare.");
+        setGoogleConsentError(null);
+        setPendingGoogleIdToken(idToken);
         return;
       }
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (viaModal) {
+        setGoogleConsentError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  async function handleGoogleCredential(idToken: string) {
+    setError(null);
+    if (mode === "login") {
+      await completeGoogleAuth(idToken, false, undefined, undefined, false);
+      return;
+    }
+    // mode === "register": se le due caselle erano già spuntate (es. l'utente
+    // era già passato a "Registrati" e le aveva spuntate prima di cliccare
+    // Google), niente popup ridondante — si procede subito.
+    if (acceptedLegalTerms && declaredAdult) {
+      await completeGoogleAuth(idToken, true, acceptedLegalTerms, declaredAdult, false);
+      return;
+    }
+    setGoogleConsentError(null);
+    setPendingGoogleIdToken(idToken);
+  }
+
+  async function handleConfirmGoogleConsent() {
+    if (!pendingGoogleIdToken) return;
+    await completeGoogleAuth(pendingGoogleIdToken, true, acceptedLegalTerms, declaredAdult, true);
+  }
+
+  function handleCancelGoogleConsent() {
+    setPendingGoogleIdToken(null);
+    setGoogleConsentError(null);
+  }
+
   const canSubmitRegister = mode === "login" || (acceptedLegalTerms && declaredAdult);
 
   return (
+    <>
     <div
       role="dialog"
       aria-modal="true"
@@ -195,7 +228,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
             Quello che hai già scritto resta com'è: dopo l&apos;accesso la richiesta parte subito, senza ricominciare da capo.
           </Text>
 
-          <GoogleSignInButton onCredential={handleGoogleCredential} disabled={!canSubmitRegister} />
+          <GoogleSignInButton onCredential={handleGoogleCredential} />
 
           {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
             <XStack alignItems="center" gap="$3">
@@ -312,5 +345,18 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
         </YStack>
       </div>
     </div>
+    {pendingGoogleIdToken ? (
+      <GoogleConsentModal
+        acceptedLegalTerms={acceptedLegalTerms}
+        declaredAdult={declaredAdult}
+        onToggleLegalTerms={() => setAcceptedLegalTerms((v) => !v)}
+        onToggleDeclaredAdult={() => setDeclaredAdult((v) => !v)}
+        onConfirm={handleConfirmGoogleConsent}
+        onCancel={handleCancelGoogleConsent}
+        isSubmitting={isSubmitting}
+        error={googleConsentError}
+      />
+    ) : null}
+    </>
   );
 }

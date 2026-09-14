@@ -11427,3 +11427,93 @@ mitigazione effettivamente raccomandata per questa classe di bug) sono
 ora presenti, non che il banner smetta di comparire su un iPhone reale.
 Typecheck pulito su `apps/web`, build di produzione verde (35 route,
 nessuna nuova).
+
+---
+
+## 90. Registrazione — "Continua con Google" sempre cliccabile, consenso chiesto in un popup dopo il login
+
+Richiesta esplicita dell'utente: "Quando si vuole registrare un nuovo
+utente sia cliente che professionista dai la possibilità di cliccare da
+subito registrazione con Google e poi fai uscire un popup dove accetti le
+due clausole". Prima di questo giro, il bottone "Continua con Google" era
+`disabled` finché le due caselle di consenso (Privacy Policy/Termini di
+Servizio + dichiarazione di maggiore età, "Verbale di Conformità", CLAUDE.md
+§48) non venivano spuntate nel form sottostante — proprio l'azione pensata
+per essere la più rapida (un solo click, nessuna password da scegliere)
+restava bloccata dietro due checkbox da leggere e spuntare prima ancora di
+poter iniziare il login Google. Corretto invertendo l'ordine: il bottone
+resta sempre cliccabile, il consenso viene chiesto **dopo** che Google ha
+già risposto, in un popup dedicato — mai una registrazione completata senza
+consenso esplicito, solo il momento in cui viene chiesto cambia.
+
+- **`apps/web/src/components/GoogleConsentModal.tsx`** (nuovo, condiviso
+  tra `/registrati` e `InlineAuthGate`): stesso pattern overlay
+  `role="dialog"` già in uso ovunque nel prodotto (chiusura su Escape/click
+  sul backdrop, `stopPropagation` sul contenuto) — due caselle di consenso
+  (stessa resa visiva già duplicata nei due file chiamanti, terza copia qui
+  per lo stesso motivo documentato altrove in questo file: componente
+  piccolo, non vale introdurre una dipendenza tra i tre file solo per
+  questo) più due bottoni "Annulla"/"Accetta e continua" (quest'ultimo
+  disabilitato finché entrambe le caselle non sono spuntate). Riceve le due
+  variabili di consenso e i relativi toggle come prop dal chiamante (mai
+  uno stato duplicato): la stessa spunta data qui resta valida anche per un
+  eventuale invio successivo via email+password nello stesso form, un solo
+  stato condiviso.
+- **`/registrati/page.tsx`**: `disabled={!canSubmitConsent}` rimosso da
+  `GoogleSignInButton`. Nuovo stato `pendingGoogleIdToken` (valorizzato =
+  popup aperto) + `googleConsentError` (errore mostrato dentro il popup,
+  distinto dall'`error` di pagina — il popup è sopra il resto del form,
+  un errore sotto non sarebbe visibile). `handleGoogleCredential` ora
+  controlla se il consenso è già stato dato (caselle già spuntate sul
+  form, es. l'utente le aveva già spuntate prima di cambiare idea e
+  cliccare Google): in quel caso procede subito, senza un popup ridondante
+  — altrimenti apre il popup, `completeGoogleAuth` (stesso corpo già
+  esistente, estratto in una funzione a sé) viene richiamato solo dopo la
+  conferma nel popup.
+- **`InlineAuthGate.tsx`** (il gate inline mostrato all'invio di
+  "Richiedi un preventivo"/"Richiesta urgente" da anonimo, CLAUDE.md §70
+  F2.2): stessa struttura, complicata dal doppio `mode` ("login"/
+  "register"). In modalità "login" il bottone Google prova sempre un
+  login diretto (`createIfMissing: false`, nessun consenso richiesto per
+  un accesso, non una creazione). Se la risposta è "Nessun account trovato
+  con questa email." (comportamento già esistente, CLAUDE.md §20), invece
+  di richiedere un secondo click su Google come prima, `mode` passa subito
+  a "register" **e il popup di consenso si apre automaticamente**, riusando
+  lo stesso `idToken` già ottenuto dalla prima chiamata — nessuna
+  interazione Google ripetuta. In modalità "register" raggiunta
+  manualmente (link "Registrati" nel gate), stesso comportamento di
+  `/registrati`: bottone sempre cliccabile, popup se il consenso non è
+  ancora dato.
+
+Verificato end-to-end con l'API/Postgres locali reali (non solo
+typecheck/build) e Playwright — 33/33 controlli PASS su quattro scenari:
+non essendo possibile ottenere un vero token Google in questo ambiente
+(stessa limitazione di rete già documentata altrove in questo file), la
+verifica ha impostato temporaneamente un `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+finto (solo in locale, `.env` è gitignored — mai committato, ripristinato
+a fine verifica) per far renderizzare il bottone, stub-ato
+`window.google.accounts.id` prima del caricamento pagina (stesso principio
+già documentato in CLAUDE.md §20) per intercettare il click e restituire
+una credenziale finta, e intercettato `POST /auth/google/verify` per
+simulare le risposte del backend. **Scenario A** (`/registrati?ruolo=
+cliente`, caselle non spuntate): bottone Google cliccabile da subito
+(nessun `disabled`), click apre il popup **senza** aver ancora chiamato
+`/auth/google/verify` (0 chiamate registrate fino a conferma), "Accetta e
+continua" disabilitato con 0/2 e 1/2 caselle spuntate, abilitato con 2/2,
+conferma invia esattamente 1 chiamata con `role: "CLIENT"`,
+`acceptedLegalTerms: true`, `declaredAdult: true`, popup chiuso dopo il
+successo. **Scenario B** (`/registrati?ruolo=professionista`, caselle
+pre-spuntate sul form): click su Google chiama `/auth/google/verify`
+**direttamente**, popup mai mostrato (nessuna richiesta ridondante),
+payload con `role: "PROFESSIONAL"` e consenso corretto. **Scenario C**
+(`InlineAuthGate` via invio anonimo di `/preventivo`, modalità "login"
+che scopre un'email senza account): titolo passa da "Accedi per inviare
+la richiesta" a "Crea l'account gratuito", il popup di consenso si apre
+**da solo** (nessun secondo click) con una sola chiamata `/auth/google/
+verify` già effettuata (il tentativo di login), la conferma nel popup
+genera la seconda chiamata con `createIfMissing: true` e il consenso
+corretto. **Scenario D** (`InlineAuthGate`, modalità "register" raggiunta
+manualmente): bottone Google cliccabile da subito, popup si apre con
+caselle non spuntate, zero chiamate premature. Zero errori console reali
+in tutti gli scenari. Typecheck pulito su `apps/web`, build di produzione
+verde (35 route, nessuna nuova).

@@ -8,6 +8,7 @@ import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg 
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 
 export default function RegistratiPage() {
   return (
@@ -258,6 +259,13 @@ function RegistratiForm() {
   const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
   const [declaredAdult, setDeclaredAdult] = useState(false);
   const canSubmitConsent = acceptedLegalTerms && declaredAdult;
+  // Richiesta esplicita dell'utente: "Continua con Google" deve restare
+  // sempre cliccabile fin da subito (prima disabilitato finché non si
+  // spuntavano le due caselle qui sotto) — il consenso, quando non ancora
+  // dato, viene chiesto in un popup DOPO il login Google, non prima.
+  // `pendingGoogleIdToken` valorizzato = popup aperto, in attesa di conferma.
+  const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
+  const [googleConsentError, setGoogleConsentError] = useState<string | null>(null);
 
   function chooseRole(choice: "cliente" | "professionista") {
     const params = new URLSearchParams(searchParams.toString());
@@ -322,25 +330,49 @@ function RegistratiForm() {
     }
   }
 
-  async function handleGoogleCredential(idToken: string) {
-    setError(null);
-    if (!canSubmitConsent) {
-      setError("Accetta Privacy Policy e Termini di Servizio e dichiara di avere almeno 18 anni per continuare.");
-      return;
-    }
+  async function completeGoogleAuth(idToken: string, accepted: boolean, adult: boolean, viaModal: boolean) {
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, acceptedLegalTerms, declaredAdult);
+      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (viaModal) {
+        setGoogleConsentError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  async function handleGoogleCredential(idToken: string) {
+    setError(null);
+    // Se le due caselle erano già spuntate nel form (es. l'utente stava per
+    // registrarsi con email+password e ha cambiato idea), niente popup
+    // ridondante: si procede subito con il consenso già dato.
+    if (canSubmitConsent) {
+      await completeGoogleAuth(idToken, acceptedLegalTerms, declaredAdult, false);
+      return;
+    }
+    setGoogleConsentError(null);
+    setPendingGoogleIdToken(idToken);
+  }
+
+  async function handleConfirmGoogleConsent() {
+    if (!pendingGoogleIdToken) return;
+    await completeGoogleAuth(pendingGoogleIdToken, acceptedLegalTerms, declaredAdult, true);
+  }
+
+  function handleCancelGoogleConsent() {
+    setPendingGoogleIdToken(null);
+    setGoogleConsentError(null);
+  }
+
   return (
+    <>
     <AuthPageBackground>
       <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
         <YStack alignItems="center" gap="$3">
@@ -360,7 +392,7 @@ function RegistratiForm() {
           </YStack>
         </YStack>
 
-        <GoogleSignInButton onCredential={handleGoogleCredential} disabled={!canSubmitConsent} />
+        <GoogleSignInButton onCredential={handleGoogleCredential} />
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
@@ -498,5 +530,18 @@ function RegistratiForm() {
         </Text>
       </Surface>
     </AuthPageBackground>
+    {pendingGoogleIdToken ? (
+      <GoogleConsentModal
+        acceptedLegalTerms={acceptedLegalTerms}
+        declaredAdult={declaredAdult}
+        onToggleLegalTerms={() => setAcceptedLegalTerms((v) => !v)}
+        onToggleDeclaredAdult={() => setDeclaredAdult((v) => !v)}
+        onConfirm={handleConfirmGoogleConsent}
+        onCancel={handleCancelGoogleConsent}
+        isSubmitting={isSubmitting}
+        error={googleConsentError}
+      />
+    ) : null}
+    </>
   );
 }
