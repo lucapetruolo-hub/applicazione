@@ -11906,3 +11906,80 @@ verificato anche lato cliente (`/le-mie-richieste`, cambio del filtro per
 stato nativo `<select>` invece delle pillole, stesso meccanismo
 sottostante). Typecheck pulito su `apps/web`, build di produzione verde
 (35 route, nessuna nuova).
+
+## 95. Bug reale: documento allegato in chat scaricato vuoto + nome file conservato
+
+Segnalato dall'utente: *"quando profo a scaricare un file inserito nella
+chat, mi dice che il file è vuoto, e poi lascialo con il nome con cui e
+stato caricato"* — due richieste sullo stesso punto: un documento
+(PDF/Word/Excel) allegato in chat (§80, "graffetta"/File) risultava vuoto
+al download, e il nome del file scaricato doveva coincidere con quello
+caricato dall'utente invece di un'etichetta generica.
+
+**Causa reale**: `CloudinaryService.uploadMedia` caricava un documento con
+`resource_type: "raw"` (nessuna trasformazione, corretto per un PDF/Word)
+e restituiva `result.secure_url` — un URL di delivery **pubblico e non
+firmato**. Cloudinary blocca di default, per policy di sicurezza recente,
+la consegna pubblica/non firmata dei tipi `raw` potenzialmente rischiosi
+(PDF, ZIP, ecc.): la richiesta di download veniva quindi rifiutata/svuotata
+dalla CDN, pur restando l'URL apparentemente valido — da qui "il file è
+vuoto", non un errore visibile in fase di upload.
+
+**Fix, confermato contro il vero SDK Cloudinary installato** (non solo
+ipotizzato — verificato con due chiamate dirette a `cloudinary.url(...)`
+usando credenziali di test, prima di toccare il codice): per il solo ramo
+`resourceType === "raw"`, `CloudinaryService.uploadMedia`
+(`apps/api/src/cloudinary/cloudinary.service.ts`) non risolve più con
+`result.secure_url` ma costruisce un **URL firmato**
+(`cloudinary.url(result.public_id, { resource_type: "raw", type: "upload",
+format: rawExtension, secure: true, sign_url: true, flags:
+"attachment:<nome>" })`) — stesso rimedio ufficiale indicato da Cloudinary
+per continuare a servire questi formati, firma calcolata una sola volta al
+momento dell'upload (unico punto con accesso a `api_secret`), senza
+scadenza (nessun `expires_at`), quindi sicura da persistere per sempre nello
+stesso `mediaUrls: String[]` già esistente — nessuna migrazione. Lo stesso
+flag `attachment:<nome>` (nuovo helper privato `sanitizeAttachmentFilename`,
+toglie estensione/accenti/caratteri non sicuri per la sintassi di
+trasformazione Cloudinary, mai una stringa vuota) risolve anche la seconda
+richiesta nello stesso punto: il nome reale caricato dall'utente resta
+incorporato nell'URL firmato stesso, nessun campo nuovo nello schema per
+portarlo avanti.
+- **`apps/web/src/lib/media.ts`**: `cloudinaryDownloadUrl` ora riconosce un
+  URL che porta già un flag `fl_attachment` incorporato
+  (`hasEmbeddedAttachmentFlag`, nuovo helper privato) e lo lascia invariato
+  — inserirne un secondo, non firmato, invaliderebbe la firma esistente e
+  farebbe fallire di nuovo la consegna; un URL "vecchio stile" (caricato
+  prima di questo fix, mai firmato) continua a ricevere l'inserimento come
+  già prima. Nuovo `attachmentFileName(url)`: estrae il nome reale dal
+  flag incorporato, `null` per un URL senza quel flag (nessun nome da
+  conservare da prima di questo fix, si ricade sull'etichetta generica
+  come già prima).
+- **`apps/web/src/components/TimelineModal.tsx`**: `openMediaAt`, per un
+  documento, non apre più semplicemente una nuova scheda (`window.open`,
+  che per un PDF lo mostra nel visualizzatore integrato del browser senza
+  un vero salvataggio esplicito) ma crea un `<a href={cloudinaryDownloadUrl
+  (url)} download={attachmentFileName(url) ?? "allegato.<estensione>"}>` al
+  volo e lo clicca programmaticamente — forza un vero download col nome
+  reale in ogni browser, sia per l'anteprima nel composer (prima
+  dell'invio: bug secondario scoperto durante la verifica, nessun `onClick`
+  era mai stato collegato lì) sia per un allegato già inviato nella
+  cronologia.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright — dato che `res.cloudinary.com` è bloccato dalla policy di rete
+di questo ambiente di sviluppo (stessa limitazione già documentata altrove
+in questo file per tile OpenStreetMap/script Google Identity/foto
+randomuser.me), la verifica ha intercettato il click sull'`<a download>` a
+livello DOM (`HTMLAnchorElement.prototype.click`, stesso codice esatto
+introdotto dal fix) invece di dipendere da un vero fetch di rete —
+richiesta diretta a un professionista di test, upload di un PDF
+intercettato per simulare una risposta Cloudinary reale con la nuova forma
+firmata: click sulla miniatura **prima** dell'invio scatta il download con
+il nome esatto caricato ("Fattura_Perizze_caldaia_15_09.pdf", non
+"allegato.pdf") e un solo `fl_attachment` nell'URL (nessun doppio
+inserimento); click sullo stesso documento **dopo** l'invio scatta di
+nuovo il download con lo stesso nome, URL ancora con il segmento di firma
+(`/s--...--/`) intatto. Account di test ripuliti a fine verifica
+(`DELETE /auth/me`). Typecheck pulito su tutti i package (`shared`,
+`database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (35 route, nessuna nuova).

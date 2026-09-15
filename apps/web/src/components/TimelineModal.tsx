@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
-import { cloudinaryDownloadUrl, documentTypeLabel, isDocumentUrl } from "@/lib/media";
+import { attachmentFileName, cloudinaryDownloadUrl, documentTypeLabel, isDocumentUrl } from "@/lib/media";
 
 // Documenti accettati dall'opzione "File" del menu allegati (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
@@ -374,7 +374,11 @@ export function TimelineModal({
     if (isDocumentUrl(url)) {
       const link = document.createElement("a");
       link.href = cloudinaryDownloadUrl(url);
-      link.download = `allegato.${documentTypeLabel(url).toLowerCase()}`;
+      // Nome reale con cui l'utente l'ha caricato (bug "file vuoto"
+      // corretto, il nome è ora incorporato nell'URL firmato lato server) —
+      // ripiego sull'etichetta generica solo per un allegato caricato prima
+      // di questo fix, dove il nome originale non è mai stato conservato.
+      link.download = attachmentFileName(url) ?? `allegato.${documentTypeLabel(url).toLowerCase()}`;
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();

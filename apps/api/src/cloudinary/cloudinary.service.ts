@@ -114,7 +114,40 @@ export class CloudinaryService {
               reject(error ?? new Error("Upload fallito."));
               return;
             }
-            resolve(result.secure_url);
+            if (resourceType !== "raw") {
+              resolve(result.secure_url);
+              return;
+            }
+            // Bug reale segnalato dall'utente: scaricare un documento
+            // allegato in chat ("File") dava un file vuoto. Causa più
+            // probabile: Cloudinary blocca di default la consegna
+            // pubblica/non firmata di tipi "raw" potenzialmente rischiosi
+            // (PDF/ZIP/ecc., politica di sicurezza recente) — l'URL
+            // pubblico restituito da `result.secure_url` esisteva ma la
+            // richiesta di download veniva rifiutata/svuotata dalla CDN.
+            // Un URL FIRMATO (calcolato qui, unico posto con accesso ad
+            // `api_secret`) bypassa quel blocco per costruzione — stesso
+            // rimedio ufficiale indicato da Cloudinary per continuare a
+            // servire questi formati. La firma non scade (nessun
+            // `expires_at`/token a tempo, solo `sign_url`), quindi l'URL
+            // risultante è sicuro da persistere per sempre nello stesso
+            // `mediaUrls: String[]` già in uso, nessuna migrazione.
+            // `fl_attachment:<nome>` (senza estensione, sintassi
+            // Cloudinary) fa scaricare il file con il nome reale caricato
+            // dall'utente invece del generico "allegato.pdf" di prima —
+            // stessa richiesta esplicita dell'utente risolta nello stesso
+            // punto, nessun campo nuovo nello schema per portarlo avanti:
+            // il nome resta incorporato nell'URL firmato stesso.
+            const safeName = sanitizeAttachmentFilename(file.originalname);
+            const downloadUrl = cloudinary.url(result.public_id, {
+              resource_type: "raw",
+              type: "upload",
+              format: rawExtension,
+              secure: true,
+              sign_url: true,
+              flags: `attachment:${safeName}`,
+            });
+            resolve(downloadUrl);
           },
         );
         uploadStream.end(file.buffer);
@@ -124,4 +157,24 @@ export class CloudinaryService {
       throw new BadRequestException(`Caricamento non riuscito: ${message}`);
     }
   }
+}
+
+/**
+ * Nome file sicuro per il flag `fl_attachment:<nome>` di Cloudinary (senza
+ * estensione, già gestita da `format` sull'URL) — la sintassi di
+ * trasformazione Cloudinary usa `/`, `,`, `:` come separatori: qualunque
+ * carattere fuori da un set sicuro (lettere/cifre/spazio/trattini) viene
+ * sostituito, gli spazi diventano underscore, mai una stringa vuota (Word
+ * "Documento" di ripiego) né troppo lunga.
+ */
+function sanitizeAttachmentFilename(originalName: string): string {
+  const withoutExtension = originalName.replace(/\.[^./\\]+$/, "");
+  const safe = withoutExtension
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z0-9 _-]/g, " ")
+    .trim()
+    .replace(/\s+/g, "_")
+    .slice(0, 100);
+  return safe.length > 0 ? safe : "documento";
 }

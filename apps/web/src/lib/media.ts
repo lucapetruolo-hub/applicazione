@@ -37,11 +37,42 @@ export function documentTypeLabel(url: string): string {
  * qualunque resource_type (image/video/raw). URL non riconosciuto come
  * URL di delivery Cloudinary (`/upload/`) → ritornato invariato, mai un
  * link rotto.
+ *
+ * Un URL caricato dopo il fix del bug "file vuoto" (`CloudinaryService.
+ * uploadMedia`, ramo "raw") porta già `fl_attachment:<nome>` **firmato** al
+ * momento dell'upload — inserirne un secondo qui, non firmato, invaliderebbe
+ * la firma esistente (calcolata su transformazione+public_id+api_secret) e
+ * farebbe fallire di nuovo la consegna. `hasEmbeddedAttachmentFlag` lo
+ * riconosce e lascia l'URL invariato in quel caso; solo un URL "vecchio
+ * stile" (caricato prima del fix, mai firmato) riceve ancora l'inserimento
+ * qui.
  */
 export function cloudinaryDownloadUrl(url: string): string {
+  if (hasEmbeddedAttachmentFlag(url)) return url;
   const marker = "/upload/";
   const index = url.indexOf(marker);
   if (index === -1) return url;
   const insertAt = index + marker.length;
   return `${url.slice(0, insertAt)}fl_attachment/${url.slice(insertAt)}`;
+}
+
+/** True se l'URL porta già un flag `fl_attachment[:nome]` incorporato (upload firmato lato server, vedi `cloudinaryDownloadUrl`). */
+function hasEmbeddedAttachmentFlag(url: string): boolean {
+  return /\/fl_attachment(:|\/|,)/.test(url);
+}
+
+/**
+ * Nome file originale da mostrare al download, estratto dal flag
+ * `fl_attachment:<nome>` incorporato nell'URL (upload firmato lato server) —
+ * `null` per un URL "vecchio stile" senza quel flag, dove il nome reale non
+ * è mai stato conservato (nessun campo per portarlo avanti prima del fix,
+ * si ricade sull'etichetta generica "allegato.<estensione>" come già prima).
+ */
+export function attachmentFileName(url: string): string | null {
+  const clean = url.split("?")[0] ?? "";
+  const match = clean.match(/\/fl_attachment:([^/,]+)/);
+  if (!match || !match[1]) return null;
+  const base = decodeURIComponent(match[1]);
+  const extMatch = DOCUMENT_EXTENSIONS.find((ext) => clean.endsWith(ext));
+  return extMatch ? `${base}${extMatch}` : base;
 }
