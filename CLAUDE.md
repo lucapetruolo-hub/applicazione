@@ -11983,3 +11983,64 @@ nuovo il download con lo stesso nome, URL ancora con il segmento di firma
 (`DELETE /auth/me`). Typecheck pulito su tutti i package (`shared`,
 `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
 produzione `apps/web` verde (35 route, nessuna nuova).
+
+## 96. Homepage — "Recensioni verificate": foto grande a sinistra, nome cliccabile in alto, firma del cliente in basso a destra
+
+Richiesta esplicita dell'utente: *"in homepage nelle recensioni verificate
+lascia in grande a sinistra la foto del professionista a cui e stata fatta
+la recensione, con il nome del professionista in alto cliccabile, e il
+nome da chi è stata fatta la recensione a mò di firma in basso a destra"*
+— rovescia il layout a "nuvoletta di chat" introdotto in un giro precedente
+(§72, firma+foto piccola in basso a destra, nessun nome della recensione a
+schermo) con uno a due colonne: foto grande a sinistra, nome dell'attività
+in alto come link, firma del cliente in basso a destra.
+
+- **`ReviewsService.getRecentPublic`**: nessun dato sul cliente veniva
+  esposto prima d'ora da questo endpoint (solo dati del professionista
+  recensito) — la query include ora `booking.client`, e la risposta
+  guadagna `clientName` (`[client.name, client.surname].filter(Boolean).
+  join(" ") || "Cliente"`, stesso pattern di composizione nome già in uso
+  ovunque nel progetto, es. `ProfessionalsService.getMyBookings`). Fallback
+  "Cliente" copre sia un nome mai compilato sia un account eliminato
+  (`name`/`surname` già azzerati dal soft-delete, CLAUDE.md §16) senza
+  bisogno di una logica di privacy dedicata.
+- **`packages/api-client`**: tipo di `getRecentReviews()` esteso con
+  `clientName: string`.
+- **`apps/web/src/components/RecentReviews.tsx`** riscritta: ogni card
+  (dentro lo stesso `CategoryCarousel` già in uso, `CARD_WIDTH` da 300 a
+  320px per fare spazio alla foto) è ora una `Surface` a due colonne —
+  foto grande a sinistra (`ProfessionalAvatar`, 88px, stessa foto vera/
+  icona categoria di fallback già in uso ovunque nel prodotto, **mai**
+  un'icona placeholder generica), cliccabile verso il profilo pubblico
+  intero come il nome. Colonna destra: nome dell'attività in alto come
+  link (`Link` verso `/professionista/{id}`, **senza** `#recensione-{id}`
+  — stessa regola già stabilita in un giro precedente, "il click sul nome
+  del professionista deve portare alla pagina del professionista e non
+  alla recensione"), categoria+città, stelle+badge "Lavoro confermato",
+  testo della recensione, e in fondo a destra la firma del cliente
+  (`— {clientName}`, mai un link — il cliente non ha un profilo pubblico
+  in questo marketplace). `flexBasis={0}`+`minWidth={0}` sulla colonna
+  destra — stesso identico bug di wrapping testo già documentato più
+  volte in questo file per lo stesso pattern (un blocco flex accanto a
+  uno a larghezza fissa, CLAUDE.md §12).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright — 14/14 controlli PASS: ciclo completo richiesta diretta→
+preventivo→accettazione→completamento→doppia conferma→doppia recensione
+per un professionista e un cliente di test (cliente con nome/cognome reali
+impostati esplicitamente) — `GET /reviews/recent` conferma `clientName`
+esattamente uguale al nome reale del cliente; UI: sezione visibile, nome
+dell'attività presente come link con `href` esatto verso il profilo
+pubblico (mai un'ancora `#`), foto (>=60px) confermata posizionata a
+sinistra del nome tramite bounding box, firma del cliente visibile e
+posizionata sotto il nome del professionista e allineata a destra, zero
+overflow orizzontale desktop (1280px) e mobile (390px), zero `pageerror`.
+Screenshot di controllo confermano il layout: foto circolare grande a
+sinistra, nome verde cliccabile in alto, stelle+badge+testo sotto, "—
+Giulia Ferraro" in basso a destra. Account di test ripuliti a fine
+verifica (`DELETE /auth/me`) — la sezione torna correttamente ad
+auto-nascondersi quando non resta più nessuna recensione reale che
+soddisfi il criterio "doppio cieco" (comportamento già esistente,
+invariato). Typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+verde (35 route, nessuna nuova).

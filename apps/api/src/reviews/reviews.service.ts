@@ -40,6 +40,7 @@ export class ReviewsService {
         booking: {
           include: {
             professionalProfile: { include: { category: true } },
+            client: true,
           },
         },
       },
@@ -56,6 +57,15 @@ export class ReviewsService {
       comment: review.isAutomatic ? null : review.comment,
       isAutomatic: review.isAutomatic,
       createdAt: review.createdAt.toISOString(),
+      // Nome di chi ha scritto la recensione (richiesta esplicita
+      // dell'utente: "il nome da chi è stata fatta la recensione a mò di
+      // firma in basso a destra") — stesso pattern `[name, surname].
+      // filter(Boolean).join(" ")` già in uso ovunque nel progetto,
+      // fallback "Cliente" sia per un nome mai compilato sia per un
+      // account eliminato (name/surname già azzerati dal soft-delete,
+      // CLAUDE.md §16 — nessuna logica di privacy aggiuntiva necessaria
+      // qui, il fallback neutro copre già entrambi i casi).
+      clientName: [review.booking.client.name, review.booking.client.surname].filter(Boolean).join(" ") || "Cliente",
       professional: {
         // Richiesta esplicita dell'utente: le card devono essere cliccabili
         // verso la recensione in questione sul profilo pubblico — serve

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Avatar, Icon, Rating, Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Icon, Rating, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CategoryCarousel } from "./CategoryCarousel";
+import { ProfessionalAvatar } from "./ProfessionalAvatar";
 
 type RecentReview = {
   id: string;
@@ -12,10 +13,12 @@ type RecentReview = {
   comment: string | null;
   isAutomatic: boolean;
   createdAt: string;
+  clientName: string;
   professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
 };
 
-const CARD_WIDTH = 300;
+const CARD_WIDTH = 320;
+const PHOTO_SIZE = 88;
 
 /**
  * Riprova sociale reale in home (audit, punto J): le ultime recensioni
@@ -24,17 +27,21 @@ const CARD_WIDTH = 300;
  * non ce ne sono ancora, la sezione non viene proprio renderizzata — lo
  * stesso principio "niente dati finti" seguito per prezzi e vetrina.
  *
- * Riscritta come carosello su un'unica riga in stile messaggio (richiesta
- * esplicita dell'utente): ogni recensione è una "nuvoletta" di chat (sfondo
- * pieno, angoli arrotondati) con la firma del professionista recensito in
- * basso a destra — stesso pattern del carosello categorie
- * (`CategoryCarousel`), riusato invece di duplicare frecce/scroll. A
- * differenza della card precedente (l'intera card era un `<Link>` verso
- * `#recensione-{id}`), solo la firma è ora cliccabile e porta al profilo
- * del professionista (pagina intera, non l'ancora della singola
- * recensione) — richiesta esplicita dell'utente: "se si clicca sul nome
- * del professionista deve portare alla pagina del professionista e non
- * alla recensione".
+ * Layout richiesto esplicitamente dall'utente ("lascia in grande a sinistra
+ * la foto del professionista a cui e stata fatta la recensione, con il
+ * nome del professionista in alto cliccabile, e il nome da chi è stata
+ * fatta la recensione a mò di firma in basso a destra"): sostituisce la
+ * resa a "nuvoletta di chat" precedente (foto piccola solo in firma) con
+ * un layout a due colonne — foto grande a sinistra (`ProfessionalAvatar`,
+ * stessa foto vera/fallback icona categoria già in uso ovunque nel
+ * prodotto), nome dell'attività in alto a destra come link verso il
+ * profilo pubblico intero (mai verso la singola recensione — stessa
+ * regola già stabilita in un giro precedente), nome del cliente che ha
+ * scritto la recensione come firma in fondo a destra (`clientName`,
+ * nuovo campo esposto da `GET /reviews/recent`: fallback "Cliente" sia
+ * per un nome mai compilato sia per un account eliminato, il soft-delete
+ * azzera già nome/cognome, CLAUDE.md §16 — nessuna logica di privacy
+ * aggiuntiva necessaria qui).
  */
 export function RecentReviews() {
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
@@ -53,61 +60,53 @@ export function RecentReviews() {
       <CategoryCarousel>
         {reviews.map((review) => (
           <div key={review.id} style={{ flexShrink: 0, width: CARD_WIDTH, scrollSnapAlign: "start" }}>
-            <YStack gap="$2">
-              <XStack alignItems="center" gap="$2">
-                <Rating value={review.rating} size={13} />
-                <XStack alignItems="center" gap="$1">
-                  <Icon name="badge-check" size={12} color={brand.verificato} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
-                    Lavoro confermato
-                  </Text>
-                </XStack>
-              </XStack>
+            <Surface padding="$3">
+              <XStack gap="$3" alignItems="stretch">
+                {/* Foto grande a sinistra, cliccabile verso il profilo
+                    pubblico intero del professionista recensito. */}
+                <Link href={`/professionista/${review.professional.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
+                  <ProfessionalAvatar imageUrl={review.professional.imageUrl} categorySlug={review.professional.categorySlug} size={PHOTO_SIZE} />
+                </Link>
 
-              {/* Nuvoletta di chat: sfondo pieno, mai bianco (si deve
-                  distinguere dalla `Surface` bianca usata ovunque altrove
-                  nel sito), coda in basso a sinistra via bordo triangolare
-                  — stesso principio "CSS puro per un dettaglio che Tamagui
-                  non rende bene" già seguito altrove nel prodotto (es.
-                  CalendarShell, MegaMenu). */}
-              <div style={{ position: "relative" }}>
-                <YStack backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$3" minHeight={104}>
-                  <Text fontSize={14} lineHeight={21} color={brand.grafite} fontStyle="italic">
+                {/* flexBasis={0}+minWidth={0}: senza, il testo non va a
+                    capo correttamente accanto a un blocco a larghezza
+                    fissa (stesso bug già documentato più volte in questo
+                    file per lo stesso identico pattern, CLAUDE.md §12). */}
+                <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
+                  <Link href={`/professionista/${review.professional.id}`} style={{ textDecoration: "none" }}>
+                    <Text fontFamily="$heading" fontSize={15} fontWeight="700" color={brand.cianografia} numberOfLines={1}>
+                      {review.professional.businessName}
+                    </Text>
+                  </Link>
+                  <Text fontSize={11} color={brand.grafite70} numberOfLines={1}>
+                    {review.professional.categoryLabel} · {review.professional.city}
+                  </Text>
+                  <XStack alignItems="center" gap="$2" marginTop="$1">
+                    <Rating value={review.rating} size={12} />
+                    <XStack alignItems="center" gap="$1">
+                      <Icon name="badge-check" size={11} color={brand.verificato} strokeWidth={2} />
+                      <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.verificato}>
+                        Lavoro confermato
+                      </Text>
+                    </XStack>
+                  </XStack>
+
+                  <Text fontSize={13} lineHeight={19} color={brand.grafite} fontStyle="italic" marginTop="$1" numberOfLines={4}>
                     {review.isAutomatic ? "(recensione automatica)" : `“${review.comment ?? ""}”`}
                   </Text>
-                  {/* Firma: foto + nome del professionista recensito,
-                      piccola, in basso a destra della nuvoletta — l'intero
-                      blocco (foto+nome) è cliccabile, verso il profilo
-                      pubblico intero, mai verso la singola recensione. */}
-                  <XStack justifyContent="flex-end" alignItems="center" gap="$2" marginTop="$2">
-                    <Link href={`/professionista/${review.professional.id}`} style={{ textDecoration: "none" }}>
-                      <XStack alignItems="center" gap="$2">
-                        <Avatar name={review.professional.businessName} imageUrl={review.professional.imageUrl} size={24} />
-                        <Text fontSize={12} fontWeight="700" color={brand.cianografia}>
-                          — {review.professional.businessName}
-                        </Text>
-                      </XStack>
-                    </Link>
+
+                  {/* Firma: nome di chi ha scritto la recensione, in fondo
+                      a destra — mai un link, non è un dato pubblico
+                      raggiungibile (il cliente non ha un profilo pubblico
+                      in questo marketplace). */}
+                  <XStack justifyContent="flex-end" marginTop="$2">
+                    <Text fontSize={11} fontWeight="600" color={brand.grafite70}>
+                      — {review.clientName}
+                    </Text>
                   </XStack>
                 </YStack>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 16,
-                    bottom: -8,
-                    width: 0,
-                    height: 0,
-                    borderLeft: "8px solid transparent",
-                    borderRight: "8px solid transparent",
-                    borderTop: `8px solid ${brand.gesso}`,
-                  }}
-                />
-              </div>
-
-              <Text fontSize={12} color={brand.grafite70}>
-                {review.professional.categoryLabel} · {review.professional.city}
-              </Text>
-            </YStack>
+              </XStack>
+            </Surface>
           </div>
         ))}
       </CategoryCarousel>

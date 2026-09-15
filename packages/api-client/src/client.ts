@@ -566,6 +566,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
           comment: string | null;
           isAutomatic: boolean;
           createdAt: string;
+          clientName: string;
           professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
         }[]
       >("/reviews/recent", { cache: "no-store" }),
