@@ -739,9 +739,13 @@ export const professionalFiscalProfileSchema = z.object({
   legalForm: z.string().max(100).optional(),
   vatNumber: z.string().max(20).optional(),
   businessRegistrationNumber: z.string().max(50).optional(),
+  leiCode: z.string().max(20).optional(),
+  additionalEuStates: z.array(z.string().max(2)).max(26).optional(),
   taxResidenceCountry: z.string().max(2).optional(),
   foreignTin: z.string().max(50).optional(),
+  fiscalIdIssuingCountry: z.string().max(2).optional(),
   registeredStreet: z.string().max(200).optional(),
+  registeredHouseNumber: z.string().max(20).optional(),
   registeredCity: z.string().max(120).optional(),
   registeredPostalCode: z.string().max(12).optional(),
   registeredProvince: z.string().max(50).optional(),
@@ -802,3 +806,23 @@ export const setDac7RuleSchema = z.object({
   includeDirectPayments: z.boolean(),
 });
 export type SetDac7RuleInput = z.infer<typeof setDac7RuleSchema>;
+
+/**
+ * Identità della piattaforma richiesta dal blocco MessageSpec/Platform
+ * dello schema OECD DPI usato da DAC7 (SendingEntityIN, PlatformName,
+ * PlatformID) — tutti facoltativi a livello di schema (nessuna riga esiste
+ * finché un admin non la compila, stesso principio "mai un dato
+ * obbligatorio a livello di schema" già seguito per il resto della
+ * specifica MANOVIA), ma senza di essi `generateExport` non può costruire
+ * un MessageRefId valido — segnalato esplicitamente in UI, non bloccato
+ * silenziosamente.
+ */
+export const platformDac7SettingsSchema = z.object({
+  sendingEntityIn: z.string().max(30).optional(),
+  platformName: z.string().max(200).optional(),
+  platformIdValue: z.string().max(50).optional(),
+  platformIdType: z.string().max(20).optional(),
+  transmittingCountry: z.string().max(2).optional(),
+  receivingCountry: z.string().max(2).optional(),
+});
+export type PlatformDac7SettingsInput = z.infer<typeof platformDac7SettingsSchema>;

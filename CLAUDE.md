@@ -11589,3 +11589,157 @@ conferma → seconda chiamata con `createIfMissing: true` e consenso
 completo. Rieseguiti anche gli scenari B e C del giro precedente (ancora
 validi, nessuna regressione): entrambi confermati verdi. Typecheck pulito
 su `apps/web`, build di produzione verde (35 route, nessuna nuova).
+
+---
+
+## 91. DAC7 — campi onboarding completi, validazione in tempo reale, identità piattaforma, bozza XML OECD DPI
+
+Due richieste esplicite dell'utente, stesso giro: prima uno screenshot di
+un risultato Google ("dati da sapere per inviare il dac7") con l'elenco
+dei campi richiesti per una persona fisica e per un'impresa/società, più
+un suggerimento tecnico ("validazione in tempo reale... IBAN e algoritmo
+del codice fiscale italiano / formati NIF esteri"), istruzione "Modifica o
+implementa"; poi un esempio XML reale (`<DPI_OECD>`, schema OECD DPI v1 —
+la base su cui il tracciato italiano DAC7 è costruito) con istruzione
+"elabora ed estrapola i dati da richiedere e in che formato e se c'è
+qualche obbligo implementalo già quando richiedi i dati".
+
+**Campi mancanti aggiunti a `ProfessionalFiscalProfile`** (schema Prisma,
+`packages/database`) — nessuno obbligatorio a livello di schema, stesso
+principio già stabilito per l'intera specifica MANOVIA (§88, "il software
+non deve mai decidere se una persona ha bisogno di una partita IVA"):
+- `registeredHouseNumber` — l'indirizzo (`registeredStreet`) era un unico
+  campo libero "Via/Piazza + civico"; il riferimento richiede il numero
+  civico come campo separato — ora due campi affiancati in UI.
+- `fiscalIdIssuingCountry` — "Stato di rilascio del NIF"/"Stato di
+  rilascio del codice fiscale/IVA" del riferimento: un campo condiviso
+  (stessa natura per persona fisica e impresa, solo l'etichetta cambia in
+  UI) perché può differire dalla residenza fiscale (es. un cittadino
+  straniero con codice fiscale italiano ma residenza fiscale altrove) —
+  determina anche quale algoritmo di validazione applicare (sotto).
+- `leiCode` — Codice LEI, sempre facoltativo (solo per BUSINESS, richiesto
+  solo se l'entità lo possiede già).
+- `additionalEuStates` (`String[]`) — Stati membri UE aggiuntivi con
+  stabile organizzazione (solo per BUSINESS), campo libero di codici ISO
+  separati da virgola in UI (`/dashboard/profilo` usa già un pattern chip
+  per le lingue parlate, qui si è scelto un campo testo semplice per non
+  allargare lo scope: il caso è raro).
+- **"Numero di iscrizione al Registro delle Imprese"** del riferimento:
+  già coperto dal campo esistente `businessRegistrationNumber`
+  (etichettato "Numero REA / CCIAA") — solo l'etichetta in UI è stata resa
+  più esplicita, nessun nuovo campo.
+
+**Validazione in tempo reale — `packages/shared/src/fiscalValidation.ts`**
+(nuovo, funzioni pure, usate sia client che potenzialmente server): algoritmo
+esatto del Codice Fiscale italiano (`isValidCodiceFiscale` — tabella di
+conversione pari/dispari ufficiale + carattere di controllo, gestisce
+anche l'omocodia) e della Partita IVA italiana (`isValidPartitaIva` —
+variante dell'algoritmo di Luhn a 11 cifre); per un NIF/TIN estero
+(`looksLikeForeignTin`) solo un controllo di forma generico — **nessun
+algoritmo di validazione unico esiste per ogni NIF UE**, tentare di
+implementarne uno per ciascun paese sarebbe fuori scope e rischioso
+(falsi negativi su dati fiscali reali). `checkFiscalId(value,
+issuingCountry, kind)` è il dispatcher usato dalla UI: applica l'algoritmo
+esatto solo se `fiscalIdIssuingCountry` è "IT" (o vuoto), altrimenti il
+solo controllo di forma. **Mai bloccante**: un valore vuoto è sempre
+`valid: true` (un campo non ancora compilato non è invalido), e un valore
+non riconosciuto mostra un messaggio d'errore sotto il campo (`Field`,
+`packages/ui`, che già supportava `error`/`hint`) ma non impedisce il
+salvataggio — stesso principio "mai bloccare su un dato fiscale non
+essenziale" già seguito ovunque nella specifica MANOVIA.
+**Deliberatamente nessuna validazione IBAN**: Manovia non raccoglie mai un
+IBAN direttamente — l'onboarding Stripe Connect lo chiede sulla propria
+pagina ospitata (già validato in tempo reale da Stripe stessa); introdurre
+un secondo punto di raccolta/validazione di un dato bancario sensibile
+avrebbe contraddetto la scelta architetturale già fatta di non toccarlo
+mai (§88).
+
+**Identità della piattaforma — nuovo modello `PlatformDac7Settings`**
+(riga singola, stesso pattern `findFirst() ?? create({})` di `Dac7Rule`):
+l'esempio XML fornito mostra che ogni dichiarazione DAC7 richiede
+un'identità del "sending entity" (SendingEntityIN, PlatformName,
+PlatformID) che **nessuna parte del sistema raccoglieva prima d'ora** —
+un dato di Manovia stessa, mai hardcoded (stesso principio già seguito
+per `PlatformFeeRule`), configurabile solo da admin
+(`GET`/`POST /admin/dac7/settings`, nuova sezione "Impostazioni
+piattaforma DAC7" in `/admin/finanza`, sopra "Periodi DAC7"). Un contatore
+`messageSequence` (incrementato ad ogni `generateExport`) costruisce un
+`MessageRefId` sempre univoco (`{TransmittingCountry}{Anno}
+{SendingEntityIN}{sequenza a 6 cifre}` — formato identico a quello
+dell'esempio fornito). Se i dati non sono ancora compilati, l'export li
+segnala esplicitamente (`platformSettingsIncomplete: true`, ricade su
+`"NON-CONFIGURATO"` nel MessageRefId) invece di fallire silenziosamente.
+
+**Bozza XML derivata dallo schema OECD DPI —
+`apps/api/src/dac7/dac7-xml.util.ts`** (nuovo): `generateExport`
+(`Dac7Service`) produce ora, oltre al JSON strutturato già esistente
+(esteso con `messageSpec`/`platformSettingsIncomplete`), anche una
+stringa XML che rispecchia letteralmente i tag/attributi mostrati
+nell'esempio fornito — `MessageSpec`, `Platform`, `ReportableSeller>
+Seller>Individual` (nome, `BirthInfo`, `Address` con `AddressFree`
+composto dai campi strutturati già raccolti, `TIN type="OECD202"
+issuedBy="..."`), `Consideration`/`NumberOfActivities` **scomposti per
+trimestre solare** (Q1-Q4, non solo un totale annuale — dettaglio
+strutturale rivelato dall'esempio, prima assente). Per l'export
+**annuale** (la vera dichiarazione), `Dac7Service.getQuarterlyBreakdown`
+legge i 4 `Dac7ReportingPeriod` trimestrali dello stesso anno (sola
+lettura, mai forza un'aggregazione dei trimestri mancanti) e popola Q1-Q4
+per ciascun venditore; per un export trimestrale (solo aggregazione
+interna, mai la vera dichiarazione — invariato) solo il trimestre
+pertinente è valorizzato. Il ramo `<Entity>` (impresa/società) **non era
+mostrato nell'esempio fornito**: costruito per analogia con la famiglia
+di schemi OECD CRS/DPI (`Organisation`/`ResCountryCode`/
+`LegalRegistrationNumber`) — disclaimer esplicito nel file e nella
+risposta stessa (`note` nel payload): il ramo Individual è verificato
+contro un esempio reale, il ramo Entity no, e resta comunque una **bozza**,
+non il tracciato ufficiale DPI23/XSD validato dall'Agenzia delle Entrate
+(nessuna sessione ha accesso a quella specifica esatta) — produrre un
+file che finge di essere validato senza esserlo davvero sarebbe più
+dannoso che non produrlo affatto, stesso principio già scritto per la
+prima versione dell'export in §88.
+
+**Homepage — sezione "Perché esistiamo" rimossa** (richiesta separata,
+stesso giro): la sezione introdotta in §28 (storia personale del
+fondatore) è stata tolta da `HomeContent.tsx` su richiesta esplicita
+dell'utente; `WhyWeExist.tsx` eliminato per intero (nessun altro punto del
+prodotto lo montava) invece di lasciarlo come componente morto — stesso
+principio già seguito altrove in questo file per una feature scartata
+come scelta di prodotto, non solo rimandata (es. `SchedaIntervento.tsx`,
+§19).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) —
+due script dedicati, non solo letture di codice. **Backend** (21/22
+controlli, l'unico "fallimento" era un errore del test stesso — vedi
+sotto): profilo fiscale persona fisica con tutti i nuovi campi salvato e
+riletto correttamente; un codice fiscale malformato resta comunque
+salvabile lato server (mai bloccante, per design); profilo BUSINESS con
+Codice LEI e Stati membri UE aggiuntivi (`["fr","de"]`) salvati
+correttamente; ciclo completo richiesta diretta→preventivo→accettazione→
+completamento per un professionista di test (codice fiscale reale
+`RSSMRA80A01H501U`, verificato con l'algoritmo ufficiale prima di
+usarlo); impostazioni piattaforma salvate; aggregazione+export annuale
+con `messageSpec.messageType: "DPI401"`, `messageRefId` nel formato
+esatto dell'esempio (`IT2026IT01234567890000001`), venditore trovato con
+blocco `individual` corretto (`tinValue` = codice fiscale, `addressFree`
+composto da via+civico+CAP+città), scomposizione trimestrale corretta sul
+trimestre reale dell'ambiente (Q3, settembre 2026), XML generato
+contenente `MessageRefId`/`TIN`/l'importo del trimestre esatti; una
+seconda chiamata a `generateExport` produce un `messageRefId` diverso
+(sequenza incrementata, mai riutilizzato); un professionista BUSINESS
+senza pagamenti confermati correttamente assente dall'export (nessuna
+"consideration" da segnalare). L'unico controllo segnato "FAIL"
+nello script era un bug del test stesso, non del codice: `"00000000000"`
+usato per testare il rifiuto di una Partita IVA non valida è, per pura
+coincidenza matematica, una Partita IVA "valida" per l'algoritmo
+checksum (ogni cifra zero produce sempre un resto zero) — verificato
+separatamente con vettori di test reali (`01234567897` valida,
+`01234567890` non valida) prima di questo giro, algoritmo confermato
+corretto. **UI** (14/15 controlli, stesso falso negativo sul P.IVA di
+sopra): campi nuovi visibili e interattivi in entrambe le modalità
+(persona fisica/impresa) su `/dashboard/fiscale`, errore di validazione
+codice fiscale che compare/scompare dal vivo mentre si digita, sezione
+"Impostazioni piattaforma DAC7" presente e salvabile su `/admin/finanza`,
+testo "Perché esistiamo" assente dalla homepage, zero errori console in
+tutti i flussi verificati. Typecheck pulito su tutti i package (`shared`,
+`database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (35 route, nessuna nuova) e `apps/api` verde.

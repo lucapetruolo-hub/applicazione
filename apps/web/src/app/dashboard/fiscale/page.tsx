@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
+import { checkFiscalId } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -39,6 +40,7 @@ export default function DashboardFiscalePage() {
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
   const [entityType, setEntityType] = useState<"INDIVIDUAL" | "BUSINESS" | "">("");
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [additionalEuStatesText, setAdditionalEuStatesText] = useState("");
   const [repFields, setRepFields] = useState<{ firstName: string; lastName: string; codiceFiscale: string; role: string }>({
     firstName: "",
     lastName: "",
@@ -70,14 +72,18 @@ export default function DashboardFiscalePage() {
             legalForm: data.legalForm ?? "",
             vatNumber: data.vatNumber ?? "",
             businessRegistrationNumber: data.businessRegistrationNumber ?? "",
+            leiCode: data.leiCode ?? "",
             taxResidenceCountry: data.taxResidenceCountry ?? "",
             foreignTin: data.foreignTin ?? "",
+            fiscalIdIssuingCountry: data.fiscalIdIssuingCountry ?? "",
             registeredStreet: data.registeredStreet ?? "",
+            registeredHouseNumber: data.registeredHouseNumber ?? "",
             registeredCity: data.registeredCity ?? "",
             registeredPostalCode: data.registeredPostalCode ?? "",
             registeredProvince: data.registeredProvince ?? "",
             registeredCountry: data.registeredCountry ?? "",
           });
+          setAdditionalEuStatesText((data.additionalEuStates ?? []).join(", "));
           if (data.representative) {
             setRepFields({
               firstName: data.representative.firstName,
@@ -120,9 +126,16 @@ export default function DashboardFiscalePage() {
         legalForm: fields.legalForm || undefined,
         vatNumber: fields.vatNumber || undefined,
         businessRegistrationNumber: fields.businessRegistrationNumber || undefined,
+        leiCode: fields.leiCode || undefined,
+        additionalEuStates: additionalEuStatesText
+          .split(",")
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean),
         taxResidenceCountry: fields.taxResidenceCountry || undefined,
         foreignTin: fields.foreignTin || undefined,
+        fiscalIdIssuingCountry: fields.fiscalIdIssuingCountry || undefined,
         registeredStreet: fields.registeredStreet || undefined,
+        registeredHouseNumber: fields.registeredHouseNumber || undefined,
         registeredCity: fields.registeredCity || undefined,
         registeredPostalCode: fields.registeredPostalCode || undefined,
         registeredProvince: fields.registeredProvince || undefined,
@@ -164,6 +177,10 @@ export default function DashboardFiscalePage() {
   }
 
   const verification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
+  // Validazione in tempo reale (mai bloccante: un formato non riconosciuto
+  // resta comunque salvabile, solo segnalato — CLAUDE.md, fiscalValidation.ts).
+  const cfCheck = checkFiscalId(fields.fiscalCodiceFiscale ?? "", fields.fiscalIdIssuingCountry, "codiceFiscale");
+  const pivaCheck = checkFiscalId(fields.vatNumber ?? "", fields.fiscalIdIssuingCountry, "vatNumber");
 
   return (
     <Section title="Dati fiscali e pagamenti" maxWidth={720}>
@@ -216,9 +233,20 @@ export default function DashboardFiscalePage() {
               </Text>
               <Field label="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
               <Field label="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
-              <Field label="Codice fiscale" value={fields.fiscalCodiceFiscale ?? ""} onChangeText={(v) => setField("fiscalCodiceFiscale", v)} />
-              <Field label="Data di nascita" value={fields.dateOfBirth ?? ""} onChangeText={(v) => setField("dateOfBirth", v)} placeholder="AAAA-MM-GG" />
-              <Field label="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
+              <Field
+                label="Codice fiscale"
+                value={fields.fiscalCodiceFiscale ?? ""}
+                onChangeText={(v) => setField("fiscalCodiceFiscale", v)}
+                error={cfCheck.message ?? undefined}
+              />
+              <Field
+                label="Data di nascita"
+                value={fields.dateOfBirth ?? ""}
+                onChangeText={(v) => setField("dateOfBirth", v)}
+                placeholder="AAAA-MM-GG"
+                hint="Richiesta insieme al luogo di nascita solo se non fornisci un codice fiscale valido."
+              />
+              <Field label="Luogo di nascita (Comune e Provincia)" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
               <Field label="Paese di nascita (ISO, es. IT)" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
             </YStack>
           </Surface>
@@ -232,8 +260,30 @@ export default function DashboardFiscalePage() {
               </Text>
               <Field label="Ragione sociale" value={fields.businessName ?? ""} onChangeText={(v) => setField("businessName", v)} />
               <Field label="Forma giuridica" value={fields.legalForm ?? ""} onChangeText={(v) => setField("legalForm", v)} placeholder="es. Ditta individuale, SRL" />
-              <Field label="Partita IVA" value={fields.vatNumber ?? ""} onChangeText={(v) => setField("vatNumber", v)} />
-              <Field label="Numero REA / CCIAA" value={fields.businessRegistrationNumber ?? ""} onChangeText={(v) => setField("businessRegistrationNumber", v)} />
+              <Field
+                label="Partita IVA"
+                value={fields.vatNumber ?? ""}
+                onChangeText={(v) => setField("vatNumber", v)}
+                error={pivaCheck.message ?? undefined}
+              />
+              <Field
+                label="Numero di iscrizione al Registro delle Imprese (REA / CCIAA)"
+                value={fields.businessRegistrationNumber ?? ""}
+                onChangeText={(v) => setField("businessRegistrationNumber", v)}
+              />
+              <Field
+                label="Codice LEI (opzionale)"
+                value={fields.leiCode ?? ""}
+                onChangeText={(v) => setField("leiCode", v)}
+                hint="Solo se l'entità ne possiede già uno — non obbligatorio per operare su Manovia."
+              />
+              <Field
+                label="Stati membri UE aggiuntivi con stabile organizzazione (opzionale)"
+                value={additionalEuStatesText}
+                onChangeText={setAdditionalEuStatesText}
+                placeholder="es. FR, DE"
+                hint="Codici ISO separati da virgola, solo se l'entità ha una sede operativa anche in altri paesi UE."
+              />
 
               <Text fontSize={15} fontWeight="700" marginTop="$2">
                 Legale rappresentante
@@ -254,7 +304,16 @@ export default function DashboardFiscalePage() {
               </Text>
               <Field label="Paese di residenza fiscale (ISO, es. IT)" value={fields.taxResidenceCountry ?? ""} onChangeText={(v) => setField("taxResidenceCountry", v)} />
               <Field label="TIN estero (se residenza fiscale fuori Italia)" value={fields.foreignTin ?? ""} onChangeText={(v) => setField("foreignTin", v)} />
-              <Field label="Indirizzo" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
+              <Field
+                label="Stato di rilascio del codice fiscale / NIF / P.IVA (ISO, es. IT)"
+                value={fields.fiscalIdIssuingCountry ?? ""}
+                onChangeText={(v) => setField("fiscalIdIssuingCountry", v)}
+                hint="Se diverso dalla residenza fiscale — determina anche quale controllo di formato applichiamo qui sopra."
+              />
+              <XStack gap="$3" flexWrap="wrap">
+                <Field label="Via / Piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} flex={3} />
+                <Field label="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} flex={1} />
+              </XStack>
               <XStack gap="$3" flexWrap="wrap">
                 <Field label="Città" value={fields.registeredCity ?? ""} onChangeText={(v) => setField("registeredCity", v)} flex={2} />
                 <Field label="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} flex={1} />

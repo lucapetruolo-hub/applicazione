@@ -19,7 +19,6 @@ import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
 import { navigateWithTransition } from "@/lib/viewTransition";
-import { WhyWeExist } from "@/components/WhyWeExist";
 
 export default function HomeContent({
   professionals,
@@ -82,7 +81,7 @@ export default function HomeContent({
 
       {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
           categorie (richiesta esplicita dell'utente) — prima erano più in
-          basso, dopo "Come funziona"/WhyWeExist. */}
+          basso, dopo "Come funziona". */}
       <FadeInSection>
         <RecentReviews />
       </FadeInSection>
@@ -112,10 +111,6 @@ export default function HomeContent({
         <div id="come-funziona" style={{ width: "100%" }}>
           <HowItWorks />
         </div>
-      </FadeInSection>
-
-      <FadeInSection>
-        <WhyWeExist />
       </FadeInSection>
 
       <FadeInSection>

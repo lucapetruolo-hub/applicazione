@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminFinanceSummary, Dac7ReportingPeriod, Dac7Record, PlatformFeeRule } from "@professionisti/api-client";
-import { Button, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
+import type { AdminFinanceSummary, Dac7ReportingPeriod, Dac7Record, PlatformFeeRule, PlatformDac7Settings } from "@professionisti/api-client";
+import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
@@ -26,6 +26,13 @@ export default function AdminFinanzaPage() {
   const [feeRules, setFeeRules] = useState<PlatformFeeRule[] | null>(null);
   const [periods, setPeriods] = useState<Dac7ReportingPeriod[] | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<(Dac7ReportingPeriod & { records: Dac7Record[] }) | null>(null);
+  const [platformSettings, setPlatformSettings] = useState<PlatformDac7Settings | null>(null);
+  const [settingsFields, setSettingsFields] = useState<{ sendingEntityIn: string; platformName: string; platformIdValue: string }>({
+    sendingEntityIn: "",
+    platformName: "",
+    platformIdValue: "",
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -34,6 +41,32 @@ export default function AdminFinanzaPage() {
     apiClient.adminFinanceSummary(token).then(setFinance).catch(() => {});
     apiClient.adminListFeeRules(token).then(setFeeRules).catch(() => {});
     apiClient.adminListDac7Periods(token).then(setPeriods).catch(() => {});
+    apiClient
+      .adminGetDac7Settings(token)
+      .then((s) => {
+        setPlatformSettings(s);
+        setSettingsFields({ sendingEntityIn: s.sendingEntityIn ?? "", platformName: s.platformName ?? "", platformIdValue: s.platformIdValue ?? "" });
+      })
+      .catch(() => {});
+  }
+
+  async function handleSaveSettings() {
+    if (!token) return;
+    setSettingsSaving(true);
+    setError(null);
+    try {
+      const updated = await apiClient.adminSetDac7Settings(token, {
+        sendingEntityIn: settingsFields.sendingEntityIn || undefined,
+        platformName: settingsFields.platformName || undefined,
+        platformIdValue: settingsFields.platformIdValue || undefined,
+      });
+      setPlatformSettings(updated);
+      setActionMessage("Impostazioni piattaforma DAC7 salvate.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossibile salvare le impostazioni.");
+    } finally {
+      setSettingsSaving(false);
+    }
   }
 
   useEffect(() => {
@@ -218,6 +251,35 @@ export default function AdminFinanzaPage() {
               </table>
             </div>
           )}
+        </YStack>
+
+        <YStack gap="$4">
+          <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
+            <H2 size="$6">Impostazioni piattaforma DAC7</H2>
+            <Text fontSize={12} color={brand.grafite70}>
+              Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) — senza questi dati l&apos;export non può costruire un
+              identificativo di trasmissione valido.
+            </Text>
+          </XStack>
+          {platformSettings?.sendingEntityIn && platformSettings?.platformName && platformSettings?.platformIdValue ? null : (
+            <Text fontSize={13} color={brand.urgenza}>
+              Dati incompleti: l&apos;export segnalerà esplicitamente questa mancanza (non blocca l&apos;esportazione, la contrassegna).
+            </Text>
+          )}
+          <YStack gap="$3" maxWidth={460}>
+            <Field label="P.IVA / identificativo fiscale di Manovia (es. IT01234567890)" value={settingsFields.sendingEntityIn} onChangeText={(v) => setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))} />
+            <Field label="Nome piattaforma" value={settingsFields.platformName} onChangeText={(v) => setSettingsFields((p) => ({ ...p, platformName: v }))} />
+            <Field
+              label="Numero di registrazione della piattaforma (PlatformID)"
+              value={settingsFields.platformIdValue}
+              onChangeText={(v) => setSettingsFields((p) => ({ ...p, platformIdValue: v }))}
+            />
+            <XStack>
+              <Button variant="primary" onPress={handleSaveSettings} disabled={settingsSaving}>
+                {settingsSaving ? "Salvataggio..." : "Salva impostazioni"}
+              </Button>
+            </XStack>
+          </YStack>
         </YStack>
 
         <YStack gap="$4">

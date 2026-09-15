@@ -1253,17 +1253,34 @@ model ProfessionalFiscalProfile {
   businessName               String? // Ragione sociale
   legalForm                  String? // Es. "Ditta individuale", "SRL"
   vatNumber                  String? // Partita IVA
-  businessRegistrationNumber String? // Numero REA/CCIAA
+  businessRegistrationNumber String? // Numero di iscrizione al Registro delle Imprese (REA/CCIAA)
+  // Codice LEI (Legal Entity Identifier) — sempre facoltativo, richiesto solo
+  // se l'entità lo possiede già (nessuna entità italiana è mai obbligata ad
+  // averne uno solo per operare su Manovia). Solo per BUSINESS.
+  leiCode                    String?
+  // Stati membri UE aggiuntivi in cui l'entità ha una stabile organizzazione
+  // (oltre alla residenza fiscale principale sotto) — campo DAC7 aggiuntivo
+  // per un'entità con presenza in più paesi UE, quasi sempre vuoto. Codici
+  // ISO a 2 lettere.
+  additionalEuStates         String[] @default([])
 
   // --- Comuni a entrambi (residenza fiscale — richiesta DAC7 sempre,
   // indipendentemente dal possesso di P.IVA, principio generale DAC7) ---
   taxResidenceCountry  String? // Codice ISO del paese di residenza fiscale
   foreignTin           String? // TIN estero, se la residenza fiscale è fuori Italia
-  registeredStreet     String?
-  registeredCity       String?
-  registeredPostalCode String?
-  registeredProvince   String?
-  registeredCountry    String?
+  // Stato di rilascio del codice fiscale/NIF/P.IVA (può differire dalla
+  // residenza fiscale — es. un cittadino straniero con codice fiscale
+  // italiano ma residenza fiscale nel proprio paese). Determina anche quale
+  // algoritmo di validazione applicare in UI (CLAUDE.md, fiscalValidation.ts
+  // di packages/shared): italiano se "IT", solo un controllo di forma
+  // generico altrimenti.
+  fiscalIdIssuingCountry String?
+  registeredStreet       String? // Via/Piazza (senza numero civico)
+  registeredHouseNumber  String? // Numero civico, campo separato dalla via
+  registeredCity         String?
+  registeredPostalCode   String?
+  registeredProvince     String?
+  registeredCountry      String?
 
   // Distinto esplicitamente dal KYC di Stripe Connect (stripeChargesEnabled/
   // stripePayoutsEnabled sotto) — la specifica lo richiede esplicitamente:
@@ -1492,6 +1509,30 @@ model Dac7Record {
 // esplicita della specifica, §75). Riga singola di configurazione attiva
 // alla volta: cambiarla influenza solo i FUTURI calcoli, i Dac7Record già
 // generati non vengono mai ricalcolati automaticamente.
+// Identità della piattaforma richiesta dallo schema OECD DPI (v1) usato
+// dalla dichiarazione DAC7 reale — MessageSpec/Platform del tracciato XML
+// (vedi il commento in cima a Dac7Service): SendingEntityIN, PlatformName,
+// PlatformID. Nessuno di questi era raccolto da nessuna parte del sistema
+// prima di questo modello — un dato di Manovia stessa, non del
+// professionista, quindi mai hardcoded nel codice (stesso principio già
+// seguito per PlatformFeeRule/Dac7Rule) e configurabile solo da admin.
+// Riga singola (stesso pattern `findFirst() ?? create({})` di Dac7Rule).
+model PlatformDac7Settings {
+  id                  String   @id @default(uuid())
+  sendingEntityIn     String? // P.IVA/identificativo fiscale di Manovia stessa (es. "IT01234567890")
+  platformName        String?
+  platformIdValue     String? // Numero di registrazione della piattaforma presso l'autorità competente
+  platformIdType      String  @default("OECD201") // Codice lista OECD del tipo di identificativo — vedi disclaimer in Dac7Service
+  transmittingCountry String  @default("IT")
+  receivingCountry    String  @default("IT")
+  // Contatore progressivo per costruire un MessageRefId univoco ad ogni
+  // esportazione (mai riutilizzato) — incrementato da Dac7Service.
+  messageSequence     Int     @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@map("platform_dac7_settings")
+}
+
 model Dac7Rule {
   id                    String   @id @default(uuid())
   // Se true, la "consideration" DAC7 include anche i pagamenti DIRECT (non

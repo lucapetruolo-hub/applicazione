@@ -36,6 +36,7 @@ import type {
   ResolveDisputeInput,
   ReviewInput,
   SetDac7RuleInput,
+  PlatformDac7SettingsInput,
   SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
@@ -296,9 +297,13 @@ export type ProfessionalFiscalProfile = {
   legalForm: string | null;
   vatNumber: string | null;
   businessRegistrationNumber: string | null;
+  leiCode: string | null;
+  additionalEuStates: string[];
   taxResidenceCountry: string | null;
   foreignTin: string | null;
+  fiscalIdIssuingCountry: string | null;
   registeredStreet: string | null;
+  registeredHouseNumber: string | null;
   registeredCity: string | null;
   registeredPostalCode: string | null;
   registeredProvince: string | null;
@@ -358,6 +363,17 @@ export type Dac7Record = {
   numberOfTransactions: number;
   feesWithheldEurCents: number;
   missingFiscalData: boolean;
+};
+
+export type PlatformDac7Settings = {
+  id: string;
+  sendingEntityIn: string | null;
+  platformName: string | null;
+  platformIdValue: string | null;
+  platformIdType: string;
+  transmittingCountry: string;
+  receivingCountry: string;
+  messageSequence: number;
 };
 
 export type AdminFinanceSummary = {
@@ -1104,6 +1120,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminSetDac7Rule: (token: string, input: SetDac7RuleInput) =>
       request<{ includeDirectPayments: boolean }>("/admin/dac7/rule", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminGetDac7Settings: (token: string) => request<PlatformDac7Settings>("/admin/dac7/settings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSetDac7Settings: (token: string, input: PlatformDac7SettingsInput) =>
+      request<PlatformDac7Settings>("/admin/dac7/settings", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     adminListDac7Periods: (token: string) => request<Dac7ReportingPeriod[]>("/admin/dac7/periods", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

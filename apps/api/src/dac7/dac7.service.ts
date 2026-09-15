@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
+import type { PlatformDac7SettingsInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { buildDac7Xml, type Dac7XmlPayload, type Dac7XmlQuarterAmounts, type Dac7XmlSeller } from "./dac7-xml.util";
 
 /**
  * DAC7 — rendicontazione fiscale UE per piattaforme digitali che facilitano
@@ -16,12 +18,24 @@ import { PRISMA } from "../prisma/prisma.module";
  * del lancio (CLAUDE.md §88, §74 della specifica originale).
  *
  * Nessuna generazione/invio reale di una dichiarazione all'Agenzia delle
- * Entrate: `generateExport` produce un JSON strutturato con i campi
- * richiesti da DAC7 (identità, TIN/P.IVA, indirizzo, consideration, numero
- * di transazioni, commissioni trattenute) — dichiaratamente una bozza
- * interna, NON il tracciato ufficiale DPI23 (di cui questa sessione non ha
- * la specifica esatta): produrre un file che finge di essere quel formato
- * senza esserlo davvero sarebbe più dannoso che non produrlo affatto.
+ * Entrate: `generateExport` produce un JSON strutturato + una bozza XML
+ * (`dac7-xml.util.ts`) che rispecchia lo schema OECD DPI (v1) da cui il
+ * tracciato italiano è derivato — un esempio reale di quello schema è stato
+ * fornito dall'utente e ha guidato sia i nuovi campi raccolti in
+ * `/dashboard/fiscale` (stato di rilascio del TIN, numero civico separato,
+ * Codice LEI, Stati membri UE aggiuntivi) sia la struttura dell'export
+ * (MessageSpec/Platform, scomposizione Consideration/NumberOfActivities per
+ * trimestre solare — non solo un totale annuale). Resta dichiaratamente una
+ * bozza, NON il tracciato ufficiale DPI23/XSD validato dall'Agenzia delle
+ * Entrate (il ramo Entity per un'impresa/società è costruito per analogia,
+ * mai mostrato nell'esempio fornito — vedi il disclaimer in
+ * `dac7-xml.util.ts`): produrre un file che finge di essere validato senza
+ * esserlo davvero sarebbe più dannoso che non produrlo affatto.
+ * `PlatformDac7Settings` (SendingEntityIN/PlatformName/PlatformID) sono
+ * dati richiesti dallo schema per costruire un MessageRefId valido — mai
+ * hardcoded, configurabili solo da admin (`getPlatformSettings`/
+ * `setPlatformSettings`), segnalati come mancanti nell'export invece di
+ * bloccarlo silenziosamente.
  * `markSubmitted`/`correctPeriod` restano azioni manuali dell'admin, mai
  * automatiche — nessuna integrazione reale con il Desktop Telematico.
  */
@@ -48,6 +62,28 @@ export class Dac7Service implements OnModuleInit {
   async setRule(includeDirectPayments: boolean) {
     const rule = await this.getRule();
     return this.prisma.dac7Rule.update({ where: { id: rule.id }, data: { includeDirectPayments } });
+  }
+
+  /** Identità della piattaforma (MessageSpec/Platform dello schema OECD DPI) — riga singola, mai hardcoded. */
+  async getPlatformSettings() {
+    const settings = await this.prisma.platformDac7Settings.findFirst();
+    if (settings) return settings;
+    return this.prisma.platformDac7Settings.create({ data: {} });
+  }
+
+  async setPlatformSettings(input: PlatformDac7SettingsInput) {
+    const settings = await this.getPlatformSettings();
+    return this.prisma.platformDac7Settings.update({
+      where: { id: settings.id },
+      data: {
+        sendingEntityIn: input.sendingEntityIn ?? settings.sendingEntityIn,
+        platformName: input.platformName ?? settings.platformName,
+        platformIdValue: input.platformIdValue ?? settings.platformIdValue,
+        platformIdType: input.platformIdType ?? settings.platformIdType,
+        transmittingCountry: input.transmittingCountry ?? settings.transmittingCountry,
+        receivingCountry: input.receivingCountry ?? settings.receivingCountry,
+      },
+    });
   }
 
   private quarterRange(year: number, quarter: number): { start: Date; end: Date } {
@@ -148,9 +184,47 @@ export class Dac7Service implements OnModuleInit {
   }
 
   /**
-   * Genera l'export (bozza JSON, non il tracciato ufficiale DPI23 — vedi
-   * commento in cima al file) e porta il periodo a EXPORTED. Ricalcola
-   * un'ultima volta prima di generare, per riflettere l'ultimo stato reale.
+   * Righe dei 4 trimestri (aggregazione interna) di un anno già calcolate,
+   * per professionista — usata solo per popolare la scomposizione
+   * Q1-Q4 dell'export ANNUALE (lo schema OECD DPI richiede la
+   * "consideration" scomposta per trimestre solare, non solo un totale
+   * annuale — vedi l'esempio XML in `dac7-xml.util.ts`). Sola lettura, non
+   * forza un'aggregazione dei trimestri mancanti: un trimestre mai
+   * aggregato risulta semplicemente assente (null) nell'export.
+   */
+  private async getQuarterlyBreakdown(year: number): Promise<Map<string, { consideration: Partial<Record<1 | 2 | 3 | 4, number>>; activities: Partial<Record<1 | 2 | 3 | 4, number>> }>> {
+    const quarterPeriods = await this.prisma.dac7ReportingPeriod.findMany({
+      where: { year, quarter: { in: [1, 2, 3, 4] } },
+      include: { records: true },
+    });
+    const map = new Map<string, { consideration: Partial<Record<1 | 2 | 3 | 4, number>>; activities: Partial<Record<1 | 2 | 3 | 4, number>> }>();
+    for (const period of quarterPeriods) {
+      if (period.quarter === null) continue;
+      const q = period.quarter as 1 | 2 | 3 | 4;
+      for (const record of period.records) {
+        const entry = map.get(record.professionalProfileId) ?? { consideration: {}, activities: {} };
+        entry.consideration[q] = record.considerationEurCents;
+        entry.activities[q] = record.numberOfTransactions;
+        map.set(record.professionalProfileId, entry);
+      }
+    }
+    return map;
+  }
+
+  private buildAddressFree(fp: { registeredStreet: string | null; registeredHouseNumber: string | null; registeredPostalCode: string | null; registeredCity: string | null }): string | null {
+    const streetLine = [fp.registeredStreet, fp.registeredHouseNumber].filter(Boolean).join(" ");
+    const cityLine = [fp.registeredPostalCode, fp.registeredCity].filter(Boolean).join(" ");
+    const combined = [streetLine, cityLine].filter(Boolean).join(", ");
+    return combined || null;
+  }
+
+  /**
+   * Genera l'export (bozza JSON + bozza XML derivata dallo schema OECD DPI,
+   * non il tracciato ufficiale DPI23/XSD validato — vedi il disclaimer in
+   * cima al file e in `dac7-xml.util.ts`) e porta il periodo a EXPORTED.
+   * Ricalcola un'ultima volta prima di generare, per riflettere l'ultimo
+   * stato reale. Incrementa il contatore MessageRefId ad ogni chiamata
+   * (mai un identificativo riutilizzato, stesso principio del vero schema).
    */
   async generateExport(id: string) {
     const period = await this.getPeriod(id);
@@ -161,22 +235,107 @@ export class Dac7Service implements OnModuleInit {
     }
     const refreshed = await this.getPeriod(id);
 
-    const exportPayload = {
-      note: "Bozza interna, non il tracciato ufficiale DPI23 dell'Agenzia delle Entrate — richiede integrazione con la specifica ufficiale prima dell'invio reale.",
-      reportingPeriod: { year: refreshed.year, quarter: refreshed.quarter, reportVersion: refreshed.reportVersion },
-      annualDeadline: `${refreshed.year + 1}-01-31`,
-      sellers: refreshed.records.map((r) => ({
+    const settingsBefore = await this.getPlatformSettings();
+    const settings = await this.prisma.platformDac7Settings.update({
+      where: { id: settingsBefore.id },
+      data: { messageSequence: { increment: 1 } },
+    });
+    const platformSettingsIncomplete = !settings.sendingEntityIn || !settings.platformName || !settings.platformIdValue;
+    const sendingEntityIn = settings.sendingEntityIn || "NON-CONFIGURATO";
+    const messageRefId = `${settings.transmittingCountry}${refreshed.year}${sendingEntityIn}${String(settings.messageSequence).padStart(6, "0")}`;
+    const reportingPeriodEndDate = `${refreshed.year}-12-31`;
+    const timestamp = new Date().toISOString().slice(0, 19);
+
+    const quarterlyBreakdown = refreshed.quarter === null ? await this.getQuarterlyBreakdown(refreshed.year) : null;
+
+    const xmlSellers: Dac7XmlSeller[] = [];
+    const jsonSellers = refreshed.records.map((r) => {
+      const fp = r.professionalProfile.fiscalProfile;
+      const addressFree = fp ? this.buildAddressFree(fp) : null;
+      const issuedBy = fp?.fiscalIdIssuingCountry || fp?.taxResidenceCountry || "IT";
+
+      let considerationEurCents: Dac7XmlQuarterAmounts;
+      let numberOfActivities: Dac7XmlQuarterAmounts;
+      if (refreshed.quarter === null) {
+        const breakdown = quarterlyBreakdown?.get(r.professionalProfileId);
+        considerationEurCents = { q1: breakdown?.consideration[1] ?? null, q2: breakdown?.consideration[2] ?? null, q3: breakdown?.consideration[3] ?? null, q4: breakdown?.consideration[4] ?? null };
+        numberOfActivities = { q1: breakdown?.activities[1] ?? null, q2: breakdown?.activities[2] ?? null, q3: breakdown?.activities[3] ?? null, q4: breakdown?.activities[4] ?? null };
+      } else {
+        const zeroed: Dac7XmlQuarterAmounts = { q1: null, q2: null, q3: null, q4: null };
+        considerationEurCents = { ...zeroed, [`q${refreshed.quarter}`]: r.considerationEurCents };
+        numberOfActivities = { ...zeroed, [`q${refreshed.quarter}`]: r.numberOfTransactions };
+      }
+
+      const individual =
+        fp?.entityType === "INDIVIDUAL"
+          ? {
+              firstName: fp.fiscalFirstName,
+              lastName: fp.fiscalLastName,
+              birthDate: fp.dateOfBirth ? fp.dateOfBirth.toISOString().slice(0, 10) : null,
+              birthPlace: fp.placeOfBirth,
+              birthCountry: fp.countryOfBirth,
+              tinType: "OECD202",
+              tinIssuedBy: issuedBy,
+              tinValue: fp.fiscalCodiceFiscale,
+              addressCountryCode: fp.registeredCountry,
+              addressFree,
+            }
+          : null;
+      const entity =
+        fp?.entityType === "BUSINESS"
+          ? {
+              name: fp.businessName,
+              legalForm: fp.legalForm,
+              tinType: "OECD202",
+              tinIssuedBy: issuedBy,
+              tinValue: fp.vatNumber,
+              legalRegistrationNumber: fp.businessRegistrationNumber,
+              leiCode: fp.leiCode,
+              addressCountryCode: fp.registeredCountry,
+              addressFree,
+              additionalEuStates: fp.additionalEuStates ?? [],
+            }
+          : null;
+
+      xmlSellers.push({ professionalProfileId: r.professionalProfileId, individual, entity, considerationEurCents, numberOfActivities });
+
+      return {
         professionalProfileId: r.professionalProfileId,
         businessName: r.professionalProfile.businessName,
-        entityType: r.professionalProfile.fiscalProfile?.entityType ?? null,
-        vatNumber: r.professionalProfile.fiscalProfile?.vatNumber ?? null,
-        fiscalCodiceFiscale: r.professionalProfile.fiscalProfile?.fiscalCodiceFiscale ?? null,
-        taxResidenceCountry: r.professionalProfile.fiscalProfile?.taxResidenceCountry ?? null,
-        considerationEurCents: r.considerationEurCents,
-        numberOfTransactions: r.numberOfTransactions,
+        entityType: fp?.entityType ?? null,
+        individual,
+        entity,
+        considerationByQuarterEurCents: considerationEurCents,
+        numberOfActivitiesByQuarter: numberOfActivities,
+        considerationTotalEurCents: r.considerationEurCents,
+        numberOfTransactionsTotal: r.numberOfTransactions,
         feesWithheldEurCents: r.feesWithheldEurCents,
         missingFiscalData: r.missingFiscalData,
-      })),
+      };
+    });
+
+    const xmlPayload: Dac7XmlPayload = {
+      sendingEntityIn,
+      transmittingCountry: settings.transmittingCountry,
+      receivingCountry: settings.receivingCountry,
+      messageType: "DPI401",
+      messageRefId,
+      reportingPeriodEndDate,
+      timestamp,
+      platformName: settings.platformName ?? "",
+      platformIdType: settings.platformIdType,
+      platformIdValue: settings.platformIdValue ?? "",
+      sellers: xmlSellers,
+    };
+
+    const exportPayload = {
+      note: "Bozza JSON + bozza XML derivata dallo schema OECD DPI (v1) — non il tracciato ufficiale DPI23/XSD validato dall'Agenzia delle Entrate. Il ramo Individual rispecchia un esempio reale fornito; il ramo Entity (impresa/società) è per analogia, non verificato — vedi dac7-xml.util.ts.",
+      platformSettingsIncomplete,
+      messageSpec: { sendingEntityIn, transmittingCountry: settings.transmittingCountry, receivingCountry: settings.receivingCountry, messageType: "DPI401", messageRefId, reportingPeriodEndDate, timestamp },
+      reportingPeriod: { year: refreshed.year, quarter: refreshed.quarter, reportVersion: refreshed.reportVersion },
+      annualDeadline: `${refreshed.year + 1}-01-31`,
+      sellers: jsonSellers,
+      xml: buildDac7Xml(xmlPayload),
     };
 
     await this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "EXPORTED", generatedAt: new Date() } });

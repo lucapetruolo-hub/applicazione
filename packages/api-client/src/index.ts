@@ -22,5 +22,6 @@ export type {
   Dac7ReportingStatus,
   Dac7ReportingPeriod,
   Dac7Record,
+  PlatformDac7Settings,
   AdminFinanceSummary,
 } from "./client";

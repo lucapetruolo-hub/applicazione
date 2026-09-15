@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
-import { setDac7RuleSchema, type SetDac7RuleInput } from "@professionisti/shared";
+import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../admin/admin.guard";
@@ -18,6 +18,16 @@ export class Dac7Controller {
   @Post("rule")
   setRule(@Body(new ZodValidationPipe(setDac7RuleSchema)) body: SetDac7RuleInput) {
     return this.dac7Service.setRule(body.includeDirectPayments);
+  }
+
+  @Get("settings")
+  getSettings() {
+    return this.dac7Service.getPlatformSettings();
+  }
+
+  @Post("settings")
+  setSettings(@Body(new ZodValidationPipe(platformDac7SettingsSchema)) body: PlatformDac7SettingsInput) {
+    return this.dac7Service.setPlatformSettings(body);
   }
 
   @Get("periods")
