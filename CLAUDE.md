@@ -11789,3 +11789,61 @@ IT), non il nome esteso del paese." — nessuna occorrenza di "character(s)"
 o "String must" in pagina; correggendo il campo a "IT" il salvataggio
 riesce normalmente ("Salvato."). Typecheck pulito su `apps/web`, build di
 produzione verde (35 route, nessuna nuova).
+
+---
+
+## 93. Evidenziazione più marcata sulle notifiche + click su un nuovo messaggio apre subito la chat
+
+Due richieste esplicite dell'utente, stesso giro: "quando si clicca su una
+notifica evidenzia maggiormente" e "quando c'è un nuovo messaggio, porta
+direttamente nella chat aperta in le mie richieste".
+
+**Evidenziazione più intensa** — `.deep-link-highlight`/`@keyframes
+deep-link-highlight` (`globals.css`, introdotta in CLAUDE.md §79): picco
+di intensità alzato (sfondo 0.14→0.26, bagliore 3px/0.35→5px/0.55) e
+sostenuto per un tratto (fino al 20%, prima iniziava già a scendere dal
+primo frame) prima di sfumare — stesso principio "dissolvenza di
+sfondo+bagliore verde smeraldo, mai un bordo fisso" già stabilito, solo
+più marcata. Nessuna modifica a `deepLinkHighlight.ts` (stessa
+funzione/timeout, la classe fa già tutto il lavoro).
+
+**Click su un messaggio di chat non letto apre subito la conversazione,
+non solo la card** — prima, il deep-link di una notifica
+(`notificationDeepLink`, §79) scrollava ed evidenziava la card della
+richiesta/preventivo/lavoro, ma per un messaggio di chat
+(`TIMELINE_MESSAGE_FROM_CLIENT`/`FROM_PROFESSIONAL`) l'utente doveva
+comunque cliccare di nuovo su "Contatta/Cronologia" per leggerlo — un
+passaggio in più proprio per il tipo di notifica più "urgente" da leggere.
+- **`notificationSections.ts`**: `notificationDeepLink` aggiunge ora
+  `&chat=<professionalProfileId>` all'URL quando il tipo è uno dei due
+  messaggi di chat (`CHAT_MESSAGE_TYPES`, mappa già esistente) — il valore
+  è già nel payload della notifica (`TimelineService.addUpdate` notifica
+  sempre con `{guidedRequestId, professionalProfileId}`, CLAUDE.md §46),
+  nessuna modifica al backend necessaria.
+- **`/le-mie-richieste`** (`GuidedRequestCard`/`QuoteCard`): nuovo prop
+  `autoOpenChatProfessionalId` (letto da `searchParams.get("chat")` solo
+  per la richiesta corrispondente a `?open=`) — se il professionista ha
+  già inviato un preventivo, apre il `TimelineModal` della `QuoteCard`
+  corrispondente (prop `autoOpenTimeline`); altrimenti apre il thread dalla
+  sezione "Inviata a" (`openTimelineForProfessional`, già esistente). Un
+  `useRef` sul valore già aperto (non un booleano) permette a una seconda
+  notifica per un professionista diverso nella stessa richiesta di aprire
+  comunque il proprio thread.
+- **`/dashboard/richieste`** (`RequestCard`, mirror lato professionista):
+  stesso principio ma più semplice — una `RequestCard` è già scoped a un
+  solo thread (il professionista stesso), basta un booleano `autoOpenChat`
+  che apre subito `showTimeline`.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: stylesheet servito confermato con i nuovi valori (0.26, 5px,
+0.55, non i vecchi 0.14/3px/0.35); richiesta diretta a un professionista
+di test → professionista scrive un messaggio in chat → cliente riceve
+`TIMELINE_MESSAGE_FROM_PROFESSIONAL` con `guidedRequestId`+
+`professionalProfileId` nel payload → click sulla notifica dalla
+campanella naviga a `/le-mie-richieste?tab=richieste&open=...&chat=...` e
+il `TimelineModal` si apre da solo con il messaggio del professionista
+già visibile; stesso ciclo invertito (cliente scrive → professionista
+riceve `TIMELINE_MESSAGE_FROM_CLIENT` → click sulla notifica naviga a
+`/dashboard/richieste?open=...&chat=...` con la chat già aperta e il
+messaggio del cliente visibile). Zero errori console. Typecheck pulito su
+`apps/web`, build di produzione verde (35 route, nessuna nuova).

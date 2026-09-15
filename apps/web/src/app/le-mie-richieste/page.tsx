@@ -517,6 +517,7 @@ function LeMieRichiesteContent() {
                       newQuoteIds={newQuoteIds}
                       threadUnreadCounts={threadUnreadCounts}
                       quoteUnreadCounts={quoteUnreadCounts}
+                      autoOpenChatProfessionalId={searchParams.get("open") === request.id ? searchParams.get("chat") : null}
                     />
                   </div>
                 ))
@@ -578,6 +579,7 @@ function GuidedRequestCard({
   newQuoteIds,
   threadUnreadCounts,
   quoteUnreadCounts,
+  autoOpenChatProfessionalId,
 }: {
   request: ClientGuidedRequest;
   token: string;
@@ -591,6 +593,8 @@ function GuidedRequestCard({
   threadUnreadCounts?: Map<string, number>;
   /** Conteggio aggiornamenti non letti per singolo preventivo — pallino su "Contatta/Cronologia" di ogni QuoteCard. */
   quoteUnreadCounts?: Map<string, number>;
+  /** Professionista del cui thread arriva un nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal giusto invece di limitarsi a scrollare/evidenziare la card. */
+  autoOpenChatProfessionalId?: string | null;
 }) {
   // Professionista il cui thread è aperto nella cronologia (sezione "Inviata
   // a", prima che esista un preventivo) — richiesta esplicita dell'utente:
@@ -617,6 +621,23 @@ function GuidedRequestCard({
     const key = `${request.id}:${professionalId}`;
     setDismissedThreadCounts((prev) => new Map(prev).set(key, threadUnreadCounts?.get(key) ?? 0));
   }
+  // Apre subito la chat con il professionista da cui arriva un nuovo
+  // messaggio (richiesta esplicita dell'utente) — solo se questo
+  // professionista non ha ancora inviato un preventivo: se ne ha già uno,
+  // il thread si apre dalla QuoteCard corrispondente (sotto, prop
+  // `autoOpenTimeline`), mai da entrambe insieme. Un ref sul valore già
+  // aperto (non un booleano) permette a una seconda notifica per un
+  // professionista DIVERSO nella stessa richiesta di aprire comunque il
+  // proprio thread, invece di restare bloccata al primo già consumato.
+  const autoOpenedChatRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoOpenChatProfessionalId) return;
+    if (autoOpenedChatRef.current === autoOpenChatProfessionalId) return;
+    autoOpenedChatRef.current = autoOpenChatProfessionalId;
+    const hasQuote = request.quotes.some((q) => q.professionalProfileId === autoOpenChatProfessionalId);
+    if (!hasQuote) openTimelineForProfessional(autoOpenChatProfessionalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenChatProfessionalId]);
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
@@ -1302,6 +1323,7 @@ function GuidedRequestCard({
               serviceMode={request.serviceMode}
               isNew={newQuoteIds?.has(quote.id)}
               unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
+              autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
             />
           ))}
         </YStack>
@@ -1369,6 +1391,7 @@ function QuoteCard({
   serviceMode,
   isNew,
   unreadCount,
+  autoOpenTimeline,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
@@ -1384,6 +1407,8 @@ function QuoteCard({
   isNew?: boolean;
   /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
   unreadCount?: number;
+  /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click (richiesta esplicita dell'utente). */
+  autoOpenTimeline?: boolean;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -1407,6 +1432,18 @@ function QuoteCard({
   // conversazione (richiesta esplicita dell'utente) — vedi
   // useDismissableUnreadCount per il motivo del calcolo differenziale.
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
+  // Apre subito la chat quando arriva da un deep link di notifica
+  // (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta
+  // direttamente nella chat aperta") — un booleano basta qui: questa
+  // istanza (una per `quote.id`) non cambia mai il professionista a cui si
+  // riferisce, quindi non serve mai riaprirla una seconda volta.
+  const autoOpenedTimelineRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenTimeline && !autoOpenedTimelineRef.current) {
+      autoOpenedTimelineRef.current = true;
+      setShowTimeline(true);
+    }
+  }, [autoOpenTimeline]);
   // Totale minimo/massimo delle voci di questo preventivo (richiesta
   // esplicita dell'utente: "il totale dei minimi in un riquadro e il totale
   // dei massimi nell'altro").

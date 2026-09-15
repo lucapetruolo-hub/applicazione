@@ -87,11 +87,23 @@ function payloadString(n: UnreadNotification, key: string): string | null {
  * non toccato: `/le-mie-richieste?open=` naviga solo tra le "Le mie
  * richieste", non tra "Lavori accettati", un deep-link lì rischierebbe di
  * atterrare sul tab sbagliato per le notifiche di lavoro.
+ *
+ * Per un messaggio di chat (`TIMELINE_MESSAGE_FROM_CLIENT`/
+ * `FROM_PROFESSIONAL`) il click non deve solo scrollare/evidenziare la card,
+ * deve aprire direttamente la conversazione (richiesta esplicita
+ * dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella
+ * chat aperta") — un nuovo parametro `&chat=<professionalProfileId>` (già
+ * presente nel payload di questi due tipi, vedi `unreadThreadCounts`)
+ * lascia che la pagina di destinazione apra da sola il `TimelineModal`
+ * giusto una volta trovata la card, senza introdurre un secondo canale di
+ * comunicazione parallelo all'URL già usato per `open`/`tab`.
  */
 export function notificationDeepLink(type: string, payload: unknown): string | null {
   const destination = notificationDestination(type);
   if (!destination) return null;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+  const professionalProfileId = CHAT_MESSAGE_TYPES.has(type) ? getPayloadValue(payload, "professionalProfileId") : null;
+  const chatSuffix = professionalProfileId ? `&chat=${professionalProfileId}` : "";
   if (destination.page !== "/dashboard") {
     // Richiesta esplicita dell'utente: il click non deve solo cambiare tab,
     // deve portare all'esatta altezza dell'aggiornamento — `?open=` (già
@@ -101,10 +113,10 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     // arricchito lato backend — vedi bookings.service.ts), disambiguato dal
     // `tab` esplicito già presente in URL.
     return guidedRequestId
-      ? `${destination.page}?tab=${destination.tab}&open=${guidedRequestId}`
+      ? `${destination.page}?tab=${destination.tab}&open=${guidedRequestId}${chatSuffix}`
       : `${destination.page}?tab=${destination.tab}`;
   }
-  return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
+  return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}${chatSuffix}` : "/dashboard/richieste";
 }
 
 /**

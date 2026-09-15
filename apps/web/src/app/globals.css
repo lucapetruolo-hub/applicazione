@@ -308,19 +308,26 @@ a {
 
 /* Evidenziazione dell'elemento raggiunto da un deep link (click su una
    notifica) — richiesta esplicita dell'utente: "evidenziandola leggermente
-   per qualche secondo con transizione della luce". Una dissolvenza di
-   sfondo+bagliore verde smeraldo (stesso accento cianografia già usato in
-   tutto il sito), mai un bordo/riquadro fisso — si spegne da sola, la
-   classe viene rimossa via JS dopo il timeout (apps/web/src/lib/
-   deepLinkHighlight.ts). */
+   per qualche secondo con transizione della luce", poi rafforzata su una
+   richiesta successiva ("evidenzia maggiormente"): picco più intenso
+   (sfondo 0.14→0.26, bagliore 3px/0.35→5px/0.55) sostenuto per un tratto
+   prima di sfumare, invece di iniziare già a scendere dal primo frame. Una
+   dissolvenza di sfondo+bagliore verde smeraldo (stesso accento
+   cianografia già usato in tutto il sito), mai un bordo/riquadro fisso —
+   si spegne da sola, la classe viene rimossa via JS dopo il timeout
+   (apps/web/src/lib/deepLinkHighlight.ts). */
 @keyframes deep-link-highlight {
   0% {
-    background-color: rgba(24, 154, 99, 0.14);
-    box-shadow: 0 0 0 3px rgba(24, 154, 99, 0.35);
+    background-color: rgba(24, 154, 99, 0.26);
+    box-shadow: 0 0 0 5px rgba(24, 154, 99, 0.55);
   }
-  70% {
-    background-color: rgba(24, 154, 99, 0.08);
-    box-shadow: 0 0 0 3px rgba(24, 154, 99, 0.16);
+  20% {
+    background-color: rgba(24, 154, 99, 0.26);
+    box-shadow: 0 0 0 5px rgba(24, 154, 99, 0.55);
+  }
+  75% {
+    background-color: rgba(24, 154, 99, 0.1);
+    box-shadow: 0 0 0 4px rgba(24, 154, 99, 0.2);
   }
   100% {
     background-color: rgba(24, 154, 99, 0);

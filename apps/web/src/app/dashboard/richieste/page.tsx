@@ -804,6 +804,7 @@ function RichiesteContent() {
                   onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
                   onChanged={reloadLeads}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
+                  autoOpenChat={searchParams.get("open") === lead.guidedRequest.id && !!searchParams.get("chat")}
                 />
               </div>
             ))}
@@ -825,6 +826,7 @@ function RequestCard({
   onToggle,
   onChanged,
   unreadCount,
+  autoOpenChat,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -838,6 +840,8 @@ function RequestCard({
   onChanged: () => void;
   /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta", stesso significato già in uso su /dashboard e /le-mie-richieste. */
   unreadCount?: number;
+  /** True se questa card arriva da una notifica di nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal invece di aspettare un click. */
+  autoOpenChat?: boolean;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -912,6 +916,19 @@ function RequestCard({
   // Un solo stato per l'intera card: qualunque bottone apra la cronologia
   // (Chat/Contatta/Cronologia, in stadi diversi) azzera lo stesso pallino.
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
+  // Apre subito la chat quando arriva da un deep link di notifica
+  // (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta
+  // direttamente nella chat aperta") — mirror lato professionista dello
+  // stesso comportamento già introdotto in /le-mie-richieste, qui più
+  // semplice: una RequestCard è già scoped a un solo thread (il
+  // professionista stesso), nessuna disambiguazione tra più destinatari.
+  const autoOpenedChatRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenChat && !autoOpenedChatRef.current) {
+      autoOpenedChatRef.current = true;
+      setShowTimeline(true);
+    }
+  }, [autoOpenChat]);
   function openTimeline() {
     setShowTimeline(true);
     dismissUnread();
