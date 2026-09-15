@@ -11847,3 +11847,62 @@ riceve `TIMELINE_MESSAGE_FROM_CLIENT` → click sulla notifica naviga a
 `/dashboard/richieste?open=...&chat=...` con la chat già aperta e il
 messaggio del cliente visibile). Zero errori console. Typecheck pulito su
 `apps/web`, build di produzione verde (35 route, nessuna nuova).
+
+---
+
+## 94. Bug reale: la chat aperta da una notifica si riapriva da sola cambiando filtro
+
+Segnalato dall'utente: *"quando clicco su una notifica... ho cliccato su una
+notifica relativa ad un nuovo messaggio con l'apertura della chat, poi ho
+cliccato sul filtro 'da quotare' e poi di nuovo su 'tutte' e mi è comparsa
+di nuovo la chat quando io non ho cliccato sul pulsante dell'apertura come
+se fosse rimasto incantato da quando l'ho cliccato dalle notifiche della
+campanella"*.
+
+**Causa reale**, nel meccanismo di auto-apertura chat da notifica introdotto
+nel giro precedente (§93, `&chat=<professionalProfileId>` in coda al
+deep-link `?open=`): la prop `autoOpenChat`/`autoOpenChatProfessionalId`
+passata a `RequestCard` (`/dashboard/richieste`) e
+`GuidedRequestCard`/`QuoteCard` (`/le-mie-richieste`) era calcolata **ad
+ogni render direttamente da `searchParams`** — mai ripulito dall'URL — con
+il solo guard "già aperta" tenuto in un `useRef` **dentro** quei componenti
+figli. Cambiare filtro (es. "Da quotare" → "Tutte") può smontare e
+rimontare quella card specifica (esce e rientra dalla lista filtrata): un
+rimontaggio crea un'istanza nuova con un `useRef` azzerato, e siccome la
+prop restava `true` (l'URL non era mai stato ripulito), la chat si riapriva
+da sola — esattamente il comportamento "incantato" descritto dall'utente.
+Stesso identico principio del bug già corretto una volta per `?open=` da
+solo (CLAUDE.md §83: "un cambio di filtro/ordinamento/pageSize riattivava
+l'effetto"), ma quella correzione usava un `useRef` a livello di **pagina**
+(mai smontata dal cambio filtro) — il nuovo meccanismo per `&chat=`,
+introdotto un giro dopo, aveva reintrodotto lo stesso tipo di guard ma nel
+posto sbagliato (dentro il figlio, che il cambio filtro SMONTA davvero).
+
+**Fix, stesso principio in entrambi i file**: il guard "già consumata" si
+sposta dal figlio al genitore (mai smontato da un cambio filtro) — un nuovo
+stato (`pendingChatOpenLeadId` in `/dashboard/richieste`, `pendingChatOpen`
+in `/le-mie-richieste`) è impostato una sola volta dall'effetto che già
+gestisce `?open=` (stesso punto, stessa guardia `consumedRequestOpenRef`) e
+**azzerato subito dopo che la card lo ha davvero consumato**, tramite un
+nuovo callback `onChatAutoOpenHandled` che il figlio richiama nello stesso
+istante in cui apre la chat (o, per `GuidedRequestCard`/`QuoteCard`, nello
+stesso istante in cui delega l'apertura alla `QuoteCard` giusta — gli
+effetti React eseguono sempre dal figlio verso il genitore nello stesso
+commit, quindi il figlio ha già aperto la propria chat prima che il
+genitore propaghi `null` al render successivo, nessuna corsa persa). Un
+rimontaggio successivo della stessa card (per qualunque cambio di filtro,
+ripetuto quante volte si vuole) vede quindi sempre la prop `false`/`null`,
+a differenza di prima. I `useRef` locali nei figli restano (proteggono da
+un doppio scatto dello stesso effetto nello stesso mount), ma non sono più
+l'unica fonte di verità.
+
+Verificato end-to-end con l'API locale reale (non solo lettura di codice) e
+Playwright, riproducendo esattamente lo scenario segnalato: professionista
+riceve un messaggio in chat → click sulla notifica dalla campanella → chat
+aperta automaticamente → chiusa con Escape → click sulla pillola "Da
+quotare" poi di nuovo "Tutte" → chat **non** si riapre da sola (verificato
+due volte di seguito, lo stesso identico ciclo ripetuto). Stesso principio
+verificato anche lato cliente (`/le-mie-richieste`, cambio del filtro per
+stato nativo `<select>` invece delle pillole, stesso meccanismo
+sottostante). Typecheck pulito su `apps/web`, build di produzione verde
+(35 route, nessuna nuova).

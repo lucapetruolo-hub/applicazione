@@ -335,6 +335,22 @@ function RichiesteContent() {
   // card ad ogni tick, sovrascrivendo qualunque tab/scroll l'utente avesse
   // scelto nel frattempo.
   const consumedRequestOpenRef = useRef<string | null>(null);
+  // Bug reale segnalato dall'utente: cliccando una notifica di nuovo
+  // messaggio (che porta `&chat=<professionalProfileId>` oltre a `?open=`)
+  // la chat si apriva correttamente, ma cambiare filtro e tornare a "Tutte"
+  // la riapriva da sola — come se fosse rimasta "incantata". Causa: la prop
+  // `autoOpenChat` di RequestCard era calcolata ad ogni render direttamente
+  // da `searchParams` (mai ripulito dall'URL), e il guard "già aperta" viveva
+  // in un `useRef` DENTRO RequestCard — un cambio di filtro può smontare e
+  // rimontare quella card (esce/rientra dalla lista filtrata), azzerando quel
+  // ref e riaprendo la chat perché la prop restava `true`. Stesso principio
+  // di `consumedRequestOpenRef` sopra, ma qui il guard deve vivere QUI (il
+  // genitore non viene mai smontato dal cambio di filtro): `pendingChatOpenLeadId`
+  // è impostato una sola volta e azzerato non appena la card lo consuma
+  // davvero (`onChatAutoOpenHandled`), così un rimontaggio successivo vede
+  // sempre `autoOpenChat=false`, a prescindere da quante volte la card
+  // esce/rientra dalla lista filtrata.
+  const [pendingChatOpenLeadId, setPendingChatOpenLeadId] = useState<string | null>(null);
   useEffect(() => {
     if (!leads) return;
     const targetGuidedRequestId = searchParams.get("open");
@@ -345,6 +361,7 @@ function RichiesteContent() {
     consumedRequestOpenRef.current = targetGuidedRequestId;
     setActiveTab("tutte");
     setOpenId(match.id);
+    if (searchParams.get("chat")) setPendingChatOpenLeadId(match.id);
     // Il DOM della card esiste solo dopo che React ha renderizzato lo stato
     // appena impostato — un breve timeout invece di un secondo effetto
     // dedicato, stesso compromesso pragmatico già in uso altrove nel
@@ -804,7 +821,8 @@ function RichiesteContent() {
                   onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
                   onChanged={reloadLeads}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
-                  autoOpenChat={searchParams.get("open") === lead.guidedRequest.id && !!searchParams.get("chat")}
+                  autoOpenChat={pendingChatOpenLeadId === lead.id}
+                  onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
               </div>
             ))}
@@ -827,6 +845,7 @@ function RequestCard({
   onChanged,
   unreadCount,
   autoOpenChat,
+  onChatAutoOpenHandled,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -842,6 +861,8 @@ function RequestCard({
   unreadCount?: number;
   /** True se questa card arriva da una notifica di nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenChat?: boolean;
+  /** Richiamata subito dopo aver aperto la chat per `autoOpenChat` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
+  onChatAutoOpenHandled?: () => void;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -927,8 +948,14 @@ function RequestCard({
     if (autoOpenChat && !autoOpenedChatRef.current) {
       autoOpenedChatRef.current = true;
       setShowTimeline(true);
+      // Il guard "già aperta" vive ora nel genitore (pendingChatOpenLeadId,
+      // bug reale corretto): questo ref locale resta solo per non aprire due
+      // volte se questo stesso effetto scatta più volte prima che il
+      // genitore riesca ad azzerare la prop — la vera fonte di verità è il
+      // genitore, avvisato subito qui.
+      onChatAutoOpenHandled?.();
     }
-  }, [autoOpenChat]);
+  }, [autoOpenChat, onChatAutoOpenHandled]);
   function openTimeline() {
     setShowTimeline(true);
     dismissUnread();

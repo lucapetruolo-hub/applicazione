@@ -215,6 +215,22 @@ function LeMieRichiesteContent() {
   // scroll+evidenziazione riuscito, i filtri tornano liberi.
   const consumedRequestOpenRef = useRef<string | null>(null);
   const consumedBookingOpenRef = useRef<string | null>(null);
+  // Bug reale segnalato dall'utente: cliccando una notifica di nuovo
+  // messaggio (che porta `&chat=<professionalProfileId>` oltre a `?open=`)
+  // la chat si apriva correttamente, ma cambiare filtro (o pagina) e tornare
+  // indietro la riapriva da sola — `autoOpenChatProfessionalId` era prima
+  // calcolato ad ogni render direttamente da `searchParams` (mai ripulito
+  // dall'URL), con il guard "già aperta" dentro `GuidedRequestCard`/
+  // `QuoteCard` (un `useRef`): un cambio di filtro può smontare e rimontare
+  // quella card (esce/rientra dalla lista filtrata), azzerando quel ref e
+  // riaprendo la chat perché la prop restava valorizzata. Stesso principio
+  // di `consumedRequestOpenRef` sopra, ma qui il guard deve vivere in questo
+  // componente (mai smontato dal cambio di filtro): impostato una sola volta
+  // e azzerato non appena la card lo consuma davvero
+  // (`onChatAutoOpenHandled`), così un rimontaggio successivo vede sempre
+  // `autoOpenChatProfessionalId=null`, a prescindere da quante volte la card
+  // esce/rientra dalla lista filtrata.
+  const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
 
   // Deep link da /chat (richiesta esplicita dell'utente: "dai la
   // possibilità di andare alla pagina del preventivo/informazioni di
@@ -245,6 +261,8 @@ function LeMieRichiesteContent() {
     const index = sorted.findIndex((r) => r.id === targetId);
     if (index === -1) return;
     consumedRequestOpenRef.current = targetId;
+    const chatParam = searchParams.get("chat");
+    if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
     setRequestsPage(Math.floor(index / requestsPageSize) + 1);
     setTimeout(() => {
       const elementId = `request-${targetId}`;
@@ -517,7 +535,8 @@ function LeMieRichiesteContent() {
                       newQuoteIds={newQuoteIds}
                       threadUnreadCounts={threadUnreadCounts}
                       quoteUnreadCounts={quoteUnreadCounts}
-                      autoOpenChatProfessionalId={searchParams.get("open") === request.id ? searchParams.get("chat") : null}
+                      autoOpenChatProfessionalId={pendingChatOpen && pendingChatOpen.requestId === request.id ? pendingChatOpen.professionalProfileId : null}
+                      onChatAutoOpenHandled={() => setPendingChatOpen((prev) => (prev && prev.requestId === request.id ? null : prev))}
                     />
                   </div>
                 ))
@@ -580,6 +599,7 @@ function GuidedRequestCard({
   threadUnreadCounts,
   quoteUnreadCounts,
   autoOpenChatProfessionalId,
+  onChatAutoOpenHandled,
 }: {
   request: ClientGuidedRequest;
   token: string;
@@ -595,6 +615,8 @@ function GuidedRequestCard({
   quoteUnreadCounts?: Map<string, number>;
   /** Professionista del cui thread arriva un nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal giusto invece di limitarsi a scrollare/evidenziare la card. */
   autoOpenChatProfessionalId?: string | null;
+  /** Richiamata subito dopo aver gestito `autoOpenChatProfessionalId` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
+  onChatAutoOpenHandled?: () => void;
 }) {
   // Professionista il cui thread è aperto nella cronologia (sezione "Inviata
   // a", prima che esista un preventivo) — richiesta esplicita dell'utente:
@@ -636,6 +658,11 @@ function GuidedRequestCard({
     autoOpenedChatRef.current = autoOpenChatProfessionalId;
     const hasQuote = request.quotes.some((q) => q.professionalProfileId === autoOpenChatProfessionalId);
     if (!hasQuote) openTimelineForProfessional(autoOpenChatProfessionalId);
+    // Il guard "già aperta" vive ora nel genitore (pendingChatOpen, bug
+    // reale corretto): avvisato subito, sia che l'apertura sia avvenuta qui
+    // sia che sia stata delegata a QuoteCard (hasQuote true) — in entrambi i
+    // casi l'istruzione è stata consumata.
+    onChatAutoOpenHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenChatProfessionalId]);
   const [isEditing, setIsEditing] = useState(false);
