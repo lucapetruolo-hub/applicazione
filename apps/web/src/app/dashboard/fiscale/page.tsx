@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
-import { checkFiscalId } from "@professionisti/shared";
+import { checkFiscalId, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -18,6 +18,45 @@ const VERIFICATION_LABEL: Record<FiscalVerificationStatus, { label: string; vari
   REJECTED: { label: "Verifica rifiutata", variant: "urgente" },
   REQUIRES_UPDATE: { label: "Dati da aggiornare", variant: "urgente" },
 };
+
+// Etichette esatte, identiche a quelle mostrate sopra ogni campo del form
+// sotto — usate per tradurre un errore di validazione in un messaggio che
+// nomina il campo giusto, invece del generico messaggio Zod grezzo (es.
+// "String must contain at most 2 character(s)") che il backend
+// (ZodValidationPipe) restituirebbe altrimenti tale e quale.
+const FISCAL_FIELD_LABELS: Record<string, string> = {
+  entityType: "Tipo di attività",
+  fiscalFirstName: "Nome",
+  fiscalLastName: "Cognome",
+  fiscalCodiceFiscale: "Codice fiscale",
+  dateOfBirth: "Data di nascita",
+  placeOfBirth: "Luogo di nascita (Comune e Provincia)",
+  countryOfBirth: "Paese di nascita (ISO, es. IT)",
+  businessName: "Ragione sociale",
+  legalForm: "Forma giuridica",
+  vatNumber: "Partita IVA",
+  businessRegistrationNumber: "Numero di iscrizione al Registro delle Imprese (REA / CCIAA)",
+  leiCode: "Codice LEI",
+  additionalEuStates: "Stati membri UE aggiuntivi con stabile organizzazione",
+  taxResidenceCountry: "Paese di residenza fiscale (ISO, es. IT)",
+  foreignTin: "TIN estero",
+  fiscalIdIssuingCountry: "Stato di rilascio del codice fiscale / NIF / P.IVA (ISO, es. IT)",
+  registeredStreet: "Via / Piazza",
+  registeredHouseNumber: "Numero civico",
+  registeredCity: "Città",
+  registeredPostalCode: "CAP",
+  registeredProvince: "Provincia",
+  registeredCountry: "Paese (ISO, es. IT)",
+  representative: "Legale rappresentante",
+  "representative.firstName": "Nome del legale rappresentante",
+  "representative.lastName": "Cognome del legale rappresentante",
+  "representative.codiceFiscale": "Codice fiscale del legale rappresentante",
+  "representative.role": "Ruolo del legale rappresentante",
+};
+
+function fiscalFieldLabel(path: (string | number)[]): string {
+  return FISCAL_FIELD_LABELS[path.join(".")] ?? FISCAL_FIELD_LABELS[String(path[0] ?? "")] ?? "Un campo";
+}
 
 /**
  * Dati fiscali del professionista (persona fisica/impresa) + onboarding
@@ -113,38 +152,81 @@ export default function DashboardFiscalePage() {
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
+
+    const payload = {
+      entityType: entityType || undefined,
+      fiscalFirstName: fields.fiscalFirstName || undefined,
+      fiscalLastName: fields.fiscalLastName || undefined,
+      fiscalCodiceFiscale: fields.fiscalCodiceFiscale || undefined,
+      dateOfBirth: fields.dateOfBirth || undefined,
+      placeOfBirth: fields.placeOfBirth || undefined,
+      countryOfBirth: fields.countryOfBirth || undefined,
+      businessName: fields.businessName || undefined,
+      legalForm: fields.legalForm || undefined,
+      vatNumber: fields.vatNumber || undefined,
+      businessRegistrationNumber: fields.businessRegistrationNumber || undefined,
+      leiCode: fields.leiCode || undefined,
+      additionalEuStates: additionalEuStatesText
+        .split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+      taxResidenceCountry: fields.taxResidenceCountry || undefined,
+      foreignTin: fields.foreignTin || undefined,
+      fiscalIdIssuingCountry: fields.fiscalIdIssuingCountry || undefined,
+      registeredStreet: fields.registeredStreet || undefined,
+      registeredHouseNumber: fields.registeredHouseNumber || undefined,
+      registeredCity: fields.registeredCity || undefined,
+      registeredPostalCode: fields.registeredPostalCode || undefined,
+      registeredProvince: fields.registeredProvince || undefined,
+      registeredCountry: fields.registeredCountry || undefined,
+      representative:
+        entityType === "BUSINESS" && repFields.firstName && repFields.lastName
+          ? { firstName: repFields.firstName, lastName: repFields.lastName, codiceFiscale: repFields.codiceFiscale || undefined, role: repFields.role || undefined }
+          : undefined,
+    };
+
+    // Validato qui con la STESSA `professionalFiscalProfileSchema` già usata
+    // dal server (ZodValidationPipe, unica fonte di verità): un payload che
+    // supera questo controllo non può più essere rifiutato dal server per lo
+    // stesso motivo — nessun messaggio Zod grezzo arriva mai fino all'utente,
+    // sostituito con il nome esatto del campo (stessa etichetta del form
+    // sopra) e il motivo in italiano.
+    const parsed = professionalFiscalProfileSchema.safeParse(payload);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      if (!issue) {
+        setSaveError("Alcuni dati inseriti non sono validi.");
+        setSaving(false);
+        return;
+      }
+      const label = fiscalFieldLabel(issue.path);
+      let reason: string;
+      switch (issue.code) {
+        case "too_big": {
+          const tooBig = issue;
+          reason =
+            tooBig.type === "array"
+              ? `puoi indicarne al massimo ${tooBig.maximum}.`
+              : tooBig.maximum === 2
+                ? "deve essere un codice a 2 lettere (es. IT), non il nome esteso del paese."
+                : `non può superare ${tooBig.maximum} caratteri.`;
+          break;
+        }
+        case "too_small": {
+          const tooSmall = issue;
+          reason = tooSmall.minimum === 1 ? "è obbligatorio." : `deve contenere almeno ${tooSmall.minimum} caratteri.`;
+          break;
+        }
+        default:
+          reason = "non è valido.";
+      }
+      setSaveError(`${label}: ${reason}`);
+      setSaving(false);
+      return;
+    }
+
     try {
-      const updated = await apiClient.updateMyFiscalProfile(token, {
-        entityType: entityType || undefined,
-        fiscalFirstName: fields.fiscalFirstName || undefined,
-        fiscalLastName: fields.fiscalLastName || undefined,
-        fiscalCodiceFiscale: fields.fiscalCodiceFiscale || undefined,
-        dateOfBirth: fields.dateOfBirth || undefined,
-        placeOfBirth: fields.placeOfBirth || undefined,
-        countryOfBirth: fields.countryOfBirth || undefined,
-        businessName: fields.businessName || undefined,
-        legalForm: fields.legalForm || undefined,
-        vatNumber: fields.vatNumber || undefined,
-        businessRegistrationNumber: fields.businessRegistrationNumber || undefined,
-        leiCode: fields.leiCode || undefined,
-        additionalEuStates: additionalEuStatesText
-          .split(",")
-          .map((s) => s.trim().toUpperCase())
-          .filter(Boolean),
-        taxResidenceCountry: fields.taxResidenceCountry || undefined,
-        foreignTin: fields.foreignTin || undefined,
-        fiscalIdIssuingCountry: fields.fiscalIdIssuingCountry || undefined,
-        registeredStreet: fields.registeredStreet || undefined,
-        registeredHouseNumber: fields.registeredHouseNumber || undefined,
-        registeredCity: fields.registeredCity || undefined,
-        registeredPostalCode: fields.registeredPostalCode || undefined,
-        registeredProvince: fields.registeredProvince || undefined,
-        registeredCountry: fields.registeredCountry || undefined,
-        representative:
-          entityType === "BUSINESS" && repFields.firstName && repFields.lastName
-            ? { firstName: repFields.firstName, lastName: repFields.lastName, codiceFiscale: repFields.codiceFiscale || undefined, role: repFields.role || undefined }
-            : undefined,
-      });
+      const updated = await apiClient.updateMyFiscalProfile(token, parsed.data);
       setProfile(updated);
       setSaveSuccess(true);
     } catch (e) {

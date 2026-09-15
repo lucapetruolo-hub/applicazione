@@ -11743,3 +11743,49 @@ testo "Perché esistiamo" assente dalla homepage, zero errori console in
 tutti i flussi verificati. Typecheck pulito su tutti i package (`shared`,
 `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
 produzione `apps/web` verde (35 route, nessuna nuova) e `apps/api` verde.
+
+---
+
+## 92. Bug reale: errore di validazione grezzo su "Dati fiscali e pagamenti"
+
+Segnalato dall'utente: cliccando "Salva" su `/dashboard/fiscale` con un
+campo non valido (es. "Italia" scritto per intero in un campo che richiede
+il codice ISO a 2 lettere), l'errore mostrato era il messaggio Zod grezzo
+in inglese ("string must contain at most 2 character(s)") invece di dire
+quale campo fosse e perché. Causa: `ZodValidationPipe`
+(`apps/api/src/common/zod-validation.pipe.ts`, condivisa da **ogni**
+endpoint validato del backend) lancia `BadRequestException(result.error.
+flatten())` — l'oggetto Zod appiattito per intero come corpo della
+risposta 400, senza alcun campo `message` stringa. `packages/api-client`
+(`extractErrorMessage`) ricade quindi sul primo messaggio grezzo dentro
+`fieldErrors`, perdendo anche l'informazione su QUALE campo — `handleSave`
+in `/dashboard/fiscale` si limitava a mostrare `e.message` così com'era.
+
+Corretto **senza toccare `ZodValidationPipe`/`packages/api-client`**
+(condivisi da decine di altri endpoint/pagine, un cambio lì avrebbe un
+raggio d'azione enorme non richiesto): `/dashboard/fiscale/page.tsx`
+valida ora il payload **lato client, prima dell'invio**, con la stessa
+identica `professionalFiscalProfileSchema` già usata dal server
+(`@professionisti/shared`, unica fonte di verità — stesso principio già
+seguito altrove nel progetto, es. `professionalAvailabilitySchema`,
+CLAUDE.md §11) — un payload che supera questo controllo non può più essere
+rifiutato dal server per lo stesso motivo, quindi il messaggio Zod grezzo
+non arriva mai fino all'utente. In caso di errore, un nuovo
+`FISCAL_FIELD_LABELS` (stesse etichette esatte mostrate sopra ogni campo
+del form) nomina il campo preciso, e un piccolo switch su `issue.code`
+("too_big"/"too_small") costruisce il motivo in italiano — per i campi
+ISO a 2 lettere, un messaggio specifico ("deve essere un codice a 2
+lettere (es. IT), non il nome esteso del paese.") invece del generico
+"non può superare N caratteri.". `handleSave` costruisce il `payload` una
+volta sola, lo valida (`professionalFiscalProfileSchema.safeParse`), e
+solo se valido lo invia con `apiClient.updateMyFiscalProfile(token,
+parsed.data)` — nessuna doppia costruzione del payload.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: digitando "Italia" nel campo "Paese di nascita (ISO, es. IT)"
+e cliccando "Salva dati fiscali", il messaggio mostrato è esattamente
+"Paese di nascita (ISO, es. IT): deve essere un codice a 2 lettere (es.
+IT), non il nome esteso del paese." — nessuna occorrenza di "character(s)"
+o "String must" in pagina; correggendo il campo a "IT" il salvataggio
+riesce normalmente ("Salvato."). Typecheck pulito su `apps/web`, build di
+produzione verde (35 route, nessuna nuova).
