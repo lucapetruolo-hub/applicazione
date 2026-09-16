@@ -3,6 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { AdminModule } from "../admin/admin.module";
 import { RevenueAnalyticsService } from "./revenue-analytics.service";
 import { AdminRevenueAnalyticsController } from "./admin-revenue-analytics.controller";
+import { ProfessionalRevenueAnalyticsController } from "./professional-revenue-analytics.controller";
 
 // AuthModule importato ESPLICITAMENTE oltre ad AdminModule — non basta
 // AdminModule da solo: importarlo internamente non ripropaga JwtService ai
@@ -13,7 +14,7 @@ import { AdminRevenueAnalyticsController } from "./admin-revenue-analytics.contr
 // JwtAuthGuard, usata dal controller di questo modulo insieme ad AdminGuard.
 @Module({
   imports: [AuthModule, AdminModule],
-  controllers: [AdminRevenueAnalyticsController],
+  controllers: [AdminRevenueAnalyticsController, ProfessionalRevenueAnalyticsController],
   providers: [RevenueAnalyticsService],
 })
 export class RevenueAnalyticsModule {}

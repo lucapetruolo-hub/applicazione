@@ -24,6 +24,10 @@ export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] 
         { href: "/chat", label: "Chat" },
         { href: "/dashboard/profilo", label: "Profilo pubblico" },
         { href: "/dashboard/agenda", label: "Agenda" },
+        // "Statistiche" anche per il professionista (richiesta esplicita
+        // dell'utente) — stessa vista Revenue Analytics già costruita per
+        // l'admin (CLAUDE.md §99), scoped ai propri lavori (§103).
+        { href: "/dashboard/statistiche", label: "Statistiche" },
         // Dati fiscali (persona fisica/impresa) + pagamenti del lavoro
         // (MANOVIA-mediato/diretto) + Stripe Connect — CLAUDE.md §88, pagina
         // separata da /dashboard/profilo (dati pubblici) per la stessa

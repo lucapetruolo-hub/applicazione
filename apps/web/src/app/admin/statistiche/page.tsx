@@ -3,19 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { RevenueAnalyticsSummary } from "@professionisti/api-client";
-import { Icon, Paragraph, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadingState } from "@/components/LoadingState";
-import { RevenueTrendChart } from "@/components/RevenueTrendChart";
-
-function formatEuro(cents: number): string {
-  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
-}
-
-function jobsLabel(count: number): string {
-  return `${count} ${count === 1 ? "lavoro completato" : "lavori completati"}`;
-}
+import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 
 /**
  * "Statistiche" → Revenue Analytics (richiesta esplicita dell'utente,
@@ -26,6 +18,10 @@ function jobsLabel(count: number): string {
  * separata da /admin/finanza (che traccia il ricavo di PIATTAFORMA — la sola
  * commissione — non ancora attivo in produzione): questa misura il valore
  * lordo del lavoro reale svolto, disponibile fin da subito.
+ *
+ * Corpo (tessere KPI + grafico) estratto in `RevenueAnalyticsPanel`
+ * (condiviso con la versione per il professionista, §103) — questa pagina
+ * resta responsabile solo di guardia ruolo, fetch e intestazione.
  */
 export default function AdminStatistichePage() {
   const { user, token, isLoading } = useAuth();
@@ -49,9 +45,6 @@ export default function AdminStatistichePage() {
       </YStack>
     );
   }
-
-  const currentMonthLabel = new Date().toLocaleDateString("it-IT", { month: "long", year: "numeric" });
-  const currentYearLabel = new Date().getFullYear().toString();
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
@@ -89,126 +82,12 @@ export default function AdminStatistichePage() {
         {data === null && !error ? (
           <LoadingState />
         ) : data ? (
-          <>
-            <div className="stats-kpi-grid">
-              <StatTile
-                label={`Entrate ${currentYearLabel}`}
-                value={formatEuro(data.currentYearTotalEurCents)}
-                subtitle={jobsLabel(data.currentYearJobCount)}
-              />
-              <StatTile
-                label={`Entrate di ${currentMonthLabel}`}
-                value={formatEuro(data.currentMonthTotalEurCents)}
-                subtitle={jobsLabel(data.currentMonthJobCount)}
-              />
-              <DeltaStatTile
-                previousMonthTotalEurCents={data.previousMonthTotalEurCents}
-                currentMonthTotalEurCents={data.currentMonthTotalEurCents}
-                monthOverMonthChangePercent={data.monthOverMonthChangePercent}
-              />
-              <StatTile
-                label="Totale generato da sempre"
-                value={formatEuro(data.allTimeTotalEurCents)}
-                subtitle={jobsLabel(data.allTimeJobCount)}
-                accent={false}
-              />
-            </div>
-
-            <Surface padding="$5" gap="$4">
-              <YStack gap="$1">
-                <Text fontWeight="700" fontSize={17}>
-                  Andamento entrate — ultimi 12 mesi
-                </Text>
-                <Text fontSize={12} color={brand.grafite70}>
-                  Solo lavori confermati completati da entrambe le parti (professionista e cliente). Passa il mouse su un punto per i dettagli.
-                </Text>
-              </YStack>
-              <RevenueTrendChart points={data.monthlySeries} />
-            </Surface>
-          </>
+          <RevenueAnalyticsPanel
+            data={data}
+            chartCaption="Solo lavori confermati completati da entrambe le parti (professionista e cliente), su tutta la piattaforma. Passa il mouse su un punto per i dettagli."
+          />
         ) : null}
       </YStack>
     </YStack>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  subtitle,
-  accent = true,
-}: {
-  label: string;
-  value: string;
-  subtitle: string;
-  accent?: boolean;
-}) {
-  return (
-    <Surface padding="$4" gap="$2" borderRadius={radiusDoc}>
-      <Text fontSize={12} fontWeight="700" color={brand.grafite70}>
-        {label}
-      </Text>
-      <Text fontSize={26} fontWeight="700" color={accent ? brand.cianografiaScuro : brand.grafite}>
-        {value}
-      </Text>
-      <Text fontSize={12} color={brand.grafite70}>
-        {subtitle}
-      </Text>
-    </Surface>
-  );
-}
-
-/**
- * Terza tessera KPI richiesta esplicitamente dall'utente — "la variazione
- * rispetto al mese precedente". Una percentuale calcolata da un mese
- * precedente a 0€ sarebbe sempre "+infinito", mai un numero onesto: in quel
- * caso mostra "Nuovo" (se questo mese ha comunque delle entrate) o "—" (se
- * nessuno dei due mesi ne ha) invece di una percentuale finta.
- */
-function DeltaStatTile({
-  previousMonthTotalEurCents,
-  currentMonthTotalEurCents,
-  monthOverMonthChangePercent,
-}: {
-  previousMonthTotalEurCents: number;
-  currentMonthTotalEurCents: number;
-  monthOverMonthChangePercent: number | null;
-}) {
-  const hasComparableData = previousMonthTotalEurCents > 0;
-  const isUp = monthOverMonthChangePercent !== null && monthOverMonthChangePercent >= 0;
-  const color = !hasComparableData
-    ? brand.grafite70
-    : isUp
-      ? brand.verificato
-      : brand.urgenza;
-
-  let display: string;
-  if (hasComparableData && monthOverMonthChangePercent !== null) {
-    display = `${monthOverMonthChangePercent >= 0 ? "+" : ""}${monthOverMonthChangePercent.toFixed(1)}%`;
-  } else if (currentMonthTotalEurCents > 0) {
-    display = "Nuovo";
-  } else {
-    display = "—";
-  }
-
-  return (
-    <Surface padding="$4" gap="$2" borderRadius={radiusDoc}>
-      <Text fontSize={12} fontWeight="700" color={brand.grafite70}>
-        Variazione vs mese precedente
-      </Text>
-      <XStack alignItems="center" gap="$2">
-        {hasComparableData ? (
-          <div style={{ display: "inline-flex", transform: isUp ? undefined : "rotate(135deg)" }}>
-            <Icon name="trending-up" size={20} color={color} />
-          </div>
-        ) : null}
-        <Text fontSize={26} fontWeight="700" color={color}>
-          {display}
-        </Text>
-      </XStack>
-      <Text fontSize={12} color={brand.grafite70}>
-        {hasComparableData ? `Mese precedente: ${formatEuro(previousMonthTotalEurCents)}` : "Nessuna entrata nel mese precedente da confrontare."}
-      </Text>
-    </Surface>
   );
 }

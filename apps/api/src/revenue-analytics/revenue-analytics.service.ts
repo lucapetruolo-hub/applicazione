@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 
@@ -63,14 +63,34 @@ function monthKey(date: Date): string {
  * piattaforma (stile GMV), disponibile fin da subito perché non dipende da
  * alcuna integrazione di pagamento — la metrica di crescita più diretta da
  * mostrare oggi.
+ *
+ * **Riusata anche lato professionista** (richiesta esplicita dell'utente,
+ * CLAUDE.md §103): stesso identico calcolo, scoped ai soli lavori del
+ * professionista che guarda — `getSummary(professionalProfileId?)`, un
+ * filtro opzionale invece di due metodi quasi identici. Nessuna
+ * distinzione di dominio tra le due viste: solo "tutta la piattaforma" vs
+ * "i miei lavori", stessa condizione doppio cieco, stessa formula.
  */
 @Injectable()
 export class RevenueAnalyticsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  async getSummary(): Promise<RevenueAnalyticsSummary> {
+  /** Risolve il profilo professionista dell'utente autenticato — stesso pattern già in uso in `ProfessionalsService.requireMyProfileId`, duplicato qui per non introdurre una dipendenza incrociata tra i due moduli per un'unica riga. */
+  async resolveMyProfessionalProfileId(userId: string): Promise<string> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) {
+      throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    }
+    return profile.id;
+  }
+
+  async getSummary(professionalProfileId?: string): Promise<RevenueAnalyticsSummary> {
     const bookings = await this.prisma.booking.findMany({
-      where: { status: "COMPLETED", clientConfirmedCompletedAt: { not: null } },
+      where: {
+        status: "COMPLETED",
+        clientConfirmedCompletedAt: { not: null },
+        ...(professionalProfileId ? { professionalProfileId } : {}),
+      },
       select: { finalAmountEurCents: true, updatedAt: true },
     });
 

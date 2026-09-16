@@ -12519,3 +12519,74 @@ orizzontale, zero errori console reali (gli unici osservati sono
 connessioni rifiutate verso l'API, non avviata in questa verifica — non
 correlati all'immagine, che carica dallo stesso host web). Typecheck
 pulito su `apps/web`.
+
+---
+
+## 103. "Statistiche" (Revenue Analytics) anche per il professionista
+
+Richiesta esplicita dell'utente: "il menu statistiche aggiungila anche ai
+professionisti, e effettua modifiche e migliorie necessarie". La pagina
+"Statistiche" esisteva finora solo per l'admin (§99, vetrina delle entrate
+generate quando un lavoro viene selezionato come completato sia dal
+cliente che dal professionista — stessa condizione "doppio cieco" di
+§40). Estesa qui allo stesso identico concetto ma scoped ai soli lavori
+del professionista che guarda, non all'intera piattaforma.
+
+- **`RevenueAnalyticsService.getSummary(professionalProfileId?)`** (era
+  senza argomenti): il filtro `professionalProfileId` è ora opzionale —
+  `undefined` per l'admin (comportamento invariato, piattaforma intera),
+  valorizzato per il professionista. Stessa formula, stessa query, un solo
+  metodo invece di due quasi identici. Nuovo
+  `resolveMyProfessionalProfileId(userId)` (stesso pattern
+  `prisma.professionalProfile.findUnique({where:{userId}})` già duplicato
+  altrove nel progetto per una singola riga, es.
+  `ProfessionalsService.requireMyProfileId` — replicato qui invece di
+  introdurre una dipendenza incrociata tra i due moduli) lancia
+  `NotFoundException("Completa prima il tuo profilo professionista.")` se
+  l'utente non ha ancora un profilo, stesso messaggio già in uso altrove
+  per lo stesso caso.
+- **Nuovo `ProfessionalRevenueAnalyticsController`** (`GET
+  /professionals/me/revenue-analytics`, stesso `RevenueAnalyticsModule` di
+  `AdminRevenueAnalyticsController`): solo `JwtAuthGuard`, **nessun**
+  `AdminGuard` — un professionista vede sempre e solo i propri numeri,
+  risolti dal token, mai passati dal client.
+- **`apiClient.myRevenueAnalytics(token)`** (nuovo, stesso tipo
+  `RevenueAnalyticsSummary` già esportato).
+- **Corpo della pagina estratto in `RevenueAnalyticsPanel.tsx`**
+  (`apps/web/src/components`, "modifiche e migliorie" prese come mandato a
+  rifattorizzare, non solo a duplicare): le 4 tessere KPI + il grafico
+  `RevenueTrendChart` erano scritte solo dentro `admin/statistiche/page.tsx`
+  — estratte in un componente condiviso (`data` + `chartCaption` come
+  props, quest'ultimo l'unico testo che cambia tra le due viste) e riusate
+  identiche da entrambe le pagine, `admin/statistiche/page.tsx` riscritta
+  per consumarlo invece di duplicare tessere/grafico.
+- **`/dashboard/statistiche`** (nuova pagina): stesso guscio (guardia
+  login → guardia ruolo professionista, stesso testo/pattern già in uso in
+  `/dashboard/agenda`) attorno allo stesso `RevenueAnalyticsPanel`, con
+  intestazione/didascalia proprie ("Le entrate generate dai tuoi lavori
+  completati" / "Solo i tuoi lavori confermati completati da entrambe le
+  parti"). Nessun link "← Torna a..." (stessa convenzione minimale già
+  seguita da `/dashboard/fiscale`, raggiungibile solo dal menu account).
+- **`accountMenuItems.ts`**: nuova voce "Statistiche" per i professionisti,
+  tra "Agenda" e "Dati fiscali e pagamenti".
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright — 15/15 controlli: un professionista senza profilo ancora
+creato riceve l'errore chiaro corretto; un professionista con zero lavori
+vede totali a 0; ciclo completo richiesta diretta→preventivo→
+accettazione→completamento→doppia conferma per il professionista A
+(199,00 €) → `GET /professionals/me/revenue-analytics` riflette
+esattamente il delta sia sul mese che sull'anno corrente,
+`allTimeJobCount: 1`, 12 punti nella serie mensile; **isolamento
+verificato esplicitamente**: un secondo professionista B, stessa
+categoria/città, vede ancora 0€/0 lavori nonostante il lavoro completato
+di A esista nello stesso periodo — mai un dato di un altro professionista
+trapelato; l'admin continua a vedere il totale aggregato dell'intera
+piattaforma (≥ al totale di A), comportamento invariato. UI: pagina
+`/dashboard/statistiche` con titolo, l'importo esatto (199 €) e il testo
+di scoping "i tuoi lavori" visibili, grafico SVG renderizzato, voce
+"Statistiche" presente e cliccabile nel menu account del professionista,
+zero overflow orizzontale desktop, zero errori console reali. Typecheck
+pulito su tutti i package (`shared`, `database`, `api-client`, `ui`,
+`api`, `web`, `mobile`), build di produzione `apps/web` verde (37 route,
+una nuova: `/dashboard/statistiche`).

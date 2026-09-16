@@ -1188,6 +1188,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     adminRevenueAnalytics: (token: string) =>
       request<RevenueAnalyticsSummary>("/admin/revenue-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    // Stesse forme (RevenueAnalyticsSummary), scoped ai soli lavori del
+    // professionista autenticato — CLAUDE.md §103.
+    myRevenueAnalytics: (token: string) =>
+      request<RevenueAnalyticsSummary>("/professionals/me/revenue-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
