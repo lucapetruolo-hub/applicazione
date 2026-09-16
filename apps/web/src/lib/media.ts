@@ -24,18 +24,30 @@ export function documentTypeLabel(url: string): string {
   return match ? match.slice(1).toUpperCase() : "FILE";
 }
 
+// Prefisso di unicità anteposto al nome sanitizzato nel percorso di upload
+// di un documento "raw" (`apps/api/src/cloudinary/cloudinary.service.ts`,
+// `uploadMedia`) — stesso pattern/motivo già documentato lì.
+const UNIQUE_ID_PREFIX = /^[0-9a-f]{12}-/;
+
 /**
- * Nome file originale da mostrare al download, estratto dal flag
- * `fl_attachment:<nome>` incorporato nell'URL (upload firmato lato server) —
- * `null` per un URL "vecchio stile" senza quel flag, dove il nome reale non
- * è mai stato conservato (nessun campo per portarlo avanti prima del fix,
- * si ricade sull'etichetta generica "allegato.<estensione>" come già prima).
+ * Nome file originale da mostrare al download. Due percorsi (stessa dualità
+ * duplicata lato server, `CloudinaryService.extractAttachmentFilename`):
+ * - **URL "vecchio stile"** (nome nel flag di trasformazione
+ *   `fl_attachment:<nome>`, mai nel percorso): estratto da lì.
+ * - **URL "nuovo stile"** (nome già nell'ultimo segmento del percorso
+ *   stesso): preso da lì, spogliato del solo prefisso di unicità.
+ * `null` solo se nessuno dei due pattern combacia (un URL non-documento).
  */
 export function attachmentFileName(url: string): string | null {
   const clean = url.split("?")[0] ?? "";
-  const match = clean.match(/\/fl_attachment:([^/,]+)/);
-  if (!match || !match[1]) return null;
-  const base = decodeURIComponent(match[1]);
+  const legacyMatch = clean.match(/\/fl_attachment:([^/,]+)/);
   const extMatch = DOCUMENT_EXTENSIONS.find((ext) => clean.endsWith(ext));
-  return extMatch ? `${base}${extMatch}` : base;
+  if (legacyMatch?.[1]) {
+    const base = decodeURIComponent(legacyMatch[1]);
+    return extMatch ? `${base}${extMatch}` : base;
+  }
+  if (!extMatch) return null;
+  const lastSegment = clean.split("/").pop();
+  if (!lastSegment) return null;
+  return lastSegment.replace(UNIQUE_ID_PREFIX, "") || null;
 }

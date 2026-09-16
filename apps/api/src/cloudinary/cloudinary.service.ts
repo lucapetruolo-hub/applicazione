@@ -1,4 +1,5 @@
 import { extname } from "node:path";
+import { randomBytes } from "node:crypto";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -99,6 +100,17 @@ export class CloudinaryService {
     // dal nome originale caricato dal browser (`file.originalname`, sempre
     // presente su un upload Multer), non da una mappa mimetype→estensione.
     const rawExtension = resourceType === "raw" ? extname(file.originalname).replace(/^\./, "").toLowerCase() : undefined;
+    // `public_id` esplicito solo per un documento "raw" (immagini/video
+    // restano su un id auto-generato da Cloudinary, comportamento
+    // invariato): incorpora direttamente nel percorso dell'URL restituito
+    // il nome reale caricato dall'utente (sanitizzato), preceduto da un
+    // breve id casuale per evitare collisioni tra upload diversi con lo
+    // stesso nome file — nessun bisogno di un flag di trasformazione
+    // separato (`fl_attachment`, approccio precedente) per portare avanti
+    // il nome: `extractAttachmentFilename` lo rilegge direttamente
+    // dall'ultimo segmento del percorso, vedi sotto.
+    const rawPublicId =
+      resourceType === "raw" ? `${randomBytes(6).toString("hex")}-${sanitizeAttachmentFilename(file.originalname)}` : undefined;
 
     try {
       return await new Promise<string>((resolve, reject) => {
@@ -108,77 +120,30 @@ export class CloudinaryService {
             resource_type: resourceType,
             ...(transformation ? { transformation } : {}),
             ...(rawExtension ? { format: rawExtension } : {}),
+            ...(rawPublicId ? { public_id: rawPublicId } : {}),
           },
           (error, result) => {
             if (error || !result) {
               reject(error ?? new Error("Upload fallito."));
               return;
             }
-            if (resourceType !== "raw") {
-              resolve(result.secure_url);
-              return;
-            }
-            // Bug reale segnalato dall'utente: scaricare un documento
-            // allegato in chat ("File") dava un file vuoto. Causa più
-            // probabile: Cloudinary blocca di default la consegna
-            // pubblica/non firmata di tipi "raw" potenzialmente rischiosi
-            // (PDF/ZIP/ecc., politica di sicurezza recente) — l'URL
-            // pubblico restituito da `result.secure_url` esisteva ma la
-            // richiesta di download veniva rifiutata/svuotata dalla CDN.
-            // Un URL FIRMATO (calcolato qui, unico posto con accesso ad
-            // `api_secret`) bypassa quel blocco per costruzione — stesso
-            // rimedio ufficiale indicato da Cloudinary per continuare a
-            // servire questi formati. La firma non scade (nessun
-            // `expires_at`/token a tempo, solo `sign_url`), quindi l'URL
-            // risultante è sicuro da persistere per sempre nello stesso
-            // `mediaUrls: String[]` già in uso, nessuna migrazione.
-            // `fl_attachment:<nome>` (senza estensione, sintassi
-            // Cloudinary) fa scaricare il file con il nome reale caricato
-            // dall'utente invece del generico "allegato.pdf" di prima —
-            // stessa richiesta esplicita dell'utente risolta nello stesso
-            // punto, nessun campo nuovo nello schema per portarlo avanti:
-            // il nome resta incorporato nell'URL firmato stesso.
-            //
-            // Bug reale corretto (segnalazione "ancora non riesco a
-            // scaricare i file" dopo il primo giro sopra): passare
-            // `result.public_id` insieme a `format: rawExtension` a
-            // `cloudinary.url()` può produrre un'estensione doppia — per
-            // `resource_type: "raw"` Cloudinary include già l'estensione
-            // dentro il `public_id` restituito (gotcha noto della loro
-            // API, diverso da image/video dove l'estensione resta un
-            // campo `format` separato); `finalize_source` (SDK, vedi
-            // `node_modules/cloudinary/lib/utils/index.js`) appende
-            // SEMPRE `.` + `format` al source quando `format != null`,
-            // senza controllare se è già presente — risultato:
-            // "documento.pdf" + ".pdf" = "documento.pdf.pdf", un percorso
-            // che non corrisponde alla risorsa realmente salvata (file
-            // vuoto/errore alla consegna). Corretto estraendo il
-            // percorso `public_id[.estensione]` direttamente da
-            // `result.secure_url` (l'URL di consegna che Cloudinary
-            // stesso ha appena generato per questa identica risorsa,
-            // quindi per costruzione già corretto qualunque sia il
-            // comportamento reale su public_id/estensione) invece di
-            // ricostruirlo a mano — e passando quel percorso senza alcun
-            // `format` separato, cosicché non venga mai più appesa
-            // un'estensione ulteriore. Stessa cautela sulla versione: usare
-            // quella reale già presente in `secure_url` (invece di
-            // lasciarla implicita, `force_version` di default userebbe
-            // sempre "v1" per qualunque risorsa) fa combaciare l'URL
-            // firmato byte per byte con quello che Cloudinary ha davvero
-            // generato per questa risorsa.
-            const safeName = sanitizeAttachmentFilename(file.originalname);
-            const uploadPathMatch = /\/upload\/v(\d+)\/(.+)$/.exec(result.secure_url);
-            const rawVersion = uploadPathMatch?.[1];
-            const rawSource = uploadPathMatch?.[2] ?? result.public_id;
-            const downloadUrl = cloudinary.url(rawSource, {
-              resource_type: "raw",
-              type: "upload",
-              ...(rawVersion ? { version: rawVersion } : {}),
-              secure: true,
-              sign_url: true,
-              flags: `attachment:${safeName}`,
-            });
-            resolve(downloadUrl);
+            // Nessuna trasformazione/firma applicata qui, per nessun
+            // `resourceType` (documento incluso) — `secure_url` è già la
+            // sola verità di consegna, mai ricostruita a mano (causa dei
+            // due bug reali già corretti in un giro precedente: consegna
+            // bloccata da un URL non firmato, poi doppia estensione da una
+            // firma ricostruita male). Il download reale di un documento
+            // "raw" (bloccato di default sulla CDN pubblica di Cloudinary
+            // per PDF/ZIP/ecc.) passa ora dall'Admin API autenticata
+            // (`CloudinaryService.fetchAttachmentForDownload`,
+            // `private_download_url`), non da un trucco sulla stessa URL
+            // di consegna — vedi il commento esteso lì per il perché il
+            // tentativo precedente (URL di consegna "firmata" con
+            // `sign_url`/`fl_attachment`) non bypassa affatto quel blocco:
+            // sono due meccanismi di firma Cloudinary distinti e
+            // indipendenti (uno per le trasformazioni, l'altro per
+            // l'accesso autenticato ai file), l'uno non sostituisce l'altro.
+            resolve(result.secure_url);
           },
         );
         uploadStream.end(file.buffer);
@@ -194,34 +159,49 @@ export class CloudinaryService {
    * server-to-server e lo restituisce pronto per essere inoltrato al
    * browser dal nostro stesso backend.
    *
-   * Bug reale segnalato dall'utente DOPO il fix precedente (doppia
-   * estensione, vedi il commento sopra in `uploadMedia`): "quando vado a
-   * cliccare sul file pdf nella chat mi apre una pagina web, invece deve
-   * farti scaricare direttamente il file". Un `<a download>` puntato
-   * direttamente a `res.cloudinary.com` (un'origine diversa dal sito) fa
-   * sì che l'attributo HTML `download` non sia garantito — per un URL
-   * cross-origine molti browser lo ignorano e navigano semplicemente alla
-   * risorsa, che per un PDF significa aprirlo nel visualizzatore integrato
-   * ("una pagina web") invece di scaricarlo. La sola dipendenza dal flag
-   * `fl_attachment` di Cloudinary (header `Content-Disposition` impostato
-   * dalla LORO CDN) non basta a forzare il download in ogni condizione
-   * osservata in produzione, e non è comunque verificabile da questo
-   * ambiente di sviluppo (`res.cloudinary.com` bloccato dalla policy di
-   * rete del sandbox). Facendo transitare il file dal nostro stesso
-   * backend (fetch server-to-server, nessun vincolo CORS/cross-origine) e
-   * impostando NOI STESSI `Content-Disposition: attachment` sulla
-   * risposta (nel controller), il download diventa affidabile
-   * indipendentemente dal comportamento della CDN esterna — il frontend
-   * lo consuma come blob e lo scarica da un URL `blob:`, sempre trattato
-   * come "stessa origine" da qualunque browser (stesso principio già
-   * usato altrove nel prodotto, es. `ImageCropModal`).
+   * Terzo bug reale sullo stesso identico problema, segnalato dall'utente
+   * DOPO i due fix precedenti (proxy di download lato backend +
+   * `Content-Disposition` impostato da noi, vedi la cronologia in
+   * CLAUDE.md §95/§97/§98): "quando vado a scaricare un file dalla chat mi
+   * dice file non trovato o non più presente" — il proxy stesso falliva
+   * (`!response.ok` dalla fetch verso Cloudinary), non il download nel
+   * browser. Causa reale: la CDN pubblica di Cloudinary (`res.cloudinary.
+   * com`) **blocca di default la consegna di risorse "raw" potenzialmente
+   * rischiose** (PDF, ZIP, ecc.) per motivi di sicurezza — un blocco a
+   * livello di CDN, non aggirabile con un URL di "consegna firmata"
+   * (`sign_url`/`fl_attachment`, il meccanismo tentato nei due fix
+   * precedenti): quella firma serve a limitare quali TRASFORMAZIONI si
+   * possono richiedere su un URL pubblico ("strict transformations"), un
+   * meccanismo di sicurezza Cloudinary completamente distinto e
+   * indipendente dal blocco sui tipi "raw" rischiosi — non lo sostituisce
+   * né lo bypassa, per quanto correttamente costruita fosse quella firma
+   * (e lo era, verificato a parte).
    *
-   * Blocco di sicurezza esplicito: questo metodo fa da proxy SOLO per URL
-   * di consegna Cloudinary del nostro stesso cloud, generati dal nostro
-   * upload firmato (ramo "raw" sopra) — mai un proxy aperto verso un URL
-   * arbitrario. Verificato sia sull'host/cloud reale sia sulla presenza
-   * della firma (`/s--...--/`), prova che l'URL sia stato generato da noi
-   * e non semplicemente costruito a mano da un chiamante malintenzionato.
+   * Il bypass realmente documentato da Cloudinary per questo blocco è
+   * l'**Admin API "download"** (SDK: `cloudinary.utils.private_download_
+   * url`) — un endpoint diverso (`api.cloudinary.com`, non la CDN
+   * `res.cloudinary.com`), autenticato con firma API key/secret per ogni
+   * chiamata: essendo una richiesta autorizzata (non un accesso pubblico
+   * anonimo alla CDN), non è soggetta allo stesso blocco. Costruita qui,
+   * fetchata server-to-server (stesso principio "nessun vincolo CORS,
+   * mai esposto al browser" già in uso per il resto di questo metodo) —
+   * il browser non vede mai né l'URL né le credenziali Cloudinary.
+   *
+   * Retrocompatibile con i documenti già caricati prima di questo fix
+   * (URL firmati "vecchio stile", con uno o più segmenti di
+   * trasformazione — `/s--...--/`, `/fl_attachment:.../` — tra `upload/`
+   * e `/v<versione>/`): l'estrazione cerca il segmento `/v<cifre>/`
+   * ovunque si trovi nel percorso (non subito dopo `upload/`, che per un
+   * URL "vecchio stile" non è mai vero — bug reale trovato scrivendo
+   * questo stesso fix, prima di un qualunque deploy, con un test dedicato
+   * su un URL legacy), non il testo letterale `upload/v` — nessuna doppia
+   * gestione necessaria per il solo `publicId`/`format`; resta invece un
+   * doppio percorso per il nome file, vedi `extractAttachmentFilename`.
+   *
+   * Blocco di sicurezza esplicito invariato: questo metodo fa da proxy
+   * SOLO per URL di consegna Cloudinary del nostro stesso cloud (prefisso
+   * `raw/upload/` verificato) — mai un proxy aperto verso un URL
+   * arbitrario.
    */
   async fetchAttachmentForDownload(rawUrl: string): Promise<{ buffer: Buffer; contentType: string; filename: string }> {
     if (!this.isConfigured) {
@@ -229,13 +209,27 @@ export class CloudinaryService {
     }
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const expectedPrefix = `https://res.cloudinary.com/${cloudName}/raw/upload/`;
-    if (!rawUrl.startsWith(expectedPrefix) || !/\/s--[\w-]+--\//.test(rawUrl)) {
+    if (!rawUrl.startsWith(expectedPrefix)) {
       throw new BadRequestException("URL non valido per il download.");
     }
+    const versionMatch = /\/v\d+\/(.+)$/.exec(rawUrl.split("?")[0] ?? "");
+    const pathWithExtension = versionMatch?.[1];
+    if (!pathWithExtension) {
+      throw new BadRequestException("URL non valido per il download.");
+    }
+    const lastDot = pathWithExtension.lastIndexOf(".");
+    const publicId = lastDot > 0 ? pathWithExtension.slice(0, lastDot) : pathWithExtension;
+    const format = lastDot > 0 ? pathWithExtension.slice(lastDot + 1) : undefined;
+
+    const downloadUrl = cloudinary.utils.private_download_url(publicId, format ?? "", {
+      resource_type: "raw",
+      type: "upload",
+      attachment: true,
+    });
 
     let response;
     try {
-      response = await fetch(rawUrl);
+      response = await fetch(downloadUrl);
     } catch {
       throw new BadRequestException("Impossibile raggiungere il file in questo momento.");
     }
@@ -251,23 +245,38 @@ export class CloudinaryService {
 }
 
 const DOWNLOADABLE_DOCUMENT_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx"];
+// Prefisso di unicità anteposto al nome sanitizzato nel `public_id` di
+// upload (`uploadMedia`, ramo "raw") — 12 caratteri esadecimali minuscoli
+// seguiti da un trattino, pattern scelto apposta abbastanza specifico da
+// non essere mai prodotto per coincidenza da `sanitizeAttachmentFilename`
+// (che normalizza spazi/accenti/simboli, mai genera esadecimale puro).
+const UNIQUE_ID_PREFIX = /^[0-9a-f]{12}-/;
 
 /**
- * Nome file reale da mostrare al download, estratto dal flag
- * `fl_attachment:<nome>` incorporato nell'URL firmato (vedi `uploadMedia`,
- * ramo "raw") — stessa logica già in uso lato frontend
- * (`apps/web/src/lib/media.ts`, `attachmentFileName`), duplicata qui
- * perché backend e frontend non condividono un package per una funzione
- * così piccola. Estensione ripresa dal percorso dell'URL (già incorporata
- * nel public_id per un resource_type "raw"), non dal flag stesso (che
- * porta solo il nome senza estensione, vedi `sanitizeAttachmentFilename`).
+ * Nome file reale da mostrare al download. Due percorsi, per restare
+ * retrocompatibile con i documenti caricati prima di questo fix:
+ * - **URL "vecchio stile"** (caricati quando il nome viveva nel flag di
+ *   trasformazione `fl_attachment:<nome>`, mai nel percorso): estratto da
+ *   lì, come già prima.
+ * - **URL "nuovo stile"** (il nome vive già nell'ultimo segmento del
+ *   percorso stesso, incorporato nel `public_id` al momento dell'upload):
+ *   preso da lì, spogliato del solo prefisso di unicità anteposto
+ *   (`UNIQUE_ID_PREFIX`) — mai un flag di trasformazione da cercare.
+ * Stessa logica duplicata lato frontend (`apps/web/src/lib/media.ts`,
+ * `attachmentFileName`) perché backend e frontend non condividono un
+ * package per una funzione così piccola.
  */
 function extractAttachmentFilename(url: string): string {
   const clean = url.split("?")[0] ?? "";
-  const match = /\/fl_attachment:([^/,]+)/.exec(clean);
-  const base = match?.[1] ? decodeURIComponent(match[1]) : "documento";
+  const legacyMatch = /\/fl_attachment:([^/,]+)/.exec(clean);
   const extension = DOWNLOADABLE_DOCUMENT_EXTENSIONS.find((ext) => clean.endsWith(ext));
-  return extension ? `${base}${extension}` : base;
+  if (legacyMatch?.[1]) {
+    const base = decodeURIComponent(legacyMatch[1]);
+    return extension ? `${base}${extension}` : base;
+  }
+  const lastSegment = clean.split("/").pop() ?? "documento";
+  const base = lastSegment.replace(UNIQUE_ID_PREFIX, "");
+  return base || "documento";
 }
 
 /**

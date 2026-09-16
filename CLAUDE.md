@@ -12325,3 +12325,98 @@ pagamento — la metrica di crescita più diretta da mostrare oggi.
   funzionalità). Typecheck pulito su tutti i package (`shared`, `database`,
   `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
   verde (36 route, una nuova: `/admin/statistiche`).
+
+---
+
+## 100. Bug reale, quarto giro: documento allegato in chat sempre "non trovato" — l'Admin API "download" al posto della consegna CDN firmata
+
+Segnalato dall'utente: *"quando vado a scaricare un file dalla chat mi dice
+file non trovato o non più presente"* — la QUARTA manifestazione dello
+stesso identico problema di fondo (dopo §95, §97 e §98, tutti tentativi
+sulla stessa cosa): il proxy di download del nostro backend
+(`CloudinaryService.fetchAttachmentForDownload`, introdotto in §98)
+continuava a fallire con `!response.ok`, mai un crash — ma il download
+restava impossibile.
+
+**Causa reale, mai identificata nei tre giri precedenti**: la CDN pubblica
+di Cloudinary (`res.cloudinary.com`) blocca **di default** la consegna di
+risorse "raw" potenzialmente rischiose (PDF, ZIP, ecc.) per motivi di
+sicurezza — un blocco a livello di CDN. I tre fix precedenti tentavano
+tutti di aggirarlo con una "URL di consegna firmata"
+(`sign_url: true`/`fl_attachment:...`, un meccanismo Cloudinary pensato
+per **limitare quali trasformazioni si possono richiedere** su un URL
+pubblico, "strict transformations") — un meccanismo di sicurezza
+Cloudinary completamente distinto e indipendente dal blocco sui tipi "raw"
+rischiosi: non lo bypassa, per quanto correttamente costruita fosse quella
+firma (verificato che lo era, §97/§98). Il bypass realmente documentato da
+Cloudinary per questo blocco specifico è l'**Admin API "download"** (SDK:
+`cloudinary.utils.private_download_url`) — un endpoint diverso
+(`api.cloudinary.com`, non la CDN pubblica), autenticato con firma
+API key/secret per ogni chiamata: essendo una richiesta autorizzata (non
+un accesso pubblico anonimo alla CDN), non è soggetta allo stesso blocco.
+
+**Fix** (`apps/api/src/cloudinary/cloudinary.service.ts`):
+- **`uploadMedia`** (ramo "raw"): non costruisce più un URL di consegna
+  firmato manualmente al momento dell'upload — risolve semplicemente con
+  `result.secure_url`, lo stesso URL semplice già usato per immagini/video
+  (nessuna trasformazione/firma applicata a nessun tipo di file). Il nome
+  reale caricato dall'utente (richiesto esplicitamente in un giro
+  precedente, "il nome con cui è stato caricato") non vive più in un flag
+  di trasformazione (`fl_attachment:<nome>`, richiedeva la firma per
+  esistere) ma **direttamente nel `public_id`** passato all'upload —
+  `${idUnivoco12esadecimale}-${nomeSanitizzato}` — così il nome resta
+  leggibile come ultimo segmento del percorso dell'URL restituito da
+  Cloudinary stesso, senza bisogno di alcun meccanismo di firma per
+  portarlo avanti. L'id univoco anteposto evita collisioni tra upload
+  diversi con lo stesso nome file (`sanitizeAttachmentFilename`, già
+  esistente, riusato invariato).
+- **`fetchAttachmentForDownload(rawUrl)`**: estrae `publicId`/`format`
+  dall'URL memorizzato (stessa idea già in uso, ma il match del segmento
+  `/v<versione>/` è stato spostato da un'ancora rigida `upload/v<cifre>/`
+  a una ricerca del pattern `/v<cifre>/` ovunque nel percorso — bug reale
+  trovato scrivendo questo stesso fix, con un test dedicato su un URL
+  "vecchio stile" prima di qualunque deploy: un URL legacy ha sempre uno o
+  più segmenti di trasformazione tra `upload/` e `/v<versione>/`,
+  l'ancora rigida precedente non l'avrebbe mai fatto corrispondere).
+  Costruisce quindi l'URL Admin API (`private_download_url`, `resource_
+  type: "raw"`, `type: "upload"`, `attachment: true`) e lo fetcha
+  server-to-server — il browser non vede mai né questo URL né le
+  credenziali Cloudinary.
+- **Retrocompatibilità con i documenti già caricati** prima di questo
+  fix (URL con `/s--...--/`/`fl_attachment:...` ancora memorizzati nel
+  DB): la validazione del prefisso resta la sola condizione richiesta
+  (non più anche la presenza della firma, che un URL "nuovo stile" non ha
+  più) — `extractAttachmentFilename` (backend) e `attachmentFileName`
+  (frontend, `apps/web/src/lib/media.ts`) provano prima il pattern
+  "vecchio stile" (`fl_attachment:<nome>`), poi ricadono sull'ultimo
+  segmento del percorso (nuovo stile, spogliato del solo prefisso
+  esadecimale di unicità) — nessuna migrazione DB, nessun documento già
+  allegato smette di funzionare.
+
+**Verificato** (stessa cautela già accettata per ogni fix Cloudinary
+precedente in questo file: `res.cloudinary.com`/`cloudinary.com` bloccati
+dalla policy di rete di questo ambiente di sviluppo, impossibile un test
+end-to-end reale contro un vero account Cloudinary):
+- Estrazione `publicId`/`format`/nome file verificata con un test dedicato
+  su tre casi (URL "nuovo stile" .pdf, URL "vecchio stile" firmato con
+  `fl_attachment`, URL "nuovo stile" .docx) — tutti e tre corretti, incluso
+  il bug di ancoraggio della regex sopra, trovato e corretto prima del
+  commit.
+- `CloudinaryService` compilata istanziata direttamente con credenziali
+  fittizie e `global.fetch` intercettato (nessuna vera chiamata di rete):
+  un URL non-Cloudinary o di un cloud diverso dal nostro viene rifiutato
+  PRIMA di ogni tentativo di fetch ("URL non valido per il download.");
+  sia un URL "nuovo stile" sia uno "vecchio stile" (retrocompatibilità)
+  producono correttamente una richiesta verso `api.cloudinary.com/v1_1/
+  {cloud}/raw/download` con `public_id`/`format`/`type=upload`/
+  `attachment=true`/firma tutti corretti — il vero meccanismo di bypass,
+  mai raggiunto dai tre tentativi precedenti.
+- End-to-end contro l'API locale reale (JWT/401/400 sul parametro
+  mancante, URL non-Cloudinary rifiutato con messaggio pulito) — il passo
+  finale (una vera risposta da un vero account Cloudinary) resta non
+  verificabile da questo sandbox, stesso limite già accettato per ogni
+  fix Cloudinary di questo file.
+
+Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
+`ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+(36 route, nessuna nuova).

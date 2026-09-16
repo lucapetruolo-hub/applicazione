@@ -149,8 +149,8 @@ export class GuidedRequestsController {
   // "timeline-photos"/"chat-threads" in questo stesso controller — nessun
   // conflitto con le rotte ":id/..." più sotto. Solo JWT (nessun controllo
   // di titolarità sul thread): il metodo del service valida comunque che
-  // `url` sia un URL Cloudinary del nostro cloud, firmato dal nostro stesso
-  // upload — mai un proxy aperto verso un URL arbitrario.
+  // `url` sia un URL Cloudinary del nostro stesso cloud (percorso
+  // raw/upload/) — mai un proxy aperto verso un URL arbitrario.
   @UseGuards(JwtAuthGuard)
   @Get("timeline-photos/download")
   async downloadTimelinePhoto(@Query("url") url: string, @Res() res: Response) {
