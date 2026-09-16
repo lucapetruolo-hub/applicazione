@@ -58,6 +58,7 @@ import {
   Flag,
   Menu,
   SlidersHorizontal,
+  TrendingUp,
 } from "lucide-react-native";
 
 export const ICONS = {
@@ -116,6 +117,7 @@ export const ICONS = {
   flag: Flag,
   menu: Menu,
   "sliders-horizontal": SlidersHorizontal,
+  "trending-up": TrendingUp,
 } as const;
 
 export type IconName = keyof typeof ICONS;

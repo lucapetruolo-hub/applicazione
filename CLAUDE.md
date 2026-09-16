@@ -12238,3 +12238,90 @@ nuvoletta di chat. Zero errori console reali. Typecheck pulito su tutti i
 package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (35 route, nessuna
 nuova).
+nuova).
+
+---
+
+## 99. Pannello admin — "Statistiche" (Revenue Analytics)
+
+Richiesta esplicita dell'utente: una pagina in admin che mostri "il totale
+delle entrate generate dall'applicazione quando un lavoro viene selezionato
+come completato sia dal cliente che dal professionista" — la stessa
+condizione "doppio cieco" già stabilita in CLAUDE.md §40 per la conferma del
+lavoro terminato (`Booking.status === "COMPLETED"`, azione del
+professionista con importo esatto, **e** `clientConfirmedCompletedAt`
+valorizzato, conferma indipendente del cliente sullo stesso lavoro) — non il
+solo stato `COMPLETED`, che può derivare anche da un semplice cambio di
+stato dal calendario senza mai passare dal modulo "Lavoro terminato" con gli
+importi reali (in quel caso `finalAmountEurCents` resta `null` e contribuisce
+0€, mai una stima inventata).
+
+**Distinta deliberatamente da `/admin/finanza`** (CLAUDE.md §88): quella
+pagina traccia il ricavo REALE di Manovia (la sola commissione trattenuta,
+`ManoviaRevenue`) e lo stato dei pagamenti Stripe Connect/diretti — un
+concetto di piattaforma-commissione non ancora attivo in produzione
+(credenziali Stripe non configurate). "Statistiche" misura invece il valore
+lordo del lavoro reale svolto sulla piattaforma (stile GMV/entrate totali),
+disponibile fin da subito perché non dipende da alcuna integrazione di
+pagamento — la metrica di crescita più diretta da mostrare oggi.
+
+- **`apps/api/src/revenue-analytics/`** (nuovo modulo):
+  `RevenueAnalyticsService.getSummary()` scarica in un colpo solo tutte le
+  `Booking` che soddisfano la condizione sopra (`finalAmountEurCents`,
+  `updatedAt`) e aggrega in memoria — nessuna query aggregata SQL, coerente
+  con la scala di lancio già documentata ovunque nel progetto (§7): totale
+  anno corrente, totale mese corrente, totale mese precedente (per il
+  confronto), totale "da sempre", più una serie mensile degli ultimi 12
+  mesi. `updatedAt` come proxy della data di completamento — stessa
+  convenzione già stabilita da `countCompletedThisMonth` (CLAUDE.md §27,
+  `apps/api/src/common/completed-jobs.util.ts`), nessun campo `completedAt`
+  dedicato nello schema. `GET /admin/revenue-analytics`
+  (`AdminRevenueAnalyticsController`, `JwtAuthGuard`+`AdminGuard`, stesso
+  gate di ogni altra vista finanza/DAC7) — `AuthModule` importato
+  esplicitamente accanto ad `AdminModule` (non basta da solo: `AdminModule`
+  non esporta `AuthModule` ai moduli che lo importano a loro volta, stesso
+  bug reale già documentato in CLAUDE.md §45/§54 per `ExternalJobsModule`/
+  questo stesso modulo di finanza — un sospetto di prima battuta ormai per
+  ogni nuovo modulo con un guard che dipende da `JwtService`).
+- **Variazione mese su mese onesta**: una percentuale calcolata da un mese
+  precedente a 0€ sarebbe sempre "+infinito" — `monthOverMonthChangePercent`
+  resta `null` in quel caso, il frontend mostra "Nuovo" (se il mese corrente
+  ha comunque delle entrate) o "—" (se nessuno dei due ne ha) invece di un
+  numero finto.
+- **`apps/web/src/app/admin/statistiche/page.tsx`** (nuova pagina, voce
+  "Statistiche" aggiunta in fondo a `AdminSidebar`, pagina separata da
+  `/admin/finanza` come già scelto per quella — troppo contenuto per la
+  stessa pagina/ancora): tre tessere KPI (Entrate anno corrente, Entrate mese
+  corrente, Variazione vs mese precedente) più una quarta (Totale generato
+  da sempre) — layout a griglia CSS pura (`.stats-kpi-grid`, `globals.css`,
+  stesso principio "CSS grezzo dove Tamagui non copre bene un caso" già
+  seguito per `.cal-week-grid`/`.admin-table` altrove in questo file), 4
+  colonne che collassano a 1 su mobile senza media query esplicite
+  (`auto-fit, minmax(200px, 1fr)`).
+- **`RevenueTrendChart.tsx`** (nuovo, `apps/web/src/components`): grafico ad
+  area/linea per l'andamento mensile, costruito seguendo la skill `dataviz`
+  di questa sessione — colore sequenziale unico (`brand.cianografia`, mai un
+  arcobaleno per una singola serie), riempimento "a velo" (mai un blocco
+  saturo), griglia orizzontale recessiva hairline con valori "puliti"
+  sull'asse Y (`niceCeiling`, mai il massimo grezzo dei dati), crosshair +
+  tooltip al passaggio del mouse/tocco (hit target esteso oltre il solo
+  tracciato), marcatore di fine serie con anello di superficie, etichetta
+  diretta solo sul punto attivo (mai un numero su ogni punto). Nessuna
+  libreria di charting aggiunta — SVG scritto a mano, stesso principio già
+  seguito per ogni altro componente "su misura" del progetto
+  (`CalendarShell`, `MegaMenu`, `ResultsListWithMap`).
+- Verificato end-to-end con l'API locale reale (non solo typecheck/build):
+  `GET /admin/revenue-analytics` risponde con dati reali coerenti (16 lavori
+  completati "doppio cieco" nell'ambiente di sviluppo, 1.045€ totali, tutti
+  nel mese corrente — mese precedente a 0€, `monthOverMonthChangePercent:
+  null` confermato) sia senza né con token admin (401/200 rispettivamente).
+  UI con Playwright contro il build di produzione reale: pagina
+  `/admin/statistiche` con le quattro tessere KPI e il grafico SVG
+  renderizzati con i dati corretti, voce "Statistiche" presente e funzionante
+  nella sidebar di `/admin`. Zero errori console reali (gli unici osservati —
+  foto `randomuser.me`, prefetch RSC verso pagine non ancora compilate nel
+  build locale di verifica — sono la stessa limitazione di rete/artefatto di
+  build già documentati altrove in questo file, non causati da questa
+  funzionalità). Typecheck pulito su tutti i package (`shared`, `database`,
+  `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
+  verde (36 route, una nuova: `/admin/statistiche`).

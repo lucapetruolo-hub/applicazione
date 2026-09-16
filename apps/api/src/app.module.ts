@@ -28,6 +28,7 @@ import { PlatformFeeRulesModule } from "./platform-fee-rules/platform-fee-rules.
 import { ProfessionalFiscalModule } from "./professional-fiscal/professional-fiscal.module";
 import { JobPaymentsModule } from "./job-payments/job-payments.module";
 import { Dac7Module } from "./dac7/dac7.module";
+import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.module";
 
 @Module({
   imports: [
@@ -73,6 +74,11 @@ import { Dac7Module } from "./dac7/dac7.module";
     ProfessionalFiscalModule,
     JobPaymentsModule,
     Dac7Module,
+    // Menu "Statistiche" / Revenue Analytics (richiesta esplicita
+    // dell'utente): valore lordo dei lavori completati "sia dal cliente che
+    // dal professionista" — distinto dal ricavo di piattaforma già in
+    // JobPaymentsModule/Dac7Module.
+    RevenueAnalyticsModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

@@ -382,6 +382,28 @@ export type AdminFinanceSummary = {
   jobPaymentsByStatus: { status: JobPaymentStatus; count: number }[];
 };
 
+// Menu "Statistiche" (richiesta esplicita dell'utente) — valore lordo dei
+// lavori completati "sia dal cliente che dal professionista" (CLAUDE.md §99),
+// distinto da AdminFinanceSummary (ricavo di piattaforma/commissione).
+export type RevenueMonthlyPoint = {
+  month: string;
+  label: string;
+  totalEurCents: number;
+  jobCount: number;
+};
+
+export type RevenueAnalyticsSummary = {
+  currentYearTotalEurCents: number;
+  currentYearJobCount: number;
+  currentMonthTotalEurCents: number;
+  currentMonthJobCount: number;
+  previousMonthTotalEurCents: number;
+  monthOverMonthChangePercent: number | null;
+  allTimeTotalEurCents: number;
+  allTimeJobCount: number;
+  monthlySeries: RevenueMonthlyPoint[];
+};
+
 function extractErrorMessage(body: unknown, fallback: string): string {
   if (body && typeof body === "object") {
     const record = body as Record<string, unknown>;
@@ -1162,6 +1184,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    adminRevenueAnalytics: (token: string) =>
+      request<RevenueAnalyticsSummary>("/admin/revenue-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

@@ -24,4 +24,7 @@ export type {
   Dac7Record,
   PlatformDac7Settings,
   AdminFinanceSummary,
+  // "Statistiche" / Revenue Analytics (CLAUDE.md §99).
+  RevenueMonthlyPoint,
+  RevenueAnalyticsSummary,
 } from "./client";

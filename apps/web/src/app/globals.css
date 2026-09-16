@@ -306,6 +306,18 @@ a {
   background: #fdefe1;
 }
 
+/* Griglia KPI di /admin/statistiche (menu "Statistiche", Revenue Analytics)
+   — CSS grid nativo, non tentato via prop Tamagui: stesso principio già in
+   uso per .cal-week-grid, un div grezzo con className resta il pattern più
+   affidabile per il layout che Tamagui/react-native-web non copre bene. Si
+   adatta da 4 colonne a 1 sola su mobile senza media query esplicite. */
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
 /* Evidenziazione dell'elemento raggiunto da un deep link (click su una
    notifica) — richiesta esplicita dell'utente: "evidenziandola leggermente
    per qualche secondo con transizione della luce", poi rafforzata su una

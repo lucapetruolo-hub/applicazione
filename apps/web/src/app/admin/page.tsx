@@ -253,6 +253,9 @@ function AdminSidebar() {
     // pagina propria, coerente con la stessa scelta già fatta per non
     // sovraccaricare ulteriormente questa pagina.
     { href: "/admin/finanza", label: "Finanza e DAC7" },
+    // Menu "Statistiche" (richiesta esplicita dell'utente) — Revenue
+    // Analytics, pagina separata come /admin/finanza.
+    { href: "/admin/statistiche", label: "Statistiche" },
   ];
   return (
     <nav className="admin-sidebar" aria-label="Sezioni amministrazione">
