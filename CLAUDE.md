@@ -12420,3 +12420,70 @@ end-to-end reale contro un vero account Cloudinary):
 Typecheck pulito su tutti i package (`shared`, `database`, `api-client`,
 `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
 (36 route, nessuna nuova).
+
+---
+
+## 101. Bug reale, quinto giro: documento chat ancora "non trovato" —
+`public_id` split invece che intero per un raw resource
+
+Segnalato dall'utente **dopo** il fix con l'Admin API di §100 ("continua a
+dare questo errore"): stesso identico messaggio, "file non trovato o non
+più presente". `fetchAttachmentForDownload` (§100) chiamava già
+`cloudinary.utils.private_download_url`, ma separava ancora
+`publicId`/`format` tagliando all'ultimo punto del percorso (`lastDot`) —
+lo stesso trattamento corretto per image/video, dove Cloudinary tiene
+davvero due campi distinti. Per `resource_type: "raw"` **non è così**:
+l'identificativo vero della risorsa che l'Admin API cerca include già
+l'estensione per intero, non un `public_id` "nudo" + un `format` a parte
+— esattamente la stessa causa già isolata una volta sul lato "costruzione
+URL di consegna" (§97), qui ripresentata identica sul lato "chiamata
+Admin API", mai controllata prima in questo punto del codice. Passare
+`publicId` senza estensione firmava una richiesta che cercava una risorsa
+con un identificativo diverso da quello reale — mai trovata, coerente col
+sintomo (`!response.ok`, sempre 404/simile).
+
+**Fix**: `fetchAttachmentForDownload` passa ora l'intero percorso
+(estensione compresa, `pathWithExtension`) come unico `public_id` a
+`private_download_url`, con `format` sempre stringa vuota — verificato
+leggendo il sorgente del SDK installato (`sign_request`→`clear_blank`
+scarta un valore stringa vuota prima di calcolare la firma, nessun
+parametro `format` fantasma nella richiesta firmata). Nessun impatto sulla
+retrocompatibilità con gli URL "vecchio stile" (§98, segmento di
+trasformazione `fl_attachment:<nome>` prima di `/v<versione>/`): il regex
+di estrazione (`/\/v\d+\/(.+)$/`) cattura sempre e solo l'ultimo segmento
+del percorso, ignorando qualunque trasformazione precedente, a prescindere
+da come l'upload originale abbia costruito il proprio `public_id`.
+
+**Osservabilità aggiunta, non solo il fix puntuale**: la storia di questo
+bug (cinque giri, §95/§97/§98/§100/questo) condivide lo stesso limite reale
+— nessuna credenziale Cloudinary configurata in questo ambiente di
+sviluppo, nessun accesso di rete a `cloudinary.com`/`res.cloudinary.com`
+(policy di rete del sandbox), quindi ogni fix precedente è stato scritto e
+"verificato" solo leggendo il sorgente del SDK e simulando la richiesta
+con credenziali fittizie — mai testato contro un vero account. Se questo
+fix non fosse (ancora) sufficiente, un sesto giro alla cieca sarebbe lo
+stesso errore di metodo ripetuto: `fetchAttachmentForDownload` ora logga
+server-side (`console.error`, primi 500 caratteri) il corpo e lo stato
+della risposta reale di Cloudinary quando il download fallisce, invece di
+lasciare solo il messaggio generico mostrato al cliente — la prossima
+volta che fallisce, il log dei log di produzione (Render) dice il vero
+motivo (firma non valida, risorsa non trovata per davvero, funzione non
+abilitata sul piano, ecc.) invece di dover indovinare.
+
+Verificato con un test dedicato (`CloudinaryService` compilata, credenziali
+fittizie, `global.fetch` intercettato — nessuna vera chiamata di rete,
+stesso limite di prima): sia un URL "nuovo stile" sia uno "vecchio stile"
+producono ora un `public_id` firmato uguale esattamente al percorso
+completo con estensione, zero parametro `format` nella query firmata,
+`type=upload`/`attachment=true`/firma tutti corretti; il nuovo logging
+conferma di stampare correttamente il corpo dell'errore simulato
+("Resource not found"). **Nota per l'utente**: se il problema persistesse
+ancora dopo questo fix, il prossimo passo utile non è un altro giro di
+codice alla cieca ma i log reali di Render subito dopo un tentativo di
+download fallito (mostrano ora l'errore esatto restituito da Cloudinary) —
+oppure, indipendentemente dalla causa esatta, attivare "Allow delivery of
+PDF and ZIP files" nelle impostazioni di sicurezza dell'account Cloudinary
+(Settings → Security): è il rimedio più diretto documentato da Cloudinary
+per il blocco sui file "raw" potenzialmente rischiosi, alternativo
+all'intero meccanismo Admin API costruito in questi cinque giri. Typecheck
+pulito su tutti i package, build di produzione `apps/api` verde.

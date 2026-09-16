@@ -217,11 +217,23 @@ export class CloudinaryService {
     if (!pathWithExtension) {
       throw new BadRequestException("URL non valido per il download.");
     }
-    const lastDot = pathWithExtension.lastIndexOf(".");
-    const publicId = lastDot > 0 ? pathWithExtension.slice(0, lastDot) : pathWithExtension;
-    const format = lastDot > 0 ? pathWithExtension.slice(lastDot + 1) : undefined;
-
-    const downloadUrl = cloudinary.utils.private_download_url(publicId, format ?? "", {
+    // Quinto giro sullo stesso identico problema ("file non trovato"
+    // persistito anche dopo il fix con l'Admin API, CLAUDE.md §100): il
+    // codice precedente separava `publicId`/`format` (`lastDot`) esattamente
+    // come si fa per image/video — ma per `resource_type: "raw"` Cloudinary
+    // NON tiene un campo `format` distinto dal `public_id`: l'identificativo
+    // vero della risorsa, quello che l'Admin API cerca, **include già
+    // l'estensione per intero** (stessa causa già trovata una volta sul lato
+    // "costruzione URL di consegna", §97 — qui si ripresentava identica sul
+    // lato "chiamata Admin API"). Passare `publicId` senza estensione +
+    // `format` separato firmava una richiesta che cercava una risorsa con un
+    // identificativo diverso da quello reale (mai trovata → "file non
+    // trovato", coerente col sintomo). Corretto passando l'intero percorso
+    // (estensione compresa) come unico `public_id`, `format` sempre stringa
+    // vuota — `clear_blank`/`sign_request` del SDK la scarta comunque dalla
+    // firma prima di calcolarla (verificato leggendo il sorgente del SDK
+    // installato), quindi non introduce un campo fantasma nella richiesta.
+    const downloadUrl = cloudinary.utils.private_download_url(pathWithExtension, "", {
       resource_type: "raw",
       type: "upload",
       attachment: true,
@@ -234,6 +246,17 @@ export class CloudinaryService {
       throw new BadRequestException("Impossibile raggiungere il file in questo momento.");
     }
     if (!response.ok) {
+      // Non più un solo messaggio generico: la storia di questo bug (quattro
+      // fix precedenti, tutti basati su un'ipotesi mai verificabile in
+      // questo ambiente — nessuna credenziale Cloudinary reale, nessun
+      // accesso di rete a cloudinary.com) ha sempre lasciato il vero errore
+      // di Cloudinary invisibile. Il corpo della risposta (mai il testo
+      // completo, troncato) viene ora loggato server-side — la prossima
+      // volta che questo fallisce, il log dice davvero perché invece di
+      // dover indovinare una sesta volta.
+      const bodyText = await response.text().catch(() => "");
+      // eslint-disable-next-line no-console
+      console.error(`[CloudinaryService] download fallito (${response.status}): ${bodyText.slice(0, 500)}`);
       throw new BadRequestException("File non trovato o non più disponibile.");
     }
 
