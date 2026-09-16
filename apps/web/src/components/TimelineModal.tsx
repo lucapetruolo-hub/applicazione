@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
-import { attachmentFileName, cloudinaryDownloadUrl, documentTypeLabel, isDocumentUrl } from "@/lib/media";
+import { attachmentFileName, documentTypeLabel, isDocumentUrl } from "@/lib/media";
 
 // Documenti accettati dall'opzione "File" del menu allegati (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
@@ -361,28 +361,41 @@ export function TimelineModal({
   // Click su una miniatura di un evento: un documento (PDF/Word/Excel) non
   // è "ingrandibile" in un lightbox fatto per immagini/video — richiesta
   // esplicita dell'utente: deve poter essere scaricato da chi lo riceve,
-  // non solo aperto in anteprima (un PDF si apriva prima nel visualizzatore
-  // integrato del browser in una nuova scheda, senza un vero salvataggio).
-  // Un `<a download>` creato al volo, con `fl_attachment` (Cloudinary,
-  // `cloudinaryDownloadUrl`) forza il download anche cross-origine, dove il
-  // solo attributo HTML `download` non è garantito da ogni browser. Le sole
-  // foto/video dell'evento restano navigabili in `PhotoLightbox` (indice
-  // ricalcolato sul solo sottoinsieme visualizzabile, un documento
-  // eventualmente presente nello stesso evento non fa mai parte del
-  // carosello).
-  function openMediaAt(urls: string[], url: string) {
+  // non solo aperto in anteprima. Le sole foto/video dell'evento restano
+  // navigabili in `PhotoLightbox` (indice ricalcolato sul solo
+  // sottoinsieme visualizzabile, un documento eventualmente presente
+  // nello stesso evento non fa mai parte del carosello).
+  //
+  // Bug reale segnalato dall'utente DOPO un primo fix (doppia estensione
+  // dell'URL Cloudinary, corretto lato server): "quando vado a cliccare
+  // sul file pdf nella chat mi apre una pagina web, invece deve farti
+  // scaricare direttamente il file". Un `<a download>` puntato
+  // direttamente a un URL Cloudinary (un'origine diversa dal sito) non
+  // garantisce il download: l'attributo HTML `download` non è affidabile
+  // cross-origine, molti browser navigano semplicemente alla risorsa
+  // invece di scaricarla — per un PDF, il visualizzatore integrato del
+  // browser lo apre come "una pagina web". Corretto passando dal nostro
+  // stesso backend (`apiClient.downloadTimelineAttachment`, proxy
+  // server-to-server con `Content-Disposition: attachment` impostato da
+  // noi): il blob risultante è scaricato da un URL `blob:`, sempre
+  // trattato come "stessa origine" da qualunque browser — nessuna
+  // dipendenza dal comportamento della CDN esterna.
+  async function openMediaAt(urls: string[], url: string) {
     if (isDocumentUrl(url)) {
-      const link = document.createElement("a");
-      link.href = cloudinaryDownloadUrl(url);
-      // Nome reale con cui l'utente l'ha caricato (bug "file vuoto"
-      // corretto, il nome è ora incorporato nell'URL firmato lato server) —
-      // ripiego sull'etichetta generica solo per un allegato caricato prima
-      // di questo fix, dove il nome originale non è mai stato conservato.
-      link.download = attachmentFileName(url) ?? `allegato.${documentTypeLabel(url).toLowerCase()}`;
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      setMediaError(null);
+      try {
+        const { blob, filename } = await apiClient.downloadTimelineAttachment(token, url);
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+      } catch (err) {
+        setMediaError(err instanceof Error ? err.message : "Impossibile scaricare il file.");
+      }
       return;
     }
     const viewable = urls.filter((u) => !isDocumentUrl(u));

@@ -12132,3 +12132,109 @@ controllo con la chip "📄 Preventivo_lavori_settembre.pdf" visibile
 direttamente nella nuvoletta di chat. Zero errori console. Typecheck
 pulito su tutti i package (`shared`, `api`, `web`), build di produzione
 `apps/web` verde (35 route, nessuna nuova).
+
+---
+
+## 98. Bug reale, terzo giro: il PDF in chat apriva "una pagina web" invece di scaricarsi — proxy di download sul nostro backend
+
+Segnalazione dell'utente, arrivata subito DOPO aver visto §97 riportato
+come risolto: *"Quando vado a cliccare sul file pdf nella chat mi apre
+una pagina web, invece deve farti scaricare direttamente il file"* — una
+terza manifestazione dello stesso problema di fondo (dopo §95 e §97), a
+riprova che il solo URL Cloudinary firmato (per quanto correttamente
+costruito, §97) non bastava a garantire un vero download in produzione.
+
+**Causa reale**: `openMediaAt` (`TimelineModal.tsx`) creava un `<a
+download>` puntato DIRETTAMENTE a `res.cloudinary.com` — un'origine
+diversa dal sito. L'attributo HTML `download` non è garantito
+cross-origine: molti browser lo ignorano per un URL esterno e navigano
+semplicemente alla risorsa invece di scaricarla, lasciando l'intero
+compito di forzare il download al solo header `Content-Disposition:
+attachment` che la CDN di Cloudinary avrebbe dovuto restituire (via il
+flag `fl_attachment` incorporato nell'URL firmato, §97) — un meccanismo
+mai verificabile end-to-end da questo ambiente di sviluppo
+(`res.cloudinary.com` bloccato dalla policy di rete del sandbox, stessa
+limitazione già documentata più volte in questo file) e evidentemente non
+sufficiente da solo nel comportamento reale osservato dall'utente: per un
+PDF, il browser ricadeva sul proprio visualizzatore integrato invece di
+scaricare, "una pagina web" nelle parole dell'utente.
+
+**Fix — proxy di download sul nostro stesso backend, non più un link
+diretto a Cloudinary**: nuovo `CloudinaryService.fetchAttachmentForDownload
+(rawUrl)` (`apps/api/src/cloudinary/cloudinary.service.ts`) fa da proxy
+server-to-server (nessun vincolo CORS/cross-origine per una fetch
+server-to-server) — valida esplicitamente che `rawUrl` sia un URL di
+consegna Cloudinary del nostro stesso cloud (`https://res.cloudinary.com/
+{CLOUDINARY_CLOUD_NAME}/raw/upload/...`) e porti una firma
+(`/s--[\w-]+--/`, prova che sia stato generato dal nostro stesso upload
+firmato e non costruito a mano — mai un proxy aperto verso un URL
+arbitrario), poi scarica il file (`Buffer.from(await response.
+arrayBuffer())`, i documenti restano ben sotto il limite 50MB già in uso
+per gli upload) e ne ricava il nome reale dallo stesso flag
+`fl_attachment:<nome>` già incorporato nell'URL (`extractAttachmentFilename`,
+stessa logica già in uso lato frontend, duplicata qui: nessun package
+condiviso tra `apps/api`/`apps/web` per una funzione così piccola).
+Nuovo `GET /guided-requests/timeline-photos/download?url=...`
+(`GuidedRequestsController`, JWT-guarded, stesso principio "nessun
+controllo di titolarità sul thread" già in uso per l'upload — la
+validazione lato service basta) imposta **noi stessi**
+`Content-Disposition: attachment; filename="..."` sulla risposta, da
+un'origine ora sempre uguale a quella dell'app: il download diventa
+affidabile indipendentemente dal comportamento della CDN esterna.
+
+**Frontend**: nuovo `apiClient.downloadTimelineAttachment(token, url)`
+(`packages/api-client`) chiama il nuovo endpoint con l'Authorization
+Bearer (una richiesta `<a href>` diretta non potrebbe portare un header
+custom), legge la risposta come `Blob` e il nome file dall'header
+`Content-Disposition` della risposta. `openMediaAt` (`TimelineModal.tsx`)
+non crea più un `<a download>` verso l'URL Cloudinary: scarica il blob
+tramite `apiClient`, crea un `URL.createObjectURL(blob)` e scarica da
+quello — un URL `blob:` è sempre trattato come "stessa origine" da
+qualunque browser, eliminando per costruzione la dipendenza dal
+comportamento cross-origine dell'attributo `download` **e** da quello
+della CDN esterna. Un errore del backend (es. Cloudinary non configurato)
+mostra ora un messaggio chiaro (`mediaError`, stesso stato già in uso per
+gli errori di upload) invece di un crash silenzioso o di un finto
+successo. `cloudinaryDownloadUrl` (`apps/web/src/lib/media.ts`), rimasta
+senza altri chiamanti dopo questo cambio, è stata rimossa (mai lasciare
+codice morto) — `isDocumentUrl`/`documentTypeLabel`/`attachmentFileName`
+restano, usate anche per la sola visualizzazione del nome/tipo file.
+
+**Bug reale trovato durante la verifica stessa** (non solo lettura di
+codice, un secondo problema oltre a quello principale): il primo giro di
+verifica end-to-end mostrava il download riuscire correttamente (blob
+URL creato, contenuto giusto) ma con il nome file sempre ricaduto sul
+generico "allegato" invece di quello reale — causa: `Content-Disposition`
+non è tra gli header "CORS-safelisted" che un `fetch()` cross-origine
+espone di default a `response.headers.get(...)`, anche quando la risposta
+HTTP lo porta davvero. Corretto aggiungendo esplicitamente
+`res.setHeader("Access-Control-Expose-Headers", "Content-Disposition")`
+sullo stesso endpoint — nessun altro endpoint del prodotto ne aveva
+bisogno prima d'ora (nessuno restituiva un file scaricabile via `fetch()`
+cross-origine), scoped a questa sola rotta invece che alla configurazione
+CORS globale (`app.enableCors()` in `main.ts`, non toccata).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright — 17/17 controlli: backend, senza token → 401; senza `url` →
+400 "url è obbligatorio."; `url` non-Cloudinary → 400 pulito (mai un
+crash 500); `url` Cloudinary "realistico" (stesso formato firmato di §97)
+→ 400 pulito con messaggio "Cloudinary non è configurato" (Cloudinary non
+è configurato in questo ambiente locale, stesso stato già documentato per
+ogni altra feature Cloudinary del prodotto — la validazione URL/firma
+avviene comunque PRIMA in codice, verificata a parte con lo stesso
+principio di `uploadMedia`). Frontend, con il nuovo endpoint intercettato
+per simulare una risposta Cloudinary reale (`res.cloudinary.com`
+irraggiungibile da questo sandbox): la richiesta di download passa
+davvero dal nostro backend (`/guided-requests/timeline-photos/download`)
+con il vero URL Cloudinary come query param e l'Authorization Bearer
+presente; l'href scaricato è un `blob:` URL (**mai** più un link diretto
+a `res.cloudinary.com`); il nome scaricato è quello reale
+("Preventivo_lavori_settembre.pdf", dopo il fix del bug CORS sopra) sia
+per il documento nel composer (prima dell'invio) sia per lo stesso
+documento nella cronologia già inviata; un errore del backend (Cloudinary
+non configurato, simulato) mostra il messaggio corretto in UI invece di
+un crash. Screenshot di controllo con il nome file visibile nella
+nuvoletta di chat. Zero errori console reali. Typecheck pulito su tutti i
+package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (35 route, nessuna
+nuova).

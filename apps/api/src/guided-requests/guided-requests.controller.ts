@@ -10,11 +10,13 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseFilters,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import {
@@ -137,6 +139,41 @@ export class GuidedRequestsController {
     }
     const imageUrl = await this.cloudinaryService.uploadMedia(file, "timeline-updates");
     return { imageUrl };
+  }
+
+  // Proxy di download server-to-server per un documento allegato in chat
+  // (bug reale segnalato dall'utente: "mi apre una pagina web, invece deve
+  // farti scaricare direttamente il file" — vedi il commento esteso su
+  // `CloudinaryService.fetchAttachmentForDownload`). Route letterale
+  // (non ":id/..."), stesso principio già in uso per "photos"/
+  // "timeline-photos"/"chat-threads" in questo stesso controller — nessun
+  // conflitto con le rotte ":id/..." più sotto. Solo JWT (nessun controllo
+  // di titolarità sul thread): il metodo del service valida comunque che
+  // `url` sia un URL Cloudinary del nostro cloud, firmato dal nostro stesso
+  // upload — mai un proxy aperto verso un URL arbitrario.
+  @UseGuards(JwtAuthGuard)
+  @Get("timeline-photos/download")
+  async downloadTimelinePhoto(@Query("url") url: string, @Res() res: Response) {
+    if (!url) {
+      throw new BadRequestException("url è obbligatorio.");
+    }
+    const { buffer, contentType, filename } = await this.cloudinaryService.fetchAttachmentForDownload(url);
+    // `Content-Disposition` impostato qui, dal nostro stesso backend (non
+    // delegato a Cloudinary): forza il download da un'origine ora
+    // sempre uguale a quella dell'app, indipendentemente dal comportamento
+    // della CDN esterna — la vera causa del bug "apre una pagina web".
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename.replace(/"/g, "")}"`);
+    // Bug reale trovato durante la verifica (non solo ipotizzato): senza
+    // questo header, il browser del cliente (chiamata cross-origine,
+    // `apps/web` su un'origine diversa da `apps/api`) SCARICA comunque il
+    // file correttamente ma `response.headers.get("content-disposition")`
+    // lato JS ritorna sempre `null` — `Content-Disposition` non è tra gli
+    // header "CORS-safelisted" esposti di default a `fetch()`, va reso
+    // leggibile esplicitamente. Senza, il nome del file scaricato ricade
+    // sul generico "allegato" invece di quello reale.
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+    res.send(buffer);
   }
 
   @UseGuards(JwtAuthGuard)

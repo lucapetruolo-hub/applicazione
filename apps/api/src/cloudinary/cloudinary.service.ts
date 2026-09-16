@@ -188,6 +188,86 @@ export class CloudinaryService {
       throw new BadRequestException(`Caricamento non riuscito: ${message}`);
     }
   }
+
+  /**
+   * Scarica un documento (PDF/Word/Excel, allegato in chat) da Cloudinary
+   * server-to-server e lo restituisce pronto per essere inoltrato al
+   * browser dal nostro stesso backend.
+   *
+   * Bug reale segnalato dall'utente DOPO il fix precedente (doppia
+   * estensione, vedi il commento sopra in `uploadMedia`): "quando vado a
+   * cliccare sul file pdf nella chat mi apre una pagina web, invece deve
+   * farti scaricare direttamente il file". Un `<a download>` puntato
+   * direttamente a `res.cloudinary.com` (un'origine diversa dal sito) fa
+   * sì che l'attributo HTML `download` non sia garantito — per un URL
+   * cross-origine molti browser lo ignorano e navigano semplicemente alla
+   * risorsa, che per un PDF significa aprirlo nel visualizzatore integrato
+   * ("una pagina web") invece di scaricarlo. La sola dipendenza dal flag
+   * `fl_attachment` di Cloudinary (header `Content-Disposition` impostato
+   * dalla LORO CDN) non basta a forzare il download in ogni condizione
+   * osservata in produzione, e non è comunque verificabile da questo
+   * ambiente di sviluppo (`res.cloudinary.com` bloccato dalla policy di
+   * rete del sandbox). Facendo transitare il file dal nostro stesso
+   * backend (fetch server-to-server, nessun vincolo CORS/cross-origine) e
+   * impostando NOI STESSI `Content-Disposition: attachment` sulla
+   * risposta (nel controller), il download diventa affidabile
+   * indipendentemente dal comportamento della CDN esterna — il frontend
+   * lo consuma come blob e lo scarica da un URL `blob:`, sempre trattato
+   * come "stessa origine" da qualunque browser (stesso principio già
+   * usato altrove nel prodotto, es. `ImageCropModal`).
+   *
+   * Blocco di sicurezza esplicito: questo metodo fa da proxy SOLO per URL
+   * di consegna Cloudinary del nostro stesso cloud, generati dal nostro
+   * upload firmato (ramo "raw" sopra) — mai un proxy aperto verso un URL
+   * arbitrario. Verificato sia sull'host/cloud reale sia sulla presenza
+   * della firma (`/s--...--/`), prova che l'URL sia stato generato da noi
+   * e non semplicemente costruito a mano da un chiamante malintenzionato.
+   */
+  async fetchAttachmentForDownload(rawUrl: string): Promise<{ buffer: Buffer; contentType: string; filename: string }> {
+    if (!this.isConfigured) {
+      throw new BadRequestException("Il download non è disponibile: Cloudinary non è configurato su questo ambiente.");
+    }
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const expectedPrefix = `https://res.cloudinary.com/${cloudName}/raw/upload/`;
+    if (!rawUrl.startsWith(expectedPrefix) || !/\/s--[\w-]+--\//.test(rawUrl)) {
+      throw new BadRequestException("URL non valido per il download.");
+    }
+
+    let response;
+    try {
+      response = await fetch(rawUrl);
+    } catch {
+      throw new BadRequestException("Impossibile raggiungere il file in questo momento.");
+    }
+    if (!response.ok) {
+      throw new BadRequestException("File non trovato o non più disponibile.");
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+    const filename = extractAttachmentFilename(rawUrl);
+    return { buffer, contentType, filename };
+  }
+}
+
+const DOWNLOADABLE_DOCUMENT_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx"];
+
+/**
+ * Nome file reale da mostrare al download, estratto dal flag
+ * `fl_attachment:<nome>` incorporato nell'URL firmato (vedi `uploadMedia`,
+ * ramo "raw") — stessa logica già in uso lato frontend
+ * (`apps/web/src/lib/media.ts`, `attachmentFileName`), duplicata qui
+ * perché backend e frontend non condividono un package per una funzione
+ * così piccola. Estensione ripresa dal percorso dell'URL (già incorporata
+ * nel public_id per un resource_type "raw"), non dal flag stesso (che
+ * porta solo il nome senza estensione, vedi `sanitizeAttachmentFilename`).
+ */
+function extractAttachmentFilename(url: string): string {
+  const clean = url.split("?")[0] ?? "";
+  const match = /\/fl_attachment:([^/,]+)/.exec(clean);
+  const base = match?.[1] ? decodeURIComponent(match[1]) : "documento";
+  const extension = DOWNLOADABLE_DOCUMENT_EXTENSIONS.find((ext) => clean.endsWith(ext));
+  return extension ? `${base}${extension}` : base;
 }
 
 /**

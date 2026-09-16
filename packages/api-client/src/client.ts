@@ -672,6 +672,31 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     uploadTimelinePhoto: (token: string, file: Blob) =>
       uploadFile<{ imageUrl: string }>("/guided-requests/timeline-photos", token, file, "image"),
 
+    /**
+     * Scarica un allegato documento della chat (PDF/Word/Excel) tramite il
+     * proxy del nostro stesso backend — mai un link diretto a Cloudinary,
+     * cross-origine (bug reale segnalato dall'utente: "mi apre una pagina
+     * web, invece deve farti scaricare direttamente il file", vedi
+     * `apps/api/src/cloudinary/cloudinary.service.ts`,
+     * `fetchAttachmentForDownload`). Il chiamante crea un URL `blob:` dal
+     * risultato e lo scarica da lì — sempre trattato come "stessa origine"
+     * da qualunque browser, a differenza di un URL Cloudinary diretto.
+     */
+    downloadTimelineAttachment: async (token: string, url: string): Promise<{ blob: Blob; filename: string }> => {
+      const response = await fetch(`${baseUrl}/guided-requests/timeline-photos/download?url=${encodeURIComponent(url)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(extractErrorMessage(body, "Download del file non riuscito."));
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const match = /filename="([^"]*)"/.exec(disposition);
+      const filename = match?.[1] ? decodeURIComponent(match[1]) : "allegato";
+      return { blob, filename };
+    },
+
     /** Inbox "Chat" (richiesta esplicita dell'utente): tutti i thread a cui l'utente partecipa, con solo l'ultimo messaggio come anteprima. */
     myChatThreads: (token: string) => request<ChatThreadSummary[]>("/guided-requests/chat-threads", { headers: { Authorization: `Bearer ${token}` } }),
 

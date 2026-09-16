@@ -25,43 +25,6 @@ export function documentTypeLabel(url: string): string {
 }
 
 /**
- * Forza il download di un URL Cloudinary (`fl_attachment`, header
- * `Content-Disposition: attachment` nella risposta) invece di lasciare che
- * il browser lo apra semplicemente inline in una nuova scheda — richiesta
- * esplicita dell'utente per l'opzione "File" della chat ("in modo che
- * l'altro successivamente possa scaricare quel file"). Il solo attributo
- * HTML `download` su un `<a>` non è garantito cross-origin (Cloudinary è
- * un'origine diversa dal sito): alcuni browser ignorano `download` per un
- * URL esterno e navigano semplicemente alla risorsa. `fl_attachment` è il
- * flag di trasformazione ufficiale di Cloudinary per questo, funziona per
- * qualunque resource_type (image/video/raw). URL non riconosciuto come
- * URL di delivery Cloudinary (`/upload/`) → ritornato invariato, mai un
- * link rotto.
- *
- * Un URL caricato dopo il fix del bug "file vuoto" (`CloudinaryService.
- * uploadMedia`, ramo "raw") porta già `fl_attachment:<nome>` **firmato** al
- * momento dell'upload — inserirne un secondo qui, non firmato, invaliderebbe
- * la firma esistente (calcolata su transformazione+public_id+api_secret) e
- * farebbe fallire di nuovo la consegna. `hasEmbeddedAttachmentFlag` lo
- * riconosce e lascia l'URL invariato in quel caso; solo un URL "vecchio
- * stile" (caricato prima del fix, mai firmato) riceve ancora l'inserimento
- * qui.
- */
-export function cloudinaryDownloadUrl(url: string): string {
-  if (hasEmbeddedAttachmentFlag(url)) return url;
-  const marker = "/upload/";
-  const index = url.indexOf(marker);
-  if (index === -1) return url;
-  const insertAt = index + marker.length;
-  return `${url.slice(0, insertAt)}fl_attachment/${url.slice(insertAt)}`;
-}
-
-/** True se l'URL porta già un flag `fl_attachment[:nome]` incorporato (upload firmato lato server, vedi `cloudinaryDownloadUrl`). */
-function hasEmbeddedAttachmentFlag(url: string): boolean {
-  return /\/fl_attachment(:|\/|,)/.test(url);
-}
-
-/**
  * Nome file originale da mostrare al download, estratto dal flag
  * `fl_attachment:<nome>` incorporato nell'URL (upload firmato lato server) —
  * `null` per un URL "vecchio stile" senza quel flag, dove il nome reale non
