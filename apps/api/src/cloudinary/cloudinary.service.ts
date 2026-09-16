@@ -138,11 +138,42 @@ export class CloudinaryService {
             // stessa richiesta esplicita dell'utente risolta nello stesso
             // punto, nessun campo nuovo nello schema per portarlo avanti:
             // il nome resta incorporato nell'URL firmato stesso.
+            //
+            // Bug reale corretto (segnalazione "ancora non riesco a
+            // scaricare i file" dopo il primo giro sopra): passare
+            // `result.public_id` insieme a `format: rawExtension` a
+            // `cloudinary.url()` può produrre un'estensione doppia — per
+            // `resource_type: "raw"` Cloudinary include già l'estensione
+            // dentro il `public_id` restituito (gotcha noto della loro
+            // API, diverso da image/video dove l'estensione resta un
+            // campo `format` separato); `finalize_source` (SDK, vedi
+            // `node_modules/cloudinary/lib/utils/index.js`) appende
+            // SEMPRE `.` + `format` al source quando `format != null`,
+            // senza controllare se è già presente — risultato:
+            // "documento.pdf" + ".pdf" = "documento.pdf.pdf", un percorso
+            // che non corrisponde alla risorsa realmente salvata (file
+            // vuoto/errore alla consegna). Corretto estraendo il
+            // percorso `public_id[.estensione]` direttamente da
+            // `result.secure_url` (l'URL di consegna che Cloudinary
+            // stesso ha appena generato per questa identica risorsa,
+            // quindi per costruzione già corretto qualunque sia il
+            // comportamento reale su public_id/estensione) invece di
+            // ricostruirlo a mano — e passando quel percorso senza alcun
+            // `format` separato, cosicché non venga mai più appesa
+            // un'estensione ulteriore. Stessa cautela sulla versione: usare
+            // quella reale già presente in `secure_url` (invece di
+            // lasciarla implicita, `force_version` di default userebbe
+            // sempre "v1" per qualunque risorsa) fa combaciare l'URL
+            // firmato byte per byte con quello che Cloudinary ha davvero
+            // generato per questa risorsa.
             const safeName = sanitizeAttachmentFilename(file.originalname);
-            const downloadUrl = cloudinary.url(result.public_id, {
+            const uploadPathMatch = /\/upload\/v(\d+)\/(.+)$/.exec(result.secure_url);
+            const rawVersion = uploadPathMatch?.[1];
+            const rawSource = uploadPathMatch?.[2] ?? result.public_id;
+            const downloadUrl = cloudinary.url(rawSource, {
               resource_type: "raw",
               type: "upload",
-              format: rawExtension,
+              ...(rawVersion ? { version: rawVersion } : {}),
               secure: true,
               sign_url: true,
               flags: `attachment:${safeName}`,

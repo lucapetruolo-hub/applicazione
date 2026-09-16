@@ -12044,3 +12044,91 @@ soddisfi il criterio "doppio cieco" (comportamento già esistente,
 invariato). Typecheck pulito su tutti i package (`shared`, `database`,
 `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione `apps/web`
 verde (35 route, nessuna nuova).
+
+---
+
+## 97. Nome del file già visibile in chat + bug reale: documento ancora non scaricabile (doppia estensione)
+
+Due richieste esplicite dell'utente, stesso giro: prima *"Nelle chat i file
+deve essere già visibile il nome del file in chat"*, poi, dopo aver
+riverificato in produzione, *"Ancora non riesco a scaricare i file,
+correggi"* — il fix precedente per lo stesso identico bug (§95, "documento
+allegato in chat scaricato vuoto") non aveva risolto il problema sul sito
+reale.
+
+**Nome del file visibile senza dover cliccare** — prima, ogni documento
+(PDF/Word/Excel) allegato in chat (§80, "graffetta"/File) mostrava solo
+`MediaPreview` in modalità documento: una tessera quadrata con icona +
+estensione ("PDF"), mai il nome reale — visibile solo dopo il click
+(download) o mai, per l'anteprima nel composer prima dell'invio. In
+`TimelineModal.tsx`, sia nella griglia media di un evento già inviato sia
+in quella del composer (bozza non ancora inviata), un documento ora
+sostituisce del tutto la tessera quadrata con una chip orizzontale
+icona+nome (`attachmentFileName(url)`, già esposto da `apps/web/src/lib/
+media.ts` dal fix precedente — ripiego su `Documento.<estensione>` per un
+allegato caricato prima di quel fix, dove il nome originale non è mai
+stato conservato), `numberOfLines={1}` con `maxWidth` per non spezzare il
+layout su una conversazione lunga — foto/video restano invece sulla
+tessera quadrata di sempre, questa richiesta riguardava solo i documenti.
+Nel composer, il tasto "x" di rimozione si sposta dall'overlay circolare
+in alto a destra (pensato per una tessera quadrata) a un piccolo cerchio
+in coda alla chip, con `stopPropagation` esplicito per non far scattare
+anche il download/apertura al click sulla rimozione.
+
+**Bug reale, causa mai trovata nel primo giro (§95)**: il fix precedente
+firmava l'URL di consegna con `cloudinary.url(result.public_id, {
+resource_type: "raw", format: rawExtension, sign_url: true, flags:
+"attachment:<nome>" })` — ma per `resource_type: "raw"` **Cloudinary
+include già l'estensione dentro il `public_id` restituito dall'upload**
+(gotcha noto e documentato della loro API, diverso da image/video dove
+l'estensione resta un campo `format` separato dal public_id). Passare
+ANCHE `format: rawExtension` a `cloudinary.url()` fa sì che `finalize_source`
+(SDK, `node_modules/cloudinary/lib/utils/index.js`, funzione interna che
+compone l'URL) appenda **sempre** `.` + `format` al source quando `format
+!= null`, senza controllare se è già presente — risultato: un percorso
+tipo `timeline-updates/abc123xyz.pdf` + `.pdf` = `.../abc123xyz.pdf.pdf`,
+che non corrisponde alla risorsa realmente salvata su Cloudinary (la
+firma risultava comunque valida — è solo una funzione crittografica
+dell'input fornito — ma l'input stesso puntava a un percorso inesistente,
+la CDN risponde vuoto/errore proprio come segnalato: "il file è vuoto"/
+"ancora non riesco a scaricare i file"). **Verificato con il vero SDK
+Cloudinary installato** (`node_modules/cloudinary`, v2.10.0, letto
+direttamente il codice sorgente di `finalize_source`, non solo ipotizzato):
+confermato che l'appendice dell'estensione è incondizionata quando
+`format` è passato, qualunque sia già presente nel source.
+
+**Fix**: invece di ricostruire a mano `public_id`+`format` (fonte
+dell'ambiguità), `CloudinaryService.uploadMedia` (ramo `resourceType ===
+"raw"`) estrae il percorso completo `public_id[.estensione]` **direttamente
+da `result.secure_url`** — l'URL di consegna che Cloudinary stesso ha
+appena generato per questa identica risorsa, quindi per costruzione già
+corretto qualunque sia il comportamento reale su public_id/estensione —
+tramite `/\/upload\/v(\d+)\/(.+)$/.exec(result.secure_url)` (cattura
+anche la versione reale, non lasciata implicita: senza, `cloudinary.url()`
+avrebbe forzato "v1" per qualunque risorsa tramite `force_version` invece
+della versione vera). Il percorso estratto viene passato come `public_id`
+a `cloudinary.url()` **senza alcun `format` separato**, cosicché
+`finalize_source` non abbia più nulla da appendere — l'URL firmato
+risultante combacia byte per byte con `secure_url`, solo con firma +
+`fl_attachment:<nome>` in più. Ripiego su `result.public_id` (comportamento
+di prima) solo se `secure_url` non rispetta il formato atteso (mai
+osservato, ma nessun crash in quel caso limite). Verificato con lo stesso
+SDK reale in un `node -e` dedicato (credenziali fittizie, stessa
+impossibilità di raggiungere `res.cloudinary.com` da questo ambiente di
+sviluppo già documentata altrove in questo file): l'approccio precedente
+produce davvero `.pdf.pdf` con un `public_id` che già porta l'estensione
+(scenario riprodotto esplicitamente), il nuovo produce un'unica estensione
+identica al percorso di `secure_url`, versione reale inclusa.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright: script dedicato con l'URL firmato "corretto" (stessa forma che
+il codice fisso produce ora, versione+percorso reali, `fl_attachment:
+Preventivo_lavori_settembre`) — nome del file (`Preventivo_lavori_
+settembre.pdf`) visibile nella chip del composer **prima** dell'invio,
+click sulla chip scarica con un href a singola estensione `.pdf` (mai
+`.pdf.pdf`) e il nome reale conservato; dopo l'invio, lo stesso nome
+resta visibile nel messaggio senza bisogno di cliccare. Screenshot di
+controllo con la chip "📄 Preventivo_lavori_settembre.pdf" visibile
+direttamente nella nuvoletta di chat. Zero errori console. Typecheck
+pulito su tutti i package (`shared`, `api`, `web`), build di produzione
+`apps/web` verde (35 route, nessuna nuova).

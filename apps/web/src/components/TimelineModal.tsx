@@ -538,14 +538,43 @@ export function TimelineModal({
                       ) : null}
                       {event.mediaUrls.length > 0 ? (
                         <XStack gap="$2" flexWrap="wrap">
-                          {event.mediaUrls.map((url) => (
-                            <MediaPreview
-                              key={url}
-                              url={url}
-                              onClick={() => openMediaAt(event.mediaUrls, url)}
-                              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                            />
-                          ))}
+                          {event.mediaUrls.map((url) =>
+                            // Un documento (PDF/Word/Excel) deve mostrare già
+                            // il proprio nome in chat, non solo un'icona
+                            // generica "PDF" — richiesta esplicita
+                            // dell'utente ("deve essere già visibile il nome
+                            // del file in chat"): chip icona+nome invece
+                            // della tessera quadrata riservata a foto/video.
+                            isDocumentUrl(url) ? (
+                              <XStack
+                                key={url}
+                                alignItems="center"
+                                gap="$1.5"
+                                maxWidth={200}
+                                paddingHorizontal="$2"
+                                paddingVertical="$1.5"
+                                borderRadius="$2"
+                                borderWidth={1}
+                                borderColor={brand.filetto}
+                                backgroundColor={brand.calce}
+                                cursor="pointer"
+                                onPress={() => openMediaAt(event.mediaUrls, url)}
+                                accessibilityRole="button"
+                              >
+                                <Icon name="file-text" size={14} color={brand.cianografia} />
+                                <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                                  {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+                                </Text>
+                              </XStack>
+                            ) : (
+                              <MediaPreview
+                                key={url}
+                                url={url}
+                                onClick={() => openMediaAt(event.mediaUrls, url)}
+                                style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                              />
+                            ),
+                          )}
                         </XStack>
                       ) : null}
                     </YStack>
@@ -582,37 +611,81 @@ export function TimelineModal({
             }}
           />
           <XStack gap="$2" flexWrap="wrap">
-            {mediaUrls.map((url) => (
-              <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                {/* Bug reale corretto: l'anteprima di un file appena
-                    allegato (non ancora inviato) non aveva alcun
-                    `onClick` — un documento restava "muto" al click invece
-                    di scaricarsi (segnalato dall'utente: "quando si
-                    inserisce un file nella chat, non la fa scaricare").
-                    Stesso `openMediaAt` già in uso per i messaggi inviati:
-                    scarica se è un documento, apre il lightbox se è
-                    foto/video — qui applicato sulla sola lista `mediaUrls`
-                    del composer invece che su quella di un evento. */}
-                <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
-                <YStack
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  width={18}
-                  height={18}
-                  borderRadius={9}
-                  backgroundColor="rgba(20,24,30,0.7)"
+            {mediaUrls.map((url) =>
+              // Un documento non ancora inviato mostra già il proprio nome
+              // reale (richiesta esplicita dell'utente, stesso principio
+              // applicato sopra ai messaggi già inviati) — chip icona+nome
+              // con un tasto "x" in coda invece della tessera quadrata con
+              // l'overlay circolare usato per foto/video.
+              isDocumentUrl(url) ? (
+                <XStack
+                  key={url}
                   alignItems="center"
-                  justifyContent="center"
+                  gap="$1.5"
+                  maxWidth={220}
+                  paddingHorizontal="$2"
+                  paddingVertical="$1.5"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  backgroundColor={brand.gesso}
                   cursor="pointer"
-                  onPress={() => removeMedia(url)}
+                  onPress={() => openMediaAt(mediaUrls, url)}
                   accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
                 >
-                  <Icon name="x" size={11} color="white" strokeWidth={2} />
+                  <Icon name="file-text" size={14} color={brand.cianografia} />
+                  <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                    {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+                  </Text>
+                  <YStack
+                    width={16}
+                    height={16}
+                    borderRadius={8}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      removeMedia(url);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi allegato"
+                  >
+                    <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
+                  </YStack>
+                </XStack>
+              ) : (
+                <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  {/* Bug reale corretto: l'anteprima di un file appena
+                      allegato (non ancora inviato) non aveva alcun
+                      `onClick` — un documento restava "muto" al click invece
+                      di scaricarsi (segnalato dall'utente: "quando si
+                      inserisce un file nella chat, non la fa scaricare").
+                      Stesso `openMediaAt` già in uso per i messaggi inviati:
+                      scarica se è un documento, apre il lightbox se è
+                      foto/video — qui applicato sulla sola lista `mediaUrls`
+                      del composer invece che su quella di un evento. */}
+                  <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
+                  <YStack
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    width={18}
+                    height={18}
+                    borderRadius={9}
+                    backgroundColor="rgba(20,24,30,0.7)"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => removeMedia(url)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi foto"
+                  >
+                    <Icon name="x" size={11} color="white" strokeWidth={2} />
+                  </YStack>
                 </YStack>
-              </YStack>
-            ))}
+              ),
+            )}
             {mediaUrls.length < MAX_UPDATE_MEDIA ? (
               // Graffetta + menu (richiesta esplicita dell'utente: "al
               // posto del file più, metti il simbolo di una graffetta per
