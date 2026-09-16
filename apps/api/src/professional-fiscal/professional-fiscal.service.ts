@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
-import type { ProfessionalFiscalProfileInput, SetFiscalVerificationInput } from "@professionisti/shared";
+import { FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 
@@ -100,6 +100,16 @@ export class ProfessionalFiscalService {
       data.verificationStatus = "REQUIRES_UPDATE";
       data.verifiedAt = null;
     }
+    // Dichiarazione fiscale richiesta esplicitamente al salvataggio (mai un
+    // `false` inviato dal client — un salvataggio senza spunta è bloccato
+    // già lato UI, qui è solo difensivo): stesso pattern di
+    // `User.legalConsentAt`/`legalConsentVersion` per il consenso di
+    // registrazione, mai retroattivo su un'accettazione già data a una
+    // versione precedente del testo.
+    if (input.fiscalDeclarationAccepted) {
+      data.fiscalDeclarationAcceptedAt = new Date();
+      data.fiscalDeclarationVersion = FISCAL_DECLARATION_VERSION;
+    }
 
     const fiscalProfile = existing
       ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data })
@@ -117,6 +127,17 @@ export class ProfessionalFiscalService {
         oldValue,
         newValue,
         changedByUserId: userId,
+      });
+    }
+
+    if (input.fiscalDeclarationAccepted) {
+      await this.auditLogService.record({
+        entityType: "ProfessionalFiscalProfile",
+        entityId: fiscalProfile.id,
+        fieldName: "fiscalDeclarationAccepted",
+        newValue: FISCAL_DECLARATION_VERSION,
+        changedByUserId: userId,
+        reason: "Dichiarazione di correttezza dei dati fiscali accettata al salvataggio.",
       });
     }
 

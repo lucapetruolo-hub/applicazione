@@ -1216,9 +1216,18 @@ model ContentReport {
 // amministratore reale oggi sarebbe uno scope aggiuntivo non richiesto.
 // ---------------------------------------------------------------------------
 
+// Tre categorie, non due — richiesta esplicita dell'utente ("Privato",
+// "Professionista", "Azienda"): PRIVATE_INDIVIDUAL e SOLE_PROPRIETOR sono
+// entrambe persone fisiche (nessuna personalità giuridica propria, tassate
+// IRPEF) — la sola differenza è il possesso di una Partita IVA, che decide
+// quali campi la UI richiede (vatNumber/businessRegistrationNumber solo per
+// SOLE_PROPRIETOR). BUSINESS resta la sola categoria con personalità
+// giuridica separata (SRL/SPA/ecc., IRES) — unica con un legale
+// rappresentante (FiscalRepresentative) distinto dalla persona stessa.
 enum ProfessionalEntityType {
-  INDIVIDUAL // Persona fisica (con o senza P.IVA)
-  BUSINESS // Impresa/società (ditta individuale, SRL, ecc.)
+  PRIVATE_INDIVIDUAL // Privato — persona fisica, senza P.IVA
+  SOLE_PROPRIETOR // Professionista — persona fisica con P.IVA (libero professionista/ditta individuale, non una società a sé)
+  BUSINESS // Azienda — impresa/società con personalità giuridica propria (SRL, SPA, ecc.)
 }
 
 enum FiscalVerificationStatus {
@@ -1289,6 +1298,17 @@ model ProfessionalFiscalProfile {
   verificationStatus FiscalVerificationStatus @default(UNVERIFIED)
   verificationNote   String? // Motivo di un REJECTED/REQUIRES_UPDATE, mostrato al professionista
   verifiedAt         DateTime?
+
+  // Dichiarazione richiesta esplicitamente dall'utente al salvataggio dei
+  // dati fiscali ("salvando i dati si dichiara che le informazioni fornite
+  // sono corrette e che svolgo l'attività... nel rispetto degli obblighi
+  // fiscali applicabili alla mia situazione") — stesso pattern già in uso
+  // per il consenso di registrazione (`User.legalConsentAt`/
+  // `legalConsentVersion`, CLAUDE.md §48): timestamp + versione del testo
+  // accettato, mai solo un booleano (una versione futura del testo può
+  // richiedere una nuova accettazione).
+  fiscalDeclarationAcceptedAt DateTime?
+  fiscalDeclarationVersion    String?
 
   // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
   stripeConnectAccountId   String? @unique

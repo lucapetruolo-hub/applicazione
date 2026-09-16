@@ -266,8 +266,13 @@ export class Dac7Service implements OnModuleInit {
         numberOfActivities = { ...zeroed, [`q${refreshed.quarter}`]: r.numberOfTransactions };
       }
 
+      // PRIVATE_INDIVIDUAL e SOLE_PROPRIETOR sono entrambe persone fisiche
+      // per lo schema OECD DPI (solo BUSINESS ha personalità giuridica
+      // propria, ramo "entity" sotto) — un SOLE_PROPRIETOR (Professionista,
+      // persona fisica con P.IVA) riporta comunque la Partita IVA come TIN
+      // quando disponibile, invece del solo codice fiscale.
       const individual =
-        fp?.entityType === "INDIVIDUAL"
+        fp && fp.entityType !== "BUSINESS"
           ? {
               firstName: fp.fiscalFirstName,
               lastName: fp.fiscalLastName,
@@ -276,7 +281,7 @@ export class Dac7Service implements OnModuleInit {
               birthCountry: fp.countryOfBirth,
               tinType: "OECD202",
               tinIssuedBy: issuedBy,
-              tinValue: fp.fiscalCodiceFiscale,
+              tinValue: (fp.entityType === "SOLE_PROPRIETOR" && fp.vatNumber) || fp.fiscalCodiceFiscale,
               addressCountryCode: fp.registeredCountry,
               addressFree,
             }

@@ -12748,3 +12748,145 @@ di sviluppo locale"): riavvio pulito del server (kill + `rm -rf .next` +
 restart) prima di concludere la verifica. Zero overflow orizzontale, zero
 errori console reali. Typecheck pulito su `apps/web`, build di produzione
 verde (37 route, nessuna nuova).
+
+---
+
+## 106. Categoria fiscale a tre vie (Privato/Professionista/Azienda) — schermata
+post-registrazione + dichiarazione al salvataggio
+
+Richiesta esplicita dell'utente: "Dopo che l'utente si registra tramite
+autenticazione Google o tramite e-mail e password, fagli aprire subito la
+schermata dove chiede come vuole fornire i servizi: privato (persona
+fisica senza P IVA), professionista (persona fisica con P IVA), azienda
+(impresa/società) e adattare i dati da chiedere nella pagina successiva in
+base alla scelta e fai comparire una dichiarazione dicendo che salvando i
+dati si dichiara che le informazioni fornite sono corrette e che svolgo
+l'attività indicata sulla piattaforma nel rispetto degli obblighi fiscali
+applicabili alla mia situazione." — completa un binario già esistente
+(`ProfessionalFiscalProfile.entityType`, INDIVIDUAL/BUSINESS, MANOVIA
+§88) che confondeva "libero professionista con P.IVA" (persona fisica) con
+"impresa/società" (personalità giuridica propria) sotto lo stesso valore
+`BUSINESS`.
+
+**Tre categorie, non due, nello schema** — `ProfessionalEntityType`
+(Prisma) rinominato/esteso da `INDIVIDUAL | BUSINESS` a
+`PRIVATE_INDIVIDUAL | SOLE_PROPRIETOR | BUSINESS`: `PRIVATE_INDIVIDUAL`
+(Privato) e `SOLE_PROPRIETOR` (Professionista) sono entrambe persone
+fisiche a livello fiscale italiano (tassate IRPEF, nessuna personalità
+giuridica propria) — la sola differenza è il possesso di una Partita IVA,
+che decide quali campi la UI richiede (`vatNumber`/
+`businessRegistrationNumber` solo per `SOLE_PROPRIETOR`). `BUSINESS`
+(Azienda) resta la sola categoria con personalità giuridica separata
+(SRL/SPA/ecc., IRES) — unica con un legale rappresentante
+(`FiscalRepresentative`) distinto dalla persona stessa. Migrazione dati
+locale (23 righe di test già esistenti, `INDIVIDUAL` → `PRIVATE_INDIVIDUAL`)
+applicata in due passaggi (`ALTER TYPE ... ADD VALUE` + `UPDATE` prima di
+`prisma db push --accept-data-loss`, che altrimenti rifiuta di eliminare
+un valore enum ancora referenziato) — nessuna riga persa.
+
+**Schermata di scelta — `/dashboard/tipo-attivita`** (nuova pagina):
+mostrata da `afterAuth` in `/registrati` solo per un account
+**professionista appena creato** (`isNewUser`, mai per un account
+esistente che rifà login — `router.push(isNewUser ?
+"/dashboard/tipo-attivita" : "/dashboard")`), tre card cliccabili
+(icone nuove nel registro condiviso — `user-round`/`briefcase`/
+`building-2`, verificate presenti sia in `lucide-react` che
+`lucide-react-native` prima di aggiungerle) + link "Scegli più tardi" →
+`/dashboard/profilo` (comportamento pre-esistente, invariato).
+
+**Vincolo tecnico reale scoperto durante la verifica, non solo ipotizzato**
+(non un bug del codice esistente, un conflitto architetturale scoperto
+mentre si implementava questa funzionalità): `ProfessionalFiscalProfile`
+è agganciato 1:1 a `ProfessionalProfile`
+(`requireMyProfileId`/`NotFoundException`), che **non esiste ancora** per
+un account appena registrato — viene creato solo al primo salvataggio di
+`/dashboard/profilo` (nome attività, categoria, città). Un primo
+tentativo di implementazione faceva salvare la scelta direttamente dalla
+schermata di gate (`PUT /professionals/me/fiscal-profile` al click) —
+riprodotto con Playwright: falliva sempre con 404 "Completa prima il tuo
+profilo professionista." per qualunque account brand-new, esattamente il
+caso d'uso principale di questa funzionalità. Corretto senza toccare la
+relazione 1:1 esistente (cambiarla avrebbe richiesto una revisione
+architetturale non discussa) — la schermata di gate **non salva più
+nulla**, passa solo la scelta come query param
+(`/dashboard/fiscale?entityType=SOLE_PROPRIETOR`); `/dashboard/fiscale`
+la legge una sola volta (`useSearchParams`, richiede `<Suspense>` —
+stesso gotcha di build già documentato più volte in questo file) e
+pre-seleziona il picker **solo se il profilo non ha già un entityType
+salvato** (mai sovrascrivere una scelta reale già fatta), senza persistere
+nulla finché non si clicca davvero "Salva dati fiscali". Se a quel punto
+`ProfessionalProfile` non esiste ancora, il messaggio d'errore esistente
+("Completa prima il tuo profilo professionista.") è ora accompagnato da
+un link diretto "Vai al tuo profilo pubblico →" — guida invece di un
+vicolo cieco.
+
+**Dichiarazione al salvataggio** — nuovi campi
+`ProfessionalFiscalProfile.fiscalDeclarationAcceptedAt`/
+`fiscalDeclarationVersion`, stesso pattern già stabilito per il consenso
+di registrazione (`User.legalConsentAt`/`legalConsentVersion`, CLAUDE.md
+§48: timestamp + versione del testo, mai un booleano semplice — una
+versione futura del testo richiederebbe una nuova accettazione, mai
+retroattiva). Nuova costante `FISCAL_DECLARATION_VERSION`
+(`packages/shared`). Checkbox con il testo esatto richiesto dall'utente,
+mostrata solo quando una categoria è selezionata, **pre-spuntata solo se
+già accettata in un salvataggio precedente** (un professionista che
+modifica dati già dichiarati non deve ri-confermare ad ogni singola
+modifica — il testo resta comunque sempre visibile accanto al bottone) —
+bottone "Salva dati fiscali" disabilitato finché non è spuntata, oltre al
+vincolo preesistente `!entityType`. `ProfessionalFiscalService.upsertMine`
+marca `fiscalDeclarationAccepted` solo se `true` (mai un `false` esplicito
+che azzera un'accettazione precedente — il gate lato UI garantisce che
+arrivi sempre `true` quando presente) e produce un `AuditLog` dedicato
+(`fieldName: "fiscalDeclarationAccepted"`), coerente con il principio
+della specifica MANOVIA "mai sovrascrivere un dato fiscale senza uno
+storico versionato".
+
+**DAC7 — branching esteso, mai un crash sui nuovi valori enum**:
+`Dac7Service` (costruzione dell'export XML/JSON) trattava
+`entityType === "INDIVIDUAL"` come unico ramo "persona fisica" — ora
+`entityType !== "BUSINESS"` (copre sia `PRIVATE_INDIVIDUAL` che
+`SOLE_PROPRIETOR`), con `tinValue` che preferisce la Partita IVA quando
+`SOLE_PROPRIETOR` la possiede, altrimenti ricade sul codice fiscale — un
+libero professionista con P.IVA riporta quella come identificativo
+fiscale invece del solo codice fiscale personale. Nessuna modifica al
+ramo "entity" (solo `BUSINESS`, invariato).
+
+**Etichette esatte richieste dall'utente**: "Privato" (persona fisica,
+senza Partita IVA), "Professionista" (persona fisica con Partita IVA —
+libero professionista, ditta individuale), "Azienda" (impresa o società
+con personalità giuridica propria, es. SRL/SPA) — usate identiche sia
+nella schermata di gate sia nel picker di `/dashboard/fiscale`.
+
+Verificato end-to-end con l'API/Postgres locali reali (non solo
+typecheck/build) e uno script Playwright dedicato — **19/19 controlli
+PASS**: registrazione professionista → atterra su
+`/dashboard/tipo-attivita` (non più `/dashboard/profilo` direttamente) →
+le tre scelte visibili → click su "Professionista" →
+`/dashboard/fiscale?entityType=SOLE_PROPRIETOR` con i campi già adattati
+(Partita IVA visibile, nessuna sezione "Legale rappresentante") →
+dichiarazione visibile, bottone "Salva" disabilitato finché non spuntata
+→ un primo tentativo di salvataggio (account senza ancora un
+`ProfessionalProfile`) bloccato con il messaggio guidato e il link
+funzionante verso `/dashboard/profilo` → profilo pubblico completato
+(businessName/categoria/città, stesso prompt F4.1 "Vuoi impostare
+l'agenda?" già esistente comparso correttamente, nessuna regressione) →
+tornando su `/dashboard/fiscale?entityType=SOLE_PROPRIETOR` il secondo
+salvataggio riesce per davvero — confermato via `GET
+/professionals/me/fiscal-profile`: `entityType: "SOLE_PROPRIETOR"`,
+`vatNumber` corretto, `fiscalDeclarationAcceptedAt` valorizzato. Percorso
+"Scegli più tardi" verificato separatamente: nessun profilo fiscale mai
+creato, stesso 404 "Completa prima..." già esistente per qualunque
+account senza `ProfessionalProfile` (comportamento pre-esistente,
+invariato). Salvataggio diretto via API di `BUSINESS`/`PRIVATE_INDIVIDUAL`
+sullo stesso account (già con `ProfessionalProfile`) confermato corretto.
+Zero errori console reali (un warning cosmetico pre-esistente su
+`ConsentCheckbox`/`accessibilityState`, non toccato in questo giro, e i
+soliti 404/prefetch RSC della policy di rete di questo ambiente di
+sviluppo, entrambi già documentati altrove in questo file). Export DAC7
+(XML+JSON) rieseguito con i nuovi valori enum su dati di test reali
+(12 venditori, nessun crash — un tempo `INDIVIDUAL`, ora correttamente
+migrati e riconosciuti come `PRIVATE_INDIVIDUAL` nel ramo XML
+"individual"). Typecheck pulito su tutti i package (`shared`, `database`,
+`api-client`, `ui`, `api`, `web`, `mobile`), build di produzione
+`apps/web` verde (38 route, una nuova: `/dashboard/tipo-attivita`) e
+`apps/api` verde.

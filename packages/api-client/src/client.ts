@@ -286,7 +286,7 @@ export type FiscalVerificationStatus = "UNVERIFIED" | "PENDING_VERIFICATION" | "
 export type ProfessionalFiscalProfile = {
   id: string;
   professionalProfileId: string;
-  entityType: "INDIVIDUAL" | "BUSINESS" | null;
+  entityType: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null;
   fiscalFirstName: string | null;
   fiscalLastName: string | null;
   fiscalCodiceFiscale: string | null;
@@ -311,6 +311,7 @@ export type ProfessionalFiscalProfile = {
   verificationStatus: FiscalVerificationStatus;
   verificationNote: string | null;
   verifiedAt: string | null;
+  fiscalDeclarationAcceptedAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;

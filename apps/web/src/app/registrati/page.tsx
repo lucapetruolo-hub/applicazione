@@ -290,7 +290,12 @@ function RegistratiForm() {
       router.push("/");
       return;
     }
-    router.push(isNewUser ? "/dashboard/profilo" : "/dashboard");
+    // Richiesta esplicita dell'utente: un account professionista appena
+    // creato apre subito la schermata "Come fornirai i tuoi servizi?"
+    // (/dashboard/tipo-attivita, skippabile) prima del profilo pubblico —
+    // un professionista che accede di nuovo (non isNewUser) va invece
+    // dritto in Dashboard come già prima.
+    router.push(isNewUser ? "/dashboard/tipo-attivita" : "/dashboard");
   }
 
   async function handleRegister() {

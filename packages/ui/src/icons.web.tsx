@@ -60,6 +60,9 @@ import {
   Menu,
   SlidersHorizontal,
   TrendingUp,
+  UserRound,
+  Briefcase,
+  Building2,
 } from "lucide-react";
 
 export const ICONS = {
@@ -119,6 +122,9 @@ export const ICONS = {
   menu: Menu,
   "sliders-horizontal": SlidersHorizontal,
   "trending-up": TrendingUp,
+  "user-round": UserRound,
+  briefcase: Briefcase,
+  "building-2": Building2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

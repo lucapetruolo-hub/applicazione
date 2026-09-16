@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button, Field, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
 import { checkFiscalId, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
@@ -32,7 +33,7 @@ const FISCAL_FIELD_LABELS: Record<string, string> = {
   dateOfBirth: "Data di nascita",
   placeOfBirth: "Luogo di nascita (Comune e Provincia)",
   countryOfBirth: "Paese di nascita (ISO, es. IT)",
-  businessName: "Ragione sociale",
+  businessName: "Ragione sociale / Nome dell'attività",
   legalForm: "Forma giuridica",
   vatNumber: "Partita IVA",
   businessRegistrationNumber: "Numero di iscrizione al Registro delle Imprese (REA / CCIAA)",
@@ -73,12 +74,38 @@ function fiscalFieldLabel(path: (string | number)[]): string {
  * piattaforma) senza compilarla.
  */
 export default function DashboardFiscalePage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardFiscaleContent />
+    </Suspense>
+  );
+}
+
+function DashboardFiscaleContent() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Categoria scelta nella schermata precedente (/dashboard/tipo-attivita,
+  // subito dopo la registrazione) — arriva qui via query param, mai già
+  // salvata: un account appena creato non ha ancora un ProfessionalProfile
+  // (creato solo al primo salvataggio di /dashboard/profilo), quindi
+  // ProfessionalFiscalProfile — che vi si aggancia 1:1 — non può esistere
+  // prima di allora. Il picker qui sotto arriva solo PRE-selezionato
+  // (stato locale, non ancora persistito); il salvataggio vero avviene solo
+  // al click su "Salva dati fiscali", quando il messaggio d'errore guida
+  // esplicitamente verso /dashboard/profilo se non ancora completato.
+  const prefillEntityType = searchParams.get("entityType");
+  const [prefillApplied, setPrefillApplied] = useState(false);
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
-  const [entityType, setEntityType] = useState<"INDIVIDUAL" | "BUSINESS" | "">("");
+  const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | "">("");
   const [fields, setFields] = useState<Record<string, string>>({});
+  // Dichiarazione richiesta esplicitamente dall'utente al salvataggio:
+  // pre-spuntata solo se già accettata in un salvataggio precedente (stesso
+  // `useEffect` che carica il profilo sotto) — un professionista che ha
+  // già dichiarato non deve ri-confermarlo ad ogni singola modifica, il
+  // testo resta comunque sempre visibile accanto al bottone "Salva".
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [additionalEuStatesText, setAdditionalEuStatesText] = useState("");
   const [repFields, setRepFields] = useState<{ firstName: string; lastName: string; codiceFiscale: string; role: string }>({
     firstName: "",
@@ -123,6 +150,7 @@ export default function DashboardFiscalePage() {
             registeredCountry: data.registeredCountry ?? "",
           });
           setAdditionalEuStatesText((data.additionalEuStates ?? []).join(", "));
+          setDeclarationAccepted(!!data.fiscalDeclarationAcceptedAt);
           if (data.representative) {
             setRepFields({
               firstName: data.representative.firstName,
@@ -137,6 +165,17 @@ export default function DashboardFiscalePage() {
       })
       .catch(() => setProfile(null));
   }, [token]);
+
+  // Applica la categoria scelta nella schermata precedente una sola volta
+  // (mai su ogni render/refetch), e mai sovrascrivendo un entityType già
+  // salvato per davvero — solo quando il profilo non ne aveva ancora uno.
+  useEffect(() => {
+    if (prefillApplied || profile === undefined) return;
+    if (!profile?.entityType && (prefillEntityType === "PRIVATE_INDIVIDUAL" || prefillEntityType === "SOLE_PROPRIETOR" || prefillEntityType === "BUSINESS")) {
+      setEntityType(prefillEntityType);
+    }
+    setPrefillApplied(true);
+  }, [prefillApplied, profile, prefillEntityType]);
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/accedi?redirect=/dashboard/fiscale");
@@ -183,6 +222,10 @@ export default function DashboardFiscalePage() {
         entityType === "BUSINESS" && repFields.firstName && repFields.lastName
           ? { firstName: repFields.firstName, lastName: repFields.lastName, codiceFiscale: repFields.codiceFiscale || undefined, role: repFields.role || undefined }
           : undefined,
+      // Mai `false`: il bottone "Salva" resta disabilitato finché la
+      // casella non è spuntata (vedi sotto), quindi questo ramo invia
+      // sempre `true` quando raggiunto.
+      fiscalDeclarationAccepted: declarationAccepted || undefined,
     };
 
     // Validato qui con la STESSA `professionalFiscalProfileSchema` già usata
@@ -292,44 +335,112 @@ export default function DashboardFiscalePage() {
             <Text fontSize={15} fontWeight="700">
               Tipo di attività
             </Text>
+            {/* Tre categorie, non due — richiesta esplicita dell'utente:
+                "Privato" (persona fisica senza P.IVA), "Professionista"
+                (persona fisica CON P.IVA, es. libero professionista/ditta
+                individuale), "Azienda" (impresa/società con personalità
+                giuridica propria). */}
             <XStack gap="$3" flexWrap="wrap">
-              {(["INDIVIDUAL", "BUSINESS"] as const).map((type) => (
-                <Button
-                  key={type}
-                  variant={entityType === type ? "primary" : "secondary"}
-                  onPress={() => setEntityType(type)}
-                  accessibilityLabel={type === "INDIVIDUAL" ? "Persona fisica" : "Impresa o società"}
-                >
-                  {type === "INDIVIDUAL" ? "Persona fisica" : "Impresa / società"}
+              {(
+                [
+                  { value: "PRIVATE_INDIVIDUAL", label: "Privato" },
+                  { value: "SOLE_PROPRIETOR", label: "Professionista" },
+                  { value: "BUSINESS", label: "Azienda" },
+                ] as const
+              ).map((type) => (
+                <Button key={type.value} variant={entityType === type.value ? "primary" : "secondary"} onPress={() => setEntityType(type.value)}>
+                  {type.label}
                 </Button>
               ))}
             </XStack>
           </YStack>
         </Surface>
 
-        {entityType === "INDIVIDUAL" && (
+        {entityType === "PRIVATE_INDIVIDUAL" && (
           <Surface padding="$4">
             <YStack gap="$3">
               <Text fontSize={15} fontWeight="700">
                 Dati anagrafici
               </Text>
-              <Field label="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
-              <Field label="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
+              <Field label="Nome" accessibilityLabel="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
+              <Field label="Cognome" accessibilityLabel="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
               <Field
                 label="Codice fiscale"
+                accessibilityLabel="Codice fiscale"
                 value={fields.fiscalCodiceFiscale ?? ""}
                 onChangeText={(v) => setField("fiscalCodiceFiscale", v)}
                 error={cfCheck.message ?? undefined}
               />
               <Field
                 label="Data di nascita"
+                accessibilityLabel="Data di nascita"
                 value={fields.dateOfBirth ?? ""}
                 onChangeText={(v) => setField("dateOfBirth", v)}
                 placeholder="AAAA-MM-GG"
                 hint="Richiesta insieme al luogo di nascita solo se non fornisci un codice fiscale valido."
               />
-              <Field label="Luogo di nascita (Comune e Provincia)" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
-              <Field label="Paese di nascita (ISO, es. IT)" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
+              <Field label="Luogo di nascita (Comune e Provincia)" accessibilityLabel="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
+              <Field label="Paese di nascita (ISO, es. IT)" accessibilityLabel="Paese di nascita" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
+            </YStack>
+          </Surface>
+        )}
+
+        {/* "Professionista" — persona fisica con P.IVA: stessi dati
+            anagrafici di "Privato" (resta una persona fisica, non una
+            società a sé) più Partita IVA e, solo se già posseduto, il
+            numero REA/CCIAA. Nessun campo "Forma giuridica"/legale
+            rappresentante qui — quelli sono pertinenti solo a "Azienda",
+            un libero professionista/ditta individuale è già lui stesso il
+            titolare. */}
+        {entityType === "SOLE_PROPRIETOR" && (
+          <Surface padding="$4">
+            <YStack gap="$3">
+              <Text fontSize={15} fontWeight="700">
+                Dati anagrafici
+              </Text>
+              <Field label="Nome" accessibilityLabel="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
+              <Field label="Cognome" accessibilityLabel="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
+              <Field
+                label="Codice fiscale"
+                accessibilityLabel="Codice fiscale"
+                value={fields.fiscalCodiceFiscale ?? ""}
+                onChangeText={(v) => setField("fiscalCodiceFiscale", v)}
+                error={cfCheck.message ?? undefined}
+              />
+              <Field
+                label="Data di nascita"
+                accessibilityLabel="Data di nascita"
+                value={fields.dateOfBirth ?? ""}
+                onChangeText={(v) => setField("dateOfBirth", v)}
+                placeholder="AAAA-MM-GG"
+                hint="Richiesta insieme al luogo di nascita solo se non fornisci un codice fiscale valido."
+              />
+              <Field label="Luogo di nascita (Comune e Provincia)" accessibilityLabel="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
+              <Field label="Paese di nascita (ISO, es. IT)" accessibilityLabel="Paese di nascita" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
+
+              <Text fontSize={15} fontWeight="700" marginTop="$2">
+                Attività
+              </Text>
+              <Field
+                label="Partita IVA"
+                accessibilityLabel="Partita IVA"
+                value={fields.vatNumber ?? ""}
+                onChangeText={(v) => setField("vatNumber", v)}
+                error={pivaCheck.message ?? undefined}
+              />
+              <Field
+                label="Nome dell'attività (opzionale)"
+                accessibilityLabel="Nome dell'attività"
+                value={fields.businessName ?? ""}
+                onChangeText={(v) => setField("businessName", v)}
+                hint="Insegna/nome commerciale, se ne usi uno diverso dal tuo nome anagrafico."
+              />
+              <Field
+                label="Numero di iscrizione al Registro delle Imprese (REA / CCIAA, opzionale)"
+                accessibilityLabel="Numero REA / CCIAA"
+                value={fields.businessRegistrationNumber ?? ""}
+                onChangeText={(v) => setField("businessRegistrationNumber", v)}
+              />
             </YStack>
           </Surface>
         )}
@@ -340,27 +451,31 @@ export default function DashboardFiscalePage() {
               <Text fontSize={15} fontWeight="700">
                 Dati dell&apos;impresa
               </Text>
-              <Field label="Ragione sociale" value={fields.businessName ?? ""} onChangeText={(v) => setField("businessName", v)} />
-              <Field label="Forma giuridica" value={fields.legalForm ?? ""} onChangeText={(v) => setField("legalForm", v)} placeholder="es. Ditta individuale, SRL" />
+              <Field label="Ragione sociale" accessibilityLabel="Ragione sociale" value={fields.businessName ?? ""} onChangeText={(v) => setField("businessName", v)} />
+              <Field label="Forma giuridica" accessibilityLabel="Forma giuridica" value={fields.legalForm ?? ""} onChangeText={(v) => setField("legalForm", v)} placeholder="es. Ditta individuale, SRL" />
               <Field
                 label="Partita IVA"
+                accessibilityLabel="Partita IVA"
                 value={fields.vatNumber ?? ""}
                 onChangeText={(v) => setField("vatNumber", v)}
                 error={pivaCheck.message ?? undefined}
               />
               <Field
                 label="Numero di iscrizione al Registro delle Imprese (REA / CCIAA)"
+                accessibilityLabel="Numero REA / CCIAA"
                 value={fields.businessRegistrationNumber ?? ""}
                 onChangeText={(v) => setField("businessRegistrationNumber", v)}
               />
               <Field
                 label="Codice LEI (opzionale)"
+                accessibilityLabel="Codice LEI"
                 value={fields.leiCode ?? ""}
                 onChangeText={(v) => setField("leiCode", v)}
                 hint="Solo se l'entità ne possiede già uno — non obbligatorio per operare su Manovia."
               />
               <Field
                 label="Stati membri UE aggiuntivi con stabile organizzazione (opzionale)"
+                accessibilityLabel="Stati membri UE aggiuntivi"
                 value={additionalEuStatesText}
                 onChangeText={setAdditionalEuStatesText}
                 placeholder="es. FR, DE"
@@ -370,10 +485,10 @@ export default function DashboardFiscalePage() {
               <Text fontSize={15} fontWeight="700" marginTop="$2">
                 Legale rappresentante
               </Text>
-              <Field label="Nome" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
-              <Field label="Cognome" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
-              <Field label="Codice fiscale" value={repFields.codiceFiscale} onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v }))} />
-              <Field label="Ruolo" value={repFields.role} onChangeText={(v) => setRepFields((p) => ({ ...p, role: v }))} placeholder="es. Amministratore unico" />
+              <Field label="Nome" accessibilityLabel="Nome del legale rappresentante" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
+              <Field label="Cognome" accessibilityLabel="Cognome del legale rappresentante" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
+              <Field label="Codice fiscale" accessibilityLabel="Codice fiscale del legale rappresentante" value={repFields.codiceFiscale} onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v }))} />
+              <Field label="Ruolo" accessibilityLabel="Ruolo del legale rappresentante" value={repFields.role} onChangeText={(v) => setRepFields((p) => ({ ...p, role: v }))} placeholder="es. Amministratore unico" />
             </YStack>
           </Surface>
         )}
@@ -384,30 +499,61 @@ export default function DashboardFiscalePage() {
               <Text fontSize={15} fontWeight="700">
                 Residenza fiscale
               </Text>
-              <Field label="Paese di residenza fiscale (ISO, es. IT)" value={fields.taxResidenceCountry ?? ""} onChangeText={(v) => setField("taxResidenceCountry", v)} />
-              <Field label="TIN estero (se residenza fiscale fuori Italia)" value={fields.foreignTin ?? ""} onChangeText={(v) => setField("foreignTin", v)} />
+              <Field label="Paese di residenza fiscale (ISO, es. IT)" accessibilityLabel="Paese di residenza fiscale" value={fields.taxResidenceCountry ?? ""} onChangeText={(v) => setField("taxResidenceCountry", v)} />
+              <Field label="TIN estero (se residenza fiscale fuori Italia)" accessibilityLabel="TIN estero" value={fields.foreignTin ?? ""} onChangeText={(v) => setField("foreignTin", v)} />
               <Field
                 label="Stato di rilascio del codice fiscale / NIF / P.IVA (ISO, es. IT)"
+                accessibilityLabel="Stato di rilascio del codice fiscale"
                 value={fields.fiscalIdIssuingCountry ?? ""}
                 onChangeText={(v) => setField("fiscalIdIssuingCountry", v)}
                 hint="Se diverso dalla residenza fiscale — determina anche quale controllo di formato applichiamo qui sopra."
               />
               <XStack gap="$3" flexWrap="wrap">
-                <Field label="Via / Piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} flex={3} />
-                <Field label="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} flex={1} />
+                <Field label="Via / Piazza" accessibilityLabel="Via / Piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} flex={3} />
+                <Field label="Numero civico" accessibilityLabel="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} flex={1} />
               </XStack>
               <XStack gap="$3" flexWrap="wrap">
-                <Field label="Città" value={fields.registeredCity ?? ""} onChangeText={(v) => setField("registeredCity", v)} flex={2} />
-                <Field label="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} flex={1} />
-                <Field label="Provincia" value={fields.registeredProvince ?? ""} onChangeText={(v) => setField("registeredProvince", v)} flex={1} />
+                <Field label="Città" accessibilityLabel="Città di residenza fiscale" value={fields.registeredCity ?? ""} onChangeText={(v) => setField("registeredCity", v)} flex={2} />
+                <Field label="CAP" accessibilityLabel="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} flex={1} />
+                <Field label="Provincia" accessibilityLabel="Provincia" value={fields.registeredProvince ?? ""} onChangeText={(v) => setField("registeredProvince", v)} flex={1} />
               </XStack>
-              <Field label="Paese (ISO, es. IT)" value={fields.registeredCountry ?? ""} onChangeText={(v) => setField("registeredCountry", v)} />
+              <Field label="Paese (ISO, es. IT)" accessibilityLabel="Paese di residenza (indirizzo)" value={fields.registeredCountry ?? ""} onChangeText={(v) => setField("registeredCountry", v)} />
             </YStack>
           </Surface>
         )}
 
+        {entityType !== "" && (
+          <XStack
+            alignItems="flex-start"
+            gap="$2"
+            cursor="pointer"
+            onPress={() => setDeclarationAccepted((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: declarationAccepted }}
+          >
+            <YStack
+              width={18}
+              height={18}
+              marginTop={2}
+              borderRadius="$1"
+              borderWidth={2}
+              borderColor={declarationAccepted ? brand.cianografia : brand.filetto}
+              backgroundColor={declarationAccepted ? brand.cianografia : brand.calce}
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              {declarationAccepted ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
+            </YStack>
+            <Text fontSize="$2" color={brand.grafite70} lineHeight={18}>
+              Salvando i dati dichiaro che le informazioni fornite sono corrette e che svolgo l&apos;attività indicata sulla piattaforma nel
+              rispetto degli obblighi fiscali applicabili alla mia situazione.
+            </Text>
+          </XStack>
+        )}
+
         <XStack gap="$3" alignItems="center" flexWrap="wrap">
-          <Button variant="primary" onPress={handleSave} disabled={saving || !entityType}>
+          <Button variant="primary" onPress={handleSave} disabled={saving || !entityType || !declarationAccepted}>
             {saving ? "Salvataggio..." : "Salva dati fiscali"}
           </Button>
           {saveSuccess && (
@@ -418,6 +564,19 @@ export default function DashboardFiscalePage() {
           {saveError && (
             <Text fontSize={13} color={brand.urgenza}>
               {saveError}
+              {/* Un account appena registrato non ha ancora un profilo
+                  pubblico (creato solo al primo salvataggio di
+                  /dashboard/profilo, da cui dipende anche quello fiscale)
+                  — link diretto invece di lasciare l'utente a indovinare
+                  cosa "completare". */}
+              {saveError === "Completa prima il tuo profilo professionista." ? (
+                <>
+                  {" "}
+                  <Link href="/dashboard/profilo" style={{ color: brand.cianografia, fontWeight: 700, textDecoration: "underline" }}>
+                    Vai al tuo profilo pubblico →
+                  </Link>
+                </>
+              ) : null}
             </Text>
           )}
         </XStack>

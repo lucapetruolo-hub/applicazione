@@ -716,8 +716,26 @@ export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchem
 // DAC7, rimborsi, contestazioni (CLAUDE.md §88).
 // ---------------------------------------------------------------------------
 
-export const professionalEntityTypes = ["INDIVIDUAL", "BUSINESS"] as const;
+// Tre categorie, non due — richiesta esplicita dell'utente: "Privato"
+// (persona fisica senza P.IVA), "Professionista" (persona fisica CON
+// P.IVA — libero professionista/ditta individuale, non una società a sé),
+// "Azienda" (impresa/società con personalità giuridica propria). Stesso
+// principio già seguito ovunque nello schema Prisma: PRIVATE_INDIVIDUAL e
+// SOLE_PROPRIETOR sono entrambe persone fisiche, la UI le distingue solo
+// per i campi che richiede (P.IVA/REA solo per SOLE_PROPRIETOR).
+export const professionalEntityTypes = ["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"] as const;
 export type ProfessionalEntityTypeValue = (typeof professionalEntityTypes)[number];
+
+/**
+ * Versione della dichiarazione fiscale mostrata al salvataggio di
+ * /dashboard/fiscale ("salvando i dati dichiaro che le informazioni
+ * fornite sono corrette e che svolgo l'attività indicata sulla
+ * piattaforma nel rispetto degli obblighi fiscali applicabili alla mia
+ * situazione") — stesso pattern di `LEGAL_CONSENT_VERSION` sopra: una
+ * versione futura del testo richiederebbe una nuova accettazione, mai
+ * retroattiva sui professionisti che hanno già accettato quella corrente.
+ */
+export const FISCAL_DECLARATION_VERSION = "2026-09-16";
 
 /**
  * Aggiornamento del profilo fiscale — tutti i campi facoltativi (nessun
@@ -726,9 +744,14 @@ export type ProfessionalEntityTypeValue = (typeof professionalEntityTypes)[numbe
  * P.IVA, "il software non deve mai decidere se una persona ha bisogno di
  * una partita IVA"), la UI guida quali campi mostrare in base a
  * `entityType`. `representative` presente solo per un'impresa/società.
+ * `fiscalDeclarationAccepted` (mai `false` inviato: o assente, o `true` —
+ * stesso principio di `representative` sopra, un campo "evento" non un
+ * valore da poter azzerare per errore) fa scattare la marcatura
+ * server-side di `fiscalDeclarationAcceptedAt`/`Version`.
  */
 export const professionalFiscalProfileSchema = z.object({
   entityType: z.enum(professionalEntityTypes).optional(),
+  fiscalDeclarationAccepted: z.boolean().optional(),
   fiscalFirstName: z.string().max(80).optional(),
   fiscalLastName: z.string().max(80).optional(),
   fiscalCodiceFiscale: z.string().max(20).optional(),
