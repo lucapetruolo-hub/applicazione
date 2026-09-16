@@ -1,15 +1,18 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Avatar, Icon, Section, Text, XStack, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
+import { useRevealOnScroll } from "./useRevealOnScroll";
 
 // "Ultimi iscritti" (richiesta esplicita dell'utente): 21 profili, non una
 // vetrina curata — nessuna soglia minima come ProfessionalsShowcase (quella
 // esiste per non far sembrare vuota una "vetrina in evidenza", questo è
 // semplicemente l'elenco dei più recenti, corretto anche con pochi profili).
 const VISIBLE_COUNT = 21;
+// Stesso tetto alla cascata di RecentReviews.tsx (CLAUDE.md §105).
+const MAX_STAGGER_MS = 480;
 
 const arrowStyle = {
   flexShrink: 0,
@@ -77,43 +80,8 @@ export function NewProfilesCarousel({ professionals }: { professionals: Professi
         </div>
 
         <div ref={trackRef} className="npc-track">
-          {newest.map((pro) => (
-            <Link
-              key={pro.id}
-              href={`/professionista/${pro.id}`}
-              data-new-profile-card
-              className="npc-card"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <YStack
-                width="100%"
-                height="100%"
-                gap="$3"
-                padding="$4"
-                backgroundColor={brand.calce}
-                borderRadius={24}
-                cursor="pointer"
-                style={{ boxShadow: "none" }}
-              >
-                <XStack alignItems="center" gap="$3">
-                  <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={64} />
-                  <YStack flex={1} minWidth={0} gap={2}>
-                    <Text fontWeight="700" fontSize={16} color={brand.grafite} numberOfLines={1}>
-                      {pro.businessName}
-                    </Text>
-                    <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-                      {pro.categoryLabel}
-                    </Text>
-                    <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-                      {pro.city}
-                    </Text>
-                  </YStack>
-                </XStack>
-                <Text fontWeight="600" fontSize={14} color={brand.cianografia}>
-                  Mostra profilo →
-                </Text>
-              </YStack>
-            </Link>
+          {newest.map((pro, index) => (
+            <NewProfileCard key={pro.id} pro={pro} delayMs={Math.min(index * 70, MAX_STAGGER_MS)} />
           ))}
         </div>
 
@@ -162,5 +130,55 @@ export function NewProfilesCarousel({ professionals }: { professionals: Professi
         }
       `}</style>
     </Section>
+  );
+}
+
+function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delayMs: number }) {
+  const { ref, style } = useRevealOnScroll(delayMs);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div ref={ref} data-new-profile-card className="npc-card" style={style}>
+      <Link href={`/professionista/${pro.id}`} style={{ textDecoration: "none", color: "inherit", display: "block", height: "100%" }}>
+        <YStack
+          width="100%"
+          height="100%"
+          gap="$3"
+          padding="$5"
+          backgroundColor={brand.calce}
+          borderRadius={24}
+          cursor="pointer"
+          onHoverIn={() => setHovered(true)}
+          onHoverOut={() => setHovered(false)}
+          style={{
+            // Ombra soltanto all'hover — stesso principio già stabilito nel
+            // resto del sito (CLAUDE.md §19: "nessuna ombra di default",
+            // un accenno resta solo dove una superficie si solleva
+            // davvero sopra il resto, qui il gesto di hover stesso).
+            boxShadow: hovered ? "0 10px 24px rgba(43,32,19,0.08)" : "none",
+            transition: `transform ${motionFast} ${motionEasing}, box-shadow ${motionFast} ${motionEasing}`,
+            transform: hovered ? "translateY(-4px)" : "none",
+          }}
+        >
+          <XStack alignItems="center" gap="$3">
+            <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={72} />
+            <YStack flex={1} minWidth={0} gap={2}>
+              <Text fontWeight="700" fontSize={17} color={brand.grafite} numberOfLines={1}>
+                {pro.businessName}
+              </Text>
+              <Text fontSize={13.5} color={brand.grafite70} numberOfLines={1}>
+                {pro.categoryLabel}
+              </Text>
+              <Text fontSize={13.5} color={brand.grafite70} numberOfLines={1}>
+                {pro.city}
+              </Text>
+            </YStack>
+          </XStack>
+          <Text fontWeight="600" fontSize={14} color={brand.cianografia}>
+            Mostra profilo →
+          </Text>
+        </YStack>
+      </Link>
+    </div>
   );
 }

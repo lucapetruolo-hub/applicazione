@@ -12664,3 +12664,87 @@ console reali. Account di test ripuliti a fine verifica (`DELETE
 /auth/me`). Typecheck pulito su tutti i package (`shared`, `api-client`,
 `ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
 (37 route, nessuna nuova).
+
+---
+
+## 105. Homepage — animazioni di ingresso "Recensioni verificate"/"Nuovi
+profili" + conteggio animato in "PlatformStats"
+
+Richiesta esplicita dell'utente: "rendi piu innovativa la visualizzazione
+della homepage sia delle recensioni verificate che dei nuovi utenti e
+proponi idee per la homepage in generale". Chiarito con `AskUserQuestion`
+prima di procedere: l'utente ha scelto esplicitamente "Carte più grandi
+con animazione di ingresso" (non un semplice restyling statico) e ha
+delegato la scelta delle idee aggiuntive ("Implementa le più ovvie/sicure
+da solo", non presentare altre opzioni) — un solo miglioramento aggiuntivo
+a basso rischio è stato scelto e implementato: il conteggio animato dei
+numeri reali già mostrati in `PlatformStats.tsx`.
+
+- **`apps/web/src/components/useRevealOnScroll.ts`** (nuovo): variante di
+  `FadeInSection.tsx` pensata per una singola card dentro un carosello a
+  scorrimento orizzontale, non per un'intera sezione (`FadeInSection`
+  forza `width:100%`/centraggio flex sul proprio wrapper, incompatibile
+  con `flexShrink:0`/larghezza fissa di una card di carosello). Ritorna
+  `ref`+`style` da applicare direttamente al div esistente della card,
+  nessun nodo wrapper aggiuntivo che romperebbe il layout flex.
+  `IntersectionObserver` con `root: null` (viewport): la spec tiene comunque
+  conto del ritaglio da parte degli antenati con `overflow` (l'area di
+  intersezione è ritagliata dai bounding box di scroll container
+  intermedi), quindi una card scorsa fuori orizzontalmente in un carosello
+  non risulta "visibile" finché non viene scorsa in vista anche
+  lateralmente — l'animazione di ingresso si ripete scorrendo il
+  carosello, non solo la pagina. `delayMs` (tipicamente `index * 80-90`,
+  sempre con un tetto `MAX_STAGGER_MS = 480` applicato dal chiamante) crea
+  l'effetto "a cascata" quando più card entrano in vista nello stesso
+  istante.
+- **`RecentReviews.tsx`** (le card "Recensioni verificate"): `CARD_WIDTH`
+  da 300 a 380px, foto professionista da 88 a 104px — carte
+  significativamente più grandi come richiesto. Estratto un componente
+  `ReviewCard` che usa `useRevealOnScroll` per l'animazione d'ingresso più
+  uno stato locale `hovered` (sollevamento `translateY(-4px)` +
+  `Surface floating` all'hover — stesso principio "nessuna ombra di
+  default, solo dove una superficie si solleva davvero" già stabilito nel
+  redesign "Vicinato", CLAUDE.md §19). Nessuna modifica al contenuto/layout
+  interno della card (foto a sinistra, nome cliccabile, firma cliente —
+  invariati da §96).
+- **`NewProfilesCarousel.tsx`** (le card "Nuovi profili"): stesso
+  trattamento — estratto `NewProfileCard`, avatar da 64 a 72px, stessa
+  `useRevealOnScroll`+hover (qui l'ombra all'hover resta un valore letterale
+  `0 10px 24px rgba(43,32,19,0.08)`, coerente con lo stesso principio). Un
+  bug di editing (due tag `<style jsx>` consecutivi duplicati per errore
+  durante la stessa modifica) è stato trovato e corretto rileggendo il
+  file prima di procedere oltre.
+- **`apps/web/src/components/useCountUp.ts`** (nuovo): i due numeri reali
+  di `PlatformStats.tsx` ("Utenti entrati nella piattaforma"/
+  "Professionisti entrati nella piattaforma", CLAUDE.md §24, `GET
+  /stats/platform` — mai un dato finto) ora contano da 0 al valore vero con
+  un `requestAnimationFrame` (non un `setInterval` a passo fisso, per un
+  easing fluido indipendente dal refresh rate del dispositivo) quando la
+  sezione entra in vista (`IntersectionObserver`, soglia 0.3) — ease-out
+  cubic su 900ms. **Non governato dalla regola CSS globale
+  `prefers-reduced-motion` già in uso nel resto del sito** (quella collassa
+  solo `transition`/`animation` CSS, non un ciclo JS): controllato qui
+  esplicitamente via `window.matchMedia`, chi ha quella preferenza di
+  sistema vede subito il valore finale, senza il conteggio. Il numero
+  mostrato resta sempre quello reale — solo il modo in cui vi arriva è
+  animato, mai un valore inventato durante la transizione.
+
+Verificato con l'API/Postgres locali reali (non solo lettura di codice) e
+Playwright: entrambe le sezioni mostrano card di dimensione maggiore
+rispetto a prima (misurato via bounding box), l'animazione di ingresso
+scatta all'entrata in viewport (card inizialmente a `opacity:0`/traslata,
+poi visibile dopo lo scroll — verificato sia sul primo caricamento sia
+scorrendo un carosello orizzontalmente), l'hover solleva la card e applica
+l'ombra solo in quello stato (nessuna ombra di default, confermato via
+`getComputedStyle`); `PlatformStats` conta da 0 al valore reale
+all'ingresso in vista, poi resta fermo sul numero corretto — un secondo
+scroll fuori e dentro vista non ripete il conteggio (già "avviato" per
+quella sessione). Isolato e corretto un falso negativo iniziale dovuto a
+cache di build corrotta (`next build` lanciata mentre `next dev` era
+ancora in esecuzione sulla stessa cartella `.next` — stesso identico
+problema già documentato in CLAUDE.md §49, "mai lanciare `next build`
+mentre `next dev` gira sulla stessa cartella dell'app durante una sessione
+di sviluppo locale"): riavvio pulito del server (kill + `rm -rf .next` +
+restart) prima di concludere la verifica. Zero overflow orizzontale, zero
+errori console reali. Typecheck pulito su `apps/web`, build di produzione
+verde (37 route, nessuna nuova).
