@@ -164,6 +164,29 @@ a {
   }
 }
 
+/* Card "Recensioni verificate" in homepage (RecentReviews.tsx) — regola
+   globale invece di uno `<style jsx>` locale: bug reale scoperto durante la
+   verifica (non solo ipotizzato, riprodotto con getComputedStyle) — styled-jsx
+   applica la classe di scoping solo agli elementi renderizzati DIRETTAMENTE
+   dal componente che contiene il tag `<style jsx>` (qui `RecentReviews`), non
+   a quelli di un componente figlio dichiarato nello stesso file (`ReviewCard`,
+   dove vive `.rr-card`) — la regola CSS scoped non trovava mai un match reale
+   sul nodo DOM, che ricadeva sulla larghezza "a contenuto" (quasi tutta la
+   riga, invece del 50% previsto per il layout a 2 card). Una regola in questo
+   foglio globale non ha alcuna ambiguità di scoping — stesso principio già
+   in uso per `.category-carousel-arrow` sopra, che infatti funziona
+   correttamente in ogni file che la importa. */
+.rr-card {
+  flex-shrink: 0;
+  width: 100%;
+  scroll-snap-align: start;
+}
+@media (min-width: 700px) {
+  .rr-card {
+    width: calc((100% - 20px) / 2);
+  }
+}
+
 /* /admin — menu laterale desktop (richiesta esplicita dell'utente: "un
    menu laterale che non va a modificare l'attuale posizione dell'elenco
    centrale") + tabelle a colonne ("dovranno essere in formato colonna in

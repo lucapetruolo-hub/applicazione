@@ -12890,3 +12890,104 @@ migrati e riconosciuti come `PRIVATE_INDIVIDUAL` nel ramo XML
 `api-client`, `ui`, `api`, `web`, `mobile`), build di produzione
 `apps/web` verde (38 route, una nuova: `/dashboard/tipo-attivita`) e
 `apps/api` verde.
+
+---
+
+## 107. Homepage — redesign "Recensioni verificate" in stile testimonial + bug reale di scoping styled-jsx
+
+Richiesta esplicita dell'utente, senza ulteriori dettagli: "Non mi piace
+come si vede in homepage le recensioni verificate". Il layout precedente
+(§96: foto professionista grande 104px a sinistra, colonna di testo
+stretta a destra con nome/categoria/stelle/badge/citazione a 4 righe/
+firma tutti compressi) è stato sostituito con un layout "testimonial"
+editoriale — la citazione stessa è ora il centro della card (virgoletta
+decorativa grande, testo a 16px con buon interlinea, non più minuscolo e
+corsivo dentro una colonna stretta), il professionista scende a un
+footer identificativo sotto una linea divisoria (avatar 48px+nome
+cliccabile+categoria/città a sinistra, stelle+badge "Confermato" a
+destra), la firma del cliente resta una didascalia discreta subito sopra
+il footer. Stesso linguaggio visivo di `NewProfilesCarousel.tsx` (card
+`calce` a piena altezza, radius 24, ombra solo all'hover, dimensionamento
+responsivo via classe CSS + `<style jsx>` per il solo layout del
+track/frecce) invece del `Surface`+`CategoryCarousel` condiviso
+precedente — le due sezioni sedevano una accanto all'altra in home con
+stili visibilmente disallineati (bordo vs nessun bordo, larghezza fissa
+380px vs responsiva, frecce duplicate in due implementazioni diverse):
+probabile causa reale del "non mi piace", risolta allineando entrambe le
+sezioni allo stesso pattern.
+
+**Bug reale scoperto durante la verifica** (non solo lettura di codice,
+riprodotto con `getComputedStyle`/`classList` via Playwright prima di
+concludere che il layout fosse corretto): il primo tentativo di
+implementazione riusava lo stesso pattern di `NewProfilesCarousel.tsx` —
+un `<style jsx>` con la regola responsiva (`@media (min-width:700px) {
+.rr-card { width: calc(...) } }`) dichiarato dentro il componente
+esterno (`RecentReviews`), applicato però a un elemento (`.rr-card`)
+renderizzato da un componente **diverso** nello stesso file
+(`ReviewCard`). styled-jsx applica la propria classe di scoping (l'hash
+`jsx-<hash>`) solo agli elementi JSX renderizzati **direttamente** dal
+componente che contiene il tag `<style jsx>` — un elemento restituito da
+un componente figlio dichiarato nello stesso file, per quanto sintatticamente
+vicino, non la riceve mai. Risultato: la regola CSS scoped
+(`.jsx-<hash>.rr-card`) non trovava mai un vero match sul nodo DOM
+(`classList` conteneva solo `rr-card`, mai l'hash), e la card ricadeva
+sulla larghezza "a contenuto" del browser — quasi tutta la riga
+disponibile (951px su un track da 1064px) invece del 50% previsto per il
+layout a 2 card, riproducibile e misurato con `getComputedStyle` prima di
+qualunque correzione.
+
+Verificato con lo stesso identico test anche su `NewProfilesCarousel.tsx`
+(pattern strutturalmente identico, `.npc-card` in `NewProfileCard`, un
+componente figlio diverso da quello con `<style jsx>`): stesso sintomo
+— nessuna classe hash nel `classList`, e le larghezze osservate (250.56px/
+213.03px/250.56px, diverse tra loro) sono coerenti con un dimensionamento
+"a contenuto" (dipendente dalla lunghezza del nome business, non dalla
+regola CSS prevista) piuttosto che con la formula `calc((100% - 32px) /
+3)`, che avrebbe dato lo stesso identico valore per ogni card — segno che
+anche quella card è affetta dallo stesso bug latente, solo meno visibile
+lì perché il contenuto (avatar+nome breve) è naturalmente più stretto di
+una citazione intera e il risultato "sembra" comunque un dimensionamento
+ragionevole a colpo d'occhio. **Non corretto in questo giro** (fuori
+scope della richiesta dell'utente, che riguardava solo le recensioni):
+segnalato qui per una correzione futura con lo stesso principio sotto.
+
+**Fix applicato a `RecentReviews.tsx`**: la regola responsiva
+`.rr-card` è stata spostata da `<style jsx>` locale a `apps/web/src/app/
+globals.css` (foglio di stile globale, nessuna ambiguità di scoping tra
+componenti — stesso principio già in uso per `.category-carousel-arrow`
+nello stesso file) — verificato che la larghezza calcolata torni corretta
+(522px su un track da 1064px, esattamente `(1064-20)/2`) dopo lo
+spostamento. Il `<style jsx>` locale resta solo per `.rr-wrap`/`.rr-track`
+(entrambi renderizzati direttamente dal componente `RecentReviews` che
+contiene il tag, quindi scoping corretto per costruzione — nessun
+problema lì).
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) —
+script dedicato: ciclo completo richiesta diretta a un professionista di
+test→preventivo→accettazione→completamento→doppia conferma→doppia
+recensione (stesso criterio "doppio cieco" già richiesto per la
+pubblicazione, CLAUDE.md §40) per popolare `GET /reviews/recent` con un
+dato reale. UI con Playwright (desktop 1280px e mobile reale via
+`devices["iPhone 13"]`, non un semplice viewport — necessario perché le
+frecce si nascondono solo su un vero profilo touch, `@media (hover:
+none)`, stesso principio già documentato altrove in questo file per
+`CategoryCarousel`): card a 522px (2-up corretto) su desktop, card
+~full-width con frecce nascoste su mobile touch, virgoletta decorativa e
+testo della citazione prominenti, firma cliente e footer professionista
+(nome cliccabile verso il profilo pubblico, **mai** verso la singola
+recensione — stessa regola già stabilita in un giro precedente) entrambi
+presenti e nell'ordine corretto, zero overflow orizzontale su entrambe le
+larghezze, zero errori console reali. **Nota sul controllo hover**: il
+sollevamento+ombra al passaggio del mouse (stesso meccanismo Tamagui
+`onHoverIn`/`onHoverOut` già in uso in `NewProfilesCarousel.tsx`, mai
+messo in dubbio per quel componente) non è stato verificabile in modo
+affidabile in questo ambiente headless — un evento nativo
+`mouseenter`/`pointerenter` sintetico via `page.mouse.move` risulta
+confermato in arrivo sul nodo DOM (verificato con listener diretti), ma
+lo stato React `hovered` non sembra aggiornarsi di conseguenza in questo
+harness, stesso identico comportamento osservato riproducendo il test
+sulla card di `NewProfilesCarousel.tsx` già shippata — limite dell'ambiente
+di test, non un problema del codice (nessuna differenza strutturale tra
+le due implementazioni). Account di test ripuliti a fine verifica
+(`DELETE /auth/me`). Typecheck pulito su `apps/web`, build di produzione
+verde (38 route, nessuna nuova).
