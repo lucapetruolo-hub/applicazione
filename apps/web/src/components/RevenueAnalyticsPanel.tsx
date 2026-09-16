@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { RevenueAnalyticsSummary } from "@professionisti/api-client";
 import { Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { RevenueTrendChart } from "@/components/RevenueTrendChart";
@@ -12,6 +13,26 @@ function jobsLabel(count: number): string {
   return `${count} ${count === 1 ? "lavoro completato" : "lavori completati"}`;
 }
 
+// Selettore range temporale del grafico (richiesta esplicita dell'utente:
+// "fai selezionare un range temporale visualizzabile sul grafico... i dati
+// si andranno ad aggiornare") — `months: null` = "Tutto", nessun taglio.
+// Il default (12) coincide con il comportamento fisso di prima di questa
+// funzionalità, nessuna sorpresa visiva finché non si cambia selezione.
+const RANGE_OPTIONS = [
+  { key: "3", label: "3 mesi", months: 3 },
+  { key: "6", label: "6 mesi", months: 6 },
+  { key: "12", label: "12 mesi", months: 12 },
+  { key: "24", label: "24 mesi", months: 24 },
+  { key: "all", label: "Tutto", months: null },
+] as const;
+
+type RangeKey = (typeof RANGE_OPTIONS)[number]["key"];
+
+function rangeHeadingSuffix(key: RangeKey): string {
+  const option = RANGE_OPTIONS.find((o) => o.key === key);
+  return option?.months ? `ultimi ${option.months} mesi` : "storico completo";
+}
+
 /**
  * Corpo del pannello "Statistiche" (Revenue Analytics, CLAUDE.md §99) — 4
  * tessere KPI + grafico andamento mensile. Estratto in un componente
@@ -20,10 +41,27 @@ function jobsLabel(count: number): string {
  * piattaforma: stesso identico calcolo/formula, cambia solo il testo
  * introduttivo (passato dal chiamante) e la fonte dei dati (già filtrata
  * lato server, questo componente non lo sa né deve saperlo).
+ *
+ * Le 4 tessere KPI (anno/mese/variazione/da sempre) restano fisse a
+ * prescindere dal range scelto sul grafico — richiesta esplicita
+ * dell'utente scoped al solo grafico ("visualizzabile sul grafico"), non
+ * a metriche assolute che non hanno un "range" a cui appartenere. Il
+ * filtro è puramente client-side (nessun nuovo round-trip di rete per
+ * ogni cambio range, stesso principio già seguito altrove nel progetto
+ * per i filtri di ricerca/liste): `data.monthlySeries` arriva già intera
+ * dal backend (zero-filled dal primo mese con dati ad oggi, non più un
+ * trailing fisso a 12), questo componente ne prende solo la coda giusta.
  */
 export function RevenueAnalyticsPanel({ data, chartCaption }: { data: RevenueAnalyticsSummary; chartCaption: string }) {
   const currentMonthLabel = new Date().toLocaleDateString("it-IT", { month: "long", year: "numeric" });
   const currentYearLabel = new Date().getFullYear().toString();
+  const [range, setRange] = useState<RangeKey>("12");
+
+  const activeOption = RANGE_OPTIONS.find((o) => o.key === range) ?? RANGE_OPTIONS[2];
+  const visiblePoints = useMemo(
+    () => (activeOption.months ? data.monthlySeries.slice(-activeOption.months) : data.monthlySeries),
+    [data.monthlySeries, activeOption.months],
+  );
 
   return (
     <>
@@ -52,15 +90,39 @@ export function RevenueAnalyticsPanel({ data, chartCaption }: { data: RevenueAna
       </div>
 
       <Surface padding="$5" gap="$4">
-        <YStack gap="$1">
-          <Text fontWeight="700" fontSize={17}>
-            Andamento entrate — ultimi 12 mesi
-          </Text>
-          <Text fontSize={12} color={brand.grafite70}>
-            {chartCaption}
-          </Text>
-        </YStack>
-        <RevenueTrendChart points={data.monthlySeries} />
+        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
+          <YStack gap="$1" flexBasis={0} flexGrow={1} minWidth={220}>
+            <Text fontWeight="700" fontSize={17}>
+              Andamento entrate — {rangeHeadingSuffix(range)}
+            </Text>
+            <Text fontSize={12} color={brand.grafite70}>
+              {chartCaption}
+            </Text>
+          </YStack>
+
+          <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden" flexShrink={0}>
+            {RANGE_OPTIONS.map((opt) => {
+              const active = opt.key === range;
+              return (
+                <XStack
+                  key={opt.key}
+                  paddingHorizontal="$3"
+                  paddingVertical={9}
+                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  cursor="pointer"
+                  onPress={() => setRange(opt.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Mostra ${opt.label === "Tutto" ? "tutto lo storico" : "gli ultimi " + opt.label} nel grafico`}
+                >
+                  <Text fontSize={12.5} fontWeight="700" color={active ? "white" : brand.grafite}>
+                    {opt.label}
+                  </Text>
+                </XStack>
+              );
+            })}
+          </XStack>
+        </XStack>
+        <RevenueTrendChart points={visiblePoints} rangeLabel={rangeHeadingSuffix(range)} />
       </Surface>
     </>
   );

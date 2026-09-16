@@ -8,17 +8,20 @@ import type { RevenueMonthlyPoint } from "@professionisti/api-client";
  * Grafico "Andamento entrate" per la pagina Statistiche (richiesta esplicita
  * dell'utente: "rendi la tabella in linea con i grafici moderni prendi
  * spunto da grafici di alte prestazioni") — area/linea per il trend
- * temporale (12 mesi, un'unica serie), colore sequenziale unico
- * (`brand.cianografia`, coerente con la palette "Vicinato" già in uso in
- * tutto il sito, CLAUDE.md §19), niente arcobaleno/colori multipli non
- * pertinenti a una singola serie. Costruito seguendo le linee guida della
- * skill `dataviz` di questa sessione: linea 2px, riempimento a "velo" (mai un
- * blocco saturo), griglia recessiva hairline solo orizzontale, crosshair +
- * tooltip al passaggio del mouse/tocco (l'hover layer è parte della
- * consegna, non un extra), marcatore di fine serie con anello di superficie,
- * etichetta diretta solo sul punto finale (mai un numero su ogni punto).
+ * temporale, colore sequenziale unico (`brand.cianografia`, coerente con la
+ * palette "Vicinato" già in uso in tutto il sito, CLAUDE.md §19), niente
+ * arcobaleno/colori multipli non pertinenti a una singola serie. Costruito
+ * seguendo le linee guida della skill `dataviz` di questa sessione: linea
+ * 2px, riempimento a "velo" (mai un blocco saturo), griglia recessiva
+ * hairline solo orizzontale, crosshair + tooltip al passaggio del mouse/
+ * tocco (l'hover layer è parte della consegna, non un extra), marcatore di
+ * fine serie con anello di superficie, etichetta diretta solo sul punto
+ * finale (mai un numero su ogni punto). `points`/`rangeLabel` sono scelti
+ * dal chiamante (`RevenueAnalyticsPanel`, §104: selettore di range
+ * temporale) — questo componente non sa nulla del range, disegna solo i
+ * punti che riceve, quanti siano.
  */
-export function RevenueTrendChart({ points }: { points: RevenueMonthlyPoint[] }) {
+export function RevenueTrendChart({ points, rangeLabel = "ultimi 12 mesi" }: { points: RevenueMonthlyPoint[]; rangeLabel?: string }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -87,7 +90,7 @@ export function RevenueTrendChart({ points }: { points: RevenueMonthlyPoint[] })
         width="100%"
         style={{ display: "block", touchAction: "pan-y" }}
         role="img"
-        aria-label="Andamento delle entrate negli ultimi 12 mesi"
+        aria-label={`Andamento delle entrate — ${rangeLabel}`}
         onPointerMove={(e) => handlePointerMove(e.clientX)}
         onPointerLeave={() => setHoverIndex(null)}
       >

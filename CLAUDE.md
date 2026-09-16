@@ -12590,3 +12590,77 @@ zero overflow orizzontale desktop, zero errori console reali. Typecheck
 pulito su tutti i package (`shared`, `database`, `api-client`, `ui`,
 `api`, `web`, `mobile`), build di produzione `apps/web` verde (37 route,
 una nuova: `/dashboard/statistiche`).
+
+---
+
+## 104. Selettore range temporale sul grafico "Statistiche" (admin + professionista)
+
+Richiesta esplicita dell'utente: "in statistiche sia di admin che
+professionista fai selezionare un range temporale visualizzabile sul
+grafico... e anche i dati si andranno ad aggiornare" — un vero filtro,
+non solo un'etichetta diversa: cambiare range deve mostrare punti diversi
+nel grafico, non solo un titolo diverso sopra agli stessi dati.
+
+- **Backend — `RevenueAnalyticsService.getSummary`**: `monthlySeries` non
+  è più un trailing fisso a 12 mesi ma la serie **per intero**, zero-filled
+  dal primo mese con almeno un lavoro completato ad oggi (fallback a
+  `TRAILING_MONTHS` mesi a zero se non esiste ancora nessun lavoro — un
+  professionista nuovo, o la piattaforma appena partita, non deve vedere
+  un grafico vuoto). Necessario perché un filtro "24 mesi"/"Tutto" lato
+  frontend non avrebbe avuto nulla da mostrare oltre ai 12 mesi già
+  troncati a monte. Le 4 tessere KPI (anno/mese/variazione/da sempre)
+  restano invariate — non hanno un "range" a cui appartenere, la richiesta
+  era scoped esplicitamente al grafico.
+- **Frontend — `RevenueAnalyticsPanel.tsx`** (componente condiviso da
+  entrambe le pagine, §103 — un solo punto da cablare per "sia admin che
+  professionista"): nuovo selettore a pillole (3/6/12/24 mesi, Tutto —
+  stesso stile segmentato già in uso per il toggle "A domicilio/Online" di
+  `/dashboard/richieste`), `useState` locale, default "12 mesi" (stesso
+  comportamento di prima di questa funzionalità, nessuna sorpresa visiva
+  finché non si cambia selezione). Filtro **puramente client-side**
+  (`data.monthlySeries.slice(-months)`, stesso principio "niente
+  round-trip di rete per un filtro sui dati già scaricati" già seguito
+  ovunque nel progetto per liste/ricerca) — la serie intera arriva già in
+  un colpo solo dal backend. Titolo del grafico e `aria-label` dell'SVG
+  (`RevenueTrendChart`, nuova prop `rangeLabel`) aggiornati dinamicamente
+  in base alla selezione, non più un testo statico "ultimi 12 mesi".
+
+**Bug reale nella verifica stessa, non nel codice applicativo — degno di
+nota per il resto della sessione**: il primo giro di verifica end-to-end
+falliva su più controlli (la serie mostrava sempre esattamente 12 mesi
+fissi, "Ott 2025 → Set 2026", indipendentemente dal fix). Causa isolata
+prima di concludere che il codice fosse sbagliato: un processo API
+precedente (avviato in un giro di verifica precedente dello stesso turno)
+era rimasto in ascolto sulla porta 3001 — il nuovo processo, ricompilato
+con il fix, falliva silenziosamente ad avviarsi (`EADDRINUSE`, loggato ma
+mai controllato prima di lanciare i test) mentre quello vecchio (senza il
+fix, ancora con `TRAILING_MONTHS=12` fisso) continuava a rispondere alle
+richieste — spiegando esattamente il pattern osservato. Corretto uccidendo
+il processo stantio, ricontrollando che la porta fosse libera prima di
+riavviare, e solo allora rieseguendo la verifica — stessa lezione già
+utile altrove in questo file: un test che "fallisce nel modo giusto" va
+comunque isolato fino alla causa reale prima di toccare il codice
+applicativo di nuovo.
+
+Verificato end-to-end con l'API locale reale (non solo typecheck/build) e
+Playwright — 21/21 controlli PASS dopo la correzione: professionista di
+test con 3 lavori completati "doppio cieco" a 5 mesi fa (100€), 2 mesi fa
+(200€) e nel mese corrente (300€, retrodatati via SQL diretto solo su
+`updatedAt`, stesso principio già in uso altrove in questo file per
+simulare il tempo trascorso) → `monthlySeries` copre esattamente i 6 mesi
+reali (non più 12 fissi), primo punto = lavoro più vecchio (100€), ultimo
+= mese corrente (300€), totali/conteggi corretti. UI: con range "12 mesi"
+(default) il punto più a sinistra del grafico è il lavoro da 100€
+(confermato via hover/tooltip, non solo lettura del DOM); passando a
+"3 mesi" il punto più a sinistra cambia davvero (200€, il lavoro B, non
+più 100€) — prova diretta che i dati mostrati si aggiornano, non solo il
+titolo; tornando a "Tutto" il punto più a sinistra torna al lavoro da
+100€; titolo e `aria-label` del grafico coerenti con la selezione ad ogni
+cambio. Stesso selettore verificato funzionante anche in `/admin/
+statistiche` (click su "6 mesi" → titolo aggiornato correttamente),
+confermando che l'unico componente condiviso serve davvero entrambe le
+pagine senza duplicazione. Zero overflow orizzontale, zero errori
+console reali. Account di test ripuliti a fine verifica (`DELETE
+/auth/me`). Typecheck pulito su tutti i package (`shared`, `api-client`,
+`ui`, `api`, `web`, `mobile`), build di produzione `apps/web` verde
+(37 route, nessuna nuova).

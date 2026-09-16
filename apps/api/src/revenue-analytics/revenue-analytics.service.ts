@@ -135,14 +135,32 @@ export class RevenueAnalyticsService {
     const monthOverMonthChangePercent =
       previousMonthTotalEurCents > 0 ? ((currentMonthTotalEurCents - previousMonthTotalEurCents) / previousMonthTotalEurCents) * 100 : null;
 
+    // Serie mensile per intero (zero-filled dal primo mese con almeno un
+    // lavoro completato ad oggi), non più un trailing fisso a 12 mesi —
+    // richiesta esplicita dell'utente: un selettore di range temporale sul
+    // grafico ("3/6/12/24 mesi", "Tutto") che aggiorna davvero i dati
+    // mostrati richiede che il backend non tronchi già la storia a monte.
+    // Con zero lavori mai completati (professionista nuovo, o piattaforma
+    // appena partita) ricade su `TRAILING_MONTHS` mesi a zero, comunque
+    // sensati da mostrare invece di un grafico vuoto.
+    const monthKeysWithData = Array.from(byMonth.keys()).sort();
+    const earliestMonthKey = monthKeysWithData[0];
+    let seriesStart: Date;
+    if (earliestMonthKey) {
+      const [earliestYear, earliestMonth] = earliestMonthKey.split("-").map(Number);
+      seriesStart = new Date(Date.UTC(earliestYear ?? now.getUTCFullYear(), (earliestMonth ?? 1) - 1, 1));
+    } else {
+      seriesStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (TRAILING_MONTHS - 1), 1));
+    }
+    const seriesEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
     const monthlySeries: RevenueMonthlyPoint[] = [];
-    for (let i = TRAILING_MONTHS - 1; i >= 0; i--) {
-      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-      const key = monthKey(d);
+    for (let cursor = seriesStart; cursor <= seriesEnd; cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1))) {
+      const key = monthKey(cursor);
       const bucket = byMonth.get(key);
       monthlySeries.push({
         month: key,
-        label: `${MONTH_LABELS[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
+        label: `${MONTH_LABELS[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`,
         totalEurCents: bucket?.totalEurCents ?? 0,
         jobCount: bucket?.jobCount ?? 0,
       });
