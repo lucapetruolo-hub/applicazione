@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Surface, Text, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { CategoryIconBadge } from "./CategoryIconBadge";
+import { CATEGORY_PHOTOS } from "@/lib/categoryPhotos";
 
 export type CategoryTileProps = {
   slug: string;
@@ -29,6 +31,7 @@ export type CategoryTileProps = {
  */
 export function CategoryTile({ slug, label, count, onPress }: CategoryTileProps) {
   const [hovered, setHovered] = useState(false);
+  const photoUrl = CATEGORY_PHOTOS[slug];
 
   return (
     <Surface
@@ -47,7 +50,18 @@ export function CategoryTile({ slug, label, count, onPress }: CategoryTileProps)
         transform: hovered ? "translateY(-4px) rotate(-1deg)" : "none",
       }}
     >
-      <CategoryIconBadge slug={slug} size={44} />
+      {photoUrl ? (
+        // Foto reale al posto dell'icona colorata — richiesta esplicita
+        // dell'utente per questa categoria specifica, stesso slot/dimensione
+        // dell'icona per non alterare il layout della tile. `CATEGORY_PHOTOS`
+        // (apps/web/src/lib/categoryPhotos.ts) resta vuota per le categorie
+        // senza una foto fornita: quelle continuano a mostrare l'icona.
+        <YStack width={44} height={44} borderRadius={44} overflow="hidden" flexShrink={0}>
+          <Image src={photoUrl} alt="" width={44} height={44} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </YStack>
+      ) : (
+        <CategoryIconBadge slug={slug} size={44} />
+      )}
       <YStack gap={2}>
         <Text fontFamily="$body" fontSize={17} fontWeight="700" color={brand.grafite}>
           {label}

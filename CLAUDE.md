@@ -12487,3 +12487,35 @@ PDF and ZIP files" nelle impostazioni di sicurezza dell'account Cloudinary
 per il blocco sui file "raw" potenzialmente rischiosi, alternativo
 all'intero meccanismo Admin API costruito in questi cinque giri. Typecheck
 pulito su tutti i package, build di produzione `apps/api` verde.
+
+---
+
+## 102. Foto reale per la categoria "Idraulico" in homepage
+
+Richiesta esplicita dell'utente, con foto fornita direttamente in chat:
+"questa è la foto dell'idraulico da aggiungere sulla homepage nella
+categoria idraulico" — risolve la riserva già segnalata come rimandata in
+CLAUDE.md §19 ("richiede una decisione sulla fonte delle foto... per non
+introdurre hotlink a immagini esterne non verificate o scelte a caso"):
+qui la fonte è la foto fornita direttamente dall'utente per questa
+categoria specifica, non uno stock esterno né una generazione.
+
+- `apps/web/public/category-photos/idraulico.webp` (nuovo asset statico).
+- `apps/web/src/lib/categoryPhotos.ts` (nuovo): `CATEGORY_PHOTOS`, mappa
+  `slug → percorso foto` — oggi una sola voce, popolabile una categoria
+  alla volta man mano che l'utente fornisce altre foto reali. Una categoria
+  senza voce qui resta sull'icona colorata di `CategoryIconBadge`, mai un
+  placeholder generico o una foto scelta a caso per lei.
+- `CategoryTile.tsx` (griglia categorie homepage): quando
+  `CATEGORY_PHOTOS[slug]` esiste, mostra una foto circolare (`next/image`,
+  stesso pattern già in uso per `ProfessionalAvatar.tsx`, §86) allo stesso
+  slot/dimensione (44px) dell'icona che sostituisce — nessuna modifica al
+  layout della tile, nessun'altra categoria toccata.
+
+Verificato con Playwright (server locale reale, non solo lettura di
+codice): tile "Idraulico" mostra la foto circolare del professionista,
+tutte le altre 12 categorie restano sull'icona colorata, zero overflow
+orizzontale, zero errori console reali (gli unici osservati sono
+connessioni rifiutate verso l'API, non avviata in questa verifica — non
+correlati all'immagine, che carica dallo stesso host web). Typecheck
+pulito su `apps/web`.
