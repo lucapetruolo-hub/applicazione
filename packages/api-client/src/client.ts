@@ -132,6 +132,16 @@ export type ClientGuidedRequest = {
   serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
   status: "OPEN" | "MATCHED" | "CLOSED";
+  /**
+   * Perché è CLOSED (`null` finché non lo è) — richiesta esplicita
+   * dell'utente ("rendi la pagina le mie richieste simile a quella delle
+   * richieste ricevute"): serve a distinguere lato client una richiesta
+   * scaduta (nessuna risposta in tempo) da una annullata volontariamente,
+   * stesso principio già in uso lato professionista per `RequestStage`
+   * ("scaduta" vs "chiusa"). Già presente sullo schema (`GuidedRequest.
+   * closedReason`), prima mai esposto a questo endpoint.
+   */
+  closedReason: "EXPIRED" | "CANCELED_BY_CLIENT" | "COMPLETED" | null;
   createdAt: string;
   /** Per l'ordinamento "per ultimo aggiornamento" nelle liste (richiesta esplicita dell'utente). */
   updatedAt: string;

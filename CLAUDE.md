@@ -12991,3 +12991,158 @@ di test, non un problema del codice (nessuna differenza strutturale tra
 le due implementazioni). Account di test ripuliti a fine verifica
 (`DELETE /auth/me`). Typecheck pulito su `apps/web`, build di produzione
 verde (38 route, nessuna nuova).
+
+---
+
+## 108. "Le mie richieste" riscritta in stile pipeline (come "Richieste ricevute")
+
+Richiesta esplicita dell'utente: "Rendi la pagina le mie richieste, simile
+a quella delle richieste ricevute adattandole però al contesto quindi
+queste sono visualizzate dalla parte del cliente" — `/le-mie-richieste`
+adottava ancora il pattern pre-§41 (due pillole "Le mie richieste"/"Lavori
+accettati" su due liste indipendenti, `ListControls` con filtro/ordina/
+mostra), mentre `/dashboard/richieste` (CLAUDE.md §41 in poi) era già
+passata da tempo a un'unica lista con card collassate, pillola di stadio
+colorata, tab a scorrimento, ricerca full-text e pop-up filtri. Riscritta
+per adottare lo stesso pattern, non solo lo stesso stile.
+
+**Unione strutturale, non solo visiva**: una `ClientGuidedRequest` e
+l'eventuale `ClientBooking` nata dal suo preventivo accettato erano due
+liste separate (tab "Le mie richieste"/"Lavori accettati") — ora sono LA
+STESSA card, `booking` risolta per `guidedRequestId` (stesso principio già
+in uso lato professionista per `bookingByRequestId`/`RequestCard`, CLAUDE.md
+§41). Conseguenza diretta: niente più contenuto duplicato tra le due viste
+di prima (categoria/descrizione/foto/voci del preventivo comparivano due
+volte, una nella card richiesta e una nella card prenotazione, quando in
+realtà sono sempre gli stessi dati).
+
+**`classifyClientRequestStage` + `CLIENT_STAGE_LABEL`** (nuovi,
+`apps/web/src/lib/requestStage.ts`, accanto a `classifyLeadStage`/
+`REQUEST_STAGE_STYLE` già esistenti): stessi 8 stadi e stessi colori del
+lato professionista (`da_quotare|in_attesa|modifica_richiesta|accettata|
+completata|annullata|scaduta|chiusa`), riusando `REQUEST_STAGE_STYLE` per
+`fg`/`bg`/`border`/icona — solo il testo della pillola cambia
+(`CLIENT_STAGE_LABEL`): lo stesso stadio letto da un professionista ("Da
+quotare" = tocca a te) e da un cliente ("In attesa di preventivo" = sto
+aspettando) non può condividere la stessa frase senza confondere chi
+legge. A differenza di un `Lead` (al più un preventivo), una
+`ClientGuidedRequest` generica può averne più di uno (fan-out, CLAUDE.md
+§14): `classifyClientRequestStage` riflette lo stadio del preventivo più
+"attivo" tra quelli ricevuti (una proposta `MODIFICATION_REQUESTED` o
+`SENT` conta più di uno già `REJECTED`/`WITHDRAWN`), non una media né
+un'enumerazione di tutti — la lista completa dei preventivi resta comunque
+visibile per intero nella scheda espansa (stesse `QuoteCard` di prima,
+solo spostate dentro la sezione espandibile). Per una richiesta `CLOSED`
+senza prenotazione, distingue "scaduta" (nessuna risposta in tempo) da
+"chiusa"/"Annullata da te" (il cliente ha annullato) tramite un nuovo
+campo esposto dal backend — `closedReason` non arrivava mai a
+`ClientGuidedRequest` prima d'ora (esisteva già sullo schema, usato solo
+internamente da `getStatus()`): aggiunto un campo alla proiezione di
+`GuidedRequestsService.listForClient` e al tipo `ClientGuidedRequest`
+(`packages/api-client`), nessuna migrazione (colonna già presente).
+
+**Pagina** (`apps/web/src/app/le-mie-richieste/page.tsx`, riscritta per
+intero): tab per stadio a scorrimento orizzontale (`CategoryCarousel`,
+stesso componente già in uso per i tab professionista/caroselli home) con
+etichette adattate al punto di vista del cliente ("In attesa"/"Da
+rispondere"/"Modifiche" invece di "Da quotare"/"In attesa"/"Modifica
+richiesta") e badge di conteggio per stadio; campo di ricerca full-text
+sempre visibile (`clientRequestSearchText`, stesso principio di
+`leadSearchText` lato professionista — concatena categoria, descrizione,
+città, modalità, nome dei professionisti contattati/che hanno risposto,
+voci dei preventivi, dati della prenotazione); pop-up "Filtri" (ordina per
+data di invio/ultimo aggiornamento, zona) + toggle esterno "Tutte/A
+domicilio/Online"; **paginazione mantenuta** (a differenza della pagina di
+riferimento, che non pagina affatto) — era una funzionalità già richiesta
+esplicitamente dall'utente in un giro precedente per questa pagina
+(§14 "Paginazione vera per 'Mostra'"), non un dettaglio della pagina di
+riferimento da riprodurre pedissequamente: "adattare al contesto" include
+preservare le funzionalità client-specifiche già esistenti, non solo
+copiare la forma del professionista.
+
+**Card unificata** (`GuidedRequestCard`, stessa funzione di prima ma
+riscritta): intestazione sempre visibile con pillola di stadio colorata +
+badge modalità/urgente, data di invio, prezzo finale (solo a lavoro
+completato — evita di duplicare la già esistente "Prezzo totale medio"
+mostrata nel corpo espanso per le sole richieste generiche), nome
+dell'attività **una volta accettato un preventivo** (altrimenti categoria
++città, non essendoci ancora un singolo destinatario certo quando la
+richiesta può ancora raggiungere più professionisti), descrizione,
+chevron di apertura — click in qualunque punto non interattivo
+dell'intestazione la espande/richiude (stesso principio "stopPropagation
+sui controlli annidati" già documentato altrove in questo file per
+`ProfessionalCard.tsx`, applicato qui al menu hamburger). Corpo espanso:
+mini-timeline "Andamento" (`ClientMiniTimeline`, variante locale di
+`MiniTimeline` — l'unico stadio con testo diverso da quello professionista
+è "modifica_richiesta", che per il cliente significa sempre "hai proposto
+tu una data diversa", mai "il cliente ha richiesto una modifica" come nella
+versione vista dal professionista), messaggio di stato aggregato
+(`statusSummary`, invariato), "Prezzo totale medio", indirizzo, foto,
+"Ripeti la richiesta", modifica/eliminazione, sezione "Inviata a", elenco
+`QuoteCard` (invariate, stessa logica di accettazione/contro-proposta/
+rifiuto), e in fondo — solo quando esiste — `BookingSection` (nuovo
+componente, estratto dalla vecchia `BookingRow`: intervento, link
+videochiamata, riapri/annulla, "Non presentato", importo finale, nota di
+annullamento, eliminazione se il professionista ha eliminato l'account,
+flusso "Lavoro terminato"/recensione — **senza** più ripetere categoria/
+descrizione/foto/voci preventivo, già visibili più sopra nella stessa
+card essendo la stessa identica richiesta). Menu hamburger
+nell'intestazione: "Annulla richiesta" (hand-rolled a due passi, stesso
+vincolo UX già presente prima di questo redesign — il popup di conferma
+deve comparire subito sotto al pulsante, non in un modale a sé) quando
+non esiste ancora una prenotazione, sostituito da "Annulla prenotazione"
+(lo stesso `ActionsMenu` generico già in uso, apre `CancelBookingModal`)
+una volta che il preventivo è stato accettato — mutuamente esclusivi per
+costruzione (una prenotazione esistente implica `request.status ===
+"CLOSED"`, quindi `canDelete` è già falso a quel punto).
+
+**Deep link semplificato**: prima servivano due effetti separati
+(`?tab=richieste&open=`/`?tab=lavori&open=`, con due ref "già consumato"
+distinti) per le due liste indipendenti — con un'unica lista, un solo
+effetto basta (`?tab=` viene ignorato se presente, non più necessario per
+disambiguare: lo stesso `guidedRequestId` identifica sempre la stessa
+card unificata, a prescindere da quale evento/notifica l'abbia generato).
+Nessuna modifica a `notificationDeepLink`/`notificationDestination`
+(`lib/notificationSections.ts`): i link esistenti (`/le-mie-
+richieste?tab=lavori&open=...` per gli eventi "lavori", `?tab=richieste&
+open=...` per gli eventi "richieste") continuano a funzionare invariati,
+il parametro `tab` è semplicemente superfluo ora.
+
+**Verificato** end-to-end con l'API/Postgres locali reali (non solo
+typecheck/build) — script dedicato: professionista+cliente di test,
+agenda con fasce libere, 6 richieste dirette al profilo del
+professionista che coprono 5 dei 6 stadi visibili in UI (`da_quotare`,
+`in_attesa`, `modifica_richiesta`→`accettata`→`completata` sullo stesso
+ciclo, `chiusa` via annullamento cliente) — tutte create/avanzate tramite
+le stesse chiamate API reali già in uso dal resto del prodotto (nessuna
+scrittura diretta sul DB). Playwright (36/36 controlli PASS dopo aver
+corretto due falsi negativi nello script di verifica stesso — un
+selettore che assumeva l'assenza di paginazione, un altro che assumeva un
+testo "Non modificabile" che in realtà non compare mai per una richiesta
+già `CLOSED`, comportamento invariato dal codice originale): tutti gli 8
+tab visibili con conteggi corretti, pillole di stadio corrette e colorate
+su ogni card, sezioni della scheda espansa tutte presenti (andamento,
+preventivi ricevuti, dettaglio prenotazione, importo finale, recensione
+inviata), ricerca full-text che isola la card corretta per un termine
+presente solo nella descrizione, toggle "A domicilio/Online" che filtra
+correttamente, pop-up Filtri che si apre/chiude, paginazione con
+controllo "Pagina 2" quando le richieste superano il pageSize di default,
+deep-link `?open=` che scrolla ed evidenzia la card giusta, card chiusa
+che non offre più azioni di modifica, accettazione di un preventivo
+riuscita dalla nuova UI con la pillola che passa correttamente a
+"Accettata". Zero errori console reali (`ERR_TUNNEL_CONNECTION_FAILED` è
+la stessa limitazione di rete dell'ambiente di sviluppo già documentata
+altrove in questo file). **Falso positivo isolato durante la verifica
+mobile** (stesso genere di artefatto da dati di test già documentato più
+volte in questo file, es. §12/§21/§77/§96): un'email di test
+insolitamente lunga usata come nome visualizzato nell'header causava 95px
+di overflow orizzontale su viewport 390px — confermato **pre-esistente e
+non causato da questo redesign** (stesso identico overflow su `/`,
+`/account`, `/professionisti-salvati` con lo stesso account di test, zero
+overflow su tutte e quattro le pagine con un nome breve realistico
+impostato) — non è un problema di questa pagina, riguarda `SiteHeader`
+globalmente e non è stato toccato in questo giro (fuori scope). Account
+di test ripuliti a fine verifica (`DELETE /auth/me`). Typecheck pulito su
+tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
+`mobile`), build di produzione `apps/web` verde (38 route, nessuna
+nuova).

@@ -23,12 +23,11 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
-import { RequestStepper, computeRequestStage } from "@/components/RequestStepper";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
+import { CategoryCarousel } from "@/components/CategoryCarousel";
 import {
-  clientSectionCounts,
   combineUnreadCounts,
   mergeCounts,
   mergeIds,
@@ -41,30 +40,43 @@ import {
 } from "@/lib/notificationSections";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
-import { ListControls, Pagination, sortListItems, type ListSortKey } from "@/components/ListControls";
+import { Pagination } from "@/components/ListControls";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
+import { classifyClientRequestStage, CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
 
-const STATUS_LABEL: Record<ClientGuidedRequest["status"], string> = {
-  OPEN: "In attesa di risposte",
-  MATCHED: "Inviata ai professionisti",
-  CLOSED: "Chiusa",
-};
+/**
+ * Pagina `/le-mie-richieste` — richiesta esplicita dell'utente: "rendi la
+ * pagina le mie richieste simile a quella delle richieste ricevute
+ * adattandola però al contesto quindi queste sono visualizzate dalla parte
+ * del cliente". Stesso pattern di `/dashboard/richieste` (CLAUDE.md §41):
+ * un'unica lista, card collassate di default con una pillola di stadio
+ * colorata, tab a scorrimento per stadio, ricerca in ogni campo, filtri in
+ * un pop-up + toggle domicilio/online esterno — non più due tab separate
+ * ("Le mie richieste"/"Lavori accettati") su due liste indipendenti: una
+ * `ClientGuidedRequest` e l'eventuale `ClientBooking` nata dal suo
+ * preventivo accettato sono ora LA STESSA card (booking risolta per
+ * `guidedRequestId`, stesso principio già in uso lato professionista per
+ * `bookingByRequestId`/`RequestCard`).
+ *
+ * Gli 8 stadi non sono un concetto nuovo: `classifyClientRequestStage`
+ * (`lib/requestStage.ts`) è l'equivalente lato cliente di `classifyLeadStage`
+ * già in uso lato professionista — stessi nomi di stadio e stessi colori
+ * (`REQUEST_STAGE_STYLE`), solo il testo della pillola cambia
+ * (`CLIENT_STAGE_LABEL`): lo stesso stadio letto da un professionista ("Da
+ * quotare" = tocca a te) e da un cliente ("In attesa di preventivo" = sto
+ * aspettando) non può condividere la stessa frase. A differenza di un
+ * `Lead` (al più un preventivo), una richiesta generica può averne più di
+ * uno (fan-out, CLAUDE.md §14): lo stadio riflette il preventivo più
+ * "attivo" tra quelli ricevuti, la lista completa resta comunque visibile
+ * nella scheda espansa.
+ */
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
-const MAX_REVIEW_PHOTOS = 5;
 const MAX_REQUEST_PHOTOS = 5;
-
-const BOOKING_STATUS_LABEL: Record<ClientBooking["status"], string> = {
-  PENDING: "In attesa",
-  CONFIRMED: "Confermata",
-  COMPLETED: "Completata",
-  CANCELED: "Annullata",
-  NO_SHOW: "Non presentato",
-};
 
 const textareaStyle = {
   padding: 10,
@@ -75,68 +87,222 @@ const textareaStyle = {
   color: brand.grafite,
   resize: "vertical" as const,
 };
+// Filtri in cima alla pagina (cerca/ordina/zona) — stesse dimensioni già in
+// uso in /dashboard/richieste per lo stesso identico blocco.
+const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
 
-type ClientTab = "richieste" | "lavori";
+const STAGE_STYLE = REQUEST_STAGE_STYLE;
 
-/** Filtri per stato (richiesta esplicita dell'utente, stesso trattamento di /dashboard). */
-type RequestStatusFilter = "all" | ClientGuidedRequest["status"];
-const REQUEST_STATUS_OPTIONS: { value: RequestStatusFilter; label: string }[] = [
-  { value: "all", label: "Tutte" },
-  { value: "OPEN", label: STATUS_LABEL.OPEN },
-  { value: "MATCHED", label: STATUS_LABEL.MATCHED },
-  { value: "CLOSED", label: STATUS_LABEL.CLOSED },
-];
-
-type ClientBookingStatusFilter = "all" | ClientBooking["status"];
-const CLIENT_BOOKING_STATUS_OPTIONS: { value: ClientBookingStatusFilter; label: string }[] = [
-  { value: "all", label: "Tutti" },
-  { value: "PENDING", label: BOOKING_STATUS_LABEL.PENDING },
-  { value: "CONFIRMED", label: BOOKING_STATUS_LABEL.CONFIRMED },
-  { value: "COMPLETED", label: BOOKING_STATUS_LABEL.COMPLETED },
-  { value: "CANCELED", label: BOOKING_STATUS_LABEL.CANCELED },
-  { value: "NO_SHOW", label: BOOKING_STATUS_LABEL.NO_SHOW },
-];
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+}
 
 /**
- * Caselle "Le mie richieste"/"Lavori accettati" (richiesta esplicita
- * dell'utente, stesso trattamento già applicato lato professionista in
- * /dashboard per la stessa ragione — visualizzazione più facile e ordinata).
+ * Testo di ricerca concatenato per una richiesta — stesso principio già
+ * applicato lato professionista (`leadSearchText`, /dashboard/richieste):
+ * ogni campo utile a un umano entra nel testo cercabile, non solo
+ * categoria/città.
  */
-function ClientTabButton({
-  active,
-  onPress,
-  badgeCount,
-  children,
-}: {
-  active: boolean;
-  onPress: () => void;
-  /** Numeretto degli aggiornamenti non letti di questa sezione (richiesta esplicita dell'utente). */
-  badgeCount?: number;
-  children: React.ReactNode;
-}) {
+function clientRequestSearchText(request: ClientGuidedRequest, stage: RequestStage | undefined, booking: ClientBooking | undefined): string {
+  return [
+    request.categoryLabel,
+    request.description,
+    request.city,
+    request.address,
+    request.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
+    request.isUrgent ? "urgente" : null,
+    stage ? CLIENT_STAGE_LABEL[stage] : null,
+    request.recipientName,
+    request.recipientSurname,
+    ...request.sentTo.map((p) => p.businessName),
+    ...request.quotes.map((q) => q.businessName),
+    ...request.quotes.map((q) => q.notes),
+    ...request.quotes.flatMap((q) => q.items.map((i) => i.name)),
+    booking?.businessName,
+    booking?.description,
+    booking?.cancellationNote,
+    booking?.meetingLink,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+const CLIENT_TABS: { key: "tutte" | RequestStage; label: string }[] = [
+  { key: "tutte", label: "Tutte" },
+  { key: "da_quotare", label: "In attesa" },
+  { key: "in_attesa", label: "Da rispondere" },
+  { key: "modifica_richiesta", label: "Modifiche" },
+  { key: "accettata", label: "Accettate" },
+  { key: "completata", label: "Completate" },
+  { key: "annullata", label: "Annullate" },
+  { key: "scaduta", label: "Scadute" },
+];
+
+type SortMode = "recenti" | "vecchie" | "aggiornamento";
+
+/** Stessa pillola colorata di /dashboard/richieste, testo lato cliente (`CLIENT_STAGE_LABEL`). */
+function ClientStagePill({ stage }: { stage: RequestStage }) {
+  const s = STAGE_STYLE[stage];
   return (
-    <XStack
-      alignItems="center"
-      gap="$2"
-      paddingHorizontal="$4"
-      paddingVertical="$3"
-      borderRadius="$3"
-      backgroundColor={active ? brand.cianografiaVelo : "transparent"}
-      cursor="pointer"
-      onPress={onPress}
-      accessibilityRole="button"
-    >
-      <Text fontWeight="700" color={active ? brand.cianografia : brand.grafite70}>
-        {children}
+    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
+      <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
+      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={s.fg} textTransform="uppercase">
+        {CLIENT_STAGE_LABEL[stage]}
       </Text>
-      {badgeCount ? (
-        <YStack backgroundColor={brand.urgenza} borderRadius={999} minWidth={18} height={18} paddingHorizontal={4} alignItems="center" justifyContent="center">
-          <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
-            {badgeCount > 9 ? "9+" : badgeCount}
-          </Text>
+    </XStack>
+  );
+}
+
+function ServiceBadge({ online }: { online: boolean }) {
+  return (
+    <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
+      <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografia} />
+      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
+        {online ? "Consulenza online" : "A domicilio"}
+      </Text>
+    </XStack>
+  );
+}
+
+/**
+ * Barra a step (stesso pattern di `MiniTimeline` in /dashboard/richieste),
+ * riscritta qui con le etichette lato cliente: lo stadio "modifica_richiesta"
+ * significa sempre "hai proposto tu un'altra data" (solo il cliente può
+ * portare un preventivo in quello stato, `QuotesService.proposeDate`), mai
+ * "il cliente ha richiesto una modifica" come nella versione professionista.
+ */
+function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
+  const steps: { key: string; label: string; extra?: boolean }[] = [
+    { key: "richiesta", label: "Richiesta inviata" },
+    { key: "preventivo", label: "Preventivo ricevuto" },
+  ];
+  if (stage === "modifica_richiesta") steps.push({ key: "modifica", label: "Hai proposto un'altra data", extra: true });
+  steps.push({ key: "accettata", label: "Accettata" }, { key: "completata", label: "Completata" });
+
+  const reachedIndex: Record<RequestStage, number> = {
+    da_quotare: 0,
+    in_attesa: 1,
+    modifica_richiesta: 2,
+    accettata: stage === "modifica_richiesta" ? 3 : 2,
+    completata: stage === "modifica_richiesta" ? 4 : 3,
+    annullata: 2,
+    scaduta: -1,
+    chiusa: -1,
+  };
+  const reached = reachedIndex[stage];
+
+  return (
+    <XStack alignItems="flex-start" width="100%">
+      {steps.map((step, i) => {
+        const done = reached >= i;
+        return (
+          <YStack key={step.key} flex={1} alignItems="center" position="relative" minWidth={0}>
+            {i > 0 ? (
+              <YStack position="absolute" top={5} right="50%" width="100%" height={2} backgroundColor={done ? brand.cianografia : brand.filetto} zIndex={0} />
+            ) : null}
+            <YStack
+              width={step.extra ? 13 : 11}
+              height={step.extra ? 13 : 11}
+              borderRadius={999}
+              backgroundColor={done ? (step.extra ? brand.ottone : brand.cianografia) : brand.filetto}
+              zIndex={1}
+              marginBottom={5}
+            />
+            <Text fontFamily="$body" fontSize={10} fontWeight={done ? "700" : "500"} color={done ? (step.extra ? "#8a5a00" : brand.grafite) : brand.grafite70} textAlign="center">
+              {step.label}
+            </Text>
+          </YStack>
+        );
+      })}
+    </XStack>
+  );
+}
+
+/**
+ * Menu hamburger generico (click-to-open, chiusura al click esterno) — già
+ * in uso per "Annulla prenotazione"/"Annulla richiesta" prima del redesign,
+ * riusato identico qui per il solo caso "Annulla prenotazione" (l'azione
+ * "Annulla richiesta" resta un menu hand-rolled a due passi, vedi
+ * `GuidedRequestCard`, per lo stesso motivo storico: il popup di conferma
+ * deve comparire subito sotto al pulsante, non in un modale a sé).
+ */
+function ActionsMenu({ accessibilityLabel, items }: { accessibilityLabel: string; items: { icon: IconName; text: string; color: string; onPress: () => void }[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <YStack ref={containerRef} position="relative">
+      <YStack
+        width={32}
+        height={32}
+        borderRadius={999}
+        alignItems="center"
+        justifyContent="center"
+        cursor="pointer"
+        hoverStyle={{ backgroundColor: brand.gesso }}
+        onPress={(e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          setIsOpen((open) => !open);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+      >
+        <Icon name="menu" size={18} color={brand.grafite} />
+      </YStack>
+
+      {isOpen ? (
+        <YStack
+          position="absolute"
+          top="100%"
+          right={0}
+          marginTop="$2"
+          minWidth={200}
+          backgroundColor={brand.calce}
+          borderRadius={radiusDoc}
+          overflow="hidden"
+          zIndex={1000}
+          shadowColor="rgba(43,32,19,0.12)"
+          shadowRadius={12}
+          shadowOffset={{ width: 0, height: 4 }}
+          shadowOpacity={1}
+        >
+          {items.map((item) => (
+            <XStack
+              key={item.text}
+              paddingHorizontal="$4"
+              paddingVertical="$3"
+              alignItems="center"
+              gap="$2"
+              cursor="pointer"
+              hoverStyle={{ backgroundColor: brand.gesso }}
+              onPress={(e: { stopPropagation: () => void }) => {
+                e.stopPropagation();
+                item.onPress();
+                setIsOpen(false);
+              }}
+              accessibilityRole="button"
+            >
+              <Icon name={item.icon} size={16} color={item.color} />
+              <Text fontSize="$3" color={item.color} fontWeight="600">
+                {item.text}
+              </Text>
+            </XStack>
+          ))}
         </YStack>
       ) : null}
-    </XStack>
+    </YStack>
   );
 }
 
@@ -151,208 +317,51 @@ export default function LeMieRichiestePage() {
 function LeMieRichiesteContent() {
   const { user, token, isLoading, markNotificationsRead } = useAuth();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<ClientTab>("richieste");
-  // Un toast cliccato (ToastStack, richiesta esplicita dell'utente: "fagli
-  // aprire l'aggiornamento relativo a quel banner") naviga qui con
-  // `?tab=richieste|lavori` — stesso meccanismo di /dashboard, reattivo a
-  // `searchParams` per coprire anche il caso in cui si è già su questa
-  // pagina (navigazione superficiale, nessun rimontaggio del componente).
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab === "richieste" || tab === "lavori") setActiveTab(tab);
-  }, [searchParams]);
-  // Fotografia delle notifiche non lette al momento dell'arrivo, presa
-  // PRIMA di segnarle come lette — stessa race condition già documentata
-  // e corretta in /dashboard (vedi commento lì): non affidarsi al
-  // conteggio "live" di AuthContext per questo calcolo one-shot.
-  const [sectionSnapshot, setSectionSnapshot] = useState<{ richieste: number; lavori: number }>({ richieste: 0, lavori: 0 });
-  // Stesso snapshot di sectionSnapshot, per evidenziare la singola card/riga
-  // con l'aggiornamento (richiesta esplicita dell'utente: "rendilo evidente
-  // anche nella lista"), non solo il numeretto sul tab.
-  const [newRequestIds, setNewRequestIds] = useState<Set<string>>(new Set());
-  const [newClientBookingIds, setNewClientBookingIds] = useState<Set<string>>(new Set());
-  // Simbolo sul preventivo specifico che ha ricevuto un aggiornamento
-  // (richiesta esplicita dell'utente) — una richiesta generica può avere
-  // preventivi da più professionisti, il badge sulla card da solo non basta
-  // a distinguere quale.
-  const [newQuoteIds, setNewQuoteIds] = useState<Set<string>>(new Set());
-  // Conteggio (non solo presenza) degli aggiornamenti non letti — richiesta
-  // esplicita dell'utente: un pallino rosso con un numero accanto a
-  // "Contatta/Cronologia", sia sul singolo preventivo/lavoro sia sulla
-  // riga di un professionista in "Inviata a" (prima che esista un
-  // preventivo, identificata dalla chiave composita richiesta+professionista).
-  const [threadUnreadCounts, setThreadUnreadCounts] = useState<Map<string, number>>(new Map());
-  const [quoteUnreadCounts, setQuoteUnreadCounts] = useState<Map<string, number>>(new Map());
-  const [bookingUnreadCounts, setBookingUnreadCounts] = useState<Map<string, number>>(new Map());
   const [requests, setRequests] = useState<ClientGuidedRequest[] | null>(null);
   const [bookings, setBookings] = useState<ClientBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtri/ordinamento/quantità visualizzata (richiesta esplicita
-  // dell'utente), stesso pattern client-side di /dashboard.
-  const [requestsStatusFilter, setRequestsStatusFilter] = useState<RequestStatusFilter>("all");
-  const [requestsSort, setRequestsSort] = useState<ListSortKey>("createdAt");
-  const [requestsPageSize, setRequestsPageSize] = useState(5);
-  const [requestsPage, setRequestsPage] = useState(1);
-  const [clientBookingsStatusFilter, setClientBookingsStatusFilter] = useState<ClientBookingStatusFilter>("all");
-  const [clientBookingsSort, setClientBookingsSort] = useState<ListSortKey>("scheduledAt");
-  const [clientBookingsPageSize, setClientBookingsPageSize] = useState(5);
-  const [clientBookingsPage, setClientBookingsPage] = useState(1);
+  const [activeStageTab, setActiveStageTab] = useState<"tutte" | RequestStage>("tutte");
+  const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("recenti");
+  const [zoneFilter, setZoneFilter] = useState("tutte");
+  const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [pageSize, setPageSize] = useState(5);
+  const [page, setPage] = useState(1);
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  // Bug reale segnalato dall'utente: cliccare una notifica (che arriva su
-  // questa pagina con `?open=<id>` in URL) e poi cambiare un filtro
-  // riportava indietro la pagina/il filtro appena scelti, "impallando" la
-  // schermata — `?open=` non veniva mai ripulito dall'URL, quindi i due
-  // effetti sotto (con `requestsStatusFilter`/`requestsSort`/
-  // `requestsPageSize` tra le dipendenze, necessari per il loro stesso
-  // flusso in due passaggi: azzera il filtro → aspetta il re-render →
-  // calcola pagina/scrolla) si riattivavano ad OGNI cambio di filtro
-  // successivo dell'utente, forzando di nuovo filtro="Tutte"/pagina
-  // giusta/scroll verso la card di quella prima notifica, all'infinito.
-  // Un ref "già consumato" (stesso principio già in uso in
-  // `/dashboard/agenda`, `consumedBookingDeepLinkRef`) fa eseguire il
-  // salto una sola volta per ciascun `targetId`: dopo il primo
-  // scroll+evidenziazione riuscito, i filtri tornano liberi.
+  // Simbolo "Nuovo" sulla singola card (richiesta esplicita dell'utente:
+  // "rendilo evidente anche nella lista") — un aggiornamento può arrivare
+  // sia sulla ClientGuidedRequest sia sulla ClientBooking nata da lei,
+  // entrambi riportati sulla stessa card unificata.
+  const [newRequestIds, setNewRequestIds] = useState<Set<string>>(new Set());
+  const [newClientBookingIds, setNewClientBookingIds] = useState<Set<string>>(new Set());
+  const [newQuoteIds, setNewQuoteIds] = useState<Set<string>>(new Set());
+  const [threadUnreadCounts, setThreadUnreadCounts] = useState<Map<string, number>>(new Map());
+  const [quoteUnreadCounts, setQuoteUnreadCounts] = useState<Map<string, number>>(new Map());
+  const [bookingUnreadCounts, setBookingUnreadCounts] = useState<Map<string, number>>(new Map());
+
+  // Bug reale segnalato dall'utente (stesso in /dashboard/richieste,
+  // corretto nello stesso giro): un `useRef` "già consumato" tenuto QUI (mai
+  // smontato da un cambio di filtro/tab, a differenza della card) evita che
+  // un deep link da notifica si riattivi ad ogni cambio successivo di
+  // filtro — vedi lo stesso identico commento nel file gemello lato
+  // professionista.
   const consumedRequestOpenRef = useRef<string | null>(null);
-  const consumedBookingOpenRef = useRef<string | null>(null);
-  // Bug reale segnalato dall'utente: cliccando una notifica di nuovo
-  // messaggio (che porta `&chat=<professionalProfileId>` oltre a `?open=`)
-  // la chat si apriva correttamente, ma cambiare filtro (o pagina) e tornare
-  // indietro la riapriva da sola — `autoOpenChatProfessionalId` era prima
-  // calcolato ad ogni render direttamente da `searchParams` (mai ripulito
-  // dall'URL), con il guard "già aperta" dentro `GuidedRequestCard`/
-  // `QuoteCard` (un `useRef`): un cambio di filtro può smontare e rimontare
-  // quella card (esce/rientra dalla lista filtrata), azzerando quel ref e
-  // riaprendo la chat perché la prop restava valorizzata. Stesso principio
-  // di `consumedRequestOpenRef` sopra, ma qui il guard deve vivere in questo
-  // componente (mai smontato dal cambio di filtro): impostato una sola volta
-  // e azzerato non appena la card lo consuma davvero
-  // (`onChatAutoOpenHandled`), così un rimontaggio successivo vede sempre
-  // `autoOpenChatProfessionalId=null`, a prescindere da quante volte la card
-  // esce/rientra dalla lista filtrata.
   const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
 
-  // Deep link da /chat (richiesta esplicita dell'utente: "dai la
-  // possibilità di andare alla pagina del preventivo/informazioni di
-  // quella determinata chat") — `?open=<guidedRequestId>` porta sul tab
-  // "richieste", azzera il filtro per stato (potrebbe nascondere la
-  // richiesta target) e calcola la pagina corretta, poi scrolla alla card
-  // giusta. Calcolato qui a mano da `requests` (non da `sortedRequests`,
-  // derivato più sotto dopo i guard di autenticazione: un useEffect non
-  // può dipendere da un valore calcolato dopo un return condizionale).
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    // Un `?tab=lavori` esplicito (nuovo deep link "lavori", sotto) non deve
-    // far scattare anche questo effetto: lo stesso `guidedRequestId` in
-    // `open=` è sempre anche l'id di una richiesta valida (una prenotazione
-    // nasce sempre da una GuidedRequest), quindi senza questo guard i due
-    // effetti competerebbero sullo stesso parametro.
-    if (tabParam === "lavori") return;
-    const targetId = searchParams.get("open");
-    if (!targetId || !requests) return;
-    if (consumedRequestOpenRef.current === targetId) return;
-    if (!requests.some((r) => r.id === targetId)) return;
-    setActiveTab("richieste");
-    if (requestsStatusFilter !== "all") {
-      setRequestsStatusFilter("all");
-      return; // richiamato di nuovo dopo il re-render con il filtro azzerato
-    }
-    const sorted = sortListItems(requests, requestsSort, { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt });
-    const index = sorted.findIndex((r) => r.id === targetId);
-    if (index === -1) return;
-    consumedRequestOpenRef.current = targetId;
-    const chatParam = searchParams.get("chat");
-    if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
-    setRequestsPage(Math.floor(index / requestsPageSize) + 1);
-    setTimeout(() => {
-      const elementId = `request-${targetId}`;
-      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Richiesta esplicita dell'utente: non solo scrollare, evidenziare
-      // brevemente la card raggiunta.
-      highlightDeepLinkTarget(elementId);
-    }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, requestsStatusFilter, requestsSort, requestsPageSize, searchParams]);
-
-  // Stesso deep link, ma verso la tab "Lavori accettati" (richiesta
-  // esplicita dell'utente: click su una notifica di lavoro — completato,
-  // annullato dal professionista, riaperto — deve portare all'esatta
-  // prenotazione, non solo alla tab). `open=` porta qui il
-  // `guidedRequestId` della richiesta originale (stesso payload già
-  // arricchito lato backend per questi eventi, bookings.service.ts): si
-  // cerca la Booking corrispondente per risalire al suo id reale.
-  useEffect(() => {
-    if (searchParams.get("tab") !== "lavori") return;
-    const targetGuidedRequestId = searchParams.get("open");
-    if (!targetGuidedRequestId || !bookings) return;
-    if (consumedBookingOpenRef.current === targetGuidedRequestId) return;
-    const match = bookings.find((b) => b.guidedRequestId === targetGuidedRequestId);
-    if (!match) return;
-    setActiveTab("lavori");
-    if (clientBookingsStatusFilter !== "all") {
-      setClientBookingsStatusFilter("all");
-      return;
-    }
-    const sorted = sortListItems(bookings, clientBookingsSort, {
-      createdAt: (b) => b.createdAt,
-      updatedAt: (b) => b.updatedAt,
-      scheduledAt: (b) => b.scheduledAt,
-    });
-    const index = sorted.findIndex((b) => b.id === match.id);
-    if (index === -1) return;
-    consumedBookingOpenRef.current = targetGuidedRequestId;
-    setClientBookingsPage(Math.floor(index / clientBookingsPageSize) + 1);
-    setTimeout(() => {
-      const elementId = `booking-${match.id}`;
-      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      highlightDeepLinkTarget(elementId);
-    }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookings, clientBookingsStatusFilter, clientBookingsSort, clientBookingsPageSize, searchParams]);
-
-  // Stesso principio di /dashboard: cambiare filtro/ordinamento/quantità
-  // riparte sempre da pagina 1.
-  function updateRequestsStatusFilter(value: RequestStatusFilter) {
-    setRequestsStatusFilter(value);
-    setRequestsPage(1);
-  }
-  function updateRequestsSort(value: ListSortKey) {
-    setRequestsSort(value);
-    setRequestsPage(1);
-  }
-  function updateRequestsPageSize(value: number) {
-    setRequestsPageSize(value);
-    setRequestsPage(1);
-  }
-  function updateClientBookingsStatusFilter(value: ClientBookingStatusFilter) {
-    setClientBookingsStatusFilter(value);
-    setClientBookingsPage(1);
-  }
-  function updateClientBookingsSort(value: ListSortKey) {
-    setClientBookingsSort(value);
-    setClientBookingsPage(1);
-  }
-  function updateClientBookingsPageSize(value: number) {
-    setClientBookingsPageSize(value);
-    setClientBookingsPage(1);
-  }
-
-  // Cambiare pagina deve riportare la vista in cima alla lista (richiesta
-  // esplicita dell'utente): senza, si resta scrollati in fondo sul
-  // controllo appena cliccato e la nuova pagina di richieste/prenotazioni
-  // parte fuori dallo schermo, invisibile finché non si scrolla a mano.
-  // Un solo ref condiviso dalle due tab: solo una è montata alla volta.
   const listTopRef = useRef<HTMLDivElement>(null);
   function scrollToListTop() {
     listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
-  function goToRequestsPage(page: number) {
-    setRequestsPage(page);
+  function goToPage(nextPage: number) {
+    setPage(nextPage);
     scrollToListTop();
   }
-  function goToClientBookingsPage(page: number) {
-    setClientBookingsPage(page);
-    scrollToListTop();
+  function updateStageTab(key: "tutte" | RequestStage) {
+    setActiveStageTab(key);
+    setPage(1);
   }
 
   function reload() {
@@ -366,16 +375,104 @@ function LeMieRichiesteContent() {
 
   useEffect(reload, [token]);
 
+  const bookingByRequestId = useMemo(() => {
+    const map = new Map<string, ClientBooking>();
+    (bookings ?? []).forEach((b) => {
+      if (b.guidedRequestId) map.set(b.guidedRequestId, b);
+    });
+    return map;
+  }, [bookings]);
+
+  const stageByRequestId = useMemo(() => {
+    const map = new Map<string, RequestStage>();
+    (requests ?? []).forEach((r) => map.set(r.id, classifyClientRequestStage(r, bookingByRequestId.get(r.id) ?? null)));
+    return map;
+  }, [requests, bookingByRequestId]);
+
+  const zones = useMemo(() => {
+    const set = new Set((requests ?? []).map((r) => r.city).filter(Boolean));
+    return [...set].sort();
+  }, [requests]);
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { tutte: (requests ?? []).length };
+    (requests ?? []).forEach((r) => {
+      const stage = stageByRequestId.get(r.id)!;
+      counts[stage] = (counts[stage] ?? 0) + 1;
+    });
+    return counts;
+  }, [requests, stageByRequestId]);
+
+  const filtersActiveCount = (zoneFilter !== "tutte" ? 1 : 0) + (sortMode !== "recenti" ? 1 : 0);
+
+  const filteredSortedRequests = useMemo(() => {
+    let list = requests ?? [];
+    if (activeStageTab !== "tutte") list = list.filter((r) => stageByRequestId.get(r.id) === activeStageTab);
+    if (zoneFilter !== "tutte") list = list.filter((r) => r.city === zoneFilter);
+    if (serviceModeFilter !== "tutte") list = list.filter((r) => r.serviceMode === serviceModeFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((r) => clientRequestSearchText(r, stageByRequestId.get(r.id), bookingByRequestId.get(r.id)).includes(q));
+    }
+    list = [...list];
+    if (sortMode === "vecchie") list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    else if (sortMode === "recenti") list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return list;
+  }, [requests, activeStageTab, zoneFilter, serviceModeFilter, search, sortMode, stageByRequestId, bookingByRequestId]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSortedRequests.length / pageSize));
+  const effectivePage = Math.min(page, totalPages);
+  const visibleRequests = filteredSortedRequests.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+
+  // Deep link da una notifica/da /chat (richiesta esplicita dell'utente) —
+  // `?open=<guidedRequestId>` apre/scrolla alla card giusta, a prescindere
+  // da quale `?tab=` storico l'accompagni (la pagina non ne ha più bisogno,
+  // un'unica lista unificata copre sia le richieste che i lavori accettati:
+  // il valore, se presente, viene semplicemente ignorato). `&chat=` apre
+  // subito la conversazione col professionista giusto.
+  useEffect(() => {
+    if (!requests) return;
+    const targetId = searchParams.get("open");
+    if (!targetId) return;
+    if (consumedRequestOpenRef.current === targetId) return;
+    if (!requests.some((r) => r.id === targetId)) return;
+    if (activeStageTab !== "tutte") {
+      setActiveStageTab("tutte");
+      return;
+    }
+    if (zoneFilter !== "tutte") {
+      setZoneFilter("tutte");
+      return;
+    }
+    if (serviceModeFilter !== "tutte") {
+      setServiceModeFilter("tutte");
+      return;
+    }
+    const index = filteredSortedRequests.findIndex((r) => r.id === targetId);
+    if (index === -1) return;
+    consumedRequestOpenRef.current = targetId;
+    setOpenId(targetId);
+    const chatParam = searchParams.get("chat");
+    if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
+    setPage(Math.floor(index / pageSize) + 1);
+    setTimeout(() => {
+      const elementId = `request-${targetId}`;
+      document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      highlightDeepLinkTarget(elementId);
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, activeStageTab, zoneFilter, serviceModeFilter, filteredSortedRequests, pageSize, searchParams]);
+
   // Stesso principio della dashboard professionista: aprire questa pagina
-  // segna come lette le notifiche in attesa (nuovo preventivo, conferma/
-  // rifiuto della data proposta) e azzera il badge nell'header. Ripetuto
-  // ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta (richiesta
-  // esplicita dell'utente: "controlla anche lato cliente" per lo stesso
-  // problema segnalato lato professionista — un nuovo messaggio in chat
-  // deve comparire da solo, non solo al prossimo caricamento). Ogni tick
-  // trova solo le notifiche arrivate dopo il markNotificationsRead del tick
+  // segna come lette le notifiche in attesa, ripetuto ogni
+  // UNREAD_BADGE_POLL_MS finché la pagina resta aperta. Ogni tick trova solo
+  // le notifiche arrivate dopo il markNotificationsRead del tick
   // precedente, quindi i conteggi si sommano (mergeCounts/mergeIds) invece
-  // di sostituire lo stato.
+  // di sostituire lo stato — e ricarica anche le due liste (bug reale
+  // corretto in un giro precedente: un evento generato dal professionista
+  // mentre questa pagina resta aperta deve riflettersi senza un
+  // ricaricamento manuale).
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -384,24 +481,12 @@ function LeMieRichiesteContent() {
         .unreadNotifications(token!)
         .then((notifications) => {
           if (cancelled || notifications.length === 0) return;
-          const delta = clientSectionCounts(notifications);
-          setSectionSnapshot((prev) => ({ richieste: prev.richieste + delta.richieste, lavori: prev.lavori + delta.lavori }));
           setNewRequestIds((prev) => mergeIds(prev, unreadGuidedRequestIds(notifications)));
           setNewClientBookingIds((prev) => mergeIds(prev, unreadBookingIds(notifications)));
           setNewQuoteIds((prev) => mergeIds(prev, unreadQuoteIds(notifications)));
           setThreadUnreadCounts((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
           setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
-          // Bug reale corretto (richiesta esplicita dell'utente: "anche dalla
-          // parte del cliente deve poter cliccare su lavoro terminato come il
-          // professionista"): `reload()` girava solo al primo montaggio —
-          // quando il professionista segna un lavoro completato (notifica
-          // JOB_COMPLETED) mentre il cliente ha già questa pagina aperta,
-          // `booking.status` restava CONFIRMED in memoria e il bottone
-          // "Lavoro terminato" del cliente non compariva mai senza un
-          // ricaricamento manuale. Stesso poll da 15s già in uso per i
-          // pallini di notifica, riusato per tenere aggiornate anche le due
-          // liste stesse quando c'è qualcosa di nuovo da vedere.
           reload();
         })
         .catch(() => {})
@@ -414,6 +499,17 @@ function LeMieRichiesteContent() {
       clearInterval(interval);
     };
   }, [token, markNotificationsRead]);
+
+  // "Nuovo" su una card raggiunta solo tramite la propria Booking (un
+  // aggiornamento sul lavoro, non sulla richiesta in sé) — tradotto nella
+  // stessa chiave `request.id` usata dalla card unificata.
+  const newRequestIdsFromBookings = useMemo(() => {
+    const set = new Set<string>();
+    (bookings ?? []).forEach((b) => {
+      if (b.guidedRequestId && newClientBookingIds.has(b.id)) set.add(b.guidedRequestId);
+    });
+    return set;
+  }, [bookings, newClientBookingIds]);
 
   // L'indirizzo di lavoro è già stato raccolto all'invio della richiesta
   // (GuidedRequestForm) — accettare un preventivo non chiede più nulla,
@@ -443,195 +539,324 @@ function LeMieRichiesteContent() {
     );
   }
 
-  const sortedRequests = requests
-    ? sortListItems(
-        requests.filter((request) => requestsStatusFilter === "all" || request.status === requestsStatusFilter),
-        requestsSort,
-        { createdAt: (r) => r.createdAt, updatedAt: (r) => r.updatedAt },
-      )
-    : null;
-  const requestsTotalPages = sortedRequests ? Math.max(1, Math.ceil(sortedRequests.length / requestsPageSize)) : 1;
-  const requestsEffectivePage = Math.min(requestsPage, requestsTotalPages);
-  const visibleRequests = sortedRequests?.slice((requestsEffectivePage - 1) * requestsPageSize, requestsEffectivePage * requestsPageSize) ?? null;
-
-  const filteredClientBookings = bookings
-    ? bookings.filter((booking) => clientBookingsStatusFilter === "all" || booking.status === clientBookingsStatusFilter)
-    : [];
-  const sortedClientBookings = sortListItems(filteredClientBookings, clientBookingsSort, {
-    createdAt: (b) => b.createdAt,
-    updatedAt: (b) => b.updatedAt,
-    scheduledAt: (b) => b.scheduledAt,
-  });
-  const clientBookingsTotalPages = Math.max(1, Math.ceil(sortedClientBookings.length / clientBookingsPageSize));
-  const clientBookingsEffectivePage = Math.min(clientBookingsPage, clientBookingsTotalPages);
-  const visibleClientBookings = sortedClientBookings.slice(
-    (clientBookingsEffectivePage - 1) * clientBookingsPageSize,
-    clientBookingsEffectivePage * clientBookingsPageSize,
-  );
-
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
-      {/* Sidebar "Il tuo account" rimossa (richiesta esplicita dell'utente:
-          "non far vedere quel menu sempre lì fisso") — navigazione tra le
-          voci disponibile dal menu a tendina dell'header (AccountMenu). */}
-      <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
-        <YStack flex={1} minWidth={280} gap="$5">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Le mie richieste
-          </Text>
+      <YStack width="100%" maxWidth={900} gap="$5">
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+          Le mie richieste
+        </Text>
 
-          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-          <XStack gap="$2" flexWrap="wrap" borderBottomWidth={1} borderBottomColor={brand.filetto}>
-            <ClientTabButton active={activeTab === "richieste"} onPress={() => setActiveTab("richieste")} badgeCount={sectionSnapshot.richieste}>
-              Le mie richieste{requests ? ` (${requests.length})` : ""}
-            </ClientTabButton>
-            <ClientTabButton active={activeTab === "lavori"} onPress={() => setActiveTab("lavori")} badgeCount={sectionSnapshot.lavori}>
-              Lavori accettati{bookings ? ` (${bookings.length})` : ""}
-            </ClientTabButton>
-          </XStack>
-
-          {activeTab === "richieste" ? (
-            <YStack ref={listTopRef} gap="$4">
-              {requests !== null && requests.length > 0 ? (
-                <ListControls
-                  statusValue={requestsStatusFilter}
-                  statusOptions={REQUEST_STATUS_OPTIONS}
-                  onStatusChange={updateRequestsStatusFilter}
-                  sortValue={requestsSort}
-                  sortOptions={["createdAt", "updatedAt"]}
-                  onSortChange={updateRequestsSort}
-                  pageSize={requestsPageSize}
-                  onPageSizeChange={updateRequestsPageSize}
-                />
-              ) : null}
-              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={goToRequestsPage} />
-              {requests === null ? (
-                <LoadingState />
-              ) : requests.length === 0 ? (
-                <EmptyState
-                  icon="file-text"
-                  title="Nessuna richiesta inviata"
-                  description="Non hai ancora inviato nessuna richiesta di preventivo."
-                  action={
-                    <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                      <Text color={brand.cianografia} fontWeight="600">
-                        Richiedi il tuo primo preventivo
+        {requests !== null && requests.length > 0 ? (
+          <>
+            {/* Tab per stadio — stessa riga scorrevole di /dashboard/richieste
+                (frecce riusate da CategoryCarousel), etichette adattate al
+                punto di vista del cliente. */}
+            <CategoryCarousel>
+              {CLIENT_TABS.map((tab) => {
+                const active = activeStageTab === tab.key;
+                const count = tabCounts[tab.key] ?? 0;
+                return (
+                  <XStack key={tab.key} flexShrink={0} position="relative">
+                    <XStack
+                      alignItems="center"
+                      paddingHorizontal="$3"
+                      paddingVertical={9}
+                      borderRadius={999}
+                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      borderWidth={1}
+                      borderColor={active ? brand.cianografia : brand.filetto}
+                      cursor="pointer"
+                      onPress={() => updateStageTab(tab.key)}
+                      accessibilityRole="button"
+                    >
+                      <Text fontFamily="$body" fontSize={13.5} fontWeight="800" color={active ? "white" : brand.grafite}>
+                        {tab.label}
                       </Text>
-                    </Link>
-                  }
-                />
-              ) : visibleRequests && visibleRequests.length === 0 ? (
-                <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
-              ) : (
-                visibleRequests?.map((request) => (
-                  <div key={request.id} id={`request-${request.id}`}>
-                    <GuidedRequestCard
-                      request={request}
-                      token={token}
-                      onChanged={reload}
-                      onAcceptQuote={handleAcceptQuote}
-                      isNew={newRequestIds.has(request.id)}
-                      newQuoteIds={newQuoteIds}
-                      threadUnreadCounts={threadUnreadCounts}
-                      quoteUnreadCounts={quoteUnreadCounts}
-                      autoOpenChatProfessionalId={pendingChatOpen && pendingChatOpen.requestId === request.id ? pendingChatOpen.professionalProfileId : null}
-                      onChatAutoOpenHandled={() => setPendingChatOpen((prev) => (prev && prev.requestId === request.id ? null : prev))}
-                    />
-                  </div>
-                ))
-              )}
-              <Pagination page={requestsEffectivePage} totalPages={requestsTotalPages} onPageChange={goToRequestsPage} />
-            </YStack>
+                    </XStack>
+                    {count > 0 ? (
+                      <YStack
+                        position="absolute"
+                        top={-5}
+                        right={-5}
+                        minWidth={18}
+                        height={18}
+                        paddingHorizontal={4}
+                        borderRadius={999}
+                        backgroundColor={brand.urgenza}
+                        alignItems="center"
+                        justifyContent="center"
+                        borderWidth={2}
+                        borderColor={brand.gesso}
+                      >
+                        <Text fontSize={10} fontWeight="800" color="white">
+                          {count}
+                        </Text>
+                      </YStack>
+                    ) : null}
+                  </XStack>
+                );
+              })}
+            </CategoryCarousel>
+
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Cerca in ogni campo della richiesta..."
+              style={{ ...filterInputStyle, width: "100%" }}
+            />
+
+            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <XStack
+                alignItems="center"
+                gap={6}
+                paddingHorizontal="$4"
+                paddingVertical={12}
+                borderRadius={radiusDoc}
+                backgroundColor={brand.calce}
+                borderWidth={1}
+                borderColor={brand.filetto}
+                cursor="pointer"
+                onPress={() => setShowFiltersModal(true)}
+                accessibilityRole="button"
+              >
+                <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
+                <Text fontWeight="700" fontSize={14} color={brand.grafite}>
+                  Filtri{filtersActiveCount > 0 ? ` (${filtersActiveCount})` : ""}
+                </Text>
+              </XStack>
+
+              <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
+                {(
+                  [
+                    { key: "tutte", label: "Tutte", icon: null },
+                    { key: "HOME", label: "A domicilio", icon: "house" },
+                    { key: "ONLINE", label: "Online", icon: "video" },
+                  ] as const
+                ).map((opt) => {
+                  const active = serviceModeFilter === opt.key;
+                  return (
+                    <XStack
+                      key={opt.key}
+                      alignItems="center"
+                      gap={6}
+                      paddingHorizontal="$3"
+                      paddingVertical={12}
+                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      cursor="pointer"
+                      onPress={() => {
+                        setServiceModeFilter(opt.key);
+                        setPage(1);
+                      }}
+                      accessibilityRole="button"
+                    >
+                      {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
+                      <Text fontSize={13.5} fontWeight="700" color={active ? "white" : brand.grafite}>
+                        {opt.label}
+                      </Text>
+                    </XStack>
+                  );
+                })}
+              </XStack>
+            </XStack>
+
+            {showFiltersModal ? (
+              <div
+                onClick={() => setShowFiltersModal(false)}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Filtri"
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(20,24,30,0.55)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                  padding: 16,
+                  overflowY: "auto",
+                }}
+              >
+                <YStack
+                  onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+                  width="100%"
+                  maxWidth={420}
+                  backgroundColor={brand.calce}
+                  borderRadius="$3"
+                  padding="$5"
+                  gap="$4"
+                  marginVertical="$6"
+                >
+                  <XStack justifyContent="space-between" alignItems="center">
+                    <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                      Filtri
+                    </Text>
+                    <XStack cursor="pointer" onPress={() => setShowFiltersModal(false)} accessibilityRole="button" accessibilityLabel="Chiudi">
+                      <Icon name="x" size={20} color={brand.grafite70} />
+                    </XStack>
+                  </XStack>
+
+                  <YStack gap="$3">
+                    <select
+                      value={sortMode}
+                      onChange={(e) => {
+                        setSortMode(e.target.value as SortMode);
+                        setPage(1);
+                      }}
+                      style={{ ...filterInputStyle, width: "100%" }}
+                    >
+                      <option value="recenti">Data di invio più recente</option>
+                      <option value="vecchie">Data di invio più vecchia</option>
+                      <option value="aggiornamento">Ultimo aggiornamento</option>
+                    </select>
+                    <select
+                      value={zoneFilter}
+                      onChange={(e) => {
+                        setZoneFilter(e.target.value);
+                        setPage(1);
+                      }}
+                      style={{ ...filterInputStyle, width: "100%" }}
+                    >
+                      <option value="tutte">Tutte le zone</option>
+                      {zones.map((z) => (
+                        <option key={z} value={z}>
+                          {z}
+                        </option>
+                      ))}
+                    </select>
+                  </YStack>
+
+                  {filtersActiveCount > 0 ? (
+                    <XStack
+                      justifyContent="center"
+                      cursor="pointer"
+                      onPress={() => {
+                        setSortMode("recenti");
+                        setZoneFilter("tutte");
+                        setPage(1);
+                      }}
+                      accessibilityRole="button"
+                    >
+                      <Text fontSize={13} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
+                        Reimposta filtri
+                      </Text>
+                    </XStack>
+                  ) : null}
+
+                  <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
+                    Mostra {filteredSortedRequests.length} {filteredSortedRequests.length === 1 ? "richiesta" : "richieste"}
+                  </Button>
+                </YStack>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        <YStack ref={listTopRef} gap="$4">
+          <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
+
+          {requests === null ? (
+            <LoadingState />
+          ) : requests.length === 0 ? (
+            <EmptyState
+              icon="file-text"
+              title="Nessuna richiesta inviata"
+              description="Non hai ancora inviato nessuna richiesta di preventivo."
+              action={
+                <Link href="/preventivo" style={{ textDecoration: "none" }}>
+                  <Text color={brand.cianografia} fontWeight="600">
+                    Richiedi il tuo primo preventivo
+                  </Text>
+                </Link>
+              }
+            />
+          ) : visibleRequests.length === 0 ? (
+            <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
           ) : (
-            <YStack ref={listTopRef} gap="$4">
-              {bookings !== null && bookings.length > 0 ? (
-                <ListControls
-                  statusValue={clientBookingsStatusFilter}
-                  statusOptions={CLIENT_BOOKING_STATUS_OPTIONS}
-                  onStatusChange={updateClientBookingsStatusFilter}
-                  sortValue={clientBookingsSort}
-                  sortOptions={["scheduledAt", "createdAt", "updatedAt"]}
-                  onSortChange={updateClientBookingsSort}
-                  pageSize={clientBookingsPageSize}
-                  onPageSizeChange={updateClientBookingsPageSize}
+            visibleRequests.map((request) => (
+              <div key={request.id} id={`request-${request.id}`}>
+                <GuidedRequestCard
+                  request={request}
+                  booking={bookingByRequestId.get(request.id) ?? null}
+                  stage={stageByRequestId.get(request.id)!}
+                  token={token}
+                  onChanged={reload}
+                  onAcceptQuote={handleAcceptQuote}
+                  isOpen={openId === request.id}
+                  onToggle={() => setOpenId((prev) => (prev === request.id ? null : request.id))}
+                  isNew={newRequestIds.has(request.id) || newRequestIdsFromBookings.has(request.id)}
+                  newQuoteIds={newQuoteIds}
+                  threadUnreadCounts={threadUnreadCounts}
+                  quoteUnreadCounts={quoteUnreadCounts}
+                  bookingUnreadCounts={bookingUnreadCounts}
+                  autoOpenChatProfessionalId={pendingChatOpen && pendingChatOpen.requestId === request.id ? pendingChatOpen.professionalProfileId : null}
+                  onChatAutoOpenHandled={() => setPendingChatOpen((prev) => (prev && prev.requestId === request.id ? null : prev))}
                 />
-              ) : null}
-              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />
-              {bookings === null ? (
-                <LoadingState />
-              ) : bookings.length === 0 ? (
-                <EmptyState icon="receipt-text" title="Nessuna prenotazione" description="Accetta un preventivo per crearne una." />
-              ) : visibleClientBookings.length === 0 ? (
-                <Text color={brand.grafite70}>Nessuna prenotazione corrisponde al filtro selezionato.</Text>
-              ) : (
-                visibleClientBookings.map((booking) => (
-                  <div key={booking.id} id={`booking-${booking.id}`}>
-                    <BookingRow
-                      booking={booking}
-                      token={token}
-                      onReviewed={reload}
-                      isNew={newClientBookingIds.has(booking.id)}
-                      unreadCount={combineUnreadCounts(
-                        bookingUnreadCounts.get(booking.id),
-                        booking.guidedRequestId ? threadUnreadCounts.get(`${booking.guidedRequestId}:${booking.professionalProfileId}`) : undefined,
-                      )}
-                    />
-                  </div>
-                ))
-              )}
-              <Pagination page={clientBookingsEffectivePage} totalPages={clientBookingsTotalPages} onPageChange={goToClientBookingsPage} />
-            </YStack>
+              </div>
+            ))
           )}
+
+          <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
         </YStack>
-      </XStack>
+      </YStack>
     </YStack>
   );
 }
 
 function GuidedRequestCard({
   request,
+  booking,
+  stage,
   token,
   onChanged,
   onAcceptQuote,
+  isOpen,
+  onToggle,
   isNew,
   newQuoteIds,
   threadUnreadCounts,
   quoteUnreadCounts,
+  bookingUnreadCounts,
   autoOpenChatProfessionalId,
   onChatAutoOpenHandled,
 }: {
   request: ClientGuidedRequest;
+  /** Prenotazione nata dal preventivo accettato di questa richiesta, se esiste. */
+  booking: ClientBooking | null;
+  stage: RequestStage;
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string) => Promise<void>;
-  /** True se questa richiesta ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
+  isOpen: boolean;
+  onToggle: () => void;
+  /** True se questa richiesta (o la sua prenotazione) ha un aggiornamento non letto. */
   isNew?: boolean;
   /** ID dei preventivi con un aggiornamento non letto — disambigua QUALE preventivo tra più ricevuti per questa richiesta. */
   newQuoteIds?: Set<string>;
   /** Conteggio aggiornamenti non letti per thread (chiave `guidedRequestId:professionalProfileId`) — pallino su "Contatta/Cronologia" nella sezione "Inviata a", prima che esista un preventivo. */
   threadUnreadCounts?: Map<string, number>;
-  /** Conteggio aggiornamenti non letti per singolo preventivo — pallino su "Contatta/Cronologia" di ogni QuoteCard. */
+  /** Conteggio aggiornamenti non letti per singolo preventivo. */
   quoteUnreadCounts?: Map<string, number>;
-  /** Professionista del cui thread arriva un nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal giusto invece di limitarsi a scrollare/evidenziare la card. */
+  /** Conteggio aggiornamenti non letti per la prenotazione. */
+  bookingUnreadCounts?: Map<string, number>;
+  /** Professionista del cui thread arriva un nuovo messaggio in chat — apre subito il TimelineModal giusto. */
   autoOpenChatProfessionalId?: string | null;
-  /** Richiamata subito dopo aver gestito `autoOpenChatProfessionalId` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
+  /** Richiamata subito dopo aver gestito `autoOpenChatProfessionalId` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo non la riapre da sola. */
   onChatAutoOpenHandled?: () => void;
 }) {
+  const isOnline = request.serviceMode === "ONLINE";
+
   // Professionista il cui thread è aperto nella cronologia (sezione "Inviata
-  // a", prima che esista un preventivo) — richiesta esplicita dell'utente:
-  // "nelle mie richieste del cliente, non compare il pulsante
-  // contatta/cronologia" (mancava del tutto in questo punto della card,
-  // esisteva solo dentro QuoteCard/BookingRow una volta ricevuto un
-  // preventivo).
+  // a", prima che esista un preventivo).
   const [openTimelineProfessionalId, setOpenTimelineProfessionalId] = useState<string | null>(null);
-  // Il pallino "Contatta/Cronologia" per riga professionista deve sparire
-  // non appena si apre quel thread specifico (richiesta esplicita
-  // dell'utente) — più righe condividono questo stesso componente (un
-  // professionista per riga in `request.sentTo`), quindi non si può usare
-  // `useDismissableUnreadCount` (un hook per componente, non per elemento di
-  // un `.map()`): stessa logica differenziale, ma tenuta in una mappa
-  // "conteggio al momento dell'apertura" per chiave composita.
   const [dismissedThreadCounts, setDismissedThreadCounts] = useState<Map<string, number>>(new Map());
   function effectiveThreadUnread(key: string): number | undefined {
     const count = threadUnreadCounts?.get(key);
@@ -643,14 +868,6 @@ function GuidedRequestCard({
     const key = `${request.id}:${professionalId}`;
     setDismissedThreadCounts((prev) => new Map(prev).set(key, threadUnreadCounts?.get(key) ?? 0));
   }
-  // Apre subito la chat con il professionista da cui arriva un nuovo
-  // messaggio (richiesta esplicita dell'utente) — solo se questo
-  // professionista non ha ancora inviato un preventivo: se ne ha già uno,
-  // il thread si apre dalla QuoteCard corrispondente (sotto, prop
-  // `autoOpenTimeline`), mai da entrambe insieme. Un ref sul valore già
-  // aperto (non un booleano) permette a una seconda notifica per un
-  // professionista DIVERSO nella stessa richiesta di aprire comunque il
-  // proprio thread, invece di restare bloccata al primo già consumato.
   const autoOpenedChatRef = useRef<string | null>(null);
   useEffect(() => {
     if (!autoOpenChatProfessionalId) return;
@@ -658,13 +875,10 @@ function GuidedRequestCard({
     autoOpenedChatRef.current = autoOpenChatProfessionalId;
     const hasQuote = request.quotes.some((q) => q.professionalProfileId === autoOpenChatProfessionalId);
     if (!hasQuote) openTimelineForProfessional(autoOpenChatProfessionalId);
-    // Il guard "già aperta" vive ora nel genitore (pendingChatOpen, bug
-    // reale corretto): avvisato subito, sia che l'apertura sia avvenuta qui
-    // sia che sia stata delegata a QuoteCard (hasQuote true) — in entrambi i
-    // casi l'istruzione è stata consumata.
     onChatAutoOpenHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenChatProfessionalId]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
@@ -682,24 +896,22 @@ function GuidedRequestCard({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  // Menu hamburger "Annulla richiesta" (richiesta esplicita dell'utente: il
-  // popup di conferma deve comparire subito sotto al pulsante hamburger,
-  // non in fondo alla card come prima) — stato locale invece del generico
-  // `ActionsMenu` (chiuso a sé, non esporrebbe un secondo "passo" di
-  // contenuto): stesso menu resta aperto e cambia contenuto (elenco →
-  // conferma) invece di chiudersi al click sulla voce.
+  // Menu hamburger "Annulla richiesta" — hand-rolled (non il generico
+  // ActionsMenu): il popup di conferma deve comparire subito sotto al
+  // pulsante hamburger, non in un modale a sé (richiesta esplicita
+  // dell'utente, stesso vincolo già presente prima di questo redesign).
   const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false);
   const deleteMenuRef = useRef<HTMLDivElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
-  // Stato aggregato del fan-out (CLAUDE.md §14) — quanti professionisti
-  // sono stati contattati in totale (inclusi quelli da un'eventuale
-  // espansione), quanti hanno risposto, quanti sono ancora in attesa. Mai
-  // l'identità dei professionisti contattati: quella resta "Inviata a"
-  // sotto, calcolata lato client dai Lead effettivi.
-  const [statusSummary, setStatusSummary] = useState<GuidedRequestStatusSummary | null>(null);
+  // "Annulla prenotazione" (una volta accettato un preventivo) apre un
+  // modale a sé, CancelBookingModal — stato tenuto qui perché il pulsante
+  // che lo apre vive nell'intestazione (unificata con quella della
+  // richiesta), non dentro BookingSection.
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
+  const [statusSummary, setStatusSummary] = useState<GuidedRequestStatusSummary | null>(null);
   useEffect(() => {
     let cancelled = false;
     apiClient
@@ -707,32 +919,19 @@ function GuidedRequestCard({
       .then((summary) => {
         if (!cancelled) setStatusSummary(summary);
       })
-      .catch(() => {
-        // Un fallimento qui non deve rompere il resto della card — la
-        // sezione "Inviata a" più sotto mostra comunque i dettagli.
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [token, request.id]);
 
-  // Una richiesta CLOSED ha già portato a una prenotazione: non ha senso
-  // modificarla o eliminarla a quel punto (stesso confine applicato lato
-  // API in GuidedRequestsService).
+  // Una richiesta CLOSED ha già portato a una prenotazione (o è stata
+  // annullata/è scaduta): non ha senso modificarla o eliminarla a quel
+  // punto (stesso confine applicato lato API).
   const canDelete = request.status !== "CLOSED";
-  // Non modificabile appena arriva un preventivo: cambiare descrizione/
-  // città/indirizzo/foto dopo che un professionista ha già risposto
-  // invaliderebbe silenziosamente il suo lavoro — richiesta esplicita
-  // dell'utente, stesso vincolo applicato lato API in GuidedRequestsService.
   const hasQuote = request.quotes.length > 0;
   const canEditDetails = canDelete && !hasQuote;
-  // "Prezzo totale medio" (richiesta esplicita dell'utente): solo su una
-  // richiesta generica (fan-out categoria+città, non diretta al profilo di
-  // un professionista specifico) con almeno 1 preventivo ricevuto.
-  const averagePriceEurCents = useMemo(
-    () => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)),
-    [request.quotes],
-  );
+  const averagePriceEurCents = useMemo(() => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)), [request.quotes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -769,8 +968,6 @@ function GuidedRequestCard({
     setPhotoError(null);
     setIsUploadingPhoto(true);
     try {
-      // Stesso upload (Cloudinary, resize+compressione automatica) già
-      // usato in fase di creazione della richiesta (GuidedRequestForm).
       const result = await apiClient.uploadGuidedRequestPhoto(token, file);
       setPhotoUrls((prev) => [...prev, result.imageUrl].slice(0, MAX_REQUEST_PHOTOS));
     } catch (err) {
@@ -790,9 +987,6 @@ function GuidedRequestCard({
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
     }
-    // Città obbligatoria solo per un intervento a domicilio (stesso
-    // principio già applicato in GuidedRequestForm/handleSubmit) — per una
-    // richiesta online resta facoltativa.
     if (request.serviceMode !== "ONLINE" && !city.trim()) {
       setError("Indica la città.");
       return;
@@ -835,29 +1029,25 @@ function GuidedRequestCard({
     }
   }
 
-  return (
-    <Surface gap="$3">
-      {isEditing ? (
+  async function handleCancelBooking(): Promise<void> {
+    if (!booking) return;
+    await apiClient.cancelMyBooking(token, booking.id);
+    setShowCancelModal(false);
+    onChanged();
+  }
+
+  if (isEditing) {
+    return (
+      <Surface gap="$3">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
             {request.categoryLabel}
           </Text>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete
-              items={ALL_ITALIAN_CITY_NAMES}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={setCity}
-              value={city}
-              onChangeText={setCity}
-              placeholder="Città"
-              minChars={3}
-            />
+            <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={setCity} value={city} onChangeText={setCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
-            // Stesso principio/testo già in uso in GuidedRequestForm (creazione
-            // richiesta): per un intervento online la città resta facoltativa.
             <Text fontSize="$2" color={brand.grafite70}>
               Per una consulenza online non è obbligatorio indicare la città.
             </Text>
@@ -872,12 +1062,7 @@ function GuidedRequestCard({
               <input value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={textareaStyle} />
             </YStack>
           </XStack>
-          <input
-            value={recipientPhone}
-            onChange={(e) => setRecipientPhone(e.target.value)}
-            placeholder="Numero di telefono"
-            style={textareaStyle}
-          />
+          <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="Numero di telefono" style={textareaStyle} />
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={120}>
               <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
@@ -889,12 +1074,7 @@ function GuidedRequestCard({
               <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={textareaStyle} />
             </YStack>
           </XStack>
-          <input
-            value={addressExtra}
-            onChange={(e) => setAddressExtra(e.target.value)}
-            placeholder="Scala, piano, interno (facoltativo)"
-            style={textareaStyle}
-          />
+          <input value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
 
           <YStack gap="$1">
             <Text fontSize="$2" color={brand.grafite70}>
@@ -949,14 +1129,7 @@ function GuidedRequestCard({
                 </YStack>
               ) : null}
             </YStack>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*,video/*"
-              onChange={handlePhotoChange}
-              disabled={isUploadingPhoto}
-              style={{ display: "none" }}
-            />
+            <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
             {photoError ? (
               <Text color={brand.urgenza} fontSize="$2">
                 {photoError}
@@ -978,177 +1151,176 @@ function GuidedRequestCard({
             </Button>
           </XStack>
         </YStack>
-      ) : (
-        <>
-          <YStack flexDirection="row" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$2">
-            {/* `flex={1}`/`flexBasis={0}`/`minWidth={0}`: senza questi, il
-                blocco si dimensiona sulla larghezza "a contenuto pieno" (non
-                spezzata) della descrizione invece di rispettare lo spazio
-                disponibile nella riga — stesso bug già corretto altrove per
-                lo stesso motivo (CLAUDE.md §12, ProfessionalCard). */}
-            <YStack gap="$1" flex={1} flexBasis={0} minWidth={0}>
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
-                {request.city ? `${request.categoryLabel} · ${request.city}` : request.categoryLabel}
+      </Surface>
+    );
+  }
+
+  const headingName = booking ? (booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
+
+  return (
+    <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="$0" padding={0} overflow="hidden">
+      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
+          <XStack gap="$2" flexWrap="wrap">
+            {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
+            <ClientStagePill stage={stage} />
+            <ServiceBadge online={isOnline} />
+          </XStack>
+          <YStack alignItems="flex-end" gap="$1">
+            <XStack alignItems="center" gap="$2">
+              <Text fontSize={14} color={brand.grafite70}>
+                Inviata {formatDateTime(request.createdAt)}
               </Text>
-              <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                {request.serviceMode ? (
-                  <XStack alignItems="center" gap="$1">
-                    <Icon name={request.serviceMode === "ONLINE" ? "video" : "house"} size={12} color={brand.cianografia} strokeWidth={1.5} />
-                    <Text fontSize="$2" color={brand.cianografia} fontWeight="600">
-                      {request.serviceMode === "ONLINE" ? "Online" : "A domicilio"}
-                    </Text>
-                  </XStack>
-                ) : null}
-                {/* Il cliente deve riconoscere a colpo d'occhio le proprie
-                    richieste urgenti (priorita' e scadenza diverse — vedi
-                    /urgente): stessa variante semantica rossa gia' usata
-                    nella inbox del professionista. */}
-                {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
-              </XStack>
-              <Text color={brand.grafite70}>{request.description}</Text>
-              {request.address ? (
-                <XStack alignItems="center" gap="$1">
-                  <Icon name="map-pin" size={12} color={brand.grafite70} strokeWidth={1.5} />
-                  <Text fontSize="$2" color={brand.grafite70}>
-                    {request.address}
-                  </Text>
-                </XStack>
-              ) : null}
-              {/*
-                Data/fascia oraria richiesta (solo se la richiesta parte da
-                una fascia "generica" dell'agenda pubblica del
-                professionista, vedi GuidedRequestForm) — prima visibile
-                solo nel form al momento dell'invio, mai più dopo: richiesta
-                esplicita dell'utente di vederla anche qui, a richiesta già
-                inviata.
-              */}
-              {request.preferredDate && request.preferredTimeSlot ? (
-                <XStack alignItems="center" gap="$1">
-                  <Icon name="calendar" size={12} color={brand.grafite70} strokeWidth={1.5} />
-                  <Text fontSize="$2" color={brand.grafite70}>
-                    {new Date(`${request.preferredDate}T00:00:00Z`).toLocaleDateString("it-IT", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      timeZone: "UTC",
-                    })}
-                    {" · "}
-                    {request.preferredTimeSlot.replace("-", "–")}
-                  </Text>
-                </XStack>
-              ) : null}
-            </YStack>
-            <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
-              <XStack alignItems="center" gap="$2">
-                <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
-                  {STATUS_LABEL[request.status]}
-                </Text>
-                {/* Menu hamburger con "Annulla richiesta" (richiesta esplicita
-                    dell'utente, stesso pattern già in uso in "Lavori
-                    accettati") al posto del vecchio tasto "Elimina" esterno.
-                    Il popup di conferma compare qui sotto, ancorato al
-                    pulsante stesso (richiesta esplicita dell'utente),
-                    invece che in fondo alla card come prima — stesso menu,
-                    contenuto che cambia da elenco a conferma senza
-                    chiudersi. */}
-                {canDelete ? (
-                  <YStack ref={deleteMenuRef} position="relative">
-                    <YStack
-                      width={32}
-                      height={32}
-                      borderRadius={999}
-                      alignItems="center"
-                      justifyContent="center"
-                      cursor="pointer"
-                      hoverStyle={{ backgroundColor: brand.gesso }}
-                      onPress={() => setIsDeleteMenuOpen((open) => !open)}
-                      accessibilityRole="button"
-                      accessibilityLabel="Azioni sulla richiesta"
-                    >
-                      <Icon name="menu" size={18} color={brand.grafite} />
-                    </YStack>
-
-                    {isDeleteMenuOpen ? (
-                      <YStack
-                        position="absolute"
-                        top="100%"
-                        right={0}
-                        marginTop="$2"
-                        minWidth={confirmingDelete ? 240 : 200}
-                        backgroundColor={brand.calce}
-                        borderRadius={radiusDoc}
-                        overflow="hidden"
-                        zIndex={1000}
-                        shadowColor="rgba(43,32,19,0.12)"
-                        shadowRadius={12}
-                        shadowOffset={{ width: 0, height: 4 }}
-                        shadowOpacity={1}
-                      >
-                        {confirmingDelete ? (
-                          // Richiesta esplicita dell'utente: la voce del menu
-                          // diventa "Annulla richiesta", ma il pulsante di
-                          // conferma successivo NON va rinominato ("altrimenti
-                          // si crea una incomprensione del tasto da premere")
-                          // — resta "Conferma"/"Annulla" come prima.
-                          <YStack padding="$3" gap="$2">
-                            <Text fontSize="$2" color={brand.grafite}>
-                              Eliminare questa richiesta?
-                            </Text>
-                            <XStack gap="$2">
-                              <Button
-                                variant="urgent"
-                                size="$2"
-                                height={34}
-                                onPress={handleDelete}
-                                disabled={isDeleting}
-                                opacity={isDeleting ? 0.6 : 1}
-                              >
-                                {isDeleting ? "Eliminazione..." : "Conferma"}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="$2"
-                                height={34}
-                                onPress={() => {
-                                  setConfirmingDelete(false);
-                                  setIsDeleteMenuOpen(false);
-                                }}
-                              >
-                                Annulla
-                              </Button>
-                            </XStack>
-                          </YStack>
-                        ) : (
-                          <XStack
-                            paddingHorizontal="$4"
-                            paddingVertical="$3"
-                            alignItems="center"
-                            gap="$2"
-                            cursor="pointer"
-                            hoverStyle={{ backgroundColor: brand.gesso }}
-                            onPress={() => setConfirmingDelete(true)}
-                            accessibilityRole="button"
-                          >
-                            <Icon name="trash-2" size={16} color={brand.urgenza} />
-                            <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
-                              Annulla richiesta
-                            </Text>
-                          </XStack>
-                        )}
-                      </YStack>
-                    ) : null}
+              {booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") ? (
+                <ActionsMenu
+                  accessibilityLabel="Azioni sulla prenotazione"
+                  items={[{ icon: "x", text: "Annulla prenotazione", color: brand.urgenza, onPress: () => setShowCancelModal(true) }]}
+                />
+              ) : canDelete ? (
+                <YStack ref={deleteMenuRef} position="relative">
+                  <YStack
+                    width={32}
+                    height={32}
+                    borderRadius={999}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    onPress={(e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      setIsDeleteMenuOpen((open) => !open);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Azioni sulla richiesta"
+                  >
+                    <Icon name="menu" size={18} color={brand.grafite} />
                   </YStack>
-                ) : null}
-              </XStack>
-              {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
-            </YStack>
-          </YStack>
 
-          {/* Stepper di stato in stile Deliveroo (richiesta esplicita
-              dell'utente): "Richiesta → Preventivo inviato → Preventivo
-              accettato → Completato", per trasparenza totale su a che
-              punto è la richiesta. */}
-          <RequestStepper stage={computeRequestStage(request.quotes)} />
+                  {isDeleteMenuOpen ? (
+                    <YStack
+                      position="absolute"
+                      top="100%"
+                      right={0}
+                      marginTop="$2"
+                      minWidth={confirmingDelete ? 240 : 200}
+                      backgroundColor={brand.calce}
+                      borderRadius={radiusDoc}
+                      overflow="hidden"
+                      zIndex={1000}
+                      shadowColor="rgba(43,32,19,0.12)"
+                      shadowRadius={12}
+                      shadowOffset={{ width: 0, height: 4 }}
+                      shadowOpacity={1}
+                    >
+                      {confirmingDelete ? (
+                        <YStack padding="$3" gap="$2">
+                          <Text fontSize="$2" color={brand.grafite}>
+                            Eliminare questa richiesta?
+                          </Text>
+                          <XStack gap="$2">
+                            <Button
+                              variant="urgent"
+                              size="$2"
+                              height={34}
+                              onPress={(e: { stopPropagation: () => void }) => {
+                                e.stopPropagation();
+                                handleDelete();
+                              }}
+                              disabled={isDeleting}
+                              opacity={isDeleting ? 0.6 : 1}
+                            >
+                              {isDeleting ? "Eliminazione..." : "Conferma"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="$2"
+                              height={34}
+                              onPress={(e: { stopPropagation: () => void }) => {
+                                e.stopPropagation();
+                                setConfirmingDelete(false);
+                                setIsDeleteMenuOpen(false);
+                              }}
+                            >
+                              Annulla
+                            </Button>
+                          </XStack>
+                        </YStack>
+                      ) : (
+                        <XStack
+                          paddingHorizontal="$4"
+                          paddingVertical="$3"
+                          alignItems="center"
+                          gap="$2"
+                          cursor="pointer"
+                          hoverStyle={{ backgroundColor: brand.gesso }}
+                          onPress={(e: { stopPropagation: () => void }) => {
+                            e.stopPropagation();
+                            setConfirmingDelete(true);
+                          }}
+                          accessibilityRole="button"
+                        >
+                          <Icon name="trash-2" size={16} color={brand.urgenza} />
+                          <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
+                            Annulla richiesta
+                          </Text>
+                        </XStack>
+                      )}
+                    </YStack>
+                  ) : null}
+                </YStack>
+              ) : null}
+            </XStack>
+            {stage === "completata" && booking?.finalAmountEurCents != null ? (
+              <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+                {formatEurCents(booking.finalAmountEurCents)}
+              </Text>
+            ) : null}
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </YStack>
+        </XStack>
+
+        <Text fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+          {headingName}
+        </Text>
+        {booking ? (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="wrench" size={15} color={brand.grafite70} />
+            <Text fontSize={16} color={brand.grafite70}>
+              {request.categoryLabel} · {request.city || "Online"}
+            </Text>
+          </XStack>
+        ) : (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="map-pin" size={14} color={brand.grafite70} />
+            <Text fontSize={16} color={brand.grafite70}>
+              {request.city || (isOnline ? "Consulenza online" : "")}
+            </Text>
+          </XStack>
+        )}
+        {stage === "annullata" && booking?.canceledBy ? (
+          <Text fontSize={13} fontWeight="700" color={STAGE_STYLE.annullata.fg}>
+            Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}
+          </Text>
+        ) : null}
+        <Text fontSize={16} color={brand.grafite} lineHeight={22}>
+          {request.description}
+        </Text>
+
+        <XStack justifyContent="center" paddingTop="$1">
+          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
+        </XStack>
+      </YStack>
+
+      {isOpen ? (
+        <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {stage !== "scaduta" && stage !== "chiusa" ? (
+            <YStack gap="$2" paddingTop="$3">
+              <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+                Andamento
+              </Text>
+              <ClientMiniTimeline stage={stage} />
+            </YStack>
+          ) : null}
 
           {statusSummary ? (
             <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
@@ -1158,11 +1330,6 @@ function GuidedRequestCard({
                 </Text>
               ) : (
                 <Text fontSize="$2" color={brand.grafite70}>
-                  {/* Una frase sola invece di tre numeri affiancati (segnalato in
-                      revisione UX: "Contattati 2 · Risposto 1 · In attesa 2"
-                      sembrava non tornare) — la stessa informazione (quanti
-                      preventivi sono già arrivati su quanti professionisti
-                      contattati) in una forma che si legge senza fare i conti. */}
                   {statusSummary.responded === 0
                     ? `Nessun preventivo ricevuto ancora, su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`
                     : `${statusSummary.responded} preventiv${statusSummary.responded === 1 ? "o" : "i"} ricevut${statusSummary.responded === 1 ? "o" : "i"} su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`}
@@ -1171,11 +1338,6 @@ function GuidedRequestCard({
             </YStack>
           ) : null}
 
-          {/* "Prezzo totale medio" — richiesta esplicita dell'utente, solo
-              per una richiesta generica (fan-out categoria+città, non diretta
-              al profilo di un professionista specifico) con almeno 1
-              risposta: media tra i preventivi ricevuti, `null` se nessuno
-              indica ancora un prezzo (tutte le voci "Su richiesta"). */}
           {!request.professionalProfileId && averagePriceEurCents !== null ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografia} strokeWidth={1.5} />
@@ -1185,30 +1347,24 @@ function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {/* Foto già allegate alla richiesta, visibili subito nell'anteprima
-              (richiesta esplicita dell'utente) invece di essere nascoste
-              finché non si entra in modifica. Cliccabili per ingrandirle,
-              stesso PhotoLightbox già usato lato professionista in LeadCard. */}
+          {request.address ? (
+            <XStack alignItems="center" gap="$1">
+              <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$3" color={brand.grafite70}>
+                {request.address}
+                {request.city ? `, ${request.city}` : ""}
+              </Text>
+            </XStack>
+          ) : null}
+
           {request.photoUrls.length > 0 ? (
             <XStack gap="$2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
-                <MediaPreview
-                  key={url}
-                  url={url}
-                  onClick={() => setOpenPhotoIndex(index)}
-                  style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
-                />
+                <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
               ))}
             </XStack>
           ) : null}
 
-          {/* Scorciatoia "stesso problema di prima": apre il form di
-              nuova richiesta già precompilato con categoria, città,
-              descrizione e indirizzo di questa — le foto vanno ricaricate
-              (devono ritrarre il problema attuale). Fuori dal blocco
-              canDelete: serve soprattutto sulle richieste CHIUSE (lavoro
-              concluso, problema che si ripresenta), che non sono più
-              né modificabili né eliminabili. */}
           <XStack>
             <Link
               href={`/preventivo?${new URLSearchParams({
@@ -1233,10 +1389,6 @@ function GuidedRequestCard({
             </Link>
           </XStack>
 
-          {/* Conferma eliminazione spostata sotto il pulsante hamburger
-              (richiesta esplicita dell'utente) — qui resta solo
-              "Modifica"/"Non modificabile", niente più il blocco di
-              conferma duplicato in fondo alla card. */}
           {canDelete ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
               {canEditDetails ? (
@@ -1255,115 +1407,382 @@ function GuidedRequestCard({
               {error}
             </Text>
           ) : null}
-        </>
-      )}
 
-      {request.sentTo.length > 0 ? (
-        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-            Inviata a
-          </Text>
-          {request.sentTo.map((professional) => (
-            <XStack
-              key={professional.id}
-              gap="$3"
-              alignItems="center"
-              backgroundColor={brand.gesso}
-              borderRadius="$3"
-              padding="$3"
-              opacity={professional.declined ? 0.7 : 1}
-            >
-              <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1 }}>
-                <XStack gap="$3" alignItems="center">
-                  <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
-                  <YStack gap="$1" flex={1}>
-                    <XStack gap="$2" alignItems="center" flexWrap="wrap">
-                      <Text fontWeight="600" color={brand.grafite}>
-                        {professional.businessName}
-                      </Text>
-                      {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
-                      {/*
-                        Un professionista che ha rifiutato la richiesta prima
-                        di inviare un preventivo (richiesta esplicita
-                        dell'utente): il cliente prima non aveva modo di
-                        sapere perché quel professionista non rispondeva mai.
-                      */}
-                      {professional.declined ? (
-                        <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
-                          Ha rifiutato
+          {request.sentTo.length > 0 ? (
+            <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                Inviata a
+              </Text>
+              {request.sentTo.map((professional) => (
+                <XStack key={professional.id} gap="$3" alignItems="center" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" opacity={professional.declined ? 0.7 : 1}>
+                  <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1 }}>
+                    <XStack gap="$3" alignItems="center">
+                      <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
+                      <YStack gap="$1" flex={1}>
+                        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                          <Text fontWeight="600" color={brand.grafite}>
+                            {professional.businessName}
+                          </Text>
+                          {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                          {professional.declined ? (
+                            <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
+                              Ha rifiutato
+                            </Text>
+                          ) : null}
+                        </XStack>
+                        <Text color={brand.grafite70} fontSize="$3">
+                          {professional.categoryLabel} · {professional.city}
                         </Text>
-                      ) : null}
+                        {professional.declined && professional.declineNote ? (
+                          <Text color={brand.grafite70} fontSize="$2">
+                            {professional.declineNote}
+                          </Text>
+                        ) : null}
+                      </YStack>
                     </XStack>
-                    <Text color={brand.grafite70} fontSize="$3">
-                      {professional.categoryLabel} · {professional.city}
+                  </Link>
+                  <XStack alignItems="center" gap="$1" cursor="pointer" accessibilityRole="button" onPress={() => openTimelineForProfessional(professional.id)}>
+                    <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+                      Contatta/Cronologia
                     </Text>
-                    {professional.declined && professional.declineNote ? (
-                      <Text color={brand.grafite70} fontSize="$2">
-                        {professional.declineNote}
-                      </Text>
-                    ) : null}
-                  </YStack>
+                    <UnreadDot count={effectiveThreadUnread(`${request.id}:${professional.id}`)} />
+                  </XStack>
                 </XStack>
-              </Link>
-              <XStack
-                alignItems="center"
-                gap="$1"
-                cursor="pointer"
-                accessibilityRole="button"
-                onPress={() => openTimelineForProfessional(professional.id)}
-              >
-                <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
-                  Contatta/Cronologia
-                </Text>
-                <UnreadDot count={effectiveThreadUnread(`${request.id}:${professional.id}`)} />
-              </XStack>
-            </XStack>
-          ))}
+              ))}
+            </YStack>
+          ) : null}
+
+          {openTimelineProfessionalId ? (
+            <TimelineModal
+              token={token}
+              guidedRequestId={request.id}
+              professionalProfileId={openTimelineProfessionalId}
+              viewerRole="CLIENT"
+              otherPartyName={request.sentTo.find((p) => p.id === openTimelineProfessionalId)?.businessName ?? null}
+              onClose={() => setOpenTimelineProfessionalId(null)}
+            />
+          ) : null}
+
+          {request.quotes.length > 0 ? (
+            <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                Preventivi ricevuti
+              </Text>
+              {request.quotes.map((quote) => (
+                <QuoteCard
+                  key={quote.id}
+                  quote={quote}
+                  token={token}
+                  onChanged={onChanged}
+                  onAcceptQuote={onAcceptQuote}
+                  requestedTimeSlot={request.preferredTimeSlot}
+                  guidedRequestId={request.id}
+                  serviceMode={request.serviceMode}
+                  isNew={newQuoteIds?.has(quote.id)}
+                  unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
+                  autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
+                />
+              ))}
+            </YStack>
+          ) : (
+            <Text color={brand.grafite70} fontSize="$3">
+              Nessun preventivo ricevuto ancora.
+            </Text>
+          )}
+
+          {booking ? (
+            <BookingSection
+              booking={booking}
+              token={token}
+              onChanged={onChanged}
+              unreadCount={combineUnreadCounts(bookingUnreadCounts?.get(booking.id), threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`))}
+            />
+          ) : null}
+
+          {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
+
+          {showCancelModal ? (
+            <CancelBookingModal
+              title="Annulla prenotazione"
+              description="Il professionista verrà avvisato dell'annullamento."
+              confirmLabel="Sì, annulla prenotazione"
+              confirmingLabel="Annullamento..."
+              showNote={false}
+              onClose={() => setShowCancelModal(false)}
+              onCancel={handleCancelBooking}
+            />
+          ) : null}
+
+          <XStack justifyContent="center" paddingTop="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel="Richiudi la scheda">
+            <Icon name="chevron-up" size={18} color={brand.grafite70} />
+          </XStack>
+        </YStack>
+      ) : null}
+    </Surface>
+  );
+}
+
+/**
+ * Dettagli/azioni propri della prenotazione (nata dal preventivo accettato)
+ * — estratto dalla vecchia `BookingRow`, senza più il proprio header (già
+ * mostrato in `GuidedRequestCard`) né la ripetizione di categoria/
+ * descrizione/foto/voci del preventivo (già visibili più sopra nella stessa
+ * card, essendo la stessa identica richiesta: booking/quote li denormalizzano
+ * ma restano gli stessi dati, mostrarli due volte sarebbe stato ridondante
+ * ora che le due liste sono un'unica card).
+ */
+function BookingSection({ booking, token, onChanged, unreadCount }: { booking: ClientBooking; token: string; onChanged: () => void; unreadCount?: number }) {
+  const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
+  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
+
+  async function handleReopenBooking() {
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.reopenBooking(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
+  async function handleDeleteBooking() {
+    setDeleteError(null);
+    setIsDeletingBooking(true);
+    try {
+      await apiClient.deleteBooking(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setConfirmingDeleteBooking(false);
+    } finally {
+      setIsDeletingBooking(false);
+    }
+  }
+
+  async function handleClientConfirmComplete(photoUrls: string[]) {
+    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
+    setShowClientCompleteModal(false);
+    if (booking.status === "COMPLETED" && !booking.hasReview) {
+      setShowReviewModal(true);
+    } else {
+      onChanged();
+    }
+  }
+
+  async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
+    await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
+    setShowReviewModal(false);
+    onChanged();
+  }
+
+  function closeReviewModal() {
+    setShowReviewModal(false);
+    onChanged();
+  }
+
+  const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
+  const noShowEligible = booking.status === "CONFIRMED" && new Date(referenceEnd).getTime() <= Date.now() && !booking.refundRequested;
+
+  return (
+    <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
+      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
+        Intervento
+      </Text>
+      <Text color={brand.grafite70} fontSize="$3">
+        {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+        {" · "}
+        {new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+        {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
+      </Text>
+
+      {booking.guidedRequestId ? (
+        <XStack
+          alignItems="center"
+          gap="$1"
+          alignSelf="flex-start"
+          cursor="pointer"
+          accessibilityRole="button"
+          onPress={() => {
+            setShowTimeline(true);
+            dismissUnread();
+          }}
+        >
+          <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+            Contatta/Cronologia
+          </Text>
+          <UnreadDot count={effectiveUnreadCount} />
+        </XStack>
+      ) : null}
+
+      {booking.meetingLink ? (
+        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+          <XStack alignItems="center" gap="$2">
+            <Icon name="video" size={14} color={brand.cianografia} strokeWidth={1.5} />
+            <Text fontSize="$3" color={brand.cianografia} fontWeight="600">
+              Partecipa alla videochiamata
+            </Text>
+          </XStack>
+        </a>
+      ) : null}
+
+      {booking.status === "CANCELED" ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <Button variant="secondary" size="$2" height={36} onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
+            {isReopening ? "Riapertura..." : "Riapri prenotazione"}
+          </Button>
+        </XStack>
+      ) : null}
+      {reopenError ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {reopenError}
+        </Text>
+      ) : null}
+
+      {noShowEligible ? (
+        <Text color={brand.urgenza} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowNoShowModal(true)}>
+          Non presentato
+        </Text>
+      ) : null}
+
+      {booking.status === "CONFIRMED" && booking.refundRequested ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.urgenza}>
+            Hai segnalato la mancata presentazione
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Abbiamo avvisato {booking.businessName}. Contattalo direttamente per accordarvi su un rimborso.
+          </Text>
         </YStack>
       ) : null}
 
-      {openTimelineProfessionalId ? (
-        <TimelineModal
-          token={token}
-          guidedRequestId={request.id}
-          professionalProfileId={openTimelineProfessionalId}
-          viewerRole="CLIENT"
-          otherPartyName={request.sentTo.find((p) => p.id === openTimelineProfessionalId)?.businessName ?? null}
-          onClose={() => setOpenTimelineProfessionalId(null)}
+      {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Importo finale
+          </Text>
+          {booking.finalItems.map((item) => (
+            <XStack key={item.id} justifyContent="space-between" gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                {item.name}
+              </Text>
+              <Text fontSize="$2" color={brand.grafite}>
+                €{(item.priceEurCents / 100).toFixed(2)}
+              </Text>
+            </XStack>
+          ))}
+          <XStack justifyContent="space-between" gap="$2">
+            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+              Totale
+            </Text>
+            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
+              €{(booking.finalAmountEurCents / 100).toFixed(2)}
+            </Text>
+          </XStack>
+        </YStack>
+      ) : null}
+
+      {booking.status === "CANCELED" && booking.cancellationNote ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+            Nota del professionista
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {booking.cancellationNote}
+          </Text>
+        </YStack>
+      ) : null}
+
+      {booking.professionalAccountDeleted ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {confirmingDeleteBooking ? (
+            <>
+              <Text fontSize="$2" color={brand.urgenza}>
+                Eliminare questa prenotazione dalla lista?
+              </Text>
+              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteBooking} disabled={isDeletingBooking} opacity={isDeletingBooking ? 0.6 : 1}>
+                {isDeletingBooking ? "Eliminazione..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
+                Annulla
+              </Button>
+            </>
+          ) : (
+            <Text color={brand.urgenza} fontWeight="600" fontSize="$2" cursor="pointer" accessibilityRole="button" onPress={() => setConfirmingDeleteBooking(true)}>
+              Elimina prenotazione
+            </Text>
+          )}
+        </XStack>
+      ) : null}
+      {deleteError ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {deleteError}
+        </Text>
+      ) : null}
+
+      {showNoShowModal ? (
+        <ReportNoShowModal
+          businessName={booking.businessName}
+          phone={booking.professionalPhone}
+          email={booking.professionalEmail}
+          address={booking.professionalAddress}
+          onClose={() => setShowNoShowModal(false)}
+          onRequestRefund={async () => {
+            await apiClient.reportBookingNoShow(token, booking.id);
+            onChanged();
+          }}
         />
       ) : null}
 
-      {request.quotes.length > 0 ? (
-        <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-            Preventivi ricevuti
-          </Text>
-          {request.quotes.map((quote) => (
-            <QuoteCard
-              key={quote.id}
-              quote={quote}
-              token={token}
-              onChanged={onChanged}
-              onAcceptQuote={onAcceptQuote}
-              requestedTimeSlot={request.preferredTimeSlot}
-              guidedRequestId={request.id}
-              serviceMode={request.serviceMode}
-              isNew={newQuoteIds?.has(quote.id)}
-              unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
-              autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
-            />
-          ))}
+      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {!booking.clientConfirmedCompletedAt ? (
+            <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
+              Lavoro terminato
+            </Button>
+          ) : booking.status !== "COMPLETED" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai confermato il completamento. In attesa che anche il professionista lo segnali per poter lasciare una recensione.
+            </Text>
+          ) : booking.hasReview ? (
+            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+              Recensione inviata
+            </Text>
+          ) : (
+            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
+              Lascia una recensione
+            </Button>
+          )}
         </YStack>
-      ) : (
-        <Text color={brand.grafite70} fontSize="$3">
-          Nessun preventivo ricevuto ancora.
-        </Text>
-      )}
-
-      {openPhotoIndex !== null ? (
-        <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
       ) : null}
-    </Surface>
+
+      {showClientCompleteModal ? (
+        <ClientCompleteModal onClose={() => setShowClientCompleteModal(false)} onConfirm={handleClientConfirmComplete} uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)} />
+      ) : null}
+      {showReviewModal ? (
+        <ReviewModal
+          title="Recensisci il professionista"
+          subtitle="Com'è andato il lavoro? La tua recensione sarà pubblica non appena anche il professionista avrà lasciato la sua."
+          uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleSubmitReview}
+          onClose={closeReviewModal}
+        />
+      ) : null}
+
+      {showTimeline && booking.guidedRequestId ? (
+        <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} onClose={() => setShowTimeline(false)} />
+      ) : null}
+    </YStack>
   );
 }
 
@@ -1403,10 +1822,9 @@ type FreeSlot = { date: string; startTime: string; endTime: string; isCurrentPro
 const MANUAL_OPTION_VALUE = "altro";
 
 /**
- * Preventivo ricevuto: mostra la data proposta dal professionista (prima
- * non era visibile affatto) e permette al cliente di accettarla o
- * proporne un'altra, scelta tra le fasce libere reali dell'agenda del
- * professionista (mai una data a caso — richiesta esplicita dell'utente).
+ * Preventivo ricevuto: mostra la data proposta dal professionista e
+ * permette al cliente di accettarla o proporne un'altra, scelta tra le
+ * fasce libere reali dell'agenda del professionista.
  */
 function QuoteCard({
   quote,
@@ -1426,25 +1844,21 @@ function QuoteCard({
   onAcceptQuote: (quoteId: string) => Promise<void>;
   /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
   requestedTimeSlot: string | null;
-  /** Richiesta di origine, per il bottone "Cronologia" (richiesta esplicita dell'utente). */
+  /** Richiesta di origine, per il bottone "Cronologia". */
   guidedRequestId: string;
-  /** Modalità della richiesta originale (richiesta esplicita dell'utente: "differenzia sempre... anche nelle successive modifiche della data e ora") — filtra le fasce proponibili a quelle che offrono questa modalità. */
+  /** Modalità della richiesta originale — filtra le fasce proponibili a quelle che offrono questa modalità. */
   serviceMode: "HOME" | "ONLINE" | null;
-  /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto (richiesta esplicita dell'utente). */
+  /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto. */
   isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
+  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia". */
   unreadCount?: number;
-  /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click (richiesta esplicita dell'utente). */
+  /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenTimeline?: boolean;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
   const [proposeNote, setProposeNote] = useState("");
-  // "Altro" nel menu a tendina data/ora (richiesta esplicita dell'utente):
-  // il cliente può proporre un orario libero non presente nell'agenda
-  // pubblica del professionista — stesso principio già in uso per la
-  // controproposta del professionista (isManual, CLAUDE.md §47).
   const [manualDate, setManualDate] = useState("");
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
@@ -1455,15 +1869,7 @@ function QuoteCard({
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
-  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
-  // conversazione (richiesta esplicita dell'utente) — vedi
-  // useDismissableUnreadCount per il motivo del calcolo differenziale.
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
-  // Apre subito la chat quando arriva da un deep link di notifica
-  // (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta
-  // direttamente nella chat aperta") — un booleano basta qui: questa
-  // istanza (una per `quote.id`) non cambia mai il professionista a cui si
-  // riferisce, quindi non serve mai riaprirla una seconda volta.
   const autoOpenedTimelineRef = useRef(false);
   useEffect(() => {
     if (autoOpenTimeline && !autoOpenedTimelineRef.current) {
@@ -1471,14 +1877,8 @@ function QuoteCard({
       setShowTimeline(true);
     }
   }, [autoOpenTimeline]);
-  // Totale minimo/massimo delle voci di questo preventivo (richiesta
-  // esplicita dell'utente: "il totale dei minimi in un riquadro e il totale
-  // dei massimi nell'altro").
   const priceTotals = useMemo(() => quotePriceTotals(quote.items), [quote.items]);
 
-  // I dati per raggiungere il cliente (destinatario, indirizzo) sono già
-  // stati raccolti alla richiesta (GuidedRequestForm) — accettare crea
-  // subito la prenotazione, nessun modulo da compilare qui.
   async function handleAccept() {
     setError(null);
     setIsAccepting(true);
@@ -1500,32 +1900,12 @@ function QuoteCard({
         const slots: FreeSlot[] = [];
         for (const day of agenda.days) {
           for (const slot of day.slots) {
-            // Bug reale corretto (segnalato dall'utente: "non compaiono le
-            // date disponibili"): il filtro escludeva del tutto le fasce a
-            // capienza (maxBookings > 1), lasciando la lista vuota per un
-            // professionista che avesse impostato l'agenda solo con quel
-            // tipo di fascia — stesso identico bug già corretto altrove in
-            // questa sessione per ProfessionalsService.getMyAvailableSlots
-            // ("scegliere quando iniziare un lavoro già concordato non
-            // consuma la capienza pensata per il fan-out delle richieste").
-            // Filtrato anche per modalità (richiesta esplicita dell'utente):
-            // solo le fasce che offrono la stessa modalità della richiesta
-            // originale — home/online sono capienze indipendenti.
             const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
             if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
               slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
             }
           }
         }
-        // La data/orario attualmente proposti dal professionista potrebbe
-        // non corrispondere a nessuna fascia reale dell'agenda (richiesta
-        // esplicita dell'utente: il professionista può inserire una
-        // data/orario manuale, indipendente dalle fasce configurate,
-        // CLAUDE.md §46) — senza aggiungerla esplicitamente all'elenco,
-        // il cliente non potrebbe mai scegliere "la stessa proposta" (per
-        // scrivere solo una nota) né vederla tra le opzioni. Aggiunta in
-        // testa se non già presente, così resta anche la selezione
-        // iniziale di default.
         const currentDate = quote.estimatedStartDate.slice(0, 10);
         const currentStartTime = quote.estimatedStartDate.slice(11, 16);
         const currentEndTime = quote.estimatedEndDate ? quote.estimatedEndDate.slice(11, 16) : currentStartTime;
@@ -1577,10 +1957,6 @@ function QuoteCard({
     }
   }
 
-  // "Dai l'opzione per rifiutare il preventivo oltre ad accettarlo"
-  // (richiesta esplicita dell'utente) — distinto dal rifiuto di una
-  // singola data proposta (già esistente): qui il preventivo intero non va
-  // più bene.
   async function handleRejectQuote() {
     setError(null);
     setIsRejecting(true);
@@ -1597,18 +1973,12 @@ function QuoteCard({
 
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
-      {/* Nome del professionista cliccabile: apre il suo profilo pubblico
-          (richiesta esplicita dell'utente, stesso trattamento già in uso
-          nella sezione "Inviata a" più sopra in questa pagina). */}
       <XStack alignItems="center" gap="$2" flexWrap="wrap">
         <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
           <Text fontWeight="600" color={brand.cianografia}>
             {quote.businessName}
           </Text>
         </Link>
-        {/* Simbolo sul preventivo specifico (richiesta esplicita
-            dell'utente): distingue quale preventivo, tra più ricevuti per
-            la stessa richiesta, ha ricevuto l'aggiornamento. */}
         {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
@@ -1617,9 +1987,6 @@ function QuoteCard({
       <Text fontSize="$2" color={brand.grafite70}>
         Inviato il {formatSentAt(quote.sentAt)}
       </Text>
-      {/* Cronologia completa del thread con questo professionista —
-          richiesta esplicita dell'utente: "cliccando ad esempio sul
-          preventivo possa vedere la cronologia completa". */}
       <XStack
         alignItems="center"
         gap="$1"
@@ -1636,11 +2003,6 @@ function QuoteCard({
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
       </XStack>
-      {/* Il professionista ha inviato il preventivo con un orario diverso
-          da quello effettivamente richiesto dal cliente (richiesta
-          esplicita dell'utente: "evidenzialo... per farglielo notare") —
-          solo quando la richiesta portava un orario preferito, cioè è
-          nata da una fascia generica dell'agenda pubblica. */}
       {quote.timeChangedFromRequest && requestedTimeSlot ? (
         <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
           <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
@@ -1648,19 +2010,6 @@ function QuoteCard({
           </Text>
         </YStack>
       ) : null}
-      {/* Il professionista ha modificato direttamente l'orario durante la
-          trattativa ("Modifica", invece di limitarsi a confermare/rifiutare
-          la data proposta) — richiesta esplicita dell'utente. La "Data
-          proposta" sopra riflette già il nuovo orario, qui solo l'eventuale
-          messaggio lasciato. */}
-      {/* Il professionista ha modificato direttamente data/orario durante la
-          trattativa ("Modifica") — richiesta esplicita dell'utente: "deve
-          essere visibile chiaramente così come visualizzato nella parte del
-          professionista quando il cliente modifica data/ora" — stessa resa
-          visiva (padding/radius/font) del banner "Il cliente ha proposto
-          un'altra data" mostrato al professionista in /dashboard, con la
-          nuova data/ora riportata esplicitamente nel banner (non solo nella
-          riga "Data proposta" sopra). */}
       {quote.status === "SENT" && quote.professionalCounterNote ? (
         <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
           <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
@@ -1678,14 +2027,6 @@ function QuoteCard({
           </Text>
         ))}
       </YStack>
-      {/* Totale indicativo del preventivo: un'unica riga in evidenza invece
-          dei due riquadri "Totale minimo"/"Totale massimo" affiancati
-          (segnalato in revisione UX: occupava spazio e si leggeva male,
-          è la prima cosa che entrambe le parti cercano) — stesso helper
-          `formatServicePriceRange` già usato per le prestazioni del
-          profilo pubblico, riduce automaticamente a un solo valore quando
-          min ed max coincidono. Nascosto se nessuna voce ha un prezzo
-          indicato ("Su richiesta"). */}
       {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
@@ -1696,11 +2037,6 @@ function QuoteCard({
           </Text>
         </YStack>
       ) : null}
-      {/* Note del professionista in un box a parte (segnalato in revisione
-          UX: prima era un rigo di testo isolato, mischiato al resto della
-          card) — stesso trattamento visivo già usato per i banner "Il
-          professionista ha risposto proponendo"/"Il cliente ha proposto
-          un'altra data" più sopra in questo file. */}
       {quote.notes ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
@@ -1714,12 +2050,6 @@ function QuoteCard({
 
       {quote.status === "SENT" ? (
         <>
-          {/* Gerarchia dei bottoni: "Accetta" primario, "Modifica" (prima
-              "Modifica data/orario") secondario, "Rifiuta" affiancato a
-              destra dello stesso — richiesta esplicita dell'utente, stesso
-              trattamento (ghost + testo rosso in grassetto) già in uso per
-              il bottone omonimo lato professionista ("Rifiuta richiesta",
-              /dashboard/richieste) invece del testo sottolineato di prima. */}
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
               {isAccepting ? "Accettazione..." : "Accetta preventivo"}
@@ -1786,13 +2116,7 @@ function QuoteCard({
                       </Text>
                     </YStack>
                   ) : null}
-                  <textarea
-                    value={proposeNote}
-                    onChange={(e) => setProposeNote(e.target.value)}
-                    placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17"
-                    rows={2}
-                    style={textareaStyle}
-                  />
+                  <textarea value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
                   <XStack gap="$2">
                     <Button variant="primary" size="$3" height={40} onPress={handleProposeDate} disabled={isProposing} opacity={isProposing ? 0.6 : 1}>
                       {isProposing ? "Invio..." : "Invia proposta"}
@@ -1825,18 +2149,10 @@ function QuoteCard({
           </Text>
           {showPaymentInfo ? (
             <Text fontSize="$2" color={brand.grafite70}>
-              Il pagamento in piattaforma non è ancora attivo: accordati direttamente con il professionista sulle
-              modalità di pagamento.
+              Il pagamento in piattaforma non è ancora attivo: accordati direttamente con il professionista sulle modalità di pagamento.
             </Text>
           ) : (
-            <Text
-              color={brand.cianografia}
-              fontWeight="600"
-              fontSize="$3"
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setShowPaymentInfo(true)}
-            >
+            <Text color={brand.cianografia} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowPaymentInfo(true)}>
               Come pago?
             </Text>
           )}
@@ -1858,599 +2174,7 @@ function QuoteCard({
       ) : null}
 
       {showTimeline ? (
-        <TimelineModal
-          token={token}
-          guidedRequestId={guidedRequestId}
-          professionalProfileId={quote.professionalProfileId}
-          viewerRole="CLIENT"
-          otherPartyName={quote.businessName}
-          onClose={() => setShowTimeline(false)}
-        />
-      ) : null}
-    </YStack>
-  );
-}
-
-function BookingRow({
-  booking,
-  token,
-  onReviewed,
-  isNew,
-  unreadCount,
-}: {
-  booking: ClientBooking;
-  token: string;
-  onReviewed: () => void;
-  /** True se questa prenotazione ha un aggiornamento non letto — richiesta esplicita dell'utente ("rendilo evidente anche nella lista"). */
-  isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questa prenotazione — pallino rosso accanto a "Contatta/Cronologia" (richiesta esplicita dell'utente). */
-  unreadCount?: number;
-}) {
-  // Conferma del cliente che il lavoro è terminato dal suo lato (richiesta
-  // esplicita dell'utente: "servono i completed da entrambi") + recensione
-  // al professionista, sbloccata subito dopo — stessi popup condivisi con
-  // il lato professionista (ClientCompleteModal/ReviewModal).
-  const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  // Popup di conferma annullamento (richiesta esplicita dell'utente: "fa
-  // uscire un popup dove chiede se si è sicuri" — prima era un semplice
-  // conferma inline, "poco visibile" rispetto allo stesso pop-up già
-  // usato lato professionista, CancelBookingModal). Nessuna nota qui
-  // (showNote={false}, decisione di design invariata: il cliente non deve
-  // spiegazioni al professionista).
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  // Riapertura di una prenotazione annullata (richiesta esplicita
-  // dell'utente: "una volta annullata dai la possibilità di riaprirla").
-  const [isReopening, setIsReopening] = useState(false);
-  const [reopenError, setReopenError] = useState<string | null>(null);
-  const [showNoShowModal, setShowNoShowModal] = useState(false);
-  const [openRequestPhotoIndex, setOpenRequestPhotoIndex] = useState<number | null>(null);
-  const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
-  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  // Cronologia completa della richiesta (richiesta esplicita dell'utente:
-  // "in lavori accettati, inserisci un pulsante con scritto vai alla
-  // richiesta preventivo, e quindi visualizza tutti gli aggiornamenti").
-  const [showTimeline, setShowTimeline] = useState(false);
-  // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
-  // conversazione (richiesta esplicita dell'utente) — vedi
-  // useDismissableUnreadCount per il motivo del calcolo differenziale.
-  const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
-
-  // Errori mostrati DENTRO al popup (CancelBookingModal ha un proprio
-  // stato d'errore interno, stesso pattern già in uso lato professionista
-  // — handleCancel lì non li intercetta) invece che qui sotto: lasciato
-  // propagare, mai avvolto in try/catch.
-  async function handleCancelBooking(): Promise<void> {
-    await apiClient.cancelMyBooking(token, booking.id);
-    setShowCancelModal(false);
-    onReviewed();
-  }
-
-  async function handleReopenBooking() {
-    setReopenError(null);
-    setIsReopening(true);
-    try {
-      await apiClient.reopenBooking(token, booking.id);
-      onReviewed();
-    } catch (err) {
-      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsReopening(false);
-    }
-  }
-
-  // Richiesta esplicita dell'utente: quando il professionista ha eliminato
-  // l'account, la prenotazione non è più azionabile (nessun modo di
-  // contattarlo) e resterebbe altrimenti a ingombrare "Lavori accettati"
-  // per sempre — stesso principio/pattern di LeadCard.handleDeleteLead
-  // (professionista che elimina una richiesta di un cliente eliminato).
-  async function handleDeleteBooking() {
-    setDeleteError(null);
-    setIsDeletingBooking(true);
-    try {
-      await apiClient.deleteBooking(token, booking.id);
-      onReviewed();
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-      setConfirmingDeleteBooking(false);
-    } finally {
-      setIsDeletingBooking(false);
-    }
-  }
-
-  async function handleClientConfirmComplete(photoUrls: string[]) {
-    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
-    setShowClientCompleteModal(false);
-    // La recensione resta bloccata finché il professionista non ha
-    // anche lui completato il lavoro (ReviewsService.create, invariato) —
-    // il cliente può ora confermare "a prescindere" dal professionista,
-    // quindi qui lo stato potrebbe essere ancora CONFIRMED: aprire il
-    // popup di recensione in quel caso fallirebbe subito con un 403.
-    // Bug reale corretto: `onReviewed()` non va chiamato subito quando si
-    // apre il popup di recensione — se il filtro stato attivo esclude
-    // "Completata", ricaricare subito la lista filtra via questa card (e
-    // il popup appena aperto insieme a lei) un istante dopo. In quel caso
-    // il reload è rimandato alla chiusura del popup di recensione (sotto).
-    if (booking.status === "COMPLETED" && !booking.hasReview) {
-      setShowReviewModal(true);
-    } else {
-      onReviewed();
-    }
-  }
-
-  async function handleSubmitReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
-    await apiClient.createReview(token, { bookingId: booking.id, rating: input.rating, comment: input.comment, photoUrls: input.mediaUrls });
-    setShowReviewModal(false);
-    onReviewed();
-  }
-
-  function closeReviewModal() {
-    setShowReviewModal(false);
-    // Il lavoro è comunque già stato confermato terminato — la lista va
-    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
-    // resterebbe con lo stato precedente finché non arriva il prossimo poll
-    // periodico.
-    onReviewed();
-  }
-
-  // "Non presentato" (richiesta esplicita dell'utente): disponibile solo
-  // dopo che l'appuntamento CONFIRMED è realmente terminato (mai prima —
-  // non ha senso segnalare una mancata presentazione a un orario ancora
-  // da venire), e solo una volta per prenotazione.
-  const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
-  const noShowEligible = booking.status === "CONFIRMED" && new Date(referenceEnd).getTime() <= Date.now() && !booking.refundRequested;
-
-  return (
-    <Surface gap="$2">
-      <YStack flexDirection="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
-        {booking.professionalAccountDeleted ? (
-          // Il professionista ha eliminato l'account (soft-delete) —
-          // richiesta esplicita dell'utente: nessun link (il profilo
-          // pubblico non esiste più), stesso stile neutro già in uso per
-          // "Account eliminato" lato professionista (LeadCard/AcceptedJobCard).
-          <XStack alignItems="center" gap="$2">
-            <Text fontWeight="600" color={brand.grafite70}>
-              {booking.businessName}
-            </Text>
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
-              · Account eliminato
-            </Text>
-          </XStack>
-        ) : (
-          <Link href={`/professionista/${booking.professionalProfileId}`} style={{ textDecoration: "none" }}>
-            <Text fontWeight="600" color={brand.cianografia}>
-              {booking.businessName}
-            </Text>
-          </Link>
-        )}
-        <XStack alignItems="center" gap="$2">
-          <Text fontFamily="$body" fontSize={11} color={booking.status === "CANCELED" ? brand.urgenza : brand.cianografia} fontWeight="700">
-            {booking.status === "CANCELED"
-              ? // Da questa vista (cliente) "CLIENT" è "tu" — richiesta esplicita
-                // dell'utente: far capire chi ha annullato, non solo che è stata
-                // annullata. `null` per righe da prima di questo campo.
-                `Annullata${booking.canceledBy === "PROFESSIONAL" ? " dal professionista" : booking.canceledBy === "CLIENT" ? " da te" : ""}`
-              : BOOKING_STATUS_LABEL[booking.status]}
-          </Text>
-          {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
-          {/* Menu hamburger — richiesta esplicita dell'utente: "Annulla
-              prenotazione" (prima un bottone visibile esternamente sulla
-              card) si trova ora qui dentro, invece di occupare spazio in
-              vista sulla riga della richiesta. */}
-          {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
-            <ActionsMenu
-              accessibilityLabel="Azioni sulla prenotazione"
-              items={[{ icon: "x", text: "Annulla prenotazione", color: brand.urgenza, onPress: () => setShowCancelModal(true) }]}
-            />
-          ) : null}
-        </XStack>
-      </YStack>
-      <Text color={brand.grafite70} fontSize="$3">
-        {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
-        {" · "}
-        {new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-        {/* Fascia completa (richiesta esplicita dell'utente: "non
-            visualizzare solo il primo orario ma tutta la fascia d'orario"),
-            quando l'ora di fine è nota. */}
-        {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
-      </Text>
-
-      {booking.guidedRequestId ? (
-        <XStack
-          alignItems="center"
-          gap="$1"
-          alignSelf="flex-start"
-          cursor="pointer"
-          accessibilityRole="button"
-          onPress={() => {
-            setShowTimeline(true);
-            dismissUnread();
-          }}
-        >
-          <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
-            Contatta/Cronologia
-          </Text>
-          <UnreadDot count={effectiveUnreadCount} />
-        </XStack>
-      ) : null}
-
-      {/* Link consulenza video (Meet/Zoom/ecc.), impostato dal
-          professionista — richiesta esplicita dell'utente. */}
-      {booking.meetingLink ? (
-        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-          <XStack alignItems="center" gap="$2">
-            <Icon name="video" size={14} color={brand.cianografia} strokeWidth={1.5} />
-            <Text fontSize="$3" color={brand.cianografia} fontWeight="600">
-              Partecipa alla videochiamata
-            </Text>
-          </XStack>
-        </a>
-      ) : null}
-
-      {/* Dati della richiesta guidata originale (titolo/categoria,
-          descrizione, foto) — richiesta esplicita dell'utente: "oltre ai
-          dati della persona [professionista] deve venire anche i dati del
-          preventivo da lui inviato all'inizio come la descrizione
-          dell'evento con il titolo, le foto". Assente per le prenotazioni
-          dirette da agenda pubblica (nessuna GuidedRequest collegata). */}
-      {booking.categoryLabel || booking.description || booking.photoUrls.length > 0 ? (
-        <YStack gap="$2" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {booking.categoryLabel ? (
-            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
-              {booking.categoryLabel}
-            </Text>
-          ) : null}
-          {booking.description ? (
-            <Text fontSize="$3" color={brand.grafite70}>
-              {booking.description}
-            </Text>
-          ) : null}
-          {booking.photoUrls.length > 0 ? (
-            <XStack gap="$2" flexWrap="wrap">
-              {booking.photoUrls.map((url, index) => (
-                <MediaPreview
-                  key={url}
-                  url={url}
-                  onClick={() => setOpenRequestPhotoIndex(index)}
-                  style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }}
-                />
-              ))}
-            </XStack>
-          ) : null}
-        </YStack>
-      ) : null}
-
-      {openRequestPhotoIndex !== null ? (
-        <PhotoLightbox photos={booking.photoUrls} initialIndex={openRequestPhotoIndex} onClose={() => setOpenRequestPhotoIndex(null)} />
-      ) : null}
-
-      {/* Preventivo accettato (le voci concordate, distinte dall'importo
-          finale esatto mostrato più sotto a lavoro terminato). */}
-      {booking.quoteItems.length > 0 ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Preventivo accettato
-          </Text>
-          {booking.quoteItems.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
-                {item.name}
-              </Text>
-              <Text fontSize="$2" color={brand.grafite}>
-                {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
-              </Text>
-            </XStack>
-          ))}
-          {booking.quoteNotes ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              {booking.quoteNotes}
-            </Text>
-          ) : null}
-        </YStack>
-      ) : null}
-
-      {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Importo finale
-          </Text>
-          {booking.finalItems.map((item) => (
-            <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
-                {item.name}
-              </Text>
-              <Text fontSize="$2" color={brand.grafite}>
-                €{(item.priceEurCents / 100).toFixed(2)}
-              </Text>
-            </XStack>
-          ))}
-          <XStack justifyContent="space-between" gap="$2">
-            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
-              Totale
-            </Text>
-            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
-              €{(booking.finalAmountEurCents / 100).toFixed(2)}
-            </Text>
-          </XStack>
-        </YStack>
-      ) : null}
-
-      {booking.status === "CANCELED" && booking.cancellationNote ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Nota del professionista
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            {booking.cancellationNote}
-          </Text>
-        </YStack>
-      ) : null}
-
-      {/* Popup di conferma (richiesta esplicita dell'utente: "fa uscire un
-          popup dove chiede se si è sicuri" — prima un testo con doppia
-          conferma inline, "poco visibile" rispetto allo stesso pop-up già
-          in uso lato professionista, CancelBookingModal — ora identico,
-          solo senza il campo nota). Il bottone che lo apre è nel menu
-          hamburger dell'intestazione, non più visibile qui esternamente
-          sulla card (richiesta esplicita dell'utente). */}
-      {/* Riapertura di una prenotazione annullata (richiesta esplicita
-          dell'utente: "una volta annullata dai la possibilità di
-          riaprirla") — nessun popup di conferma qui: riaprire non è
-          distruttivo come annullare, un solo click basta. */}
-      {booking.status === "CANCELED" ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <Button variant="secondary" size="$2" height={36} onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
-            {isReopening ? "Riapertura..." : "Riapri prenotazione"}
-          </Button>
-        </XStack>
-      ) : null}
-      {reopenError ? (
-        <Text color={brand.urgenza} fontSize="$3">
-          {reopenError}
-        </Text>
-      ) : null}
-
-      {noShowEligible ? (
-        <Text
-          color={brand.urgenza}
-          fontWeight="600"
-          fontSize="$3"
-          cursor="pointer"
-          accessibilityRole="button"
-          onPress={() => setShowNoShowModal(true)}
-        >
-          Non presentato
-        </Text>
-      ) : null}
-
-      {booking.status === "CONFIRMED" && booking.refundRequested ? (
-        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.urgenza}>
-            Hai segnalato la mancata presentazione
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Abbiamo avvisato {booking.businessName}. Contattalo direttamente per accordarvi su un rimborso.
-          </Text>
-        </YStack>
-      ) : null}
-
-      {/* Eliminazione dalla lista, richiesta esplicita dell'utente — mostrata
-          a prescindere dallo stato della prenotazione, quando il
-          professionista ha eliminato l'account. Doppia conferma, stesso
-          pattern già in uso per "Annulla prenotazione" sopra. */}
-      {booking.professionalAccountDeleted ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {confirmingDeleteBooking ? (
-            <>
-              <Text fontSize="$2" color={brand.urgenza}>
-                Eliminare questa prenotazione dalla lista?
-              </Text>
-              <Button
-                variant="urgent"
-                size="$2"
-                height={36}
-                onPress={handleDeleteBooking}
-                disabled={isDeletingBooking}
-                opacity={isDeletingBooking ? 0.6 : 1}
-              >
-                {isDeletingBooking ? "Eliminazione..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
-                Annulla
-              </Button>
-            </>
-          ) : (
-            <Text
-              color={brand.urgenza}
-              fontWeight="600"
-              fontSize="$2"
-              cursor="pointer"
-              accessibilityRole="button"
-              onPress={() => setConfirmingDeleteBooking(true)}
-            >
-              Elimina prenotazione
-            </Text>
-          )}
-        </XStack>
-      ) : null}
-      {deleteError ? (
-        <Text color={brand.urgenza} fontSize="$3">
-          {deleteError}
-        </Text>
-      ) : null}
-
-      {showCancelModal ? (
-        <CancelBookingModal
-          title="Annulla prenotazione"
-          description="Il professionista verrà avvisato dell'annullamento."
-          confirmLabel="Sì, annulla prenotazione"
-          confirmingLabel="Annullamento..."
-          showNote={false}
-          onClose={() => setShowCancelModal(false)}
-          onCancel={handleCancelBooking}
-        />
-      ) : null}
-      {showNoShowModal ? (
-        <ReportNoShowModal
-          businessName={booking.businessName}
-          phone={booking.professionalPhone}
-          email={booking.professionalEmail}
-          address={booking.professionalAddress}
-          onClose={() => setShowNoShowModal(false)}
-          onRequestRefund={async () => {
-            await apiClient.reportBookingNoShow(token, booking.id);
-            onReviewed();
-          }}
-        />
-      ) : null}
-
-      {/* Richiesta esplicita dell'utente: il cliente può cliccare "Lavoro
-          terminato" a prescindere dal fatto che il professionista l'abbia
-          già fatto o no — non più gated su status === "COMPLETED" (quello
-          resta impostato solo dal professionista, con l'importo finale). */}
-      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
-        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {!booking.clientConfirmedCompletedAt ? (
-            <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
-              Lavoro terminato
-            </Button>
-          ) : booking.status !== "COMPLETED" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Hai confermato il completamento. In attesa che anche il professionista lo segnali per poter lasciare una recensione.
-            </Text>
-          ) : booking.hasReview ? (
-            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-              Recensione inviata
-            </Text>
-          ) : (
-            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
-              Lascia una recensione
-            </Button>
-          )}
-        </YStack>
-      ) : null}
-
-      {showClientCompleteModal ? (
-        <ClientCompleteModal
-          onClose={() => setShowClientCompleteModal(false)}
-          onConfirm={handleClientConfirmComplete}
-          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-        />
-      ) : null}
-      {showReviewModal ? (
-        <ReviewModal
-          title="Recensisci il professionista"
-          subtitle="Com'è andato il lavoro? La tua recensione sarà pubblica non appena anche il professionista avrà lasciato la sua."
-          uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
-          onSubmit={handleSubmitReview}
-          onClose={closeReviewModal}
-        />
-      ) : null}
-
-      {showTimeline && booking.guidedRequestId ? (
-        <TimelineModal
-          token={token}
-          guidedRequestId={booking.guidedRequestId}
-          professionalProfileId={booking.professionalProfileId}
-          viewerRole="CLIENT"
-          otherPartyName={booking.businessName}
-          onClose={() => setShowTimeline(false)}
-        />
-      ) : null}
-    </Surface>
-  );
-}
-
-// Menu hamburger sull'intestazione di "Lavori accettati" (richiesta
-// esplicita dell'utente): stesso pattern click-to-open/chiusura al click
-// esterno già in uso in `ReportsSectionMenu` (/admin), non un componente
-// condiviso in packages/ui — un solo punto di consumo qui. Oggi porta
-// solo "Annulla prenotazione" (prima un bottone visibile esternamente
-// sulla card, richiesta esplicita di spostarlo qui), ma è già una
-// struttura a menu, non un singolo bottone travestito.
-/**
- * Menu hamburger generico (click-to-open, chiusura al click esterno) —
- * introdotto per "Annulla prenotazione" (Lavori accettati, §65), reso
- * generico per riuso identico su "Elimina richiesta" (Le mie richieste),
- * richiesta esplicita dell'utente ("inserisci il pulsante hamburger come
- * presente nel lavori accettati").
- */
-function ActionsMenu({
-  accessibilityLabel,
-  items,
-}: {
-  accessibilityLabel: string;
-  items: { icon: IconName; text: string; color: string; onPress: () => void }[];
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <YStack ref={containerRef} position="relative">
-      <YStack
-        width={32}
-        height={32}
-        borderRadius={999}
-        alignItems="center"
-        justifyContent="center"
-        cursor="pointer"
-        hoverStyle={{ backgroundColor: brand.gesso }}
-        onPress={() => setIsOpen((open) => !open)}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-      >
-        <Icon name="menu" size={18} color={brand.grafite} />
-      </YStack>
-
-      {isOpen ? (
-        <YStack
-          position="absolute"
-          top="100%"
-          right={0}
-          marginTop="$2"
-          minWidth={200}
-          backgroundColor={brand.calce}
-          borderRadius={radiusDoc}
-          overflow="hidden"
-          zIndex={1000}
-          shadowColor="rgba(43,32,19,0.12)"
-          shadowRadius={12}
-          shadowOffset={{ width: 0, height: 4 }}
-          shadowOpacity={1}
-        >
-          {items.map((item) => (
-            <XStack
-              key={item.text}
-              paddingHorizontal="$4"
-              paddingVertical="$3"
-              alignItems="center"
-              gap="$2"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: brand.gesso }}
-              onPress={() => {
-                item.onPress();
-                setIsOpen(false);
-              }}
-              accessibilityRole="button"
-            >
-              <Icon name={item.icon} size={16} color={item.color} />
-              <Text fontSize="$3" color={item.color} fontWeight="600">
-                {item.text}
-              </Text>
-            </XStack>
-          ))}
-        </YStack>
+        <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
   );

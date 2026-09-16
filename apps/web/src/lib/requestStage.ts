@@ -93,3 +93,56 @@ export function describeClosedReason(lead: ProfessionalLead): string {
   if (lead.quote?.status === "REJECTED") return "Il cliente ha rifiutato il preventivo che hai inviato.";
   return "Questa richiesta non è più azionabile.";
 }
+
+/**
+ * Etichette per la stessa `StagePill` mostrata dal lato cliente
+ * (`/le-mie-richieste`, richiesta esplicita dell'utente: "rendi la pagina
+ * le mie richieste simile a quella delle richieste ricevute adattandola al
+ * contesto") — stessi colori/icone di `REQUEST_STAGE_STYLE` (nessuna nuova
+ * palette), solo il testo cambia: lo stesso stadio letto da un
+ * professionista ("Da quotare" = tocca a te) e da un cliente ("In attesa di
+ * preventivo" = sto aspettando una risposta) non può condividere la stessa
+ * frase senza confondere chi legge.
+ */
+export const CLIENT_STAGE_LABEL: Record<RequestStage, string> = {
+  da_quotare: "In attesa di preventivo",
+  in_attesa: "Preventivo ricevuto",
+  modifica_richiesta: "In attesa di conferma",
+  accettata: "Accettata",
+  completata: "Completata",
+  annullata: "Annullata",
+  scaduta: "Scaduta",
+  chiusa: "Annullata da te",
+};
+
+/**
+ * Stessa classificazione a stadi di `classifyLeadStage`, ma lato cliente —
+ * richiesta esplicita dell'utente. A differenza di un `Lead` (al più un
+ * solo preventivo), una `ClientGuidedRequest` generica può avere più
+ * preventivi da professionisti diversi (fan-out, CLAUDE.md §14): lo stadio
+ * riflette il preventivo più "attivo" tra quelli ricevuti (una proposta in
+ * corso conta più di una già rifiutata/ritirata), non una media né un
+ * elenco di tutti — la lista dei singoli preventivi resta comunque visibile
+ * per intero nella scheda espansa, questo stadio è solo il riassunto in
+ * cima alla card.
+ */
+export function classifyClientRequestStage(
+  request: {
+    status: "OPEN" | "MATCHED" | "CLOSED";
+    closedReason: "EXPIRED" | "CANCELED_BY_CLIENT" | "COMPLETED" | null;
+    quotes: { status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN" }[];
+  },
+  booking: { status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW" } | null,
+): RequestStage {
+  if (booking) {
+    if (booking.status === "COMPLETED") return "completata";
+    if (booking.status === "CANCELED" || booking.status === "NO_SHOW") return "annullata";
+    return "accettata"; // PENDING o CONFIRMED
+  }
+  if (request.status === "CLOSED") {
+    return request.closedReason === "EXPIRED" ? "scaduta" : "chiusa";
+  }
+  if (request.quotes.some((q) => q.status === "MODIFICATION_REQUESTED")) return "modifica_richiesta";
+  if (request.quotes.some((q) => q.status === "SENT")) return "in_attesa";
+  return "da_quotare";
+}

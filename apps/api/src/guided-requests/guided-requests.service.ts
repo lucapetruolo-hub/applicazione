@@ -312,6 +312,11 @@ export class GuidedRequestsService {
         serviceMode: request.serviceMode,
         isUrgent: request.isUrgent,
         status: request.status,
+        // Esposto ora anche qui (richiesta esplicita dell'utente,
+        // /le-mie-richieste "simile alle richieste ricevute"): distingue
+        // lato client una richiesta scaduta da una annullata volontariamente,
+        // stesso dato già usato solo internamente da getStatus() sopra.
+        closedReason: request.closedReason,
         createdAt: request.createdAt.toISOString(),
         updatedAt: latestQuoteUpdate.toISOString(),
         preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
