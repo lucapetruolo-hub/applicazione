@@ -123,6 +123,14 @@ function AccediForm() {
             // senza entrambi il browser non riconosce la coppia come
             // credenziali da salvare.
             autoComplete="username"
+            // `nativeID` (→ attributo `id` HTML): react-native-web non
+            // inoltra affatto un prop `name` al DOM, `nativeID` è l'unico
+            // identificativo che arriva davvero all'input — rinforzo
+            // supplementare all'autoComplete per le stesse euristiche di
+            // autofill/gestione password, stesso principio applicato a
+            // /registrati e InlineAuthGate per il bug del prompt "vuoi
+            // salvare la password?" ripetuto.
+            nativeID="email"
             accessibilityLabel="Email"
             onSubmitEditing={handleLogin}
           />
@@ -143,6 +151,7 @@ function AccediForm() {
             placeholder="Password"
             secureTextEntry={!showPassword}
             autoComplete="current-password"
+            nativeID="current-password"
             accessibilityLabel="Password"
             onSubmitEditing={handleLogin}
           />

@@ -13306,3 +13306,92 @@ console/pageerror in tutti i flussi. Account di test ripuliti a fine
 verifica (`DELETE /auth/me`). Typecheck pulito su tutti i package
 (`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build
 di produzione `apps/web` verde (38 route, nessuna nuova).
+
+---
+
+## 111. Bug reale, seconda diagnosi: prompt "salva password" ripetuto in
+registrazione (nessun `name`/`id` sui campi) — `nativeID` aggiunto
+
+Segnalazione dell'utente, arrivata di nuovo dopo il fix già applicato in un
+giro precedente (§89, "Bug reale: 'Vuoi salvare la password?' chiesto ad
+ogni carattere in registrazione (iOS)" — `<form>` reale + `autoComplete`
+su `/registrati` e `InlineAuthGate.tsx`): "Ogni volta che voglio
+registrare un nuovo professionista, all'inserimento della password mi
+chiede ogni volta di salvare la password ad ogni carattere inserito
+tramite mobile". Verificato per prima cosa che il fix di §89 fosse
+davvero quello live (confrontato l'albero locale con `origin/<branch>`:
+nessuna differenza su `registrati/page.tsx`, il commit con quel fix è
+già l'ultimo pushato) — il sintomo persiste quindi nonostante il `<form>`
++ `autoComplete` già corretti e deployati, non un regresso di un fix mai
+arrivato in produzione.
+
+**Diagnosi più a fondo, con evidenza reale invece di un secondo tentativo
+alla cieca**: dato che questo ambiente di sviluppo non ha un motore
+WebKit/mobile reale (solo Chromium, limite già documentato più volte in
+questo file), non è possibile riprodurre il dialogo nativo "Vuoi salvare
+la password?" — ma è possibile verificare con Playwright (viewport
+`devices["iPhone 13"]`) se ci sono cause strutturali plausibili lato DOM:
+- **Stabilità del nodo DOM e del focus durante la digitazione**:
+  verificato marcando il nodo `<input>` reale con una proprietà JS e
+  digitando carattere per carattere — il nodo non viene mai distrutto/
+  ricreato, il focus non si perde mai. Esclude l'ipotesi "React rimonta
+  l'input ad ogni tasto" (che avrebbe potuto confondere l'euristica di
+  autofill di Safari, tipicamente legata all'identità del nodo DOM).
+- **Attributo `name`/`id` assente su tutti e tre i campi** (`Email`,
+  `Password`, `Conferma password`): `name=""` su tutti, confermato via
+  dump del DOM. Causa strutturale reale, non solo ipotizzata: `Input` di
+  Tamagui è costruito sopra `TextInput` di react-native-web, che filtra i
+  prop inoltrati al DOM tramite un elenco fisso (`forwardedProps`,
+  verificato nel sorgente del pacchetto) — **`name` non è in quell'elenco,
+  quindi viene scartato in silenzio indipendentemente da cosa si passi**.
+  Il tentativo già scartato in §89 ("il tipo TypeScript di `Input` non
+  espone `name`") aveva quindi la conclusione giusta ma per il motivo
+  sbagliato: non è un limite dei tipi TypeScript, è un limite reale a
+  runtime del pacchetto — passare `name` non avrebbe comunque funzionato
+  nemmeno forzando il tipo. Due campi "Password"/"Conferma password"
+  altrimenti indistinguibili nel DOM se non per l'ordine sono un caso
+  reale e documentato di euristiche di autofill meno affidabili in alcuni
+  browser/gestori password, che si affidano anche a `id`/`name` — non
+  solo ad `autocomplete` — per abbinare correttamente "nuova password" a
+  "conferma password".
+
+**Fix**: `nativeID` (prop RN standard, confermato nell'elenco
+`forwardedProps` del pacchetto — **inoltrato davvero** al DOM come
+attributo `id`, a differenza di `name`) aggiunto sui campi email/password/
+conferma-password di `/registrati/page.tsx` e `InlineAuthGate.tsx`
+(`id="email"`/`"new-password"`/`"new-password-confirm"`, quest'ultimo
+solo quando la modalità è "register" in `InlineAuthGate`, dove il campo
+esiste), e sui due campi di `/accedi/page.tsx` (`id="email"`/
+`"current-password"`) per la stessa coerenza — rinforzo supplementare
+all'`autoComplete` già corretto, mai un sostituto: `autoComplete` resta
+il segnale principale e autorevole per i browser moderni, `nativeID`
+colma il solo vuoto reale trovato (nessun identificativo affatto).
+Nessuna modifica al `<form>` già presente né alla logica di invio.
+
+**Onestà sui limiti di questa verifica**: non è possibile, da questo
+ambiente, confermare che il dialogo nativo iOS/Android smetta davvero di
+ripetersi su un dispositivo reale — la verifica qui si limita a
+confermare che gli attributi DOM ora rispettano correttamente la guida
+WHATWG sull'autofill (`autocomplete` + `id` distinti e semantici, invece
+di `autocomplete` da solo con `id`/`name` assenti su tutti i campi), che
+resta la mitigazione effettivamente documentata per questa classe di bug
+— non la garanzia che sia l'unica causa possibile del sintomo riportato.
+
+Verificato con Playwright (non solo lettura di codice), `devices["iPhone
+13"]`, sessione `next dev` reale: su `/registrati?ruolo=professionista` i
+tre input risultano ora `id="email"`/`"new-password"`/
+`"new-password-confirm"` (prima tutti `id=""`), `autocomplete` invariato
+e corretto (`username`/`new-password`/`new-password`); digitando
+"MyPass1!" carattere per carattere nel campo password, il nodo DOM resta
+lo stesso (marcatore mai perso) e il focus non si sposta mai. Stesso
+controllo ripetuto su `/accedi`: `id="email"`/`"current-password"`
+presenti e corretti. Typecheck pulito su `apps/web` (`nativeID` accettato
+come prop valida da `Input`/`Field`). Build di produzione non eseguibile
+in questo giro per un blocco di rete indipendente da questo cambio (fetch
+di Google Fonts a build-time rifiutato dal proxy dell'ambiente di
+sviluppo, `SELF_SIGNED_CERT_IN_CHAIN`/403 su `fonts.googleapis.com` — la
+cache `.next` che rendeva questo fetch superfluo in una build precedente
+nella stessa sessione era stata svuotata per il server di sviluppo usato
+in questa stessa verifica): nessun file relativo ai font toccato da
+questo cambio, il typecheck pulito e la verifica DOM diretta restano la
+prova valida per questo fix specifico.

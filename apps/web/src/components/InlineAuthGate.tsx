@@ -254,7 +254,11 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
               <form> reale dà a Safari/iOS il confine semantico necessario
               per non rivalutare "vuoi salvare la password?" ad ogni
               carattere — onSubmit fa solo preventDefault, l'invio vero
-              resta sull'onPress del bottone qui sotto, invariato. */}
+              resta sull'onPress del bottone qui sotto, invariato.
+              `nativeID` (→ attributo `id` HTML, l'unico identificativo che
+              react-native-web inoltra davvero al DOM — `name` non è
+              inoltrato affatto) aggiunto come rinforzo supplementare
+              all'autoComplete già presente, stesso motivo di /registrati. */}
           <form onSubmit={(e) => e.preventDefault()}>
             <YStack gap="$3">
               <Field
@@ -265,6 +269,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="username"
+                nativeID="email"
                 accessibilityLabel="Email"
               />
               <Field
@@ -284,6 +289,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                 placeholder="Password"
                 secureTextEntry={!showPassword}
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
+                nativeID={mode === "login" ? "current-password" : "new-password"}
                 accessibilityLabel="Password"
                 onSubmitEditing={mode === "login" ? handleLogin : undefined}
               />
@@ -305,6 +311,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                   placeholder="Ripeti la password"
                   secureTextEntry={!showConfirmPassword}
                   autoComplete="new-password"
+                  nativeID="new-password-confirm"
                   accessibilityLabel="Conferma password"
                   onSubmitEditing={handleRegister}
                 />

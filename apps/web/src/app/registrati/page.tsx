@@ -438,6 +438,24 @@ function RegistratiForm() {
          * solo a dare a Safari il confine semantico corretto — onSubmit fa
          * solo preventDefault, per sicurezza nel caso un invio nativo
          * scattasse comunque (es. tasto Invio su un campo).
+         *
+         * Segnalato di nuovo dall'utente dopo questo fix (specificamente
+         * per la registrazione professionista da mobile): investigato più a
+         * fondo — DOM stabile e fuoco mai perso durante la digitazione
+         * (verificato con Playwright, nessun remount del nodo <input> ad
+         * ogni carattere), ma i tre campi risultavano privi di un
+         * attributo `id`/`name` (`name=""` su tutti e tre): react-native-web
+         * non inoltra affatto `name` al DOM (non è nell'elenco dei prop
+         * forwarded di TextInput, verificato nel sorgente del pacchetto —
+         * non solo un limite dei tipi TypeScript, come ipotizzato in un
+         * giro precedente), ma inoltra `nativeID` come `id` HTML. Due campi
+         * "Password"/"Conferma password" altrimenti indistinguibili nel DOM
+         * se non per l'ordine sono un caso reale e documentato di euristiche
+         * di autofill meno affidabili (alcuni gestori password si affidano
+         * anche a `id`/`name`, non solo ad `autocomplete`, per abbinare
+         * "nuova password" a "conferma"): `nativeID` aggiunto qui come
+         * rinforzo supplementare, a costo zero, allo stesso `autoComplete`
+         * già corretto sopra.
          */}
         <form onSubmit={(e) => e.preventDefault()}>
           <YStack gap="$4">
@@ -449,6 +467,7 @@ function RegistratiForm() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="username"
+              nativeID="email"
               accessibilityLabel="Email"
             />
             <Field
@@ -474,6 +493,7 @@ function RegistratiForm() {
               // reale segnalato dall'utente, senza questo hint il sistema
               // del telefono chiedeva ripetutamente se salvarla.
               autoComplete="new-password"
+              nativeID="new-password"
               accessibilityLabel="Password"
             />
             <Field
@@ -493,6 +513,7 @@ function RegistratiForm() {
               placeholder="Ripeti la password"
               secureTextEntry={!showConfirmPassword}
               autoComplete="new-password"
+              nativeID="new-password-confirm"
               accessibilityLabel="Conferma password"
               onSubmitEditing={handleRegister}
             />
