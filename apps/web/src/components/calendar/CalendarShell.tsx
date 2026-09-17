@@ -241,13 +241,26 @@ export function CalendarShell({
       </XStack>
 
       <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        {view === "year" ? (
-          renderYearList ? renderYearList() : null
-        ) : view === "month" ? (
-          <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
-        ) : (
-          <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />
-        )}
+        {/* `key={view}` forza un nuovo nodo DOM ad ogni cambio di vista
+            (Giorno/Settimana/Mese/Anno, non ad ogni navigazione
+            precedente/successivo — quella non cambia `view`): una
+            transizione CSS non riparte da sola su un elemento già montato,
+            solo su uno nuovo, da qui la remount mirata invece di un
+            controllo JS più complesso. Nessuno stato locale vive dentro
+            WeekOrDayGrid/MonthGrid/renderYearList (puri render da props),
+            quindi il remount non perde nulla — richiesta esplicita
+            dell'utente ("rendi la pagina agenda più innovativa"), stesso
+            principio "micro-interazioni coerenti, non aggiunte a caso" già
+            seguito nella Fase "motion" del redesign (CLAUDE.md §10). */}
+        <div key={view} className="cal-grid-fade">
+          {view === "year" ? (
+            renderYearList ? renderYearList() : null
+          ) : view === "month" ? (
+            <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
+          ) : (
+            <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />
+          )}
+        </div>
       </div>
 
       <style jsx>{`
@@ -265,6 +278,19 @@ export function CalendarShell({
           border-radius: 6px;
           overflow: hidden;
           background: ${brand.calce};
+        }
+        .cal-grid-fade {
+          animation: cal-grid-fade-in 220ms ease-out;
+        }
+        @keyframes cal-grid-fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </YStack>
@@ -306,9 +332,9 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
             <YStack
               paddingVertical="$2"
               paddingHorizontal="$2"
-              borderBottomWidth={1}
-              borderBottomColor={brand.filetto}
-              backgroundColor={brand.gesso}
+              borderBottomWidth={isToday ? 2 : 1}
+              borderBottomColor={isToday ? brand.cianografia : brand.filetto}
+              backgroundColor={isToday ? brand.cianografiaVelo : brand.gesso}
               alignItems="center"
               gap="$1"
             >
@@ -377,8 +403,8 @@ function MonthGrid({
               gap="$1"
               borderRightWidth={1}
               borderBottomWidth={1}
-              borderColor={brand.filetto}
-              backgroundColor={inMonth ? brand.calce : brand.gesso}
+              borderColor={isToday ? brand.cianografia : brand.filetto}
+              backgroundColor={isToday ? brand.cianografiaVelo : inMonth ? brand.calce : brand.gesso}
               opacity={inMonth ? 1 : 0.55}
               cursor={onSelectDay ? "pointer" : undefined}
               onPress={onSelectDay ? () => onSelectDay(date) : undefined}

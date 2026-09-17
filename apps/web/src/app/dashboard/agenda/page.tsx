@@ -14,6 +14,13 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 import {
+  AgendaStatsStrip,
+  AgendaStatusLegend,
+  NextAppointmentSpotlight,
+  computeAgendaStats,
+  computeNextAgendaItem,
+} from "@/components/agenda/AgendaOverview";
+import {
   datesInMonth,
   datesInMonthForGivenWeekday,
   datesInMonthForWeekday,
@@ -1350,6 +1357,13 @@ function DashboardAgendaContent() {
     return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessuna prenotazione nel ${year}.`} />;
   }
 
+  // Vista "a colpo d'occhio" (richiesta esplicita dell'utente: "rendi la
+  // pagina agenda più innovativa") — spotlight sul prossimo impegno reale +
+  // tre numeri calcolati dagli stessi dati già scaricati, nessuna nuova
+  // chiamata di rete. Vedi apps/web/src/components/agenda/AgendaOverview.tsx.
+  const nextAgendaItem = computeNextAgendaItem(bookings, externalJobs, setSelectedBooking, setSelectedExternalJob);
+  const agendaStats = computeAgendaStats(bookings, externalJobs, leads);
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={980} gap="$5">
@@ -1549,6 +1563,10 @@ function DashboardAgendaContent() {
           </>
         ) : (
           <>
+            <NextAppointmentSpotlight item={nextAgendaItem} />
+            {bookings !== null ? <AgendaStatsStrip stats={agendaStats} onPendingPress={() => router.push("/dashboard/richieste")} /> : null}
+            <AgendaStatusLegend />
+
             <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
               {/* Ricerca full-text (richiesta esplicita dell'utente):
                   qualsiasi parola o parte di parola presente in QUALSIASI

@@ -13395,3 +13395,121 @@ nella stessa sessione era stata svuotata per il server di sviluppo usato
 in questa stessa verifica): nessun file relativo ai font toccato da
 questo cambio, il typecheck pulito e la verifica DOM diretta restano la
 prova valida per questo fix specifico.
+
+---
+
+## 112. Agenda — spotlight prossimo intervento, tre numeri "a colpo
+d'occhio", legenda colori, evidenziazione "oggi" e transizione di vista
+
+Richiesta esplicita dell'utente: "Rendi la pagina agenda più innovativa" —
+nessun'ulteriore precisazione, quindi risolta come le altre richieste
+aperte di questo tipo nella stessa sessione (homepage, §110/§C-E sopra):
+un set mirato di aggiunte concrete e specifiche al dominio (un calendario
+di prenotazioni per un professionista di servizi locali), non decorazioni
+generiche — evitando deliberatamente i pattern da "estetica generata
+dall'IA" già discussi esplicitamente con l'utente in questa stessa sessione
+(icona-in-cerchio ripetuta ovunque, gradienti gratuiti, ecc.). Tutte le
+aggiunte sono puramente additive sopra il calendario "Prenotazioni" già
+esistente e ampiamente verificato (CLAUDE.md §11/§20/§23/§45/§46/§49/§57/
+§81/§88) — nessuna modifica alla logica di disponibilità, selezione
+multipla, ricerca full-text, vista Anno o ai pop-up già presenti.
+
+- **`apps/web/src/components/agenda/AgendaOverview.tsx`** (nuovo file):
+  - `computeNextAgendaItem`/`NextAppointmentSpotlight` — il prossimo
+    impegno REALE in ordine cronologico (una `Booking` `CONFIRMED`/
+    `PENDING`, o un `ExternalJob` `SCHEDULED`, mai un preventivo ancora "in
+    attesa di risposta": quello non è un impegno confermato). Card in
+    evidenza sopra il calendario (stesso stile banner cianografia già in
+    uso nella stessa pagina per "Non hai ancora impostato la tua
+    disponibilità") con orario relativo ("tra 12 minuti"/"oggi alle 16:09
+    (tra 3 ore)"/"domani alle 9:00"/"5 ott alle 14:00"), nome cliente e
+    categoria — click apre lo stesso pannello/pop-up di dettaglio già
+    esistente (`onOpenBooking`/`onOpenExternal` passati da
+    `dashboard/agenda/page.tsx`, riusando `setSelectedBooking`/
+    `setSelectedExternalJob`). **Assente del tutto (mai un banner vuoto)**
+    quando non c'è nulla in programma — stesso principio "mai un dato
+    finto/uno stato vuoto forzato" già seguito ovunque nel prodotto.
+  - `computeAgendaStats`/`AgendaStatsStrip` — tre tessere KPI (stesso
+    pattern visivo di `RevenueAnalyticsPanel`/`StatTile`, §99/§103,
+    riusando la classe CSS globale `.stats-kpi-grid`): "Oggi" (conteggio
+    reale di Booking/ExternalJob non annullati con data odierna), "Questa
+    settimana" (conteggio + ore prenotate, sommate solo dagli eventi con
+    un orario di fine noto — mai una stima inventata se manca — sempre la
+    settimana reale corrente lunedì-domenica, indipendente da quale
+    pagina del calendario si sta navigando), "In attesa di risposta"
+    (conteggio dei preventivi inviati e non ancora accettati/rifiutati,
+    stesso predicato già duplicato due volte in `page.tsx` per
+    `pendingQuotesOnDate`/`buildAgendaListItems` — duplicato qui una terza
+    volta di proposito invece di refactorizzare quella logica già
+    verificata, per zero rischio di regressione). L'ultima tessera è
+    cliccabile (`router.push("/dashboard/richieste")`) solo quando il
+    conteggio è maggiore di zero.
+  - `AgendaStatusLegend` — riga di pillole che spiega i colori/bordi già
+    in uso sulle caselle del calendario (CLAUDE.md §81: verde=confermata,
+    turchese=completata, rosso=annullata, ottone tratteggiato=in attesa di
+    risposta, grafite tratteggiato=lavoro esterno) — prima impliciti, mai
+    spiegati da nessuna parte della pagina. Colori presi direttamente da
+    `bookingStageStyle`/`brand.ottone`/`brand.grafite70`
+    (`@/lib/requestStage`), mai un hex duplicato.
+- **`apps/web/src/components/calendar/CalendarShell.tsx`** (condiviso da
+  entrambi i calendari "Disponibilità"/"Prenotazioni", nessuna modifica
+  strutturale — solo stile condizionale aggiuntivo):
+  - **Evidenziazione "oggi"**: l'intestazione della colonna del giorno
+    corrente (viste Giorno/Settimana) prende uno sfondo tinto
+    (`brand.cianografiaVelo`) e un bordo inferiore più spesso in
+    `brand.cianografia`, invece del solo cerchio già esistente attorno al
+    numero del giorno. Stesso principio nella vista Mese: la cella di oggi
+    guadagna un bordo `brand.cianografia` al posto del hairline grigio di
+    default. Prima nessuna delle due viste distingueva "oggi" dagli altri
+    giorni se non con il piccolo cerchio sul numero.
+  - **Transizione all'apertura di ogni vista**: un `key={view}` sul
+    contenitore della griglia forza un remount (nessuno stato vive dentro
+    `WeekOrDayGrid`/`MonthGrid`/`renderYearList`, quindi non si perde
+    nulla) ogni volta che si passa da Giorno/Settimana/Mese/Anno — una
+    nuova classe scoped `.cal-grid-fade` (dissolvenza+lieve traslazione,
+    220ms) anima l'ingresso. Scatta solo al cambio di **vista**, non ad
+    ogni click su "precedente"/"successivo" (che non tocca `view`): un
+    micro-tocco coerente con la stessa Fase "motion" del redesign
+    (`motionFast`/`motionEasing`, CLAUDE.md §10), non un'animazione ad ogni
+    interazione.
+- **`apps/web/src/app/dashboard/agenda/page.tsx`**: `nextAgendaItem`/
+  `agendaStats` calcolati ad ogni render (nessuna memoizzazione, costo
+  trascurabile alla scala di un singolo professionista) e montati solo
+  nella scheda "Prenotazioni" (non in "Disponibilità", che è un editor di
+  configurazione, non un cruscotto dati) — spotlight, striscia KPI e
+  legenda comparse sopra la barra di ricerca già esistente, prima del
+  resto invariato.
+
+Verificato end-to-end con l'API/Postgres locali reali (non solo
+typecheck/build) e uno script Playwright dedicato — **24/24 controlli
+PASS**, non solo lettura di codice: professionista+cliente di test,
+richiesta diretta al profilo del professionista (evita la selezione dei
+lead per rating) portata a preventivo accettato con
+`estimatedStartDate` 3 ore nel futuro e `estimatedEndDate` 90 minuti dopo
+(→ una `Booking` `CONFIRMED` reale), una seconda richiesta con preventivo
+lasciato `SENT` (mai accettato, per popolare "In attesa di risposta"), due
+`ExternalJob` (uno nella settimana corrente con 2h di durata nota, uno
+nella settimana successiva per verificare che venga correttamente
+escluso). Risultati: spotlight con testo esatto "Prossimo intervento ·
+oggi alle 16:09 (tra 3 ore) / Cliente / Idraulico"; tessera "Oggi" = 1 (1
+appuntamento); tessera "Questa settimana" = 2 (4 ore prenotate, somma
+corretta di 90+120 minuti arrotondata); tessera "In attesa di risposta" =
+1, click che naviga correttamente a `/dashboard/richieste`; tutte e 5 le
+etichette della legenda presenti; esattamente una colonna (oggi) con lo
+sfondo tinto `rgb(220, 243, 231)` nella vista Settimana; passaggio a
+"Mese" con `.cal-grid-fade` presente e esattamente una cella (oggi) con
+bordo `rgb(24, 154, 99)`. Zero overflow orizzontale desktop (1280px) e
+mobile (`devices["iPhone 13"]`, dopo aver isolato e confermato che un
+overflow di 39px iniziale non era una regressione di questo giro ma lo
+stesso artefatto da nome-attività-di-test-lunghissimo già documentato più
+volte in questo file — CLAUDE.md §12/§21/§77/§96/§108: riprodotto
+identico su `/dashboard`, pagina non toccata da questo cambio, con lo
+stesso account, e sparito rinominando il profilo a un nome realistico).
+Zero errori console/pageerror. Account di test ripuliti a fine verifica
+(`DELETE /auth/me`). Typecheck pulito su `apps/web`/`packages/ui`.
+**Build di produzione non eseguita in questo giro** per lo stesso blocco
+di rete indipendente da questo cambio già documentato nella sezione
+precedente (fetch di Google Fonts a build-time rifiutato dal proxy
+dell'ambiente di sviluppo) — il typecheck pulito e la verifica end-to-end
+via `next dev` reale (server realmente in esecuzione, non solo lettura di
+codice) restano la prova valida per questo giro.
