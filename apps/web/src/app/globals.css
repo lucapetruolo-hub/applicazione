@@ -187,6 +187,28 @@ a {
   }
 }
 
+/* Foto del professionista, a piena altezza della card e sul lato sinistro
+   (richiesta esplicita dell'utente) — stesso motivo di scoping globale del
+   blocco `.rr-card` sopra: `.rr-photo` vive dentro `ReviewCard`, un
+   componente figlio diverso da quello che dichiarerebbe uno `<style jsx>`
+   locale, quindi resta qui. `position:relative` è richiesto da
+   `next/image fill` (RecentReviews.tsx); `align-self:stretch` (default dei
+   figli flex, esplicitato per sicurezza) la porta alla stessa altezza del
+   resto della card senza bisogno di un'altezza fissa. */
+.rr-photo {
+  position: relative;
+  display: block;
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 140px;
+  overflow: hidden;
+}
+@media (min-width: 700px) {
+  .rr-photo {
+    width: 180px;
+  }
+}
+
 /* /admin — menu laterale desktop (richiesta esplicita dell'utente: "un
    menu laterale che non va a modificare l'attuale posizione dell'elenco
    centrale") + tabelle a colonne ("dovranno essere in formato colonna in

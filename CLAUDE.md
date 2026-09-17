@@ -13146,3 +13146,75 @@ di test ripuliti a fine verifica (`DELETE /auth/me`). Typecheck pulito su
 tutti i package (`shared`, `database`, `api-client`, `ui`, `api`, `web`,
 `mobile`), build di produzione `apps/web` verde (38 route, nessuna
 nuova).
+
+---
+
+## 109. Homepage — "Recensioni verificate", quarto giro: foto grande a
+sinistra + bug reale delle card che oscillano all'hover
+
+Richiesta esplicita dell'utente: "rendi più visibile l'immagine del
+profilo del professionista a cui è stata fatta la recensione, magari
+mettila grande sul lato sinistro della scheda, con il commento sulla
+destra" — sostituisce il layout "testimonial" del giro precedente (§107:
+virgoletta+citazione al centro, footer con un piccolo avatar 48px) con un
+vero layout a due colonne: foto a piena altezza sul lato sinistro della
+card, commento+attribuzione sulla destra.
+
+- **Pannello foto** costruito su misura in `ReviewCard` (non riuso di
+  `ProfessionalAvatar`/`CategoryIconBadge`, che rendono solo un
+  quadrato/cerchio a dimensione fissa, non un pannello rettangolare a
+  piena altezza): `next/image fill` dentro un `<Link className="rr-photo">`
+  (regola CSS globale, `apps/web/src/app/globals.css` — stesso motivo di
+  scoping già documentato per `.rr-card`, §107: `.rr-photo` vive in
+  `ReviewCard`, un componente figlio diverso da quello che dichiarerebbe
+  uno `<style jsx>` locale) largo 140px sotto i 700px/180px sopra, a piena
+  altezza della card (`align-self: stretch`). Nessuna immagine → stesso
+  principio "foto vera o icona colorata, mai un placeholder generico" già
+  in uso ovunque nel sito: pannello tinto `CATEGORY_ACCENT` con
+  `CategoryIcon` centrata (44px), non un quadrato piccolo isolato in un
+  grande spazio vuoto. Gli angoli sinistri arrotondati vengono
+  dall'`overflow="hidden"` del contenitore card (stesso `borderRadius`),
+  nessun raggio duplicato sul pannello foto.
+- **Bug reale corretto nello stesso giro** ("le schede si muovono anche
+  su e giù quando non dovrebbero"): l'hover della card applicava
+  `transform: translateY(-4px)` insieme a `onHoverIn`/`onHoverOut` — uno
+  spostamento via `transform` sposta anche l'area di hit-testing del
+  puntatore, quindi con il cursore vicino al bordo il movimento poteva far
+  uscire il cursore dall'elemento (`mouseleave` → hover `false` → la card
+  torna giù → il cursore è di nuovo dentro → `mouseenter` → hover `true`
+  → ...), un loop di oscillazione visibile esattamente come "le schede si
+  muovono su e giù" da sole. Rimosso il `transform` dallo stato hover,
+  resta solo l'ombra (`0 10px 24px rgba(43,32,19,0.08)`, che non sposta il
+  box — nessun rischio di flicker). **Stesso identico pattern
+  (`onHoverIn`/`onHoverOut` + `translateY`) presente anche in
+  `NewProfileCard` (`NewProfilesCarousel.tsx`), non toccato in questo
+  giro**: la segnalazione dell'utente riguardava solo le recensioni, fuori
+  scope estendere il fix a quel file senza una richiesta esplicita — stesso
+  rischio latente segnalato qui per una correzione futura se dovesse
+  ripresentarsi lì.
+
+Verificato con l'API/Postgres locali reali (non solo lettura di codice) e
+Playwright: foto/pannello confermato a sinistra del commento (bounding box
+x minore), altezza del pannello foto esattamente uguale all'altezza della
+card (240/240, "piena altezza" confermato, non solo "grande"); hover
+ripetuto vicino al bordo inferiore-destro della card per 8 campioni
+consecutivi → posizione Y della card sempre identica (nessuna
+oscillazione, prima del fix il pattern era riproducibile con lo stesso
+identico codice); `getComputedStyle(...).transform` sull'elemento hover
+conferma `none` (nessun transform residuo). Percorso "foto vera" verificato
+separatamente (un professionista di test con un `imageUrl` reale
+Cloudinary): l'`<img>` renderizzato da `next/image` occupa esattamente lo
+stesso box del pannello (180×240, stessa posizione) — l'immagine stessa
+non carica in questo ambiente di sviluppo (host `res.cloudinary.com`
+bloccato dalla policy di rete del sandbox, stessa limitazione già
+documentata più volte in questo file), ma nessun crash né rottura di
+layout, confermando che il percorso "foto vera" è strutturalmente corretto
+e funzionerà in produzione. Percorso "solo icona" (nessun `imageUrl`,
+caso reale dei 18 professionisti di test già presenti in ambiente locale)
+verificato con screenshot desktop (1280px) e mobile (390px, `devices
+["iPhone 13"]`): zero overflow orizzontale su entrambi. Zero errori
+console reali (l'unico osservato, `ERR_TUNNEL_CONNECTION_FAILED`, è la
+stessa limitazione di rete dell'ambiente di sviluppo già documentata
+altrove in questo file). Typecheck pulito su tutti i package (`shared`,
+`database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
+produzione `apps/web` verde (38 route, nessuna nuova).
