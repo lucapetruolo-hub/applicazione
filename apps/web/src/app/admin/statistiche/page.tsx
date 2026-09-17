@@ -6,7 +6,7 @@ import type { RevenueAnalyticsSummary } from "@professionisti/api-client";
 import { Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 
 /**
@@ -80,7 +80,7 @@ export default function AdminStatistichePage() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {data === null && !error ? (
-          <LoadingState />
+          <SkeletonRevenuePanel />
         ) : data ? (
           <RevenueAnalyticsPanel
             data={data}

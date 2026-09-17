@@ -98,6 +98,31 @@ a {
   animation: loading-pulse 1.4s ease-in-out infinite;
 }
 
+/* Skeleton "a scheletro" (Skeleton.tsx): base + fascia più chiara che
+   scorre in loop, stessa tinta `grafite` diluita già usata per gli
+   hairline del resto del sito (mai un grigio generico fuori palette).
+   `prefers-reduced-motion` collassa la durata tramite la regola globale
+   più sotto in questo file, nessun guard aggiuntivo necessario. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(43, 32, 19, 0.1) 20%,
+    rgba(43, 32, 19, 0.045) 40%,
+    rgba(43, 32, 19, 0.045) 60%,
+    rgba(43, 32, 19, 0.1) 80%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
 /* Tre pallini che rimbalzano in sequenza (richiesta esplicita dell'utente:
    "dai un segnale all'utente che stai caricando, ad esempio con
    un'animazione dei pallini") — segnale di caricamento file più

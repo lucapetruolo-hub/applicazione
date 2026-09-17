@@ -16,7 +16,7 @@ import {
 import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -438,7 +438,11 @@ function DashboardContent() {
         {activeTab === "richieste" ? (
           <YStack ref={listTopRef} gap="$3">
             {leads === null ? (
-              <LoadingState />
+              <YStack gap="$2">
+                <SkeletonSummaryRow />
+                <SkeletonSummaryRow />
+                <SkeletonSummaryRow />
+              </YStack>
             ) : leads.length === 0 ? (
               <Text color={brand.grafite70}>Non hai ancora ricevuto richieste. Torna a trovarci a breve!</Text>
             ) : (
@@ -475,7 +479,11 @@ function DashboardContent() {
         ) : (
           <YStack ref={listTopRef} gap="$3">
             {bookings === null ? (
-              <LoadingState />
+              <YStack gap="$2">
+                <SkeletonSummaryRow />
+                <SkeletonSummaryRow />
+                <SkeletonSummaryRow />
+              </YStack>
             ) : acceptedJobsList!.length === 0 ? (
               <Text color={brand.grafite70}>Nessun lavoro accettato per ora.</Text>
             ) : (

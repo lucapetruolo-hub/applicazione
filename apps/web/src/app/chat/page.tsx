@@ -7,7 +7,7 @@ import type { ChatThreadSummary } from "@professionisti/shared";
 import { Avatar, Button, EmptyState, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonThreadRow } from "@/components/Skeleton";
 import { TimelineModal } from "@/components/TimelineModal";
 import { UnreadDot } from "@/components/UnreadDot";
 import { mergeCounts, unreadThreadCounts } from "@/lib/notificationSections";
@@ -125,7 +125,11 @@ export default function ChatPage() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {threads === null ? (
-          <LoadingState />
+          <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonThreadRow key={i} zebra={i % 2 !== 0} />
+            ))}
+          </YStack>
         ) : threads.length === 0 ? (
           <EmptyState icon="message-circle" title="Nessuna conversazione" description="Le chat delle tue richieste e dei tuoi preventivi compariranno qui." />
         ) : (

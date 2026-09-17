@@ -13218,3 +13218,91 @@ stessa limitazione di rete dell'ambiente di sviluppo già documentata
 altrove in questo file). Typecheck pulito su tutti i package (`shared`,
 `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build di
 produzione `apps/web` verde (38 route, nessuna nuova).
+
+---
+
+## 110. Skeleton loading al posto di "Caricamento..." + illustrazioni custom (HowItWorks + due stati vuoti)
+
+Due delle cinque proposte fatte all'utente in risposta a "cosa
+miglioreresti del sito per renderlo più innovativo e bello" (§109,
+elenco: foto vere per categoria, momento-firma animato nell'hero, dark
+mode, skeleton loading, motivo illustrativo custom) — l'utente ha scelto
+esplicitamente "5 e 4" (motivo illustrativo + skeleton loading). Prima di
+implementarli, mostrato su richiesta dell'utente ("dammi un esempio per
+il 2") un mockup via Artifact del punto 2 (widget "disponibilità live"
+nell'hero, mai implementato in questo giro — solo esempio visivo), stesso
+principio già seguito altrove in questo file per investimenti di design
+consistenti prima di costruirli davvero (es. §11, mockup del doppio
+calendario).
+
+**Skeleton loading** — `apps/web/src/components/Skeleton.tsx` (nuovo):
+`SkeletonBlock`/`SkeletonCircle` sono i due soli primitivi con lo shimmer
+vero (`.skeleton-shimmer`, `globals.css`, gradiente animato sulla tinta
+`grafite` diluita già usata per gli hairline del sito — mai un grigio
+generico fuori palette); ogni skeleton composito (`SkeletonSummaryRow`,
+`SkeletonThreadRow`, `SkeletonProfessionalCard`, `SkeletonRequestCard`/
+`SkeletonRequestList`, `SkeletonStatTile`/`SkeletonRevenuePanel`,
+`SkeletonTableRows`) ne è solo una composizione, sagomata sulla vera
+struttura del contenuto che sostituisce (`LeadSummaryRow`/
+`BookingSummaryRow`, `ChatThreadRow`, `ProfessionalCard`, `RequestCard`/
+`GuidedRequestCard`, `StatTile`/`RevenueAnalyticsPanel`, `.admin-table`) —
+non un unico blocco generico riusato ovunque. Sostituisce `<LoadingState
+/>` (il testo pulsante "Caricamento...", introdotto nella Fase "motion",
+CLAUDE.md §10) in ogni punto del sito dove il contenuto in arrivo ha una
+forma prevedibile: `/le-mie-richieste`, `/dashboard/richieste`,
+`/dashboard` (entrambe le tab), `/professionisti-salvati`, `/chat`,
+`/dashboard/statistiche`, `/admin/statistiche`, `/admin/finanza` (3
+punti), `/admin` (5 punti), `/dashboard/agenda` (un unico blocco grande,
+la griglia reale del calendario non si presta a una sagoma skeleton
+semplice). `LoadingState` resta in uso dove il contenuto non ha una forma
+prevedibile (un singolo messaggio di errore, un pulsante in attesa di
+salvataggio) — sostituire anche lì un pulsare generico con un rettangolo
+sagomato non avrebbe aggiunto nulla.
+
+**Illustrazioni custom** — alternativa al pattern "icona Lucide in un
+cerchio colorato" ripetuto ovunque nel sito (badge categoria, stati,
+notifiche), richiesta esplicita dell'utente. Due nuovi file di
+illustrazioni a più tratti (stesso pattern tecnico di
+`CategoryIcons.tsx`: stroke 1.75, `currentColor`, viewBox 24×24) con un
+dettaglio condiviso — un pallino pieno ottone in alto a destra, una
+"spilla" fissa che lega visivamente ogni set come un unico linguaggio
+visivo invece di disegni isolati per pagina:
+- `apps/web/src/components/icons/HowItWorksIllustrations.tsx`:
+  `RequestPhotoIllustration` (nuvoletta di chat con una foto dentro),
+  `ClearQuoteIllustration` (documento con le voci separate),
+  `BookConfirmIllustration` (calendario con la conferma) — sostituiscono
+  il semplice cerchio-con-un-numero-dentro di `HowItWorks.tsx`
+  (homepage, "Come funziona"). La numerazione resta (descrive
+  davvero una sequenza di 3 passaggi, legittima anche secondo la stessa
+  regola già applicata altrove in questo file per non usare marcatori
+  numerati come pura decorazione) ma retrocede a un piccolo badge
+  d'angolo secondario (20px, bordo `gesso` per staccarlo dal cerchio
+  sottostante) invece di essere il disegno principale.
+- `apps/web/src/components/icons/EmptyStateIllustrations.tsx`:
+  `EmptyRequestsIllustration` (blocco appunti ancora vuoto, righe
+  tratteggiate) ed `EmptySavedIllustration` (cuore con dentro una
+  casetta) — wired nei due stati vuoti più visibili e ad alto traffico
+  del sito, `/le-mie-richieste` ("Nessuna richiesta inviata") e
+  `/professionisti-salvati` ("Nessun professionista salvato").
+- **`EmptyState` (packages/ui) esteso, non riscritto**: nuovo prop
+  opzionale `illustration?: ReactNode` che sostituisce l'icona Lucide nel
+  cerchio quando presente — retrocompatibile con ogni altro chiamante del
+  sito che passa solo `icon` (~15 stati vuoti non toccati in questo giro,
+  zero rischio di regressione lì).
+
+Verificato con l'API/Postgres locali reali (non solo typecheck/build) e
+Playwright: script dedicato con intercettazione della fetch
+`guided-requests/me` (ritardata di 2-4s) per catturare in modo affidabile
+lo stato di caricamento — confermato che `.skeleton-shimmer` è presente
+mentre la richiesta è in volo (18 elementi, 3 card × 6 blocchi ciascuna)
+e sparisce esattamente nell'istante in cui la risposta arriva,
+sostituito dal contenuto reale (`EmptyState` per un account di test senza
+richieste). "Come funziona" in homepage: 3 `<svg>` (uno per step,
+confermato via query DOM), badge numerico "1" visibile, screenshot di
+controllo con le tre illustrazioni rese correttamente. Stato vuoto
+"Nessun professionista salvato": illustrazione cuore+casetta visibile al
+posto della sola icona `heart`, screenshot di controllo. Zero errori
+console/pageerror in tutti i flussi. Account di test ripuliti a fine
+verifica (`DELETE /auth/me`). Typecheck pulito su tutti i package
+(`shared`, `database`, `api-client`, `ui`, `api`, `web`, `mobile`), build
+di produzione `apps/web` verde (38 route, nessuna nuova).

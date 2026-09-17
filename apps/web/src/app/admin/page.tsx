@@ -6,7 +6,7 @@ import type { AdminContactMessage, AdminContentReport, AdminUserRow, AdminUsersB
 import { Button, H1, H2, Icon, Paragraph, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonSummaryRow, SkeletonTableRows } from "@/components/Skeleton";
 
 export default function AdminPage() {
   const { user, token, isLoading } = useAuth();
@@ -123,7 +123,11 @@ export default function AdminPage() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {data === null && !error ? (
-          <LoadingState />
+          <YStack gap="$5">
+            <SkeletonTableRows rows={3} cols={4} />
+            <SkeletonTableRows rows={4} cols={4} />
+            <SkeletonTableRows rows={3} cols={4} />
+          </YStack>
         ) : data ? (
           <>
             <UserGroup title={`Amministratori (${data.admins.length})`} rows={data.admins} showBusiness={false} />
@@ -141,7 +145,10 @@ export default function AdminPage() {
           {reportsError ? (
             <Text color={brand.urgenza}>{reportsError}</Text>
           ) : openReports === null ? (
-            <LoadingState />
+            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+              <SkeletonSummaryRow />
+              <SkeletonSummaryRow />
+            </YStack>
           ) : openReports.length === 0 ? (
             <Text color={brand.grafite70}>Nessuna segnalazione aperta.</Text>
           ) : (
@@ -158,7 +165,10 @@ export default function AdminPage() {
                 Archivio segnalazioni
               </Text>
               {reportsError ? null : archivedReports === null ? (
-                <LoadingState />
+                <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+                  <SkeletonSummaryRow />
+                  <SkeletonSummaryRow />
+                </YStack>
               ) : archivedReports.length === 0 ? (
                 <Text color={brand.grafite70}>Nessuna segnalazione gestita finora.</Text>
               ) : (
@@ -178,7 +188,10 @@ export default function AdminPage() {
           {contactMessagesError ? (
             <Text color={brand.urgenza}>{contactMessagesError}</Text>
           ) : contactMessages === null ? (
-            <LoadingState />
+            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+              <SkeletonSummaryRow />
+              <SkeletonSummaryRow />
+            </YStack>
           ) : contactMessages.length === 0 ? (
             <Text color={brand.grafite70}>Nessun messaggio da gestire.</Text>
           ) : (
@@ -202,7 +215,7 @@ export default function AdminPage() {
           {waitlistError ? (
             <Text color={brand.urgenza}>{waitlistError}</Text>
           ) : waitlist === null ? (
-            <LoadingState />
+            <SkeletonTableRows rows={4} cols={2} />
           ) : waitlist.length === 0 ? (
             <Text color={brand.grafite70}>Nessuna email raccolta finora.</Text>
           ) : (

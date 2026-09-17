@@ -8,7 +8,8 @@ import { Button, EmptyState, ProfessionalCard, Text, XStack, YStack, brand } fro
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonProfessionalCard } from "@/components/Skeleton";
+import { EmptySavedIllustration } from "@/components/icons/EmptyStateIllustrations";
 
 export default function ProfessionistiSalvatiPage() {
   const router = useRouter();
@@ -65,10 +66,15 @@ export default function ProfessionistiSalvatiPage() {
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
           {professionals === null ? (
-            <LoadingState />
+            <YStack gap="$3">
+              <SkeletonProfessionalCard />
+              <SkeletonProfessionalCard />
+              <SkeletonProfessionalCard />
+            </YStack>
           ) : professionals.length === 0 ? (
             <EmptyState
               icon="heart"
+              illustration={<EmptySavedIllustration size={28} style={{ color: brand.cianografia }} />}
               title="Nessun professionista salvato"
               description='Apri il profilo di un professionista e tocca "Salva" per ritrovarlo qui.'
               action={

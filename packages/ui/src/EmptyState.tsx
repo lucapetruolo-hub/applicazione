@@ -8,10 +8,19 @@ export type EmptyStateProps = {
   title: string;
   description?: string;
   action?: ReactNode;
+  /**
+   * Sostituisce l'icona Lucide nel cerchio con un'illustrazione su misura
+   * (richiesta esplicita dell'utente: alternativa al pattern "icona in un
+   * cerchio colorato" ripetuto ovunque nel sito) — opzionale, retrocompatibile
+   * con ogni chiamante esistente che passa solo `icon`. Lo stesso cerchio
+   * `cianografiaVelo` resta la cornice in entrambi i casi, cambia solo cosa
+   * ci sta dentro.
+   */
+  illustration?: ReactNode;
 };
 
 /** Icona + titolo + azione — mai testo triste senza via d'uscita (brief §3). */
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, illustration }: EmptyStateProps) {
   return (
     <YStack alignItems="center" gap="$3" paddingVertical="$8" paddingHorizontal="$4">
       <YStack
@@ -22,7 +31,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         alignItems="center"
         justifyContent="center"
       >
-        <Icon name={icon} size={26} color={brand.cianografia} strokeWidth={1.5} />
+        {illustration ?? <Icon name={icon} size={26} color={brand.cianografia} strokeWidth={1.5} />}
       </YStack>
       <Text fontFamily="$heading" fontWeight="700" fontSize="$5" textAlign="center" color={brand.grafite}>
         {title}

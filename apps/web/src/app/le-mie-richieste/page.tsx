@@ -17,7 +17,8 @@ import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, Y
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonRequestList } from "@/components/Skeleton";
+import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -764,10 +765,11 @@ function LeMieRichiesteContent() {
           <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
 
           {requests === null ? (
-            <LoadingState />
+            <SkeletonRequestList count={3} />
           ) : requests.length === 0 ? (
             <EmptyState
               icon="file-text"
+              illustration={<EmptyRequestsIllustration size={28} style={{ color: brand.cianografia }} />}
               title="Nessuna richiesta inviata"
               description="Non hai ancora inviato nessuna richiesta di preventivo."
               action={

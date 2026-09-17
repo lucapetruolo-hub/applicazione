@@ -16,7 +16,7 @@ import {
 import { Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonRequestList } from "@/components/Skeleton";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -499,7 +499,9 @@ function RichiesteContent() {
   if (isLoading || (token && leads === null && !profileMissing)) {
     return (
       <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-        <LoadingState />
+        <YStack width="100%" maxWidth={800}>
+          <SkeletonRequestList count={3} />
+        </YStack>
       </YStack>
     );
   }

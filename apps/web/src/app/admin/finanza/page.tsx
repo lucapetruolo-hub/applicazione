@@ -6,7 +6,7 @@ import type { AdminFinanceSummary, Dac7ReportingPeriod, Dac7Record, PlatformFeeR
 import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
 
 function euro(cents: number): string {
   return `${(cents / 100).toFixed(2)} €`;
@@ -170,7 +170,11 @@ export default function AdminFinanzaPage() {
         <YStack gap="$4">
           <H2 size="$6">Riepilogo finanza</H2>
           {finance === null ? (
-            <LoadingState />
+            <YStack gap="$2" maxWidth={400}>
+              <SkeletonBlock height={16} />
+              <SkeletonBlock height={16} width="80%" />
+              <SkeletonBlock height={16} width="60%" />
+            </YStack>
           ) : (
             <YStack gap="$4">
               <YStack gap="$2">
@@ -218,7 +222,7 @@ export default function AdminFinanzaPage() {
             </Text>
           </XStack>
           {feeRules === null ? (
-            <LoadingState />
+            <SkeletonTableRows rows={3} cols={7} />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -295,7 +299,7 @@ export default function AdminFinanzaPage() {
             reale con il Desktop Telematico.
           </Text>
           {periods === null ? (
-            <LoadingState />
+            <SkeletonTableRows rows={3} cols={4} />
           ) : periods.length === 0 ? (
             <Text color={brand.grafite70}>Nessun periodo ancora aggregato.</Text>
           ) : (

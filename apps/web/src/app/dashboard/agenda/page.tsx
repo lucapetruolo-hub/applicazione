@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, type CalendarView } from "@/components/calendar/CalendarShell";
 import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
-import { LoadingState } from "@/components/LoadingState";
+import { SkeletonBlock } from "@/components/Skeleton";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
@@ -1610,7 +1610,7 @@ function DashboardAgendaContent() {
               </Text>
             ) : null}
             {bookings === null ? (
-              <LoadingState />
+              <SkeletonBlock height={420} radius={20} />
             ) : agendaSearchQuery.trim() ? (
               <AgendaEventsList
                 items={agendaSearchResults}
