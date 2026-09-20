@@ -3,30 +3,49 @@
 import { Icon, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const POINTS = [
-  "Professionista verificato (documenti e assicurazione RC controllati)",
-  "Pagamento protetto: paghi solo quando il lavoro è fatto",
-  "Se qualcosa va storto, ci occupiamo noi della mediazione",
+  {
+    text: "Recensioni vere, lasciate solo da chi ha davvero completato un lavoro confermato da entrambe le parti",
+    comingSoon: false,
+  },
+  {
+    text: "I tuoi contatti restano privati finché non decidi tu di accettare un preventivo",
+    comingSoon: false,
+  },
+  {
+    text: "Professionista verificato: controllo documenti e assicurazione RC",
+    comingSoon: true,
+  },
+  {
+    text: "Pagamento protetto in piattaforma: paghi solo a lavoro concluso",
+    comingSoon: true,
+  },
 ];
 
 /**
- * "Garanzia Piattaforma": testo fornito verbatim dall'utente, pubblicato
- * come scritto su sua esplicita autorizzazione (richiesto tramite
- * AskUserQuestion, risposta: "Pubblicale come scritte" — se ne assume la
- * responsabilità come titolare della piattaforma). A differenza del resto
- * del prodotto, dove non si pubblica mai una promessa non corrispondente a
- * una funzionalità reale, qui la scelta è stata fatta consapevolmente
- * dall'utente: la verifica documenti/RC, il pagamento protetto in
- * piattaforma e la mediazione in caso di controversia non sono ancora
- * implementati (vedi CLAUDE.md §9, pagamento in-app per il lavoro
- * rimandato) — nessun badge "in arrivo" richiesto qui, testo pubblicato
- * identico a quello fornito.
+ * "Garanzia Piattaforma": la versione precedente prometteva verifica
+ * documenti/RC, pagamento protetto e mediazione come già attivi (testo
+ * fornito verbatim dall'utente, pubblicato su sua esplicita autorizzazione
+ * — "Pubblicale come scritte"). Corretta su richiesta esplicita
+ * successiva dell'utente (analisi CEO, consiglio esperti — segnalato dal
+ * Go-To-Market Lead come rischio reputazionale: una pagina pubblica che
+ * promette protezioni non costruite): ora ogni punto riflette lo stato
+ * reale — le due protezioni già vere (recensioni "doppio cieco",
+ * CLAUDE.md §40; contatti privati fino all'accettazione, §12/§45) restano
+ * senza badge, le due non ancora costruite (verifica identità/RC — nessun
+ * KYC implementato; pagamento protetto in piattaforma — oggi il pagamento
+ * è diretto tra cliente e professionista, Stripe Connect non configurato,
+ * §9/§88) portano il badge "In arrivo" — stesso pattern già in uso in
+ * `ProCtaSection.tsx` (`comingSoon`), riusato qui invece di inventarne uno
+ * nuovo. "Mediazione in caso di controversia" è stata rimossa del tutto,
+ * non solo marcata "in arrivo": non esiste alcuna infrastruttura, nemmeno
+ * allo stadio di bozza, per una promessa specifica come questa.
  */
 export function PlatformGuarantee() {
   return (
     <Section eyebrow="Garanzia Piattaforma" title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>
       <Surface width="100%" padding="$5" gap="$4">
         {POINTS.map((point) => (
-          <XStack key={point} alignItems="flex-start" gap="$3">
+          <XStack key={point.text} alignItems="flex-start" gap="$3">
             <YStack
               width={28}
               height={28}
@@ -39,9 +58,18 @@ export function PlatformGuarantee() {
             >
               <Icon name="check" size={15} strokeWidth={2.5} color={brand.cianografia} />
             </YStack>
-            <Text fontSize="$4" color={brand.grafite} flex={1} lineHeight={24}>
-              {point}
-            </Text>
+            <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
+              <Text fontSize="$4" color={brand.grafite} lineHeight={24}>
+                {point.text}
+              </Text>
+              {point.comingSoon ? (
+                <XStack backgroundColor={brand.ottoneVelo} paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
+                  <Text fontSize={11} fontWeight="700" color={brand.ottone}>
+                    In arrivo
+                  </Text>
+                </XStack>
+              ) : null}
+            </XStack>
           </XStack>
         ))}
       </Surface>

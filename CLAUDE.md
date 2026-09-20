@@ -13513,3 +13513,92 @@ precedente (fetch di Google Fonts a build-time rifiutato dal proxy
 dell'ambiente di sviluppo) — il typecheck pulito e la verifica end-to-end
 via `next dev` reale (server realmente in esecuzione, non solo lettura di
 codice) restano la prova valida per questo giro.
+
+---
+
+## 113. Skill "professionisti-ceo-esperti" — consiglio di 10 esperti, gate Critica/Tattica, prima analisi completa
+
+Richiesta esplicita dell'utente: una skill di progetto (non una modifica al
+codice prodotto, ma un file `.claude/skills/` versionato col repo) che fa
+vestire a Claude i panni di un "CEO" del progetto, con un consiglio di
+esperti di dominio consultabili a piacere per far procedere il progetto
+verso lancio/scalabilità/competitività. Costruita in più giri sullo stesso
+turno di lavoro, distinta dalla skill `professionisti-ceo` già esistente
+(quella fa una sola fotografia verificata dello stato attuale, senza
+consultare nessuno — questa orchestra un vero consiglio).
+
+**`.claude/skills/professionisti-ceo-esperti/SKILL.md`** (nuovo file,
+versionato nel repo — non nella home personale, così è disponibile a
+qualunque sessione futura su questo progetto):
+
+- **Consiglio di 10 esperti**, ciascuno un vero subagent (tool Agent,
+  `subagent_type: "general-purpose"`, persona/mandato dato nel prompt) con
+  un mandato delimitato: CTO (ingegneria/affidabilità/sicurezza), Backend
+  Architect (sistemi/pagamenti/API), Frontend Lead (UX/prodotto), Chief
+  Legal Advisor (privacy/compliance), CFO (fiscale/modello di pagamento),
+  Business Model & Pricing Lead (unit economics), Growth & Acquisition
+  Lead (reclutamento/acquisizione), Go-To-Market Lead (lancio/
+  posizionamento), CPO/Product Strategist (roadmap/competitività),
+  Analytics & Data Lead (funnel/dashboard). Roster nato unendo i 5 ruoli
+  C-suite iniziali con 8 ruoli più granulari forniti dall'utente da un
+  template esterno — consolidato senza doppioni (es. il vecchio CFO
+  scisso in fiscale vs privacy/compliance, il vecchio CMO scisso in
+  pricing/acquisizione/posizionamento) e ogni mandato ricontrollato
+  contro lo stack reale del progetto invece di assumere per buono un
+  template generico (es. la chat del progetto è a polling non WebSocket,
+  nessun tool di analytics è configurato).
+- **Competitor corretti**: miodottore.it/Doctolib (citati nel progetto
+  come sola ispirazione di design per una piattaforma sanitaria) sostituiti
+  con **ProntoPro/Cronoshare** (concorrenti reali dello stesso modello di
+  business) ovunque la domanda sia di competitività di mercato.
+- **Framework "Come lavora il CEO"** (richiesto esplicitamente
+  dall'utente, con un esempio in inglese fornito da adattare): diagnosi
+  autonoma a 5 domande prima di consultare chiunque (determina chi
+  chiamare, non un rituale a sé), poi classificazione di ogni decisione
+  emersa in **CRITICA** (lancio, compliance, budget/assunzioni, prezzo —
+  il CEO non agisce mai da solo, nemmeno eseguendo codice, sempre
+  "Approvi? Sì/No" o "Scegli tra A/B/C" prima di qualunque azione) o
+  **TATTICA** (feature, espansione città, canali, messaggistica — il CEO
+  propone e va avanti). Risposta finale sempre in 4 parti: Diagnosi →
+  Punti di decisione → Piano su 3 orizzonti (2 settimane/2 mesi/6 mesi) →
+  Richiesta finale diretta all'utente.
+
+**Prima "analisi completa" reale** (invocata dall'utente, tutti e 10 gli
+esperti consultati in parallelo dato lo scope esplicitamente ampio):
+confermato lo stesso quadro già emerso dalla skill `professionisti-ceo`
+(0 test, 0 CI, hosting free non production-grade, pagamenti reali mai
+attivati, bootstrap professionisti mai iniziato) con dettaglio nuovo per
+ciascun dominio — in particolare: **CFO** ha isolato 5 domande fiscali
+fondanti mai risposte da un commercialista come il vero blocco (non le
+sole credenziali Stripe mancanti); **Chief Legal Advisor** ha trovato
+segnaposto legali `[DA COMPILARE]` ancora pubblicati in produzione
+(nullità sostanziale della privacy policy) e zero KYC/verifica identità
+professionisti; **Go-To-Market Lead** ha segnalato `PlatformGuarantee.tsx`
+(§30) come rischio reputazionale concreto — promette pubblicamente
+verifica documenti/RC, pagamento protetto e mediazione, nessuna delle tre
+costruita; **CPO** ha confermato overbuilding severo (l'intero sistema
+fiscale MANOVIA costruito per un problema — rendicontazione DAC7 — che
+non esiste finché non c'è fatturato reale da rendicontare).
+
+**Azione immediata dalla Critica #1 (approvata dall'utente, "riformula")**
+— `apps/web/src/components/PlatformGuarantee.tsx`: i tre punti che
+promettevano protezioni non costruite sono stati sostituiti con quattro
+punti onesti — due già veri e senza badge (recensioni "doppio cieco" da
+lavoro confermato, contatti privati fino ad accettazione preventivo) e
+due marcati "In arrivo" (verifica documenti/RC, pagamento protetto in
+piattaforma) — stesso pattern `comingSoon` già in uso in
+`ProCtaSection.tsx` (CLAUDE.md, sezione "Richieste filtrate dall'IA"),
+riusato qui invece di inventarne uno nuovo. "Mediazione in caso di
+controversia" è stata rimossa del tutto, non solo marcata "in arrivo":
+zero infrastruttura esiste per una promessa così specifica, nemmeno allo
+stadio di bozza. Verificato: typecheck pulito su `apps/web`
+(`ottoneVelo`/`ottone`, token già esistenti in `packages/ui/src/tokens.ts`,
+riusati per il badge — nessun token nuovo introdotto). Build di
+produzione non eseguita in questo giro per lo stesso blocco di rete
+(fetch Google Fonts) già documentato nella sezione precedente.
+
+**Consultazioni CFO e Business Model & Pricing Lead ricevute** (rilanciate
+più volte per rate-limit temporanei di sessione, non un problema del
+codice) — sintesi completa e documento condivisibile per l'utente ancora
+da produrre, in attesa del completamento del Chief Legal Advisor
+(audit legale completo del sito) prima della sintesi finale.
