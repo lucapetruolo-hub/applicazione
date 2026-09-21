@@ -410,7 +410,29 @@ export function ConversationView({
   }
 
   return (
-    <YStack width="100%" height="100%" backgroundColor={brand.calce} overflow="hidden">
+    // `flex={1}` + `minHeight={0}`, non `height="100%"` (bug reale
+    // segnalato dall'utente: "le chat che sono rimaste popup... non
+    // viene visualizzata correttamente" da /dashboard/richieste e
+    // dall'agenda). `height:"100%"` è un'unità percentuale: si risolve
+    // solo contro un antenato con un'altezza DEFINITA, non contro uno che
+    // ha solo `maxHeight` (il caso di `TimelineModal.tsx`, che imposta
+    // solo `maxHeight="85vh"` sul contenitore del popup, mai un `height`
+    // esplicito) — per spec CSS quell'antenato resta "auto" agli occhi
+    // del calcolo percentuale, quindi il 100% veniva ignorato e questo
+    // YStack cresceva alla sua altezza naturale di contenuto (verificato:
+    // oltre 1100px con una decina di messaggi, contro i 765px disponibili
+    // del popup), tagliato a metà da `overflow:hidden` del genitore —
+    // intestazione e casella di invio finivano fuori dall'area visibile.
+    // `flex:1` non ha questo problema: si distribuisce sempre contro
+    // l'altezza EFFETTIVA (già vincolata da `maxHeight`) del contenitore
+    // flex padre, funziona identico sia qui (popup) sia nel pannello
+    // inline di `/chat` (altezza vera in px/vh su `.chat-conversation-pane`,
+    // mai stato rotto lì). `minHeight={0}` evita che il minimo di
+    // contenuto predefinito di un flex item (`min-height:auto`) blocchi
+    // comunque la riduzione, stesso principio già applicato all'area
+    // scrollabile dei messaggi qui sotto (`minHeight: 0` nello style
+    // inline).
+    <YStack width="100%" flex={1} minHeight={0} backgroundColor={brand.calce} overflow="hidden">
       <XStack justifyContent="space-between" alignItems="center" flexShrink={0} paddingHorizontal="$5" paddingTop="$5" paddingBottom="$3">
         <XStack alignItems="center" gap="$3" flex={1} minWidth={0}>
           {onBack && backIcon === "chevron-left" ? (

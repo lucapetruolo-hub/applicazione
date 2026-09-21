@@ -13715,3 +13715,50 @@ lettura da `/professionals/me` e da `/professionals/:id` (pubblico)
 entrambe corrette. Verifica visiva Playwright: profilo pubblico mostra i
 tre segnali con il disclaimer "non verificati"; form `/dashboard/profilo`
 carica e salva correttamente i valori esistenti (screenshot full-page).
+
+## 123. Bug reale: popup chat (TimelineModal) rotto in tutti i 5 punti di montaggio — header e casella di invio fuori dall'area visibile
+
+Segnalato esplicitamente dall'utente: "le chat che sono rimaste popup...
+come quando viene aperta tramite le richieste ricevute e anche nella
+pagina che si apre dagli orari nell'Agenda, non viene visualizzata
+correttamente". Riprodotto e diagnosticato con Playwright (non solo
+ipotizzato): registrato un professionista+cliente di test, creata una
+richiesta guidata con 9 messaggi nella cronologia, aperto il popup da
+`/dashboard/richieste` — header e casella "Scrivi un aggiornamento"
+completamente fuori dall'area visibile del popup, solo una fetta centrale
+dei messaggi mostrata, nessuno scroll interno funzionante.
+
+**Causa reale** (misurata via `getComputedStyle`, non supposta):
+`ConversationView.tsx` (estratto da `TimelineModal.tsx` nel giro SSE del
+§115) usa `height="100%"` sul proprio `YStack` radice. `TimelineModal.tsx`
+imposta sul contenitore del popup solo `maxHeight="85vh"`, mai un
+`height` esplicito. Per specifica CSS un'altezza percentuale si risolve
+solo contro un antenato con un'altezza **definita**, non contro uno che
+ha solo `max-height` — quell'antenato resta "auto" agli occhi del calcolo
+percentuale, quindi il 100% veniva ignorato: `ConversationView` cresceva
+alla sua altezza naturale di contenuto (misurato: oltre 1170px con
+9 messaggi, contro i 765px davvero disponibili), tagliato a metà da
+`overflow:hidden` del genitore. La pagina `/chat` (redesign nello stesso
+giro §115) non aveva mai questo bug: lì il contenitore ha un'altezza
+**vera** (`height: calc(100vh - 190px)` in px/vh, non solo un massimo),
+quindi la percentuale si risolveva correttamente — la stessa causa,
+introdotta nello stesso commit, restava silenziosamente invisibile in
+quel contesto e visibile solo negli altri 5.
+
+**Fix**: `height="100%"` sostituito con `flex={1} minHeight={0}`.
+`flex-grow` non ha lo stesso limite delle percentuali: si distribuisce
+sempre contro l'altezza **effettiva** del contenitore flex padre (quella
+già vincolata da `max-height`, quando presente), funziona identico sia
+nel popup (`TimelineModal`) sia nel pannello inline di `/chat` — un solo
+cambiamento in `ConversationView.tsx` corregge tutti e 5 i punti di
+montaggio (`/dashboard`, `/dashboard/richieste`, `/le-mie-richieste` ×2,
+`/dashboard/agenda`) senza toccare nessuno di essi.
+
+Verifica: typecheck pulito. Riprodotto il bug (screenshot + misure DOM
+via Playwright, prima del fix: header/input fuori dall'area visibile),
+poi verificato il fix con la stessa identica misurazione (header a
+73px in cima, area messaggi 450px con `overflow-y:auto` reale, casella
+di invio 242px in fondo, tutto entro i 765px del popup) e screenshot di
+conferma. Stesso codice condiviso dall'agenda (`onOpenTimeline` in
+`/dashboard/agenda` monta lo stesso `TimelineModal`) — non riprodotto
+separatamente lì, stesso identico percorso di codice del fix verificato.
