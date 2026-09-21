@@ -13597,8 +13597,69 @@ riusati per il badge — nessun token nuovo introdotto). Build di
 produzione non eseguita in questo giro per lo stesso blocco di rete
 (fetch Google Fonts) già documentato nella sezione precedente.
 
-**Consultazioni CFO e Business Model & Pricing Lead ricevute** (rilanciate
-più volte per rate-limit temporanei di sessione, non un problema del
-codice) — sintesi completa e documento condivisibile per l'utente ancora
-da produrre, in attesa del completamento del Chief Legal Advisor
-(audit legale completo del sito) prima della sintesi finale.
+**Tutte e 4 le consultazioni ricevute (CFO, Chief Legal Advisor, Business
+Model & Pricing Lead, Growth & Acquisition Lead)** — sintetizzate in un
+documento condiviso, **"Professionisti — Audit legale e fiscale pre-lancio
+(bozza di lavoro)"**
+(`https://claude.ai/code/artifact/fa015eca-9284-4172-90a4-af3f3e0bf89e`),
+pensato esplicitamente per essere mostrato a un vero commercialista/
+avvocato prima del lancio (richiesta esplicita dell'utente): audit legale
+completo (privacy/termini/e-commerce/DSA/claim non veritieri/KYC/
+accessibilità/minori), le 5 domande fiscali del CFO, tabella dati di
+registrazione per tipo professionista, analisi KYC Stripe Connect,
+nota su pricing e categorie di lancio Latina — più una sezione finale
+"Domande aperte per un professionista reale" pensata per una risposta
+rapida.
+
+**Critica #2 (Go-To-Market Lead/Chief Legal Advisor) — ancora in attesa
+della decisione dell'utente**: il claim "Profili verificati" (mostrato
+senza condizioni in `SiteFooter.tsx` e `ResultsListWithMap.tsx`) non è
+mai vero in questo momento — `ProfessionalProfile.verified` è
+`Boolean @default(false)` e non viene **mai** impostato a `true` da
+nessun punto di `apps/api/src` (verificato con una ricerca su tutto il
+backend) — e due delle quattro risposte di `WhatIfSection.tsx`
+(rimborso/sostituzione entro 4 ore) promettono un meccanismo che non
+esiste in nessuna forma, nemmeno come bozza (le altre due risposte dello
+stesso componente — preventivo strutturato vincolante, cambio
+professionista libero prima della conferma — sono state verificate
+accurate e non richiedono correzione). Stessa scelta già fatta per
+`PlatformGuarantee.tsx` (Critica #1, sopra) resta disponibile qui:
+riformulare il testo per essere onesto (rimuovere/condizionare il claim
+"verificato", correggere le due risposte non vere) oppure costruire
+davvero la verifica prima di pubblicarlo. **Non eseguita in questo giro**,
+in attesa del Sì/No esplicito dell'utente.
+
+**Tattiche in corso senza obiezione dell'utente** (Business Model & Pricing
+Lead, Growth & Acquisition Lead — nessuna azione bloccante, riportate qui
+per tracciabilità): commissione piattaforma confermata al 10% già seminato
+(§14, in linea con i benchmark reali del settore); piano "Free" da
+ripensare come ingresso permanentemente gratuito al marketplace + sconto/
+esenzione sui primi 3 mesi di Pro/Business (§7.2, non più una prova a
+tempo); categorie di lancio consigliate per Latina — idraulico,
+elettricista, pulizie (stesso principio "concentrare la liquidità" di §7).
+
+**Da fare prima del lancio, aggiunta a questo giro (CEO council)**:
+1. **Le 5 domande fiscali del CFO richiedono la firma di un vero
+   commercialista/avvocato tributario** prima del lancio (documentate per
+   intero, con riferimenti normativi, nel documento condiviso sopra): (1)
+   ruolo contrattuale/fiscale esatto di Manovia nell'intermediazione del
+   pagamento (mandato con/senza rappresentanza vs. commissione, artt.
+   1703-1731 c.c.) — decide il trattamento IVA; (2) chi fattura il cliente
+   finale per il lavoro svolto (oggi il modello dati ha solo
+   `MANOVIA_TO_PROFESSIONAL`, mai `PROFESSIONAL_TO_CLIENT`); (3)
+   trattamento IVA corretto della commissione trattenuta da Manovia,
+   dipendente dal punto 1; (4) se la "consideration" DAC7 deve includere
+   anche i pagamenti `DIRECT` fuori piattaforma — oggi
+   `Dac7Rule.includeDirectPayments` di default `true`, un'ipotesi di
+   lavoro da confermare, non una decisione presa. Il quinto punto,
+   conformità del tracciato XML DPI23 ufficiale, resta **puro lavoro
+   tecnico** (non richiede parere di un commercialista) — già segnalato
+   come da fare in CLAUDE.md §88.
+2. **Decisione Critica #2** (sopra): correggere "Profili verificati"/
+   `WhatIfSection.tsx` con lo stesso trattamento di `PlatformGuarantee.tsx`
+   oppure costruire davvero la verifica KYC/documenti — in attesa del
+   Sì/No dell'utente.
+3. Segnaposto legali `[DA COMPILARE]` ancora pubblicati in produzione
+   (`/privacy`, footer con dati del prestatore D.Lgs. 70/2003) — stesso
+   punto già in coda in CLAUDE.md §48/§9, confermato ancora aperto da
+   questo giro di audit.
