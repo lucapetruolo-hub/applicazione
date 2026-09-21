@@ -11,6 +11,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai 14
@@ -65,6 +66,25 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // Conformità" — notice-and-action, DSA art. 16): profilo o singola
   // recensione, uno stato solo (mai due modali aperti insieme).
   const [reportTarget, setReportTarget] = useState<{ targetType: "PROFESSIONAL_PROFILE" | "REVIEW"; targetId: string; label: string } | null>(null);
+  // Tasti "Segnala" già usati da questo browser nelle ultime 24 ore
+  // (richiesta esplicita dell'utente: "disabilita il tasto per evitare
+  // abusi di spam") — chiave composita `targetType:targetId`, letta una
+  // sola volta da localStorage al mount (profilo + ogni recensione già
+  // caricata) e aggiornata subito dopo un invio riuscito, senza aspettare
+  // un reload. Il backend (`ContentReportsService.create`, 409) resta
+  // comunque l'unica fonte di verità autoritativa: questo stato è solo un
+  // feedback immediato lato client, che regge anche browser diversi o
+  // localStorage cancellato (il tasto tornerebbe attivo, ma un secondo
+  // invio verrebbe comunque rifiutato dal server).
+  const [reportedKeys, setReportedKeys] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    if (typeof window === "undefined") return initial;
+    if (hasRecentlyReported("PROFESSIONAL_PROFILE", professional.id)) initial.add(`PROFESSIONAL_PROFILE:${professional.id}`);
+    for (const review of professional.reviews) {
+      if (hasRecentlyReported("REVIEW", review.id)) initial.add(`REVIEW:${review.id}`);
+    }
+    return initial;
+  });
 
   // Ogni fascia (esatta o generica) apre sempre la richiesta di preventivo
   // precompilata — richiesta esplicita dell'utente: nessuna prenotazione
@@ -298,12 +318,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             <Button
               variant="ghost"
               size="$3"
+              disabled={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`)}
+              opacity={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? 0.5 : 1}
               onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
             >
               <XStack alignItems="center" gap="$2">
                 <Icon name="flag" size={15} strokeWidth={1.5} color={brand.grafite70} />
                 <Text color={brand.grafite70} fontWeight="600">
-                  Segnala
+                  {reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
                 </Text>
               </XStack>
             </Button>
@@ -698,13 +720,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     <XStack
                       alignItems="center"
                       gap={4}
-                      cursor="pointer"
-                      onPress={() => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })}
+                      cursor={reportedKeys.has(`REVIEW:${review.id}`) ? "default" : "pointer"}
+                      opacity={reportedKeys.has(`REVIEW:${review.id}`) ? 0.5 : 1}
+                      onPress={
+                        reportedKeys.has(`REVIEW:${review.id}`)
+                          ? undefined
+                          : () => setReportTarget({ targetType: "REVIEW", targetId: review.id, label: "questa recensione" })
+                      }
                       accessibilityRole="button"
                     >
                       <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
                       <Text fontSize="$1" color={brand.grafite70}>
-                        Segnala
+                        {reportedKeys.has(`REVIEW:${review.id}`) ? "Già segnalato" : "Segnala"}
                       </Text>
                     </XStack>
                   ) : null}
@@ -752,6 +779,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           onSubmit={async (reason, details) => {
             if (!token) return;
             await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, reason, details });
+            // Solo se la chiamata sopra non ha lanciato (es. 409 "già
+            // segnalato nelle ultime 24 ore") il tasto passa a disabilitato.
+            markReported(reportTarget.targetType, reportTarget.targetId);
+            setReportedKeys((prev) => new Set(prev).add(`${reportTarget.targetType}:${reportTarget.targetId}`));
           }}
         />
       ) : null}

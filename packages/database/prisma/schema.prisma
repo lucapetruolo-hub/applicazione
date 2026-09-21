@@ -1165,6 +1165,11 @@ model ContentReport {
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+  // Verifica anti-spam "stesso account, stesso contenuto, ultime 24 ore"
+  // (ContentReportsService.create) — senza questo indice quella query
+  // farebbe una scansione sequenziale dell'intera tabella una volta
+  // cresciuta.
+  @@index([reporterId, targetType, targetId, createdAt])
   @@map("content_reports")
 }
 

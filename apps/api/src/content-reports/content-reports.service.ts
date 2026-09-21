@@ -1,7 +1,9 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import type { CreateContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+
+const DUPLICATE_REPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di
@@ -11,12 +13,36 @@ import { PRISMA } from "../prisma/prisma.module";
  * recensione (a differenza di altre azioni del prodotto, qui non ha senso
  * restringere a "solo i propri", il punto è proprio segnalare i contenuti
  * altrui).
+ *
+ * Anti-abuso (richiesta esplicita dell'utente): lo stesso account non può
+ * segnalare lo stesso contenuto una seconda volta prima che siano passate
+ * 24 ore dalla segnalazione precedente — a prescindere dal suo stato
+ * (`OPEN`/`RESOLVED`/`DISMISSED`, mai filtrato per stato qui: anche una
+ * segnalazione già archiviata conta ai fini della finestra anti-spam,
+ * altrimenti risolverla in fretta lato admin riaprirebbe subito la
+ * possibilità di ri-segnalare). Verifica lato server, mai solo lato
+ * client: stesso principio già seguito per "una recensione per
+ * prenotazione" in `ReviewsService.create` (`ConflictException`, stesso
+ * codice HTTP 409 qui per coerenza).
  */
 @Injectable()
 export class ContentReportsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   async create(reporterId: string, input: CreateContentReportInput) {
+    const recentDuplicate = await this.prisma.contentReport.findFirst({
+      where: {
+        reporterId,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        createdAt: { gte: new Date(Date.now() - DUPLICATE_REPORT_WINDOW_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (recentDuplicate) {
+      throw new ConflictException("Hai già segnalato questo contenuto nelle ultime 24 ore.");
+    }
+
     return this.prisma.contentReport.create({
       data: {
         reporterId,

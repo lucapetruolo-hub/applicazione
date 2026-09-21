@@ -13613,3 +13613,48 @@ click su una cella "-" (fascia non configurata) → nessuna navigazione;
 click su una pillola orario reale → naviga correttamente a `/preventivo`
 con data/ora/modalità precompilati (comportamento introdotto in §118,
 confermato ancora funzionante).
+
+## 121. Anti-spam sul tasto "Segnala": niente doppia segnalazione dello stesso contenuto entro 24 ore
+
+Richiesta esplicita dell'utente: "non dare la possibilità di risegnalare
+una seconda volta lo stesso commento se lo hai già fatto dallo stesso
+account per 24 ore... il sistema registra il feedback e disabilita il
+tasto per evitare abusi di spam o tentativi di manipolazione artificiale".
+
+**Backend (fonte di verità)**: `ContentReportsService.create` verifica ora
+se esiste già una `ContentReport` dello stesso `reporterId` sullo stesso
+`targetType`+`targetId` creata nelle ultime 24 ore — se sì, `ConflictException`
+(409, "Hai già segnalato questo contenuto nelle ultime 24 ore."), stesso
+codice/pattern già in uso per "una recensione per prenotazione"
+(`ReviewsService.create`). Il controllo non filtra per `status`: anche una
+segnalazione già archiviata (`RESOLVED`/`DISMISSED`) conta ai fini della
+finestra anti-spam — altrimenti risolverla in fretta lato admin
+riaprirebbe subito la possibilità di ri-segnalare. Nuovo indice Prisma
+`@@index([reporterId, targetType, targetId, createdAt])` su `ContentReport`
+per non far degenerare questa verifica in una scansione sequenziale
+crescendo la tabella.
+
+**Frontend (feedback immediato)**: nuovo `apps/web/src/lib/reportedContent.ts`
+— `localStorage` con chiave composita `targetType:targetId` (stesso
+pattern già in uso per il consenso cookie in `CookieBanner.tsx`, guardia
+try/catch per privacy mode), `hasRecentlyReported`/`markReported`. I tre
+punti di montaggio del tasto "Segnala" (profilo pubblico e recensioni in
+`ProfessionalDetailContent.tsx`, recensioni cliente in
+`ClientProfileModal.tsx`) leggono lo stato una volta al mount per ogni
+target visibile sulla pagina e lo aggiornano subito dopo un invio
+riuscito (mai prima: se il backend rifiuta con 409 il tasto non si
+disabilita comunque, mostra solo l'errore già gestito dal componente
+esistente `ReportContentModal`) — bottone su "Già segnalato", opacità
+ridotta, `onPress`/`disabled` disattivati. Il `localStorage` resta solo un
+feedback immediato lato client, mai l'unica barriera: da un browser
+diverso o con dati cancellati il tasto tornerebbe attivo, ma un secondo
+invio verrebbe comunque respinto dal server.
+
+Verifica: typecheck pulito su tutto il monorepo (9/9 task). End-to-end via
+curl contro API reale: primo invio → 201, secondo invio identico → 409
+col messaggio corretto, invio su un target diverso (stesso account) →
+201 (nessun blocco cross-target). Verifica visiva Playwright: submit del
+report sul profilo → tasto passa subito a "Già segnalato" (visibile anche
+dietro il modale ancora aperto), stato confermato persistente dopo un
+reload completo della pagina, il tasto "Segnala" della recensione
+sottostante (target diverso) resta invece attivo.

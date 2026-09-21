@@ -5,6 +5,7 @@ import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
+import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 
 export type ClientReviewSummary = {
   id: string;
@@ -71,6 +72,21 @@ export function ClientProfileModal({
   onClose: () => void;
 }) {
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  // Recensioni cliente già segnalate da questo browser nelle ultime 24 ore
+  // (richiesta esplicita dell'utente: "disabilita il tasto per evitare
+  // abusi di spam") — stesso principio di `ProfessionalDetailContent.tsx`
+  // per le recensioni professionista, qui limitato a `CLIENT_REVIEW`
+  // (l'unico targetType segnalabile da questo componente). Il backend
+  // (`ContentReportsService.create`, 409) resta l'unica fonte di verità
+  // autoritativa.
+  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    if (typeof window === "undefined" || !reviews) return initial;
+    for (const review of reviews) {
+      if (hasRecentlyReported("CLIENT_REVIEW", review.id)) initial.add(review.id);
+    }
+    return initial;
+  });
   // Media delle stelle ricevute — richiesta esplicita dell'utente
   // ("metti la media delle stelle ricevute"), calcolata dalle stesse
   // recensioni già mostrate sotto (nessuna nuova chiamata API).
@@ -200,10 +216,17 @@ export function ClientProfileModal({
                     ) : null}
                   </XStack>
                   {token ? (
-                    <XStack alignItems="center" gap={4} cursor="pointer" onPress={() => setReportTargetId(review.id)} accessibilityRole="button">
+                    <XStack
+                      alignItems="center"
+                      gap={4}
+                      cursor={reportedIds.has(review.id) ? "default" : "pointer"}
+                      opacity={reportedIds.has(review.id) ? 0.5 : 1}
+                      onPress={reportedIds.has(review.id) ? undefined : () => setReportTargetId(review.id)}
+                      accessibilityRole="button"
+                    >
                       <Icon name="flag" size={11} strokeWidth={1.5} color={brand.grafite70} />
                       <Text fontSize={11} color={brand.grafite70}>
-                        Segnala
+                        {reportedIds.has(review.id) ? "Già segnalato" : "Segnala"}
                       </Text>
                     </XStack>
                   ) : null}
@@ -235,6 +258,10 @@ export function ClientProfileModal({
           onClose={() => setReportTargetId(null)}
           onSubmit={async (reason, details) => {
             await apiClient.createContentReport(token, { targetType: "CLIENT_REVIEW", targetId: reportTargetId, reason, details });
+            // Solo se la chiamata sopra non ha lanciato (es. 409 "già
+            // segnalato nelle ultime 24 ore") il tasto passa a disabilitato.
+            markReported("CLIENT_REVIEW", reportTargetId);
+            setReportedIds((prev) => new Set(prev).add(reportTargetId));
           }}
         />
       ) : null}
