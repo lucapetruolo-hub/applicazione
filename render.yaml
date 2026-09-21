@@ -20,8 +20,15 @@ services:
     # lockfile e packages condivisi devono restare raggiungibili), build e
     # start scoperti sul solo servizio API via --filter.
     # Lo script "build" di apps/api compila già database + shared prima di
-    # "nest build"; lo script "start" esegue "prisma db push" (schema sync
-    # idempotente) prima di avviare il server.
+    # "nest build"; lo script "start" esegue "prisma migrate deploy"
+    # (migrazioni esplicite tracciate in packages/database/prisma/migrations,
+    # mai distruttive in automatico — sostituisce "prisma db push
+    # --accept-data-loss": CEO, audit tecnico, "un push che droppa una
+    # colonna è perdita dati silenziosa") prima di avviare il server.
+    # IMPORTANTE una tantum: la prima volta che questo deploy gira dopo
+    # l'introduzione delle migrazioni, il database Render esistente va
+    # "baselinato" a mano (marcato come già alla migrazione iniziale) prima
+    # che questo comando funzioni — vedi CLAUDE.md §2 per il comando esatto.
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
     startCommand: pnpm --filter @professionisti/api start
     # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API
@@ -57,6 +64,10 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
         sync: false
       - key: FRONTEND_URL
         value: https://applicazione-web.vercel.app

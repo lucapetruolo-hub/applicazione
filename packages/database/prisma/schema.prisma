@@ -767,6 +767,12 @@ model Booking {
   // indicate a mano senza agenda impostata.
   scheduledEndAt        DateTime?
   status                BookingStatus @default(PENDING)
+  // Promemoria automatico anti no-show (CEO, tattico — CLAUDE.md §1: "core,
+  // non accessoria"): email inviata via BookingRemindersService quando
+  // scheduledAt è entro ~24 ore, null finché non è ancora partito. Evita
+  // di reinviarlo a ogni passaggio del cron (EVERY_30_MINUTES) sulla
+  // stessa prenotazione.
+  reminderSentAt        DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

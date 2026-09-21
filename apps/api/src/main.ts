@@ -20,7 +20,12 @@ async function bootstrap() {
   app.use("/billing/webhook", express.raw({ type: "application/json" }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.enableCors();
+  // Ristretto a FRONTEND_URL (CTO — audit sicurezza, checklist esterna
+  // verificata contro il codice reale): `enableCors()` senza argomenti
+  // accetta qualunque origine, un'API con JWT in localStorage letto da
+  // qualsiasi sito. Stesso fallback a localhost:3000 già usato altrove
+  // nel progetto quando FRONTEND_URL non è impostata (sviluppo locale).
+  app.enableCors({ origin: process.env.FRONTEND_URL ?? "http://localhost:3000", credentials: true });
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
   // "0.0.0.0" esplicito: su alcune piattaforme cloud (Render inclusa)
   // app.listen(port) senza host può legarsi solo a IPv6, irraggiungibile

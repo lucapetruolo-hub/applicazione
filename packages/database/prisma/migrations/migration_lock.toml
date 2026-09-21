@@ -1,0 +1,3 @@
+# Questo file è mantenuto automaticamente da Prisma Migrate per assicurare
+# che il provider del datasource rimanga stabile.
+provider = "postgresql"

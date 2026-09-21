@@ -30,6 +30,7 @@ import { JobPaymentsModule } from "./job-payments/job-payments.module";
 import { Dac7Module } from "./dac7/dac7.module";
 import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.module";
 import { RealtimeModule } from "./realtime/realtime.module";
+import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 
 @Module({
   imports: [
@@ -83,6 +84,9 @@ import { RealtimeModule } from "./realtime/realtime.module";
     // Push in tempo reale (SSE) — chat + notifiche, CTO: "socket.io vs
     // websocket vs alternative" (vedi RealtimeService per il verdetto).
     RealtimeModule,
+    // Promemoria automatici anti no-show (Resend) — CEO, tattico:
+    // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
+    BookingRemindersModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

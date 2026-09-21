@@ -82,13 +82,33 @@ prima discuterne e aggiornare questo file.
   / `start`, ignorando eventuali Build/Start Command custom impostati a
   mano — per questo lo script `build` di `apps/api/package.json` costruisce
   esplicitamente prima `@professionisti/database` e `@professionisti/shared`
-  (altrimenti TypeScript non trova quei moduli). Lo script `start` esegue
+  (altrimenti TypeScript non trova quei moduli). Lo script `start` eseguiva
   `prisma db push --accept-data-loss` ad ogni avvio prima di far partire il
-  server: scelta pragmatica per non richiedere un comando manuale separato
-  in un'interfaccia che l'utente trova difficile da navigare — da sostituire
-  con una migrazione esplicita (`prisma migrate deploy`, no data-loss
-  automatico) prima che ci siano dati reali di utenti da rischiare.
-  Stesso problema si è presentato per i **dati** (non solo lo schema): `db
+  server (scelta pragmatica iniziale, per non richiedere un comando manuale
+  separato in un'interfaccia che l'utente trova difficile da navigare) —
+  **sostituito** (CEO, audit tecnico: "un push che droppa una colonna è
+  perdita dati silenziosa", rischio segnalato come blocco reale prima di
+  avere utenti paganti) con migrazioni esplicite tracciate:
+  `packages/database/prisma/migrations/` contiene ora una migrazione
+  `baseline` generata dallo schema attuale (verificata: applicata a un
+  database vuoto produce uno schema identico, byte per byte via `prisma
+  migrate diff`, a quello che `db push` produceva), e lo script `start` di
+  `apps/api/package.json` esegue `prisma migrate deploy` — non distruttivo
+  per definizione, applica solo le migrazioni non ancora applicate, mai un
+  `push` che sincronizza forzando lo schema.
+  **Passo manuale una tantum richiesto prima del prossimo deploy**: il
+  database Render esistente ha già tutte le tabelle (create da anni di `db
+  push`) ma nessuno storico di migrazioni — `prisma migrate deploy` fallirebbe
+  tentando di ricrearle da zero. Va "baselinato" una sola volta puntando
+  `DATABASE_URL` sull'External Connection String di Render (mai committarla)
+  ed eseguendo, dalla cartella `packages/database`:
+  `DATABASE_URL="<connection string esterna di Render>" npx prisma migrate resolve --applied <nome della cartella baseline in prisma/migrations>`
+  — dopo questo comando (che non tocca dati né schema, marca solo "questa
+  migrazione è già applicata"), i deploy successivi useranno `migrate
+  deploy` normalmente. Stesso comando andrà ripetuto se in futuro si ricrea
+  il database Render free da zero (vedi scadenza 30gg sotto) puntando alla
+  nuova connection string, prima del primo deploy su quel nuovo database.
+  Stesso problema si è presentato in passato per i **dati** (non solo lo schema): `db
   push` sincronizza le tabelle ma non le righe, quindi la tabella
   `categories` restava vuota in produzione (mai eseguito `prisma db seed`
   lì) e ogni salvataggio di un profilo professionista falliva con
@@ -434,7 +454,8 @@ dall'upsell.
 - [x] Richiesta guidata + fan-out lead — `POST /guided-requests` (autenticato) crea la richiesta e i `Lead` per i professionisti compatibili in categoria+città (o il singolo professionista se la richiesta parte dal suo profilo), pagina `/preventivo` e `/le-mie-richieste` funzionanti end-to-end. Se si arriva da un professionista specifico (`?professionista=`), la categoria è già determinata dalla sua specialità: `GuidedRequestForm` mostra un&apos;etichetta bloccata invece della griglia di scelta cliccabile, non ha senso farla ri-scegliere. Upload foto ora implementato: `POST /guided-requests/photos` (JWT, `FileInterceptor`) carica su Cloudinary (stessa trasformazione resize+compressione automatica dell&apos;immagine profilo professionista, cartella `guided-requests`) — nessun nuovo servizio di object storage, riusa la stessa integrazione già approvata in CLAUDE.md §2 per le immagini profilo, che al momento in cui l&apos;upload foto era stato rimandato non esisteva ancora. Fino a 3 foto per richiesta (`guidedRequestSchema.photoUrls`, un upload per foto, stato di caricamento/errore per singolo slot in UI). Suggerimento IA sulla categoria dalla foto (menzionato in §7-8) resta rimandato. Il cliente può modificare (`PATCH /guided-requests/:id`, solo descrizione e città — non la categoria, determina già a chi è stata inoltrata) o eliminare (`DELETE /guided-requests/:id`, cascata su `Lead`/`Quote` via Prisma) una richiesta già inviata, finché non è `CLOSED` (una prenotazione derivata esiste già a quel punto — bloccato sia per business logic sia per un vincolo di chiave esterna reale: `Booking.quoteId` non è in cascade). In `/le-mie-richieste`, "Modifica" apre un form inline (stesso `Autocomplete` città del form di creazione), "Elimina" richiede una seconda conferma prima di procedere. Ogni richiesta mostra ora anche una sezione "Inviata a" con i professionisti che l'hanno effettivamente ricevuta (`GuidedRequestsService.listForClient` include `leads.professionalProfile`, esposto come `sentTo` su `ClientGuidedRequest`: foto/icona categoria via `ProfessionalAvatar`, nome attività, categoria+città, badge "✓ Verificato") — richiesta esplicita dell'utente, prima non era chiaro a chi fosse arrivata la richiesta se non aprendo i preventivi ricevuti uno per uno. Il selettore foto (sia qui che in `/urgente`) usa ora un solo tasto "+ Aggiungi" con un unico `<input type="file" accept="image/*">` senza l'attributo `capture`: su iOS/Android questo fa comparire il menu nativo del sistema ("Scatta foto"/"Libreria foto", stile iPhone) invece di due tasti separati — richiesta esplicita dell'utente dopo che la versione a due tasti (uno con `capture="environment"` per aprire subito la fotocamera) risultava meno familiare del picker nativo a cui gli utenti iOS sono abituati. La selezione categoria (sia qui che in `/urgente`, stesso `GuidedRequestForm`) ha ora anche un `<select>` nativo oltre alla griglia di caselle cliccabili già esistente — scorciatoia più rapida su schermi piccoli, richiesta esplicita dell'utente; entrambi i controlli condividono lo stesso stato `categorySlug`, selezionare da uno aggiorna anche l'altro.
 - [x] Preventivo strutturato in-app — `POST /quotes` (solo se il professionista ha ricevuto il lead), `POST /bookings/from-quote/:id` per l'accettazione cliente → crea `Booking` e chiude la richiesta. Modello a lead a pagamento: il prezzo per lead è calcolato e salvato (`Lead.priceEurCents`, standard vs urgente), ma il gate di pagamento reale al professionista arriva con Stripe (vedi voce sotto) — oggi i lead sono visibili gratis in dashboard. Il preventivo non è più due campi fissi manodopera/materiali: nuovo modello Prisma `QuoteItem` (nome + range di prezzo min/max, stesso pattern di `ProfessionalService`), un professionista può aggiungere quante voci servono (es. "Manodopera", "Materiali", "Trasporto"), ognuna col proprio range — richiesta esplicita dell'utente. `QuotesService.createOrUpdate` sostituisce la lista per intero ad ogni invio/modifica (delete+createMany, stesso pattern delle prestazioni). Form in `/dashboard` (`LeadCard`) parte con una voce "Manodopera" precompilata, rinominabile/rimovibile, con bottone "+ Aggiungi voce"; visualizzazione (in `/le-mie-richieste` e nell'agenda prenotazioni della dashboard professionista) tramite `formatServicePriceRange` già esistente, riusata senza duplicarla.
 - [x] Recensioni vincolate a prenotazione confermata — `POST /reviews` accetta solo `bookingId` con status `COMPLETED`, un cliente non può recensire due volte la stessa prenotazione; il rating mostrato in ricerca è sempre calcolato dalle recensioni reali, mai un valore statico. Foto del lavoro svolto opzionali (`Review.photoUrls`, fino a 3, stesso pattern/limite di `GuidedRequest.photoUrls`): `POST /reviews/photos` carica su Cloudinary (stessa integrazione di profilo/richiesta guidata), form di recensione in `/le-mie-richieste` con upload per singola foto, mostrate come miniature sotto ogni recensione nel profilo pubblico del professionista. Le miniature (recensioni) e la foto profilo nell'header sono ora cliccabili per aprirle a schermo intero — `apps/web/src/components/PhotoLightbox.tsx` (overlay DOM grezzo, stesso pattern di `ImageCropModal`, nessuna libreria aggiunta), frecce prev/next quando una recensione ha più foto, richiesta esplicita dell'utente. Sezione "Recensioni" del profilo pubblico mostra anche la media in stelle in forma grafica — `apps/web/src/components/StarRating.tsx`: due righe di stelle SVG sovrapposte (una grigia, una dorata ritagliata in `overflow:hidden` alla percentuale esatta del voto, es. 4,5/5 → 90%) per rendere correttamente anche i voti frazionari, non solo stelle intere — più il numero di recensioni tra parentesi (es. "(160 recensioni)"), richiesta esplicita dell'utente.
-- [x] Dashboard professionista — `/dashboard/profilo` (creazione/modifica profilo pubblico) e `/dashboard` (richieste ricevute con invio preventivo inline, agenda prenotazioni con stato). Promemoria automatici anti no-show non ancora implementati: serve integrare Resend/Twilio (già nello stack approvato) con un job schedulato (BullMQ), rimandato insieme a Stripe.
+- [x] Dashboard professionista — `/dashboard/profilo` (creazione/modifica profilo pubblico) e `/dashboard` (richieste ricevute con invio preventivo inline, agenda prenotazioni con stato).
+- [x] Promemoria automatici anti no-show (email) — CEO, tattico: "prima di considerare l'MVP davvero completo". `apps/api/src/email/email.service.ts` (`EmailService`, wrapper Resend, mai crash senza `RESEND_API_KEY`: logga e ritorna `false`, stesso pattern di Stripe/Cloudinary/Google) + `apps/api/src/booking-reminders/booking-reminders.service.ts` (`@Cron(EVERY_30_MINUTES)`, non BullMQ — `@nestjs/schedule` è il pattern già in uso in questo codebase per i job schedulati, es. `GuidedRequestsService.runExpiryCheck`, nonostante BullMQ resti nella tabella §2 come scelta nominale mai davvero collegata). Un'email al cliente e una al professionista quando una `Booking CONFIRMED` è 23-25 ore nel futuro, una sola volta per prenotazione (`Booking.reminderSentAt`, marcato anche se l'invio fallisce — mai un retry infinito sulla stessa riga ogni 30 minuti). Solo email per ora: SMS (Twilio, in tabella §2) rimandato, nessun canale push aggiuntivo necessario finché l'email basta a coprire il caso d'uso.
 - [x] Abbonamenti Stripe (upsell da Free a Pro/Business) — `POST /billing/subscription/checkout` crea una Stripe Checkout Session (mode subscription), webhook `POST /billing/webhook` (firma verificata, body raw) aggiorna `Subscription` su `checkout.session.completed`. Pagina `/per-professionisti` collegata al checkout reale.
 - [x] Pacchetti di visibilità/boost ricerca — `POST /billing/boost/checkout` (Boost locale/Badge reputazione/Storia di successo, 30gg), sezione "Aumenta la tua visibilità" in dashboard. Pagamento lead: `POST /billing/leads/:id/checkout` implementato e testato lato API, non ancora esposto in UI (i lead restano visibili gratis in dashboard, vedi nota sopra).
   - **Da fare prima del lancio**: il codice Stripe è completo e testato (percorso "non configurato" verificato end-to-end), ma servono le chiavi reali per attivarlo — variabili d'ambiente richieste su `apps/api`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`, più `FRONTEND_URL` per i redirect di successo/annullo. Senza queste variabili gli endpoint rispondono con un errore chiaro invece di andare in crash (stesso pattern già usato per `GOOGLE_CLIENT_ID`).
@@ -510,8 +531,12 @@ produzione):
    assente, ricade su un fallback neutro non conforme per la produzione.
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/
-   `STRIPE_PRICE_BUSINESS`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
-   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
+   `STRIPE_PRICE_BUSINESS`), Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`) e Resend reali
+   (`RESEND_API_KEY`, dominio verificato su Resend + `RESEND_FROM_EMAIL`
+   corrispondente — promemoria anti no-show, vedi §9/`EmailService`; senza
+   queste variabili il servizio non va in crash, semplicemente non invia,
+   stesso pattern già usato per Stripe/Cloudinary/Google).
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).
@@ -573,5 +598,32 @@ davvero la verifica prima):
     quando l'offerta reale di professionisti in una città/categoria supera
     la soglia (`MIN_PROFESSIONALS_TO_SHOWCASE`) e la vetrina vera
     (`RealShowcase`) prende il suo posto.
-18. Promemoria automatici anti no-show (Resend/Twilio + job schedulato) —
-    rimandati insieme a Stripe, mai implementati.
+18. ~~Promemoria automatici anti no-show~~ — fatto (email, vedi §9). SMS
+    (Twilio) resta rimandato: nessun caso d'uso ancora non coperto
+    dall'email.
+
+**Infrastruttura/qualità del codice** (CEO, audit tecnico — "zero test
+automatici, zero CI/CD, e soprattutto `prisma db push --accept-data-loss`
+gira ad ogni deploy in produzione — con dati reali di utenti paganti, un
+push che droppa una colonna è perdita dati silenziosa"). CI minima
+(`.github/workflows/ci.yml`, typecheck+build+test su ogni push), prima
+infrastruttura di test reale (Vitest — commissione piattaforma, creazione
+Booking da preventivo, gate contatti cliente) e CORS ristretto a
+`FRONTEND_URL` (`apps/api/src/main.ts`) sono **già fatti**, vedi §9. Restano
+aperti solo:
+19. **Passo manuale una tantum sul database Render di produzione**, prima
+    del prossimo deploy: `prisma db push --accept-data-loss` è stato
+    sostituito con `prisma migrate deploy` (migrazioni esplicite tracciate
+    in `packages/database/prisma/migrations`, mai distruttive in
+    automatico — baseline generata da `prisma migrate diff --from-empty
+    --to-schema-datamodel`, verificata schema-identica sia a un DB vuoto
+    sia al DB locale esistente), ma il DB Render esistente ha già le
+    tabelle senza storico migrazioni tracciato — senza questo passo
+    `migrate deploy` fallisce al prossimo deploy:
+    `DATABASE_URL="<connection string esterna di Render>" npx prisma
+    migrate resolve --applied 20260921212750_baseline`.
+20. Postgres free che scade ogni 30 giorni — non risolto tecnicamente
+    (richiede un piano a pagamento, decisione di budget non presa
+    autonomamente): promemoria operativo ricorrente, non ipotetico. Ogni
+    volta che il DB scade e se ne ricrea uno nuovo, va ripetuto anche il
+    passo manuale del punto 19 (baseline) sul nuovo database.

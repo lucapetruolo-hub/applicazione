@@ -13762,3 +13762,141 @@ di invio 242px in fondo, tutto entro i 765px del popup) e screenshot di
 conferma. Stesso codice condiviso dall'agenda (`onOpenTimeline` in
 `/dashboard/agenda` monta lo stesso `TimelineModal`) — non riprodotto
 separatamente lì, stesso identico percorso di codice del fix verificato.
+
+## 124. CI, primi test automatici, migrazioni esplicite, CORS ristretto, promemoria email — audit tecnico CEO/CTO
+
+Richiesta esplicita dell'utente, in due parti nello stesso giro:
+
+1. "Come si risolve questo: zero test automatici, zero CI/CD, e soprattutto
+   `prisma db push --accept-data-loss` gira ad ogni deploy in produzione —
+   con dati reali di utenti paganti, un push che droppa una colonna è
+   perdita dati silenziosa. Il Postgres free scade ogni 30 giorni, un
+   problema operativo ricorrente, non ipotetico." — seguita da conferma
+   esplicita del piano proposto.
+2. "CEO, fai valutare all'esperto adatto questo [checklist di sicurezza
+   stile OWASP incollata dall'utente, fonte esterna] e poi valuta le azioni
+   da intraprendere", poi "CEO, Procedi con i tattici se ancora non fatto":
+   CI+CORS, test sui flussi critici, materiale di vendita/script di
+   chiamata, promemoria email (Resend).
+
+**1) CI minima** — `.github/workflows/ci.yml`, primo workflow del
+repository (nessuno esisteva prima). Su ogni push e pull request: checkout,
+setup pnpm/Node 20 con cache, `pnpm install --frozen-lockfile`, poi
+`pnpm turbo run typecheck`/`build`/`test`. `DATABASE_URL` fittizia
+nell'ambiente CI (solo perché `prisma generate` richiede la variabile
+risolvibile, non una connessione reale — nessun Postgres effettivo in CI
+per ora, i test non toccano il database, vedi punto 3).
+
+**2) `prisma db push --accept-data-loss` → `prisma migrate deploy`** — lo
+script `start` di `apps/api` eseguiva schema-sync distruttivo a ogni avvio
+in produzione (deciso pragmaticamente all'epoca del primo deploy Railway,
+CLAUDE.md §2, per non richiedere un comando manuale in un'interfaccia che
+l'utente trovava difficile da navigare): con dati reali di utenti paganti,
+un `db push` che droppa/rinomina una colonna per un cambio di schema mal
+scritto è perdita dati silenziosa, mai un errore visibile prima del fatto.
+Sostituito con `prisma migrate deploy` (mai distruttivo in automatico:
+applica solo migrazioni già scritte e riviste). Migrazione baseline
+generata in modo non interattivo (`prisma migrate dev` fallisce in CI/
+ambienti non interattivi: "environment is non-interactive, non
+supported") con `prisma migrate diff --from-empty --to-schema-datamodel
+prisma/schema.prisma --script` — verificata **schema-identica** sia a un
+database vuoto sia al database locale di sviluppo esistente (`prisma
+migrate diff --from-url <db> --to-schema-datamodel` → "No difference
+detected" in entrambi i casi), prima di toccare lo script `start` reale.
+**Passo manuale una tantum ancora da fare sul Postgres di produzione
+Render** (ha già le tabelle ma nessuno storico di migrazioni tracciato,
+altrimenti `migrate deploy` fallisce al prossimo deploy): `DATABASE_URL=
+"<connection string esterna Render>" npx prisma migrate resolve --applied
+20260921212750_baseline` — riportato in CLAUDE.md §10 checklist punto 19,
+da ripetere se il Postgres free scade e se ne ricrea uno nuovo (punto 20,
+non risolto: richiede un piano a pagamento, decisione di budget non presa
+autonomamente, solo segnalata).
+
+**3) Prima infrastruttura di test reale (Vitest)** — nessun test esisteva
+prima in tutto il monorepo. Non una suite completa in un colpo solo:
+infrastruttura vera (`apps/api/vitest.config.ts`, script `test`) con i
+primi test sui tre flussi a più alto rischio economico/legale nominati
+esplicitamente dall'utente:
+- `platform-fee-rules.service.test.ts` (9 test) — calcolo della commissione
+  di piattaforma (`PlatformFeeRulesService.computeFee`): percentuale +
+  fisso, arrotondamento, clamping min/max, mai negativa, mai oltre
+  l'importo lordo.
+- `bookings.service.test.ts` (6 test) — creazione della `Booking` da
+  preventivo accettato (`BookingsService.createFromQuote`): rifiuta
+  preventivo inesistente, non proprio, già accettato (Booking duplicata),
+  o con stato `REJECTED`/`WITHDRAWN`; verifica che il caso valido crei la
+  Booking `CONFIRMED` e chiuda la richiesta guidata.
+- `professionals.service.test.ts` (2 test) — il gate di visibilità
+  contatti cliente (CLAUDE.md §5.9, principio invertito tre volte in
+  passato prima di essere fissato per iscritto): `getMyLeads` non deve mai
+  esporre telefono/email/indirizzo del cliente prima di un preventivo
+  accettato, nemmeno quando Prisma restituisce il record cliente completo
+  (`include: { client: true }` — l'unica barriera reale è la mappatura
+  verso il DTO di risposta, quindi una regressione qui sarebbe altrimenti
+  silenziosa). Verificato instanziando il service con un Prisma mockato
+  (nessun database reale necessario per questi test, tutti unit test puri).
+Totale: 17/17 test verdi, tutti passati anche dentro la nuova pipeline CI.
+
+**4) Audit di sicurezza (checklist OWASP esterna fornita dall'utente,
+verificata contro il codice reale, non per impressione)** — punto per
+punto:
+- **CORS**: `app.enableCors()` senza argomenti in `apps/api/src/main.ts`
+  accettava qualunque origine — con JWT letto lato browser, un sito terzo
+  poteva interrogare l'API autenticata. **Unico problema reale trovato**:
+  ristretto a `origin: FRONTEND_URL, credentials: true` (fix da 10 minuti).
+- **Rate limiting**: già presente e già stratificato correttamente —
+  limite globale 60/min (`ThrottlerModule`) più limiti più stretti su
+  registrazione (5/min), login e Google verify (10/min), waitlist (5/min),
+  richieste guidate (10/min): i bersagli classici di credential
+  stuffing/scraping erano già coperti.
+- **Password hashing**: bcryptjs con un numero di round dedicato
+  (`BCRYPT_SALT_ROUNDS`), mai testo in chiaro, mai un algoritmo debole.
+- **Input validation**: Zod (`ZodValidationPipe`) applicato per-endpoint su
+  ogni body sensibile (registrazione, login, Google verify, cambio
+  password, ecc.), non un `ValidationPipe` globale ma comunque applicato
+  in modo consistente ovunque verificato.
+- **SQL injection**: nessuna query raw in tutto `apps/api` (`$queryRawUnsafe`/
+  `$executeRawUnsafe` assenti, zero risultati) — Prisma parametrizza sempre,
+  rischio strutturalmente basso.
+- **IDOR/BOLA**: pattern di controllo proprietà pervasivo e consistente
+  (verificato a campione su `BookingsService`, `ProfessionalsService`,
+  `QuotesService`): ogni lettura/scrittura confronta l'id della risorsa con
+  l'utente autenticato prima di procedere (es. `booking.clientId !==
+  clientId` → `ForbiddenException`), mai un endpoint che si fida solo
+  dell'id passato dal client.
+- **Upload file**: limite di dimensione (`limits: { fileSize }`) e
+  `fileFilter` sul mimetype (immagine/video/documento consentito
+  esplicitamente) presenti su **tutti** i 7 endpoint di upload verificati
+  (profilo cliente/professionista, richieste guidate, recensioni,
+  prenotazioni) — nessun endpoint scoperto trovato.
+- **Secrets**: nessuna chiave hardcodata trovata, pattern env-var-only già
+  applicato ovunque (Stripe/Cloudinary/Google/Resend/JWT/Admin bootstrap),
+  coerente con CLAUDE.md §5.7.
+- **XSS**: un solo `dangerouslySetInnerHTML` in tutto `apps/web`
+  (JSON-LD strutturato dati nel profilo professionista pubblico,
+  `apps/web/src/app/professionista/[id]/page.tsx`) — React esegue escaping
+  automatico ovunque altrove, nessun rendering di HTML non fidato da input
+  utente trovato.
+- **Logging**: nessun log di password/token trovato (`console.log`/logger
+  con `password`/`token` in chiaro, zero risultati).
+- **HTTPS**: applicato dall'hosting (Render + Vercel forzano TLS), nessuna
+  azione applicativa necessaria.
+- **CSRF**: rischio strutturalmente basso — autenticazione via header
+  `Authorization: Bearer`, non cookie di sessione, quindi nessuna richiesta
+  cross-site può "prendere in prestito" automaticamente una sessione come
+  con i cookie.
+**Verdetto**: CORS era l'unico problema reale della lista (corretto). Il
+resto della checklist era già coperto dalle scelte fatte in questo
+progetto fin dall'inizio — nessuna azione aggiuntiva necessaria per ora.
+Non introdotta una libreria di security header (es. `helmet`, mai valutata
+in dettaglio qui): possibile miglioramento a basso rischio, ma fuori
+dall'elenco tattico esplicitamente richiesto — da proporre separatamente,
+non aggiunta di iniziativa.
+
+**5) Promemoria email anti no-show (Resend)** — vedi CLAUDE.md §9 per il
+dettaglio implementativo (`EmailService`/`BookingRemindersService`).
+
+Verifica: `pnpm turbo run typecheck` pulito su tutto il monorepo (9/9
+task), `pnpm --filter @professionisti/api test` 17/17 verdi, migrazione
+baseline verificata schema-identica al DB locale (`prisma migrate diff` →
+"No difference detected"), `git status` pulito dopo il commit.

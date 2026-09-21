@@ -1,0 +1,49 @@
+name: CI
+
+# Pipeline minima (CEO — audit tecnico: "zero CI/CD" era un blocco reale
+# prima di avere utenti paganti, nulla impediva un push rotto in
+# produzione). Blocca un push/PR che non compila o non passa il typecheck
+# — non sostituisce una suite di test reale (vedi packages/*/vitest.config.ts,
+# ancora minima), ma è la prima rete di sicurezza automatica del progetto.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  typecheck-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        # DATABASE_URL fittizia: "prisma generate" (eseguito dallo step
+        # "build" dei package a monte, dipendenza di typecheck in
+        # turbo.json) legge lo schema per generare il client TS — non
+        # apre mai una connessione reale, ma l'URL deve comunque essere
+        # una stringa presente e sintatticamente valida.
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run typecheck
+
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run build
+
+      - name: Test
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run test
