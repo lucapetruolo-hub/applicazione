@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
@@ -53,7 +54,12 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
     return (
       <>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <ProfessionalDetailContent professional={professional} />
+        {/* Suspense richiesto da useSearchParams (App Router) in
+            ProfessionalDetailContent — legge `?modalita=` per preselezionare
+            il tab dell'agenda quando si arriva da una ricerca "Online". */}
+        <Suspense fallback={null}>
+          <ProfessionalDetailContent professional={professional} />
+        </Suspense>
       </>
     );
   } catch {

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -77,8 +78,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // Tab "A domicilio"/"Online" (richiesta esplicita dell'utente, stesso
   // pattern della mini-agenda di ricerca): filtrano gli orari mostrati sotto
   // in base alla modalità offerta su ogni fascia (slot.home/slot.online,
-  // null quando quel tipo non è offerto).
-  const [agendaMode, setAgendaMode] = useState<"HOME" | "ONLINE">("HOME");
+  // null quando quel tipo non è offerto). Preselezionato da "Online" quando
+  // si arriva da una ricerca già impostata su quella modalità (`?modalita=
+  // ONLINE`, aggiunto da ResultsListWithMap al click sulla card — richiesta
+  // esplicita dell'utente: "una volta che si clicca sul profilo, fai
+  // visualizzare l'agenda già nella sezione online"), altrimenti "A
+  // domicilio" come sempre. Resta comunque modificabile con i due tab.
+  const searchParams = useSearchParams();
+  const initialAgendaMode: "HOME" | "ONLINE" = searchParams.get("modalita") === "ONLINE" ? "ONLINE" : "HOME";
+  const [agendaMode, setAgendaMode] = useState<"HOME" | "ONLINE">(initialAgendaMode);
 
   const agendaPreview = useMemo(() => {
     if (!agenda) return null;
@@ -394,6 +402,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
                 (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
             <div id="agenda" style={{ scrollMarginTop: 96 }} />
+            {/* Sezione avvolta in una Surface propria (richiesta esplicita
+                dell'utente: "separa meglio la sezione agenda... per farla
+                visualizzare meglio rispetto al resto del contesto") — prima
+                era un semplice YStack direttamente sullo sfondo pesca della
+                pagina, indistinguibile da "Lavori svolti"/eyebrow di
+                "Recensioni" sopra e sotto. Stesso trattamento già in uso per
+                la "Scheda identità" in cima alla pagina: sfondo bianco
+                (brand.calce) + angoli morbidi, nessuna ombra (CLAUDE.md §19). */}
+            <Surface gap="$3">
             <XStack alignItems="center" gap="$2">
               <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografia} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
@@ -603,6 +620,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 Nessun orario libero in questi giorni.
               </Text>
             )}
+            </Surface>
           </YStack>
         ) : null}
 

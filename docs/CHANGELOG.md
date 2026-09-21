@@ -13510,3 +13510,63 @@ contro ambiente locale reale — confermato con misura diretta
 ora chiaramente visibile; screenshot prima/dopo la finestra di 1s a
 conferma del movimento; foto profilo verificata a 140px su entrambi i
 breakpoint.
+
+## 118. Agenda del profilo pubblico più separata, default "Online" da ricerca, slot-click porta al preventivo precompilato
+
+Richiesta esplicita dell'utente, in tre parti:
+
+1. **Sezione Agenda visivamente separata dal resto del profilo pubblico.**
+   Prima era un semplice `YStack` direttamente sullo sfondo pesca della
+   pagina, indistinguibile da "Lavori svolti" sopra o dall'eyebrow di
+   "Recensioni" sotto — nessun bordo, nessuna card. Avvolta ora in una
+   `Surface` propria (`ProfessionalDetailContent.tsx`), stesso trattamento
+   già usato per la "Scheda identità" in cima alla pagina (sfondo bianco,
+   angoli morbidi, nessuna ombra — CLAUDE.md §19). L'ancora `#agenda`
+   (usata dai link dalla ricerca) resta fuori dalla card per non
+   posizionare lo scroll dentro il suo padding.
+2. **Ricerca in modalità "Online" → profilo aperto già sul tab "Online"
+   dell'agenda.** Prima il click su una card di ricerca portava sempre al
+   profilo con l'agenda sul default "A domicilio", a prescindere dal tab
+   attivo in ricerca. `ResultsListWithMap.tsx` ora aggiunge `?modalita=
+   ONLINE` all'URL del profilo quando `defaultMode === "ONLINE"`;
+   `ProfessionalDetailContent.tsx` legge lo stesso parametro (via
+   `useSearchParams`, richiede un `<Suspense>` in `page.tsx` — stesso
+   pattern già in uso per `GuidedRequestForm`/`PreventivoContent`) per
+   preselezionare `agendaMode`, invece di partire sempre da "A domicilio".
+3. **Click su un orario della mini-agenda in ricerca → preventivo già
+   precompilato con quella data/ora, non solo un'ancora verso il
+   profilo.** Prima `onSlotPress` in `ResultsListWithMap.tsx` ignorava gli
+   argomenti (data/ora) passati da `ProfessionalCard` e navigava sempre a
+   `/professionista/:id#agenda` — l'utente doveva poi ricliccare lo stesso
+   orario una seconda volta sulla pagina profilo. `ProfessionalCard`
+   (packages/ui) ora passa anche `endTime` e la modalità attiva del tab
+   (`onSlotPress?: (date, time, endTime, mode) => void`); `ResultsListWithMap`
+   costruisce lo stesso URL già usato dall'agenda del profilo pubblico
+   (`/preventivo?categoria=...&professionista=...&data=...&fasciaOraria=
+   HH:MM-HH:MM&modalita=...`), portando direttamente alla richiesta di
+   preventivo con tutto già impostato.
+   **Bug reale corretto nello stesso giro** (segnalato esplicitamente
+   dall'utente): il bottone "Mostra orari disponibili →" (mostrato quando
+   la finestra dei 4 giorni visibili non ha nulla di libero, solo un
+   "prossimo giorno disponibile" più avanti) chiamava anch'esso
+   `onSlotPress` — cioè navigava via subito, senza mai "mostrare" nulla,
+   contraddicendo la propria etichetta. Ora fa esattamente quello che
+   dice: porta avanti la finestra locale della mini-agenda
+   (`setWindowOffset`) fino al giorno del prossimo orario libero — stesso
+   comportamento già corretto, e verificato, sull'agenda della pagina
+   profilo pubblica (`ProfessionalDetailContent.tsx`, mai avuto questo bug
+   lì). La fascia diventa così una cella normale della griglia, cliccabile
+   come ogni altra per aprire il preventivo precompilato.
+
+Verifica: typecheck pulito su tutto il monorepo (`turbo run typecheck`,
+9/9 task). Verifica visiva end-to-end con Playwright contro ambiente
+locale reale: screenshot della card Agenda isolata visivamente dal resto
+della pagina; navigazione `/cerca/idraulico?citta=Bologna` → click su un
+orario libero → URL e form di `/preventivo` confermati con categoria,
+professionista, data, fascia oraria e modalità tutti precompilati
+correttamente; `?modalita=ONLINE` sul profilo confermato preselezionare il
+tab "Online" dell'agenda pubblica. Il caso "Mostra orari disponibili" con
+finestra iniziale vuota non riprodotto con dati locali (nessun
+professionista di test aveva quella combinazione esatta di disponibilità)
+— verificato per lettura, stesso identico pattern già provato e funzionante
+nell'agenda del profilo pubblico.

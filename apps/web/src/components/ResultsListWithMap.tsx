@@ -558,8 +558,31 @@ export function ResultsListWithMap({
               nextAvailableSlotHome={pro.nextAvailableSlotHome}
               nextAvailableSlotOnline={pro.nextAvailableSlotOnline}
               defaultMode={defaultMode}
-              onPress={() => navigateWithTransition(() => router.push(`/professionista/${pro.id}`))}
-              onSlotPress={() => navigateWithTransition(() => router.push(`/professionista/${pro.id}#agenda`))}
+              // Se la ricerca è in modalità "Online", il profilo si apre già
+              // con l'agenda su quel tab (richiesta esplicita dell'utente) —
+              // letto da ProfessionalDetailContent via `?modalita=`, stesso
+              // parametro già usato per precompilare /preventivo.
+              onPress={() =>
+                navigateWithTransition(() =>
+                  router.push(`/professionista/${pro.id}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
+                )
+              }
+              // Click su un orario libero della mini-agenda (o sul bottone
+              // "Mostra orari disponibili", che qui atterra sempre su una
+              // fascia reale — vedi ProfessionalCard: quel bottone ora avanza
+              // solo la finestra locale della card, il click successivo sulla
+              // fascia arriva comunque qui) — richiesta esplicita dell'utente:
+              // porta direttamente alla richiesta di preventivo con
+              // data/orario/modalità già precompilati, stesso URL già usato
+              // dall'agenda della pagina profilo pubblica
+              // (ProfessionalDetailContent), non solo un'ancora verso di essa.
+              onSlotPress={(date, time, endTime, mode) =>
+                navigateWithTransition(() =>
+                  router.push(
+                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
+                  ),
+                )
+              }
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
             />
           ))}

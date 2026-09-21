@@ -112,8 +112,15 @@ export type ProfessionalCardProps = {
    */
   defaultMode?: "HOME" | "ONLINE";
   onPress?: () => void;
-  /** Click su una singola cella orario libera (o sul bottone "Mostra orari disponibili"): non deve propagare al click della card intera. Naviga sempre al profilo, non prenota mai direttamente da qui. */
-  onSlotPress?: (date: string, time: string) => void;
+  /**
+   * Click su una singola cella orario libera: non deve propagare al click
+   * della card intera. `endTime`/`mode` inclusi (oltre a data/ora inizio)
+   * perché chi consuma il componente porta l'utente direttamente alla
+   * richiesta di preventivo precompilata con quella fascia esatta e la
+   * modalità (A domicilio/Online) attiva sul tab di questa card — mai una
+   * prenotazione diretta da qui.
+   */
+  onSlotPress?: (date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
 };
@@ -453,7 +460,7 @@ export function ProfessionalCard({
                             onSlotPress
                               ? (e: unknown) => {
                                   (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                                  onSlotPress(day.date, slot.time);
+                                  onSlotPress(day.date, slot.time, slot.endTime, activeMode);
                                 }
                               : undefined
                           }
@@ -485,17 +492,24 @@ export function ProfessionalCard({
                   paddingVertical={6}
                   borderRadius="$10"
                   backgroundColor={brand.cianografia}
-                  cursor={onSlotPress ? "pointer" : undefined}
-                  accessibilityRole={onSlotPress ? "button" : undefined}
-                  accessibilityLabel={onSlotPress ? "Mostra orari disponibili" : undefined}
-                  onPress={
-                    onSlotPress
-                      ? (e: unknown) => {
-                          (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                          onSlotPress(nextAvailableSlot.date, nextAvailableSlot.time);
-                        }
-                      : undefined
-                  }
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  accessibilityLabel="Mostra orari disponibili"
+                  // Fa quello che dice (richiesta esplicita dell'utente,
+                  // segnalata come bug: prima chiamava onSlotPress con la
+                  // fascia del prossimo giorno libero, navigando via subito
+                  // invece di "mostrare" qualcosa) — porta avanti la finestra
+                  // locale della mini-agenda fino al giorno del prossimo
+                  // orario libero, stesso identico comportamento già in uso
+                  // nell'agenda della pagina profilo pubblica
+                  // (ProfessionalDetailContent.tsx). La fascia diventa così
+                  // una cella normale della griglia, cliccabile come ogni
+                  // altra per aprire la richiesta di preventivo precompilata.
+                  onPress={(e: unknown) => {
+                    (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+                    const targetIndex = (availabilityPreview ?? []).findIndex((d) => d.date === nextAvailableSlot.date);
+                    if (targetIndex >= 0) setWindowOffset(targetIndex);
+                  }}
                 >
                   <Text fontFamily="$body" fontSize={12} fontWeight="700" color="#FFFFFF">
                     Mostra orari disponibili →
