@@ -13622,12 +13622,15 @@ backend) — e due delle quattro risposte di `WhatIfSection.tsx`
 esiste in nessuna forma, nemmeno come bozza (le altre due risposte dello
 stesso componente — preventivo strutturato vincolante, cambio
 professionista libero prima della conferma — sono state verificate
-accurate e non richiedono correzione). Stessa scelta già fatta per
-`PlatformGuarantee.tsx` (Critica #1, sopra) resta disponibile qui:
-riformulare il testo per essere onesto (rimuovere/condizionare il claim
-"verificato", correggere le due risposte non vere) oppure costruire
-davvero la verifica prima di pubblicarlo. **Non eseguita in questo giro**,
-in attesa del Sì/No esplicito dell'utente.
+accurate e non richiedono correzione). **Decisione esplicita dell'utente**:
+non riformulare il testo ora (a differenza di `PlatformGuarantee.tsx`,
+Critica #1, sopra) — attendere di costruire davvero la verifica KYC/
+documenti prima di correggere/rimuovere il claim, invece di limitarsi ad
+ammorbidire il testo nel frattempo. Fino a quel momento il sito espone
+consapevolmente un claim non veritiero ("Profili verificati") e due
+risposte non veritiere in `WhatIfSection.tsx` — **segnalato esplicitamente
+come voce da chiudere prima del lancio** (vedi elenco sotto), non
+un'azione rimandata senza traccia.
 
 **Tattiche in corso senza obiezione dell'utente** (Business Model & Pricing
 Lead, Growth & Acquisition Lead — nessuna azione bloccante, riportate qui
@@ -13655,10 +13658,13 @@ elettricista, pulizie (stesso principio "concentrare la liquidità" di §7).
    conformità del tracciato XML DPI23 ufficiale, resta **puro lavoro
    tecnico** (non richiede parere di un commercialista) — già segnalato
    come da fare in CLAUDE.md §88.
-2. **Decisione Critica #2** (sopra): correggere "Profili verificati"/
-   `WhatIfSection.tsx` con lo stesso trattamento di `PlatformGuarantee.tsx`
-   oppure costruire davvero la verifica KYC/documenti — in attesa del
-   Sì/No dell'utente.
+2. **"Profili verificati"/`WhatIfSection.tsx`** (Critica #2, sopra) —
+   decisione presa: costruire davvero la verifica KYC/documenti prima del
+   lancio (mai una semplice riformulazione del testo, scelta esplicita
+   dell'utente); se la verifica reale non fosse pronta in tempo, il claim
+   e le due risposte non veritiere andranno comunque corretti/rimossi
+   prima di andare in produzione — non deve mai restare un'affermazione
+   falsa pubblicata dal vivo.
 3. Segnaposto legali `[DA COMPILARE]` ancora pubblicati in produzione
    (`/privacy`, footer con dati del prestatore D.Lgs. 70/2003) — stesso
    punto già in coda in CLAUDE.md §48/§9, confermato ancora aperto da
