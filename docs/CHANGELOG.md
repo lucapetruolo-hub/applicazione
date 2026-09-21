@@ -13570,3 +13570,22 @@ finestra iniziale vuota non riprodotto con dati locali (nessun
 professionista di test aveva quella combinazione esatta di disponibilità)
 — verificato per lettura, stesso identico pattern già provato e funzionante
 nell'agenda del profilo pubblico.
+
+## 119. Frecce dell'agenda pubblica raggruppate visivamente con i giorni
+
+Richiesta esplicita dell'utente, aggiunta allo stesso giro di §118: le due
+frecce avanti/indietro dell'agenda del profilo pubblico erano alla stessa
+distanza reciproca (`gap="$3"`, lo stesso di ogni altro blocco della
+sezione) sia dai tab "A domicilio"/"Online" sopra sia dalle intestazioni
+giorno sotto — nessun segnale visivo che le frecce si riferiscano proprio
+ai giorni, non ai tab. Raggruppate ora in un `YStack gap="$1"` insieme alle
+intestazioni giorno (molto più vicine tra loro di quanto lo siano dal
+resto della sezione), restando comunque due righe `XStack` separate — non
+un'unica riga combinata: quella era già stata provata e scartata in un
+giro precedente (causava `flexWrap` che spingeva le frecce sotto la griglia
+su schermi stretti, vedi commento nel file), il fix qui riguarda solo la
+distanza verticale tra i due blocchi, non la loro struttura.
+
+Verifica: typecheck pulito; verifica visiva Playwright desktop (1280px) e
+mobile (390px) — frecce visibilmente ravvicinate alle intestazioni giorno
+in entrambi i casi, nessun wrap/overflow su mobile.

@@ -447,63 +447,75 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               ))}
             </XStack>
 
-            {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
-              // Frecce su una riga propria, sopra le intestazioni giorno e
-              // allineate a destra (richiesta esplicita dell'utente: prima
-              // condividevano la riga con le intestazioni ed erano soggette
-              // allo stesso `flexWrap` di quel blocco, finendo sotto o
-              // troppo vicine al bordo su schermi stretti). Un blocco fisso
-              // di soli ~88px allineato a destra non compete mai per lo
-              // spazio con le 4 colonne della griglia sottostante, quindi
-              // non sfora mai il bordo del telefono. Stessa resa già in uso
-              // per le frecce del carosello categorie (CategoryCarousel.tsx:
-              // 40×40, cerchio pieno brand.calce, nessun bordo/ombra).
-              <XStack justifyContent="flex-end" gap="$2" alignItems="center">
-                <XStack
-                  width={40}
-                  height={40}
-                  borderRadius={20}
-                  backgroundColor={brand.calce}
-                  alignItems="center"
-                  justifyContent="center"
-                  opacity={agendaCanGoBack ? 1 : 0.3}
-                  cursor={agendaCanGoBack ? "pointer" : undefined}
-                  accessibilityRole={agendaCanGoBack ? "button" : undefined}
-                  accessibilityLabel="Giorni precedenti"
-                  onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
-                >
-                  <Icon name="chevron-left" size={20} color={brand.grafite} />
+            {/* Frecce raggruppate a ridosso delle intestazioni giorno
+                (`gap="$1"`, molto meno del `gap="$3"` che separa gli altri
+                blocchi della sezione) — richiesta esplicita dell'utente:
+                prima le frecce e le intestazioni erano alla stessa
+                distanza reciproca di ogni altro blocco della sezione (tab
+                A domicilio/Online, griglia orari), senza alcun segnale
+                visivo che le due frecce si riferiscano proprio ai giorni
+                subito sotto e non, ad esempio, ai tab sopra. Restano due
+                righe separate (non un'unica riga con le intestazioni) per
+                lo stesso motivo di prima — vedi bug qui sotto. */}
+            <YStack gap="$1">
+              {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
+                // Frecce su una riga propria, allineate a destra (richiesta
+                // esplicita dell'utente: prima condividevano la riga con le
+                // intestazioni ed erano soggette allo stesso `flexWrap` di
+                // quel blocco, finendo sotto o troppo vicine al bordo su
+                // schermi stretti). Un blocco fisso di soli ~88px allineato
+                // a destra non compete mai per lo spazio con le 4 colonne
+                // della griglia sottostante, quindi non sfora mai il bordo
+                // del telefono. Stessa resa già in uso per le frecce del
+                // carosello categorie (CategoryCarousel.tsx: 40×40, cerchio
+                // pieno brand.calce, nessun bordo/ombra).
+                <XStack justifyContent="flex-end" gap="$2" alignItems="center">
+                  <XStack
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    backgroundColor={brand.calce}
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={agendaCanGoBack ? 1 : 0.3}
+                    cursor={agendaCanGoBack ? "pointer" : undefined}
+                    accessibilityRole={agendaCanGoBack ? "button" : undefined}
+                    accessibilityLabel="Giorni precedenti"
+                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
+                  >
+                    <Icon name="chevron-left" size={20} color={brand.grafite} />
+                  </XStack>
+                  <XStack
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    backgroundColor={brand.calce}
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={agendaCanGoForward ? 1 : 0.3}
+                    cursor={agendaCanGoForward ? "pointer" : undefined}
+                    accessibilityRole={agendaCanGoForward ? "button" : undefined}
+                    accessibilityLabel="Giorni successivi"
+                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
+                  >
+                    <Icon name="chevron-right" size={20} color={brand.grafite} />
+                  </XStack>
                 </XStack>
-                <XStack
-                  width={40}
-                  height={40}
-                  borderRadius={20}
-                  backgroundColor={brand.calce}
-                  alignItems="center"
-                  justifyContent="center"
-                  opacity={agendaCanGoForward ? 1 : 0.3}
-                  cursor={agendaCanGoForward ? "pointer" : undefined}
-                  accessibilityRole={agendaCanGoForward ? "button" : undefined}
-                  accessibilityLabel="Giorni successivi"
-                  onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
-                >
-                  <Icon name="chevron-right" size={20} color={brand.grafite} />
-                </XStack>
-              </XStack>
-            ) : null}
+              ) : null}
 
-            <XStack>
-              {agendaWindowDays.map((day) => (
-                <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
-                  <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
-                    {day.label}
-                  </Text>
-                  <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
-                    {day.dateLabel}
-                  </Text>
-                </YStack>
-              ))}
-            </XStack>
+              <XStack>
+                {agendaWindowDays.map((day) => (
+                  <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
+                    <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                      {day.label}
+                    </Text>
+                    <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
+                      {day.dateLabel}
+                    </Text>
+                  </YStack>
+                ))}
+              </XStack>
+            </YStack>
 
             {agendaHasAvailableInWindow ? (
               <YStack gap="$1.5">
