@@ -24,6 +24,12 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },
   BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha riaperto una prenotazione annullata." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
+  // DSA artt. 16/17 ("Verbale di Conformità", Parte 1 punto 4): esito di una
+  // segnalazione contenuti comunicato a chi l'ha presentata, e "statement of
+  // reasons" a chi ha scritto un contenuto la cui segnalazione è stata
+  // accolta — entrambi generati da AdminService.resolveContentReport.
+  CONTENT_REPORT_DECISION: { icon: "🚩", message: "La tua segnalazione è stata esaminata da un amministratore." },
+  CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Un tuo contenuto è stato segnalato e la segnalazione è stata accolta." },
 };
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };

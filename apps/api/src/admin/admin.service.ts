@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PrismaClient } from "@professionisti/database";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import type { ContentReportTargetType, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
 
 export type AdminUserRow = {
   email: string | null;
@@ -12,7 +13,10 @@ export type AdminUserRow = {
 
 @Injectable()
 export class AdminService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async listUsersByRole(): Promise<{ clients: AdminUserRow[]; professionals: AdminUserRow[]; admins: AdminUserRow[] }> {
     // Tutti i ruoli, ADMIN incluso: prima venivano lette solo CLIENT/PROFESSIONAL,
@@ -131,18 +135,85 @@ export class AdminService {
       status: report.status,
       createdAt: report.createdAt.toISOString(),
       resolvedAt: report.resolvedAt?.toISOString() ?? null,
+      resolutionNote: report.resolutionNote,
       reporterEmail: report.reporter.email,
       reporterName: [report.reporter.name, report.reporter.surname].filter(Boolean).join(" ") || null,
     }));
   }
 
-  async resolveContentReport(id: string, status: "RESOLVED" | "DISMISSED") {
+  /**
+   * Risolve una segnalazione — richiede esplicita dell'utente
+   * ("Parte 1, punto 4" del Verbale di Conformità, DSA artt. 16/17): prima
+   * era solo un cambio di stato interno, senza alcuna comunicazione a chi
+   * aveva subito o presentato la segnalazione. Ora:
+   * 1. Il segnalante viene sempre notificato dell'esito (Art. 16(5)/(6),
+   *    "informare il notificante della decisione").
+   * 2. Se la segnalazione viene accolta (`RESOLVED`), l'autore del
+   *    contenuto segnalato riceve uno "statement of reasons" (Art. 17) con
+   *    il motivo scritto dall'admin — mai per `DISMISSED`, dove nessuna
+   *    limitazione è avvenuta e quindi l'obbligo non scatta.
+   */
+  async resolveContentReport(id: string, status: "RESOLVED" | "DISMISSED", resolutionNote?: string) {
     const report = await this.prisma.contentReport.findUnique({ where: { id } });
     if (!report) {
       throw new NotFoundException("Segnalazione non trovata.");
     }
-    const updated = await this.prisma.contentReport.update({ where: { id }, data: { status, resolvedAt: new Date() } });
-    return { id: updated.id, status: updated.status };
+    const note = resolutionNote?.trim() || null;
+    if (status === "RESOLVED" && !note) {
+      // Stessa regola già applicata da `resolveContentReportSchema` lato
+      // Zod — riverificata qui perché questo metodo non deve mai fidarsi
+      // solo della validazione a monte per un vincolo che alimenta un
+      // obbligo di trasparenza reale.
+      throw new BadRequestException("Indica il motivo della decisione prima di risolvere la segnalazione.");
+    }
+
+    const updated = await this.prisma.contentReport.update({
+      where: { id },
+      data: { status, resolvedAt: new Date(), resolutionNote: note },
+    });
+
+    await this.notificationsService.notify(report.reporterId, "CONTENT_REPORT_DECISION", {
+      contentReportId: report.id,
+      targetType: report.targetType,
+      status,
+      note,
+    });
+
+    if (status === "RESOLVED") {
+      const ownerUserId = await this.resolveContentOwnerUserId(report.targetType, report.targetId);
+      if (ownerUserId) {
+        await this.notificationsService.notify(ownerUserId, "CONTENT_REPORT_UPHELD", {
+          contentReportId: report.id,
+          targetType: report.targetType,
+          note,
+        });
+      }
+    }
+
+    return { id: updated.id, status: updated.status, resolutionNote: updated.resolutionNote };
+  }
+
+  /**
+   * Chi ha scritto/possiede il contenuto segnalato — il destinatario dello
+   * "statement of reasons" quando una segnalazione viene accolta. Stessa
+   * distinzione per `targetType` già usata in `listContentReports` per
+   * risolvere `targetLabel`: per una `CLIENT_REVIEW` l'autore è il
+   * professionista (che l'ha scritta sul cliente), non il cliente stesso.
+   */
+  private async resolveContentOwnerUserId(targetType: ContentReportTargetType, targetId: string): Promise<string | null> {
+    if (targetType === "PROFESSIONAL_PROFILE") {
+      const profile = await this.prisma.professionalProfile.findUnique({ where: { id: targetId }, select: { userId: true } });
+      return profile?.userId ?? null;
+    }
+    if (targetType === "REVIEW") {
+      const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
+      return review?.booking.clientId ?? null;
+    }
+    const clientReview = await this.prisma.clientReview.findUnique({
+      where: { id: targetId },
+      select: { booking: { select: { professionalProfile: { select: { userId: true } } } } },
+    });
+    return clientReview?.booking.professionalProfile.userId ?? null;
   }
 
   /**

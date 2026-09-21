@@ -706,9 +706,24 @@ export const createContentReportSchema = z.object({
 });
 export type CreateContentReportInput = z.infer<typeof createContentReportSchema>;
 
-export const resolveContentReportSchema = z.object({
-  status: z.enum(["RESOLVED", "DISMISSED"]),
-});
+export const resolveContentReportSchema = z
+  .object({
+    status: z.enum(["RESOLVED", "DISMISSED"]),
+    // Motivazione scritta della decisione (DSA art. 16/17, "statement of
+    // reasons"): obbligatoria solo per RESOLVED — è il testo che verrà
+    // comunicato a chi ha scritto il contenuto segnalato; per DISMISSED
+    // (nessuna azione presa) resta facoltativa.
+    resolutionNote: z.string().trim().max(2000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "RESOLVED" && !data.resolutionNote) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["resolutionNote"],
+        message: "Indica il motivo della decisione prima di risolvere la segnalazione.",
+      });
+    }
+  });
 export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;
 
 // ---------------------------------------------------------------------------

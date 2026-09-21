@@ -28,7 +28,7 @@ export class AdminController {
 
   @Patch("reports/:id")
   resolveContentReport(@Param("id") id: string, @Body(new ZodValidationPipe(resolveContentReportSchema)) body: ResolveContentReportInput) {
-    return this.adminService.resolveContentReport(id, body.status);
+    return this.adminService.resolveContentReport(id, body.status, body.resolutionNote);
   }
 
   /** Messaggi dal form "Contatti" del footer (richiesta esplicita dell'utente). */

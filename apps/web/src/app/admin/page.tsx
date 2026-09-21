@@ -465,12 +465,19 @@ function ReportRow({
   onResolved: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Risolvere una segnalazione richiede un motivo scritto (DSA artt. 16/17,
+  // "statement of reasons" — comunicato a chi ha scritto il contenuto
+  // segnalato): "Risolvi" apre prima questa modalità inline invece di agire
+  // subito, "Ignora" resta un click diretto (nessun obbligo di motivazione
+  // per una segnalazione respinta, non è mai avvenuta alcuna limitazione).
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState("");
   const targetHref = reportTargetHref(report);
 
-  async function resolve(status: "RESOLVED" | "DISMISSED") {
+  async function resolve(status: "RESOLVED" | "DISMISSED", note?: string) {
     setIsSubmitting(true);
     try {
-      await apiClient.adminResolveContentReport(token, report.id, status);
+      await apiClient.adminResolveContentReport(token, report.id, status, note);
       onResolved();
     } finally {
       setIsSubmitting(false);
@@ -498,28 +505,63 @@ function ReportRow({
             {new Date(report.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
           </Text>
         </YStack>
-        <YStack flexDirection="row" gap="$2" flexWrap="wrap">
-          {targetHref ? (
-            <Link href={targetHref} target="_blank" style={{ textDecoration: "none" }}>
-              <ReportActionButton label="Vai alla segnalazione" backgroundColor={brand.cianografia} color="white" />
-            </Link>
-          ) : null}
-          <ReportActionButton
-            label="Risolvi"
-            backgroundColor={brand.verificato}
-            color="white"
-            disabled={isSubmitting}
-            onPress={() => resolve("RESOLVED")}
-          />
-          <ReportActionButton
-            label="Ignora"
-            backgroundColor={brand.filetto}
-            color={brand.grafite}
-            disabled={isSubmitting}
-            onPress={() => resolve("DISMISSED")}
-          />
-        </YStack>
+        {isResolving ? null : (
+          <YStack flexDirection="row" gap="$2" flexWrap="wrap">
+            {targetHref ? (
+              <Link href={targetHref} target="_blank" style={{ textDecoration: "none" }}>
+                <ReportActionButton label="Vai alla segnalazione" backgroundColor={brand.cianografia} color="white" />
+              </Link>
+            ) : null}
+            <ReportActionButton
+              label="Risolvi"
+              backgroundColor={brand.verificato}
+              color="white"
+              disabled={isSubmitting}
+              onPress={() => setIsResolving(true)}
+            />
+            <ReportActionButton
+              label="Ignora"
+              backgroundColor={brand.filetto}
+              color={brand.grafite}
+              disabled={isSubmitting}
+              onPress={() => resolve("DISMISSED")}
+            />
+          </YStack>
+        )}
       </YStack>
+      {isResolving ? (
+        <YStack gap="$2" borderWidth={1} borderColor={brand.filetto} borderRadius={12} padding="$3" backgroundColor={brand.calce}>
+          <Text fontSize="$2" fontWeight="600">
+            Motivo della decisione (comunicato a chi ha scritto il contenuto) *
+          </Text>
+          <textarea
+            value={resolutionNote}
+            onChange={(e) => setResolutionNote(e.target.value)}
+            rows={2}
+            placeholder="Es. il contenuto viola le linee guida perché..."
+            style={{ fontFamily: "inherit", fontSize: 14, padding: 8, borderRadius: 8, border: `1px solid ${brand.filetto}`, resize: "vertical" }}
+          />
+          <YStack flexDirection="row" gap="$2" flexWrap="wrap">
+            <ReportActionButton
+              label="Conferma risoluzione"
+              backgroundColor={brand.verificato}
+              color="white"
+              disabled={isSubmitting || !resolutionNote.trim()}
+              onPress={() => resolve("RESOLVED", resolutionNote)}
+            />
+            <ReportActionButton
+              label="Annulla"
+              backgroundColor={brand.filetto}
+              color={brand.grafite}
+              disabled={isSubmitting}
+              onPress={() => {
+                setIsResolving(false);
+                setResolutionNote("");
+              }}
+            />
+          </YStack>
+        </YStack>
+      ) : null}
     </YStack>
   );
 }
@@ -565,6 +607,11 @@ function ArchivedReportRow({ report, zebra }: { report: AdminContentReport; zebr
               ? ` · Gestita il ${new Date(report.resolvedAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}`
               : ""}
           </Text>
+          {report.resolutionNote ? (
+            <Text fontSize="$2" color={brand.grafite} fontStyle="italic">
+              Motivo: {report.resolutionNote}
+            </Text>
+          ) : null}
         </YStack>
         <YStack flexDirection="row" gap="$2" flexWrap="wrap" alignItems="center">
           {targetHref ? (

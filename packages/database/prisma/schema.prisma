@@ -1155,6 +1155,12 @@ model ContentReport {
   status     ContentReportStatus     @default(OPEN)
   createdAt  DateTime                @default(now())
   resolvedAt DateTime?
+  // Motivazione scritta dalla decisione admin (DSA art. 16/17: "notice and
+  // action" + "statement of reasons") — obbligatoria per RESOLVED (la
+  // motivazione che va comunicata a chi ha subito la segnalazione accolta),
+  // facoltativa per DISMISSED. `null` per le segnalazioni già decise prima
+  // dell'introduzione di questo campo.
+  resolutionNote String?
 
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 

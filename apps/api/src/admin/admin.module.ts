@@ -1,12 +1,19 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { AdminController } from "./admin.controller";
 import { AdminBootstrapController } from "./admin-bootstrap.controller";
 import { AdminService } from "./admin.service";
 import { AdminGuard } from "./admin.guard";
 
 @Module({
-  imports: [AuthModule],
+  // NotificationsModule: AdminService.resolveContentReport notifica ora sia
+  // il segnalante che l'autore del contenuto quando una segnalazione viene
+  // accolta (DSA artt. 16/17, "statement of reasons") — senza questo
+  // import esplicito Nest non risolve la dipendenza NotificationsService
+  // iniettata in AdminService (stesso pattern già in uso per QuotesModule/
+  // GuidedRequestsModule/BookingsModule verso lo stesso servizio).
+  imports: [AuthModule, NotificationsModule],
   controllers: [AdminController, AdminBootstrapController],
   providers: [AdminService, AdminGuard],
   // AdminGuard esportata: i nuovi controller finanza/fiscale/DAC7 (CLAUDE.md

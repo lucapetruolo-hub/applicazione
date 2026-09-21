@@ -13241,3 +13241,87 @@ elettricista, pulizie (stesso principio "concentrare la liquidità" di §7).
    (`/privacy`, footer con dati del prestatore D.Lgs. 70/2003) — stesso
    punto già in coda in CLAUDE.md §48/§9, confermato ancora aperto da
    questo giro di audit.
+
+---
+
+## 114. DSA — statement of reasons sulle segnalazioni contenuti + correzione normativa in /accessibilita
+
+Richiesta esplicita dell'utente: risolvere in autonomia (CEO in modalità
+TATTICA, autorizzato esplicitamente a procedere senza fermarsi a chiedere
+conferma) i punti 4 e 7 della Parte 1 (audit legale) del documento
+condiviso "Professionisti — Audit legale e fiscale pre-lancio (bozza di
+lavoro)" (`https://claude.ai/code/artifact/fa015eca-9284-4172-90a4-af3f3e0bf89e`),
+prodotto dal consiglio di esperti CEO (skill `professionisti-ceo-esperti`).
+Entrambi sono correzioni tecniche pure — nessun giudizio legale/fiscale da
+sottoporre a un professionista, a differenza degli altri punti dello stesso
+audit (5 domande fiscali del CFO, qualificazione del ruolo di Manovia,
+ecc.) rimasti nella checklist "da fare prima del lancio" di CLAUDE.md §10.
+
+**Punto 4 — Digital Services Act (Art. 16/17)**: il canale di segnalazione
+contenuti (`ContentReport`, CLAUDE.md §48) esisteva già e funzionava
+(notice-and-action, Art. 16) ma la decisione di un admin
+(`AdminService.resolveContentReport`) era solo un cambio di stato interno
+— nessuna comunicazione né al segnalante né a chi aveva scritto il
+contenuto, mancava lo "statement of reasons" richiesto dall'Art. 17 per
+ogni limitazione di un contenuto.
+- Nuovo campo Prisma `ContentReport.resolutionNote` (nullable — `null` per
+  le segnalazioni già decise prima di questo campo). `resolveContentReportSchema`
+  (`packages/shared`) richiede ora `resolutionNote` non vuoto quando
+  `status === "RESOLVED"` (`.superRefine`), facoltativo per `DISMISSED`
+  (nessuna limitazione è avvenuta, l'obbligo non scatta) — stesso vincolo
+  riverificato lato server in `AdminService.resolveContentReport` (mai
+  fidarsi solo della validazione a monte per un dato che alimenta un
+  obbligo di trasparenza reale).
+- `AdminService.resolveContentReport` notifica ora sempre il segnalante
+  dell'esito (`CONTENT_REPORT_DECISION`, Art. 16(5)/(6): "informare il
+  notificante della decisione") e, solo quando la segnalazione è accolta
+  (`RESOLVED`), l'autore del contenuto segnalato con il motivo scritto
+  dall'admin (`CONTENT_REPORT_UPHELD`, lo "statement of reasons" vero e
+  proprio). Nuovo `resolveContentOwnerUserId` (privato): risale
+  all'autore reale del contenuto per ciascun `targetType` —
+  `ProfessionalProfile.userId` per un profilo, `booking.clientId` per una
+  `Review` (l'ha scritta il cliente), `booking.professionalProfile.userId`
+  per una `ClientReview` (l'ha scritta il professionista sul cliente, non
+  il cliente stesso). Riuso di `NotificationsService.notify` già
+  esistente (stesso canale in-app, nessuna nuova infrastruttura) —
+  `AdminModule` importa ora esplicitamente `NotificationsModule` (mancava,
+  necessario per iniettare `NotificationsService` in `AdminService`).
+- UI (`/admin`, `ReportRow`): il bottone "Risolvi" apre ora un riquadro
+  inline con una textarea obbligatoria ("Motivo della decisione..."),
+  "Conferma risoluzione" disabilitato finché il testo è vuoto — "Ignora"
+  resta un click diretto, coerente col fatto che lì il motivo è
+  facoltativo. `ArchivedReportRow` mostra il motivo salvato sotto la riga
+  "Gestita il...", quando presente.
+- Due nuove voci in `notificationCopy.ts` (icona+testo per il popup
+  toast/la campanella): `CONTENT_REPORT_DECISION`/`CONTENT_REPORT_UPHELD`
+  — nessuna destinazione cliccabile assegnata (il contenuto segnalato non
+  ha sempre una pagina di destinazione naturale, es. una recensione sul
+  cliente), restano notifiche informative non cliccabili, comportamento
+  già gestito con grazia dal fallback esistente per un tipo non mappato.
+
+**Punto 7 — Accessibilità**: `/accessibilita` citava la Direttiva (UE)
+2016/2102 (accessibilità dei soli siti/app della pubblica amministrazione)
+come riferimento normativo — la norma davvero applicabile a un servizio
+privato B2C come questo è lo European Accessibility Act (Direttiva (UE)
+2019/882, recepita in Italia con il D.Lgs. 82/2022), in vigore dal 28
+giugno 2025, quindi già vincolante e non una scadenza futura. Corretto il
+testo per citare la norma corretta, spiegando anche perché la 2016/2102
+(citata per errore) non è quella pertinente — nessuna nuova verifica di
+conformità EAA eseguita in questo giro (solo la correzione del
+riferimento normativo, richiesta esplicita dell'utente limitata a "punto
+4 e 7"): una verifica puntuale contro i requisiti EAA specifici (oltre ai
+soli WCAG generici già auditati, CLAUDE.md §10 Fase 6) resta un lavoro
+futuro, non promessa qui come già fatta.
+
+**Verificato**: `prisma generate` + typecheck puliti su tutti i package
+toccati (`database`, `shared`, `api-client`, `api`, `web`, `mobile`) —
+**non** verificato end-to-end con Postgres/API reali in questo giro
+(Postgres non in esecuzione in questo ambiente di sviluppo al momento
+della modifica): una modifica additiva e a basso rischio (nuovo campo
+nullable, nuova logica con early-return, nessuna migrazione distruttiva)
+per cui il solo typecheck è stato ritenuto sufficiente — coerente con la
+richiesta esplicita dell'utente, nello stesso giro di lavoro, di ridurre
+le verifiche end-to-end pesanti per i cambi a basso rischio (vedi CLAUDE.md,
+nota sul consumo di crediti). Da verificare con un vero ciclo
+segnalazione→risoluzione→notifica alla prima occasione utile con un
+ambiente locale attivo.

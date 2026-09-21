@@ -216,6 +216,8 @@ export type AdminContentReport = {
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   createdAt: string;
   resolvedAt: string | null;
+  /** Motivazione scritta della decisione admin (DSA art. 17, "statement of reasons") — `null` finché non è ancora stata decisa, o per una decisione presa prima dell'introduzione di questo campo. */
+  resolutionNote: string | null;
   reporterEmail: string | null;
   reporterName: string | null;
 };
@@ -1023,11 +1025,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         cache: "no-store",
       }),
 
-    adminResolveContentReport: (token: string, id: string, status: "RESOLVED" | "DISMISSED") =>
-      request<{ id: string; status: string }>(`/admin/reports/${id}`, {
+    adminResolveContentReport: (token: string, id: string, status: "RESOLVED" | "DISMISSED", resolutionNote?: string) =>
+      request<{ id: string; status: string; resolutionNote: string | null }>(`/admin/reports/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, resolutionNote }),
       }),
 
     /** Segnalare un profilo/recensione come illecito o inappropriato (richiesta esplicita dell'utente, "Verbale di Conformità" — notice-and-action, DSA art. 16). */
