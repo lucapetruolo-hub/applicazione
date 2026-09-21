@@ -95,9 +95,23 @@ const arrowStyle = {
  * JS puro — fermata esplicitamente controllando `matchMedia` una sola volta
  * all'avvio (nessun listener di resize, la preferenza non cambia a
  * runtime).
+ *
+ * Bug reale corretto nello stesso giro ("non vedo ancora che scorre"): con
+ * poche recensioni (es. una sola) il vecchio raddoppio (`[...reviews,
+ * ...reviews]`) non garantiva overflow reale — a `min-width:700px` ogni
+ * card occupa metà della corsia (`.rr-card`, globals.css), quindi con una
+ * sola recensione due copie riempivano esattamente il 100% della corsia:
+ * `scrollWidth === clientWidth`, zero margine di scroll, l'autoplay
+ * incrementava `scrollLeft` ma il browser lo clampava subito a 0 — nessun
+ * movimento visibile. Triplicato (`[...reviews, ...reviews, ...reviews]`,
+ * wrap-around a un terzo della larghezza totale) per garantire overflow
+ * reale qualunque sia il numero di recensioni. Velocità anche raddoppiata
+ * (0.6 → 1.4px/frame): a 0.6 il movimento era tecnicamente presente ma
+ * troppo lento per essere notato a un primo sguardo.
  */
-const AUTOPLAY_PX_PER_FRAME = 0.6;
+const AUTOPLAY_PX_PER_FRAME = 1.4;
 const AUTOPLAY_RESUME_DELAY_MS = 2500;
+const LOOP_COPIES = 3;
 
 export function RecentReviews() {
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
@@ -122,11 +136,11 @@ export function RecentReviews() {
     function tick() {
       const track = trackRef.current;
       if (track && !pausedRef.current) {
-        const halfWidth = track.scrollWidth / 2;
-        if (halfWidth > 0) {
+        const copyWidth = track.scrollWidth / LOOP_COPIES;
+        if (copyWidth > 0) {
           track.scrollLeft += AUTOPLAY_PX_PER_FRAME;
-          if (track.scrollLeft >= halfWidth) {
-            track.scrollLeft -= halfWidth;
+          if (track.scrollLeft >= copyWidth) {
+            track.scrollLeft -= copyWidth;
           }
         }
       }
@@ -160,7 +174,7 @@ export function RecentReviews() {
     resumeAutoplaySoon();
   }
 
-  const loopedReviews = [...reviews, ...reviews];
+  const loopedReviews = Array.from({ length: LOOP_COPIES }, () => reviews).flat();
 
   return (
     <Section eyebrow="Recensioni verificate" title="Chi ha già trovato il professionista giusto" maxWidth={1160}>

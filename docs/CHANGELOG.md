@@ -13477,3 +13477,36 @@ pagina confermato invariato con cursore sopra il carosello, nessun
 overflow orizzontale a 390px di larghezza (mobile), layout della card
 profilo e del carosello "Nuovi profili" verificati via screenshot sia
 desktop che mobile.
+
+## 117. Correzioni al giro precedente: autoplay recensioni non visibile + foto profilo ancora più grande
+
+Feedback diretto dell'utente sul giro precedente (§116): "non vedo ancora
+che scorre" sull'autoplay delle recensioni verificate, più richiesta di
+ingrandire ulteriormente la foto profilo pubblica.
+
+**Bug reale nell'autoplay**: il raddoppio del contenuto (`[...reviews,
+...reviews]`) non garantiva overflow reale con poche recensioni. A
+`min-width:700px` ogni card occupa il 50% della corsia (`.rr-card`,
+globals.css) — con una sola recensione, due copie riempivano esattamente
+il 100% della corsia: `scrollWidth === clientWidth`, zero margine di
+scroll, l'autoplay incrementava `scrollLeft` ma il browser lo clampava
+subito a 0, nessun movimento possibile. Corretto triplicando il contenuto
+(`LOOP_COPIES = 3`, wrap-around a un terzo della larghezza totale invece
+che a metà) — overflow reale garantito indipendentemente dal numero di
+recensioni. Velocità raddoppiata nello stesso giro (0.6 → 1.4px/frame,
+~84px/sec): a 0.6 il movimento c'era ma era troppo lento per essere
+notato a un primo sguardo, causa probabile principale del "non vedo che
+scorre" a prescindere dal bug di overflow.
+
+**Foto profilo pubblico ulteriormente ingrandita**: 104px → 140px
+(terzo giro su questo elemento: 64px iniziali → 104px → 140px).
+Verificato che il layout non si rompe a 140px né su desktop (1280px) né
+su mobile (390px, screenshot Playwright) — la colonna nome/badge resta
+leggibile, nessun overflow.
+
+Verifica: typecheck pulito; verifica visiva end-to-end con Playwright
+contro ambiente locale reale — confermato con misura diretta
+(`scrollLeft` +60px in 1 secondo, prima impercettibile) che l'autoplay è
+ora chiaramente visibile; screenshot prima/dopo la finestra di 1s a
+conferma del movimento; foto profilo verificata a 140px su entrambi i
+breakpoint.
