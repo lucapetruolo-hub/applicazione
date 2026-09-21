@@ -321,6 +321,21 @@ export function ProfessionalCard({
             // Su una riga stretta il blocco cade sotto (flexWrap sul contenitore):
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
             // (borderLeftWidth resta 0 solo se non c'è spazio, gestito dal wrap).
+            //
+            // stopPropagation qui, sull'intero blocco agenda — richiesta
+            // esplicita dell'utente: "rendi cliccabile solo i vari pulsanti e
+            // non tutta l'area dell'agenda". La card ha un onPress proprio
+            // che porta al profilo (vedi Surface più sopra): senza questo
+            // stop, un click su uno spazio vuoto della mini-agenda (tra le
+            // pillole, sulle intestazioni giorno, sui trattini "-" di una
+            // fascia non configurata) faceva comunque da bubbling fino alla
+            // card e navigava al profilo, anche se l'utente non aveva
+            // toccato nulla di realmente interattivo. I singoli controlli
+            // (tab, frecce, pillole orario) hanno già ciascuno il proprio
+            // stopPropagation più sotto — restano invariati e continuano a
+            // funzionare, qui si aggiunge solo una rete di sicurezza per il
+            // resto dell'area.
+            onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
           >
             {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente,
                 stesso pattern a pillola di SearchBar): filtrano gli orari

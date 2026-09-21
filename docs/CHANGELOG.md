@@ -13589,3 +13589,27 @@ distanza verticale tra i due blocchi, non la loro struttura.
 Verifica: typecheck pulito; verifica visiva Playwright desktop (1280px) e
 mobile (390px) — frecce visibilmente ravvicinate alle intestazioni giorno
 in entrambi i casi, nessun wrap/overflow su mobile.
+
+## 120. Mini-agenda nei risultati di ricerca: solo i pulsanti sono cliccabili, non tutta l'area
+
+Richiesta esplicita dell'utente: nella colonna destra di ogni card dei
+risultati di ricerca (mini-agenda, `ProfessionalCard` in `packages/ui`),
+cliccare uno spazio vuoto — l'intestazione di un giorno, un trattino "-"
+di una fascia non configurata, lo spazio tra le pillole — navigava
+comunque al profilo del professionista, per bubbling fino all'`onPress`
+della card intera. Solo i controlli realmente interattivi (tab A
+domicilio/Online, frecce avanti/indietro, pillole orario, "Mostra orari
+disponibili") avevano già il proprio `stopPropagation`; il resto
+dell'area no. Aggiunto un `stopPropagation` sull'intero blocco agenda (lo
+`YStack` che lo contiene) come rete di sicurezza: un click su qualunque
+punto non esplicitamente interattivo ora non fa più nulla, invece di
+portare via l'utente dalla pagina dei risultati. I singoli controlli
+restano invariati e continuano a funzionare come prima.
+
+Verifica: typecheck pulito (`@professionisti/ui` + `@professionisti/web`).
+Verifica end-to-end con Playwright su `/cerca/idraulico`: click
+sull'etichetta "Oggi" (testo non interattivo) → nessuna navigazione;
+click su una cella "-" (fascia non configurata) → nessuna navigazione;
+click su una pillola orario reale → naviga correttamente a `/preventivo`
+con data/ora/modalità precompilati (comportamento introdotto in §118,
+confermato ancora funzionante).
