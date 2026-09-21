@@ -267,6 +267,24 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
    * card).
    */
   portfolioUrls: string[];
+  /**
+   * Lavori completati in totale (non solo nel mese corrente, a differenza
+   * di `completedThisMonth` sopra) e tempo medio di risposta a una
+   * richiesta — CEO, consiglio esperti (CPO): dati già calcolati da tempo
+   * in `ProfessionalMetrics` per il solo ranking interno di ricerca, mai
+   * esposti al cliente. Segnali di fiducia standard nei marketplace
+   * concorrenti (ProntoPro), qui aggiunti solo sul profilo pubblico (non
+   * sulla card di ricerca, stesso principio di `portfolioUrls` sopra).
+   * `null`/`0` quando non ci sono ancora dati misurati (professionista
+   * nuovo) — il componente che li mostra li nasconde in quel caso, non
+   * mostra mai uno zero fuorviante.
+   */
+  completedJobsTotal: number;
+  avgResponseTimeMinutes: number | null;
+  /** Segnali di fiducia dichiarati dal professionista, non verificati — mai confusi con `verified`. */
+  yearsOfExperience: number | null;
+  certifications: string | null;
+  hasLiabilityInsurance: boolean;
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [

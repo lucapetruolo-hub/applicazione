@@ -122,6 +122,12 @@ export default function DashboardProfiloPage() {
   const [spokenLanguages, setSpokenLanguages] = useState<string[]>(["Italiano"]);
   const [newLanguage, setNewLanguage] = useState("");
   const [isLanguageFieldFocused, setIsLanguageFieldFocused] = useState(false);
+  // Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO: "anni di
+  // esperienza, certificazioni, assicurazione RC come campi strutturati"),
+  // mai verificati documentalmente — non vanno confusi con `verified`.
+  const [yearsOfExperience, setYearsOfExperience] = useState("");
+  const [certifications, setCertifications] = useState("");
+  const [hasLiabilityInsurance, setHasLiabilityInsurance] = useState(false);
   // Conteggio reale di quante volte ogni lingua è già stata inserita da un
   // altro professionista sulla piattaforma (richiesta esplicita dell'utente:
   // "fra i primi 10 risultati non saranno in ordine alfabetico ma in ordine
@@ -180,6 +186,9 @@ export default function DashboardProfiloPage() {
           setImageUrl(profile.imageUrl);
           setPortfolioUrls(profile.portfolioUrls);
           setSpokenLanguages(profile.spokenLanguages);
+          setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
+          setCertifications(profile.certifications ?? "");
+          setHasLiabilityInsurance(profile.hasLiabilityInsurance);
           // 0,0 = comune non ancora geocodificato (stessa convenzione già
           // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
           // raggio di ingaggio centrata sull'oceano davanti all'Africa.
@@ -269,6 +278,11 @@ export default function DashboardProfiloPage() {
       }
     }
 
+    if (yearsOfExperience.trim() && (!/^\d+$/.test(yearsOfExperience.trim()) || Number(yearsOfExperience.trim()) > 80)) {
+      setError("Gli anni di esperienza devono essere un numero tra 0 e 80.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await apiClient.upsertMyProfessionalProfile(token as string, {
@@ -286,6 +300,9 @@ export default function DashboardProfiloPage() {
         imageUrl: imageUrl ?? undefined,
         portfolioUrls,
         spokenLanguages,
+        yearsOfExperience: yearsOfExperience.trim() ? Number(yearsOfExperience.trim()) : undefined,
+        certifications: certifications.trim() || undefined,
+        hasLiabilityInsurance,
         services: cleanedServices.map((service) => ({
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
@@ -613,6 +630,80 @@ export default function DashboardProfiloPage() {
               rows={4}
               style={{ ...inputStyle, resize: "vertical" }}
             />
+          </YStack>
+        </Surface>
+
+        {/* Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO:
+            "anni di esperienza, certificazioni, assicurazione RC come campi
+            strutturati", oggi solo testo libero in bio, non filtrabile né
+            riconoscibile). Nessuna verifica documentale dietro — stesso
+            principio già seguito per le qualifiche professionali nel resto
+            del prodotto: autodichiarate, mai confuse con `verified`. */}
+        <Surface gap="$4">
+          <XStack alignItems="center" gap="$2">
+            <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografia} />
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+              Esperienza e affidabilità
+            </Text>
+          </XStack>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Dati dichiarati da te, mostrati sul tuo profilo pubblico per aiutare i clienti a scegliere.
+          </Text>
+
+          <YStack gap="$2">
+            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
+              Anni di esperienza
+            </Text>
+            <input
+              type="number"
+              min={0}
+              max={80}
+              value={yearsOfExperience}
+              onChange={(e) => setYearsOfExperience(e.target.value)}
+              placeholder="Es. 10"
+              style={{ ...inputStyle, maxWidth: 160 }}
+            />
+          </YStack>
+
+          <YStack gap="$2">
+            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
+              Certificazioni e qualifiche
+            </Text>
+            <textarea
+              value={certifications}
+              onChange={(e) => setCertifications(e.target.value)}
+              placeholder="Es. Patentino gas F-gas, certificazione impianti elettrici CEI 64-8."
+              rows={2}
+              maxLength={500}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </YStack>
+
+          <YStack
+            flexDirection="row"
+            alignItems="center"
+            gap="$3"
+            cursor="pointer"
+            onPress={() => setHasLiabilityInsurance((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: hasLiabilityInsurance }}
+          >
+            <YStack
+              width={22}
+              height={22}
+              borderRadius="$2"
+              borderWidth={2}
+              borderColor={hasLiabilityInsurance ? brand.cianografia : brand.filetto}
+              backgroundColor={hasLiabilityInsurance ? brand.cianografia : brand.calce}
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+            >
+              {hasLiabilityInsurance ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+            </YStack>
+            <Text fontWeight="600" color={brand.grafite}>
+              Ho un'assicurazione di responsabilità civile professionale (RC)
+            </Text>
           </YStack>
         </Surface>
 

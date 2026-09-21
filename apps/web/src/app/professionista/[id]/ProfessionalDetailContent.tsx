@@ -43,6 +43,20 @@ function agendaDateLabel(dateStr: string): string {
   return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
 }
 
+/**
+ * "Risponde in genere entro..." (CEO, consiglio esperti — CPO: segnale di
+ * fiducia già calcolato in `ProfessionalMetrics.avgResponseTimeMinutes` per
+ * il solo ranking interno, mai mostrato prima al cliente). Arrotonda alla
+ * granularità più leggibile invece di mostrare sempre minuti grezzi (es.
+ * "entro 2 giorni", non "entro 2880 minuti").
+ */
+function formatResponseTime(minutes: number): string {
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} minuti`;
+  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} ${Math.round(minutes / 60) === 1 ? "ora" : "ore"}`;
+  const days = Math.round(minutes / (24 * 60));
+  return `${days} ${days === 1 ? "giorno" : "giorni"}`;
+}
+
 /** Data relativa per le recensioni — stesso principio già in uso in
  * `NotificationBell.tsx`, non condiviso da lì (granularità diversa: qui
  * basta il giorno, mai i minuti/ore di una notifica). */
@@ -279,6 +293,32 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   mese
                 </Text>
               ) : null}
+              {/* Segnali di fiducia aggiuntivi (CEO, consiglio esperti —
+                  CPO: "esporre completedJobs + tempo medio di risposta sul
+                  profilo pubblico... massimo ritorno per minimo sforzo").
+                  Mai uno zero fuorviante: un professionista senza ancora
+                  dati misurati non mostra questa riga, non "0 lavori". */}
+              {professional.completedJobsTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
+                <XStack alignItems="center" gap="$3" flexWrap="wrap">
+                  {professional.completedJobsTotal > 0 ? (
+                    <XStack alignItems="center" gap={4}>
+                      <Icon name="check" size={13} strokeWidth={2} color={brand.grafite70} />
+                      <Text fontSize={12.5} color={brand.grafite70}>
+                        {professional.completedJobsTotal} {professional.completedJobsTotal === 1 ? "lavoro completato" : "lavori completati"} in
+                        totale
+                      </Text>
+                    </XStack>
+                  ) : null}
+                  {professional.avgResponseTimeMinutes !== null ? (
+                    <XStack alignItems="center" gap={4}>
+                      <Icon name="clock" size={13} strokeWidth={1.5} color={brand.grafite70} />
+                      <Text fontSize={12.5} color={brand.grafite70}>
+                        Risponde in genere entro {formatResponseTime(professional.avgResponseTimeMinutes)}
+                      </Text>
+                    </XStack>
+                  ) : null}
+                </XStack>
+              ) : null}
             </YStack>
           </XStack>
 
@@ -354,6 +394,43 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Parla {professional.spokenLanguages.join(", ")}
             </Text>
           </XStack>
+        ) : null}
+
+        {/* Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO),
+            mai verificati documentalmente: etichetta "Dichiarato dal
+            professionista" invece di un'icona di spunta, per non
+            confonderli con `verified` (quello richiederebbe una verifica
+            reale, oggi inesistente, CLAUDE.md §10 checklist punto 15). */}
+        {professional.yearsOfExperience !== null || professional.certifications || professional.hasLiabilityInsurance ? (
+          <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+            {professional.yearsOfExperience !== null ? (
+              <XStack alignItems="center" gap="$2">
+                <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                <Text fontSize="$2" color={brand.grafite70}>
+                  {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
+                </Text>
+              </XStack>
+            ) : null}
+            {professional.certifications ? (
+              <XStack alignItems="flex-start" gap="$2">
+                <Icon name="shield" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                <Text fontSize="$2" color={brand.grafite70} flex={1}>
+                  {professional.certifications}
+                </Text>
+              </XStack>
+            ) : null}
+            {professional.hasLiabilityInsurance ? (
+              <XStack alignItems="center" gap="$2">
+                <Icon name="check" size={14} strokeWidth={2} color={brand.grafite70} />
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Assicurazione RC professionale
+                </Text>
+              </XStack>
+            ) : null}
+            <Text fontSize={10.5} color={brand.grafite70} fontStyle="italic">
+              Dati dichiarati dal professionista, non verificati da Professionisti.
+            </Text>
+          </YStack>
         ) : null}
         </Surface>
 

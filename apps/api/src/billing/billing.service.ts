@@ -62,6 +62,12 @@ export class BillingService {
       throw new BadRequestException(`Prezzo Stripe non configurato per il piano ${plan} (${SUBSCRIPTION_PRICE_ENV[plan]}).`);
     }
 
+    // Nessun `invoice_creation` qui: per le Checkout Session in modalità
+    // `subscription` Stripe genera già da sola una fattura reale a ogni
+    // ciclo di fatturazione (comportamento nativo, non disattivabile né
+    // configurabile da questo parametro — che l'API Stripe accetta solo in
+    // modalità `payment`, vedi sotto). Il professionista la riceve già via
+    // email Stripe e può scaricarla dal Customer Portal.
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
@@ -102,6 +108,16 @@ export class BillingService {
       success_url: `${this.frontendUrl()}/dashboard?lead=sbloccato`,
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "lead", leadId: lead.id, professionalProfileId: profile.id },
+      // Genera una ricevuta/fattura Stripe reale, scaricabile dal
+      // professionista (CEO, consiglio esperti: "attivare invoice_creation
+      // sulle Checkout Session di pagamento singolo") — plumbing tecnico
+      // pronto da subito, ma NON sostituisce una fattura elettronica SDI:
+      // finché l'account Stripe di Manovia non ha i dati societari reali
+      // (P.IVA/sede legale, oggi `[DA COMPILARE]`, CLAUDE.md §10 checklist
+      // punto 1), il documento generato porta comunque i dati provvisori
+      // dell'account Stripe corrente. Vedi promemoria pre-lancio in
+      // CLAUDE.md §10.
+      invoice_creation: { enabled: true },
     });
 
     return { url: session.url };
@@ -132,6 +148,10 @@ export class BillingService {
       success_url: `${this.frontendUrl()}/dashboard?boost=attivato`,
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "boost", boostType, professionalProfileId: profile.id },
+      // Stessa scelta e stesso promemoria pre-lancio di createLeadCheckout
+      // sopra: ricevuta Stripe reale da subito, fattura elettronica SDI
+      // solo dopo i dati societari reali di Manovia.
+      invoice_creation: { enabled: true },
     });
 
     return { url: session.url };

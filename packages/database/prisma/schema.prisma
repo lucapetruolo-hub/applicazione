@@ -167,6 +167,20 @@ model ProfessionalProfile {
   // /dashboard/profilo. Array libero (non un enum): non c'è un elenco fisso
   // di lingue nel progetto, coerente con `subTags`/`portfolioUrls` sopra.
   spokenLanguages          String[] @default(["Italiano"])
+  // Segnali di fiducia dichiarati dal professionista (CEO, consiglio
+  // esperti — CPO: "anni di esperienza, certificazioni, assicurazione RC
+  // come campi strutturati", oggi solo testo libero nella bio, non
+  // filtrabile né mostrato in modo riconoscibile). Nessuna verifica
+  // documentale dietro — stesso principio già seguito per le qualifiche
+  // professionali nel resto del prodotto (autodichiarate, mai un vero
+  // KYC): non va mai confuso con `verified` (quello richiederebbe una
+  // verifica reale, oggi inesistente, CLAUDE.md §10 checklist punto 15).
+  yearsOfExperience        Int?
+  // Testo libero breve (non un elenco strutturato di documenti caricati:
+  // fuori scope finché non esiste un flusso di verifica reale) — es.
+  // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
+  certifications           String?
+  hasLiabilityInsurance    Boolean  @default(false)
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 

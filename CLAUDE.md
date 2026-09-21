@@ -515,6 +515,20 @@ produzione):
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).
+6bis. **Dati societari reali sull'account Stripe di Manovia** (ragione
+   sociale, P.IVA, sede legale) prima del lancio: `invoice_creation:
+   { enabled: true }` è già attivo su `createLeadCheckout`/
+   `createBoostCheckout` (`apps/api/src/billing/billing.service.ts`,
+   CEO — consiglio esperti, richiesta esplicita dell'utente) e genera già
+   una ricevuta Stripe scaricabile dal professionista, ma finché
+   l'account Stripe stesso porta dati provvisori/di test quella ricevuta
+   non è un documento fiscale valido — è plumbing tecnico pronto, non
+   fatturazione risolta. Da verificare (dashboard Stripe → Impostazioni
+   azienda) prima di andare live, insieme al punto 7 sotto (ruolo fiscale
+   esatto), che resta comunque la decisione a monte: non basta
+   aggiornare l'account Stripe se il ruolo fiscale di Manovia
+   nell'intermediazione non è ancora stato chiarito con un
+   commercialista.
 
 **Fiscale — richiede la firma di un vero commercialista/avvocato
 tributario, non solo lavoro tecnico** (le 5 domande del CFO, dettagliate in

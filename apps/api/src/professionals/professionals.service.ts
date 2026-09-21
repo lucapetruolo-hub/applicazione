@@ -430,6 +430,7 @@ export class ProfessionalsService {
         bookings: { include: { review: true, clientReview: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
+        metrics: true,
       },
     });
 
@@ -478,6 +479,11 @@ export class ProfessionalsService {
       isNewProfile: computeIsNewProfile(profile.createdAt),
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
+      completedJobsTotal: profile.metrics?.completedJobs ?? 0,
+      avgResponseTimeMinutes: profile.metrics?.avgResponseTimeMinutes ?? null,
+      yearsOfExperience: profile.yearsOfExperience,
+      certifications: profile.certifications,
+      hasLiabilityInsurance: profile.hasLiabilityInsurance,
       reviews: reviews.map((review) => ({
         id: review.id,
         rating: review.rating,
@@ -515,6 +521,9 @@ export class ProfessionalsService {
       engagementRadiusKm: profile.engagementRadiusKm,
       urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
       spokenLanguages: profile.spokenLanguages,
+      yearsOfExperience: profile.yearsOfExperience,
+      certifications: profile.certifications,
+      hasLiabilityInsurance: profile.hasLiabilityInsurance,
     };
   }
 
@@ -567,6 +576,9 @@ export class ProfessionalsService {
         imageUrl: input.imageUrl,
         portfolioUrls: input.portfolioUrls,
         spokenLanguages: input.spokenLanguages,
+        yearsOfExperience: input.yearsOfExperience ?? null,
+        certifications: input.certifications,
+        hasLiabilityInsurance: input.hasLiabilityInsurance,
       },
       create: {
         userId,
@@ -582,6 +594,9 @@ export class ProfessionalsService {
         imageUrl: input.imageUrl,
         portfolioUrls: input.portfolioUrls,
         spokenLanguages: input.spokenLanguages,
+        yearsOfExperience: input.yearsOfExperience ?? null,
+        certifications: input.certifications,
+        hasLiabilityInsurance: input.hasLiabilityInsurance,
       },
       include: { category: true },
     });
@@ -642,6 +657,9 @@ export class ProfessionalsService {
       engagementRadiusKm: profile.engagementRadiusKm,
       urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
       spokenLanguages: profile.spokenLanguages,
+      yearsOfExperience: profile.yearsOfExperience,
+      certifications: profile.certifications,
+      hasLiabilityInsurance: profile.hasLiabilityInsurance,
     };
   }
 

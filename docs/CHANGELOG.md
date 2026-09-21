@@ -13658,3 +13658,60 @@ report sul profilo → tasto passa subito a "Già segnalato" (visibile anche
 dietro il modale ancora aperto), stato confermato persistente dopo un
 reload completo della pagina, il tasto "Segnala" della recensione
 sottostante (target diverso) resta invece attivo.
+
+## 122. Implementati i 3 tattici del CEO (consiglio esperti): ricevute Stripe, segnali di fiducia esposti, campi esperienza/certificazioni/RC
+
+Seguito diretto della consultazione CEO + consiglio esperti (CFO, Backend
+Architect, Chief Legal Advisor, CPO) sui documenti fiscali per i
+professionisti e sui dati mancanti nel profilo. L'utente ha approvato i
+tre punti tattici più il toggle tecnico, con la richiesta esplicita di
+ricordare che va sostituito con i dati societari reali prima del lancio
+(promemoria aggiunto in CLAUDE.md §10, punto 6bis).
+
+**1. `invoice_creation` su Stripe Checkout (lead/boost).**
+`apps/api/src/billing/billing.service.ts`: `createLeadCheckout` e
+`createBoostCheckout` (entrambe `mode: "payment"`) ora passano
+`invoice_creation: { enabled: true }` — Stripe genera da sola una
+ricevuta/fattura scaricabile dal professionista, zero lavoro di
+generazione PDF lato nostro. **Non toccato** `createSubscriptionCheckout`
+(`mode: "subscription"`): quel parametro Stripe è valido solo in modalità
+`payment`, mentre per le subscription Stripe genera già da sola una
+fattura reale a ogni ciclo di fatturazione — comportamento nativo, non
+richiede configurazione. **Promemoria esplicito lasciato in codice e in
+CLAUDE.md**: questo è plumbing tecnico pronto da subito, non fatturazione
+fiscalmente valida — finché l'account Stripe di Manovia non ha i dati
+societari reali (P.IVA/sede legale, oggi `[DA COMPILARE]`), il documento
+generato porta comunque dati provvisori.
+
+**2. Segnali di fiducia già calcolati, mai esposti — ora sul profilo
+pubblico.** `ProfessionalMetrics.completedJobs` (totale, non solo del
+mese) e `avgResponseTimeMinutes` alimentavano solo il ranking interno di
+ricerca (CPO: "il cliente non li vede mai"). `ProfessionalsService.getById`
+ora include `metrics` e li espone come `completedJobsTotal`/
+`avgResponseTimeMinutes` su `ProfessionalDetail` (packages/shared) — zero
+raccolta dati nuova, solo esposizione. Mostrati in
+`ProfessionalDetailContent.tsx` sotto rating/badge, con `formatResponseTime`
+(nuovo helper locale: minuti→ore→giorni, mai un numero grezzo). Mai uno
+zero fuorviante: la riga non compare affatto per un professionista senza
+ancora dati misurati.
+
+**3. Anni di esperienza, certificazioni, assicurazione RC come campi
+strutturati.** Prima solo testo libero suggerito nella bio ("Menziona
+eventuali certificazioni..."), non filtrabile né riconoscibile. Nuovi
+campi `ProfessionalProfile.yearsOfExperience` (Int?, 0-80),
+`certifications` (String?, max 500 caratteri, testo libero — non un
+upload di documenti, fuori scope finché non esiste un flusso di verifica
+reale), `hasLiabilityInsurance` (Boolean). **Dichiarati, mai verificati**:
+esplicitamente separati da `verified` sia nello schema (commento) sia in
+UI (profilo pubblico mostra "Dati dichiarati dal professionista, non
+verificati da Professionisti" sotto ai tre segnali) — coerente con CLAUDE.md
+§10 checklist punto 15 (nessuna verifica KYC reale esiste). Editabili in
+`/dashboard/profilo`, nuova sezione "Esperienza e affidabilità" (Surface
+dedicata, tra bio e "Offro anche consulenza online").
+
+Verifica: typecheck pulito su tutto il monorepo (9/9). End-to-end via
+curl contro API reale: salvataggio profilo con i tre nuovi campi →
+lettura da `/professionals/me` e da `/professionals/:id` (pubblico)
+entrambe corrette. Verifica visiva Playwright: profilo pubblico mostra i
+tre segnali con il disclaimer "non verificati"; form `/dashboard/profilo`
+carica e salva correttamente i valori esistenti (screenshot full-page).

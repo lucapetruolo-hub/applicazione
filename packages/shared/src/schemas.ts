@@ -574,6 +574,11 @@ export const professionalProfileSchema = z.object({
   // profilo (stesso default dello schema Prisma), rimovibile/estendibile —
   // nessun minimo richiesto qui, un professionista può rimuoverle tutte.
   spokenLanguages: z.array(z.string().min(1).max(40)).max(10).default(["Italiano"]),
+  // Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO), mai
+  // verificati documentalmente: non vanno confusi con `verified`.
+  yearsOfExperience: z.number().int().min(0).max(80).optional(),
+  certifications: z.string().max(500).optional(),
+  hasLiabilityInsurance: z.boolean().default(false),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

@@ -22,6 +22,10 @@ export type MyProfessionalProfile = {
   urgentEngagementRadiusKm: number;
   /** Lingue parlate (richiesta esplicita dell'utente), "Italiano" precompilato di default, rimovibile/estendibile. */
   spokenLanguages: string[];
+  /** Segnali di fiducia dichiarati (CEO, consiglio esperti), non verificati — mai confusi con `verified`. */
+  yearsOfExperience: number | null;
+  certifications: string | null;
+  hasLiabilityInsurance: boolean;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
