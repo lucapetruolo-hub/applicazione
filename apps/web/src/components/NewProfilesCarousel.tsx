@@ -161,7 +161,10 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
           }}
         >
           <XStack alignItems="center" gap="$3">
-            <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={72} />
+            {/* Foto più grande, coerente con l'ingrandimento richiesto sulla
+                pagina profilo pubblica: anche qui deve riconoscersi bene chi
+                è il professionista, non solo intuirlo da un'icona piccola. */}
+            <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={88} />
             <YStack flex={1} minWidth={0} gap={2}>
               <Text fontWeight="700" fontSize={17} color={brand.grafite} numberOfLines={1}>
                 {pro.businessName}

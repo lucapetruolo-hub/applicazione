@@ -1,8 +1,9 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PrismaClient } from "@professionisti/database";
-import type { ChatThreadSummary, ConversationEvent } from "@professionisti/shared";
+import type { ConversationEvent as ConversationEventRow, PrismaClient } from "@professionisti/database";
+import type { ChatThreadSummary, ConversationEvent, RealtimeEvent } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { RealtimeService } from "../realtime/realtime.service";
 
 export type TimelineActor = "CLIENT" | "PROFESSIONAL" | "SYSTEM";
 
@@ -11,6 +12,7 @@ export class TimelineService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly realtimeService: RealtimeService,
   ) {}
 
   /**
@@ -23,9 +25,15 @@ export class TimelineService {
    * formulazione varia con i dati reali dell'evento (data proposta, nota
    * scritta, importo finale...). Mai `mediaUrls` qui: quelli esistono solo
    * per gli aggiornamenti scritti a mano (vedi addUpdate).
+   *
+   * Pubblica anche un push SSE "chat_message" a entrambe le parti del
+   * thread (CTO — real-time): una conversazione già aperta vede comparire
+   * l'evento subito, senza aspettare il poll di riserva.
    */
   async log(guidedRequestId: string, professionalProfileId: string, actor: TimelineActor, message: string): Promise<void> {
-    await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message } });
+    const row = await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message } });
+    const participants = await this.resolveParticipantIds(guidedRequestId, professionalProfileId);
+    if (participants) this.publishChatMessage(guidedRequestId, professionalProfileId, row, participants);
   }
 
   /**
@@ -60,13 +68,8 @@ export class TimelineService {
     const recipientUserId = actor === "CLIENT" ? professionalUserId : clientUserId;
     const notificationType = actor === "CLIENT" ? "TIMELINE_MESSAGE_FROM_CLIENT" : "TIMELINE_MESSAGE_FROM_PROFESSIONAL";
     await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
-    return {
-      id: event.id,
-      actor: event.actor,
-      message: event.message,
-      mediaUrls: event.mediaUrls,
-      createdAt: event.createdAt.toISOString(),
-    };
+    this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
+    return this.serializeEvent(event);
   }
 
   /**
@@ -141,13 +144,29 @@ export class TimelineService {
       where: { guidedRequestId, professionalProfileId },
       orderBy: { createdAt: "asc" },
     });
-    return events.map((event) => ({
+    return events.map((event) => this.serializeEvent(event));
+  }
+
+  private serializeEvent(event: ConversationEventRow): ConversationEvent {
+    return {
       id: event.id,
       actor: event.actor,
       message: event.message,
       mediaUrls: event.mediaUrls,
       createdAt: event.createdAt.toISOString(),
-    }));
+    };
+  }
+
+  /** Push SSE "chat_message" a entrambe le parti del thread — mai un errore se nessuna delle due ha una connessione aperta in questo momento (vedi RealtimeService.publish). */
+  private publishChatMessage(
+    guidedRequestId: string,
+    professionalProfileId: string,
+    event: ConversationEventRow,
+    participants: { clientUserId: string; professionalUserId: string },
+  ): void {
+    const payload: RealtimeEvent = { kind: "chat_message", guidedRequestId, professionalProfileId, event: this.serializeEvent(event) };
+    this.realtimeService.publish(participants.clientUserId, payload);
+    this.realtimeService.publish(participants.professionalUserId, payload);
   }
 
   private async resolveActor(userId: string, guidedRequestId: string, professionalProfileId: string): Promise<"CLIENT" | "PROFESSIONAL"> {
@@ -156,27 +175,46 @@ export class TimelineService {
   }
 
   /**
-   * Come resolveActor, ma ritorna anche gli id utente di entrambe le parti
-   * del thread — servono ad addUpdate per sapere a chi notificare (sempre
-   * l'altra parte, mai chi ha appena scritto), senza una seconda query.
+   * Id utente di entrambe le parti di un thread, senza alcun controllo di
+   * accesso (a differenza di `resolveActorWithParticipants` sotto) —
+   * `null` se la richiesta o il professionista non esistono più. Usato da
+   * `log()`, che scrive un evento automatico per conto del sistema (nessun
+   * `userId` chiamante da verificare), per sapere a chi pubblicare il push
+   * SSE.
+   */
+  private async resolveParticipantIds(
+    guidedRequestId: string,
+    professionalProfileId: string,
+  ): Promise<{ clientUserId: string; professionalUserId: string } | null> {
+    const [guidedRequest, professionalProfile] = await Promise.all([
+      this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { clientId: true } }),
+      this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true } }),
+    ]);
+    if (!guidedRequest || !professionalProfile) return null;
+    return { clientUserId: guidedRequest.clientId, professionalUserId: professionalProfile.userId };
+  }
+
+  /**
+   * Come resolveParticipantIds, ma verifica anche che `userId` sia
+   * davvero una delle due parti del thread (cliente proprietario o
+   * professionista destinatario) — usato da ogni punto che agisce per
+   * conto di un utente autenticato specifico (addUpdate, listForUser),
+   * mai da `log()` (evento di sistema, nessun utente chiamante).
    */
   private async resolveActorWithParticipants(
     userId: string,
     guidedRequestId: string,
     professionalProfileId: string,
   ): Promise<{ actor: "CLIENT" | "PROFESSIONAL"; clientUserId: string; professionalUserId: string }> {
-    const [guidedRequest, professionalProfile] = await Promise.all([
-      this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { clientId: true } }),
-      this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { userId: true } }),
-    ]);
-    if (!guidedRequest || !professionalProfile) {
+    const participants = await this.resolveParticipantIds(guidedRequestId, professionalProfileId);
+    if (!participants) {
       throw new NotFoundException("Richiesta o professionista non trovati.");
     }
-    if (guidedRequest.clientId === userId) {
-      return { actor: "CLIENT", clientUserId: guidedRequest.clientId, professionalUserId: professionalProfile.userId };
+    if (participants.clientUserId === userId) {
+      return { actor: "CLIENT", ...participants };
     }
-    if (professionalProfile.userId === userId) {
-      return { actor: "PROFESSIONAL", clientUserId: guidedRequest.clientId, professionalUserId: professionalProfile.userId };
+    if (participants.professionalUserId === userId) {
+      return { actor: "PROFESSIONAL", ...participants };
     }
     throw new ForbiddenException("Non hai accesso a questa cronologia.");
   }

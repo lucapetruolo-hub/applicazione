@@ -477,6 +477,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     health: () => request<{ status: string }>("/health"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
+    /**
+     * URL dello stream SSE in tempo reale (CTO — "socket.io vs websocket vs
+     * alternative", scelta SSE) — non una `request()` come le altre
+     * chiamate: `EventSource` (l'API browser nativa) prende un URL grezzo,
+     * mai un header `Authorization` (non lo supporta), da qui il token in
+     * query string invece che nell'header Bearer usato ovunque altrove.
+     */
+    realtimeStreamUrl: (token: string) => `${baseUrl}/realtime/stream?token=${encodeURIComponent(token)}`,
+
     register: (
       email: string,
       password: string,

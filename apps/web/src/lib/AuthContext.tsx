@@ -2,8 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { CurrentUser } from "@professionisti/api-client";
+import type { RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
 import { notificationCopy } from "./notificationCopy";
+import { emitRealtimeEvent } from "./realtimeBus";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
@@ -241,6 +243,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 45_000);
     return () => clearInterval(interval);
   }, [user, refreshUnreadCount, checkForNewNotifications]);
+
+  /**
+   * Canale push in tempo reale (Server-Sent Events — CTO: "per il nostro
+   * contesto, socket.io vs websocket vs alternative" — vedi
+   * `apps/api/src/realtime/realtime.service.ts` per il verdetto e il
+   * perché). Un solo `EventSource` per l'intera app (non uno per pagina):
+   * inoltrato al bus `realtimeBus` per chiunque sia iscritto (una
+   * `ConversationView` aperta, l'inbox `/chat`) e, per un evento
+   * `notification`, riusa integralmente `refreshUnreadCount`/
+   * `checkForNewNotifications` già esistenti — stessa logica di
+   * dedup/baseline/batching del poll, nessuna duplicazione.
+   *
+   * Il poll da 45s sopra **resta**, non sostituito: è la rete di sicurezza
+   * per una disconnessione prolungata (l'istanza Render in sleep dopo
+   * inattività, o un redeploy che chiude la connessione) — `EventSource`
+   * riprova da sé con backoff nativo del browser appena la rete/l'API
+   * tornano disponibili, nessun codice di riconnessione scritto a mano.
+   */
+  useEffect(() => {
+    if (!token) return;
+    const source = new EventSource(apiClient.realtimeStreamUrl(token));
+    source.onmessage = (message) => {
+      try {
+        const data = JSON.parse(message.data) as RealtimeEvent | { kind: "ping" };
+        if (data.kind === "ping") return; // heartbeat, nessun contenuto reale
+        emitRealtimeEvent(data);
+        if (data.kind === "notification") {
+          refreshUnreadCount();
+          checkForNewNotifications();
+        }
+      } catch {
+        // Payload malformato o inatteso — mai bloccare il resto dell'app per un singolo evento scartato.
+      }
+    };
+    return () => source.close();
+  }, [token, refreshUnreadCount, checkForNewNotifications]);
 
   return (
     <AuthContext.Provider

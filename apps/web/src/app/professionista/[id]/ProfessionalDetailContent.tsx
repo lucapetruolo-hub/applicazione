@@ -222,7 +222,11 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               accessibilityRole={professional.imageUrl ? "button" : undefined}
               accessibilityLabel={professional.imageUrl ? "Ingrandisci la foto profilo" : undefined}
             >
-              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={64} />
+              {/* Foto ingrandita rispetto alle 64px iniziali — richiesta
+                  esplicita dell'utente: chi apre la pagina pubblica deve
+                  riconoscere bene di chi si tratta, non solo intuirne
+                  un'icona piccola accanto al nome. */}
+              <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={104} />
             </YStack>
             <YStack gap="$2" flex={1}>
               <XStack alignItems="center" gap="$2" flexWrap="wrap">

@@ -13325,3 +13325,155 @@ le verifiche end-to-end pesanti per i cambi a basso rischio (vedi CLAUDE.md,
 nota sul consumo di crediti). Da verificare con un vero ciclo
 segnalazione→risoluzione→notifica alla prima occasione utile con un
 ambiente locale attivo.
+
+## 115. Chat in tempo reale (SSE) + redesign pagina /chat stile inbox
+
+Richiesta esplicita dell'utente ("CEO, analizza se per il nostro contesto
+e per come avanzerà il progetto per la nostra chat è meglio usare
+socket.io o websocket o altre alternative, e implementalo"): scelta e
+implementazione del trasporto push per la chat cliente↔professionista,
+oggi basata solo su polling (4s in conversazione, 15s nella lista
+richieste, 45s nel badge notifiche di `AuthContext`).
+
+**Analisi (CTO)**: valutate tre opzioni — Socket.io, WebSocket grezzo, SSE
+(Server-Sent Events). Scelto SSE, motivazione legata al contesto reale del
+progetto (non una preferenza astratta):
+- Un solo servizio Render free tier, nessuno scaling orizzontale in vista
+  — l'argomento principale a favore di Socket.io (adapter Redis per
+  sincronizzare più istanze) non si applica qui.
+- L'invio messaggi passa già per REST (`POST`, timeline/preventivi/lead):
+  serve solo un canale server→client, mai il verso opposto — SSE copre
+  esattamente questo, WebSocket offrirebbe bidirezionalità mai usata.
+- Zero nuove dipendenze: `EventSource` è nativo del browser (mai bisogno
+  di una libreria client), `@nestjs/common` espone già `@Sse()` lato
+  server — coerente con il principio del progetto di non introdurre
+  infrastruttura se non strettamente necessaria (CLAUDE.md §2, tabella
+  stack).
+- `EventSource` riconnette da solo alla caduta della connessione (comune
+  su Render free tier: sleep dopo inattività, redeploy) — un WebSocket
+  grezzo richiederebbe di scrivere quella logica a mano.
+- Limite noto, accettato consapevolmente e non nascosto: `EventSource` non
+  può impostare header custom, il JWT passa come query string
+  (`?token=...`) — rischio reale ma minore (può finire nei log del
+  server/nella cronologia del browser), documentato qui invece che
+  taciuto. Se in futuro servisse eliminarlo, l'alternativa è un token
+  short-lived dedicato al solo streaming, non ancora necessario a questa
+  scala.
+- Se il progetto dovesse scalare a più istanze in futuro, l'unico punto da
+  toccare è l'interno di `RealtimeService` (oggi una `Map<string,
+  Subject>` in memoria, scope esplicitamente a singola istanza) — sostituirlo
+  con un pub/sub condiviso (es. Redis, già nello stack per BullMQ). L'interfaccia
+  pubblica (`publish`/`stream`) non cambierebbe, nessun altro file coinvolto.
+
+**Implementazione backend**: nuovo modulo `apps/api/src/realtime/`
+(`RealtimeService`, `RealtimeController`, `RealtimeModule`). Un
+`Subject<RealtimeEvent>` RxJS per utente connesso (`Map<userId, Subject>`),
+route `GET /realtime/stream` (`@Sse()`, verifica manuale del JWT dalla
+query string — stesso principio già in uso per il guard JWT del progetto,
+CLAUDE.md §2, "guard JWT senza `@nestjs/passport`"), heartbeat ogni 25s
+(mantiene viva la connessione attraverso proxy/hosting che chiudono
+connessioni inattive — Render in particolare). `TimelineService` (log
+messaggi/aggiornamenti chat) e `NotificationsService` (notifiche in-app)
+pubblicano ora ogni evento anche su `RealtimeService`, oltre a salvarlo su
+Postgres come già facevano — nessuna logica di business duplicata, il
+salvataggio resta l'unica fonte di verità, il push è solo una notifica
+"c'è qualcosa di nuovo, ricarica" per i client connessi. `RealtimeEvent`
+(`packages/shared`) unione discriminata `chat_message | notification`.
+
+**Implementazione frontend**: `AuthContext` apre l'unica connessione
+`EventSource` per sessione (un utente, un canale — non uno per componente
+montato) verso `apiClient.realtimeStreamUrl(token)`, inoltra ogni evento
+al nuovo bus pub/sub client-side `realtimeBus.ts` (`Set` di listener,
+nessuna libreria, evita prop-drilling attraverso l'albero componenti) e
+aggiorna subito badge/toast notifiche sugli eventi di tipo `notification`.
+`ConversationView` (vedi sotto) si iscrive al bus e appende in tempo reale
+i messaggi della propria conversazione (dedup per id, non duplica un
+messaggio già presente da polling). Il polling esistente resta attivo come
+rete di sicurezza per le cadute di connessione (sleep Render, redeploy),
+solo allungato dove SSE copre ormai il caso comune: `ConversationView`
+4s→20s, lista `/chat` 15s→45s, badge notifiche di `AuthContext` invariato
+a 45s.
+
+**Redesign `/chat`** (richiesta esplicita dell'utente): da un elenco di
+conversazioni che aprivano ciascuna un popup, a un vero layout a due
+colonne stile inbox. Estratto il corpo della conversazione (stato,
+scroll, allegati, ora anche il push SSE) dal vecchio `TimelineModal.tsx`
+(~900 righe) in un nuovo componente riusabile `ConversationView.tsx`, con
+nuove prop `onBack`/`backIcon`/`escapeToBack`/`title`/`otherPartyImageUrl`
+per adattarsi sia al contesto popup sia a quello inline. `TimelineModal.tsx`
+resta come sottile cornice (~75 righe: solo backdrop + dimensionamento a
+popup + `<ConversationView backIcon="x" escapeToBack />`) — firma esterna
+invariata, i 5 punti di montaggio esistenti (`/dashboard`,
+`/dashboard/richieste`, `/le-mie-richieste` ×2, `/dashboard/agenda`) non
+hanno richiesto modifiche.
+
+Da desktop (`min-width: 860px`, via `<style jsx>`, stesso pattern già in
+uso in `ResultsListWithMap`/`MegaMenu`): elenco conversazioni a sinistra,
+`ConversationView` inline a riempire il resto dello schermo a destra —
+mai più un popup. La conversazione più recente si apre da sola
+all'ingresso nella pagina (`window.matchMedia("(min-width: 860px)")`,
+controllo one-shot in JS al mount, non un listener di resize: la scelta
+mobile/desktop non deve cambiare mentre la pagina è già aperta). Da
+cellulare: sotto la soglia resta visibile solo l'elenco, un tap apre la
+conversazione a piena pagina con una freccia in alto a sinistra
+(`backIcon="chevron-left"`) per tornare alla lista — nessuna
+pre-selezione automatica della conversazione più recente (avrebbe portato
+subito dentro una chat invece di mostrare prima l'elenco, comportamento
+diverso da desktop per scelta esplicita dell'utente).
+
+**Verifica**: smoke test end-to-end reale (non solo typecheck) —
+Postgres locale, build+avvio di `apps/api`, registrazione professionista+
+cliente, connessione SSE via `curl -sN` sul token del professionista,
+creazione di una richiesta guidata dal cliente diretta a quel
+professionista, frame SSE `chat_message` ricevuto e verificato byte per
+byte (payload atteso, incluso l'id del messaggio salvato su Postgres).
+Verifica visiva in browser (Playwright) del redesign `/chat` rimandata
+alla prossima occasione con ambiente locale attivo — il meccanismo di
+push è provato end-to-end, il layout respinsivo verificato solo via
+typecheck in questo giro.
+
+## 116. Homepage più dinamica (recensioni auto-scroll) + foto più grandi nei profili
+
+Richiesta esplicita dell'utente, in tre parti:
+
+1. **"Recensioni verificate" (homepage) scorre da sola.** `RecentReviews.tsx`
+   passa da un carosello fermo (solo frecce manuali) a un nastro con
+   autoplay continuo: `scrollLeft` incrementato a ogni frame
+   (`requestAnimationFrame`, non `scroll-behavior:smooth`/CSS `animation`
+   — serve leggere e resettare la posizione di scroll reale per il
+   wrap-around), elenco duplicato una volta (`[...reviews, ...reviews]`)
+   e un salto istantaneo impercettibile a metà larghezza totale per un
+   loop infinito senza soluzione di continuità (la seconda metà è
+   identica alla prima). Le frecce restano per lo scorrimento manuale a
+   comando. `scroll-snap-type` rimosso: in conflitto visivo con
+   l'incremento continuo (il browser tentava di agganciare la card più
+   vicina a ogni frame, causando micro-scatti). `prefers-reduced-motion`
+   rispettato fermando del tutto l'autoplay (controllo `matchMedia`
+   una tantum all'avvio, l'incremento è `scrollLeft` via JS puro — non
+   coperto dalla regola CSS globale che già azzera le `animation` del
+   sito, serve un controllo esplicito qui).
+2. **Bug da non reintrodurre, segnalato esplicitamente dall'utente**:
+   l'autoplay non deve mai impedire lo scroll verticale della pagina con
+   il cursore sopra le recensioni. Per questo l'autoplay usa solo
+   `scrollLeft` via rAF e lo stato hover per la pausa — nessun listener
+   `onWheel`/`preventDefault` aggiunto: la rotella del mouse continua a
+   scorrere la pagina normalmente anche con il cursore fermo sopra la
+   sezione. Verificato con un test Playwright dedicato (wheel verticale
+   con cursore sopra il carosello → la pagina scorre comunque).
+   Autoplay in pausa durante l'hover/focus/touch sulla corsia (verificato
+   con `element.hover()`), ripresa 2,5s dopo che il cursore se ne va o
+   dopo un uso manuale delle frecce.
+3. **Foto del professionista più grande nella pagina profilo pubblica**
+   (richiesta esplicita: "chi apre la pagina deve visualizzare bene di
+   chi si tratta") — `ProfessionalAvatar` in `ProfessionalDetailContent.tsx`
+   da 64px a 104px. Stesso principio esteso al carosello "Nuovi profili"
+   in homepage (`NewProfilesCarousel.tsx`, avatar da 72px a 88px).
+
+Verifica: typecheck pulito su `apps/web`; verifica visiva end-to-end con
+Playwright contro un ambiente locale reale (Postgres + API NestJS
+compilata + `next dev`) — autoplay confermato in movimento (`scrollLeft`
+che cresce da solo), pausa su hover confermata, scroll verticale della
+pagina confermato invariato con cursore sopra il carosello, nessun
+overflow orizzontale a 390px di larghezza (mobile), layout della card
+profilo e del carosello "Nuovi profili" verificati via screenshot sia
+desktop che mobile.

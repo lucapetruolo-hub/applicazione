@@ -368,3 +368,19 @@ export type ChatThreadSummary = {
   /** True se l'ultimo messaggio è stato scritto da chi guarda la lista, non dall'altra parte. */
   lastMessageIsMine: boolean;
 };
+
+/**
+ * Evento push in tempo reale (Server-Sent Events — CTO, "socket.io vs
+ * websocket vs alternative": SSE scelta per questo stadio del progetto,
+ * vedi `apps/api/src/realtime/realtime.service.ts` per il perché).
+ * Un solo canale per utente autenticato porta sia i nuovi messaggi di chat
+ * (per aggiornare una conversazione già aperta senza aspettare il poll di
+ * riserva) sia le notifiche generiche (per accelerare badge/toast già
+ * esistenti, stesso identico dato già restituito da `listUnread`) — due
+ * varianti distinte dello stesso tipo, mai un evento generico "è successo
+ * qualcosa" che costringerebbe il client a rifare sempre una query per
+ * sapere cosa.
+ */
+export type RealtimeEvent =
+  | { kind: "chat_message"; guidedRequestId: string; professionalProfileId: string; event: ConversationEvent }
+  | { kind: "notification"; notification: { id: string; type: string; payload: unknown; createdAt: string } };

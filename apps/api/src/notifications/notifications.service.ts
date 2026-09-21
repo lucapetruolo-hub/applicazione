@@ -1,10 +1,14 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
+import { RealtimeService } from "../realtime/realtime.service";
 
 @Injectable()
 export class NotificationsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly realtimeService: RealtimeService,
+  ) {}
 
   /**
    * Punto unico di creazione di una notifica in-app (badge nell'header,
@@ -13,9 +17,19 @@ export class NotificationsService {
    * QUOTE_DATE_CONFIRMED, QUOTE_DATE_REJECTED). Canale sempre PUSH: nessun
    * invio reale (Expo Push/Resend/Twilio sono ancora rimandati, CLAUDE.md
    * §9), solo la riga in tabella che alimenta il conteggio non letti.
+   *
+   * Pubblica anche un push SSE (CTO — real-time): la riga DB resta l'unica
+   * fonte di verità (il push è un acceleratore, mai l'unico modo di sapere
+   * di una notifica — un client senza connessione SSE aperta la trova
+   * comunque al prossimo poll, invariato) ma dimezza la latenza percepita
+   * di badge/toast rispetto al solo poll da 15-45s già esistente.
    */
   async notify(userId: string, type: string, payload: Prisma.InputJsonValue): Promise<void> {
-    await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload } });
+    const created = await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload } });
+    this.realtimeService.publish(userId, {
+      kind: "notification",
+      notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
+    });
   }
 
   async unreadCount(userId: string): Promise<{ count: number }> {

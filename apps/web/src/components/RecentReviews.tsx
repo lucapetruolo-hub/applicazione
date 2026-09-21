@@ -67,10 +67,43 @@ const arrowStyle = {
  * `translateY`) presente anche in `NewProfileCard` (`NewProfilesCarousel.tsx`),
  * non toccato qui: la segnalazione dell'utente riguardava solo le
  * recensioni, fuori scope estendere il fix a quel file in questo giro.
+ *
+ * Quarto giro, richiesta esplicita dell'utente ("rendi più dinamico...
+ * tipo che scorrono da sole"): la corsia scorre ora da sola in autonomo,
+ * niente più fermo in attesa che qualcuno clicchi le freccette. Loop
+ * infinito via `scrollLeft` incrementato a ogni frame (`requestAnimationFrame`,
+ * non `scroll-behavior:smooth`/CSS `animation` — serve poter leggere e
+ * resettare la posizione di scroll reale per il wrap-around, vedi sotto),
+ * con l'elenco duplicato una volta (`[...reviews, ...reviews]`): quando lo
+ * scroll raggiunge la metà esatta della larghezza totale si sottrae quella
+ * metà da `scrollLeft` — un salto istantaneo impercettibile perché la
+ * seconda metà è identica alla prima, l'effetto è un nastro che scorre senza
+ * mai fermarsi. Le freccette restano (scorrimento manuale più rapido a
+ * comando), disattivano l'autoplay al passaggio del mouse/focus e lo
+ * riattivano dopo un breve fermo — stesso principio già in uso per l'hover
+ * delle card. Bug da evitare qui (segnalato esplicitamente dall'utente in
+ * un giro precedente): l'autoplay non deve mai intercettare lo scroll
+ * verticale della pagina — per questo resta deliberatamente un puro
+ * `scrollLeft` via rAF, senza alcun listener `onWheel`/`preventDefault`:
+ * il mouse wheel verticale continua a scorrere la pagina normalmente anche
+ * con il cursore fermo sopra le recensioni, l'autoplay usa solo lo stato
+ * hover per mettersi in pausa. `scroll-snap-type` rimosso (in conflitto
+ * visivo con l'incremento continuo di `scrollLeft`, causava micro-scatti
+ * mentre il browser tentava di agganciare la card più vicina a ogni frame).
+ * `prefers-reduced-motion` già coperto dalla regola globale in
+ * `globals.css` che azzera `animation`, ma qui la spinta è un `scrollLeft`
+ * JS puro — fermata esplicitamente controllando `matchMedia` una sola volta
+ * all'avvio (nessun listener di resize, la preferenza non cambia a
+ * runtime).
  */
+const AUTOPLAY_PX_PER_FRAME = 0.6;
+const AUTOPLAY_RESUME_DELAY_MS = 2500;
+
 export function RecentReviews() {
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const resumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     apiClient
@@ -79,15 +112,55 @@ export function RecentReviews() {
       .catch(() => setReviews([]));
   }, []);
 
+  useEffect(() => {
+    if (!reviews || reviews.length === 0) return undefined;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return undefined;
+    }
+
+    let frameId: number;
+    function tick() {
+      const track = trackRef.current;
+      if (track && !pausedRef.current) {
+        const halfWidth = track.scrollWidth / 2;
+        if (halfWidth > 0) {
+          track.scrollLeft += AUTOPLAY_PX_PER_FRAME;
+          if (track.scrollLeft >= halfWidth) {
+            track.scrollLeft -= halfWidth;
+          }
+        }
+      }
+      frameId = requestAnimationFrame(tick);
+    }
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [reviews]);
+
   if (!reviews || reviews.length === 0) return null;
+
+  function pauseAutoplay() {
+    pausedRef.current = true;
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+  }
+
+  function resumeAutoplaySoon() {
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    resumeTimeoutRef.current = setTimeout(() => {
+      pausedRef.current = false;
+    }, AUTOPLAY_RESUME_DELAY_MS);
+  }
 
   function scrollByCard(direction: 1 | -1) {
     const track = trackRef.current;
     if (!track) return;
+    pauseAutoplay();
     const card = track.querySelector<HTMLElement>("[data-review-card]");
     const step = card ? card.getBoundingClientRect().width + 20 : track.clientWidth;
     track.scrollBy({ left: direction * step, behavior: "smooth" });
+    resumeAutoplaySoon();
   }
+
+  const loopedReviews = [...reviews, ...reviews];
 
   return (
     <Section eyebrow="Recensioni verificate" title="Chi ha già trovato il professionista giusto" maxWidth={1160}>
@@ -104,9 +177,22 @@ export function RecentReviews() {
           <Icon name="chevron-left" size={18} color={brand.grafite} />
         </div>
 
-        <div ref={trackRef} className="rr-track">
-          {reviews.map((review, index) => (
-            <ReviewCard key={review.id} review={review} delayMs={Math.min(index * 90, MAX_STAGGER_MS)} />
+        <div
+          ref={trackRef}
+          className="rr-track"
+          onMouseEnter={pauseAutoplay}
+          onMouseLeave={resumeAutoplaySoon}
+          onFocus={pauseAutoplay}
+          onBlur={resumeAutoplaySoon}
+          onTouchStart={pauseAutoplay}
+          onTouchEnd={resumeAutoplaySoon}
+        >
+          {loopedReviews.map((review, index) => (
+            <ReviewCard
+              key={`${review.id}-${index}`}
+              review={review}
+              delayMs={index < reviews.length ? Math.min(index * 90, MAX_STAGGER_MS) : 0}
+            />
           ))}
         </div>
 
@@ -136,7 +222,6 @@ export function RecentReviews() {
           overflow-x: auto;
           flex: 1;
           min-width: 0;
-          scroll-snap-type: x mandatory;
           padding-bottom: 4px;
           scrollbar-width: none;
         }

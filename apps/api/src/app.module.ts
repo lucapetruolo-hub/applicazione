@@ -29,6 +29,7 @@ import { ProfessionalFiscalModule } from "./professional-fiscal/professional-fis
 import { JobPaymentsModule } from "./job-payments/job-payments.module";
 import { Dac7Module } from "./dac7/dac7.module";
 import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 
 @Module({
   imports: [
@@ -79,6 +80,9 @@ import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.mo
     // dal professionista" — distinto dal ricavo di piattaforma già in
     // JobPaymentsModule/Dac7Module.
     RevenueAnalyticsModule,
+    // Push in tempo reale (SSE) — chat + notifiche, CTO: "socket.io vs
+    // websocket vs alternative" (vedi RealtimeService per il verdetto).
+    RealtimeModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di
