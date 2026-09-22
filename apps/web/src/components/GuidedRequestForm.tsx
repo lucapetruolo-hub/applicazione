@@ -160,10 +160,11 @@ export function GuidedRequestForm({
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
   // professionista già sa se può trattarsi di un intervento a domicilio o
-  // online") — obbligatorio, stesso principio degli altri campi della
-  // richiesta resi obbligatori in un giro precedente (indirizzo, foto).
-  // Dichiarato qui (prima dell'effetto sotto, che lo referenzia) invece che
-  // vicino agli altri stati del form.
+  // online") — obbligatorio (a differenza della foto/video, non più
+  // obbligatoria: richiesta esplicita dell'utente di rimuovere quel
+  // vincolo su tutte le richieste di preventivo, vedi validazione sotto e
+  // `guidedRequestSchema.photoUrls`). Dichiarato qui (prima dell'effetto
+  // sotto, che lo referenzia) invece che vicino agli altri stati del form.
   const [serviceMode, setServiceMode] = useState<"HOME" | "ONLINE">(initialServiceMode);
   // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
@@ -473,10 +474,6 @@ export function GuidedRequestForm({
         setError("Indica la provincia.");
         return;
       }
-    }
-    if (photos.length === 0) {
-      setError("Aggiungi almeno una foto o un video.");
-      return;
     }
     // Gate di autenticazione spostato qui, all'ultimo passo prima
     // dell'invio (F2.2): tutto il resto del modulo — categoria,

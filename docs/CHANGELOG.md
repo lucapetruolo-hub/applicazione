@@ -13980,3 +13980,34 @@ destinatario vuoto e riquadro professionista corretto con `?professionista=
 &nomeProfessionista=Mario+Rossi+Idraulica`; verificato anche il caso
 generico (nessun `professionista` in query string) invariato, sottotitolo
 originale mostrato come prima.
+
+## 127. Foto/video non più obbligatori in nessuna richiesta di preventivo
+
+Richiesta esplicita dell'utente: "In tutte le richieste preventivo, non
+rendere obbligatorio l'inserimento di foto/video" — ribalta una decisione
+precedente ("tutte le voci del richiedi un preventivo devono essere
+obbligatorie", da cui era nato il vincolo minimo 1 elemento).
+
+**Decisione**: rimosso il vincolo sia lato client sia lato server, unico
+punto di verità condiviso da entrambi:
+- `packages/shared/src/schemas.ts` (`guidedRequestSchema.photoUrls`):
+  `.min(1, "Aggiungi almeno una foto o un video.")` rimosso, resta
+  `.max(5)` con `.default([])` — un array vuoto è ora un valore valido, non
+  solo "assente" (il campo continua a non essere `.optional()`: il body
+  deve comunque includere la chiave `photoUrls`, ma può essere `[]`).
+- `apps/web/src/components/GuidedRequestForm.tsx`: rimosso il controllo
+  `if (photos.length === 0) { setError(...) }` prima dell'invio.
+
+Applica a `/preventivo` e `/urgente` (stesso `GuidedRequestForm`
+condiviso, `isUrgent` non cambia questa regola) e a qualunque variante con
+un professionista specifico preselezionato (§126) — un solo punto di
+modifica per tutti i punti di ingresso, nessuna duplicazione di logica di
+validazione da tenere sincronizzata.
+
+Verifica: `pnpm turbo run typecheck` pulito su tutto il monorepo (9/9),
+`pnpm --filter @professionisti/api test` 17/17 verdi (nessun test univoco
+sulla vecchia regola, non serviva rimuoverne). Verifica end-to-end
+Playwright: compilata categoria+descrizione (modalità Online, senza
+allegare nulla) e cliccato "Invia richiesta" — nessun errore "Aggiungi
+almeno una foto o un video", il form procede correttamente al gate di
+autenticazione (il passo successivo reale, invariato).

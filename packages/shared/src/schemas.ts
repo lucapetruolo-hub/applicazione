@@ -137,15 +137,17 @@ export const guidedRequestSchema = z
     categorySlug: professionalCategorySlugSchema,
     description: z.string().min(10).max(2000),
     /**
-     * Almeno una foto (o video) obbligatoria (richiesta esplicita
-     * dell'utente: "tutte le voci del richiedi un preventivo devono essere
-     * obbligatorie"). Fino a 5 elementi, foto e video mescolabili
-     * liberamente (richiesta esplicita dell'utente: "aumenta il limite a 5"
-     * e "dai la possibilità di caricare anche i video") — lo stesso array
-     * di URL vale per entrambi i tipi di media, distinti solo dall'estensione
-     * del file (vedi isVideoUrl in apps/web).
+     * Facoltativa (richiesta esplicita dell'utente: "in tutte le richieste
+     * preventivo, non rendere obbligatorio l'inserimento di foto/video" —
+     * ribalta una decisione precedente, "tutte le voci del richiedi un
+     * preventivo devono essere obbligatorie", che l'aveva resa obbligatoria).
+     * Fino a 5 elementi, foto e video mescolabili liberamente (richiesta
+     * esplicita dell'utente: "aumenta il limite a 5" e "dai la possibilità
+     * di caricare anche i video") — lo stesso array di URL vale per
+     * entrambi i tipi di media, distinti solo dall'estensione del file
+     * (vedi isVideoUrl in apps/web).
      */
-    photoUrls: z.array(z.string().url()).min(1, "Aggiungi almeno una foto o un video.").max(5),
+    photoUrls: z.array(z.string().url()).max(5).default([]),
     /**
      * Obbligatoria solo per un intervento "a domicilio" — richiesta
      * esplicita dell'utente: una consulenza online non richiede di
