@@ -529,14 +529,24 @@ produzione):
 **Credenziali/configurazione**:
 4. `NOMINATIM_CONTACT_EMAIL` su Render (Usage Policy Nominatim) — oggi
    assente, ricade su un fallback neutro non conforme per la produzione.
+4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto
+   tecnicamente, richiede un piano a pagamento (decisione di budget non
+   presa autonomamente): promemoria operativo ricorrente, non ipotetico,
+   non un rischio ipotetico da monitorare "quando capita". Alla scadenza
+   va creato un nuovo DB free, aggiornato `DATABASE_URL` su Render e
+   ripetuto il passo di baseline delle migrazioni (dettagli tecnici e
+   comando esatto al punto 19 più sotto) prima che l'API torni a
+   funzionare in produzione.
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/
-   `STRIPE_PRICE_BUSINESS`), Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
-   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`) e Resend reali
-   (`RESEND_API_KEY`, dominio verificato su Resend + `RESEND_FROM_EMAIL`
-   corrispondente — promemoria anti no-show, vedi §9/`EmailService`; senza
-   queste variabili il servizio non va in crash, semplicemente non invia,
-   stesso pattern già usato per Stripe/Cloudinary/Google).
+   `STRIPE_PRICE_BUSINESS`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
+5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
+   `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i
+   promemoria anti no-show (§9/`EmailService`, già implementati e
+   funzionanti) non vanno in crash ma semplicemente non partono: nessuna
+   email reale finché queste due variabili non sono impostate su Render,
+   stesso pattern già usato per Stripe/Cloudinary/Google.
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).
@@ -622,8 +632,8 @@ aperti solo:
     `migrate deploy` fallisce al prossimo deploy:
     `DATABASE_URL="<connection string esterna di Render>" npx prisma
     migrate resolve --applied 20260921212750_baseline`.
-20. Postgres free che scade ogni 30 giorni — non risolto tecnicamente
-    (richiede un piano a pagamento, decisione di budget non presa
-    autonomamente): promemoria operativo ricorrente, non ipotetico. Ogni
-    volta che il DB scade e se ne ricrea uno nuovo, va ripetuto anche il
-    passo manuale del punto 19 (baseline) sul nuovo database.
+20. Postgres free che scade ogni 30 giorni — vedi punto 4bis più sopra
+    (voce principale di questo problema, in cima alla checklist perché è
+    un rischio operativo ricorrente, non solo tecnico). Ogni volta che il
+    DB scade e se ne ricrea uno nuovo, va ripetuto anche il passo manuale
+    del punto 19 qui sopra (baseline) sul nuovo database.
