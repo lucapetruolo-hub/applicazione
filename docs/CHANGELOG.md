@@ -13934,3 +13934,49 @@ inline di `/chat` (CLAUDE.md §10 §123) corregge il bug ovunque un
 messaggio possa essere inviato, senza toccare nessun altro file.
 
 Verifica: `pnpm --filter @professionisti/web exec tsc --noEmit` pulito.
+
+## 126. Richiesta a un professionista specifico: sottotitolo esplicito invece del testo generico "lo inviamo ai professionisti compatibili"
+
+Richiesta esplicita dell'utente: "Quando richiedo un preventivo ad un
+professionista specifico, non deve esserci scritto questo: 'Descrivi il
+lavoro: lo inviamo subito ai professionisti compatibili nella tua zona.'
+[...] il cliente deve capirlo, magari mettendo qualcosa relativo a quello
+specifico professionista in modo che il cliente capisca che lo sta
+mandando a quello". Presentate 4 opzioni (riquadro foto+nome, solo testo
+senza nome, solo testo con nome, card completa stile profilo) —
+l'utente ha scelto il riquadro con foto+nome.
+
+**Decisione**: quando `GuidedRequestForm` riceve sia `professionista`
+(id) sia il nuovo `nomeProfessionista` in query string, il sottotitolo
+generico è sostituito da un riquadro (stesso `ProfessionalAvatar` già
+usato nei risultati di ricerca: foto se presente, altrimenti icona
+categoria colorata) con "Stai inviando una richiesta a **[nome
+attività]**", seguito da un'istruzione dedicata ("Descrivi il lavoro: la
+richiesta arriva solo a [nome], nessun altro professionista la riceve.")
+al posto del generico "lo inviamo ai professionisti compatibili nella tua
+zona". Nessuna chiamata API aggiuntiva: nome e foto arrivano via query
+string dai tre punti che già costruiscono il link verso `/preventivo` con
+un professionista specifico (`ProfessionalDetailContent.tsx` — bottone
+"Richiedi un preventivo a [nome]" e click su una fascia agenda —
+e `ResultsListWithMap.tsx`, click su una fascia della mini-agenda nei
+risultati), che hanno già `businessName`/`imageUrl` in scope. Se il
+parametro manca (link vecchio, salvato/condiviso prima di questo
+cambiamento) si ricade sul sottotitolo generico originale — nessuna
+richiesta è bloccata da un parametro assente.
+
+**Bug reale scoperto in verifica visiva** (Playwright, non solo lettura
+del codice): il nome scelto per il nuovo parametro, `nome`, collideva con
+un parametro già esistente con lo stesso nome — `GuidedRequestForm` usa
+già `?nome=`/`?cognome=`/ecc. per precompilare i dati del **cliente**
+(destinatario), alimentati dal link "Ripeti la richiesta" in
+`/le-mie-richieste`. Con lo stesso nome di parametro, il nome del
+professionista finiva scritto nel campo "Nome" del destinatario invece
+che nel nuovo riquadro. Corretto rinominando i due nuovi parametri in
+`nomeProfessionista`/`fotoProfessionista`, univoci nel form.
+
+Verifica: `pnpm turbo run typecheck` pulito su tutto il monorepo (9/9).
+Screenshot Playwright prima/dopo il fix di collisione: campo "Nome" del
+destinatario vuoto e riquadro professionista corretto con `?professionista=
+&nomeProfessionista=Mario+Rossi+Idraulica`; verificato anche il caso
+generico (nessun `professionista` in query string) invariato, sottotitolo
+originale mostrato come prima.

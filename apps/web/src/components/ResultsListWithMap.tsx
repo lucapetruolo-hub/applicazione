@@ -579,7 +579,16 @@ export function ResultsListWithMap({
               onSlotPress={(date, time, endTime, mode) =>
                 navigateWithTransition(() =>
                   router.push(
-                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
+                    // `nomeProfessionista`/`fotoProfessionista` (richiesta
+                    // esplicita dell'utente: il cliente deve capire subito
+                    // che la richiesta va a QUEL professionista, non "ai
+                    // professionisti compatibili nella zona") — già
+                    // disponibili qui sui risultati di ricerca, passati via
+                    // query string invece di un fetch aggiuntivo in
+                    // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
+                    // non collidere con il "nome" del CLIENTE (prefill di
+                    // "Ripeti la richiesta", stesso form).
+                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
                   ),
                 )
               }

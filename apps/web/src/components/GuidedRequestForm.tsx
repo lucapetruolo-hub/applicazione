@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
+import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
@@ -110,6 +111,20 @@ export function GuidedRequestForm({
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
   const professionalProfileId = searchParams.get("professionista") ?? undefined;
+  // Nome/foto del professionista scelto (richiesta esplicita dell'utente:
+  // "il cliente deve capire" che la richiesta va a quello specifico
+  // professionista, non genericamente "ai professionisti compatibili nella
+  // zona") — passati via query string da chi costruisce il link (profilo
+  // pubblico, agenda nei risultati di ricerca), nessun fetch aggiuntivo qui.
+  // Nomi dei parametri distinti da "nome"/"cognome" (già usati più sotto per
+  // il nome DEL CLIENTE, prefill di "Ripeti la richiesta") — bug reale
+  // scoperto in verifica visiva: con la stessa chiave "nome", il nome del
+  // professionista finiva scritto nel campo "Nome" del destinatario.
+  // `fotoProfessionista` può essere una stringa vuota (professionista senza
+  // immagine): trattata come assente, non come URL vuoto passato a
+  // ProfessionalAvatar.
+  const professionalName = searchParams.get("nomeProfessionista") || undefined;
+  const professionalImageUrl = searchParams.get("fotoProfessionista") || null;
   // Valorizzati solo quando si arriva da una fascia "generica" dell'agenda
   // pubblica di un professionista (AvailabilitySlot.maxBookings > 1, vedi
   // packages/shared/src/availability.ts): mostrati come info bloccata sotto,
@@ -582,11 +597,45 @@ export function GuidedRequestForm({
     <>
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={560} gap="$5">
-        <YStack gap="$2">
+        <YStack gap="$3">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             {title}
           </Text>
-          <Text color={brand.grafite70}>{subtitle}</Text>
+          {professionalProfileId && professionalName ? (
+            // Richiesta rivolta a un professionista specifico (si arriva dal
+            // suo profilo pubblico o da una fascia della sua agenda): il
+            // sottotitolo generico ("lo inviamo subito ai professionisti
+            // compatibili nella tua zona") era fuorviante, il cliente non
+            // capiva che stava scrivendo a lui e non a un elenco di
+            // professionisti — richiesta esplicita dell'utente. Riquadro con
+            // foto+nome al posto del sottotitolo generico, non in aggiunta.
+            <>
+              <XStack
+                alignItems="center"
+                gap="$3"
+                alignSelf="flex-start"
+                backgroundColor={brand.calce}
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderRadius={radiusDoc}
+                paddingHorizontal="$4"
+                paddingVertical="$3"
+              >
+                <ProfessionalAvatar imageUrl={professionalImageUrl} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
+                <YStack>
+                  <Text fontSize="$2" color={brand.grafite70}>
+                    Stai inviando una richiesta a
+                  </Text>
+                  <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
+                    {professionalName}
+                  </Text>
+                </YStack>
+              </XStack>
+              <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva solo a {professionalName}, nessun altro professionista la riceve.</Text>
+            </>
+          ) : (
+            <Text color={brand.grafite70}>{subtitle}</Text>
+          )}
         </YStack>
 
         {professionalProfileId && selectedCategory ? (

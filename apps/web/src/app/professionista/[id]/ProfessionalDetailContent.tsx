@@ -663,7 +663,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                           </XStack>
                         );
                       }
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}`;
+                      // `nomeProfessionista`/`fotoProfessionista`: il
+                      // cliente deve capire subito che la richiesta va a
+                      // QUESTO professionista, non "ai professionisti
+                      // compatibili nella zona" — richiesta esplicita
+                      // dell'utente, GuidedRequestForm li usa per mostrare
+                      // un riquadro con foto+nome invece del sottotitolo
+                      // generico. Nomi distinti da "nome"/"foto" per non
+                      // collidere col "nome" del CLIENTE nello stesso form.
+                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}`;
                       return (
                         <XStack
                           key={day.date}
@@ -736,7 +744,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         ) : null}
 
         <Link
-          href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}`}
+          href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
           style={{ textDecoration: "none", alignSelf: "flex-start" }}
         >
           <Button variant="primary">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
