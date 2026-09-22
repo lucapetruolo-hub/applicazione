@@ -13900,3 +13900,37 @@ Verifica: `pnpm turbo run typecheck` pulito su tutto il monorepo (9/9
 task), `pnpm --filter @professionisti/api test` 17/17 verdi, migrazione
 baseline verificata schema-identica al DB locale (`prisma migrate diff` →
 "No difference detected"), `git status` pulito dopo il commit.
+
+## 125. Bug reale: un messaggio in chat veniva inviato/mostrato due volte
+
+Segnalato esplicitamente dall'utente: "Nella chat quando invio un messaggio
+lo invia due volte".
+
+**Causa reale**: `TimelineService.publishChatMessage`
+(`apps/api/src/timeline/timeline.service.ts`) pubblica il push SSE
+`chat_message` a **entrambe** le parti del thread — `clientUserId` e
+`professionalUserId` — incluso quindi chi ha appena inviato il messaggio,
+non solo l'altra parte (necessario perché lo stesso utente potrebbe avere
+la chat aperta in un'altra scheda/dispositivo). Lato client,
+`ConversationView.tsx` ha già una deduplica per id sull'evento SSE in
+arrivo (`setEvents((prev) => prev?.some(e => e.id === realtimeEvent.event.id) ? prev : [...prev, realtimeEvent.event])`,
+commento originale: "mai un doppio messaggio a schermo") — ma l'append
+ottimistico dentro `handleSubmit`, eseguito quando la `POST` di invio si
+risolve, non aveva lo stesso controllo: appendeva sempre `created` senza
+verificare se un evento con lo stesso id fosse già presente. Quando l'eco
+SSE del proprio messaggio (il server pubblica il push appena creata la riga
+in DB, prima ancora di rispondere alla richiesta HTTP) arriva al browser
+prima che la `POST` stessa si risolva — scenario plausibile, la connessione
+SSE è già aperta mentre la risposta HTTP deve ancora attraversare l'intero
+giro di rete — il messaggio finiva aggiunto due volte: una dall'handler SSE,
+una dall'append ottimistico privo di controllo.
+
+**Fix**: stesso identico controllo di deduplica per id applicato anche
+all'append ottimistico in `handleSubmit`
+(`setEvents((prev) => prev?.some(e => e.id === created.id) ? prev : [...prev, created])`)
+— un solo cambiamento in `ConversationView.tsx`, che essendo il componente
+condiviso da tutti e 5 i punti di montaggio come popup più il pannello
+inline di `/chat` (CLAUDE.md §10 §123) corregge il bug ovunque un
+messaggio possa essere inviato, senza toccare nessun altro file.
+
+Verifica: `pnpm --filter @professionisti/web exec tsc --noEmit` pulito.

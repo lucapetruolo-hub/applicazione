@@ -399,7 +399,14 @@ export function ConversationView({
       const created = await apiClient.addTimelineUpdate(token, guidedRequestId, { professionalProfileId, message, mediaUrls });
       lastEventIdRef.current = created.id;
       shouldAutoScrollRef.current = true;
-      setEvents((prev) => [...(prev ?? []), created]);
+      // Deduplicato per id, stesso principio del push SSE sopra: il
+      // backend pubblica l'evento "chat_message" a ENTRAMBE le parti del
+      // thread, incluso chi lo ha appena inviato (`TimelineService.
+      // publishChatMessage`) — se l'eco SSE del proprio messaggio arriva
+      // prima che questa POST si risolva, senza questo controllo il
+      // messaggio veniva aggiunto due volte (bug reale segnalato
+      // dall'utente: "quando invio un messaggio lo invia due volte").
+      setEvents((prev) => (prev?.some((e) => e.id === created.id) ? prev : [...(prev ?? []), created]));
       setMessage("");
       setMediaUrls([]);
     } catch (err) {
