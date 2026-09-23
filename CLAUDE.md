@@ -626,6 +626,15 @@ davvero la verifica prima):
     produzione — non deve mai restare un'affermazione falsa pubblicata dal
     vivo.
 
+**Giorno del lancio** (richiesta esplicita dell'utente: "ricorda questo
+prima del lancio"):
+0. **Rendere il sito visibile ai motori di ricerca**: impostare
+   `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel (Settings → Environment
+   Variables, ambiente Production) e rifare il deploy (Deployments →
+   ultimo deploy → Redeploy). Finché non si fa, il sito resta `noindex` e
+   la sitemap vuota (docs/CHANGELOG.md §132). Subito dopo: inviare
+   `/sitemap.xml` in Google Search Console.
+
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)
     quando l'offerta reale di professionisti in una città/categoria supera
