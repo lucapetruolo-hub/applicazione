@@ -591,6 +591,11 @@ produzione):
       pannello del registrar del dominio.
    3. Su Render impostare `RESEND_FROM_EMAIL` =
       `Manovia <notifiche@tuodominio.it>`.
+   Verificato dall'utente: con il mittente di prova `onboarding@resend.dev`
+   l'email del nuovo lead arriva, ma **in spam**. Il dominio proprio risolve
+   anche questo: oltre ai record SPF/DKIM chiesti da Resend, aggiungere un
+   record DMARC (`_dmarc`, es. `v=DMARC1; p=none;`) e provare l'invio su
+   Gmail/Outlook prima di reclutare i professionisti.
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).
