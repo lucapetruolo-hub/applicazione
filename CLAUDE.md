@@ -570,6 +570,17 @@ produzione):
    funzionanti) non vanno in crash ma semplicemente non partono: nessuna
    email reale finché queste due variabili non sono impostate su Render,
    stesso pattern già usato per Stripe/Cloudinary/Google.
+   ⚠️ **Senza un dominio proprio le email arrivano solo al titolare
+   dell'account Resend** (richiesta esplicita dell'utente di tenerlo in
+   checklist): finché non si verifica un dominio, Resend consegna solo
+   all'indirizzo con cui è stato creato l'account — va bene per provare,
+   non per i professionisti veri. Per usarlo davvero:
+   1. Comprare un dominio (~€10/anno, es. `manovia.it`): `vercel.app` non
+      è nostro e non si può verificare.
+   2. Resend → Domains → Add Domain, poi copiare i record DNS mostrati nel
+      pannello del registrar del dominio.
+   3. Su Render impostare `RESEND_FROM_EMAIL` =
+      `Manovia <notifiche@tuodominio.it>`.
 6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
    dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
    professionista↔piattaforma, non solo abbonamenti/boost/lead).
