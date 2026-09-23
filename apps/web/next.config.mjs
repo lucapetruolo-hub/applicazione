@@ -7,6 +7,10 @@ const nextConfig = {
     // name varia per ambiente (env var, mai nel codice), l'host resta
     // sempre `res.cloudinary.com`.
     remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
+    // Ridimensionamento fatto da Cloudinary, non da Vercel (quota Image
+    // Optimization del piano gratuito) — vedi src/lib/cloudinaryImageLoader.ts.
+    loader: "custom",
+    loaderFile: "./src/lib/cloudinaryImageLoader.ts",
   },
   experimental: {
     // Niente cache client-side delle pagine (Router Cache): le pagine

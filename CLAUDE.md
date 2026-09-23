@@ -183,6 +183,16 @@ prima discuterne e aggiornare questo file.
   via browser/`curl` funziona sempre indipendentemente da questo problema —
   utile sia come verifica sia come soluzione ponte. Se ricapita in futuro,
   ripartire da lì invece di affidarsi solo a push+attesa.
+  **Build saltate di proposito** (docs/CHANGELOG.md §131, quota piano
+  gratuito): `apps/web/vercel.json` → `ignoreCommand` esegue
+  `scripts/vercel-ignore-build.sh`, che salta tutte le anteprime (branch
+  diversi dalla produzione) e, in produzione, i commit che non toccano
+  `apps/web`, i pacchetti condivisi o le dipendenze. Se il sito "non si
+  aggiorna", controllare prima nel log del deploy se compare "build
+  saltata": è voluto per commit solo backend/mobile/docs. Redeploy e Deploy
+  Hook sullo stesso commit costruiscono sempre. Le immagini `next/image` su
+  Cloudinary sono ridimensionate da Cloudinary (`images.loaderFile`), non
+  dall'ottimizzatore di Vercel.
 - **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
   manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
   `passport-jwt`. Motivo: con quella combinazione (testata con
