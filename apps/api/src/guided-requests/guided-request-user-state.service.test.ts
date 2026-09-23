@@ -58,7 +58,8 @@ describe("NotificationsService.notify su richiesta silenziata", () => {
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
     };
     const realtime = { publish: vi.fn() };
-    return { service: new NotificationsService(prisma as never, realtime as never), prisma, realtime };
+    const email = { send: vi.fn().mockResolvedValue(true) };
+    return { service: new NotificationsService(prisma as never, realtime as never, email as never), prisma, realtime, email };
   }
 
   it("crea la notifica già letta e non fa push", async () => {
@@ -73,5 +74,34 @@ describe("NotificationsService.notify su richiesta silenziata", () => {
     await service.notify("u-1", "REQUEST_REMINDER", { guidedRequestId: "gr-1" });
     expect(prisma.guidedRequestUserState.findFirst).not.toHaveBeenCalled();
     expect(realtime.publish).toHaveBeenCalled();
+  });
+});
+
+describe("NotificationsService — email sul nuovo lead", () => {
+  function buildLeadNotifications(muted: boolean) {
+    const prisma = {
+      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
+      notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_LEAD", payload: {}, createdAt: new Date() }) },
+      user: { findMany: vi.fn().mockResolvedValue([{ email: "pro@example.com", name: "Pro" }, { email: null, name: "Senza email" }]) },
+    };
+    const email = { send: vi.fn().mockResolvedValue(true) };
+    const service = new NotificationsService(prisma as never, { publish: vi.fn() } as never, email as never);
+    return { service, email };
+  }
+
+  it("invia l'email al professionista con categoria, città e urgenza", async () => {
+    const { service, email } = buildLeadNotifications(false);
+    await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: true });
+    await vi.waitFor(() => expect(email.send).toHaveBeenCalledTimes(1));
+    expect(email.send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "pro@example.com", subject: "URGENTE — Nuova richiesta: Idraulico a Roma" }),
+    );
+  });
+
+  it("nessuna email se la richiesta è silenziata", async () => {
+    const { service, email } = buildLeadNotifications(true);
+    await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(email.send).not.toHaveBeenCalled();
   });
 });

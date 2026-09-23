@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD, Reflector } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, Reflector } from "@nestjs/core";
+import { SentryGlobalFilter, SentryModule } from "@sentry/nestjs/setup";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { HealthController } from "./health/health.controller";
@@ -34,6 +35,8 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
 
 @Module({
   imports: [
+    // Error tracking (src/instrument.ts): inerte senza SENTRY_DSN.
+    SentryModule.forRoot(),
     // Limite globale prudente (60 richieste/minuto per IP): protegge da
     // scraping/flood senza intralciare l'uso normale (una pagina di ricerca
     // può fare più chiamate ravvicinate). Endpoint pubblici ad alto rischio
@@ -96,6 +99,12 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
   // silenzio (nessun crash, ma nessun rate limiting applicato: verificato
   // con richieste ripetute a POST /waitlist, sempre 201 oltre il limite).
   // Workaround noto per questa combinazione @nestjs/throttler + build tsc.
-  providers: [Reflector, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    Reflector,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Invia a Sentry le eccezioni non gestite (i 4xx voluti no), poi
+    // risponde come il filtro di default di Nest.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
+  ],
 })
 export class AppModule {}

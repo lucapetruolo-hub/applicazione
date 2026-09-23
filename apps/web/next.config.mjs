@@ -18,6 +18,13 @@ const nextConfig = {
     // verso lo stesso percorso con query diverse (cambio Online/Domicilio).
     staleTimes: { dynamic: 0, static: 0 },
   },
+  // Sito privato finché NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi
+  // src/lib/siteIndexing.ts): l'header copre anche le pagine client e le
+  // risorse non HTML, dove il meta robots del layout non arriva.
+  async headers() {
+    if (process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true") return [];
+    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+  },
   transpilePackages: ["@professionisti/ui", "@professionisti/shared"],
   // packages/ui/src/config.ts importa `Platform` da "react-native" per
   // scegliere la famiglia di font per piattaforma (vedi commento lì):

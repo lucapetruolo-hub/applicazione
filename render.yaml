@@ -68,6 +68,20 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
+      # Prezzi Stripe dei piani Pro/Business (price_...), letti da
+      # apps/api/src/billing/billing.service.ts.
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      - key: STRIPE_PRICE_BUSINESS
+        sync: false
+      # Email di contatto richiesta dalla Usage Policy di Nominatim
+      # (apps/api/src/geocoding/geocoding.service.ts).
+      - key: NOMINATIM_CONTACT_EMAIL
+        sync: false
+      # Error tracking (apps/api/src/instrument.ts): DSN del progetto Sentry,
+      # senza il quale gli errori restano solo nei log di Render.
+      - key: SENTRY_DSN
+        sync: false
       - key: FRONTEND_URL
         value: https://applicazione-web.vercel.app
 

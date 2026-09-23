@@ -55,6 +55,7 @@ Implicazioni tecniche dirette:
 | Push in tempo reale (chat, notifiche in-app) | **Server-Sent Events** (`@Sse()` di NestJS lato server, `EventSource` nativo del browser lato client) — non Socket.io né WebSocket grezzo | Un solo servizio Render (nessuno scaling orizzontale, l'argomento Socket.io/adapter Redis non si applica), l'invio passa già per REST (serve solo un push server→client, mai bidirezionale), zero dipendenze nuove (`EventSource` è nativo, nessuna libreria client), riconnessione automatica alla caduta della connessione (Render free tier va in sleep/si riavvia). Limite noto e accettato: `EventSource` non può impostare header custom, il JWT passa come query string (`?token=...`, rischio minore ma reale di finire in log/cronologia). Stato in memoria (`RealtimeService`, `Map<userId, Subject>`) esplicitamente scoped a singola istanza — se il progetto scalasse orizzontalmente, va sostituito con un pub/sub condiviso (es. Redis, già nello stack per BullMQ) solo internamente a quel servizio, l'interfaccia pubblica non cambia. Dettagli in `docs/CHANGELOG.md` §115. Il polling esistente resta come rete di sicurezza, solo allungato dove SSE copre ormai il caso comune |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
+| Error tracking e statistiche | **Sentry** (solo `apps/api`, `SENTRY_DSN`) + **Vercel Web Analytics** (`apps/web`, senza cookie) | Decisi con l'utente (consiglio CEO, docs/CHANGELOG.md §132): prima un 500, un cron fallito o un'email non inviata non li vedeva nessuno, e non esisteva nessuna misura delle visite. Piani gratuiti, nessuna carta. Uptime: `.github/workflows/uptime.yml` |
 | Hosting | Web → **Vercel** (`applicazione-web.vercel.app`); Mobile build → EAS (Expo); API/DB → **Render** (deciso, deployato; in precedenza Railway, abbandonato per scadenza piano free) | Scelta pragmatica per iterare velocemente in fase iniziale |
 | Mappa risultati ricerca | **Leaflet + OpenStreetMap** (`apps/web` only, mai in `packages/ui`) | Puntini reali dei professionisti nei risultati di ricerca. Deciso esplicitamente con l'utente **al posto di** Google Maps/Places: nessuna chiave API, nessuna carta di pagamento su Google Cloud, tile OpenStreetMap gratuiti. Leaflet non gira in React Native (serve DOM/CSS) — se la mappa servirà anche su mobile andrà valutato `react-native-maps` separatamente, non è nello scope attuale |
 | Storage immagini profilo | **Cloudinary** | Upload dell'immagine profilo dei professionisti (`apps/api/src/cloudinary/`). Deciso esplicitamente con l'utente al posto di Vercel Blob o di salvare il file nel database: piano gratuito senza carta di pagamento, CDN + resize automatico (800×800 max) incluso lato upload |
@@ -193,6 +194,12 @@ prima discuterne e aggiornare questo file.
   Hook sullo stesso commit costruiscono sempre. Le immagini `next/image` su
   Cloudinary sono ridimensionate da Cloudinary (`images.loaderFile`), non
   dall'ottimizzatore di Vercel.
+- **Sito privato finché il lancio non è ufficiale** (docs/CHANGELOG.md
+  §132, richiesta esplicita dell'utente): `noindex` su tutto il sito (header
+  `X-Robots-Tag` + meta robots), sitemap vuota, raggiungibile solo da chi
+  ha il link. Si apre ai motori di ricerca solo con
+  `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel + nuovo deploy — non
+  toglierlo prima del lancio ufficiale.
 - **Guard JWT senza `@nestjs/passport`**: `apps/api/src/auth/jwt-auth.guard.ts` verifica il token
   manualmente con `JwtService.verify()` invece di usare `@nestjs/passport` +
   `passport-jwt`. Motivo: con quella combinazione (testata con
@@ -618,6 +625,15 @@ davvero la verifica prima):
     punti (15/16) vanno comunque corretti/rimossi prima di andare in
     produzione — non deve mai restare un'affermazione falsa pubblicata dal
     vivo.
+
+**Giorno del lancio** (richiesta esplicita dell'utente: "ricorda questo
+prima del lancio"):
+0. **Rendere il sito visibile ai motori di ricerca**: impostare
+   `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel (Settings → Environment
+   Variables, ambiente Production) e rifare il deploy (Deployments →
+   ultimo deploy → Redeploy). Finché non si fa, il sito resta `noindex` e
+   la sitemap vuota (docs/CHANGELOG.md §132). Subito dopo: inviare
+   `/sitemap.xml` in Google Search Console.
 
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)

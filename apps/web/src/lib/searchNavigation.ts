@@ -1,4 +1,4 @@
-import { findCategoryByQuery } from "@professionisti/shared";
+import { comuneSlug, findCategoryByQuery } from "@professionisti/shared";
 import type { ProfessionalSuggestion, SearchMode } from "@professionisti/ui";
 
 /**
@@ -22,18 +22,19 @@ export function buildSearchDestination({
 }): string {
   const isOnline = mode === "online";
   const params = new URLSearchParams();
-  if (city.trim()) params.set("citta", city.trim());
   if (isOnline) params.set("online", "1");
   if (urgentOnly) params.set("urgente", "1");
-  const qs = params.toString() ? `?${params.toString()}` : "";
 
-  if (professional) {
-    return `/cerca/${professional.categorySlug}${qs}`;
+  const categorySlug = professional?.categorySlug ?? findCategoryByQuery(query)?.slug;
+  if (categorySlug) {
+    // Comune reale → pagina indicizzabile /cerca/[categoria]/[citta]
+    // (docs/CHANGELOG.md §132); testo libero non riconosciuto resta `?citta=`.
+    const citySlug = city.trim() ? comuneSlug(city) : undefined;
+    if (city.trim() && !citySlug) params.set("citta", city.trim());
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    return `/cerca/${categorySlug}${citySlug ? `/${citySlug}` : ""}${qs}`;
   }
-  const category = findCategoryByQuery(query);
-  if (category) {
-    return `/cerca/${category.slug}${qs}`;
-  }
+  if (city.trim()) params.set("citta", city.trim());
   if (query.trim()) params.set("q", query.trim());
   const finalQs = params.toString() ? `?${params.toString()}` : "";
   return `/cerca${finalQs}`;

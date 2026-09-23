@@ -19,6 +19,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@professionisti/database": "workspace:*",
     "@professionisti/shared": "workspace:*",
+    "@sentry/nestjs": "^10.75.2",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.10.0",
     "dotenv": "^16.4.5",

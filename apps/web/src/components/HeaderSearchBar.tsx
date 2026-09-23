@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
@@ -25,8 +25,10 @@ export function HeaderSearchBar() {
   const searchParams = useSearchParams();
 
   const online = searchParams.get("online") === "1";
-  const city = searchParams.get("citta") ?? "";
   const categorySlugFromPath = pathname.split("/")[2];
+  // Città nel percorso (/cerca/[categoria]/[citta], docs/CHANGELOG.md §132) o, per testo libero, in `?citta=`.
+  const citySlugFromPath = pathname.split("/")[3];
+  const city = searchParams.get("citta") ?? (citySlugFromPath ? findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
   const query = category ? category.label : (searchParams.get("q") ?? "");
 
