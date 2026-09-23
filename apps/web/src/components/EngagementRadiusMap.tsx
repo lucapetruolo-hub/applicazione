@@ -1,19 +1,14 @@
 "use client";
 
-// Unico file che tocca Leaflet per il raggio di ingaggio del professionista
-// — CLAUDE.md §2: Leaflet è una scelta "per ora", con piano di migrare a
-// Google Maps più avanti. Tutta la logica specifica di Leaflet (marker,
-// Circle, fit dei bounds) resta isolata qui dentro: la futura migrazione
-// richiederà di riscrivere solo questo file, non di cercare codice mappa
-// sparso tra i chiamanti. `EngagementRadiusSection` (il componente che usa
-// questo) non importa mai `leaflet`/`react-leaflet` direttamente — vede
-// solo l'interfaccia props qui sotto, stabile indipendentemente dal
-// provider di mappe usato internamente.
+// Unico file che disegna la mappa del raggio di ingaggio del professionista:
+// `EngagementRadiusSection` (il componente che usa questo) non importa mai
+// la libreria di mappe direttamente — vede solo l'interfaccia props qui
+// sotto, stabile indipendentemente dal provider (Leaflet fino a
+// docs/CHANGELOG.md §133, ora Google Maps).
 import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { Circle, MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
+import { AdvancedMarker, Circle, Map as GoogleMap, Pin, useMap } from "@vis.gl/react-google-maps";
 import { brand } from "@professionisti/ui";
+import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
 export type EngagementRadiusMapProps = {
   /** Posizione fissa del professionista (marker), mai spostabile da qui. */
@@ -24,16 +19,6 @@ export type EngagementRadiusMapProps = {
   /** Raggio richieste urgenti, in km (1-25), indipendente dal precedente. */
   urgentEngagementRadiusKm: number;
 };
-
-const markerIcon = L.icon({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
 
 // Raggio massimo consentito (STEP 2, validato anche lato backend): usato
 // per inquadrare la mappa una sola volta al montaggio in modo che il
@@ -46,10 +31,10 @@ function FitToMaxRadius({ latitude, longitude }: { latitude: number; longitude: 
   const map = useMap();
   const hasFitted = useRef(false);
   useEffect(() => {
-    if (hasFitted.current) return;
+    if (!map || hasFitted.current) return;
     hasFitted.current = true;
-    const bounds = L.latLng(latitude, longitude).toBounds(MAX_RADIUS_KM * 1000 * 2);
-    map.fitBounds(bounds, { padding: [24, 24] });
+    const bounds = new google.maps.Circle({ center: { lat: latitude, lng: longitude }, radius: MAX_RADIUS_KM * 1000 }).getBounds();
+    if (bounds) map.fitBounds(bounds, 24);
   }, [map, latitude, longitude]);
   return null;
 }
@@ -62,23 +47,47 @@ function FitToMaxRadius({ latitude, longitude }: { latitude: number; longitude: 
  * interamente dal chiamante (vedi EngagementRadiusSection).
  */
 export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, urgentEngagementRadiusKm }: EngagementRadiusMapProps) {
-  const center: [number, number] = [latitude, longitude];
+  const center = { lat: latitude, lng: longitude };
   return (
-    <MapContainer center={center} zoom={12} style={{ height: 360, width: "100%", borderRadius: 4 }} scrollWheelZoom={false}>
-      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <FitToMaxRadius latitude={latitude} longitude={longitude} />
-      <Marker position={center} icon={markerIcon} />
-      {/* Circle di Leaflet accetta il raggio in metri: conversione km→m qui, unico punto che lo fa. */}
-      <Circle
-        center={center}
-        radius={engagementRadiusKm * 1000}
-        pathOptions={{ color: brand.verificato, fillColor: brand.verificato, fillOpacity: 0.12, weight: 2 }}
-      />
-      <Circle
-        center={center}
-        radius={urgentEngagementRadiusKm * 1000}
-        pathOptions={{ color: brand.ottone, fillColor: brand.ottone, fillOpacity: 0.08, weight: 2, dashArray: "6 4" }}
-      />
-    </MapContainer>
+    <div style={{ height: 360, width: "100%", borderRadius: 4, overflow: "hidden" }}>
+      <GoogleMapGate>
+        <GoogleMap
+          mapId={GOOGLE_MAPS_MAP_ID}
+          defaultCenter={center}
+          defaultZoom={10}
+          style={{ width: "100%", height: "100%" }}
+          gestureHandling="cooperative"
+          mapTypeControl={false}
+          streetViewControl={false}
+          fullscreenControl={false}
+          clickableIcons={false}
+        >
+          <FitToMaxRadius latitude={latitude} longitude={longitude} />
+          <AdvancedMarker position={center}>
+            <Pin background="#189A63" borderColor="#0F6B44" glyphColor="#FFFFFF" />
+          </AdvancedMarker>
+          {/* Il raggio di google.maps.Circle è in metri: conversione km→m qui, unico punto che lo fa. */}
+          <Circle
+            center={center}
+            radius={engagementRadiusKm * 1000}
+            strokeColor={brand.verificato}
+            strokeWeight={2}
+            fillColor={brand.verificato}
+            fillOpacity={0.12}
+            clickable={false}
+          />
+          {/* Google Maps non supporta il tratteggio sui cerchi (prima dashArray con Leaflet): il raggio urgente si distingue per colore. */}
+          <Circle
+            center={center}
+            radius={urgentEngagementRadiusKm * 1000}
+            strokeColor={brand.ottone}
+            strokeWeight={2}
+            fillColor={brand.ottone}
+            fillOpacity={0.08}
+            clickable={false}
+          />
+        </GoogleMap>
+      </GoogleMapGate>
+    </div>
   );
 }

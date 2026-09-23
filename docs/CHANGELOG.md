@@ -14273,3 +14273,53 @@ percorso. API: typecheck, build e test Vitest (2 nuovi sull'email del
 lead) verdi, avvio con DI completa (`SentryModule`, `NotificationsModule`
 con `EmailModule`). Non verificato: invio reale via Resend/Sentry (nessuna
 chiave in questo ambiente).
+
+## 133. Da OpenStreetMap/Nominatim a Google Maps (mappa + geocodifica)
+
+**Richiesta esplicita dell'utente**: "prima del lancio vorremmo cambiare
+openstreetmap con googlemaps", poi "prepara il passaggio completo".
+Ribalta la scelta iniziale (Leaflet + OpenStreetMap + Nominatim, presa per
+non collegare una carta di pagamento a Google Cloud — CLAUDE.md §2).
+
+**Decisione**:
+- **Mappe web** (`ResultsMap.tsx` risultati di ricerca,
+  `EngagementRadiusMap.tsx` raggio di ingaggio in dashboard) riscritte con
+  `@vis.gl/react-google-maps` (libreria React mantenuta con Google):
+  marker avanzati (`AdvancedMarker` + `Pin` verde del brand), cerchi del
+  raggio con `Circle`. Invariati: sfalsamento dei puntini sovrapposti,
+  inquadratura una sola volta all'apertura (anche dopo il toggle "Mostra
+  mappa" su mobile, via ResizeObserver), sincronizzazione lista↔mappa
+  (ora sull'evento `idle`), banner del professionista selezionato, zoom
+  con rotellina disattivato (`gestureHandling="cooperative"`). Il raggio
+  urgente non è più tratteggiato (Google non supporta il tratteggio sui
+  cerchi): si distingue per colore. Rimossi `leaflet`, `react-leaflet`,
+  `@types/leaflet` e le icone in `public/leaflet/`.
+- **Consenso**: `GoogleMapGate` è l'unico ingresso a Google Maps. Lo script
+  si carica solo con `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` impostata e dopo il
+  consenso ai servizi Google (come Google Sign-In). Senza consenso: riquadro
+  "Mostra la mappa" che registra lo stesso consenso del banner. Senza
+  chiave: "Mappa non disponibile al momento." La logica del consenso,
+  prima duplicata tra `CookieBanner` e `GoogleSignInButton`, è ora in
+  `apps/web/src/lib/cookieConsent.ts`. Testo del banner, pagina cookie,
+  privacy (fornitori) e accessibilità aggiornati; la pagina cookie cita
+  anche Vercel Web Analytics (senza cookie, §132).
+- **Geocodifica** (`apps/api/src/geocoding/geocoding.service.ts`): Google
+  Geocoding API con chiave server `GOOGLE_MAPS_API_KEY`, limitata all'Italia
+  (`components=country:IT`). Stesso comportamento di prima in caso di
+  problemi: nessun errore, il profilo resta al centro del comune. Uno
+  stato diverso da `OK`/`ZERO_RESULTS` (chiave rifiutata, quota) finisce nei
+  log come errore, quindi anche in Sentry. `NOMINATIM_CONTACT_EMAIL` non
+  serve più (tolta da `render.yaml`).
+- **Variabili**: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` e
+  `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` su Vercel, `GOOGLE_MAPS_API_KEY` su Render
+  (dettagli nella checklist pre-lancio di CLAUDE.md, punto 4).
+
+Verifica: typecheck web+API, `next build` di produzione, test Vitest API
+(3 nuovi sulla geocodifica: senza chiave nessuna chiamata, coordinate dal
+primo risultato, ZERO_RESULTS/REQUEST_DENIED → null). Playwright su
+`/cerca/idraulico/roma`: senza chiave compare "Mappa non disponibile"; con
+una chiave di prova nessuna richiesta a Google prima del consenso, dopo
+"Mostra la mappa" il riquadro sparisce e parte la richiesta a
+`maps.googleapis.com/maps/api/js` con `language=it&region=IT`. **Non
+verificato**: il rendering reale della mappa e la geocodifica reale (serve
+una chiave vera, e la rete di questo ambiente blocca Google).

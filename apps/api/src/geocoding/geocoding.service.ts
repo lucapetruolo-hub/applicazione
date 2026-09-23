@@ -2,55 +2,63 @@ import { Injectable, Logger } from "@nestjs/common";
 
 export type GeocodedPoint = { latitude: number; longitude: number };
 
+type GoogleGeocodeResponse = {
+  status: string;
+  error_message?: string;
+  results: { geometry: { location: { lat: number; lng: number } } }[];
+};
+
 @Injectable()
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
 
-  // Nominatim (OpenStreetMap) invece di Google Geocoding: stessa scelta già
-  // fatta per le tile della mappa (CLAUDE.md §2) — gratuito, nessuna chiave
-  // API, nessuna carta di pagamento. La policy di utilizzo di Nominatim
-  // richiede uno User-Agent identificativo e non tollera un volume alto di
-  // richieste: qui va bene, geocodifica solo al salvataggio del profilo
-  // professionista (poche richieste al giorno), mai in un percorso di ricerca.
+  // Google Geocoding API (docs/CHANGELOG.md §133, al posto di Nominatim):
+  // stessa scelta di provider della mappa, indirizzi e numeri civici
+  // trovati meglio. Usata solo al salvataggio del profilo professionista
+  // (poche richieste al giorno, dentro la quota gratuita), mai in un
+  // percorso di ricerca. Chiave server `GOOGLE_MAPS_API_KEY`, distinta da
+  // quella del browser (limitata per sito web): senza chiave non geocodifica
+  // e il profilo resta al centro del comune, come per ogni altro errore.
   async geocodeAddress(query: string): Promise<GeocodedPoint | null> {
     const trimmed = query.trim();
     if (!trimmed) return null;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      this.logger.warn("GOOGLE_MAPS_API_KEY non configurata: indirizzo non geocodificato, uso il centro del comune.");
+      return null;
+    }
 
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("q", trimmed);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("limit", "1");
-    url.searchParams.set("countrycodes", "it");
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", trimmed);
+    url.searchParams.set("components", "country:IT");
+    url.searchParams.set("language", "it");
+    url.searchParams.set("key", apiKey);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          // Contatto richiesto dalla usage policy di Nominatim — configurabile
-          // via env var (mai un'email personale hardcoded nel sorgente, vedi
-          // CLAUDE.md "Verbale di Conformità"): senza NOMINATIM_CONTACT_EMAIL
-          // impostata ricade su un placeholder non personale, da valorizzare
-          // con un contatto aziendale reale prima del lancio.
-          "User-Agent": `Professionisti/1.0 (contact: ${process.env.NOMINATIM_CONTACT_EMAIL ?? "non-configurato@example.invalid"})`,
-        },
-      });
+      const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) return null;
-      const results = (await response.json()) as { lat: string; lon: string }[];
-      const first = results[0];
-      if (!first) return null;
-      const latitude = Number(first.lat);
-      const longitude = Number(first.lon);
-      if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
-      return { latitude, longitude };
+      const data = (await response.json()) as GoogleGeocodeResponse;
+      if (data.status !== "OK") {
+        // ZERO_RESULTS è normale (indirizzo non trovato); gli altri stati
+        // (REQUEST_DENIED, OVER_QUERY_LIMIT...) indicano un problema di
+        // chiave o quota da sistemare.
+        if (data.status !== "ZERO_RESULTS") {
+          this.logger.error(`Geocodifica Google rifiutata (${data.status}): ${data.error_message ?? "nessun dettaglio"}`);
+        }
+        return null;
+      }
+      const location = data.results[0]?.geometry.location;
+      if (!location || Number.isNaN(location.lat) || Number.isNaN(location.lng)) return null;
+      return { latitude: location.lat, longitude: location.lng };
     } catch (error) {
       // Non deve mai far fallire il salvataggio del profilo: se la
       // geocodifica dell'indirizzo preciso non riesce (timeout, indirizzo non
       // trovato, servizio non raggiungibile) si ricade sul centro del comune,
       // già calcolato altrove — un professionista non deve restare bloccato
       // per un servizio esterno non essenziale.
-      this.logger.warn(`Geocodifica indirizzo fallita per "${trimmed}": ${error instanceof Error ? error.message : error}`);
+      this.logger.warn(`Geocodifica indirizzo fallita: ${error instanceof Error ? error.message : error}`);
       return null;
     } finally {
       clearTimeout(timeout);

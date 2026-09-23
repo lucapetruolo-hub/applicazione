@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Button, Text, XStack, brand } from "@professionisti/ui";
+import { COOKIE_CONSENT_ACCEPTED_EVENT, hasCookieConsent } from "@/lib/cookieConsent";
 
 declare global {
   interface Window {
@@ -42,18 +43,6 @@ function GoogleIcon() {
       />
     </svg>
   );
-}
-
-const COOKIE_CONSENT_KEY = "cookie-consent-v1";
-/** Nome dell'evento globale che CookieBanner emette all'accettazione — vedi lì. */
-export const COOKIE_CONSENT_ACCEPTED_EVENT = "cookie-consent-accepted";
-
-function hasCookieConsent(): boolean {
-  try {
-    return window.localStorage.getItem(COOKIE_CONSENT_KEY) === "accepted";
-  } catch {
-    return false;
-  }
 }
 
 /**

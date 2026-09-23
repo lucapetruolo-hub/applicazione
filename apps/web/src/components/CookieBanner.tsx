@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { COOKIE_CONSENT_ACCEPTED_EVENT } from "@/components/GoogleSignInButton";
-
-const CONSENT_KEY = "cookie-consent-v1";
+import { grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
 /**
  * Banner cookie minimale (post-audit GDPR): il sito usa solo cookie
@@ -17,24 +15,14 @@ export function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      if (!window.localStorage.getItem(CONSENT_KEY)) setVisible(true);
-    } catch {
-      // localStorage non disponibile (es. privacy mode): non mostriamo il
-      // banner ad ogni pagina, meglio non bloccare la navigazione.
-    }
+    if (!hasCookieChoice()) setVisible(true);
   }, []);
 
   function accept() {
-    try {
-      window.localStorage.setItem(CONSENT_KEY, "accepted");
-    } catch {
-      // ignora
-    }
     // Richiesta esplicita dell'utente ("Verbale di Conformità"): sveglia
-    // GoogleSignInButton, che aspetta questo evento prima di caricare lo
-    // script Google se il consenso non era ancora stato dato al mount.
-    window.dispatchEvent(new Event(COOKIE_CONSENT_ACCEPTED_EVENT));
+    // GoogleSignInButton e le mappe Google, che aspettano il consenso prima
+    // di caricare gli script Google.
+    grantCookieConsent();
     setVisible(false);
   }
 
@@ -75,8 +63,8 @@ export function CookieBanner() {
       }}
     >
       <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
-        Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo scegli, l'accesso con Google. Nessun
-        cookie pubblicitario o di profilazione.{" "}
+        Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
+        accesso con Google). Nessun cookie pubblicitario o di profilazione.{" "}
         <Link href="/cookie" style={{ color: "#189a63", fontWeight: 600 }}>
           Cookie Policy
         </Link>

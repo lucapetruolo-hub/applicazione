@@ -535,7 +535,7 @@ export class ProfessionalsService {
     }
 
     // Posizione sulla mappa: se il professionista indica un indirizzo
-    // preciso, prova a geocodificarlo (Nominatim) per posizionarlo esatto
+    // preciso, prova a geocodificarlo (Google Geocoding) per posizionarlo esatto
     // invece che al centro del comune — richiesta esplicita dell'utente
     // ("scegliere sia la città generica, che un indirizzo preciso che andrà
     // a posizionarsi precisamente sulla mappa"). Se la geocodifica non trova

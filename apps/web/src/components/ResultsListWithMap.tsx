@@ -10,7 +10,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
 
-// Leaflet legge `window` al modulo: mai importato lato server (CLAUDE.md
+// La mappa (Google Maps) vive solo nel browser: mai importata lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
 // questo — niente da indicizzare in una mappa interattiva).
 const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.ResultsMap), { ssr: false });
@@ -59,14 +59,16 @@ export function ResultsListWithMap({
   // scapito della lista, solo da desktop — da mobile la mappa è già a piena
   // larghezza quando aperta, non ha senso "espanderla" ulteriormente.
   const [mapExpanded, setMapExpanded] = useState(false);
-  // Leaflet inizializzato dentro un contenitore nascosto (display:none, lato
+  // Con Leaflet (in uso fino a docs/CHANGELOG.md §133) una mappa
+  // inizializzata dentro un contenitore nascosto (display:none, lato
   // mobile prima del tap su "Mostra mappa") calcola un pixel-origin interno
   // corrotto che poi NON si ricalcola in modo affidabile nemmeno con
   // invalidateSize()+fitBounds successivi (verificato: marker finivano a
   // coordinate come x:-239880 e la lista restava vuota). L'unica soluzione
   // robusta è non montare affatto <ResultsMap> finché non sarà davvero
   // visibile: da mobile solo dopo il tap, da desktop solo una volta
-  // rilevato via matchMedia di essere sopra la soglia dei 700px.
+  // rilevato via matchMedia di essere sopra la soglia dei 700px. Tenuto
+  // anche con Google Maps: evita di caricare lo script finché non serve.
   const [shouldMountMap, setShouldMountMap] = useState(false);
 
   // Bug reale segnalato dall'utente: "scorrendo verso il basso la mappa va
@@ -108,8 +110,8 @@ export function ResultsListWithMap({
   }, []);
 
   function handleBoundsChange(bounds: MapBounds) {
-    // Su mobile la mappa parte chiusa (display:none) ma resta montata: Leaflet
-    // inizializzato in un contenitore di dimensione zero calcola un
+    // Su mobile la mappa parte chiusa (display:none) ma resta montata: una mappa
+    // inizializzata in un contenitore di dimensione zero calcola un
     // inquadramento degenere (nord/sud e/o est/ovest coincidenti), che
     // filtrerebbe fuori tutti i professionisti dalla lista pur mostrando il
     // conteggio corretto nell'intestazione — bug reale riscontrato dall'utente

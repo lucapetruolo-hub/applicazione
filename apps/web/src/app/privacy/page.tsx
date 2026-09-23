@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updatedAt="2 settembre 2026"
+      updatedAt="23 settembre 2026"
       sections={[
         {
           heading: "1. Titolare del trattamento",
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "4. Con chi condividiamo i dati",
-          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (nome, contatti, dettagli del lavoro); i clienti, se sei un professionista (dati del tuo profilo pubblico); fornitori tecnici che ci aiutano a erogare il servizio (hosting, invio email, archiviazione immagini) nominati responsabili del trattamento. Non vendiamo i tuoi dati a terzi.",
+          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (nome, contatti, dettagli del lavoro); i clienti, se sei un professionista (dati del tuo profilo pubblico); fornitori tecnici che ci aiutano a erogare il servizio (hosting, invio email, archiviazione immagini, mappe e ricerca degli indirizzi con Google Maps) nominati responsabili del trattamento. Le mappe di Google vengono caricate nel tuo browser solo dopo il tuo consenso. Non vendiamo i tuoi dati a terzi.",
         },
         {
           heading: "5. Conservazione",

@@ -2,27 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { AdvancedMarker, Map as GoogleMap, Pin, useMap } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
 export type MapBounds = { north: number; south: number; east: number; west: number };
 
-const markerIcon = L.icon({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
 const ROME_FALLBACK: [number, number] = [41.9028, 12.4964];
+
+function toLatLng([lat, lng]: [number, number]): google.maps.LatLngLiteral {
+  return { lat, lng };
+}
 
 // Sfalsamento puntini sovrapposti (richiesta esplicita dell'utente: "se ci
 // sono più professionisti sullo stesso punto — di solito quando inseriscono
@@ -70,63 +63,46 @@ function FitBounds({ points, fallbackCenter }: { points: [number, number][]; fal
   // ogni render, quindi senza guardia questo effetto ripartirebbe sempre).
   const hasFitted = useRef(false);
   useEffect(() => {
+    if (!map) return;
+    const container = map.getDiv();
     function tryFit() {
-      if (hasFitted.current) return;
-      // Su mobile la mappa nasce dentro un contenitore nascosto (display:none,
-      // dietro al bottone "Mostra mappa"): un fitBounds/setView calcolato su
-      // un contenitore 0×0 produce un'inquadratura sbagliata che poi non
-      // verrebbe mai ricalcolata (questo effetto gira una volta sola). Si
-      // aspetta che il contenitore abbia davvero delle dimensioni.
-      const container = map.getContainer();
+      if (!map || hasFitted.current) return;
+      // Su mobile la mappa può nascere dentro un contenitore nascosto
+      // (display:none, dietro al bottone "Mostra mappa"): un'inquadratura
+      // calcolata su un contenitore 0×0 sarebbe sbagliata e non verrebbe
+      // mai ricalcolata (questo effetto gira una volta sola). Si aspetta che
+      // il contenitore abbia davvero delle dimensioni.
       if (container.clientWidth === 0 || container.clientHeight === 0) return;
       hasFitted.current = true;
       if (points.length === 0) {
         // Nessun professionista con coordinate: se conosciamo comunque la
         // città cercata (es. "Latina" senza risultati) zooma lì, così la
-        // mappa mostra sempre la zona cercata invece di sparire o restare
-        // ferma sull'inquadratura di default su tutta Italia.
-        if (fallbackCenter) map.setView(fallbackCenter, 12);
+        // mappa mostra sempre la zona cercata invece di restare ferma
+        // sull'inquadratura di default su tutta Italia.
+        if (fallbackCenter) {
+          map.setCenter(toLatLng(fallbackCenter));
+          map.setZoom(12);
+        }
         return;
       }
       const [first] = points;
       if (points.length === 1 && first) {
-        map.setView(first, 12);
+        map.setCenter(toLatLng(first));
+        map.setZoom(12);
         return;
       }
-      map.fitBounds(points, { padding: [32, 32] });
+      const bounds = new google.maps.LatLngBounds();
+      for (const point of points) bounds.extend(toLatLng(point));
+      map.fitBounds(bounds, 32);
     }
 
     tryFit();
-    // Leaflet non si accorge da solo se il suo contenitore cambia dimensione
-    // per un motivo diverso dal resize della finestra (qui: il toggle
-    // "Mostra mappa" che passa da display:none a flex) — serve
-    // invalidateSize() esplicito, altrimenti la mappa resta storta/vuota
-    // una volta rivelata.
-    const observer = new ResizeObserver(() => {
-      map.invalidateSize();
-      tryFit();
-    });
-    observer.observe(map.getContainer());
+    // Il contenitore passa da display:none a visibile col toggle "Mostra
+    // mappa": riprova l'inquadratura appena ha delle dimensioni.
+    const observer = new ResizeObserver(tryFit);
+    observer.observe(container);
     return () => observer.disconnect();
   }, [map, points, fallbackCenter]);
-  return null;
-}
-
-function BoundsSync({ onBoundsChange }: { onBoundsChange?: (bounds: MapBounds) => void }) {
-  const map = useMapEvents({
-    moveend: () => {
-      const b = map.getBounds();
-      onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
-    },
-  });
-  // Cattura anche l'inquadratura iniziale (dopo lo zoom di FitBounds, che
-  // gira nello stesso tick), così la lista a sinistra parte già allineata
-  // a quello che si vede sulla mappa invece di aspettare il primo pan/zoom.
-  useEffect(() => {
-    const b = map.getBounds();
-    onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   return null;
 }
 
@@ -164,22 +140,43 @@ export function ResultsMap({
 
   return (
     <div className="results-map-container">
-      <MapContainer center={center} zoom={initialZoom} style={{ width: "100%", height: "100%" }} scrollWheelZoom={false}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <FitBounds points={initialPoints} fallbackCenter={fallbackCenter} />
-        <BoundsSync onBoundsChange={onBoundsChange} />
-        {withCoords.map((pro) => (
-          <Marker
-            key={pro.id}
-            position={markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude]}
-            icon={markerIcon}
-            eventHandlers={{ click: () => setSelected(pro) }}
-          />
-        ))}
-      </MapContainer>
+      <GoogleMapGate>
+        <GoogleMap
+          mapId={GOOGLE_MAPS_MAP_ID}
+          defaultCenter={toLatLng(center)}
+          defaultZoom={initialZoom}
+          style={{ width: "100%", height: "100%" }}
+          // Come prima con Leaflet (scrollWheelZoom disattivato): la rotellina
+          // scorre la pagina, lo zoom si fa con Ctrl+rotellina o due dita.
+          gestureHandling="cooperative"
+          mapTypeControl={false}
+          streetViewControl={false}
+          fullscreenControl={false}
+          clickableIcons={false}
+          // Notifica i confini visibili dopo ogni pan/zoom (e dopo
+          // l'inquadratura iniziale), così la lista a sinistra mostra solo
+          // chi è visibile sulla mappa.
+          onIdle={(event) => {
+            const b = event.map.getBounds();
+            if (!b) return;
+            const ne = b.getNorthEast();
+            const sw = b.getSouthWest();
+            onBoundsChange?.({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
+          }}
+        >
+          <FitBounds points={initialPoints} fallbackCenter={fallbackCenter} />
+          {withCoords.map((pro) => (
+            <AdvancedMarker
+              key={pro.id}
+              position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
+              title={pro.businessName}
+              onClick={() => setSelected(pro)}
+            >
+              <Pin background="#189A63" borderColor="#0F6B44" glyphColor="#FFFFFF" />
+            </AdvancedMarker>
+          ))}
+        </GoogleMap>
+      </GoogleMapGate>
 
       {selected ? (
         <div className="map-banner" onClick={() => router.push(`/professionista/${selected.id}`)}>

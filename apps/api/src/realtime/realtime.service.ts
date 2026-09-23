@@ -5,8 +5,8 @@ import type { RealtimeEvent } from "@professionisti/shared";
 /**
  * Registro in-process di canali push per utente — nessuna infrastruttura
  * esterna (Redis/pub-sub), coerente con "niente infrastruttura nuova se non
- * strettamente necessaria" già seguito ovunque nel progetto (Nominatim
- * invece di Google Geocoding, `@nestjs/schedule` invece di BullMQ, ecc.):
+ * strettamente necessaria" già seguito ovunque nel progetto
+ * (`@nestjs/schedule` invece di BullMQ, ecc.):
  * `apps/api` gira oggi come un'unica istanza su Render (nessuno scaling
  * orizzontale in atto), quindi un `Map` in memoria basta — un utente
  * connesso da un'altra istanza semplicemente non riceverebbe il push,
