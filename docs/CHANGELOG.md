@@ -14161,3 +14161,47 @@ dopo l'annullamento → 204 (richiesta, lead e notifiche spariti); con
 prenotazione → 403. Playwright (390px) sulle due pagine contro la stessa
 API: tab Archiviate, "Nuovo" acceso/spento, ripristino, modale di
 segnalazione, tendina completa.
+
+## 131. Quota gratuita Vercel: niente build di anteprima, immagini ridimensionate da Cloudinary
+
+**Richiesta esplicita dell'utente**: "quali azioni intraprendere per non
+terminare tutto l'uso free di Vercel", poi "procedi con tutti e 3 i punti",
+con lo screenshot di Vercel → Usage (ultimi 30 giorni): Deployment Storage
+2,35/10 GB (la voce più alta, 23%), Fast Origin Transfer 2/10 GB, ISR Reads
+191K/1M, Fluid Active CPU 15m46s/4h, Edge Requests 23K/1M, Image
+Optimization 17/5K, Fast Data Transfer 199 MB/100 GB.
+
+**Decisione**:
+- **Build (punto 1)**: `apps/web/vercel.json` → `ignoreCommand` con
+  `scripts/vercel-ignore-build.sh`. Anteprime: sempre saltate (ogni push su
+  un branch `claude/...` ricostruiva l'intero monorepo e aggiungeva un
+  deploy allo storage). Produzione: saltata solo se tra
+  `VERCEL_GIT_PREVIOUS_SHA` e il commit corrente non cambia nulla in
+  `apps/web`, `packages/{ui,shared,api-client,config}` o nei file di
+  dipendenze. In ogni caso dubbio (nessun deploy precedente, stesso commit
+  per Redeploy/Deploy Hook, commit precedente non recuperabile) costruisce:
+  il sito non deve mai smettere di aggiornarsi (problema già avuto, vedi
+  CLAUDE.md §2).
+- **Immagini (punto 3)**: `images.loaderFile` →
+  `src/lib/cloudinaryImageLoader.ts`, inserisce
+  `c_limit,w_<larghezza>,q_auto,f_auto` dopo `/image/upload/` negli URL
+  Cloudinary; le foto categoria in `/public` restano invariate. Oggi la
+  voce è quasi a zero (17/5K), ma cresce con il numero di professionisti
+  con foto.
+- **Pagine in cache (punto 2) — non fatto, di proposito**: i dati di
+  Usage mostrano che trasformare le 4 pagine `force-dynamic` in ISR
+  sposterebbe consumo da Active CPU (6,5%, la voce più bassa) a ISR
+  Reads/Writes (ISR Reads già al 19%) e reintrodurrebbe il rischio di
+  professionisti eliminati ancora visibili (CLAUDE.md §9, "Ricerca sempre
+  aggiornata"), che richiederebbe in più una rivalidazione on-demand
+  chiamata dall'API. Da riconsiderare solo se Active CPU diventasse la
+  voce più alta.
+
+Verifica: lo script simulato con le variabili di Vercel in 7 scenari
+(anteprima → saltata; produzione con modifiche al sito → build; solo
+`apps/api` cambiato → saltata; nessun precedente, stesso commit, commit
+sconosciuto → build). Loader: URL generati corretti per Cloudinary (con e
+senza `quality`) e invariati per `/public`; `next build` di produzione
+riuscito. Non verificato: il download reale da Cloudinary (host bloccato
+dalla rete di questo ambiente) — la sintassi della trasformazione è quella
+standard di Cloudinary.
