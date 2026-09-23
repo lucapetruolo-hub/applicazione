@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
@@ -13,7 +13,7 @@ import {
   quotePriceTotals,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
-import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { Autocomplete, Badge, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -28,6 +28,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
+import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import {
   combineUnreadCounts,
   mergeCounts,
@@ -218,92 +219,6 @@ function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
         );
       })}
     </XStack>
-  );
-}
-
-/**
- * Menu hamburger generico (click-to-open, chiusura al click esterno) — già
- * in uso per "Annulla prenotazione"/"Annulla richiesta" prima del redesign,
- * riusato identico qui per il solo caso "Annulla prenotazione" (l'azione
- * "Annulla richiesta" resta un menu hand-rolled a due passi, vedi
- * `GuidedRequestCard`, per lo stesso motivo storico: il popup di conferma
- * deve comparire subito sotto al pulsante, non in un modale a sé).
- */
-function ActionsMenu({ accessibilityLabel, items }: { accessibilityLabel: string; items: { icon: IconName; text: string; color: string; onPress: () => void }[] }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <YStack ref={containerRef} position="relative">
-      <YStack
-        width={32}
-        height={32}
-        borderRadius={999}
-        alignItems="center"
-        justifyContent="center"
-        cursor="pointer"
-        hoverStyle={{ backgroundColor: brand.gesso }}
-        onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          setIsOpen((open) => !open);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-      >
-        <Icon name="menu" size={18} color={brand.grafite} />
-      </YStack>
-
-      {isOpen ? (
-        <YStack
-          position="absolute"
-          top="100%"
-          right={0}
-          marginTop="$2"
-          minWidth={200}
-          backgroundColor={brand.calce}
-          borderRadius={radiusDoc}
-          overflow="hidden"
-          zIndex={1000}
-          shadowColor="rgba(43,32,19,0.12)"
-          shadowRadius={12}
-          shadowOffset={{ width: 0, height: 4 }}
-          shadowOpacity={1}
-        >
-          {items.map((item) => (
-            <XStack
-              key={item.text}
-              paddingHorizontal="$4"
-              paddingVertical="$3"
-              alignItems="center"
-              gap="$2"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: brand.gesso }}
-              onPress={(e: { stopPropagation: () => void }) => {
-                e.stopPropagation();
-                item.onPress();
-                setIsOpen(false);
-              }}
-              accessibilityRole="button"
-            >
-              <Icon name={item.icon} size={16} color={item.color} />
-              <Text fontSize="$3" color={item.color} fontWeight="600">
-                {item.text}
-              </Text>
-            </XStack>
-          ))}
-        </YStack>
-      ) : null}
-    </YStack>
   );
 }
 
@@ -855,6 +770,7 @@ function GuidedRequestCard({
   onChatAutoOpenHandled?: () => void;
 }) {
   const isOnline = request.serviceMode === "ONLINE";
+  const router = useRouter();
 
   // Professionista il cui thread è aperto nella cronologia (sezione "Inviata
   // a", prima che esista un preventivo).
@@ -897,14 +813,6 @@ function GuidedRequestCard({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  // Menu hamburger "Annulla richiesta" — hand-rolled (non il generico
-  // ActionsMenu): il popup di conferma deve comparire subito sotto al
-  // pulsante hamburger, non in un modale a sé (richiesta esplicita
-  // dell'utente, stesso vincolo già presente prima di questo redesign).
-  const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false);
-  const deleteMenuRef = useRef<HTMLDivElement>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // "Annulla prenotazione" (una volta accettato un preventivo) apre un
@@ -934,16 +842,6 @@ function GuidedRequestCard({
   const hasQuote = request.quotes.length > 0;
   const canEditDetails = canDelete && !hasQuote;
   const averagePriceEurCents = useMemo(() => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)), [request.quotes]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (deleteMenuRef.current && !deleteMenuRef.current.contains(event.target as Node)) {
-        setIsDeleteMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   function startEditing() {
     setDescription(request.description);
@@ -1019,15 +917,22 @@ function GuidedRequestCard({
 
   async function handleDelete() {
     setError(null);
-    setIsDeleting(true);
     try {
       await apiClient.deleteGuidedRequest(token, request.id);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-      setConfirmingDelete(false);
-    } finally {
-      setIsDeleting(false);
+    }
+  }
+
+  async function handleReopenBooking() {
+    if (!booking) return;
+    setError(null);
+    try {
+      await apiClient.reopenBooking(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     }
   }
 
@@ -1157,121 +1062,56 @@ function GuidedRequestCard({
     );
   }
 
-  const headingName = booking ? (booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
+  const repeatHref = `/preventivo?${new URLSearchParams({
+    categoria: request.categorySlug,
+    ...(request.city ? { citta: request.city } : {}),
+    descrizione: request.description,
+    ...(request.address ? { via: request.address } : {}),
+    ...(request.houseNumber ? { civico: request.houseNumber } : {}),
+    ...(request.addressExtra ? { interno: request.addressExtra } : {}),
+    ...(request.postalCode ? { cap: request.postalCode } : {}),
+    ...(request.province ? { provincia: request.province } : {}),
+    ...(request.recipientName ? { nome: request.recipientName } : {}),
+    ...(request.recipientSurname ? { cognome: request.recipientSurname } : {}),
+    ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
+    ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
+  }).toString()}`;
+
+  // Azioni del menu hamburger, filtrate per stato: solo quelle che il
+  // backend accetta davvero in quel momento (stessi confini già usati dai
+  // bottoni inline della scheda espansa).
+  const menuActions: CardAction[] = [];
+  if (canEditDetails) menuActions.push({ icon: "pencil", text: "Modifica richiesta", onPress: startEditing });
+  menuActions.push({ icon: "send", text: "Ripeti la richiesta", onPress: () => router.push(repeatHref) });
+  if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED")) {
+    menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
+  } else if (booking?.status === "CANCELED") {
+    menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+  } else if (canDelete) {
+    menuActions.push({
+      icon: "trash-2",
+      text: "Annulla richiesta",
+      tone: "danger",
+      onPress: handleDelete,
+      confirm: { question: "Annullare ed eliminare questa richiesta? I professionisti contattati non la vedranno più.", confirmLabel: "Conferma", busyLabel: "Eliminazione..." },
+    });
+  }
+
+  const headingName = booking ?(booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
 
   return (
     <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="$0" padding={0} overflow="hidden">
       <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ClientStagePill stage={stage} />
             <ServiceBadge online={isOnline} />
           </XStack>
           <YStack alignItems="flex-end" gap="$1">
-            <XStack alignItems="center" gap="$2">
-              <Text fontSize={14} color={brand.grafite70}>
-                Inviata {formatDateTime(request.createdAt)}
-              </Text>
-              {booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") ? (
-                <ActionsMenu
-                  accessibilityLabel="Azioni sulla prenotazione"
-                  items={[{ icon: "x", text: "Annulla prenotazione", color: brand.urgenza, onPress: () => setShowCancelModal(true) }]}
-                />
-              ) : canDelete ? (
-                <YStack ref={deleteMenuRef} position="relative">
-                  <YStack
-                    width={32}
-                    height={32}
-                    borderRadius={999}
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    hoverStyle={{ backgroundColor: brand.gesso }}
-                    onPress={(e: { stopPropagation: () => void }) => {
-                      e.stopPropagation();
-                      setIsDeleteMenuOpen((open) => !open);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Azioni sulla richiesta"
-                  >
-                    <Icon name="menu" size={18} color={brand.grafite} />
-                  </YStack>
-
-                  {isDeleteMenuOpen ? (
-                    <YStack
-                      position="absolute"
-                      top="100%"
-                      right={0}
-                      marginTop="$2"
-                      minWidth={confirmingDelete ? 240 : 200}
-                      backgroundColor={brand.calce}
-                      borderRadius={radiusDoc}
-                      overflow="hidden"
-                      zIndex={1000}
-                      shadowColor="rgba(43,32,19,0.12)"
-                      shadowRadius={12}
-                      shadowOffset={{ width: 0, height: 4 }}
-                      shadowOpacity={1}
-                    >
-                      {confirmingDelete ? (
-                        <YStack padding="$3" gap="$2">
-                          <Text fontSize="$2" color={brand.grafite}>
-                            Eliminare questa richiesta?
-                          </Text>
-                          <XStack gap="$2">
-                            <Button
-                              variant="urgent"
-                              size="$2"
-                              height={34}
-                              onPress={(e: { stopPropagation: () => void }) => {
-                                e.stopPropagation();
-                                handleDelete();
-                              }}
-                              disabled={isDeleting}
-                              opacity={isDeleting ? 0.6 : 1}
-                            >
-                              {isDeleting ? "Eliminazione..." : "Conferma"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="$2"
-                              height={34}
-                              onPress={(e: { stopPropagation: () => void }) => {
-                                e.stopPropagation();
-                                setConfirmingDelete(false);
-                                setIsDeleteMenuOpen(false);
-                              }}
-                            >
-                              Annulla
-                            </Button>
-                          </XStack>
-                        </YStack>
-                      ) : (
-                        <XStack
-                          paddingHorizontal="$4"
-                          paddingVertical="$3"
-                          alignItems="center"
-                          gap="$2"
-                          cursor="pointer"
-                          hoverStyle={{ backgroundColor: brand.gesso }}
-                          onPress={(e: { stopPropagation: () => void }) => {
-                            e.stopPropagation();
-                            setConfirmingDelete(true);
-                          }}
-                          accessibilityRole="button"
-                        >
-                          <Icon name="trash-2" size={16} color={brand.urgenza} />
-                          <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
-                            Annulla richiesta
-                          </Text>
-                        </XStack>
-                      )}
-                    </YStack>
-                  ) : null}
-                </YStack>
-              ) : null}
-            </XStack>
+            <Text fontSize={14} color={brand.grafite70}>
+              Inviata {formatDateTime(request.createdAt)}
+            </Text>
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
                 {formatEurCents(booking.finalAmountEurCents)}
@@ -1281,9 +1121,21 @@ function GuidedRequestCard({
           </YStack>
         </XStack>
 
-        <Text fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
-          {headingName}
-        </Text>
+        {/* Menu hamburger sulla riga del titolo, non su quella dei badge
+            (richiesta esplicita dell'utente: con Urgente + stadio + modalità
+            la riga dei badge va a capo e il pulsante finiva in conflitto con
+            loro). */}
+        <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+          <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+            {headingName}
+          </Text>
+          <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
+        </XStack>
+        {!isOpen && error ? (
+          <Text color={brand.urgenza} fontSize="$3">
+            {error}
+          </Text>
+        ) : null}
         {booking ? (
           <XStack alignItems="center" gap="$1">
             <Icon name="wrench" size={15} color={brand.grafite70} />
@@ -1368,23 +1220,7 @@ function GuidedRequestCard({
           ) : null}
 
           <XStack>
-            <Link
-              href={`/preventivo?${new URLSearchParams({
-                categoria: request.categorySlug,
-                ...(request.city ? { citta: request.city } : {}),
-                descrizione: request.description,
-                ...(request.address ? { via: request.address } : {}),
-                ...(request.houseNumber ? { civico: request.houseNumber } : {}),
-                ...(request.addressExtra ? { interno: request.addressExtra } : {}),
-                ...(request.postalCode ? { cap: request.postalCode } : {}),
-                ...(request.province ? { provincia: request.province } : {}),
-                ...(request.recipientName ? { nome: request.recipientName } : {}),
-                ...(request.recipientSurname ? { cognome: request.recipientSurname } : {}),
-                ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
-                ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
-              }).toString()}`}
-              style={{ textDecoration: "none" }}
-            >
+            <Link href={repeatHref} style={{ textDecoration: "none" }}>
               <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
                 Ripeti la richiesta
               </Text>
@@ -1503,22 +1339,25 @@ function GuidedRequestCard({
 
           {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
 
-          {showCancelModal ? (
-            <CancelBookingModal
-              title="Annulla prenotazione"
-              description="Il professionista verrà avvisato dell'annullamento."
-              confirmLabel="Sì, annulla prenotazione"
-              confirmingLabel="Annullamento..."
-              showNote={false}
-              onClose={() => setShowCancelModal(false)}
-              onCancel={handleCancelBooking}
-            />
-          ) : null}
 
           <XStack justifyContent="center" paddingTop="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel="Richiudi la scheda">
             <Icon name="chevron-up" size={18} color={brand.grafite70} />
           </XStack>
         </YStack>
+      ) : null}
+
+      {/* Fuori dal blocco espanso: "Annulla prenotazione" si apre anche dal
+          menu hamburger di una scheda chiusa. */}
+      {showCancelModal ? (
+        <CancelBookingModal
+          title="Annulla prenotazione"
+          description="Il professionista verrà avvisato dell'annullamento."
+          confirmLabel="Sì, annulla prenotazione"
+          confirmingLabel="Annullamento..."
+          showNote={false}
+          onClose={() => setShowCancelModal(false)}
+          onCancel={handleCancelBooking}
+        />
       ) : null}
     </Surface>
   );

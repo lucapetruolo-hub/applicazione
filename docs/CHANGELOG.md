@@ -14053,3 +14053,44 @@ Verifica su Postgres 16 locale: (1) DB popolato con `db push` dello schema
 avvio → "No pending migrations"; (2) DB vuoto → entrambe le migrazioni
 applicate, nessuna differenza con lo schema; (3) script lanciato da
 `apps/api` (stessa cartella di lavoro di `pnpm start` su Render) → ok.
+
+## 129. Menu hamburger delle azioni sulle schede di "Le mie richieste" e "Richieste ricevute"
+
+**Richiesta esplicita dell'utente**: "sia nelle schede della pagina 'le mie
+richieste' che in quelle di 'richieste ricevute' crea un pulsante hamburger
+in alto a destra che non vada in conflitto con la riga dove ci sono
+'urgente', 'scaduta', 'a domicilio', 'online' ecc., quindi sotto di loro",
+con dentro le azioni relative a quella scheda.
+
+**Decisione**:
+- Nuovo componente condiviso `apps/web/src/components/CardActionsMenu.tsx`
+  (sostituisce il vecchio `ActionsMenu` locale e il menu "Annulla
+  richiesta" costruito a mano in `/le-mie-richieste`). Il pulsante sta
+  sulla riga del titolo (nome del cliente/professionista o categoria), a
+  destra: mai sulla riga dei badge, che su mobile va a capo.
+- La tendina è in un portal su `document.body` con `position: fixed`:
+  `Surface` ha `overflow="hidden"` e la tagliava (visto negli screenshot di
+  verifica). Si chiude al click fuori, allo scroll e al resize.
+- Le azioni distruttive chiedono conferma dentro la tendina (`confirm`),
+  come faceva già "Annulla richiesta".
+- Azioni lato cliente: Modifica richiesta (se nessun preventivo), Ripeti la
+  richiesta, Annulla prenotazione (PENDING/CONFIRMED), Riapri prenotazione
+  (CANCELED), Annulla richiesta (non CLOSED, senza prenotazione).
+- Azioni lato professionista: Chat con il cliente, Profilo del cliente,
+  Invia preventivo e Rifiuta richiesta (da quotare), Modifica e Ritira
+  preventivo (in attesa), Accetta nuova data (modifica richiesta), Lavoro
+  terminato e Annulla intervento (CONFIRMED), Recensisci il cliente,
+  Riapri intervento, Vedi in agenda, Elimina richiesta (scaduta/chiusa con
+  preventivo ritirato o cliente eliminato). Le azioni che mostrano un form
+  inline aprono prima la scheda.
+- Solo azioni già supportate dal backend: nessuna modifica API o schema.
+- `CancelBookingModal`/`CompleteJobModal`/`ReviewModal` spostati fuori dal
+  blocco espanso della scheda: prima "Annulla prenotazione" dal menu di una
+  scheda chiusa non apriva nulla finché la scheda non veniva espansa.
+- Riga dei badge: `flexShrink={1} minWidth={0}`, così su mobile va a capo
+  dentro la scheda invece di uscirne (tagliava "A domicilio").
+
+Verifica: `tsc --noEmit` pulito; Playwright (API simulata, 390px e
+1280px) su entrambe le pagine: tendina completa e non tagliata, conferma
+"Annulla richiesta" dentro la tendina senza espandere la scheda, "Rifiuta
+richiesta" apre la scheda con il form della nota.
