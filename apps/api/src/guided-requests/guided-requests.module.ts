@@ -5,11 +5,12 @@ import { ProfessionalMetricsModule } from "../professional-metrics/professional-
 import { TimelineModule } from "../timeline/timeline.module";
 import { GuidedRequestsController } from "./guided-requests.controller";
 import { GuidedRequestsService } from "./guided-requests.service";
+import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
 
 @Module({
   imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule],
   controllers: [GuidedRequestsController],
-  providers: [GuidedRequestsService],
+  providers: [GuidedRequestsService, GuidedRequestUserStateService],
   exports: [GuidedRequestsService],
 })
 export class GuidedRequestsModule {}

@@ -28,6 +28,7 @@ import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { toMyState } from "../guided-requests/guided-request-user-state.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 
@@ -716,7 +717,13 @@ export class ProfessionalsService {
       where: { professionalProfileId },
       include: {
         guidedRequest: {
-          include: { category: true, client: true, quotes: { where: { professionalProfileId }, include: { items: true, booking: true } } },
+          include: {
+            category: true,
+            client: true,
+            quotes: { where: { professionalProfileId }, include: { items: true, booking: true } },
+            // Stato personale del professionista sulla scheda (docs/CHANGELOG.md §130).
+            userStates: { where: { userId } },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -863,6 +870,7 @@ export class ProfessionalsService {
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
         },
+        myState: toMyState(lead.guidedRequest.userStates?.[0]),
       };
     });
   }

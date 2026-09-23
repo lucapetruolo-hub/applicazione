@@ -703,7 +703,9 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
  * 16): un profilo professionista, una recensione del cliente o una
  * recensione del professionista sul cliente.
  */
-export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "CLIENT_REVIEW"] as const;
+// GUIDED_REQUEST: una richiesta ricevuta, segnalata dal professionista che
+// l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
+export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "CLIENT_REVIEW", "GUIDED_REQUEST"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
 export const createContentReportSchema = z.object({
   targetType: z.enum(contentReportTargetTypes),
@@ -871,3 +873,20 @@ export const platformDac7SettingsSchema = z.object({
   receivingCountry: z.string().max(2).optional(),
 });
 export type PlatformDac7SettingsInput = z.infer<typeof platformDac7SettingsSchema>;
+
+/**
+ * Stato personale di una scheda richiesta (menu hamburger di
+ * /le-mie-richieste e /dashboard/richieste, CHANGELOG §130): ogni campo è
+ * facoltativo, si invia solo quello che cambia. `markedUnread: false`
+ * segna anche come lette le notifiche di quella richiesta.
+ */
+export const guidedRequestUserStateSchema = z
+  .object({
+    archived: z.boolean().optional(),
+    muted: z.boolean().optional(),
+    markedUnread: z.boolean().optional(),
+    /** ISO datetime futuro (entro 60 giorni) per programmare il promemoria, `null` per annullarlo. */
+    remindAt: z.string().datetime({ offset: true }).nullable().optional(),
+  })
+  .refine((value) => Object.values(value).some((v) => v !== undefined), { message: "Nessuna modifica indicata." });
+export type GuidedRequestUserStateInput = z.infer<typeof guidedRequestUserStateSchema>;

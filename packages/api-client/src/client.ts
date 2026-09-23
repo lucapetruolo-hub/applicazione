@@ -17,7 +17,9 @@ import type {
   ExternalJobInput,
   ExternalJobUpdateInput,
   GuidedRequestInput,
+  GuidedRequestMyState,
   GuidedRequestStatusSummary,
+  GuidedRequestUserStateInput,
   GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
@@ -186,6 +188,8 @@ export type ClientGuidedRequest = {
     /** Stato della prenotazione nata da questo preventivo (solo se accettato) — richiesta esplicita dell'utente, stepper di stato "Richiesta → Preventivo inviato → Preventivo accettato → Completato". `null` finché non accettato. */
     bookingStatus: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW" | null;
   }[];
+  /** Stato personale del cliente sulla scheda: archiviata, silenziata, da leggere, promemoria (docs/CHANGELOG.md §130). */
+  myState: GuidedRequestMyState;
 };
 
 export type ApiClientConfig = {
@@ -206,7 +210,7 @@ export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUs
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
   targetId: string;
   targetLabel: string | null;
   /** Profilo professionista su cui è raggiungibile il contenuto segnalato (`null` per una recensione sul cliente, priva di pagina pubblica). */
@@ -684,6 +688,21 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Elimina definitivamente una richiesta già annullata/scaduta senza prenotazioni (`deleteGuidedRequest` invece la annulla). */
+    deleteGuidedRequestPermanently: (token: string, id: string) =>
+      request<null>(`/guided-requests/${id}/permanent`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Stato personale della scheda (archivia, silenzia, letta/da leggere, promemoria) — cliente o professionista. */
+    updateGuidedRequestMyState: (token: string, id: string, input: GuidedRequestUserStateInput) =>
+      request<GuidedRequestMyState>(`/guided-requests/${id}/my-state`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     /** Stato aggregato (contattati/risposto/in attesa) di una richiesta guidata — CLAUDE.md §14. */

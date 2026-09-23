@@ -397,6 +397,7 @@ const REPORT_TARGET_LABEL: Record<AdminContentReport["targetType"], string> = {
   PROFESSIONAL_PROFILE: "Profilo professionista",
   REVIEW: "Recensione",
   CLIENT_REVIEW: "Recensione sul cliente",
+  GUIDED_REQUEST: "Richiesta di un cliente",
 };
 
 /**

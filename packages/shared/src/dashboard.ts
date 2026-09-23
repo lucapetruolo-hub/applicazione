@@ -29,6 +29,19 @@ export type MyProfessionalProfile = {
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
+/**
+ * Stato personale di una scheda richiesta per l'utente che la guarda
+ * (archiviata, silenziata, segnata da leggere, promemoria) — stessa forma
+ * lato cliente (`ClientGuidedRequest.myState`) e professionista
+ * (`ProfessionalLead.myState`). Date ISO, `null` = non attivo.
+ */
+export type GuidedRequestMyState = {
+  archivedAt: string | null;
+  mutedAt: string | null;
+  markedUnreadAt: string | null;
+  remindAt: string | null;
+};
+
 export type ProfessionalLead = {
   id: string;
   status: "PENDING" | "PAID" | "CONVERTED" | "DECLINED" | "EXPIRED";
@@ -157,6 +170,8 @@ export type ProfessionalLead = {
     preferredDate: string | null;
     preferredTimeSlot: string | null;
   };
+  /** Stato personale del professionista su questa richiesta (CHANGELOG §130). */
+  myState: GuidedRequestMyState;
 };
 
 /**

@@ -14053,3 +14053,111 @@ Verifica su Postgres 16 locale: (1) DB popolato con `db push` dello schema
 avvio → "No pending migrations"; (2) DB vuoto → entrambe le migrazioni
 applicate, nessuna differenza con lo schema; (3) script lanciato da
 `apps/api` (stessa cartella di lavoro di `pnpm start` su Render) → ok.
+
+## 129. Menu hamburger delle azioni sulle schede di "Le mie richieste" e "Richieste ricevute"
+
+**Richiesta esplicita dell'utente**: "sia nelle schede della pagina 'le mie
+richieste' che in quelle di 'richieste ricevute' crea un pulsante hamburger
+in alto a destra che non vada in conflitto con la riga dove ci sono
+'urgente', 'scaduta', 'a domicilio', 'online' ecc., quindi sotto di loro",
+con dentro le azioni relative a quella scheda.
+
+**Decisione**:
+- Nuovo componente condiviso `apps/web/src/components/CardActionsMenu.tsx`
+  (sostituisce il vecchio `ActionsMenu` locale e il menu "Annulla
+  richiesta" costruito a mano in `/le-mie-richieste`). Il pulsante sta
+  sulla riga del titolo (nome del cliente/professionista o categoria), a
+  destra: mai sulla riga dei badge, che su mobile va a capo.
+- La tendina è in un portal su `document.body` con `position: fixed`:
+  `Surface` ha `overflow="hidden"` e la tagliava (visto negli screenshot di
+  verifica). Si chiude al click fuori, allo scroll e al resize.
+- Le azioni distruttive chiedono conferma dentro la tendina (`confirm`),
+  come faceva già "Annulla richiesta".
+- Azioni lato cliente: Modifica richiesta (se nessun preventivo), Ripeti la
+  richiesta, Annulla prenotazione (PENDING/CONFIRMED), Riapri prenotazione
+  (CANCELED), Annulla richiesta (non CLOSED, senza prenotazione).
+- Azioni lato professionista: Chat con il cliente, Profilo del cliente,
+  Invia preventivo e Rifiuta richiesta (da quotare), Modifica e Ritira
+  preventivo (in attesa), Accetta nuova data (modifica richiesta), Lavoro
+  terminato e Annulla intervento (CONFIRMED), Recensisci il cliente,
+  Riapri intervento, Vedi in agenda, Elimina richiesta (scaduta/chiusa con
+  preventivo ritirato o cliente eliminato). Le azioni che mostrano un form
+  inline aprono prima la scheda.
+- Solo azioni già supportate dal backend: nessuna modifica API o schema.
+- `CancelBookingModal`/`CompleteJobModal`/`ReviewModal` spostati fuori dal
+  blocco espanso della scheda: prima "Annulla prenotazione" dal menu di una
+  scheda chiusa non apriva nulla finché la scheda non veniva espansa.
+- Riga dei badge: `flexShrink={1} minWidth={0}`, così su mobile va a capo
+  dentro la scheda invece di uscirne (tagliava "A domicilio").
+
+Verifica: `tsc --noEmit` pulito; Playwright (API simulata, 390px e
+1280px) su entrambe le pagine: tendina completa e non tagliata, conferma
+"Annulla richiesta" dentro la tendina senza espandere la scheda, "Rifiuta
+richiesta" apre la scheda con il form della nota.
+
+## 130. Menu delle schede richiesta: archivia, annulla ≠ elimina, letta/da leggere, silenzia, segnala, condividi, promemoria
+
+**Richiesta esplicita dell'utente**: "procedi con tutti e 7 i punti delle
+idee" proposte dopo §129 per il menu hamburger delle schede.
+
+**Decisione**:
+- Nuovo modello `GuidedRequestUserState` (migrazione
+  `20260924090000_guided_request_user_states`): una riga per coppia
+  (utente, richiesta), valida sia per il cliente sia per ogni professionista
+  con un Lead su quella richiesta: `archivedAt`, `mutedAt`,
+  `markedUnreadAt`, `remindAt`. Ognuno agisce solo per sé, l'altra parte
+  non vede nulla. Un solo endpoint `PATCH /guided-requests/:id/my-state`
+  (`GuidedRequestUserStateService`, 403 a chi non è parte della richiesta),
+  esposto come `myState` su `ClientGuidedRequest` e `ProfessionalLead`.
+- **1. Archivia/Ripristina**: nuovo tab "Archiviate" su entrambe le pagine;
+  una scheda archiviata sparisce da tutti gli altri tab e contatori. Un
+  deep link verso una scheda archiviata apre direttamente quel tab.
+- **2. Annulla ≠ Elimina** (cliente): `DELETE /guided-requests/:id` in
+  realtà già annullava (CLOSED/CANCELED_BY_CLIENT), ma il testo di conferma
+  diceva "eliminare" — corretto. Nuovo `DELETE /guided-requests/:id/permanent`
+  per eliminare davvero: solo su richiesta già chiusa (annullata o scaduta)
+  e mai con una prenotazione (documenta un lavoro reale, e
+  `Booking.quoteId` non è in cascata). Rimuove anche le notifiche che
+  puntano alla richiesta, per tutti.
+- **3. Segna come letta/da leggere**: "da leggere" accende il badge "Nuovo"
+  (aggiunto anche lato professionista, che prima aveva solo il pallino su
+  "Contatta") finché non si segna come letta o si apre la scheda; "letta"
+  segna lette anche le notifiche di quella richiesta.
+- **4. Silenzia notifiche**: `NotificationsService.notify` crea la notifica
+  già letta e senza push SSE se la richiesta è silenziata per quel
+  destinatario: resta nella cronologia della campanella, niente
+  badge/toast. Mai per i promemoria.
+- **5. Segnala richiesta** (professionista): nuovo valore
+  `ContentReportTargetType.GUIDED_REQUEST`; solo chi ha un Lead sulla
+  richiesta può segnalarla (403 altrimenti). Pannello admin: etichetta
+  "Richiesta di un cliente" e destinatario dello "statement of reasons" =
+  il cliente.
+- **6. Condividi riepilogo** (cliente): `navigator.share` sul telefono,
+  altrimenti copia negli appunti. Solo categoria, zona, descrizione, stato
+  e data: mai indirizzo, telefono o nome del destinatario.
+- **7. Promemoria "Ricordamelo domani alle 9"**: job
+  `GuidedRequestUserStateService.runDueReminders` ogni 5 minuti (stesso
+  ritmo di `runExpiryCheck`; con il free tier Render che dorme parte al
+  risveglio), notifica `REQUEST_REMINDER` con `audience` nel payload per il
+  link alla pagina giusta (cliente o professionista). Campo azzerato prima
+  di notificare: mai due notifiche per lo stesso promemoria.
+- Riga di stato sotto il titolo della scheda (promemoria attivo, notifiche
+  silenziate, archiviata) — `RequestCardPersonalActions.tsx`, condiviso
+  dalle due pagine insieme alle quattro azioni "personali".
+- `CardActionsMenu`: con 8-12 voci la tendina su telefono finiva sotto il
+  bordo dello schermo (e lo scroll della pagina la chiudeva): ora si apre
+  verso l'alto se sotto non c'è spazio, con altezza massima e scroll
+  interno che non la chiude.
+
+Verifica: `turbo typecheck test` verde (6 nuovi test Vitest su permessi,
+promemoria nel passato, "segna come letta", silenziamento); migrazione
+applicata su Postgres 16 locale sopra la baseline, `prisma migrate diff
+--exit-code` = 0. End-to-end con l'API vera su quel database: silenziata →
+messaggio chat e "preventivo accettato" nati già letti; estraneo → 403;
+promemoria nel passato → 400; promemoria a +40s → notifica alle 09:55
+nonostante il silenziamento, campo azzerato; segnalazione professionista
+201 / cliente 403; eliminazione definitiva di una richiesta aperta → 403,
+dopo l'annullamento → 204 (richiesta, lead e notifiche spariti); con
+prenotazione → 403. Playwright (390px) sulle due pagine contro la stessa
+API: tab Archiviate, "Nuovo" acceso/spento, ripristino, modale di
+segnalazione, tendina completa.

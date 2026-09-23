@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   buildWhatsAppLink,
   formatBookingAddress,
@@ -30,6 +30,9 @@ import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
+import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
+import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ReportContentModal } from "@/components/ReportContentModal";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -168,7 +171,11 @@ function leadSearchText(lead: ProfessionalLead, stage: RequestStage | undefined,
     .toLowerCase();
 }
 
-const TABS: { key: "tutte" | RequestStage; label: string }[] = [
+// "archiviate" non è uno stadio: le richieste archiviate dal professionista
+// (menu hamburger, docs/CHANGELOG.md §130), escluse da tutti gli altri tab.
+type ProTabKey = "tutte" | RequestStage | "archiviate";
+
+const TABS: { key: ProTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
   { key: "da_quotare", label: "Da quotare" },
   { key: "in_attesa", label: "In attesa" },
@@ -177,6 +184,7 @@ const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "completata", label: "Completate" },
   { key: "annullata", label: "Annullate" },
   { key: "scaduta", label: "Scadute" },
+  { key: "archiviate", label: "Archiviate" },
 ];
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";
@@ -296,7 +304,7 @@ function RichiesteContent() {
   // arrivo esattamente come faceva prima la vecchia scheda in /dashboard.
   const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
 
-  const [activeTab, setActiveTab] = useState<"tutte" | RequestStage>("tutte");
+  const [activeTab, setActiveTab] = useState<ProTabKey>("tutte");
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
   const [zoneFilter, setZoneFilter] = useState("tutte");
@@ -318,7 +326,7 @@ function RichiesteContent() {
   useEffect(() => {
     const stageParam = searchParams.get("stage");
     if (stageParam && TABS.some((t) => t.key === stageParam)) {
-      setActiveTab(stageParam as "tutte" | RequestStage);
+      setActiveTab(stageParam as ProTabKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -359,7 +367,7 @@ function RichiesteContent() {
     const match = leads.find((l) => l.guidedRequest.id === targetGuidedRequestId);
     if (!match) return;
     consumedRequestOpenRef.current = targetGuidedRequestId;
-    setActiveTab("tutte");
+    setActiveTab(match.myState.archivedAt ? "archiviate" : "tutte");
     setOpenId(match.id);
     if (searchParams.get("chat")) setPendingChatOpenLeadId(match.id);
     // Il DOM della card esiste solo dopo che React ha renderizzato lo stato
@@ -466,8 +474,13 @@ function RichiesteContent() {
   }, [leads]);
 
   const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { tutte: (leads ?? []).length };
+    const counts: Record<string, number> = { tutte: 0, archiviate: 0 };
     (leads ?? []).forEach((l) => {
+      if (l.myState.archivedAt) {
+        counts.archiviate = (counts.archiviate ?? 0) + 1;
+        return;
+      }
+      counts.tutte = (counts.tutte ?? 0) + 1;
       const stage = stageByLeadId.get(l.id)!;
       const bucket = stage === "chiusa" ? "scaduta" : stage;
       counts[bucket] = (counts[bucket] ?? 0) + 1;
@@ -477,7 +490,9 @@ function RichiesteContent() {
 
   const visibleLeads = useMemo(() => {
     let list = leads ?? [];
-    if (activeTab !== "tutte") {
+    if (activeTab === "archiviate") list = list.filter((l) => l.myState.archivedAt);
+    else list = list.filter((l) => !l.myState.archivedAt);
+    if (activeTab !== "tutte" && activeTab !== "archiviate") {
       list = list.filter((l) => {
         const stage = stageByLeadId.get(l.id);
         return activeTab === "scaduta" ? stage === "scaduta" || stage === "chiusa" : stage === activeTab;
@@ -820,9 +835,23 @@ function RichiesteContent() {
                   availableSlots={availableSlots}
                   myProfileId={myProfileId}
                   isOpen={openId === lead.id}
-                  onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
+                  onToggle={() => {
+                    const opening = openId !== lead.id;
+                    setOpenId(opening ? lead.id : null);
+                    // Aprire una scheda segnata "da leggere" la considera letta.
+                    if (opening && lead.myState.markedUnreadAt) {
+                      apiClient.updateGuidedRequestMyState(token, lead.guidedRequest.id, { markedUnread: false }).then(reloadLeads).catch(() => {});
+                    }
+                  }}
                   onChanged={reloadLeads}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
+                  onMarkedRead={() =>
+                    setLeadUnreadCounts((prev) => {
+                      const next = new Map(prev);
+                      next.delete(lead.guidedRequest.id);
+                      return next;
+                    })
+                  }
                   autoOpenChat={pendingChatOpenLeadId === lead.id}
                   onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
@@ -848,6 +877,7 @@ function RequestCard({
   unreadCount,
   autoOpenChat,
   onChatAutoOpenHandled,
+  onMarkedRead,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -865,9 +895,12 @@ function RequestCard({
   autoOpenChat?: boolean;
   /** Richiamata subito dopo aver aperto la chat per `autoOpenChat` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
   onChatAutoOpenHandled?: () => void;
+  /** "Segna come letta" dal menu: azzera subito i pallini locali del genitore. */
+  onMarkedRead: () => void;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
+  const router = useRouter();
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
   const leadDeadline = formatLeadDeadline(lead.expiresAt);
@@ -931,6 +964,11 @@ function RequestCard({
   const [showClientReviewModal, setShowClientReviewModal] = useState(false);
 
   const [showClientProfile, setShowClientProfile] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
+  // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
+  const isNew = Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0;
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
@@ -1211,6 +1249,101 @@ function RequestCard({
     }
   }
 
+  function startEditingQuote() {
+    if (!lead.quote) return;
+    setItems(lead.quote.items.map((it) => ({ name: it.name, priceMin: it.priceMinEurCents != null ? (it.priceMinEurCents / 100).toString() : "", priceMax: it.priceMaxEurCents != null ? (it.priceMaxEurCents / 100).toString() : "" })));
+    setQuoteNotes(lead.quote.notes ?? "");
+    setShowQuoteForm(true);
+  }
+
+  // Le azioni che mostrano un form inline (preventivo, rifiuto con nota)
+  // vivono nella parte espansa della scheda: dal menu la si apre prima.
+  function ensureOpen() {
+    if (!isOpen) onToggle();
+  }
+
+  // Azioni del menu hamburger, filtrate per stadio: le stesse già
+  // raggiungibili dai bottoni della scheda espansa, qui a portata di un
+  // click anche a scheda chiusa.
+  const menuActions: CardAction[] = [];
+  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Chat con il cliente", onPress: openTimeline });
+  if (!gr.clientAccountDeleted) menuActions.push({ icon: "user-round", text: "Profilo del cliente", onPress: () => setShowClientProfile(true) });
+  if (stage === "da_quotare") {
+    menuActions.push({
+      icon: "send",
+      text: "Invia preventivo",
+      onPress: () => {
+        ensureOpen();
+        setShowQuoteForm(true);
+      },
+    });
+    menuActions.push({
+      icon: "x",
+      text: "Rifiuta richiesta",
+      tone: "danger",
+      onPress: () => {
+        ensureOpen();
+        setConfirmingDecline(true);
+      },
+    });
+  }
+  if (stage === "in_attesa" && lead.quote) {
+    menuActions.push({
+      icon: "pencil",
+      text: "Modifica preventivo",
+      onPress: () => {
+        ensureOpen();
+        startEditingQuote();
+      },
+    });
+    menuActions.push({
+      icon: "rotate-ccw",
+      text: "Ritira preventivo",
+      tone: "danger",
+      onPress: handleWithdrawQuote,
+      confirm: { question: "Ritirare questo preventivo? Il cliente non potrà più accettarlo.", confirmLabel: "Conferma", busyLabel: "Ritiro..." },
+    });
+  }
+  if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
+    menuActions.push({ icon: "check", text: "Accetta nuova data", onPress: handleConfirmDate });
+  }
+  if (booking?.status === "CONFIRMED") {
+    menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
+    menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
+  }
+  if (booking?.status === "COMPLETED" && !booking.hasClientReview) {
+    menuActions.push({ icon: "star", text: "Recensisci il cliente", onPress: () => setShowClientReviewModal(true) });
+  }
+  if (booking?.status === "CANCELED") {
+    menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  }
+  if (booking) {
+    menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
+  }
+  if ((stage === "scaduta" || stage === "chiusa") && canDelete) {
+    menuActions.push({
+      icon: "trash-2",
+      text: quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta",
+      tone: "danger",
+      onPress: handleDelete,
+      confirm: { question: "Eliminare questa richiesta dalla tua lista?", confirmLabel: "Sì, elimina", busyLabel: "Eliminazione..." },
+    });
+  }
+  menuActions.push(
+    ...buildPersonalStateActions({
+      token,
+      guidedRequestId: gr.id,
+      myState: lead.myState,
+      isNew,
+      onMarkedRead,
+      onChanged,
+      onError: setMenuError,
+    }),
+  );
+  if (!gr.clientAccountDeleted) {
+    menuActions.push({ icon: "flag", text: "Segnala richiesta", tone: "danger", onPress: () => setShowReportModal(true) });
+  }
+
   async function handleSaveNote() {
     setIsSavingNote(true);
     try {
@@ -1224,7 +1357,7 @@ function RequestCard({
     <Surface borderLeftWidth={4} borderLeftColor={s.border} gap="$0" padding={0} overflow="hidden">
       <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {/* Le richieste urgenti (costo lead maggiore, scadenza breve —
                 vedi guided-requests.service) erano indistinguibili dalle
                 normali: il badge rosso è la variante semantica prevista
@@ -1241,6 +1374,7 @@ function RequestCard({
             <Text fontSize={14} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             {/* Per una richiesta completata, l'importo finale (esatto, da
                 "Lavoro terminato") sostituisce il range preventivato: è
                 l'informazione rilevante a lavoro concluso — richiesta
@@ -1258,9 +1392,22 @@ function RequestCard({
           </YStack>
         </XStack>
 
-        <Text fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
-          {clientName}
-        </Text>
+        {/* Menu hamburger sulla riga del nome, non su quella dei badge
+            (richiesta esplicita dell'utente: Urgente + stadio + modalità +
+            scadenza vanno a capo e il pulsante finiva in conflitto con
+            loro). */}
+        <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+          <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+            {clientName}
+          </Text>
+          <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
+        </XStack>
+        <RequestStateIndicators myState={lead.myState} />
+        {menuError ? (
+          <Text color={brand.urgenza} fontSize="$3">
+            {menuError}
+          </Text>
+        ) : null}
         {/* Data/ora dell'intervento spostata subito sotto il nome
             (richiesta esplicita dell'utente, con screenshot annotato) —
             prima stava in fondo, appena sopra la freccetta di
@@ -1633,12 +1780,7 @@ function RequestCard({
                   variant="secondary"
                   backgroundColor={brand.ottone}
                   size="$3"
-                  onPress={() => {
-                    if (!lead.quote) return;
-                    setItems(lead.quote.items.map((it) => ({ name: it.name, priceMin: it.priceMinEurCents != null ? (it.priceMinEurCents / 100).toString() : "", priceMax: it.priceMaxEurCents != null ? (it.priceMaxEurCents / 100).toString() : "" })));
-                    setQuoteNotes(lead.quote.notes ?? "");
-                    setShowQuoteForm(true);
-                  }}
+                  onPress={startEditingQuote}
                 >
                   <Text color="white" fontWeight="700" fontSize="$3">
                     Modifica preventivo
@@ -1781,24 +1923,6 @@ function RequestCard({
                 </Button>
               </XStack>
             ) : null}
-            {showCompleteModal && booking ? (
-              <CompleteJobModal
-                quotedItems={booking.items}
-                onClose={() => setShowCompleteModal(false)}
-                onComplete={handleComplete}
-                uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-              />
-            ) : null}
-            {showClientReviewModal && booking ? (
-              <ReviewModal
-                title="Recensisci il cliente"
-                subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
-                uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
-                onSubmit={handleSubmitClientReview}
-                onClose={closeClientReviewModal}
-              />
-            ) : null}
-            {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
             {reopenError ? (
               <Text fontSize="$2" color={brand.urgenza}>
                 {reopenError}
@@ -2028,6 +2152,36 @@ function RequestCard({
         </YStack>
       ) : null}
 
+      {/* Fuori dal blocco espanso: si aprono anche dal menu hamburger di una
+          scheda chiusa. */}
+      {showCompleteModal && booking ? (
+        <CompleteJobModal
+          quotedItems={booking.items}
+          onClose={() => setShowCompleteModal(false)}
+          onComplete={handleComplete}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+        />
+      ) : null}
+      {showClientReviewModal && booking ? (
+        <ReviewModal
+          title="Recensisci il cliente"
+          subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
+          uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
+          onSubmit={handleSubmitClientReview}
+          onClose={closeClientReviewModal}
+        />
+      ) : null}
+      {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showReportModal ? (
+        <ReportContentModal
+          targetType="GUIDED_REQUEST"
+          targetLabel={`la richiesta di ${clientName}`}
+          onClose={() => setShowReportModal(false)}
+          onSubmit={async (reason, details) => {
+            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          }}
+        />
+      ) : null}
       {showClientProfile ? (
         <ClientProfileModal
           name={clientName}

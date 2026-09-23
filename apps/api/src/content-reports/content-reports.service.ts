@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import type { CreateContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -30,6 +30,18 @@ export class ContentReportsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   async create(reporterId: string, input: CreateContentReportInput) {
+    // Una richiesta non è un contenuto pubblico: può segnalarla solo il
+    // professionista che l'ha ricevuta (docs/CHANGELOG.md §130).
+    if (input.targetType === "GUIDED_REQUEST") {
+      const lead = await this.prisma.lead.findFirst({
+        where: { guidedRequestId: input.targetId, professionalProfile: { userId: reporterId } },
+        select: { id: true },
+      });
+      if (!lead) {
+        throw new ForbiddenException("Puoi segnalare solo una richiesta che hai ricevuto.");
+      }
+    }
+
     const recentDuplicate = await this.prisma.contentReport.findFirst({
       where: {
         reporterId,

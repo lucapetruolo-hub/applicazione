@@ -7,6 +7,7 @@ import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { toMyState } from "./guided-request-user-state.service";
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
@@ -260,6 +261,9 @@ export class GuidedRequestsService {
         // (richiesta esplicita dell'utente — "deve essere chiaro a chi si è
         // inviata la richiesta"), un professionista o più in caso di fan-out.
         leads: { include: { professionalProfile: { include: { category: true } } } },
+        // Stato personale del cliente sulla scheda (archiviata, silenziata,
+        // ecc. — docs/CHANGELOG.md §130): al più una riga per utente.
+        userStates: { where: { userId: clientId } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -375,6 +379,7 @@ export class GuidedRequestsService {
           // stato accettato.
           bookingStatus: quote.booking?.status ?? null,
         })),
+        myState: toMyState(request.userStates?.[0]),
       };
     });
   }
@@ -473,6 +478,39 @@ export class GuidedRequestsService {
     await Promise.all(
       leads.map((lead) => this.timelineService.log(request.id, lead.professionalProfileId, "CLIENT", "Il cliente ha annullato la richiesta.")),
     );
+  }
+
+  /**
+   * Eliminazione definitiva lato cliente (docs/CHANGELOG.md §130, richiesta
+   * esplicita dell'utente: "prima annulli, poi archivi o elimini") — a
+   * differenza di `remove` sopra (che annulla, CLOSED/CANCELED_BY_CLIENT),
+   * qui la riga sparisce davvero, con Lead/Quote/cronologia in cascata.
+   * Solo su una richiesta già chiusa (annullata o scaduta: prima va
+   * annullata, così i professionisti vengono avvisati nella cronologia) e
+   * mai se un preventivo ha già generato una prenotazione: quella documenta
+   * un lavoro reale (e `Booking.quoteId` non è in cascata).
+   * Le notifiche che puntano alla richiesta vengono rimosse per tutti,
+   * altrimenti porterebbero a una scheda che non esiste più.
+   */
+  async permanentlyDelete(clientId: string, id: string): Promise<void> {
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id } });
+    if (!request) {
+      throw new NotFoundException("Richiesta non trovata.");
+    }
+    if (request.clientId !== clientId) {
+      throw new ForbiddenException("Questa richiesta non è tua.");
+    }
+    if (request.status !== "CLOSED") {
+      throw new ForbiddenException("Annulla la richiesta prima di eliminarla definitivamente.");
+    }
+    const bookingCount = await this.prisma.booking.count({ where: { quote: { guidedRequestId: id } } });
+    if (bookingCount > 0) {
+      throw new ForbiddenException("Non puoi eliminare una richiesta che ha già portato a una prenotazione: puoi archiviarla.");
+    }
+    await this.prisma.$transaction([
+      this.prisma.notification.deleteMany({ where: { payload: { path: ["guidedRequestId"], equals: id } } }),
+      this.prisma.guidedRequest.delete({ where: { id } }),
+    ]);
   }
 
   /**

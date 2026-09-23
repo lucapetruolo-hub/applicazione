@@ -94,6 +94,7 @@ model User {
   savedProfessionals  SavedProfessional[]
   clientReviews       ClientReview[]
   contentReports      ContentReport[]
+  guidedRequestStates GuidedRequestUserState[]
 
   @@map("users")
 }
@@ -588,9 +589,42 @@ model GuidedRequest {
   leads          Lead[]
   quotes         Quote[]
   timelineEvents ConversationEvent[]
+  userStates     GuidedRequestUserState[]
 
   @@index([categoryId, city, status])
   @@map("guided_requests")
+}
+
+// Stato personale di una scheda richiesta, per utente (CHANGELOG §130,
+// richiesta esplicita dell'utente: azioni del menu hamburger sulle schede di
+// /le-mie-richieste e /dashboard/richieste). Una riga per coppia
+// (utente, richiesta), valida sia per il cliente sia per ogni professionista
+// che l'ha ricevuta: ognuno archivia/silenzia/segna/programma per sé, senza
+// effetti sull'altra parte. Riga creata solo alla prima azione (upsert).
+model GuidedRequestUserState {
+  id              String    @id @default(uuid())
+  userId          String
+  guidedRequestId String
+  // Scheda spostata nel tab "Archiviate" (null = visibile normalmente).
+  archivedAt      DateTime?
+  // Notifiche di questa richiesta create già lette: restano nella
+  // cronologia della campanella ma niente badge/toast (NotificationsService.notify).
+  mutedAt         DateTime?
+  // "Segna come da leggere": badge "Nuovo" finché l'utente non la segna
+  // come letta o non apre la scheda.
+  markedUnreadAt  DateTime?
+  // Promemoria programmato: il job RequestRemindersService crea una
+  // notifica REQUEST_REMINDER a quest'ora e azzera il campo.
+  remindAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guidedRequest GuidedRequest @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guidedRequestId])
+  @@index([remindAt])
+  @@map("guided_request_user_states")
 }
 
 // Modello a pagamento per lead qualificato, fase iniziale prima dell'upsell
@@ -1157,6 +1191,9 @@ enum ContentReportTargetType {
   PROFESSIONAL_PROFILE
   REVIEW
   CLIENT_REVIEW
+  // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
+  // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
+  GUIDED_REQUEST
 }
 
 enum ContentReportStatus {
