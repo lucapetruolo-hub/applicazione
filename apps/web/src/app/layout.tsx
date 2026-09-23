@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -7,6 +8,7 @@ import { ToastStack } from "@/components/ToastStack";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { SITE_URL } from "@/lib/siteUrl";
+import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
 
@@ -29,6 +31,9 @@ export const metadata: Metadata = {
   },
   description:
     "Cerca imbianchini, elettricisti, idraulici e altri professionisti locali verificati vicino a te.",
+  // Sito non ancora ufficiale: fuori dai motori di ricerca finché
+  // NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi lib/siteIndexing.ts).
+  ...(SITE_INDEXABLE ? {} : { robots: { index: false, follow: false } }),
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -50,6 +55,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteFooter />
           <CookieBanner />
         </Providers>
+        {/* Statistiche visite (docs/CHANGELOG.md §132): Vercel Web Analytics,
+            senza cookie né dati personali, quindi fuori dal consenso del
+            CookieBanner. Conta solo quando è attivato nella dashboard Vercel. */}
+        <Analytics />
       </body>
     </html>
   );

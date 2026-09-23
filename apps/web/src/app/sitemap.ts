@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
-import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, comuneSlug } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 
 /**
  * Fase 6 (SEO): pagine statiche (home, ricerca, categorie, per-professionisti)
@@ -12,6 +13,9 @@ import { SITE_URL } from "@/lib/siteUrl";
  * route: un sitemap parziale è meglio di nessun sitemap.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Sito privato (lib/siteIndexing.ts): nessuna pagina da segnalare.
+  if (!SITE_INDEXABLE) return [];
+
   const staticEntries: MetadataRoute.Sitemap = [
     { url: SITE_URL, changeFrequency: "daily", priority: 1 },
     { url: `${SITE_URL}/cerca`, changeFrequency: "daily", priority: 0.8 },
@@ -32,7 +36,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.6,
     }));
-    return [...staticEntries, ...professionalEntries];
+    // Pagine categoria+città (docs/CHANGELOG.md §132) solo dove esiste
+    // almeno un professionista reale: niente pagine vuote proposte a Google.
+    const cityPaths = new Set<string>();
+    for (const pro of professionals) {
+      const citySlug = comuneSlug(pro.city);
+      if (citySlug) cityPaths.add(`/cerca/${pro.categorySlug}/${citySlug}`);
+    }
+    const cityEntries: MetadataRoute.Sitemap = [...cityPaths].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: "daily",
+      priority: 0.7,
+    }));
+    return [...staticEntries, ...cityEntries, ...professionalEntries];
   } catch {
     return staticEntries;
   }

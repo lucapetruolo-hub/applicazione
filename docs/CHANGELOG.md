@@ -14205,3 +14205,71 @@ senza `quality`) e invariati per `/public`; `next build` di produzione
 riuscito. Non verificato: il download reale da Cloudinary (host bloccato
 dalla rete di questo ambiente) — la sintassi della trasformazione è quella
 standard di Cloudinary.
+
+## 132. Sito privato (non indicizzato) + tattiche pre-lancio del consiglio CEO
+
+**Richiesta esplicita dell'utente**: dopo l'analisi del consiglio CEO
+(CTO, Legale, CFO, CPO) sui passi per andare online, "procedi con le
+tattiche, però dobbiamo fare in modo che il sito non compaia online ma solo
+a chi ha il link poiché non è ancora ufficiale".
+
+**Decisione**:
+- **Sito privato**: `apps/web/src/lib/siteIndexing.ts` → `SITE_INDEXABLE`,
+  vero solo con `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel (default
+  privato: un deploy senza la variabile non apre mai il sito per sbaglio).
+  Da privato: header `X-Robots-Tag: noindex, nofollow` su ogni risposta
+  (`next.config.mjs`, copre anche le pagine client), meta robots `noindex,
+  nofollow` nel layout, sitemap vuota, nessuna sitemap in robots.txt.
+  Scelto `noindex` e **non** `Disallow: /` in robots.txt: un crawler
+  bloccato non vede il `noindex` e Google può comunque elencare l'URL
+  trovato linkato altrove; così invece le pagine eventualmente già
+  indicizzate vengono tolte. Chi ha il link apre il sito normalmente (anche
+  anteprime WhatsApp/Slack invariate). Per renderlo pubblico: impostare la
+  variabile e rifare il deploy (la sitemap è generata al build).
+- **Email al professionista per ogni nuovo lead** (lacuna competitiva n.1
+  del CPO: la campanella/SSE arriva solo a chi ha il sito aperto):
+  `NotificationsService.emailNewLead`, chiamata da `notify()` per
+  `NEW_LEAD` (espansione coda/riserva) e dal fan-out iniziale in
+  `GuidedRequestsService` (che crea le notifiche in blocco). Non attesa dal
+  chiamante, niente email se la richiesta è silenziata (§130), oggetto con
+  "URGENTE —" per le richieste urgenti. Parte davvero solo con
+  `RESEND_API_KEY` (checklist 5bis).
+- **Pagine categoria+città indicizzabili** (SEO locale, CLAUDE.md §7.6):
+  `/cerca/[categoria]/[citta]` (es. `/cerca/idraulico/roma`), stesso
+  contenuto di `/cerca/[categoria]?citta=` (logica estratta in
+  `CategoryResults.tsx`), canonical sulla versione con la città nel
+  percorso, titolo "Idraulico a Roma". Slug dei comuni in
+  `packages/shared/src/data/comuni.ts` (`comuneSlug`/`findComuneBySlug`):
+  l'unico slug duplicato ISTAT (Paterno PZ / Paternò CT) diventa
+  `paterno-ct`. La ricerca (`buildSearchDestination`) porta ora a questi
+  URL quando la città è un comune reale; testo libero resta `?citta=`.
+  Sitemap: solo le coppie categoria+città con almeno un professionista
+  reale (attiva quando il sito diventa pubblico).
+- **Error tracking**: Sentry sull'API (`apps/api/src/instrument.ts`,
+  `SentryModule` + `SentryGlobalFilter`), inerte senza `SENTRY_DSN`; solo
+  errori (niente tracing, resta nella quota gratuita), nessun dato
+  personale. Solo API per ora: è lì che finiscono gli errori silenziosi
+  segnalati dal CTO (cron, email, 500).
+- **Controllo di uptime**: `.github/workflows/uptime.yml`, ping ogni 10
+  minuti di `/health` e della homepage (variabili di repository
+  `API_HEALTH_URL`/`SITE_URL`); se fallisce GitHub avvisa via email. Tiene
+  anche sveglia l'API sul piano free di Render (i @Cron non girano mentre
+  dorme), nei limiti della puntualità dei cron di GitHub — non sostituisce
+  il piano a pagamento, decisione di budget ancora aperta.
+- **Statistiche visite**: Vercel Web Analytics (`@vercel/analytics`), senza
+  cookie né dati personali, quindi fuori dal consenso del banner cookie.
+  Conta solo dopo l'attivazione nella dashboard Vercel.
+- **render.yaml**: dichiarate `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`,
+  `NOMINATIM_CONTACT_EMAIL`, `SENTRY_DSN` (`sync: false`).
+
+Verifica: `next build` di produzione riuscito; server avviato in locale:
+header `X-Robots-Tag` e meta `noindex` presenti su home, robots.txt,
+sitemap (vuota) e pagine città; `/cerca/idraulico/roma` e
+`/cerca/idraulico?citta=Roma` con titolo "Idraulico a Roma" e stesso
+canonical; slug inesistente → 404. Playwright: dalla barra di ricerca
+"Milano" porta a `/cerca/idraulico/milano`, "Paternò" a
+`/cerca/idraulico/paterno-ct`, la barra mostra la città letta dal
+percorso. API: typecheck, build e test Vitest (2 nuovi sull'email del
+lead) verdi, avvio con DI completa (`SentryModule`, `NotificationsModule`
+con `EmailModule`). Non verificato: invio reale via Resend/Sentry (nessuna
+chiave in questo ambiente).

@@ -13,6 +13,7 @@
     "@professionisti/api-client": "workspace:*",
     "@professionisti/shared": "workspace:*",
     "@professionisti/ui": "workspace:*",
+    "@vercel/analytics": "^2.0.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.27.0",
     "next": "^14.2.15",

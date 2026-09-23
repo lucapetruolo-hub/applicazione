@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/siteUrl";
+import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 
 /**
  * Fase 6 (SEO): esclude dalla scansione le pagine che non hanno valore come
@@ -29,6 +30,9 @@ export default function robots(): MetadataRoute.Robots {
         "/admin/*",
       ],
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Sito privato (lib/siteIndexing.ts): scansione ancora permessa, così i
+    // crawler leggono il `noindex` e tolgono le pagine già indicizzate, ma
+    // nessuna sitemap da proporre.
+    ...(SITE_INDEXABLE ? { sitemap: `${SITE_URL}/sitemap.xml` } : {}),
   };
 }

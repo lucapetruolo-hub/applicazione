@@ -214,6 +214,13 @@ export class GuidedRequestsService {
         })),
       });
 
+      // Stessa notifica anche via email (NotificationsService.emailNewLead):
+      // qui le notifiche in-app sono create in blocco, senza passare da notify().
+      this.notificationsService.emailNewLead(
+        leadRecipients.map((profile) => profile.userId),
+        { category: category.label, city: input.city ?? null, isUrgent: input.isUrgent },
+      );
+
       // Metriche di affidabilità (CLAUDE.md §15, evento 1): ogni
       // destinatario del fan-out ha appena "ricevuto una richiesta".
       await Promise.all(leadRecipients.map((profile) => this.professionalMetricsService.recordRequestReceived(profile.id)));

@@ -1,4 +1,6 @@
 import "dotenv/config";
+// Prima di tutti gli altri import (richiesto da Sentry), subito dopo le env.
+import "./instrument";
 import "reflect-metadata";
 import * as express from "express";
 import { NestFactory } from "@nestjs/core";

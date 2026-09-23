@@ -1,0 +1,37 @@
+# Controllo "il sito è su?" (CEO, tattico — docs/CHANGELOG.md §132): ogni 10
+# minuti interroga /health dell'API e la homepage. Se uno dei due non
+# risponde il workflow fallisce e GitHub manda un'email di avviso.
+#
+# Effetto collaterale voluto: sul piano free di Render l'API va in sleep dopo
+# 15 minuti senza richieste, e mentre dorme i job @Cron (promemoria anti
+# no-show, scadenza lead) non girano. Il ping la tiene sveglia — nei limiti
+# della puntualità dei cron di GitHub, che possono ritardare di diversi
+# minuti: non sostituisce un piano Render a pagamento.
+#
+# Configurazione: GitHub → Settings → Secrets and variables → Actions →
+# Variables: API_HEALTH_URL (es. https://<nome>.onrender.com/health) e
+# SITE_URL (es. https://applicazione-web.vercel.app). Senza variabili il
+# controllo viene saltato. I workflow schedulati girano solo sul branch
+# predefinito del repository.
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: API /health
+        if: ${{ vars.API_HEALTH_URL != '' }}
+        # --retry: il primo tentativo dopo uno sleep può superare il minuto
+        # (cold start di Render), non è un sito giù.
+        run: curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 "${{ vars.API_HEALTH_URL }}"
+      - name: Sito web
+        if: ${{ vars.SITE_URL != '' }}
+        run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 2 --retry-delay 10 "${{ vars.SITE_URL }}"
