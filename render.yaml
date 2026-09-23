@@ -25,10 +25,9 @@ services:
     # mai distruttive in automatico — sostituisce "prisma db push
     # --accept-data-loss": CEO, audit tecnico, "un push che droppa una
     # colonna è perdita dati silenziosa") prima di avviare il server.
-    # IMPORTANTE una tantum: la prima volta che questo deploy gira dopo
-    # l'introduzione delle migrazioni, il database Render esistente va
-    # "baselinato" a mano (marcato come già alla migrazione iniziale) prima
-    # che questo comando funzioni — vedi CLAUDE.md §2 per il comando esatto.
+    # Il database esistente (nato con db push, senza storico migrazioni)
+    # viene "baselinato" in automatico al primo avvio: vedi
+    # packages/database/scripts/migrate-deploy.mjs e CLAUDE.md §2.
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
     startCommand: pnpm --filter @professionisti/api start
     # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API

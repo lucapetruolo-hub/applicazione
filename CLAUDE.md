@@ -96,18 +96,25 @@ prima discuterne e aggiornare questo file.
   `apps/api/package.json` esegue `prisma migrate deploy` — non distruttivo
   per definizione, applica solo le migrazioni non ancora applicate, mai un
   `push` che sincronizza forzando lo schema.
-  **Passo manuale una tantum richiesto prima del prossimo deploy**: il
-  database Render esistente ha già tutte le tabelle (create da anni di `db
-  push`) ma nessuno storico di migrazioni — `prisma migrate deploy` fallirebbe
-  tentando di ricrearle da zero. Va "baselinato" una sola volta puntando
-  `DATABASE_URL` sull'External Connection String di Render (mai committarla)
-  ed eseguendo, dalla cartella `packages/database`:
-  `DATABASE_URL="<connection string esterna di Render>" npx prisma migrate resolve --applied <nome della cartella baseline in prisma/migrations>`
-  — dopo questo comando (che non tocca dati né schema, marca solo "questa
-  migrazione è già applicata"), i deploy successivi useranno `migrate
-  deploy` normalmente. Stesso comando andrà ripetuto se in futuro si ricrea
-  il database Render free da zero (vedi scadenza 30gg sotto) puntando alla
-  nuova connection string, prima del primo deploy su quel nuovo database.
+  **Baseline del database esistente — automatica** (docs/CHANGELOG.md
+  §128): il database Render di produzione ha le tabelle create da `db push`
+  ma nessuno storico migrazioni, e `prisma migrate deploy` da solo fallisce
+  con `P3005` ("The database schema is not empty" — successo davvero al
+  primo deploy). Lo script `start` quindi non chiama più `migrate deploy`
+  direttamente ma `packages/database/scripts/migrate-deploy.mjs`: se e solo
+  se il deploy fallisce con `P3005`, marca la migrazione baseline come già
+  applicata (`migrate resolve --applied`, non tocca dati né schema) e
+  rilancia il deploy, che applica solo le migrazioni successive. Nessun
+  comando manuale contro il DB di produzione; un DB nuovo e vuoto (es. dopo
+  la scadenza 30gg) non dà `P3005` e riceve tutte le migrazioni da zero.
+  **Regola per la baseline**: `20260921212750_baseline` deve restare lo
+  schema **realmente presente** in produzione al momento del passaggio
+  (ultimo `db push`, commit `034f1a5`), mai lo schema corrente — ogni
+  cambiamento successivo va in una migrazione a parte (es.
+  `20260923080000_booking_reminder_sent_at`, `Booking.reminderSentAt`, che
+  in origine era finito per errore dentro la baseline e non sarebbe mai
+  arrivato in produzione). Nuove modifiche allo schema: `prisma migrate dev
+  --name <nome>` in locale, mai modificare una migrazione già committata.
   Stesso problema si è presentato in passato per i **dati** (non solo lo schema): `db
   push` sincronizza le tabelle ma non le righe, quindi la tabella
   `categories` restava vuota in produzione (mai eseguito `prisma db seed`
@@ -133,8 +140,8 @@ prima discuterne e aggiornare questo file.
   funzioni schedulate con `@nestjs/schedule` non girano mentre dorme);
   il Postgres free (1 GB) scade dopo 30 giorni → alla scadenza creare un
   nuovo DB free, aggiornare `DATABASE_URL` e rieseguire il seed
-  (lo script `start` di `apps/api` esegue già da solo `prisma db push
-  --accept-data-loss` ad ogni avvio, vedi sopra in questa sezione; le
+  (lo script `start` di `apps/api` applica già da solo le migrazioni ad
+  ogni avvio, vedi sopra in questa sezione; le
   categorie si ripopolano da sole via `CategoriesSeedService` — nessun
   comando manuale necessario per quelle. Il seed dei dati demo, se
   servisse, si rilancia a mano puntando `DATABASE_URL` locale
@@ -533,10 +540,9 @@ produzione):
    tecnicamente, richiede un piano a pagamento (decisione di budget non
    presa autonomamente): promemoria operativo ricorrente, non ipotetico,
    non un rischio ipotetico da monitorare "quando capita". Alla scadenza
-   va creato un nuovo DB free, aggiornato `DATABASE_URL` su Render e
-   ripetuto il passo di baseline delle migrazioni (dettagli tecnici e
-   comando esatto al punto 19 più sotto) prima che l'API torni a
-   funzionare in produzione.
+   va creato un nuovo DB free e aggiornato `DATABASE_URL` su Render (le
+   migrazioni si applicano da sole al primo avvio sul DB vuoto, le
+   categorie si ripopolano via `CategoriesSeedService`).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/
    `STRIPE_PRICE_BUSINESS`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
@@ -621,19 +627,9 @@ infrastruttura di test reale (Vitest — commissione piattaforma, creazione
 Booking da preventivo, gate contatti cliente) e CORS ristretto a
 `FRONTEND_URL` (`apps/api/src/main.ts`) sono **già fatti**, vedi §9. Restano
 aperti solo:
-19. **Passo manuale una tantum sul database Render di produzione**, prima
-    del prossimo deploy: `prisma db push --accept-data-loss` è stato
-    sostituito con `prisma migrate deploy` (migrazioni esplicite tracciate
-    in `packages/database/prisma/migrations`, mai distruttive in
-    automatico — baseline generata da `prisma migrate diff --from-empty
-    --to-schema-datamodel`, verificata schema-identica sia a un DB vuoto
-    sia al DB locale esistente), ma il DB Render esistente ha già le
-    tabelle senza storico migrazioni tracciato — senza questo passo
-    `migrate deploy` fallisce al prossimo deploy:
-    `DATABASE_URL="<connection string esterna di Render>" npx prisma
-    migrate resolve --applied 20260921212750_baseline`.
+19. ~~Passo manuale di baseline sul database Render~~ — non più
+    necessario: fatto in automatico dallo script `start` al primo `P3005`
+    (vedi §2 e `docs/CHANGELOG.md` §128).
 20. Postgres free che scade ogni 30 giorni — vedi punto 4bis più sopra
     (voce principale di questo problema, in cima alla checklist perché è
-    un rischio operativo ricorrente, non solo tecnico). Ogni volta che il
-    DB scade e se ne ricrea uno nuovo, va ripetuto anche il passo manuale
-    del punto 19 qui sopra (baseline) sul nuovo database.
+    un rischio operativo ricorrente, non solo tecnico).

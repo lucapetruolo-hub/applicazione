@@ -14011,3 +14011,45 @@ Playwright: compilata categoria+descrizione (modalità Online, senza
 allegare nulla) e cliccato "Invia richiesta" — nessun errore "Aggiungi
 almeno una foto o un video", il form procede correttamente al gate di
 autenticazione (il passo successivo reale, invariato).
+
+## 128. Deploy Render fallito con P3005: baseline automatica + migrazione mancante di `reminderSentAt`
+
+Segnalazione esplicita dell'utente: deploy su Render fallito, log con
+`prisma migrate deploy` → `Error: P3005 — The database schema is not
+empty`. Era il passo manuale una tantum annunciato in §124 (baseline del
+database di produzione, nato con `db push` e senza storico migrazioni),
+mai eseguito: un comando da lanciare a mano contro la connection string
+esterna di Render, proprio il tipo di operazione che l'utente trova
+difficile.
+
+**Secondo problema trovato nel farlo, più grave**: la migrazione baseline
+di §124 era stata generata dallo schema *di quel commit*, che aggiungeva
+anche `Booking.reminderSentAt` (promemoria anti no-show). Il DB di
+produzione, invece, era fermo all'ultimo `db push` (commit precedente,
+senza quella colonna). Eseguire il comando manuale documentato avrebbe
+marcato come "applicata" una baseline che contiene una colonna mai creata
+in produzione: API avviata, ma ogni query Prisma sulle prenotazioni in
+errore (`column "reminderSentAt" does not exist`) e il cron dei promemoria
+in crash ogni 30 minuti.
+
+**Decisione**:
+- `20260921212750_baseline` rigenerata dallo schema reale di produzione
+  (`034f1a5`, `prisma migrate diff --from-empty`): unica differenza la riga
+  `reminderSentAt` in meno.
+- Nuova migrazione `20260923080000_booking_reminder_sent_at` (`ADD COLUMN
+  IF NOT EXISTS "reminderSentAt"`).
+- `packages/database/scripts/migrate-deploy.mjs`, chiamato dallo script
+  `start` di `apps/api` al posto di `prisma migrate deploy` diretto: se il
+  deploy fallisce con `P3005`, esegue `migrate resolve --applied
+  20260921212750_baseline` e rilancia il deploy. Nessun comando manuale
+  contro il DB di produzione; un DB vuoto non produce `P3005` e riceve
+  tutte le migrazioni. Checklist pre-lancio (CLAUDE.md, punti 4bis/19/20)
+  aggiornata di conseguenza.
+
+Verifica su Postgres 16 locale: (1) DB popolato con `db push` dello schema
+`034f1a5` (simula produzione) → P3005, baseline marcata, applicata solo
+`reminderSentAt`, `prisma migrate diff --from-url … --to-schema-datamodel
+--exit-code` = 0 (nessuna differenza con lo schema corrente); secondo
+avvio → "No pending migrations"; (2) DB vuoto → entrambe le migrazioni
+applicate, nessuna differenza con lo schema; (3) script lanciato da
+`apps/api` (stessa cartella di lavoro di `pnpm start` su Render) → ok.

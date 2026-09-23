@@ -340,7 +340,6 @@ CREATE TABLE "bookings" (
     "scheduledAt" TIMESTAMP(3) NOT NULL,
     "scheduledEndAt" TIMESTAMP(3),
     "status" "BookingStatus" NOT NULL DEFAULT 'PENDING',
-    "reminderSentAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "recipientName" TEXT,
