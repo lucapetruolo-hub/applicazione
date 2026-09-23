@@ -51,9 +51,15 @@ export function CardActionsMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [confirming, setConfirming] = useState<CardAction | null>(null);
   const [isBusy, setIsBusy] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
-    null,
-  );
+  // Aperta verso il basso (`top`) o verso l'alto (`bottom`) a seconda dello
+  // spazio disponibile: su telefono con molte voci la tendina finiva sotto
+  // il bordo dello schermo, con le ultime azioni irraggiungibili.
+  const [anchor, setAnchor] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+    maxHeight: number;
+  } | null>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +77,14 @@ export function CardActionsMenu({
     }
     // Posizione fissa: allo scroll/resize la tendina resterebbe staccata
     // dal pulsante, più semplice chiuderla.
-    function handleViewportChange() {
+    function handleViewportChange(event: Event) {
+      // Lo scroll interno della tendina stessa non la deve chiudere.
+      if (
+        event.type === "scroll" &&
+        event.target instanceof Node &&
+        dropdownRef.current?.contains(event.target)
+      )
+        return;
       setIsOpen(false);
       setConfirming(null);
     }
@@ -88,10 +101,18 @@ export function CardActionsMenu({
   function open() {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setAnchor({
-      top: rect.bottom + 8,
-      right: Math.max(8, window.innerWidth - rect.right),
-    });
+    const right = Math.max(8, window.innerWidth - rect.right);
+    const spaceBelow = window.innerHeight - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    if (spaceBelow < 320 && spaceAbove > spaceBelow) {
+      setAnchor({
+        bottom: window.innerHeight - rect.top + 8,
+        right,
+        maxHeight: spaceAbove,
+      });
+    } else {
+      setAnchor({ top: rect.bottom + 8, right, maxHeight: spaceBelow });
+    }
     setIsOpen(true);
   }
 
@@ -150,7 +171,11 @@ export function CardActionsMenu({
               style={{
                 position: "fixed",
                 top: anchor.top,
+                bottom: anchor.bottom,
                 right: anchor.right,
+                maxHeight: anchor.maxHeight,
+                overflowY: "auto",
+                borderRadius: radiusDoc,
                 maxWidth: "calc(100vw - 16px)",
                 zIndex: 5000,
               }}

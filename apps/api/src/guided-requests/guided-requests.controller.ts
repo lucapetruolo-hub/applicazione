@@ -22,9 +22,11 @@ import { Throttle } from "@nestjs/throttler";
 import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
+  guidedRequestUserStateSchema,
   timelineUpdateSchema,
   type GuidedRequestInput,
   type GuidedRequestUpdateInput,
+  type GuidedRequestUserStateInput,
   type TimelineUpdateInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -33,6 +35,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "./guided-requests.service";
+import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
@@ -58,6 +61,7 @@ export class GuidedRequestsController {
     private readonly guidedRequestsService: GuidedRequestsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly timelineService: TimelineService,
+    private readonly userStateService: GuidedRequestUserStateService,
   ) {}
 
   // Autenticato, ma comunque limitato (Fase 6): ogni richiesta fa fan-out di
@@ -208,6 +212,25 @@ export class GuidedRequestsController {
   @HttpCode(204)
   remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.guidedRequestsService.remove(req.user.userId, id);
+  }
+
+  /** Eliminazione definitiva di una richiesta già annullata/scaduta (vedi GuidedRequestsService.permanentlyDelete). */
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/permanent")
+  @HttpCode(204)
+  removePermanently(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.guidedRequestsService.permanentlyDelete(req.user.userId, id);
+  }
+
+  /** Stato personale della scheda (archivia, silenzia, letta/da leggere, promemoria) — cliente o professionista. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/my-state")
+  updateMyState(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(guidedRequestUserStateSchema)) body: GuidedRequestUserStateInput,
+  ) {
+    return this.userStateService.update(req.user.userId, id, body);
   }
 
   @UseGuards(JwtAuthGuard)

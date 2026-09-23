@@ -113,6 +113,17 @@ export class AdminService {
             linkedProfessionalProfileId: review?.booking.professionalProfile.id ?? null,
           };
         }
+        if (report.targetType === "GUIDED_REQUEST") {
+          const request = await this.prisma.guidedRequest.findUnique({
+            where: { id: report.targetId },
+            select: { city: true, category: { select: { label: true } }, client: { select: { name: true, surname: true } } },
+          });
+          const clientName = request ? [request.client.name, request.client.surname].filter(Boolean).join(" ") || "cliente" : null;
+          return {
+            label: request ? `Richiesta ${request.category.label}${request.city ? ` a ${request.city}` : ""} di ${clientName}` : null,
+            linkedProfessionalProfileId: null,
+          };
+        }
         const clientReview = await this.prisma.clientReview.findUnique({
           where: { id: report.targetId },
           select: { client: { select: { name: true, surname: true } } },
@@ -208,6 +219,10 @@ export class AdminService {
     if (targetType === "REVIEW") {
       const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
       return review?.booking.clientId ?? null;
+    }
+    if (targetType === "GUIDED_REQUEST") {
+      const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
+      return request?.clientId ?? null;
     }
     const clientReview = await this.prisma.clientReview.findUnique({
       where: { id: targetId },

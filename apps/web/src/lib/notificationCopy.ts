@@ -29,6 +29,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // reasons" a chi ha scritto un contenuto la cui segnalazione è stata
   // accolta — entrambi generati da AdminService.resolveContentReport.
   CONTENT_REPORT_DECISION: { icon: "🚩", message: "La tua segnalazione è stata esaminata da un amministratore." },
+  // Promemoria programmato dall'utente dal menu della scheda (docs/CHANGELOG.md §130).
+  REQUEST_REMINDER: { icon: "⏰", message: "Promemoria: hai chiesto di ricordarti questa richiesta." },
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Un tuo contenuto è stato segnalato e la segnalazione è stata accolta." },
 };
 

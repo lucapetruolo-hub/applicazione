@@ -31,6 +31,8 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
+import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ReportContentModal } from "@/components/ReportContentModal";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -169,7 +171,11 @@ function leadSearchText(lead: ProfessionalLead, stage: RequestStage | undefined,
     .toLowerCase();
 }
 
-const TABS: { key: "tutte" | RequestStage; label: string }[] = [
+// "archiviate" non è uno stadio: le richieste archiviate dal professionista
+// (menu hamburger, docs/CHANGELOG.md §130), escluse da tutti gli altri tab.
+type ProTabKey = "tutte" | RequestStage | "archiviate";
+
+const TABS: { key: ProTabKey; label: string }[] = [
   { key: "tutte", label: "Tutte" },
   { key: "da_quotare", label: "Da quotare" },
   { key: "in_attesa", label: "In attesa" },
@@ -178,6 +184,7 @@ const TABS: { key: "tutte" | RequestStage; label: string }[] = [
   { key: "completata", label: "Completate" },
   { key: "annullata", label: "Annullate" },
   { key: "scaduta", label: "Scadute" },
+  { key: "archiviate", label: "Archiviate" },
 ];
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";
@@ -297,7 +304,7 @@ function RichiesteContent() {
   // arrivo esattamente come faceva prima la vecchia scheda in /dashboard.
   const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
 
-  const [activeTab, setActiveTab] = useState<"tutte" | RequestStage>("tutte");
+  const [activeTab, setActiveTab] = useState<ProTabKey>("tutte");
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
   const [zoneFilter, setZoneFilter] = useState("tutte");
@@ -319,7 +326,7 @@ function RichiesteContent() {
   useEffect(() => {
     const stageParam = searchParams.get("stage");
     if (stageParam && TABS.some((t) => t.key === stageParam)) {
-      setActiveTab(stageParam as "tutte" | RequestStage);
+      setActiveTab(stageParam as ProTabKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -360,7 +367,7 @@ function RichiesteContent() {
     const match = leads.find((l) => l.guidedRequest.id === targetGuidedRequestId);
     if (!match) return;
     consumedRequestOpenRef.current = targetGuidedRequestId;
-    setActiveTab("tutte");
+    setActiveTab(match.myState.archivedAt ? "archiviate" : "tutte");
     setOpenId(match.id);
     if (searchParams.get("chat")) setPendingChatOpenLeadId(match.id);
     // Il DOM della card esiste solo dopo che React ha renderizzato lo stato
@@ -467,8 +474,13 @@ function RichiesteContent() {
   }, [leads]);
 
   const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { tutte: (leads ?? []).length };
+    const counts: Record<string, number> = { tutte: 0, archiviate: 0 };
     (leads ?? []).forEach((l) => {
+      if (l.myState.archivedAt) {
+        counts.archiviate = (counts.archiviate ?? 0) + 1;
+        return;
+      }
+      counts.tutte = (counts.tutte ?? 0) + 1;
       const stage = stageByLeadId.get(l.id)!;
       const bucket = stage === "chiusa" ? "scaduta" : stage;
       counts[bucket] = (counts[bucket] ?? 0) + 1;
@@ -478,7 +490,9 @@ function RichiesteContent() {
 
   const visibleLeads = useMemo(() => {
     let list = leads ?? [];
-    if (activeTab !== "tutte") {
+    if (activeTab === "archiviate") list = list.filter((l) => l.myState.archivedAt);
+    else list = list.filter((l) => !l.myState.archivedAt);
+    if (activeTab !== "tutte" && activeTab !== "archiviate") {
       list = list.filter((l) => {
         const stage = stageByLeadId.get(l.id);
         return activeTab === "scaduta" ? stage === "scaduta" || stage === "chiusa" : stage === activeTab;
@@ -821,9 +835,23 @@ function RichiesteContent() {
                   availableSlots={availableSlots}
                   myProfileId={myProfileId}
                   isOpen={openId === lead.id}
-                  onToggle={() => setOpenId((prev) => (prev === lead.id ? null : lead.id))}
+                  onToggle={() => {
+                    const opening = openId !== lead.id;
+                    setOpenId(opening ? lead.id : null);
+                    // Aprire una scheda segnata "da leggere" la considera letta.
+                    if (opening && lead.myState.markedUnreadAt) {
+                      apiClient.updateGuidedRequestMyState(token, lead.guidedRequest.id, { markedUnread: false }).then(reloadLeads).catch(() => {});
+                    }
+                  }}
                   onChanged={reloadLeads}
                   unreadCount={leadUnreadCounts.get(lead.guidedRequest.id)}
+                  onMarkedRead={() =>
+                    setLeadUnreadCounts((prev) => {
+                      const next = new Map(prev);
+                      next.delete(lead.guidedRequest.id);
+                      return next;
+                    })
+                  }
                   autoOpenChat={pendingChatOpenLeadId === lead.id}
                   onChatAutoOpenHandled={() => setPendingChatOpenLeadId((prev) => (prev === lead.id ? null : prev))}
                 />
@@ -849,6 +877,7 @@ function RequestCard({
   unreadCount,
   autoOpenChat,
   onChatAutoOpenHandled,
+  onMarkedRead,
 }: {
   lead: ProfessionalLead;
   stage: RequestStage;
@@ -866,6 +895,8 @@ function RequestCard({
   autoOpenChat?: boolean;
   /** Richiamata subito dopo aver aperto la chat per `autoOpenChat` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo (es. la card esce/rientra da un filtro) non la riapre da sola (bug reale corretto). */
   onChatAutoOpenHandled?: () => void;
+  /** "Segna come letta" dal menu: azzera subito i pallini locali del genitore. */
+  onMarkedRead: () => void;
 }) {
   const gr = lead.guidedRequest;
   const isOnline = gr.serviceMode === "ONLINE";
@@ -933,6 +964,11 @@ function RequestCard({
   const [showClientReviewModal, setShowClientReviewModal] = useState(false);
 
   const [showClientProfile, setShowClientProfile] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
+  // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
+  const isNew = Boolean(lead.myState.markedUnreadAt) || (unreadCount ?? 0) > 0;
   const [showTimeline, setShowTimeline] = useState(false);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // Il pallino "Contatta/Cronologia" deve sparire non appena si apre la
@@ -1293,6 +1329,20 @@ function RequestCard({
       confirm: { question: "Eliminare questa richiesta dalla tua lista?", confirmLabel: "Sì, elimina", busyLabel: "Eliminazione..." },
     });
   }
+  menuActions.push(
+    ...buildPersonalStateActions({
+      token,
+      guidedRequestId: gr.id,
+      myState: lead.myState,
+      isNew,
+      onMarkedRead,
+      onChanged,
+      onError: setMenuError,
+    }),
+  );
+  if (!gr.clientAccountDeleted) {
+    menuActions.push({ icon: "flag", text: "Segnala richiesta", tone: "danger", onPress: () => setShowReportModal(true) });
+  }
 
   async function handleSaveNote() {
     setIsSavingNote(true);
@@ -1324,6 +1374,7 @@ function RequestCard({
             <Text fontSize={14} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
+            {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
             {/* Per una richiesta completata, l'importo finale (esatto, da
                 "Lavoro terminato") sostituisce il range preventivato: è
                 l'informazione rilevante a lavoro concluso — richiesta
@@ -1351,6 +1402,12 @@ function RequestCard({
           </Text>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
+        <RequestStateIndicators myState={lead.myState} />
+        {menuError ? (
+          <Text color={brand.urgenza} fontSize="$3">
+            {menuError}
+          </Text>
+        ) : null}
         {/* Data/ora dell'intervento spostata subito sotto il nome
             (richiesta esplicita dell'utente, con screenshot annotato) —
             prima stava in fondo, appena sopra la freccetta di
@@ -2115,6 +2172,16 @@ function RequestCard({
         />
       ) : null}
       {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showReportModal ? (
+        <ReportContentModal
+          targetType="GUIDED_REQUEST"
+          targetLabel={`la richiesta di ${clientName}`}
+          onClose={() => setShowReportModal(false)}
+          onSubmit={async (reason, details) => {
+            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          }}
+        />
+      ) : null}
       {showClientProfile ? (
         <ClientProfileModal
           name={clientName}

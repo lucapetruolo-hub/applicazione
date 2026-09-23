@@ -3,6 +3,14 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { RealtimeService } from "../realtime/realtime.service";
 
+function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const value = (payload as Record<string, unknown>).guidedRequestId;
+    if (typeof value === "string") return value;
+  }
+  return null;
+}
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -25,6 +33,19 @@ export class NotificationsService {
    * di badge/toast rispetto al solo poll da 15-45s già esistente.
    */
   async notify(userId: string, type: string, payload: Prisma.InputJsonValue): Promise<void> {
+    // Richiesta silenziata dall'utente (menu hamburger della scheda,
+    // docs/CHANGELOG.md §130): la notifica resta nella cronologia della
+    // campanella ma nasce già letta, niente badge/toast/push SSE. Mai per
+    // un promemoria, che l'utente stesso ha chiesto.
+    const guidedRequestId = type !== "REQUEST_REMINDER" ? payloadGuidedRequestId(payload) : null;
+    const muted = guidedRequestId
+      ? await this.prisma.guidedRequestUserState.findFirst({ where: { userId, guidedRequestId, mutedAt: { not: null } }, select: { id: true } })
+      : null;
+    if (muted) {
+      await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
+      return;
+    }
+
     const created = await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload } });
     this.realtimeService.publish(userId, {
       kind: "notification",

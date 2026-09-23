@@ -99,6 +99,15 @@ function payloadString(n: UnreadNotification, key: string): string | null {
  * comunicazione parallelo all'URL già usato per `open`/`tab`.
  */
 export function notificationDeepLink(type: string, payload: unknown): string | null {
+  // Promemoria (docs/CHANGELOG.md §130): stesso tipo per entrambi i ruoli,
+  // il lato è nel payload (`audience`), non deducibile dal solo `type`.
+  if (type === "REQUEST_REMINDER") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (!guidedRequestId) return null;
+    return getPayloadValue(payload, "audience") === "PROFESSIONAL"
+      ? `/dashboard/richieste?open=${guidedRequestId}`
+      : `/le-mie-richieste?tab=richieste&open=${guidedRequestId}`;
+  }
   const destination = notificationDestination(type);
   if (!destination) return null;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
