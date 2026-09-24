@@ -14504,3 +14504,45 @@ vantaggio dalla foto. Aggiornati stack e checklist in CLAUDE.md.
 
 Verifica: typecheck e `next build`. Aspetto dal vivo verificato dall'utente
 durante l'anteprima.
+
+## 141. Suggerimenti di Google per l'indirizzo del professionista
+
+**Richiesta esplicita dell'utente**: "implementare anche nella ricerca della
+città e nell'inserimento degli indirizzi le proposte di google". Proposta
+concordata: **no per il campo città** della ricerca. L'elenco ISTAT locale è
+già completo, funziona anche senza consenso ai cookie e non costa nulla,
+mentre Google proporrebbe frazioni e nomi che la ricerca per comune non
+riconosce. **Sì per gli indirizzi**, partendo da quello del professionista,
+che decide la posizione sulla mappa. L'utente ha abilitato Places API (New)
+e l'ha aggiunta alle API consentite della chiave del sito.
+
+**Decisione**: `AddressAutocompleteInput`
+(`apps/web/src/components/AddressAutocompleteInput.tsx`) nel campo
+"Indirizzo preciso" di `/dashboard/profilo`:
+- Places API (New): `AutocompleteSuggestion.fetchAutocompleteSuggestions`
+  con token di sessione (una sola sessione conteggiata per ricerca+scelta),
+  solo Italia, solo vie e numeri civici
+  (`includedPrimaryTypes: street_address/route/premise/subpremise`), con
+  preferenza per i risultati entro 30 km dal comune indicato nel profilo;
+  attesa di 250 ms tra una lettera e l'altra e ricerca da 3 caratteri in su.
+- Scegliendo un suggerimento: indirizzo formattato da Google (senza
+  ", Italia") e coordinate esatte, inviate con il salvataggio
+  (`latitude`/`longitude` del profilo, già accettate dallo schema), così il
+  server non geocodifica. Se si modifica il testo a mano, le coordinate si
+  azzerano e resta la geocodifica lato server di sempre. Se la città del
+  profilo è vuota, viene compilata con il comune dell'indirizzo, quando è un
+  comune ISTAT.
+- Tastiera (frecce, Invio, Esc), attribuzione "Suggerimenti di Google" in
+  fondo all'elenco (richiesta da Google fuori da una mappa Google).
+- Stesso consenso ai servizi Google della mappa: senza consenso o senza
+  chiave è un normale campo di testo. Parametri di caricamento condivisi con
+  le mappe (`GOOGLE_API_PROVIDER_PROPS` in `GoogleMapGate`), così lo script
+  Google si carica una sola volta.
+
+Verifica: typecheck, `next build`, Playwright con **Google vero** (chiave
+reale, dominio del sito simulato): scrivendo "Via del Corso 1" nel profilo di
+un professionista di Roma compaiono solo vie di Roma e dintorni in cima e
+nessun negozio. Scegliendo un suggerimento, il salvataggio invia l'indirizzo
+"V. del Corso, Roma RM" con latitudine 41.9032 e longitudine 12.4795.
+Restano da fare gli indirizzi del cliente (richiesta di preventivo,
+impostazioni account).

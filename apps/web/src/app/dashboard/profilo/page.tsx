@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
-import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, type ProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, findComuneByName, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,6 +14,7 @@ import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -108,6 +109,10 @@ export default function DashboardProfiloPage() {
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
+  // Coordinate esatte dell'indirizzo scelto dai suggerimenti di Google
+  // (docs/CHANGELOG.md §141): inviate al salvataggio, così il server non
+  // deve geocodificare. Azzerate appena l'indirizzo viene modificato a mano.
+  const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
@@ -320,6 +325,7 @@ export default function DashboardProfiloPage() {
         categorySlug: categorySlug as ProfessionalCategorySlug,
         city: city.trim(),
         address: address.trim() || undefined,
+        ...(addressCoords && address.trim() ? addressCoords : {}),
         subTags: [],
         bio: bio.trim() || undefined,
         remoteAvailable,
@@ -592,11 +598,24 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="$2">
             <FieldLabel>Indirizzo preciso (opzionale)</FieldLabel>
-            <input
+            <AddressAutocompleteInput
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(value) => {
+                setAddress(value);
+                setAddressCoords(null);
+              }}
+              onSelect={(selected) => {
+                setAddressCoords({ latitude: selected.latitude, longitude: selected.longitude });
+                // Città ancora vuota: la si ricava dal comune dell'indirizzo scelto, se è un comune ISTAT.
+                const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+                if (comune && !city.trim()) setCity(comune.name);
+              }}
               placeholder="Es. Via delle Camelie 38, Latina Scalo"
               style={inputStyle}
+              biasTowards={(() => {
+                const comune = findComuneByName(city);
+                return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
+              })()}
             />
             <Text fontSize="$2" color={brand.grafite70}>
               Usato solo per posizionarti con precisione sulla mappa dei risultati: non viene mai mostrato per
