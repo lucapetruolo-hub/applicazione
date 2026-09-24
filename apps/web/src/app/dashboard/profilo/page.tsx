@@ -13,6 +13,7 @@ import { ImageCropModal } from "@/components/ImageCropModal";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -209,6 +210,34 @@ export default function DashboardProfiloPage() {
       .finally(() => setIsLoadingProfile(false));
   }, [token]);
 
+  // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md
+  // §136): confronto tra i campi del form principale e com'erano all'ultimo
+  // caricamento/salvataggio. Fuori dal confronto la foto profilo (salvata
+  // subito dal suo caricamento) e il raggio di ingaggio (proprio "Salva").
+  const formSnapshot = JSON.stringify({
+    businessName,
+    categorySlug,
+    city,
+    address,
+    bio,
+    remoteAvailable,
+    services,
+    portfolioUrls,
+    spokenLanguages,
+    yearsOfExperience,
+    certifications,
+    hasLiabilityInsurance,
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  useEffect(() => {
+    // Primo render dopo il caricamento del profilo: i campi contengono già i
+    // valori salvati, questo è il punto di partenza.
+    if (!isLoadingProfile && savedSnapshot === null) setSavedSnapshot(formSnapshot);
+  }, [isLoadingProfile, savedSnapshot, formSnapshot]);
+  const isDirty = savedSnapshot !== null && formSnapshot !== savedSnapshot;
+  const { pendingHref, cancelLeave } = useUnsavedChangesGuard(isDirty);
+  const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
+
   if (isLoading || (token && isLoadingProfile)) return null;
 
   if (!user || !token) {
@@ -245,19 +274,20 @@ export default function DashboardProfiloPage() {
     );
   }
 
-  async function handleSubmit() {
+  /** Validazione + salvataggio del form principale; `true` se è andato a buon fine. */
+  async function saveProfile(): Promise<boolean> {
     setError(null);
     if (!businessName.trim() || businessName.trim().length < 2) {
       setError("Inserisci il nome della tua attività.");
-      return;
+      return false;
     }
     if (!categorySlug) {
       setError("Seleziona la tua categoria.");
-      return;
+      return false;
     }
     if (!city.trim()) {
       setError("Indica la città in cui operi.");
-      return;
+      return false;
     }
 
     const cleanedServices = services
@@ -266,21 +296,21 @@ export default function DashboardProfiloPage() {
     for (const service of cleanedServices) {
       if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
         setError(`Prezzo minimo non valido per "${service.name}".`);
-        return;
+        return false;
       }
       if (service.priceMax && Number.isNaN(Number(service.priceMax.replace(",", ".")))) {
         setError(`Prezzo massimo non valido per "${service.name}".`);
-        return;
+        return false;
       }
       if (service.priceMin && service.priceMax && Number(service.priceMax.replace(",", ".")) < Number(service.priceMin.replace(",", "."))) {
         setError(`Il prezzo massimo deve essere maggiore o uguale al minimo per "${service.name}".`);
-        return;
+        return false;
       }
     }
 
     if (yearsOfExperience.trim() && (!/^\d+$/.test(yearsOfExperience.trim()) || Number(yearsOfExperience.trim()) > 80)) {
       setError("Gli anni di esperienza devono essere un numero tra 0 e 80.");
-      return;
+      return false;
     }
 
     setIsSubmitting(true);
@@ -310,21 +340,45 @@ export default function DashboardProfiloPage() {
         })),
       });
       setSaved(true);
-      // Solo alla primissima creazione del profilo (richiesta esplicita
-      // dell'utente, F4.1): invece di tornare subito alla dashboard,
-      // propone di impostare già ora i giorni/le fasce orarie di
-      // disponibilità — il momento con la motivazione più alta di tutto
-      // il ciclo di vita dell'account, appena dopo essersi iscritti.
-      if (isFirstProfileSave) {
-        setShowAgendaPrompt(true);
-      } else {
-        setTimeout(() => router.push("/dashboard"), 900);
-      }
+      setSavedSnapshot(formSnapshot);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSubmit() {
+    if (!(await saveProfile())) return;
+    // Solo alla primissima creazione del profilo (richiesta esplicita
+    // dell'utente, F4.1): invece di tornare subito alla dashboard,
+    // propone di impostare già ora i giorni/le fasce orarie di
+    // disponibilità — il momento con la motivazione più alta di tutto
+    // il ciclo di vita dell'account, appena dopo essersi iscritti.
+    if (isFirstProfileSave) {
+      setShowAgendaPrompt(true);
+    } else {
+      setTimeout(() => router.push("/dashboard"), 900);
+    }
+  }
+
+  async function handleSaveAndLeave() {
+    if (!pendingHref) return;
+    const target = pendingHref;
+    setIsSavingBeforeLeave(true);
+    const ok = await saveProfile();
+    setIsSavingBeforeLeave(false);
+    if (ok) router.push(target);
+  }
+
+  function handleLeaveWithoutSaving() {
+    if (!pendingHref) return;
+    const target = pendingHref;
+    // Nessun avviso nemmeno dal browser: l'utente ha appena scelto di uscire.
+    setSavedSnapshot(formSnapshot);
+    router.push(target);
   }
 
   function updateService(index: number, field: "name" | "priceMin" | "priceMax", value: string) {
@@ -1063,6 +1117,57 @@ export default function DashboardProfiloPage() {
 
       {cropImageSrc ? (
         <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
+      ) : null}
+
+      {pendingHref ? (
+        // Popup "modifiche non salvate" (richiesta esplicita dell'utente,
+        // docs/CHANGELOG.md §136): stesso overlay del popup disponibilità
+        // qui sotto. Click fuori = "Annulla", si resta sulla pagina.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Modifiche non salvate"
+          onClick={cancelLeave}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 300,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
+              <YStack gap="$2">
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  Salvare le modifiche?
+                </Text>
+                <Text fontSize="$3" color={brand.grafite70}>
+                  Hai modificato il tuo profilo pubblico senza salvare. Se esci ora, le modifiche andranno perse.
+                </Text>
+                {error ? (
+                  <Text fontSize="$3" color={brand.urgenza}>
+                    {error}
+                  </Text>
+                ) : null}
+              </YStack>
+              <YStack gap="$2">
+                <Button variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave} opacity={isSavingBeforeLeave ? 0.6 : 1}>
+                  {isSavingBeforeLeave ? "Salvataggio..." : "Salva ed esci"}
+                </Button>
+                <Button variant="ghost" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
+                  Esci senza salvare
+                </Button>
+                <Button variant="ghost" onPress={cancelLeave} disabled={isSavingBeforeLeave}>
+                  Resta sulla pagina
+                </Button>
+              </YStack>
+            </YStack>
+          </div>
+        </div>
       ) : null}
 
       {showAgendaPrompt ? (
