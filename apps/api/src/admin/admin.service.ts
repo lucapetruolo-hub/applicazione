@@ -1,9 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { MODERATION_ACTIONS_BY_TARGET, type ResolveContentReportInput } from "@professionisti/shared";
+import { MODERATION_ACTIONS_BY_TARGET, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { AuditLogService } from "../audit-log/audit-log.service";
 
 export type AdminUserRow = {
   id: string;
@@ -11,6 +12,7 @@ export type AdminUserRow = {
   name: string | null;
   surname: string | null;
   role: string;
+  adminRole: string | null;
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
@@ -41,6 +43,7 @@ export class AdminService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /**
@@ -52,8 +55,23 @@ export class AdminService {
   async listUsers(params: { q?: string; role?: string; status?: string; page?: number }): Promise<AdminUsersPage> {
     const pageSize = 50;
     const page = Math.max(1, Math.floor(params.page ?? 1));
+    const where = this.buildUserWhere(params);
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: USER_ROW_SELECT,
+      }),
+    ]);
+    return { total, page, pageSize, rows: users.map(toUserRow) };
+  }
+
+  private buildUserWhere(params: { q?: string; role?: string; status?: string }): Prisma.UserWhereInput {
     const q = params.q?.trim();
-    const where: Prisma.UserWhereInput = {
+    return {
       ...(params.role === "CLIENT" || params.role === "PROFESSIONAL" || params.role === "ADMIN" ? { role: params.role } : {}),
       ...(params.status === "active" ? { deletedAt: null, suspendedAt: null } : {}),
       ...(params.status === "suspended" ? { suspendedAt: { not: null } } : {}),
@@ -69,43 +87,395 @@ export class AdminService {
           }
         : {}),
     };
-    const [total, users] = await Promise.all([
-      this.prisma.user.count({ where }),
-      this.prisma.user.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          surname: true,
-          role: true,
-          createdAt: true,
-          deletedAt: true,
-          suspendedAt: true,
-          professionalProfile: { select: { id: true, businessName: true, suspendedAt: true } },
-        },
-      }),
+  }
+
+  /** Tutti gli utenti con gli stessi filtri della tabella, in CSV (docs/CHANGELOG.md §145). */
+  async exportUsersCsv(params: { q?: string; role?: string; status?: string }): Promise<string> {
+    const users = await this.prisma.user.findMany({ where: this.buildUserWhere(params), orderBy: { createdAt: "desc" }, select: USER_ROW_SELECT });
+    const rows = users.map(toUserRow).map((u) => [
+      u.email ?? "",
+      u.name ?? "",
+      u.surname ?? "",
+      u.role,
+      u.adminRole ?? "",
+      u.businessName ?? "",
+      u.deletedAt ? "eliminato" : u.suspendedAt ? "sospeso" : u.profileSuspended ? "profilo nascosto" : "attivo",
+      u.createdAt.slice(0, 10),
     ]);
+    return toCsv(["email", "nome", "cognome", "ruolo", "ruolo_admin", "attivita", "stato", "iscritto_il"], rows);
+  }
+
+  async exportWaitlistCsv(): Promise<string> {
+    const signups = await this.prisma.waitlistSignup.findMany({ orderBy: { createdAt: "desc" } });
+    return toCsv(["email", "iscritto_il"], signups.map((w) => [w.email, w.createdAt.toISOString().slice(0, 10)]));
+  }
+
+  /**
+   * Scheda utente (docs/CHANGELOG.md §145): tutto quello che serve per
+   * decidere su una persona senza aprire il database — stato, attività,
+   * segnalazioni fatte e ricevute, e la cronologia unificata.
+   */
+  async getUserDetail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { professionalProfile: { include: { category: true } } },
+    });
+    if (!user) throw new NotFoundException("Utente non trovato.");
+    const profileId = user.professionalProfile?.id ?? null;
+
+    const [requests, clientBookings, proBookings, reviewsWritten, reviewsReceived, reportsMade, reportsReceived, profileReports, audit] = await Promise.all([
+      this.prisma.guidedRequest.findMany({
+        where: { clientId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: { id: true, description: true, city: true, status: true, hiddenAt: true, createdAt: true, category: { select: { label: true } } },
+      }),
+      this.prisma.booking.findMany({
+        where: { clientId: userId },
+        orderBy: { scheduledAt: "desc" },
+        take: 50,
+        select: { id: true, status: true, scheduledAt: true, professionalProfile: { select: { businessName: true } } },
+      }),
+      profileId
+        ? this.prisma.booking.findMany({
+            where: { professionalProfileId: profileId },
+            orderBy: { scheduledAt: "desc" },
+            take: 50,
+            select: { id: true, status: true, scheduledAt: true, client: { select: { name: true, surname: true } } },
+          })
+        : Promise.resolve([]),
+      this.prisma.review.findMany({
+        where: { booking: { clientId: userId } },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true, booking: { select: { professionalProfile: { select: { businessName: true } } } } },
+      }),
+      profileId
+        ? this.prisma.review.findMany({
+            where: { booking: { professionalProfileId: profileId } },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+            select: { id: true, rating: true, comment: true, hiddenAt: true, createdAt: true },
+          })
+        : Promise.resolve([]),
+      this.prisma.contentReport.findMany({ where: { reporterId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+      this.prisma.contentReport.findMany({ where: { contentOwnerId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+      profileId
+        ? this.prisma.contentReport.findMany({ where: { targetType: "PROFESSIONAL_PROFILE", targetId: profileId }, orderBy: { createdAt: "desc" }, take: 50 })
+        : Promise.resolve([]),
+      this.prisma.auditLog.findMany({ where: { entityType: "User", entityId: userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+    ]);
+
+    // Segnalazioni che riguardano questa persona: decise su un suo contenuto
+    // oppure, ancora aperte, sul suo profilo.
+    const receivedById = new Map([...reportsReceived, ...profileReports].map((r) => [r.id, r]));
+    const received = [...receivedById.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const adminIds = [...new Set(audit.map((a) => a.changedByUserId).filter((id): id is string => Boolean(id)))];
+    const adminEmails = new Map(
+      (await this.prisma.user.findMany({ where: { id: { in: adminIds } }, select: { id: true, email: true } })).map((a) => [a.id, a.email]),
+    );
+
+    const reportRow = (r: (typeof reportsMade)[number]) => ({
+      id: r.id,
+      targetType: r.targetType,
+      reason: r.reason,
+      status: r.status,
+      action: r.action,
+      createdAt: r.createdAt.toISOString(),
+      revertedAt: r.revertedAt?.toISOString() ?? null,
+    });
+
+    type TimelineItem = { at: string; kind: string; text: string };
+    const timeline: TimelineItem[] = [
+      { at: user.createdAt.toISOString(), kind: "account", text: "Iscrizione" },
+      ...(user.deletedAt ? [{ at: user.deletedAt.toISOString(), kind: "account", text: "Account eliminato dall'utente" }] : []),
+      ...requests.map((r) => ({ at: r.createdAt.toISOString(), kind: "request", text: `Richiesta ${r.category.label}${r.city ? ` a ${r.city}` : ""}` })),
+      ...clientBookings.map((b) => ({ at: b.scheduledAt.toISOString(), kind: "booking", text: `Intervento con ${b.professionalProfile.businessName} (${b.status})` })),
+      ...proBookings.map((b) => ({
+        at: b.scheduledAt.toISOString(),
+        kind: "booking",
+        text: `Intervento per ${[b.client.name, b.client.surname].filter(Boolean).join(" ") || "cliente"} (${b.status})`,
+      })),
+      ...reviewsWritten.map((r) => ({ at: r.createdAt.toISOString(), kind: "review", text: `Recensione ${r.rating}★ a ${r.booking.professionalProfile.businessName}` })),
+      ...reviewsReceived.map((r) => ({ at: r.createdAt.toISOString(), kind: "review", text: `Recensione ricevuta ${r.rating}★` })),
+      ...reportsMade.map((r) => ({ at: r.createdAt.toISOString(), kind: "report", text: `Ha segnalato: ${r.reason}` })),
+      ...received.map((r) => ({
+        at: r.createdAt.toISOString(),
+        kind: "report",
+        text: `Segnalato: ${r.reason}${r.action ? ` → ${ACTION_SHORT_LABEL[r.action] ?? r.action}` : ""}`,
+      })),
+      ...audit.map((a) => ({
+        at: a.createdAt.toISOString(),
+        kind: "admin",
+        text: `${auditLabel(a.fieldName, a.newValue)}${a.reason ? `: ${a.reason}` : ""}${a.changedByUserId ? ` (${adminEmails.get(a.changedByUserId) ?? "admin"})` : ""}`,
+      })),
+    ].sort((a, b) => b.at.localeCompare(a.at));
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      surname: user.surname,
+      phone: user.phone,
+      role: user.role,
+      adminRole: user.role === "ADMIN" ? (user.adminRole ?? "SUPER") : null,
+      createdAt: user.createdAt.toISOString(),
+      deletedAt: user.deletedAt?.toISOString() ?? null,
+      suspendedAt: user.suspendedAt?.toISOString() ?? null,
+      suspensionNote: user.suspensionNote,
+      professionalProfile: user.professionalProfile
+        ? {
+            id: user.professionalProfile.id,
+            businessName: user.professionalProfile.businessName,
+            categoryLabel: user.professionalProfile.category.label,
+            city: user.professionalProfile.city,
+            suspendedAt: user.professionalProfile.suspendedAt?.toISOString() ?? null,
+          }
+        : null,
+      counts: {
+        requests: requests.length,
+        bookings: clientBookings.length + proBookings.length,
+        reviewsWritten: reviewsWritten.length,
+        reviewsReceived: reviewsReceived.length,
+        reportsMade: reportsMade.length,
+        reportsReceived: received.length,
+      },
+      reportsMade: reportsMade.map(reportRow),
+      reportsReceived: received.map(reportRow),
+      timeline: timeline.slice(0, 100),
+    };
+  }
+
+  /**
+   * Sospende un account dalla scheda utente, senza una segnalazione (decisione
+   * esplicita dell'utente, docs/CHANGELOG.md §145): per un caso arrivato via
+   * email o telefono. Motivazione obbligatoria, comunicata all'utente
+   * (notifica + email) e registrata nel registro delle azioni admin.
+   */
+  async suspendUser(adminUserId: string, userId: string, note: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, suspendedAt: true } });
+    if (!target) throw new NotFoundException("Utente non trovato.");
+    if (target.id === adminUserId) throw new BadRequestException("Non puoi sospendere il tuo stesso account.");
+    if (target.role === "ADMIN") throw new BadRequestException("Togli prima il ruolo di amministratore a questo account.");
+    if (target.suspendedAt) throw new BadRequestException("L'account è già sospeso.");
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: now, suspensionNote: note.trim() } }),
+      this.prisma.professionalProfile.updateMany({ where: { userId, suspendedAt: null }, data: { suspendedAt: now } }),
+    ]);
+    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", newValue: "SUSPENDED", changedByUserId: adminUserId, reason: note.trim() });
+    await this.notificationsService.notify(userId, "ACCOUNT_SUSPENDED", { note: note.trim() });
+    return { id: userId, suspendedAt: now.toISOString() };
+  }
+
+  async reactivateUser(adminUserId: string, userId: string, note: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, suspendedAt: true } });
+    if (!target) throw new NotFoundException("Utente non trovato.");
+    if (!target.suspendedAt) throw new BadRequestException("L'account non è sospeso.");
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { suspendedAt: null, suspensionNote: null } }),
+      this.prisma.professionalProfile.updateMany({ where: { userId }, data: { suspendedAt: null } }),
+    ]);
+    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "suspendedAt", oldValue: "SUSPENDED", newValue: "ACTIVE", changedByUserId: adminUserId, reason: note.trim() });
+    await this.notificationsService.notify(userId, "ACCOUNT_REACTIVATED", { note: note.trim() });
+    return { id: userId, suspendedAt: null };
+  }
+
+  /**
+   * Assegna o toglie il ruolo di amministratore (solo super admin,
+   * docs/CHANGELOG.md §145). `null` = non più admin: torna professionista se
+   * ha un profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
+   * cambiare il proprio ruolo (niente blocchi fuori dal pannello).
+   */
+  async setAdminRole(adminUserId: string, userId: string, adminRole: AdminRoleValue | null) {
+    if (userId === adminUserId) throw new BadRequestException("Non puoi cambiare il tuo stesso ruolo.");
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, adminRole: true, deletedAt: true, professionalProfile: { select: { id: true } } },
+    });
+    if (!target || target.deletedAt) throw new NotFoundException("Utente non trovato.");
+    const wasSuper = target.role === "ADMIN" && (target.adminRole ?? "SUPER") === "SUPER";
+    if (wasSuper && adminRole !== "SUPER") {
+      const supers = await this.prisma.user.count({ where: { role: "ADMIN", OR: [{ adminRole: "SUPER" }, { adminRole: null }] } });
+      if (supers <= 1) throw new BadRequestException("Serve almeno un super admin.");
+    }
+    const oldValue = target.role === "ADMIN" ? (target.adminRole ?? "SUPER") : target.role;
+    const data =
+      adminRole === null
+        ? { role: target.professionalProfile ? ("PROFESSIONAL" as const) : ("CLIENT" as const), adminRole: null }
+        : { role: "ADMIN" as const, adminRole };
+    await this.prisma.user.update({ where: { id: userId }, data });
+    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "adminRole", oldValue, newValue: adminRole ?? data.role, changedByUserId: adminUserId });
+    return { id: userId, role: data.role, adminRole: data.adminRole };
+  }
+
+  /** Registro delle azioni admin (docs/CHANGELOG.md §145): chi ha fatto cosa e quando. */
+  async listAuditLog(params: { page?: number; entityType?: string }) {
+    const pageSize = 50;
+    const page = Math.max(1, Math.floor(params.page ?? 1));
+    const where: Prisma.AuditLogWhereInput = params.entityType ? { entityType: params.entityType } : {};
+    const [total, rows] = await Promise.all([
+      this.prisma.auditLog.count({ where }),
+      this.prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
+    ]);
+    const userIds = [...new Set(rows.flatMap((r) => [r.changedByUserId, r.entityType === "User" ? r.entityId : null]).filter((id): id is string => Boolean(id)))];
+    const users = new Map(
+      (await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })).map((u) => [u.id, u.email]),
+    );
     return {
       total,
       page,
       pageSize,
-      rows: users.map((u) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        surname: u.surname,
-        role: u.role,
-        businessName: u.professionalProfile?.businessName ?? null,
-        professionalProfileId: u.professionalProfile?.id ?? null,
-        profileSuspended: u.professionalProfile?.suspendedAt != null,
-        createdAt: u.createdAt.toISOString(),
-        deletedAt: u.deletedAt?.toISOString() ?? null,
-        suspendedAt: u.suspendedAt?.toISOString() ?? null,
+      rows: rows.map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt.toISOString(),
+        entityType: r.entityType,
+        entityId: r.entityId,
+        entityLabel: r.entityType === "User" ? (users.get(r.entityId) ?? null) : null,
+        fieldName: r.fieldName,
+        oldValue: r.oldValue,
+        newValue: r.newValue,
+        label: auditLabel(r.fieldName, r.newValue),
+        reason: r.reason,
+        changedByEmail: r.changedByUserId ? (users.get(r.changedByUserId) ?? null) : null,
       })),
+    };
+  }
+
+  /** Ricerca globale del pannello (⌘K, docs/CHANGELOG.md §145): utenti e segnalazioni. */
+  async search(q: string) {
+    const query = q.trim();
+    if (query.length < 2) return { users: [], reports: [] };
+    const [users, reports] = await Promise.all([
+      this.prisma.user.findMany({
+        where: this.buildUserWhere({ q: query }),
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        select: USER_ROW_SELECT,
+      }),
+      this.prisma.contentReport.findMany({
+        where: { OR: [{ reason: { contains: query, mode: "insensitive" } }, { details: { contains: query, mode: "insensitive" } }] },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, reason: true, targetType: true, status: true, createdAt: true },
+      }),
+    ]);
+    return {
+      users: users.map(toUserRow),
+      reports: reports.map((r) => ({ id: r.id, reason: r.reason, targetType: r.targetType, status: r.status, createdAt: r.createdAt.toISOString() })),
+    };
+  }
+
+  /**
+   * Andamento settimanale delle ultime 12 settimane (docs/CHANGELOG.md
+   * §145): nuovi clienti e professionisti, richieste, interventi prenotati,
+   * segnalazioni. Una query per serie, raggruppata in memoria (volumi di
+   * lancio, CLAUDE.md §7).
+   */
+  async getTrends(): Promise<AdminTrends> {
+    const weeks = 12;
+    const start = startOfIsoWeek(new Date());
+    start.setUTCDate(start.getUTCDate() - (weeks - 1) * 7);
+    const [users, requests, bookings, reports] = await Promise.all([
+      this.prisma.user.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true, role: true } }),
+      this.prisma.guidedRequest.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
+      this.prisma.booking.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
+      this.prisma.contentReport.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
+    ]);
+    const bucket = (dates: Date[]) => {
+      const counts = new Array<number>(weeks).fill(0);
+      for (const d of dates) {
+        const index = Math.floor((d.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        if (index >= 0 && index < weeks) counts[index]! += 1;
+      }
+      return counts;
+    };
+    const weekStarts = Array.from({ length: weeks }, (_, i) => {
+      const d = new Date(start);
+      d.setUTCDate(d.getUTCDate() + i * 7);
+      return d.toISOString().slice(0, 10);
+    });
+    return {
+      weekStarts,
+      series: {
+        newClients: bucket(users.filter((u) => u.role === "CLIENT").map((u) => u.createdAt)),
+        newProfessionals: bucket(users.filter((u) => u.role === "PROFESSIONAL").map((u) => u.createdAt)),
+        requests: bucket(requests.map((r) => r.createdAt)),
+        bookings: bucket(bookings.map((b) => b.createdAt)),
+        reports: bucket(reports.map((r) => r.createdAt)),
+      },
+    };
+  }
+
+  /**
+   * Contenuto segnalato per intero, visibile all'admin anche se nascosto o
+   * sospeso (docs/CHANGELOG.md §145): prima "Apri contenuto" portava a una
+   * pagina "non trovato" dopo la misura, e non si poteva ricontrollare cosa
+   * era stato tolto prima di decidere su una contestazione.
+   */
+  async getReportTarget(reportId: string): Promise<AdminReportTarget> {
+    const report = await this.prisma.contentReport.findUnique({ where: { id: reportId } });
+    if (!report) throw new NotFoundException("Segnalazione non trovata.");
+    const { targetType, targetId } = report;
+    if (targetType === "PROFESSIONAL_PROFILE") {
+      const p = await this.prisma.professionalProfile.findUnique({ where: { id: targetId }, include: { category: true, user: { select: { email: true } } } });
+      if (!p) return { exists: false };
+      return {
+        exists: true,
+        title: `${p.businessName} · ${p.category.label} · ${p.city}`,
+        author: p.user.email,
+        text: p.bio,
+        photos: [...(p.imageUrl ? [p.imageUrl] : []), ...p.portfolioUrls],
+        rating: null,
+        state: p.deletedAt ? "Eliminato dall'utente" : p.suspendedAt ? "Tolto da ricerca e pagina pubblica" : "Visibile",
+        ownerUserId: p.userId,
+      };
+    }
+    if (targetType === "REVIEW") {
+      const r = await this.prisma.review.findUnique({
+        where: { id: targetId },
+        include: { booking: { include: { client: { select: { id: true, email: true } }, professionalProfile: { select: { businessName: true } } } } },
+      });
+      if (!r) return { exists: false };
+      return {
+        exists: true,
+        title: `Recensione su ${r.booking.professionalProfile.businessName}`,
+        author: r.booking.client.email,
+        text: r.comment,
+        photos: r.photoUrls,
+        rating: r.rating,
+        state: r.hiddenAt ? "Nascosta" : "Visibile",
+        ownerUserId: r.booking.client.id,
+      };
+    }
+    if (targetType === "CLIENT_REVIEW") {
+      const r = await this.prisma.clientReview.findUnique({
+        where: { id: targetId },
+        include: { client: { select: { name: true, surname: true } }, booking: { include: { professionalProfile: { select: { businessName: true, userId: true, user: { select: { email: true } } } } } } },
+      });
+      if (!r) return { exists: false };
+      return {
+        exists: true,
+        title: `Recensione su ${[r.client.name, r.client.surname].filter(Boolean).join(" ") || "cliente"}`,
+        author: r.booking.professionalProfile.user.email,
+        text: r.comment,
+        photos: r.mediaUrls,
+        rating: r.rating,
+        state: r.hiddenAt ? "Nascosta" : "Visibile",
+        ownerUserId: r.booking.professionalProfile.userId,
+      };
+    }
+    const g = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, include: { category: true, client: { select: { id: true, email: true } } } });
+    if (!g) return { exists: false };
+    return {
+      exists: true,
+      title: `Richiesta ${g.category.label}${g.city ? ` a ${g.city}` : ""}`,
+      author: g.client.email,
+      text: g.description,
+      photos: g.photoUrls,
+      rating: null,
+      state: g.hiddenAt ? "Chiusa e nascosta" : g.status === "CLOSED" ? "Chiusa" : "Aperta",
+      ownerUserId: g.client.id,
     };
   }
 
@@ -150,7 +520,7 @@ export class AdminService {
     if (!user) {
       throw new NotFoundException("Nessun utente registrato con questa email.");
     }
-    const updated = await this.prisma.user.update({ where: { email }, data: { role: "ADMIN" } });
+    const updated = await this.prisma.user.update({ where: { email }, data: { role: "ADMIN", adminRole: "SUPER" } });
     return { email: updated.email as string, role: updated.role };
   }
 
@@ -258,7 +628,7 @@ export class AdminService {
    * Prima di §144 "Risolvi" cambiava solo lo stato: il contenuto restava
    * online mentre la motivazione descriveva una limitazione mai avvenuta.
    */
-  async resolveContentReport(id: string, input: ResolveContentReportInput) {
+  async resolveContentReport(id: string, input: ResolveContentReportInput, adminUserId: string | null = null) {
     const report = await this.prisma.contentReport.findUnique({ where: { id } });
     if (!report) {
       throw new NotFoundException("Segnalazione non trovata.");
@@ -305,6 +675,15 @@ export class AdminService {
       return profileIds;
     });
     await Promise.all(affectedProfileIds.map((profileId) => this.professionalMetricsService.recomputeReviews(profileId)));
+    await this.auditLogService.record({
+      entityType: "ContentReport",
+      entityId: report.id,
+      fieldName: "status",
+      oldValue: "OPEN",
+      newValue: action ? `${status}:${action}` : status,
+      changedByUserId: adminUserId,
+      reason: note,
+    });
 
     await this.notificationsService.notify(report.reporterId, "CONTENT_REPORT_DECISION", {
       contentReportId: report.id,
@@ -330,7 +709,7 @@ export class AdminService {
    * toglie la misura applicata, la segnalazione resta in archivio con la
    * motivazione dell'annullamento, l'autore viene avvisato.
    */
-  async revertContentReport(id: string, note: string) {
+  async revertContentReport(id: string, note: string, adminUserId: string | null = null) {
     const report = await this.prisma.contentReport.findUnique({ where: { id } });
     if (!report) throw new NotFoundException("Segnalazione non trovata.");
     if (report.status !== "RESOLVED") throw new BadRequestException("Solo una segnalazione accolta ha una misura da annullare.");
@@ -343,6 +722,15 @@ export class AdminService {
       return profileIds;
     });
     await Promise.all(affectedProfileIds.map((profileId) => this.professionalMetricsService.recomputeReviews(profileId)));
+    await this.auditLogService.record({
+      entityType: "ContentReport",
+      entityId: report.id,
+      fieldName: "revert",
+      oldValue: report.action,
+      newValue: "REVERTED",
+      changedByUserId: adminUserId,
+      reason: note.trim(),
+    });
 
     if (report.contentOwnerId) {
       await this.notificationsService.notify(report.contentOwnerId, "CONTENT_REPORT_REVERTED", {
@@ -355,7 +743,7 @@ export class AdminService {
   }
 
   /** Ricorso dell'autore respinto: la misura resta, l'autore riceve la motivazione. */
-  async rejectAppeal(id: string, note: string) {
+  async rejectAppeal(id: string, note: string, adminUserId: string | null = null) {
     const report = await this.prisma.contentReport.findUnique({ where: { id } });
     if (!report) throw new NotFoundException("Segnalazione non trovata.");
     if (!report.appealedAt || report.appealRejectedAt || report.revertedAt) {
@@ -363,6 +751,14 @@ export class AdminService {
     }
     const now = new Date();
     await this.prisma.contentReport.update({ where: { id }, data: { appealRejectedAt: now, appealRejectNote: note.trim() } });
+    await this.auditLogService.record({
+      entityType: "ContentReport",
+      entityId: report.id,
+      fieldName: "appeal",
+      newValue: "REJECTED",
+      changedByUserId: adminUserId,
+      reason: note.trim(),
+    });
     if (report.contentOwnerId) {
       await this.notificationsService.notify(report.contentOwnerId, "CONTENT_REPORT_APPEAL_REJECTED", {
         contentReportId: report.id,
@@ -588,4 +984,94 @@ function hiddenLeadReason(leadStatus: string, quoteStatus: string | null, client
   if (quoteStatus === "REJECTED") return "Preventivo rifiutato dal cliente";
   if (clientAccountDeleted) return "Account cliente eliminato";
   return "Chiusa";
+}
+
+export type AdminTrends = {
+  weekStarts: string[];
+  series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
+};
+
+export type AdminReportTarget =
+  | { exists: false }
+  | {
+      exists: true;
+      title: string;
+      author: string | null;
+      text: string | null;
+      photos: string[];
+      rating: number | null;
+      state: string;
+      ownerUserId: string;
+    };
+
+const USER_ROW_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  surname: true,
+  role: true,
+  adminRole: true,
+  createdAt: true,
+  deletedAt: true,
+  suspendedAt: true,
+  professionalProfile: { select: { id: true, businessName: true, suspendedAt: true } },
+} satisfies Prisma.UserSelect;
+
+function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>): AdminUserRow {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    surname: u.surname,
+    role: u.role,
+    adminRole: u.role === "ADMIN" ? (u.adminRole ?? "SUPER") : null,
+    businessName: u.professionalProfile?.businessName ?? null,
+    professionalProfileId: u.professionalProfile?.id ?? null,
+    profileSuspended: u.professionalProfile?.suspendedAt != null,
+    createdAt: u.createdAt.toISOString(),
+    deletedAt: u.deletedAt?.toISOString() ?? null,
+    suspendedAt: u.suspendedAt?.toISOString() ?? null,
+  };
+}
+
+/** CSV con separatore ";" (Excel in italiano) e BOM per gli accenti. */
+function toCsv(header: string[], rows: string[][]): string {
+  const cell = (value: string) => (/[";\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+  return "\uFEFF" + [header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n") + "\r\n";
+}
+
+function startOfIsoWeek(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d;
+}
+
+const ACTION_SHORT_LABEL: Record<string, string> = {
+  WARN: "avvertimento",
+  REQUEST_CORRECTION: "richiesta di correzione",
+  HIDE_CONTENT: "contenuto nascosto",
+  SUSPEND_PROFILE: "profilo tolto dalla ricerca",
+  SUSPEND_USER: "account sospeso",
+};
+const ROLE_SHORT_LABEL: Record<string, string> = {
+  SUPER: "super admin",
+  MODERATOR: "moderatore",
+  FINANCE: "finanza",
+  CLIENT: "cliente (non più admin)",
+  PROFESSIONAL: "professionista (non più admin)",
+};
+
+/** Frase leggibile per una riga del registro. */
+function auditLabel(fieldName: string | null, newValue: string | null): string {
+  if (fieldName === "suspendedAt") return newValue === "SUSPENDED" ? "Account sospeso" : "Account riattivato";
+  if (fieldName === "adminRole") return `Ruolo cambiato in ${newValue ? (ROLE_SHORT_LABEL[newValue] ?? newValue) : "—"}`;
+  if (fieldName === "revert") return "Misura annullata";
+  if (fieldName === "appeal") return "Contestazione respinta";
+  if (fieldName === "status" && newValue?.startsWith("RESOLVED")) {
+    const action = newValue.split(":")[1] ?? "";
+    return `Segnalazione accolta: ${ACTION_SHORT_LABEL[action] ?? action}`;
+  }
+  if (fieldName === "status" && newValue === "DISMISSED") return "Segnalazione non accolta";
+  return [fieldName, newValue].filter(Boolean).join(" → ") || "Modifica";
 }

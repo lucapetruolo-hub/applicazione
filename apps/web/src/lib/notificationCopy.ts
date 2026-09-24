@@ -34,6 +34,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Abbiamo preso una decisione su un tuo contenuto segnalato: tocca per leggere la motivazione." },
   // Esito della contestazione (docs/CHANGELOG.md §144).
   CONTENT_REPORT_REVERTED: { icon: "✅", message: "La misura su un tuo contenuto è stata annullata." },
+  // Sospensione/riattivazione decise dalla scheda utente admin (docs/CHANGELOG.md §145).
+  ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
+  ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
 };
 

@@ -82,3 +82,15 @@ export function formatAdminDate(iso: string | null | undefined, withTime = false
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Errore imprevisto, riprova.";
 }
+
+/** Fa scaricare al browser un testo come file (CSV admin). */
+export function downloadTextFile(filename: string, content: string, type = "text/csv;charset=utf-8") {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

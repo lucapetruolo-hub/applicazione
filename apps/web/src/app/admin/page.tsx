@@ -1,7 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { AdminTrends } from "@professionisti/api-client";
+import { adminCan, type AdminScope } from "@professionisti/shared";
 import { Text, YStack, brand } from "@professionisti/ui";
+import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
+import { AdminTrendTile } from "@/components/admin/AdminTrendTile";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminPageHeader } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
@@ -13,16 +19,29 @@ import { SkeletonSummaryRow } from "@/components/Skeleton";
  */
 export default function AdminHomePage() {
   const { overview } = useAdminOverview();
+  const { user, token } = useAuth();
+  const adminRole = user?.adminRole ?? "SUPER";
+  const [trends, setTrends] = useState<AdminTrends | null>(null);
 
-  const todo = overview
-    ? [
-        { href: "/admin/segnalazioni", value: overview.openReports, label: "Segnalazioni da gestire" },
-        { href: "/admin/segnalazioni?vista=ricorsi", value: overview.pendingAppeals, label: "Contestazioni di decisioni" },
-        { href: "/admin/messaggi", value: overview.openMessages, label: "Messaggi di contatto" },
-        { href: "/admin/pagamenti", value: overview.pendingRefunds, label: "Rimborsi da decidere" },
-        { href: "/admin/pagamenti", value: overview.openDisputes, label: "Contestazioni di pagamento" },
-      ]
-    : [];
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .adminTrends(token)
+      .then(setTrends)
+      .catch(() => setTrends(null));
+  }, [token]);
+
+  const todo = (
+    overview
+      ? [
+          { href: "/admin/segnalazioni", value: overview.openReports, label: "Segnalazioni da gestire", scope: "MODERATION" as AdminScope },
+          { href: "/admin/segnalazioni?vista=ricorsi", value: overview.pendingAppeals, label: "Contestazioni di decisioni", scope: "MODERATION" as AdminScope },
+          { href: "/admin/messaggi", value: overview.openMessages, label: "Messaggi di contatto", scope: "MODERATION" as AdminScope },
+          { href: "/admin/pagamenti", value: overview.pendingRefunds, label: "Rimborsi da decidere", scope: "FINANCE" as AdminScope },
+          { href: "/admin/pagamenti", value: overview.openDisputes, label: "Contestazioni di pagamento", scope: "FINANCE" as AdminScope },
+        ]
+      : []
+  ).filter((item) => adminCan(adminRole, item.scope));
   const numbers = overview
     ? [
         { href: "/admin/utenti?ruolo=CLIENT", value: overview.clients, label: "Clienti" },
@@ -58,6 +77,23 @@ export default function AdminHomePage() {
               </Link>
             ))}
           </div>
+        )}
+      </YStack>
+
+      <YStack gap="$3">
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          Andamento (ultime 12 settimane)
+        </Text>
+        {trends ? (
+          <div className="admin-kpi-grid admin-trend-grid">
+            <AdminTrendTile label="Nuovi clienti" values={trends.series.newClients} weekStarts={trends.weekStarts} />
+            <AdminTrendTile label="Nuovi professionisti" values={trends.series.newProfessionals} weekStarts={trends.weekStarts} />
+            <AdminTrendTile label="Richieste di preventivo" values={trends.series.requests} weekStarts={trends.weekStarts} />
+            <AdminTrendTile label="Interventi prenotati" values={trends.series.bookings} weekStarts={trends.weekStarts} />
+            <AdminTrendTile label="Segnalazioni ricevute" values={trends.series.reports} weekStarts={trends.weekStarts} />
+          </div>
+        ) : (
+          <Text color={brand.grafite70}>Caricamento…</Text>
         )}
       </YStack>
 

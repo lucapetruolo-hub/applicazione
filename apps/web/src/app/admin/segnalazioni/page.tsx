@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { AdminContentReport, ModerationActionValue } from "@professionisti/api-client";
+import type { AdminContentReport, AdminReportTarget, ModerationActionValue } from "@professionisti/api-client";
 import {
   CONTENT_REPORT_TARGET_LABEL,
   MODERATION_ACTIONS_BY_TARGET,
@@ -120,7 +120,25 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
   const [authorities, setAuthorities] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<AdminReportTarget | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const href = reportTargetHref(report);
+
+  // Contenuto completo anche se già nascosto o sospeso (docs/CHANGELOG.md
+  // §145): la pagina pubblica dopo una misura risponde "non trovato".
+  function togglePreview() {
+    if (previewOpen) {
+      setPreviewOpen(false);
+      return;
+    }
+    setPreviewOpen(true);
+    if (!preview) {
+      apiClient
+        .adminReportTarget(token, report.id)
+        .then(setPreview)
+        .catch((err) => setError(errorMessage(err)));
+    }
+  }
   const allowedActions = MODERATION_ACTIONS_BY_TARGET[report.targetType];
   const appealPending = Boolean(report.appealedAt && !report.appealRejectedAt && !report.revertedAt);
 
@@ -212,12 +230,57 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         </YStack>
       ) : null}
 
+      {previewOpen ? (
+        <YStack gap="$2" padding="$3" borderRadius={12} borderWidth={1} borderColor={brand.filetto}>
+          {preview === null ? (
+            <Text color={brand.grafite70}>Caricamento…</Text>
+          ) : !preview.exists ? (
+            <Text color={brand.grafite70}>Il contenuto non esiste più (eliminato dall&apos;autore).</Text>
+          ) : (
+            <>
+              <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                <Text fontWeight="700" color={brand.grafite}>
+                  {preview.title}
+                </Text>
+                <AdminPill tone={preview.state.startsWith("Visibile") || preview.state === "Aperta" ? "ok" : "warn"}>{preview.state}</AdminPill>
+              </XStack>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Autore: <Link href={`/admin/utenti/${preview.ownerUserId}`}>{preview.author ?? "account senza email"}</Link>
+                {preview.rating !== null ? ` · ${preview.rating}★` : ""}
+              </Text>
+              {preview.text ? (
+                <Text fontSize="$3" color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
+                  {preview.text}
+                </Text>
+              ) : (
+                <Text fontSize="$3" color={brand.grafite70}>
+                  Nessun testo.
+                </Text>
+              )}
+              {preview.photos.length > 0 ? (
+                <XStack gap="$2" flexWrap="wrap">
+                  {preview.photos.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8 }} />
+                    </a>
+                  ))}
+                </XStack>
+              ) : null}
+            </>
+          )}
+        </YStack>
+      ) : null}
+
       {mode === "idle" ? (
         <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
+          <Button variant="secondary" size="$3" onPress={togglePreview}>
+            {previewOpen ? "Nascondi anteprima" : "Anteprima completa"}
+          </Button>
           {href ? (
             <Link href={href} target="_blank" style={{ textDecoration: "none" }}>
               <Button variant="secondary" size="$3">
-                Apri contenuto
+                Pagina pubblica
               </Button>
             </Link>
           ) : null}

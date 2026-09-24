@@ -31,8 +31,9 @@ function buildService(report: Record<string, unknown>, overrides: Record<string,
   };
   const notifications = { notify: vi.fn() };
   const metrics = { recomputeReviews: vi.fn() };
-  const service = new AdminService(prisma as never, notifications as never, metrics as never);
-  return { service, prisma, tx, notifications, metrics };
+  const audit = { record: vi.fn() };
+  const service = new AdminService(prisma as never, notifications as never, metrics as never, audit as never);
+  return { service, prisma, tx, notifications, metrics, audit };
 }
 
 describe("AdminService.resolveContentReport — misure reali", () => {
@@ -118,5 +119,52 @@ describe("AdminService.revertContentReport — annulla misura", () => {
     await service.revertContentReport("rep-1", "Errore");
     expect(tx.user.updateMany).toHaveBeenCalledWith({ where: { id: "author-1" }, data: { suspendedAt: null } });
     expect(tx.professionalProfile.updateMany).toHaveBeenCalledWith({ where: { userId: "author-1" }, data: { suspendedAt: null } });
+  });
+});
+
+describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/CHANGELOG.md §145)", () => {
+  function build(target: Record<string, unknown> | null, superCount = 2) {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue(target),
+        update: vi.fn().mockReturnValue("user-update"),
+        count: vi.fn().mockResolvedValue(superCount),
+      },
+      professionalProfile: { updateMany: vi.fn().mockReturnValue("profile-update") },
+      $transaction: vi.fn().mockResolvedValue([]),
+    };
+    const notifications = { notify: vi.fn() };
+    const audit = { record: vi.fn() };
+    const service = new AdminService(prisma as never, notifications as never, {} as never, audit as never);
+    return { service, prisma, notifications, audit };
+  }
+
+  it("sospende, avvisa l'utente con la motivazione e registra l'azione", async () => {
+    const { service, prisma, notifications, audit } = build({ id: "u2", role: "CLIENT", suspendedAt: null });
+    await service.suspendUser("admin-1", "u2", "Minacce al telefono");
+    expect(prisma.$transaction).toHaveBeenCalledWith(["user-update", "profile-update"]);
+    expect(notifications.notify).toHaveBeenCalledWith("u2", "ACCOUNT_SUSPENDED", { note: "Minacce al telefono" });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "User", entityId: "u2", changedByUserId: "admin-1" }));
+  });
+
+  it("non sospende un admin né se stessi", async () => {
+    await expect(build({ id: "u2", role: "ADMIN", suspendedAt: null }).service.suspendUser("admin-1", "u2", "x")).rejects.toThrow("ruolo di amministratore");
+    await expect(build({ id: "admin-1", role: "CLIENT", suspendedAt: null }).service.suspendUser("admin-1", "admin-1", "x")).rejects.toThrow("stesso account");
+  });
+
+  it("non toglie l'ultimo super admin", async () => {
+    const { service } = build({ id: "u2", role: "ADMIN", adminRole: "SUPER", deletedAt: null, professionalProfile: null }, 1);
+    await expect(service.setAdminRole("admin-1", "u2", "MODERATOR")).rejects.toThrow("almeno un super admin");
+  });
+
+  it("togliendo il ruolo admin a un professionista torna professionista", async () => {
+    const { service, prisma } = build({ id: "u2", role: "ADMIN", adminRole: "MODERATOR", deletedAt: null, professionalProfile: { id: "p1" } });
+    await service.setAdminRole("admin-1", "u2", null);
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "PROFESSIONAL", adminRole: null } });
+  });
+
+  it("nessuno cambia il proprio ruolo", async () => {
+    const { service } = build({ id: "admin-1", role: "ADMIN", adminRole: "SUPER", deletedAt: null, professionalProfile: null });
+    await expect(service.setAdminRole("admin-1", "admin-1", null)).rejects.toThrow("tuo stesso ruolo");
   });
 });

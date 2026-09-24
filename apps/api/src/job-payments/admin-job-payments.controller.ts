@@ -2,13 +2,14 @@ import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/com
 import { decideRefundSchema, resolveDisputeSchema, type DecideRefundInput, type ResolveDisputeInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../admin/admin.guard";
+import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { JobPaymentsService } from "./job-payments.service";
 import { RefundsService } from "./refunds.service";
 import { DisputesService } from "./disputes.service";
 
 /** Vista admin su pagamenti/rimborsi/contestazioni — CLAUDE.md §88. */
 @UseGuards(JwtAuthGuard, AdminGuard)
+@RequireAdminScope("FINANCE")
 @Controller("admin")
 export class AdminJobPaymentsController {
   constructor(

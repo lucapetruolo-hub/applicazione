@@ -7,7 +7,8 @@ import type { AdminUsersPage, AdminUsersQuery } from "@professionisti/api-client
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { ADMIN_ROLE_LABEL } from "@professionisti/shared";
+import { AdminPageHeader, AdminPill, downloadTextFile, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Admin" } as const;
@@ -56,10 +57,32 @@ function UtentiContent() {
   }, [q]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const [exporting, setExporting] = useState(false);
+
+  async function exportCsv() {
+    if (!token) return;
+    setExporting(true);
+    try {
+      const csv = await apiClient.adminDownloadCsv(token, "users", { q: query.q, role: query.role, status: query.status });
+      downloadTextFile("utenti.csv", csv);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <YStack>
-      <AdminPageHeader title="Utenti" description={data ? `${data.total} risultati` : "Cerca per email, nome o nome dell'attività."} />
+      <AdminPageHeader
+        title="Utenti"
+        description={data ? `${data.total} risultati. Apri un utente per vedere la sua scheda.` : "Cerca per email, nome o nome dell'attività."}
+        right={
+          <Button variant="secondary" size="$3" disabled={exporting} onPress={exportCsv}>
+            {exporting ? "Esportazione…" : "Esporta CSV"}
+          </Button>
+        }
+      />
       <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
         <input className="admin-input" style={{ flex: 1, minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca email, nome, attività…" />
         <select
@@ -105,9 +128,11 @@ function UtentiContent() {
             <tbody>
               {data.rows.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.email ?? "—"}</td>
+                  <td>
+                    <Link href={`/admin/utenti/${row.id}`}>{row.email ?? "(senza email)"}</Link>
+                  </td>
                   <td>{[row.name, row.surname].filter(Boolean).join(" ") || "—"}</td>
-                  <td>{ROLE_LABEL[row.role]}</td>
+                  <td>{row.role === "ADMIN" && row.adminRole ? `Admin · ${ADMIN_ROLE_LABEL[row.adminRole]}` : ROLE_LABEL[row.role]}</td>
                   <td>
                     {row.businessName && row.professionalProfileId && !row.deletedAt ? (
                       <Link href={`/professionista/${row.professionalProfileId}`} target="_blank">

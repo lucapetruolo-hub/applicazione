@@ -205,6 +205,7 @@ export type AdminUserRow = {
   name: string | null;
   surname: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+  adminRole: AdminRoleName | null;
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
@@ -212,6 +213,71 @@ export type AdminUserRow = {
   deletedAt: string | null;
   suspendedAt: string | null;
 };
+export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
+
+type AdminReportRow = {
+  id: string;
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
+  reason: string;
+  status: "OPEN" | "RESOLVED" | "DISMISSED";
+  action: ModerationActionValue | null;
+  createdAt: string;
+  revertedAt: string | null;
+};
+
+/** Scheda utente admin (docs/CHANGELOG.md §145). */
+export type AdminUserDetail = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  surname: string | null;
+  phone: string | null;
+  role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+  adminRole: AdminRoleName | null;
+  createdAt: string;
+  deletedAt: string | null;
+  suspendedAt: string | null;
+  suspensionNote: string | null;
+  professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
+  counts: { requests: number; bookings: number; reviewsWritten: number; reviewsReceived: number; reportsMade: number; reportsReceived: number };
+  reportsMade: AdminReportRow[];
+  reportsReceived: AdminReportRow[];
+  timeline: { at: string; kind: string; text: string }[];
+};
+
+export type AdminAuditLogPage = {
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: {
+    id: string;
+    createdAt: string;
+    entityType: string;
+    entityId: string;
+    entityLabel: string | null;
+    fieldName: string | null;
+    oldValue: string | null;
+    newValue: string | null;
+    label: string;
+    reason: string | null;
+    changedByEmail: string | null;
+  }[];
+};
+
+export type AdminSearchResult = {
+  users: AdminUserRow[];
+  reports: { id: string; reason: string; targetType: AdminReportRow["targetType"]; status: AdminReportRow["status"]; createdAt: string }[];
+};
+
+export type AdminTrends = {
+  weekStarts: string[];
+  series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
+};
+
+export type AdminReportTarget =
+  | { exists: false }
+  | { exists: true; title: string; author: string | null; text: string | null; photos: string[]; rating: number | null; state: string; ownerUserId: string };
+
 /** Pagina di `/admin/users` con ricerca e filtri (docs/CHANGELOG.md §144). */
 export type AdminUsersPage = { total: number; page: number; pageSize: number; rows: AdminUserRow[] };
 export type AdminUsersQuery = { q?: string; role?: "CLIENT" | "PROFESSIONAL" | "ADMIN"; status?: "active" | "suspended" | "deleted"; page?: number };
@@ -359,6 +425,8 @@ export type CurrentUser = {
    * `role === "PROFESSIONAL"`.
    */
   isProfessional: boolean;
+  /** Area di competenza di un ADMIN (docs/CHANGELOG.md §145), `null` per gli altri ruoli. */
+  adminRole?: "SUPER" | "MODERATOR" | "FINANCE" | null;
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;
@@ -1149,6 +1217,43 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     },
 
     adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminTrends: (token: string) => request<AdminTrends>("/admin/trends", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSearch: (token: string, q: string) =>
+      request<AdminSearchResult>(`/admin/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminGetUser: (token: string, id: string) => request<AdminUserDetail>(`/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSuspendUser: (token: string, id: string, note: string) =>
+      request<{ id: string }>(`/admin/users/${id}/suspend`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+
+    adminReactivateUser: (token: string, id: string, note: string) =>
+      request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
+
+    adminSetAdminRole: (token: string, id: string, adminRole: AdminRoleName | null) =>
+      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRole }) }),
+
+    adminAuditLog: (token: string, page = 1, entityType?: string) =>
+      request<AdminAuditLogPage>(`/admin/audit-log?page=${page}${entityType ? `&entityType=${encodeURIComponent(entityType)}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminReportTarget: (token: string, id: string) =>
+      request<AdminReportTarget>(`/admin/reports/${id}/target`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Scarica un CSV admin (utenti con filtri o lista d'attesa) come testo. */
+    adminDownloadCsv: async (token: string, kind: "users" | "waitlist", query: Omit<AdminUsersQuery, "page"> = {}) => {
+      const params = new URLSearchParams();
+      if (query.q) params.set("q", query.q);
+      if (query.role) params.set("role", query.role);
+      if (query.status) params.set("status", query.status);
+      const path = kind === "users" ? "/admin/users/export.csv" : "/admin/waitlist/export.csv";
+      const response = await fetch(`${baseUrl}${path}${params.toString() ? `?${params}` : ""}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error(`Esportazione non riuscita (${response.status}).`);
+      return response.text();
+    },
 
     /** Email raccolte dal riquadro "Arriviamo presto nella tua zona" in homepage (richiesta esplicita dell'utente). */
     adminListWaitlist: (token: string) =>

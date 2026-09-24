@@ -2,11 +2,12 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/co
 import { createFeeRuleSchema, type CreateFeeRuleInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../admin/admin.guard";
+import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { PlatformFeeRulesService } from "./platform-fee-rules.service";
 
 /** Gestione delle regole di commissione — sempre configurabili da admin, mai hardcoded (CLAUDE.md §88). */
 @UseGuards(JwtAuthGuard, AdminGuard)
+@RequireAdminScope("FINANCE")
 @Controller("admin/fee-rules")
 export class AdminFeeRulesController {
   constructor(private readonly feeRulesService: PlatformFeeRulesService) {}

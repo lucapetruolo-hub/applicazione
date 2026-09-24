@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { AdminOverview } from "@professionisti/api-client";
+import type { AdminOverview, AdminRoleName } from "@professionisti/api-client";
+import { adminCan, type AdminScope } from "@professionisti/shared";
 import { Icon, type IconName } from "@professionisti/ui";
 
-type NavItem = { href: string; label: string; icon: IconName; badge?: (o: AdminOverview) => number };
+type NavItem = { href: string; label: string; icon: IconName; scope: AdminScope; badge?: (o: AdminOverview) => number };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { href: "/admin", label: "Home", icon: "house" },
-  { href: "/admin/segnalazioni", label: "Segnalazioni", icon: "flag", badge: (o) => o.openReports + o.pendingAppeals },
-  { href: "/admin/messaggi", label: "Messaggi", icon: "mail", badge: (o) => o.openMessages },
-  { href: "/admin/utenti", label: "Utenti", icon: "user-round" },
-  { href: "/admin/pagamenti", label: "Rimborsi e contestazioni", icon: "credit-card", badge: (o) => o.pendingRefunds + o.openDisputes },
-  { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2" },
-  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock" },
-  { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins" },
-  { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up" },
+  { href: "/admin", label: "Home", icon: "house", scope: "ANY" },
+  { href: "/admin/segnalazioni", label: "Segnalazioni", icon: "flag", scope: "MODERATION", badge: (o) => o.openReports + o.pendingAppeals },
+  { href: "/admin/messaggi", label: "Messaggi", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
+  { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
+  { href: "/admin/pagamenti", label: "Rimborsi e contestazioni", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes },
+  { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
+  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock", scope: "MODERATION" },
+  { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },
+  { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up", scope: "FINANCE" },
+  { href: "/admin/registro", label: "Registro azioni", icon: "file-text", scope: "SUPER" },
 ];
 
 /**
@@ -25,12 +27,17 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
  * esisteva solo sopra i 1300px, su telefono e portatili piccoli non c'era
  * alcuna navigazione. I numeri rossi sono le cose ancora da gestire.
  */
-export function AdminNav({ overview }: { overview: AdminOverview | null }) {
+export function AdminNav({ overview, adminRole, onOpenSearch }: { overview: AdminOverview | null; adminRole: AdminRoleName | null; onOpenSearch: () => void }) {
   const pathname = usePathname();
   return (
     <nav className="admin-nav" aria-label="Sezioni amministrazione">
       <span className="admin-nav-title">Amministrazione</span>
-      {ADMIN_NAV_ITEMS.map((item) => {
+      <button type="button" className="admin-nav-link admin-nav-search" onClick={onOpenSearch}>
+        <Icon name="search" size={16} color="#6e6459" />
+        <span>Cerca</span>
+        <kbd className="admin-kbd">⌘K</kbd>
+      </button>
+      {ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRole, item.scope)).map((item) => {
         const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         const count = overview && item.badge ? item.badge(overview) : 0;
         return (

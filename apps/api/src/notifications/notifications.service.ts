@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
+import { CONTENT_REPORT_TARGET_LABEL, moderationActionOwnerText, type ContentReportTargetType, type ModerationAction } from "@professionisti/shared";
 
 function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -15,6 +16,15 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
 function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+
+/** Notifiche di moderazione che partono anche via email (docs/CHANGELOG.md §145). */
+const MODERATION_EMAIL_TYPES = new Set([
+  "CONTENT_REPORT_UPHELD",
+  "CONTENT_REPORT_REVERTED",
+  "CONTENT_REPORT_APPEAL_REJECTED",
+  "ACCOUNT_SUSPENDED",
+  "ACCOUNT_REACTIVATED",
+]);
 
 export type NewLeadEmailPayload = { category: string; city: string | null; isUrgent: boolean };
 
@@ -61,6 +71,9 @@ export class NotificationsService {
       kind: "notification",
       notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
     });
+    if (MODERATION_EMAIL_TYPES.has(type)) {
+      this.emailModeration(userId, type, payload as Record<string, unknown>);
+    }
     if (type === "NEW_LEAD") {
       const { category, city, isUrgent } = payload as Record<string, unknown>;
       this.emailNewLead([userId], {
@@ -80,6 +93,87 @@ export class NotificationsService {
    * cliente, ed `EmailService.send` non lancia mai (senza RESEND_API_KEY
    * logga e basta).
    */
+  /**
+   * Decisioni di moderazione anche via email (docs/CHANGELOG.md §145): la
+   * notifica sul sito non basta — chi non rientra non la vede, e un account
+   * sospeso non può proprio entrare. Stessa motivazione della notifica, con
+   * la misura presa e come contestarla (DSA art. 17).
+   */
+  private emailModeration(userId: string, type: string, payload: Record<string, unknown>): void {
+    void this.sendModerationEmail(userId, type, payload).catch((err: unknown) => {
+      this.logger.error(`Email di moderazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }
+
+  private async sendModerationEmail(userId: string, type: string, payload: Record<string, unknown>): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user?.email) return;
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const note = typeof payload.note === "string" && payload.note ? payload.note : null;
+    const targetType = payload.targetType as ContentReportTargetType | undefined;
+    const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";
+    const reasonHtml = note ? `<p><strong>Motivazione:</strong> ${escapeHtml(note)}</p>` : "";
+    const humanHtml = "<p>La decisione è stata presa da una persona del nostro team, non da un sistema automatico.</p>";
+    let subject: string;
+    let html: string;
+    if (type === "CONTENT_REPORT_UPHELD") {
+      const suspended = payload.action === "SUSPEND_USER";
+      subject = "Decisione su una segnalazione che riguarda un tuo contenuto";
+      html =
+        `<p>Abbiamo esaminato una segnalazione su un tuo contenuto (${escapeHtml(what)}).</p>` +
+        `<p><strong>${escapeHtml(moderationActionOwnerText((payload.action as ModerationAction | null) ?? null, targetType ?? "REVIEW"))}</strong></p>` +
+        reasonHtml +
+        humanHtml +
+        (suspended
+          ? `<p>Se ritieni che sia un errore, rispondi a questa email o scrivici dal <a href="${frontendUrl}/contatti">modulo Contatti</a>.</p>`
+          : `<p>Se ritieni che sia un errore puoi <a href="${frontendUrl}/segnalazioni">contestare la decisione</a>.</p>`) +
+        "<p>Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.</p>";
+    } else if (type === "ACCOUNT_SUSPENDED") {
+      subject = "Il tuo account è stato sospeso";
+      html =
+        "<p>Il tuo account è stato sospeso: non puoi accedere finché la decisione non viene annullata.</p>" +
+        reasonHtml +
+        humanHtml +
+        `<p>Se ritieni che sia un errore, rispondi a questa email o scrivici dal <a href="${frontendUrl}/contatti">modulo Contatti</a>.</p>`;
+    } else if (type === "ACCOUNT_REACTIVATED") {
+      subject = "Il tuo account è di nuovo attivo";
+      html = `<p>La sospensione del tuo account è stata annullata: puoi di nuovo <a href="${frontendUrl}/accedi">accedere</a>.</p>` + reasonHtml;
+    } else if (type === "CONTENT_REPORT_REVERTED") {
+      subject = "La misura su un tuo contenuto è stata annullata";
+      html = `<p>Abbiamo annullato la misura presa su un tuo contenuto (${escapeHtml(what)}): è di nuovo come prima.</p>` + reasonHtml;
+    } else {
+      subject = "Esito della tua contestazione";
+      html =
+        "<p>Abbiamo esaminato la tua contestazione: la decisione resta valida.</p>" +
+        reasonHtml +
+        "<p>Puoi rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.</p>";
+    }
+    await this.emailService.send({ to: user.email, subject, html });
+  }
+
+  /**
+   * Avviso agli admin che moderano (SUPER e MODERATOR) per ogni nuova
+   * segnalazione (docs/CHANGELOG.md §145): per un caso grave (minacce,
+   * sicurezza) aspettare che qualcuno apra /admin è troppo.
+   */
+  emailAdminsNewReport(report: { targetType: ContentReportTargetType; reason: string }): void {
+    void (async () => {
+      const admins = await this.prisma.user.findMany({
+        where: { role: "ADMIN", suspendedAt: null, OR: [{ adminRole: null }, { adminRole: { in: ["SUPER", "MODERATOR"] } }] },
+        select: { email: true },
+      });
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+      const subject = `Nuova segnalazione: ${CONTENT_REPORT_TARGET_LABEL[report.targetType]}`;
+      const html =
+        `<p>È arrivata una nuova segnalazione (${escapeHtml(CONTENT_REPORT_TARGET_LABEL[report.targetType].toLowerCase())}).</p>` +
+        `<p><strong>Motivo:</strong> ${escapeHtml(report.reason)}</p>` +
+        `<p><a href="${frontendUrl}/admin/segnalazioni">Apri le segnalazioni da gestire</a>.</p>`;
+      await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, subject, html })] : [])));
+    })().catch((err: unknown) => {
+      this.logger.error(`Email admin nuova segnalazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }
+
   emailNewLead(userIds: string[], lead: NewLeadEmailPayload): void {
     void this.sendNewLeadEmails(userIds, lead).catch((err: unknown) => {
       this.logger.error(`Email nuovo lead non inviate: ${err instanceof Error ? err.message : String(err)}`);

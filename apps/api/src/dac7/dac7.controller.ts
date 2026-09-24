@@ -2,10 +2,11 @@ import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../admin/admin.guard";
+import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { Dac7Service } from "./dac7.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
+@RequireAdminScope("FINANCE")
 @Controller("admin/dac7")
 export class Dac7Controller {
   constructor(private readonly dac7Service: Dac7Service) {}

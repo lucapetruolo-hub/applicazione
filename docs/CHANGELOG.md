@@ -14677,3 +14677,70 @@ Playwright): recensione nascosta dal pannello (conteggio 5 → 4), profilo
 tolto dalla ricerca (404), contestazione dell'autore da `/segnalazioni`,
 "Annulla misura" (profilo di nuovo 200), account sospeso con token ancora
 valido → 403 e riattivato; pannello verificato anche a 390px.
+
+## 145. Area admin: scheda utente, ruoli admin, registro, ricerca ⌘K, andamenti, email di moderazione
+
+**Richiesta esplicita dell'utente**: "tutto" il pacchetto proposto dal CEO
+per i prossimi 2 mesi (scheda utente, sospensione dalla scheda, registro
+azioni, CSV, email della motivazione, email agli admin per le nuove
+segnalazioni, anteprima dei contenuti già nascosti) più tre voci che il
+piano rimandava a 6 mesi: ricerca globale ⌘K, contatori con andamento nel
+tempo, ruoli admin separati (moderatore, finanza). La sospensione senza
+segnalazione era l'unico punto da approvare: incluso in "tutto".
+
+**Decisione**:
+- **Ruoli admin** (migrazione `20260924180000_admin_roles_and_manual_suspension`,
+  gli admin esistenti diventano SUPER): `User.adminRole` SUPER / MODERATOR /
+  FINANCE. `AdminGuard` legge l'area della rotta da `@RequireAdminScope`
+  (`MODERATION`, `FINANCE`, `SUPER`; senza decoratore = qualunque admin):
+  segnalazioni, messaggi, richieste eliminate, lista d'attesa, sospensioni →
+  moderazione; finanza, DAC7, commissioni, rimborsi e contestazioni, dati
+  fiscali, statistiche → finanza; ruoli e registro → solo super. Home,
+  utenti, scheda utente e ricerca → tutti. `/auth/me` espone `adminRole`: il
+  menu mostra solo le sezioni del proprio ruolo e un link diretto fuori ruolo
+  mostra "Sezione non disponibile". Regole in `packages/shared/src/adminRoles.ts`.
+  Mai togliere l'ultimo super admin, mai cambiare il proprio ruolo.
+- **Scheda utente** `/admin/utenti/[id]` (si apre dalla tabella Utenti e da
+  ⌘K): stato, profilo professionista, contatori, segnalazioni che lo
+  riguardano e fatte, cronologia unica (iscrizione, richieste, interventi,
+  recensioni, segnalazioni, azioni admin).
+- **Sospensione dalla scheda** (moderatori): motivazione obbligatoria
+  (`User.suspensionNote`), notifica ed email all'utente, profilo tolto dalla
+  ricerca, registrata. "Riattiva" con motivazione. Mai su un admin né su se
+  stessi.
+- **Registro azioni** `/admin/registro` (solo super): legge `AuditLog`, dove
+  ora finiscono anche le decisioni sulle segnalazioni, gli annullamenti, le
+  contestazioni respinte, le sospensioni e i cambi di ruolo, con chi l'ha
+  fatto e il motivo.
+- **Email** (Resend, inerti senza `RESEND_API_KEY`): all'autore per ogni
+  decisione (misura, motivazione, decisione umana, come contestarla — per
+  un account sospeso il modulo Contatti, perché non può accedere), per
+  sospensione/riattivazione, annullamento e contestazione respinta; agli
+  admin SUPER e MODERATOR per ogni nuova segnalazione.
+- **Anteprima completa** nella coda Segnalazioni (`GET /admin/reports/:id/target`):
+  testo, foto, voto, autore e stato del contenuto anche se già nascosto o
+  sospeso — prima "Apri contenuto" portava a "non trovato" dopo la misura.
+  `POST /reports` ora restituisce solo l'id (prima l'intera riga).
+- **CSV** (separatore ";" e BOM, si apre bene in Excel italiano): utenti con
+  i filtri attivi (`/admin/users/export.csv`) e lista d'attesa.
+- **Ricerca ⌘K / Ctrl+K** (anche dal pulsante "Cerca" nel menu): sezioni
+  del proprio ruolo, utenti (email, nome, attività) e segnalazioni (motivo),
+  con frecce, Invio ed Esc.
+- **Andamento nelle ultime 12 settimane** in Home (`GET /admin/trends`):
+  nuovi clienti, nuovi professionisti, richieste, interventi prenotati,
+  segnalazioni. Un riquadro per metrica (mai due misure sullo stesso asse):
+  valore della settimana, differenza con la precedente, 12 barre (verde
+  chiaro le passate, verde pieno la corrente, colore verificato con lo
+  script di validazione), dato della singola settimana al passaggio del
+  mouse nella riga sotto al valore.
+
+**Verifica**: typecheck API e web, `next build`; 10 nuovi test (aree per
+ruolo, sospensione dalla scheda, ultimo super admin, ritorno a
+professionista, cambio del proprio ruolo), 55/55 test API verdi;
+`prisma migrate diff` senza differenze e migrazione applicata al database
+di prova (l'admin esistente diventa SUPER). Prova completa in locale:
+moderatore 403 su DAC7 e registro, finanza 403 sulle segnalazioni e 200 sui
+rimborsi; CSV corretto; ⌘K → scheda del cliente → "Sospendi account" →
+`/auth/me` del cliente 403; registro con le azioni e i motivi; anteprima di
+un profilo dopo la misura; menu e "Sezione non disponibile" per la finanza;
+Home con andamento a 1280px e 390px.

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Put, Req, UseGuards } from "
 import { professionalFiscalProfileSchema, setFiscalVerificationSchema, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
-import { AdminGuard } from "../admin/admin.guard";
+import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
 
 @Controller("professionals/me/fiscal-profile")
@@ -30,6 +30,7 @@ export class ProfessionalFiscalController {
 
 /** Vista/azioni admin sui dati fiscali di un professionista specifico — CLAUDE.md §88. */
 @UseGuards(JwtAuthGuard, AdminGuard)
+@RequireAdminScope("FINANCE")
 @Controller("admin/professionals/:id/fiscal")
 export class AdminProfessionalFiscalController {
   constructor(private readonly fiscalService: ProfessionalFiscalService) {}

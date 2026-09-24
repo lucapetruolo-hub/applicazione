@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { ContentReportsController } from "./content-reports.controller";
 import { ContentReportsService } from "./content-reports.service";
 
@@ -7,7 +8,7 @@ import { ContentReportsService } from "./content-reports.service";
 // stesso motivo già documentato altrove nel progetto per ogni modulo con un
 // guard: senza questo import il bootstrap di Nest va in crash-loop.
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, NotificationsModule],
   controllers: [ContentReportsController],
   providers: [ContentReportsService],
 })

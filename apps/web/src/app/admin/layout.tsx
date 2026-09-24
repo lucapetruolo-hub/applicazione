@@ -7,7 +7,9 @@ import type { AdminOverview } from "@professionisti/api-client";
 import { Button, H1, Paragraph, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { ADMIN_NAV_ITEMS, AdminNav } from "@/components/admin/AdminNav";
+import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
+import { adminCan } from "@professionisti/shared";
 import { AdminOverviewContext } from "@/components/admin/AdminOverviewContext";
 
 /**
@@ -22,7 +24,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { user, token, isLoading } = useAuth();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN";
+  const adminRole = isAdmin ? (user?.adminRole ?? "SUPER") : null;
+
+  // ⌘K / Ctrl+K apre la ricerca globale ovunque nel pannello.
+  useEffect(() => {
+    if (!isAdmin) return;
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isAdmin]);
 
   // Ricaricati a ogni cambio pagina: i numeri nel menu restano allineati
   // dopo aver gestito una segnalazione o un messaggio.
@@ -71,12 +88,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  // Sezione fuori dal ruolo (link diretto): messaggio chiaro invece di una
+  // pagina che fallisce con un errore dell'API (docs/CHANGELOG.md §145).
+  const section = [...ADMIN_NAV_ITEMS]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((item) => (item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)));
+  const allowed = !section || adminCan(adminRole, section.scope);
+
   return (
     <AdminOverviewContext.Provider value={{ overview, refresh: refreshOverview }}>
       <div className="admin-shell">
-        <AdminNav overview={overview} />
-        <main className="admin-main">{children}</main>
+        <AdminNav overview={overview} adminRole={adminRole} onOpenSearch={() => setSearchOpen(true)} />
+        <main className="admin-main">
+          {allowed ? (
+            children
+          ) : (
+            <YStack gap="$2" paddingVertical="$6">
+              <H1 size="$7">Sezione non disponibile</H1>
+              <Paragraph color={brand.grafite70}>Questa sezione non rientra nel tuo ruolo di amministratore.</Paragraph>
+            </YStack>
+          )}
+        </main>
       </div>
+      <AdminCommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} token={token} adminRole={adminRole} />
     </AdminOverviewContext.Provider>
   );
 }

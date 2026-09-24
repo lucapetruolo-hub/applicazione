@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import type { PrismaClient } from "@professionisti/database";
 import type { CreateContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const DUPLICATE_REPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -27,7 +28,10 @@ const DUPLICATE_REPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
  */
 @Injectable()
 export class ContentReportsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(reporterId: string, input: CreateContentReportInput) {
     // Una richiesta non è un contenuto pubblico: può segnalarla solo il
@@ -55,7 +59,7 @@ export class ContentReportsService {
       throw new ConflictException("Hai già segnalato questo contenuto nelle ultime 24 ore.");
     }
 
-    return this.prisma.contentReport.create({
+    const created = await this.prisma.contentReport.create({
       data: {
         reporterId,
         targetType: input.targetType,
@@ -63,7 +67,10 @@ export class ContentReportsService {
         reason: input.reason,
         details: input.details?.trim() || null,
       },
+      select: { id: true },
     });
+    this.notificationsService.emailAdminsNewReport({ targetType: input.targetType, reason: input.reason });
+    return created;
   }
 
   /**
