@@ -14415,3 +14415,27 @@ modifiche il link naviga subito; con una modifica al nome compare il popup,
 "Salva" salva e naviga, "Esci senza salvare" naviga senza salvare; nessun
 errore in console. La mappa reale
 non è verificabile qui (Google non si carica da questo ambiente).
+
+## 137. Chiave Google Maps rifiutata: messaggio chiaro invece di errori interni
+
+**Segnalazione dell'utente** (dopo §136): "Google Maps non è stata caricata
+correttamente", poi, nel riquadro di §135, `g.Mp.get` (in `marker.js`) sulla
+ricerca e `b.keys` (in `main.js`) sul profilo in dashboard.
+
+**Diagnosi**: tutti e tre gli errori nascono dentro il codice di Google
+(`maps-api-v3/api/js/66/...`), non nel nostro. Sono la conseguenza di un unico
+rifiuto della chiave/configurazione da parte di Google: la mappa resta a metà
+e i segnaposto e i cerchi vanno in errore appena provano a disegnarsi. La
+causa è quindi di configurazione (indirizzo del sito non tra quelli
+consentiti della chiave, Map ID, chiave sbagliata su Vercel, API o
+fatturazione) e va sistemata su Google Cloud/Vercel, non nel codice.
+
+**Decisione**: `GoogleMapGate` intercetta `window.gm_authFailure`, la
+funzione che Google chiama quando rifiuta la chiave. In quel caso smonta la
+mappa, così non si generano più errori a cascata, e mostra "Mappa non
+disponibile: Google ha rifiutato la chiave Google Maps" con l'indirizzo del
+sito da cui si sta navigando. Un indirizzo diverso da
+`applicazione-web.vercel.app`, per esempio l'URL di un singolo deploy Vercel,
+è la causa più probabile.
+
+Verifica: typecheck e `next build`. Il rifiuto reale non è riproducibile qui.
