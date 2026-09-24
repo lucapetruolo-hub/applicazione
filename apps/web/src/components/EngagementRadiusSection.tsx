@@ -2,13 +2,12 @@
 
 // Logica di business del raggio di ingaggio (stato dei due raggi,
 // validazione, salvataggio): deliberatamente separata da
-// EngagementRadiusMap (che contiene SOLO il rendering Leaflet) — così la
-// futura migrazione a Google Maps tocca solo quel file, non questo. Questo
-// componente non importa mai "leaflet"/"react-leaflet" direttamente: vede
-// EngagementRadiusMap tramite next/dynamic (ssr:false, la mappa legge
-// `window` al caricamento del modulo — stesso pattern già in uso per
-// ResultsMap in ResultsListWithMap.tsx) e gli passa solo i valori correnti
-// come props.
+// EngagementRadiusMap (che contiene SOLO il rendering della mappa, Google
+// Maps da docs/CHANGELOG.md §133) — un cambio di provider tocca solo quel
+// file, non questo. Questo componente non importa mai la libreria di mappe
+// direttamente: vede EngagementRadiusMap tramite next/dynamic (ssr:false,
+// stesso pattern di ResultsMap in ResultsListWithMap.tsx) e gli passa solo
+// i valori correnti come props.
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";

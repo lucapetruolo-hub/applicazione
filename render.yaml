@@ -74,9 +74,11 @@ services:
         sync: false
       - key: STRIPE_PRICE_BUSINESS
         sync: false
-      # Email di contatto richiesta dalla Usage Policy di Nominatim
-      # (apps/api/src/geocoding/geocoding.service.ts).
-      - key: NOMINATIM_CONTACT_EMAIL
+      # Chiave server Google Maps (Geocoding API) per posizionare
+      # l'indirizzo preciso del professionista sulla mappa
+      # (apps/api/src/geocoding/geocoding.service.ts). Distinta dalla chiave
+      # del browser NEXT_PUBLIC_GOOGLE_MAPS_API_KEY impostata su Vercel.
+      - key: GOOGLE_MAPS_API_KEY
         sync: false
       # Error tracking (apps/api/src/instrument.ts): DSN del progetto Sentry,
       # senza il quale gli errori restano solo nei log di Render.

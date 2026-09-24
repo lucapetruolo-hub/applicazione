@@ -10,7 +10,7 @@ export default function CookiePage() {
   return (
     <LegalPage
       title="Cookie Policy"
-      updatedAt="2 settembre 2026"
+      updatedAt="23 settembre 2026"
       sections={[
         {
           heading: "1. Cosa sono i cookie",
@@ -22,11 +22,11 @@ export default function CookiePage() {
         },
         {
           heading: "3. Cookie di terze parti",
-          body: "Alcuni servizi integrati possono impostare propri cookie: il pulsante di accesso con Google (solo se scegli di usarlo) e le mappe (tile OpenStreetMap, che non impostano cookie di profilazione). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
+          body: "Alcuni servizi di Google integrati nel sito possono impostare propri cookie e ricevere dati tecnici di navigazione (es. indirizzo IP): il pulsante di accesso con Google e le mappe dei risultati di ricerca (Google Maps). Li carichiamo solo dopo il tuo consenso, dato con il pulsante del banner cookie o con \"Mostra la mappa\"; senza consenso la mappa non viene caricata. Per i dettagli vedi l'informativa privacy di Google (policies.google.com/privacy). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
         },
         {
           heading: "4. Gestione delle preferenze",
-          body: "Puoi cancellare o bloccare i cookie dalle impostazioni del tuo browser. La disattivazione dei cookie tecnici può impedire il login e alcune funzionalità. Bozza da far verificare a un legale e da integrare con l'eventuale futura introduzione di strumenti di analisi, che richiederanno consenso preventivo.",
+          body: "Puoi cancellare o bloccare i cookie dalle impostazioni del tuo browser. La disattivazione dei cookie tecnici può impedire il login e alcune funzionalità. Per le statistiche di visita usiamo Vercel Web Analytics, che non usa cookie né identifica i singoli utenti. Bozza da far verificare a un legale.",
         },
       ]}
     />

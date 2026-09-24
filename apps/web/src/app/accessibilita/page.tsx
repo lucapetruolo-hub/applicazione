@@ -32,7 +32,7 @@ export default function AccessibilitaPage() {
         },
         {
           heading: "3. Limiti noti",
-          body: "Alcune parti del sito non sono ancora state verificate con lo stesso livello di dettaglio delle pagine principali: in particolare l'agenda del professionista (calendario personalizzato) e la mappa dei risultati di ricerca (basata su Leaflet/OpenStreetMap), entrambe costruite su misura perché nessuna libreria pronta si adattava alle esigenze del prodotto. Stiamo lavorando per estendere la stessa verifica a queste sezioni. Il punteggio di performance complessivo del sito (diverso da quello di accessibilità) è inferiore all'obiettivo interno a causa della scelta architetturale di condividere lo stesso design system tra sito web e app mobile: una scelta consapevole, non ancora ottimizzata.",
+          body: "Alcune parti del sito non sono ancora state verificate con lo stesso livello di dettaglio delle pagine principali: in particolare l'agenda del professionista (calendario personalizzato) e la mappa dei risultati di ricerca (basata su Google Maps), entrambe costruite su misura perché nessuna libreria pronta si adattava alle esigenze del prodotto. Stiamo lavorando per estendere la stessa verifica a queste sezioni. Il punteggio di performance complessivo del sito (diverso da quello di accessibilità) è inferiore all'obiettivo interno a causa della scelta architetturale di condividere lo stesso design system tra sito web e app mobile: una scelta consapevole, non ancora ottimizzata.",
         },
         {
           heading: "4. Segnala un problema di accessibilità",
