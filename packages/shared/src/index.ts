@@ -4,6 +4,7 @@ export * from "./cities";
 export * from "./data/comuni";
 export * from "./dashboard";
 export * from "./fiscalValidation";
+export * from "./moderation";
 export * from "./plans";
 export * from "./professionals";
 export * from "./schemas";

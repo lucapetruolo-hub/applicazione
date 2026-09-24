@@ -31,9 +31,10 @@ export class ReviewsService {
   async getRecentPublic(limit = 5) {
     const reviews = await this.prisma.review.findMany({
       where: {
+        hiddenAt: null,
         booking: {
           clientReview: { isNot: null },
-          professionalProfile: { isDemo: false, deletedAt: null },
+          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
         },
       },
       include: {

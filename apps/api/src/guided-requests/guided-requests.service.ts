@@ -64,16 +64,16 @@ export class GuidedRequestsService {
       throw new BadRequestException("Categoria non valida.");
     }
 
-    let targetProfile: { id: string; deletedAt: Date | null } | null = null;
+    let targetProfile: { id: string; deletedAt: Date | null; suspendedAt: Date | null } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true },
+        select: { id: true, deletedAt: true, suspendedAt: true },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
       // applicato altrove alle query pubbliche su ProfessionalProfile.
-      if (!targetProfile || targetProfile.deletedAt) {
+      if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt) {
         throw new NotFoundException("Professionista non trovato.");
       }
     }
@@ -583,7 +583,7 @@ export class GuidedRequestsService {
   private async matchProfilesForFanOut(categoryId: string, city: string, isUrgent: boolean): Promise<ProfessionalProfile[]> {
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
-    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId, deletedAt: null } });
+    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId, deletedAt: null, suspendedAt: null } });
     const trimmedCity = city.trim();
     // Città facoltativa per una richiesta "online" (richiesta esplicita
     // dell'utente, CLAUDE.md): senza una zona da cui calcolare una

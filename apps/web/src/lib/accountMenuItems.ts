@@ -40,6 +40,9 @@ export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] 
         // (GuidedRequestsService.create non ha alcun controllo di ruolo),
         // mancava solo il collegamento nel menu.
         { href: "/le-mie-richieste", label: "Le mie richieste" },
+        // Esiti delle segnalazioni e decisioni sui propri contenuti, con
+        // motivazione e ricorso (docs/CHANGELOG.md §144, DSA art. 17/20).
+        { href: "/segnalazioni", label: "Segnalazioni e decisioni" },
         { href: "/account", label: "Impostazioni dell'account" },
       ]
     : [
@@ -47,5 +50,6 @@ export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] 
         { href: "/professionisti-salvati", label: "Professionisti salvati" },
         { href: "/le-mie-richieste", label: "Le mie richieste" },
         { href: "/chat", label: "Chat" },
+        { href: "/segnalazioni", label: "Segnalazioni e decisioni" },
       ];
 }

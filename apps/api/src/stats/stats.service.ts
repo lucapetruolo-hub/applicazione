@@ -19,7 +19,7 @@ export class StatsService {
   async getPlatformStats(): Promise<{ totalUsers: number; totalProfessionals: number }> {
     const [totalUsers, totalProfessionals] = await Promise.all([
       this.prisma.user.count({ where: { role: "CLIENT", deletedAt: null } }),
-      this.prisma.professionalProfile.count({ where: { isDemo: false, deletedAt: null } }),
+      this.prisma.professionalProfile.count({ where: { isDemo: false, deletedAt: null, suspendedAt: null } }),
     ]);
     return { totalUsers, totalProfessionals };
   }

@@ -315,36 +315,146 @@ a {
   animation: notification-ping 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
-.admin-sidebar {
+/* Area admin (docs/CHANGELOG.md §144): menu sempre visibile — barra
+   orizzontale scorrevole su telefono, colonna fissa a sinistra da 1000px. */
+.admin-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-main {
+  min-width: 0;
+  flex: 1;
+}
+.admin-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 8px;
+  scrollbar-width: none;
+}
+.admin-nav::-webkit-scrollbar {
   display: none;
 }
-@media (min-width: 1300px) {
-  .admin-sidebar {
-    display: flex;
-    position: fixed;
-    top: 120px;
-    left: 32px;
-    width: 200px;
-    flex-direction: column;
-    gap: 4px;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 12px;
-  }
+.admin-nav-title {
+  display: none;
 }
-.admin-sidebar-link {
-  display: block;
-  padding: 10px 12px;
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
   border-radius: 10px;
   color: #2b2420;
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.admin-sidebar-link:hover {
+.admin-nav-link:hover {
   background: #fdefe1;
 }
-
+.admin-nav-link.is-active {
+  background: #2b2420;
+  color: #ffffff;
+}
+.admin-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (min-width: 1000px) {
+  .admin-shell {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 32px 24px;
+    gap: 24px;
+  }
+  .admin-nav {
+    position: sticky;
+    top: 96px;
+    flex-direction: column;
+    width: 240px;
+    flex-shrink: 0;
+    overflow-x: visible;
+    padding: 12px;
+  }
+  .admin-nav-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6e6459;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 12px 8px;
+  }
+}
+/* Griglia dei contatori della home admin. */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+.admin-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  text-decoration: none;
+  color: #2b2420;
+  border: 1px solid transparent;
+}
+a.admin-kpi:hover {
+  border-color: #f0dcc0;
+}
+.admin-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+.admin-kpi-label {
+  font-size: 13px;
+  color: #6e6459;
+  font-weight: 600;
+}
+.admin-kpi.is-urgent .admin-kpi-value {
+  color: #dc3545;
+}
+.admin-input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f0dcc0;
+  font: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: #2b2420;
+  box-sizing: border-box;
+}
+.admin-textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+}
 .admin-table-wrap {
   overflow-x: auto;
   border-radius: 16px;

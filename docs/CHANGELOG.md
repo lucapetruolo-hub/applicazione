@@ -14601,3 +14601,79 @@ scadute e chiuse, e nascondile, in modo che un admin possa vederle".
 senza cancellare, silenzia, rifiuta richieste attive e lead altrui), tutti i
 33 test API verdi; `prisma migrate diff` fra migrazioni e schema su un
 Postgres locale: nessuna differenza.
+
+## 144. Segnalazioni con misure reali e area admin a sotto-pagine
+
+**Richiesta esplicita dell'utente** (consiglio CEO con Chief Legal Advisor,
+Backend Architect e Frontend Lead): "Risolvi" deve aprire scelte congrue al
+tipo di segnalazione, anche per gli obblighi di legge; area admin più
+fruibile, prendendo spunto dai pannelli di prodotti affermati. Approvati
+dall'utente: misure di moderazione reali, casella "segnalato alle autorità",
+area admin a sotto-pagine (scelta "A"), e le tre correzioni tattiche. Il
+testo di `/termini` va rivisto da un avvocato: aggiunto alla checklist
+pre-lancio in CLAUDE.md (punto 11bis).
+
+**Problema trovato**: "Risolvi" cambiava solo lo stato della segnalazione.
+Il contenuto restava online, eppure all'autore arrivava una notifica di
+"segnalazione accolta" (e la motivazione scritta dall'admin non era visibile
+da nessuna parte). Nel codice non esisteva modo di nascondere una recensione
+o sospendere un profilo o un account.
+
+**Decisione — moderazione** (migrazione `20260924160000_content_moderation_actions`):
+- Nuovi campi: `Review.hiddenAt`, `ClientReview.hiddenAt`,
+  `GuidedRequest.hiddenAt`, `ProfessionalProfile.suspendedAt`,
+  `User.suspendedAt`; su `ContentReport`: `action` (enum
+  `ModerationAction`), `authoritiesNotifiedAt`, `contentOwnerId`,
+  `revertedAt`/`revertNote`, `appealText`/`appealedAt`,
+  `appealRejectedAt`/`appealRejectNote`.
+- Misure per tipo (`MODERATION_ACTIONS_BY_TARGET`, `packages/shared/src/moderation.ts`,
+  verificate anche dal server): recensione e recensione sul cliente →
+  nascondi / avvisa / sospendi autore; profilo → togli da ricerca e pagina
+  pubblica / chiedi correzione / avvisa / sospendi account; richiesta →
+  chiudi e nascondi / avvisa / sospendi autore. "Sospendi account" nasconde
+  anche il contenuto segnalato. Una recensione negativa ma vera non va
+  nascosta (Codice del Consumo art. 22): scritto accanto alle scelte.
+- Filtri: profilo sospeso escluso da ricerca, pagina pubblica, prenotazione
+  da agenda, richieste dirette, fan-out, indice prezzi, lingue, statistiche
+  pubbliche, recensioni in home; recensione nascosta esclusa da profilo,
+  ricerca, home e media voti (`ProfessionalMetricsService.recomputeReviews`,
+  ricalcolo completo: `recordReview` sa solo aggiungere); recensione sul
+  cliente nascosta esclusa dalla scheda cliente; richiesta nascosta chiusa e
+  tolta da "Richieste ricevute".
+- Account sospeso: `JwtAuthGuard` rilegge `User.suspendedAt` a ogni
+  richiesta (403 con messaggio), anche il login (email e Google) lo
+  rifiuta. Il flusso SSE in sola lettura non è bloccato.
+- Motivazione (DSA art. 17): la notifica all'autore porta la misura, e la
+  nuova pagina `/segnalazioni` ("Segnalazioni e decisioni", nel menu
+  account) mostra misura, motivazione, che la decisione è umana, e il
+  pulsante "Contesta la decisione" (reclamo interno, art. 20). Chi ha
+  segnalato vede lì l'esito delle proprie segnalazioni (art. 16(5)). Il
+  segnalante non viene mai mostrato all'autore.
+- Admin: "Annulla misura" (errore o contestazione accolta) e "Respingi
+  contestazione", entrambi con motivazione e notifica all'autore; casella
+  "Ho segnalato il caso alle autorità" (art. 18).
+
+**Decisione — area admin** (scelta "A", cambia la pagina unica di §57):
+- `apps/web/src/app/admin/layout.tsx`: controllo "solo admin" una volta
+  sola e menu sempre visibile — colonna a sinistra da 1000px, barra
+  orizzontale scorrevole su telefono — con numeri rossi sulle cose da fare.
+  `/admin/promuovi` resta fuori dal controllo.
+- Sotto-pagine: Home (contatori "Da fare" e "Numeri", `GET /admin/overview`),
+  Segnalazioni (coda "Da gestire" / "Contestazioni" / "Archivio", testo del
+  contenuto segnalato in evidenza, frasi di motivazione pronte), Messaggi
+  (archivio con `?resolved=true`, "Rispondi via email"), Utenti (ricerca,
+  filtri ruolo/stato, paginazione, account eliminati e sospesi riconoscibili;
+  `GET /admin/users` ora restituisce id e stato), Rimborsi e contestazioni
+  (sopra le API esistenti di §88, con conferma), Richieste eliminate, Lista
+  d'attesa. Restano vere tabelle HTML (§57).
+- Correzioni tattiche: "Ignora" chiede conferma con nota facoltativa, ogni
+  errore delle azioni è mostrato (prima alcune fallivano in silenzio).
+
+**Verifica**: typecheck API e web; 12 nuovi test (misure applicate,
+misura incompatibile rifiutata, avvertimento senza effetti, annullamento,
+guard su account sospeso), 45/45 test API verdi; `prisma migrate diff`
+senza differenze. Prova completa in locale (Postgres + API + sito +
+Playwright): recensione nascosta dal pannello (conteggio 5 → 4), profilo
+tolto dalla ricerca (404), contestazione dell'autore da `/segnalazioni`,
+"Annulla misura" (profilo di nuovo 200), account sospeso con token ancora
+valido → 403 e riattivato; pannello verificato anche a 390px.

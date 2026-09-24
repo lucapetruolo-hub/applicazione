@@ -1,6 +1,11 @@
-import { Body, Controller, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { createContentReportSchema, type CreateContentReportInput } from "@professionisti/shared";
+import {
+  contentReportAppealSchema,
+  createContentReportSchema,
+  type ContentReportAppealInput,
+  type CreateContentReportInput,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ContentReportsService } from "./content-reports.service";
@@ -23,5 +28,21 @@ export class ContentReportsController {
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(createContentReportSchema)) body: CreateContentReportInput) {
     return this.contentReportsService.create(req.user.userId, body);
+  }
+
+  /** Le mie segnalazioni e le decisioni sui miei contenuti (pagina /segnalazioni). */
+  @Get("mine")
+  listMine(@Req() req: AuthenticatedRequest) {
+    return this.contentReportsService.listMine(req.user.userId);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post(":id/appeal")
+  appeal(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(contentReportAppealSchema)) body: ContentReportAppealInput,
+  ) {
+    return this.contentReportsService.appeal(req.user.userId, id, body.text);
   }
 }

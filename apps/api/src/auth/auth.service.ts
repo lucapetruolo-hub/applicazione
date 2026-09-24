@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
@@ -6,6 +6,7 @@ import { LEGAL_CONSENT_VERSION } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 
 const BCRYPT_SALT_ROUNDS = 10;
 
@@ -65,6 +66,9 @@ export class AuthService {
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       throw new UnauthorizedException("Email o password non corretti.");
+    }
+    if (user.suspendedAt) {
+      throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
 
     await this.touchProfessionalActivity(user.id, user.role);
@@ -126,6 +130,10 @@ export class AuthService {
           legalConsentVersion: LEGAL_CONSENT_VERSION,
         },
       }));
+
+    if (existingUser?.suspendedAt) {
+      throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
+    }
 
     if (existingUser && !existingUser.googleId) {
       await this.prisma.user.update({ where: { id: existingUser.id }, data: { googleId: payload.sub } });

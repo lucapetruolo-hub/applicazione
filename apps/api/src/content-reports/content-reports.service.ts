@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import type { CreateContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -64,5 +64,60 @@ export class ContentReportsService {
         details: input.details?.trim() || null,
       },
     });
+  }
+
+  /**
+   * Pagina /segnalazioni (docs/CHANGELOG.md §144): le segnalazioni che l'utente
+   * ha fatto, con l'esito (DSA art. 16(5)), e le decisioni sui suoi contenuti,
+   * con misura, motivazione e stato dell'eventuale ricorso (art. 17 e 20).
+   * Mai il nome di chi ha segnalato un contenuto altrui.
+   */
+  async listMine(userId: string) {
+    const [submitted, received] = await Promise.all([
+      this.prisma.contentReport.findMany({ where: { reporterId: userId }, orderBy: { createdAt: "desc" } }),
+      this.prisma.contentReport.findMany({ where: { contentOwnerId: userId, status: "RESOLVED" }, orderBy: { resolvedAt: "desc" } }),
+    ]);
+    return {
+      submitted: submitted.map((r) => ({
+        id: r.id,
+        targetType: r.targetType,
+        reason: r.reason,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        resolvedAt: r.resolvedAt?.toISOString() ?? null,
+        resolutionNote: r.status === "OPEN" ? null : r.resolutionNote,
+      })),
+      received: received.map((r) => ({
+        id: r.id,
+        targetType: r.targetType,
+        reason: r.reason,
+        action: r.action,
+        resolvedAt: r.resolvedAt?.toISOString() ?? null,
+        resolutionNote: r.resolutionNote,
+        revertedAt: r.revertedAt?.toISOString() ?? null,
+        revertNote: r.revertNote,
+        appealText: r.appealText,
+        appealedAt: r.appealedAt?.toISOString() ?? null,
+        appealRejectedAt: r.appealRejectedAt?.toISOString() ?? null,
+        appealRejectNote: r.appealRejectNote,
+      })),
+    };
+  }
+
+  /** Contestazione della decisione da parte dell'autore del contenuto (reclamo interno, DSA art. 20). */
+  async appeal(userId: string, reportId: string, text: string) {
+    const report = await this.prisma.contentReport.findUnique({ where: { id: reportId } });
+    if (!report || report.contentOwnerId !== userId || report.status !== "RESOLVED") {
+      throw new NotFoundException("Decisione non trovata.");
+    }
+    if (report.revertedAt) {
+      throw new BadRequestException("La misura è già stata annullata.");
+    }
+    if (report.appealedAt) {
+      throw new BadRequestException("Hai già contestato questa decisione.");
+    }
+    const now = new Date();
+    await this.prisma.contentReport.update({ where: { id: reportId }, data: { appealText: text.trim(), appealedAt: now } });
+    return { id: reportId, appealedAt: now.toISOString() };
   }
 }

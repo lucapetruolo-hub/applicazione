@@ -36,6 +36,7 @@ import type {
   QuoteSelfInput,
   RequestRefundInput,
   ResolveDisputeInput,
+  ResolveContentReportInput,
   ReviewInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
@@ -199,13 +200,90 @@ export type ApiClientConfig = {
 export type AuthResult = { token: string; isNewUser: boolean };
 
 export type AdminUserRow = {
+  id: string;
   email: string | null;
   name: string | null;
   surname: string | null;
+  role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
   businessName: string | null;
+  professionalProfileId: string | null;
+  profileSuspended: boolean;
   createdAt: string;
+  deletedAt: string | null;
+  suspendedAt: string | null;
 };
-export type AdminUsersByRole = { clients: AdminUserRow[]; professionals: AdminUserRow[]; admins: AdminUserRow[] };
+/** Pagina di `/admin/users` con ricerca e filtri (docs/CHANGELOG.md §144). */
+export type AdminUsersPage = { total: number; page: number; pageSize: number; rows: AdminUserRow[] };
+export type AdminUsersQuery = { q?: string; role?: "CLIENT" | "PROFESSIONAL" | "ADMIN"; status?: "active" | "suspended" | "deleted"; page?: number };
+
+/** Contatori della home admin (docs/CHANGELOG.md §144). */
+export type AdminOverview = {
+  openReports: number;
+  pendingAppeals: number;
+  openMessages: number;
+  pendingRefunds: number;
+  openDisputes: number;
+  newUsers7d: number;
+  clients: number;
+  professionals: number;
+  suspendedUsers: number;
+  hiddenLeads: number;
+  waitlist: number;
+};
+
+export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
+
+/** Pagina /segnalazioni dell'utente (docs/CHANGELOG.md §144). */
+export type MyContentReports = {
+  submitted: {
+    id: string;
+    targetType: AdminContentReport["targetType"];
+    reason: string;
+    status: "OPEN" | "RESOLVED" | "DISMISSED";
+    createdAt: string;
+    resolvedAt: string | null;
+    resolutionNote: string | null;
+  }[];
+  received: {
+    id: string;
+    targetType: AdminContentReport["targetType"];
+    reason: string;
+    action: ModerationActionValue | null;
+    resolvedAt: string | null;
+    resolutionNote: string | null;
+    revertedAt: string | null;
+    revertNote: string | null;
+    appealText: string | null;
+    appealedAt: string | null;
+    appealRejectedAt: string | null;
+    appealRejectNote: string | null;
+  }[];
+};
+
+/** Rimborso / contestazione su un pagamento, vista admin (CLAUDE.md §88). */
+type AdminJobPaymentRef = {
+  id: string;
+  amountEurCents?: number;
+  booking: { id: string; scheduledAt?: string; professionalProfile: { id: string; businessName: string } };
+};
+export type AdminRefund = {
+  id: string;
+  amountEurCents: number;
+  reason: string | null;
+  status: "REQUESTED" | "APPROVED" | "PROCESSED" | "REJECTED";
+  createdAt: string;
+  processedAt: string | null;
+  jobPayment: AdminJobPaymentRef;
+};
+export type AdminDispute = {
+  id: string;
+  reason: string;
+  status: "OPEN" | "UNDER_REVIEW" | "RESOLVED_CLIENT" | "RESOLVED_PROFESSIONAL" | "CLOSED";
+  resolutionNote: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  jobPayment: AdminJobPaymentRef;
+};
 
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
@@ -222,6 +300,17 @@ export type AdminContentReport = {
   resolvedAt: string | null;
   /** Motivazione scritta della decisione admin (DSA art. 17, "statement of reasons") — `null` finché non è ancora stata decisa, o per una decisione presa prima dell'introduzione di questo campo. */
   resolutionNote: string | null;
+  /** Testo del contenuto segnalato (recensione, descrizione richiesta, bio profilo), per decidere senza aprirlo. */
+  targetExcerpt: string | null;
+  /** Misura applicata (docs/CHANGELOG.md §144). */
+  action: ModerationActionValue | null;
+  authoritiesNotifiedAt: string | null;
+  revertedAt: string | null;
+  revertNote: string | null;
+  appealText: string | null;
+  appealedAt: string | null;
+  appealRejectedAt: string | null;
+  appealRejectNote: string | null;
   reporterEmail: string | null;
   reporterName: string | null;
 };
@@ -1049,8 +1138,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ type }),
       }),
 
-    adminListUsers: (token: string) =>
-      request<AdminUsersByRole>("/admin/users", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListUsers: (token: string, query: AdminUsersQuery = {}) => {
+      const params = new URLSearchParams();
+      if (query.q) params.set("q", query.q);
+      if (query.role) params.set("role", query.role);
+      if (query.status) params.set("status", query.status);
+      if (query.page && query.page > 1) params.set("page", String(query.page));
+      const qs = params.toString();
+      return request<AdminUsersPage>(`/admin/users${qs ? `?${qs}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    },
+
+    adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Email raccolte dal riquadro "Arriviamo presto nella tua zona" in homepage (richiesta esplicita dell'utente). */
     adminListWaitlist: (token: string) =>
@@ -1069,11 +1167,38 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         cache: "no-store",
       }),
 
-    adminResolveContentReport: (token: string, id: string, status: "RESOLVED" | "DISMISSED", resolutionNote?: string) =>
-      request<{ id: string; status: string; resolutionNote: string | null }>(`/admin/reports/${id}`, {
+    adminResolveContentReport: (token: string, id: string, input: ResolveContentReportInput) =>
+      request<{ id: string; status: string; action: ModerationActionValue | null; resolutionNote: string | null }>(`/admin/reports/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status, resolutionNote }),
+        body: JSON.stringify(input),
+      }),
+
+    /** "Annulla misura" (ricorso accolto o errore). */
+    adminRevertContentReport: (token: string, id: string, note: string) =>
+      request<{ id: string; revertedAt: string }>(`/admin/reports/${id}/revert`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
+      }),
+
+    adminRejectAppeal: (token: string, id: string, note: string) =>
+      request<{ id: string; appealRejectedAt: string }>(`/admin/reports/${id}/reject-appeal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
+      }),
+
+    /** Le mie segnalazioni e le decisioni sui miei contenuti (pagina /segnalazioni). */
+    getMyContentReports: (token: string) =>
+      request<MyContentReports>("/reports/mine", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Contesta una decisione su un proprio contenuto (reclamo interno, DSA art. 20). */
+    appealContentReport: (token: string, id: string, text: string) =>
+      request<{ id: string; appealedAt: string }>(`/reports/${id}/appeal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text }),
       }),
 
     /** Segnalare un profilo/recensione come illecito o inappropriato (richiesta esplicita dell'utente, "Verbale di Conformità" — notice-and-action, DSA art. 16). */
@@ -1099,8 +1224,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     /** Messaggi dal form "Contatti", vista admin. */
-    adminListContactMessages: (token: string) =>
-      request<AdminContactMessage[]>("/admin/contact-messages", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListContactMessages: (token: string, resolved = false) =>
+      request<AdminContactMessage[]>(`/admin/contact-messages${resolved ? "?resolved=true" : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -1206,12 +1334,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminListRefunds: (token: string) => request<unknown[]>("/admin/refunds", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListRefunds: (token: string) => request<AdminRefund[]>("/admin/refunds", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminDecideRefund: (token: string, id: string, input: DecideRefundInput) =>
       request<unknown>(`/admin/refunds/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
-    adminListDisputes: (token: string) => request<unknown[]>("/admin/disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListDisputes: (token: string) => request<AdminDispute[]>("/admin/disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveDispute: (token: string, id: string, input: ResolveDisputeInput) =>
       request<unknown>(`/admin/disputes/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
