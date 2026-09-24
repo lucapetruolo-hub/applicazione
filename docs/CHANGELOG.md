@@ -14346,3 +14346,26 @@ messaggio reale dalla console del browser, due protezioni utili comunque:
 
 Verifica: typecheck e `next build` di produzione. Causa originale ancora da
 identificare.
+
+## 135. Mappa Google in errore: segnaposto disegnato in proprio, dettaglio dell'errore visibile
+
+**Segnalazione dell'utente**: dopo §134 la mappa mostra "Mappa non
+disponibile al momento." (l'error boundary ha intercettato un errore della
+mappa, che prima faceva crollare l'intera pagina).
+
+**Decisione**:
+- Rimosso il componente `<Pin>` di `@vis.gl/react-google-maps`: nella
+  versione "moderna" (Maps API ≥ 3.62) crea `google.maps.marker.PinElement`
+  passando anche `glyphText`/`glyphSrc` a `undefined`, opzioni che le API di
+  Google possono rifiutare con un'eccezione — l'unico punto del codice
+  mappa che dipende da una validazione lato Google e che non si poteva
+  provare qui. Al suo posto `MapPin` (`apps/web/src/components/MapPin.tsx`),
+  un SVG verde del brand passato come contenuto di `AdvancedMarker`.
+- `GoogleMapGate`: il riquadro d'errore mostra ora anche il messaggio
+  dell'errore (piccolo, leggibile da telefono), e "chiave mancante" ha un
+  testo diverso ("Mappa non configurata") da "errore della mappa", così i
+  due casi non si confondono più.
+
+Verifica: typecheck e `next build`. **Causa non confermata**: ipotesi più
+probabile dal codice della libreria; se l'errore persiste, il messaggio ora
+visibile nel riquadro indica la causa reale.

@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdvancedMarker, Map as GoogleMap, Pin, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
+import { MapPin } from "@/components/MapPin";
 
 export type MapBounds = { north: number; south: number; east: number; west: number };
 
@@ -172,7 +173,7 @@ export function ResultsMap({
               title={pro.businessName}
               onClick={() => setSelected(pro)}
             >
-              <Pin background="#189A63" borderColor="#0F6B44" glyphColor="#FFFFFF" />
+              <MapPin />
             </AdvancedMarker>
           ))}
         </GoogleMap>

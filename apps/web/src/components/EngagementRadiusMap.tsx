@@ -6,9 +6,10 @@
 // sotto, stabile indipendentemente dal provider (Leaflet fino a
 // docs/CHANGELOG.md §133, ora Google Maps).
 import { useEffect, useRef } from "react";
-import { AdvancedMarker, Circle, Map as GoogleMap, Pin, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Circle, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { brand } from "@professionisti/ui";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
+import { MapPin } from "@/components/MapPin";
 
 export type EngagementRadiusMapProps = {
   /** Posizione fissa del professionista (marker), mai spostabile da qui. */
@@ -64,7 +65,7 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
         >
           <FitToMaxRadius latitude={latitude} longitude={longitude} />
           <AdvancedMarker position={center}>
-            <Pin background="#189A63" borderColor="#0F6B44" glyphColor="#FFFFFF" />
+            <MapPin />
           </AdvancedMarker>
           {/* Il raggio di google.maps.Circle è in metri: conversione km→m qui, unico punto che lo fa. */}
           <Circle

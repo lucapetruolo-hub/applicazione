@@ -25,7 +25,7 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
   const consent = useCookieConsent();
 
   if (!API_KEY) {
-    return <MapPlaceholder text="Mappa non disponibile al momento." />;
+    return <MapPlaceholder text="Mappa non configurata (manca la chiave Google Maps)." />;
   }
   if (!consent) {
     return (
@@ -51,11 +51,11 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
  * accessorio della ricerca/del profilo, non il loro contenuto. Mostra il
  * riquadro neutro e lascia il resto della pagina utilizzabile.
  */
-class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+class MapErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -63,7 +63,15 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
   }
 
   render() {
-    if (this.state.failed) return <MapPlaceholder text="Mappa non disponibile al momento." />;
+    // Il dettaglio dell'errore resta visibile (piccolo) per poterlo
+    // segnalare anche da telefono, senza aprire la console del browser.
+    if (this.state.error) {
+      return (
+        <MapPlaceholder text="Mappa non disponibile al momento.">
+          <small className="map-error-detail">{this.state.error.message || String(this.state.error)}</small>
+        </MapPlaceholder>
+      );
+    }
     return this.props.children;
   }
 }
@@ -94,6 +102,12 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
           margin: 0;
           max-width: 280px;
           line-height: 1.4;
+        }
+        .map-placeholder :global(.map-error-detail) {
+          max-width: 320px;
+          font-size: 11px;
+          color: #9a8f82;
+          word-break: break-word;
         }
         .map-placeholder :global(.map-consent-button) {
           background: #189a63;
