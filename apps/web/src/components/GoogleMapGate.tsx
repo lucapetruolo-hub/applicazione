@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
 import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
@@ -37,10 +37,35 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
     );
   }
   return (
-    <APIProvider apiKey={API_KEY} language="it" region="IT">
-      {children}
-    </APIProvider>
+    <MapErrorBoundary>
+      <APIProvider apiKey={API_KEY} language="it" region="IT">
+        {children}
+      </APIProvider>
+    </MapErrorBoundary>
   );
+}
+
+/**
+ * Un errore dentro la mappa (script Google, marker, cerchi) non deve mai
+ * far crollare l'intera pagina con "Application error" — la mappa è un
+ * accessorio della ricerca/del profilo, non il loro contenuto. Mostra il
+ * riquadro neutro e lascia il resto della pagina utilizzabile.
+ */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Errore nella mappa Google:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.failed) return <MapPlaceholder text="Mappa non disponibile al momento." />;
+    return this.props.children;
+  }
 }
 
 function MapPlaceholder({ text, children }: { text: string; children?: ReactNode }) {

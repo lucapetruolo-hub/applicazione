@@ -14323,3 +14323,26 @@ una chiave di prova nessuna richiesta a Google prima del consenso, dopo
 `maps.googleapis.com/maps/api/js` con `language=it&region=IT`. **Non
 verificato**: il rendering reale della mappa e la geocodifica reale (serve
 una chiave vera, e la rete di questo ambiente blocca Google).
+
+## 134. "Application error" sul sito dopo il passaggio a Google Maps: protezioni
+
+**Segnalazione dell'utente**: aprendo il sito compare "Application error: a
+client-side exception has occurred", anche "quando provo ad inserire
+l'indirizzo" (profilo professionista), e "ora la mappa non funziona di
+nuovo".
+
+**Decisione**: la causa non è riproducibile in questo ambiente (Google Maps
+non si carica in modo affidabile dalla rete della sessione; con dati
+simulati né `/cerca/idraulico/roma` né `/dashboard/profilo`, inclusi
+digitazione dell'indirizzo e salvataggio, generano errori). In attesa del
+messaggio reale dalla console del browser, due protezioni utili comunque:
+- `MapErrorBoundary` in `GoogleMapGate`: un errore dentro la mappa mostra
+  "Mappa non disponibile al momento." invece di far crollare l'intera
+  pagina — la mappa è un accessorio, non il contenuto della pagina.
+- `app/error.tsx` e `app/global-error.tsx`: al posto della schermata
+  generica di Next.js, una pagina con "Riprova", "Torna alla home" e il
+  **messaggio dell'errore** visibile anche da telefono, così la prossima
+  segnalazione porta con sé la causa.
+
+Verifica: typecheck e `next build` di produzione. Causa originale ancora da
+identificare.
