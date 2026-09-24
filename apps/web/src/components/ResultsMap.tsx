@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdvancedMarker, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
@@ -55,58 +55,6 @@ function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<stri
   return positions;
 }
 
-function FitBounds({ points, fallbackCenter }: { points: [number, number][]; fallbackCenter?: [number, number] }) {
-  const map = useMap();
-  // Deve inquadrare SOLO all'apertura: se scattasse ad ogni render andrebbe
-  // in conflitto con lo zoom/pan manuale dell'utente, riportando la mappa
-  // all'inquadratura iniziale ogni volta che la lista a sinistra si aggiorna
-  // (ResultsListWithMap ricrea points/fallbackCenter come nuovi array ad
-  // ogni render, quindi senza guardia questo effetto ripartirebbe sempre).
-  const hasFitted = useRef(false);
-  useEffect(() => {
-    if (!map) return;
-    const container = map.getDiv();
-    function tryFit() {
-      if (!map || hasFitted.current) return;
-      // Su mobile la mappa può nascere dentro un contenitore nascosto
-      // (display:none, dietro al bottone "Mostra mappa"): un'inquadratura
-      // calcolata su un contenitore 0×0 sarebbe sbagliata e non verrebbe
-      // mai ricalcolata (questo effetto gira una volta sola). Si aspetta che
-      // il contenitore abbia davvero delle dimensioni.
-      if (container.clientWidth === 0 || container.clientHeight === 0) return;
-      hasFitted.current = true;
-      if (points.length === 0) {
-        // Nessun professionista con coordinate: se conosciamo comunque la
-        // città cercata (es. "Latina" senza risultati) zooma lì, così la
-        // mappa mostra sempre la zona cercata invece di restare ferma
-        // sull'inquadratura di default su tutta Italia.
-        if (fallbackCenter) {
-          map.setCenter(toLatLng(fallbackCenter));
-          map.setZoom(12);
-        }
-        return;
-      }
-      const [first] = points;
-      if (points.length === 1 && first) {
-        map.setCenter(toLatLng(first));
-        map.setZoom(12);
-        return;
-      }
-      const bounds = new google.maps.LatLngBounds();
-      for (const point of points) bounds.extend(toLatLng(point));
-      map.fitBounds(bounds, 32);
-    }
-
-    tryFit();
-    // Il contenitore passa da display:none a visibile col toggle "Mostra
-    // mappa": riprova l'inquadratura appena ha delle dimensioni.
-    const observer = new ResizeObserver(tryFit);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map, points, fallbackCenter]);
-  return null;
-}
-
 export function ResultsMap({
   professionals,
   initialProfessionals,
@@ -136,16 +84,32 @@ export function ResultsMap({
   // disegnati, non sulle coordinate originali sovrapposte.
   const markerPositions = offsetOverlappingPositions(withCoords);
   const initialPoints: [number, number][] = initialWithCoords.map((p) => markerPositions.get(p.id) ?? [p.latitude, p.longitude]);
+  // Inquadratura iniziale passata a Google come impostazione della mappa
+  // (defaultBounds/defaultCenter), non calcolata da codice dopo il
+  // caricamento: le chiamate dirette sull'istanza (getDiv/fitBounds) davano
+  // errore con la versione attuale di Google Maps (docs/CHANGELOG.md §136).
+  // Si inquadra solo all'apertura, poi zoom e spostamenti restano
+  // dell'utente. La mappa viene montata solo quando è visibile
+  // (ResultsListWithMap), quindi il contenitore ha già le sue dimensioni.
+  const initialBounds =
+    initialPoints.length >= 2
+      ? {
+          north: Math.max(...initialPoints.map(([lat]) => lat)),
+          south: Math.min(...initialPoints.map(([lat]) => lat)),
+          east: Math.max(...initialPoints.map(([, lng]) => lng)),
+          west: Math.min(...initialPoints.map(([, lng]) => lng)),
+          padding: 32,
+        }
+      : undefined;
   const center = initialPoints[0] ?? fallbackCenter ?? ROME_FALLBACK;
-  const initialZoom = initialPoints.length === 0 && fallbackCenter ? 12 : 6;
+  const initialZoom = initialPoints.length === 1 || (initialPoints.length === 0 && fallbackCenter) ? 12 : 6;
 
   return (
     <div className="results-map-container">
       <GoogleMapGate>
         <GoogleMap
           mapId={GOOGLE_MAPS_MAP_ID}
-          defaultCenter={toLatLng(center)}
-          defaultZoom={initialZoom}
+          {...(initialBounds ? { defaultBounds: initialBounds } : { defaultCenter: toLatLng(center), defaultZoom: initialZoom })}
           style={{ width: "100%", height: "100%" }}
           // Come prima con Leaflet (scrollWheelZoom disattivato): la rotellina
           // scorre la pagina, lo zoom si fa con Ctrl+rotellina o due dita.
@@ -165,7 +129,6 @@ export function ResultsMap({
             onBoundsChange?.({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
           }}
         >
-          <FitBounds points={initialPoints} fallbackCenter={fallbackCenter} />
           {withCoords.map((pro) => (
             <AdvancedMarker
               key={pro.id}

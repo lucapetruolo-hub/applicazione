@@ -68,12 +68,24 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { error: Error
     if (this.state.error) {
       return (
         <MapPlaceholder text="Mappa non disponibile al momento.">
-          <small className="map-error-detail">{this.state.error.message || String(this.state.error)}</small>
+          <small className="map-error-detail">{describeError(this.state.error)}</small>
         </MapPlaceholder>
       );
     }
     return this.props.children;
   }
+}
+
+/** Messaggio + prime righe dello stack (file/riga), per capire da dove nasce l'errore da uno screenshot. */
+function describeError(error: Error): string {
+  const stack = (error.stack ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith(error.name))
+    .slice(0, 2)
+    .map((line) => line.replace(/https?:\/\/[^/]+/, ""))
+    .join(" · ");
+  return `${error.message || String(error)}${stack ? ` — ${stack}` : ""}`;
 }
 
 function MapPlaceholder({ text, children }: { text: string; children?: ReactNode }) {

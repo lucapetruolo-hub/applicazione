@@ -5,8 +5,7 @@
 // la libreria di mappe direttamente — vede solo l'interfaccia props qui
 // sotto, stabile indipendentemente dal provider (Leaflet fino a
 // docs/CHANGELOG.md §133, ora Google Maps).
-import { useEffect, useRef } from "react";
-import { AdvancedMarker, Circle, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Circle, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { brand } from "@professionisti/ui";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 import { MapPin } from "@/components/MapPin";
@@ -20,25 +19,6 @@ export type EngagementRadiusMapProps = {
   /** Raggio richieste urgenti, in km (1-25), indipendente dal precedente. */
   urgentEngagementRadiusKm: number;
 };
-
-// Raggio massimo consentito (STEP 2, validato anche lato backend): usato
-// per inquadrare la mappa una sola volta al montaggio in modo che il
-// cerchio più grande possibile resti sempre visibile, senza dover
-// ricalcolare lo zoom ad ogni trascinamento dello slider (che sarebbe
-// instabile/fastidioso mentre si trascina).
-const MAX_RADIUS_KM = 25;
-
-function FitToMaxRadius({ latitude, longitude }: { latitude: number; longitude: number }) {
-  const map = useMap();
-  const hasFitted = useRef(false);
-  useEffect(() => {
-    if (!map || hasFitted.current) return;
-    hasFitted.current = true;
-    const bounds = new google.maps.Circle({ center: { lat: latitude, lng: longitude }, radius: MAX_RADIUS_KM * 1000 }).getBounds();
-    if (bounds) map.fitBounds(bounds, 24);
-  }, [map, latitude, longitude]);
-  return null;
-}
 
 /**
  * Marker fisso sulla posizione del professionista + due cerchi
@@ -55,7 +35,10 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
         <GoogleMap
           mapId={GOOGLE_MAPS_MAP_ID}
           defaultCenter={center}
-          defaultZoom={10}
+          // Zoom 9 ≈ 25 km di raggio (il massimo consentito) visibili in 360 px
+          // di altezza: il cerchio più grande resta sempre nell'inquadratura,
+          // senza ricalcolare lo zoom da codice (docs/CHANGELOG.md §136).
+          defaultZoom={9}
           style={{ width: "100%", height: "100%" }}
           gestureHandling="cooperative"
           mapTypeControl={false}
@@ -63,7 +46,6 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
           fullscreenControl={false}
           clickableIcons={false}
         >
-          <FitToMaxRadius latitude={latitude} longitude={longitude} />
           <AdvancedMarker position={center}>
             <MapPin />
           </AdvancedMarker>

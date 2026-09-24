@@ -14369,3 +14369,49 @@ mappa, che prima faceva crollare l'intera pagina).
 Verifica: typecheck e `next build`. **Causa non confermata**: ipotesi più
 probabile dal codice della libreria; se l'errore persiste, il messaggio ora
 visibile nel riquadro indica la causa reale.
+
+## 136. Avviso "modifiche non salvate" sul profilo + errori reali della mappa Google
+
+**Richieste esplicite dell'utente**:
+1. "nel profilo pubblico quando viene cambiato qualcosa o aggiunto qualcosa e
+   si vuole uscire da quella pagina senza aver fatto salva infondo la pagina,
+   fai comparire un popup che chiede se si vogliono salvare le modifiche".
+2. Grazie al dettaglio mostrato da §135, i due errori reali della mappa:
+   "undefined is not an object (evaluating 'e.clientWidth')" (ricerca) e
+   "undefined is not an object (evaluating 'b.keys')" (un'altra pagina con
+   mappa).
+
+**Decisione**:
+- **Popup modifiche non salvate** (`/dashboard/profilo`): confronto tra i
+  campi del form principale e com'erano all'ultimo caricamento/salvataggio
+  (esclusi la foto profilo, salvata subito al caricamento, e il raggio di
+  ingaggio, che ha il suo "Salva"). Con modifiche in sospeso, un click su un
+  link interno del sito apre il popup "Salvare le modifiche?" con due soli
+  pulsanti, su richiesta esplicita dell'utente: **Salva** verde (stessa
+  validazione e salvataggio del bottone in fondo, poi prosegue verso il link;
+  se fallisce, l'errore compare nel popup e si resta sulla pagina) ed **Esci
+  senza salvare** rosso; toccando fuori dal popup si resta sulla pagina; chiusura/ricarica della scheda → avviso
+  nativo del browser. Logica riusabile in
+  `apps/web/src/lib/useUnsavedChangesGuard.ts` (listener in cattura sul
+  `document`, gira prima di `next/link`). Limite noto: non intercetta il
+  tasto "indietro" del browser né le navigazioni fatte da codice
+  (`router.push` da un bottone), che l'App Router non permette di fermare.
+- **Mappa, `e.clientWidth`**: `map.getDiv()` restituisce `undefined` con la
+  versione attuale di Google Maps. Tolte tutte le chiamate dirette
+  sull'istanza della mappa (`getDiv`, `fitBounds`, `setCenter/setZoom`, il
+  `google.maps.Circle` creato solo per calcolare l'inquadratura del raggio):
+  l'inquadratura iniziale è ora un'impostazione passata a Google
+  (`defaultBounds` con padding per 2+ professionisti, `defaultCenter` +
+  zoom 12 per uno solo o per la città cercata, zoom 9 fisso per il raggio di
+  ingaggio). Resta dinamico solo il collegamento lista↔mappa su `onIdle`.
+- **Mappa, `b.keys`**: nasce dentro il codice di Google, causa non
+  identificata con certezza; con §135 e le chiamate dirette tolte le
+  interazioni imperative residue sono solo quelle della libreria. Il
+  riquadro d'errore mostra ora anche le prime righe dello stack (file e
+  riga), così un eventuale nuovo errore indica da dove nasce.
+
+Verifica: typecheck, `next build`; Playwright con API simulata sul popup: senza
+modifiche il link naviga subito; con una modifica al nome compare il popup,
+"Salva" salva e naviga, "Esci senza salvare" naviga senza salvare; nessun
+errore in console. La mappa reale
+non è verificabile qui (Google non si carica da questo ambiente).
