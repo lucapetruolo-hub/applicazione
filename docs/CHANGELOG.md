@@ -14554,3 +14554,15 @@ nella sua modifica la città si compila solo se è un comune ISTAT, perché
 decide a chi arriva la richiesta. In account il campo città è libero.
 Verificato con Google vero su `/account`: "Via Garibaldi 10 Latina" propone
 vie della provincia di Latina e la scelta compila tutti e cinque i campi.
+
+## 142. Foto reali per altre cinque categorie in homepage
+
+Richiesta esplicita dell'utente: cinque foto fornite per la griglia categorie
+della homepage, stesso meccanismo della foto dell'idraulico
+(`apps/web/src/lib/categoryPhotos.ts` + `apps/web/public/category-photos/`).
+Categoria assegnata in base al contenuto di ogni foto: caldaia e split →
+Climatizzazione, prato e tagliasiepi → Giardiniere, rullo e parete →
+Imbianchino, quadro elettrico → Elettricista, pulizia di casa → Pulizie.
+File già in WebP e di peso simile a quella dell'idraulico (160-280 KB),
+quindi copiati senza ricomprimerli. Le altre categorie restano sull'icona
+colorata finché non arriva una foto vera.
