@@ -14,4 +14,9 @@
  */
 export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   idraulico: "/category-photos/idraulico.webp",
+  elettricista: "/category-photos/elettricista.webp",
+  imbianchino: "/category-photos/imbianchino.webp",
+  pulizie: "/category-photos/pulizie.webp",
+  giardiniere: "/category-photos/giardiniere.webp",
+  climatizzazione: "/category-photos/climatizzazione.webp",
 };

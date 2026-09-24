@@ -6,6 +6,9 @@ import { MapPin } from "lucide-react";
 import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+/** Parametri di caricamento condivisi da tutti gli APIProvider del sito (mappe e suggerimenti indirizzi): devono coincidere, lo script Google si carica una sola volta. */
+export const GOOGLE_API_PROVIDER_PROPS = { apiKey: API_KEY ?? "", language: "it", region: "IT", version: "quarterly" } as const;
+export const HAS_GOOGLE_MAPS_KEY = Boolean(API_KEY);
 /**
  * Map ID di Google Cloud (Gestione mappe, tipo JavaScript/vettoriale),
  * necessario per i segnaposto avanzati della mappa dei risultati
@@ -69,7 +72,7 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
       {/* Versione "quarterly" (aggiornata ogni tre mesi, più collaudata) invece
           della "weekly" di default: gli errori di §135-§137 nascevano tutti
           dentro il codice di Google (docs/CHANGELOG.md §138). */}
-      <APIProvider apiKey={API_KEY} language="it" region="IT" version="quarterly">
+      <APIProvider {...GOOGLE_API_PROVIDER_PROPS}>
         {children}
       </APIProvider>
     </MapErrorBoundary>
