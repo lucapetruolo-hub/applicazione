@@ -14544,5 +14544,13 @@ reale, dominio del sito simulato): scrivendo "Via del Corso 1" nel profilo di
 un professionista di Roma compaiono solo vie di Roma e dintorni in cima e
 nessun negozio. Scegliendo un suggerimento, il salvataggio invia l'indirizzo
 "V. del Corso, Roma RM" con latitudine 41.9032 e longitudine 12.4795.
-Restano da fare gli indirizzi del cliente (richiesta di preventivo,
-impostazioni account).
+**Estensione agli indirizzi del cliente** (richiesta esplicita dell'utente:
+"prepara così uniamo tutto insieme"): lo stesso campo sostituisce "Via/piazza"
+nella richiesta di preventivo (`GuidedRequestForm`), nella modifica di una
+richiesta già inviata (`/le-mie-richieste`) e nell'indirizzo predefinito
+dell'account (`/account`). Scegliendo un suggerimento si compilano anche
+numero civico, CAP, provincia (sigla, es. "LT") e città. Nella richiesta e
+nella sua modifica la città si compila solo se è un comune ISTAT, perché
+decide a chi arriva la richiesta. In account il campo città è libero.
+Verificato con Google vero su `/account`: "Via Garibaldi 10 Latina" propone
+vie della provincia di Latina e la scelta compila tutti e cinque i campi.

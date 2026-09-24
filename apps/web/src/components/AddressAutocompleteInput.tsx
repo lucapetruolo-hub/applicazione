@@ -12,6 +12,12 @@ export type SelectedAddress = {
   longitude: number;
   /** Comune (componente "locality" di Google), se presente. */
   locality: string | null;
+  /** Pezzi dell'indirizzo per i moduli con campi separati (richiesta di preventivo, account). */
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  /** Sigla della provincia (es. "RM"). */
+  province: string | null;
 };
 
 type Props = {
@@ -123,8 +129,17 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
       const address = (place.formattedAddress ?? `${suggestion.main}, ${suggestion.secondary}`).replace(/, Italia$/, "");
       onChange(address);
       if (location) {
-        const locality = place.addressComponents?.find((c) => c.types.includes("locality"))?.longText ?? null;
-        onSelect({ address, latitude: location.lat(), longitude: location.lng(), locality });
+        const component = (type: string) => place.addressComponents?.find((c) => c.types.includes(type));
+        onSelect({
+          address,
+          latitude: location.lat(),
+          longitude: location.lng(),
+          locality: component("locality")?.longText ?? null,
+          street: component("route")?.longText ?? null,
+          houseNumber: component("street_number")?.longText ?? null,
+          postalCode: component("postal_code")?.longText ?? null,
+          province: component("administrative_area_level_2")?.shortText ?? null,
+        });
       }
     } catch {
       sessionRef.current = null;

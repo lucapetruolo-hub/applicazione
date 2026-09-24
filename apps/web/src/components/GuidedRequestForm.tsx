@@ -9,6 +9,7 @@ import {
   CATEGORY_DESCRIPTION_EXAMPLES,
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
   PROFESSIONAL_CATEGORIES,
+  findComuneByName,
   isProfessionalCategorySlug,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
@@ -20,6 +21,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -980,7 +982,26 @@ export function GuidedRequestForm({
 
             <XStack gap="$2" flexWrap="wrap">
               <YStack flex={2} minWidth={200}>
-                <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={fieldInputStyle} />
+                {/* Suggerimenti di Google: scegliendo un indirizzo si compilano
+                    anche civico, CAP, provincia e città (docs/CHANGELOG.md §141). */}
+                <AddressAutocompleteInput
+                  value={street}
+                  onChange={setStreet}
+                  onSelect={(selected) => {
+                    if (selected.street) setStreet(selected.street);
+                    if (selected.houseNumber) setHouseNumber(selected.houseNumber);
+                    if (selected.postalCode) setPostalCode(selected.postalCode);
+                    if (selected.province) setProvince(selected.province);
+                    const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+                    if (comune) setCity(comune.name);
+                  }}
+                  biasTowards={(() => {
+                    const comune = findComuneByName(city);
+                    return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
+                  })()}
+                  placeholder="Via/piazza"
+                  style={fieldInputStyle}
+                />
               </YStack>
               <YStack flex={1} minWidth={120}>
                 <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />

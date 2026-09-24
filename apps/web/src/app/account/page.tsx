@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { UploadingDots } from "@/components/UploadingDots";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -516,7 +517,20 @@ export default function AccountPage() {
           </Text>
 
           <FieldRow label="Via">
-            <input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via/piazza" style={inputStyle} />
+            <AddressAutocompleteInput
+              value={street}
+              onChange={setStreet}
+              onSelect={(selected) => {
+                // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141).
+                if (selected.street) setStreet(selected.street);
+                if (selected.houseNumber) setHouseNumber(selected.houseNumber);
+                if (selected.postalCode) setPostalCode(selected.postalCode);
+                if (selected.locality) setAddressCity(selected.locality);
+                if (selected.province) setProvince(selected.province);
+              }}
+              placeholder="Via/piazza"
+              style={inputStyle}
+            />
           </FieldRow>
 
           <FieldRow label="Numero civico">

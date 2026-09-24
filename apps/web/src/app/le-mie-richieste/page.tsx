@@ -8,6 +8,7 @@ import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-cli
 import {
   ALL_ITALIAN_CITY_NAMES,
   averageQuoteTotalEurCents,
+  findComuneByName,
   formatEurCents,
   formatServicePriceRange,
   quotePriceTotals,
@@ -22,6 +23,7 @@ import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustra
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { ReportNoShowModal } from "@/components/ReportNoShowModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -1040,7 +1042,25 @@ function GuidedRequestCard({
               Per una consulenza online non è obbligatorio indicare la città.
             </Text>
           ) : null}
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Via/piazza" style={textareaStyle} />
+          <AddressAutocompleteInput
+            value={address}
+            onChange={setAddress}
+            onSelect={(selected) => {
+              // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141).
+              if (selected.street) setAddress(selected.street);
+              if (selected.houseNumber) setHouseNumber(selected.houseNumber);
+              if (selected.postalCode) setPostalCode(selected.postalCode);
+              if (selected.province) setProvince(selected.province);
+              const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+              if (comune) setCity(comune.name);
+            }}
+            biasTowards={(() => {
+              const comune = findComuneByName(city);
+              return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
+            })()}
+            placeholder="Via/piazza"
+            style={textareaStyle}
+          />
 
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={160}>
