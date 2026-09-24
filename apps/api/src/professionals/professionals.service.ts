@@ -94,8 +94,10 @@ export class ProfessionalsService {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         // Un professionista che ha eliminato l'account non deve mai
-        // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount).
+        // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
+        // né uno sospeso da un admin (docs/CHANGELOG.md §144).
         deletedAt: null,
+        suspendedAt: null,
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
@@ -119,7 +121,7 @@ export class ProfessionalsService {
       // o generata automaticamente dopo l'attesa (ReviewsService.
       // runAutoPublishCheck), non importa quale delle due.
       const reviews = profile.bookings
-        .filter((booking) => booking.review !== null && booking.clientReview !== null)
+        .filter((booking) => booking.review !== null && booking.clientReview !== null && booking.review.hiddenAt === null)
         .map((booking) => booking.review)
         .filter((review): review is NonNullable<typeof review> => review !== null);
       const reviewCount = reviews.length;
@@ -186,7 +188,7 @@ export class ProfessionalsService {
   async getServicePriceIndex(): Promise<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]> {
     const services = await this.prisma.professionalService.findMany({
       where: {
-        professionalProfile: { isDemo: false, deletedAt: null },
+        professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
         OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
       },
       select: { name: true, priceMinEurCents: true, priceMaxEurCents: true },
@@ -228,7 +230,7 @@ export class ProfessionalsService {
    */
   async getLanguagePopularity(): Promise<{ name: string; count: number }[]> {
     const profiles = await this.prisma.professionalProfile.findMany({
-      where: { isDemo: false, deletedAt: null },
+      where: { isDemo: false, deletedAt: null, suspendedAt: null },
       select: { spokenLanguages: true },
     });
 
@@ -435,7 +437,7 @@ export class ProfessionalsService {
       },
     });
 
-    if (!profile || profile.deletedAt) {
+    if (!profile || profile.deletedAt || profile.suspendedAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
 
@@ -444,7 +446,7 @@ export class ProfessionalsService {
     // generata automaticamente dopo l'attesa (ReviewsService.
     // runAutoPublishCheck).
     const reviews = profile.bookings
-      .filter((booking) => booking.review !== null && booking.clientReview !== null)
+      .filter((booking) => booking.review !== null && booking.clientReview !== null && booking.review.hiddenAt === null)
       .map((booking) => booking.review)
       .filter((review): review is NonNullable<typeof review> => review !== null)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -716,7 +718,12 @@ export class ProfessionalsService {
     const leads = await this.prisma.lead.findMany({
       // Le richieste "eliminate" dal professionista restano nel database,
       // solo nascoste a lui (deleteLead, docs/CHANGELOG.md §143).
-      where: { professionalProfileId, hiddenByProfessionalAt: null },
+      where: {
+        professionalProfileId,
+        hiddenByProfessionalAt: null,
+        // Richiesta rimossa da un admin su segnalazione (docs/CHANGELOG.md §144).
+        guidedRequest: { hiddenAt: null },
+      },
       include: {
         guidedRequest: {
           include: {
@@ -743,7 +750,7 @@ export class ProfessionalsService {
     const clientReviews =
       clientIds.length > 0
         ? await this.prisma.clientReview.findMany({
-            where: { clientId: { in: clientIds }, booking: { review: { isNot: null } } },
+            where: { clientId: { in: clientIds }, hiddenAt: null, booking: { review: { isNot: null } } },
             include: { booking: { include: { professionalProfile: true } } },
             orderBy: { createdAt: "desc" },
           })
@@ -1431,9 +1438,9 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true },
+      select: { id: true, deletedAt: true, suspendedAt: true },
     });
-    if (!profile) {
+    if (!profile || profile.deletedAt || profile.suspendedAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
 

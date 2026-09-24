@@ -132,6 +132,28 @@ export class ProfessionalMetricsService {
     await this.refreshScore(professionalProfileId);
   }
 
+  /**
+   * Ricalcolo completo di media e numero recensioni, escluse quelle nascoste
+   * da un admin (docs/CHANGELOG.md §144). `recordReview` aggiorna in modo
+   * incrementale e non saprebbe "togliere" una recensione: si usa questo
+   * quando una recensione viene nascosta o ripristinata.
+   */
+  async recomputeReviews(professionalProfileId: string): Promise<void> {
+    const aggregate = await this.prisma.review.aggregate({
+      where: { hiddenAt: null, booking: { professionalProfileId } },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+    const reviewCount = aggregate._count._all;
+    const avgRating = reviewCount > 0 ? aggregate._avg.rating : null;
+    await this.prisma.professionalMetrics.upsert({
+      where: { professionalProfileId },
+      create: { professionalProfileId, avgRating, reviewCount },
+      update: { avgRating, reviewCount },
+    });
+    await this.refreshScore(professionalProfileId);
+  }
+
   /** Evento 6: un appuntamento (Booking) viene segnato COMPLETED (onorato) o NO_SHOW (mancato) — CANCELED non conta né come onorato né come mancato. */
   async recordAppointmentOutcome(professionalProfileId: string, honored: boolean): Promise<void> {
     await this.prisma.professionalMetrics.upsert({

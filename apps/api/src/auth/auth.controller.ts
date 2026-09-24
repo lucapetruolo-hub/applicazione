@@ -97,6 +97,7 @@ export class AuthController {
     surname: string | null;
     birthDate: Date | null;
     role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+    adminRole?: "SUPER" | "MODERATOR" | "FINANCE" | null;
     passwordHash: string | null;
     imageUrl: string | null;
     street: string | null;
@@ -138,6 +139,9 @@ export class AuthController {
       // baserebbe l'accesso alla dashboard su un side-effect della query
       // invece che sul suo status reale.
       isProfessional: role === "PROFESSIONAL" || (role === "ADMIN" && professionalProfile !== null),
+      // Area di competenza admin (docs/CHANGELOG.md §145): decide le voci del
+      // menu admin. `null` su un ADMIN vale come SUPER.
+      adminRole: role === "ADMIN" ? (user.adminRole ?? "SUPER") : null,
       hasPassword: Boolean(passwordHash),
       imageUrl,
       businessName: professionalProfile?.businessName ?? null,

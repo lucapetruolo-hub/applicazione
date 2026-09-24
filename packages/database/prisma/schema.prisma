@@ -21,6 +21,12 @@ datasource db {
 // Utenti
 // ---------------------------------------------------------------------------
 
+enum AdminRole {
+  SUPER
+  MODERATOR
+  FINANCE
+}
+
 enum UserRole {
   CLIENT
   PROFESSIONAL
@@ -28,15 +34,15 @@ enum UserRole {
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  role                UserRole  @default(CLIENT)
+  id                  String     @id @default(uuid())
+  role                UserRole   @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email               String?   @unique
+  email               String?    @unique
   passwordHash        String?
-  phone               String?   @unique
-  googleId            String?   @unique
+  phone               String?    @unique
+  googleId            String?    @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
   name                String?
@@ -61,8 +67,8 @@ model User {
   postalCode          String?
   city                String?
   province            String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
   // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
   // prenotazioni/recensioni create da questo utente hanno FK dirette su
@@ -74,6 +80,21 @@ model User {
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
   deletedAt           DateTime?
+  // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
+  // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
+  // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
+  // ("Annulla misura"), a differenza di `deletedAt`.
+  suspendedAt         DateTime?
+  // Motivazione dell'ultima sospensione decisa dalla scheda utente (senza
+  // segnalazione, docs/CHANGELOG.md §145) — mostrata all'admin; all'utente
+  // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
+  // motivazione sta su ContentReport).
+  suspensionNote      String?
+  // Area di competenza di un ADMIN (docs/CHANGELOG.md §145): SUPER vede e fa
+  // tutto (e assegna i ruoli), MODERATOR segnalazioni/messaggi/utenti,
+  // FINANCE finanza/rimborsi/DAC7/statistiche. `null` su un ADMIN vale come
+  // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
+  adminRole           AdminRole?
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
@@ -195,7 +216,12 @@ model ProfessionalProfile {
   // pubblico/fan-out (ovunque filtrato esplicitamente), ma Booking/Lead/
   // Quote/Review restano intatti — lo stesso principio "traccia completa"
   // già applicato al soft-delete del cliente.
-  deletedAt DateTime?
+  deletedAt   DateTime?
+  // Profilo tolto da ricerca/profilo pubblico/fan-out da un admin su una
+  // segnalazione (docs/CHANGELOG.md §144). Il professionista continua ad
+  // accedere alla dashboard (a meno che anche `User.suspendedAt` sia
+  // valorizzato). Filtrato ovunque insieme a `deletedAt`.
+  suspendedAt DateTime?
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
@@ -573,6 +599,9 @@ model GuidedRequest {
   // la richiesta è aperta, e per le righe chiuse prima dell'introduzione di
   // questo campo (nessun backfill retroattivo).
   closedReason          GuidedRequestClosedReason?
+  // Richiesta rimossa da un admin su segnalazione (docs/CHANGELOG.md §144):
+  // chiusa e nascosta ai professionisti; il cliente la vede ancora.
+  hiddenAt              DateTime?
   // Coda ordinata (dal più al meno prioritario) dei ProfessionalProfile.id
   // candidati NON selezionati al fan-out iniziale (oltre MAX_LEADS_PER_REQUEST,
   // vedi GuidedRequestsService) — pescata in ordine da lì ad ogni scadenza/
@@ -990,20 +1019,23 @@ model ExternalJob {
 }
 
 model Review {
-  id          String   @id @default(uuid())
-  bookingId   String   @unique
+  id          String    @id @default(uuid())
+  bookingId   String    @unique
   rating      Int
   comment     String?
   // Foto del lavoro svolto, opzionali (fino a 3, stesso limite/pattern di
   // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
   // della recensione, mostrate poi nella sezione recensioni del professionista.
-  photoUrls   String[] @default([])
+  photoUrls   String[]  @default([])
   // Vera solo se generata automaticamente dal job di sblocco (richiesta
   // esplicita dell'utente: 5 stelle automatiche se la controparte non
   // scrive la propria recensione entro 3 giorni) — mostrata con
   // l'etichetta "(recensione automatica)" al posto del testo libero.
-  isAutomatic Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  isAutomatic Boolean   @default(false)
+  // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
+  // da profilo pubblico, ricerca, home e media voti. La riga resta.
+  hiddenAt    DateTime?
+  createdAt   DateTime  @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -1023,14 +1055,17 @@ model Review {
 // denormalizzato: la condizione si verifica al momento della query
 // controllando che entrambe le righe esistano per lo stesso bookingId.
 model ClientReview {
-  id          String   @id @default(uuid())
-  bookingId   String   @unique
+  id          String    @id @default(uuid())
+  bookingId   String    @unique
   clientId    String
   rating      Int
   comment     String?
-  mediaUrls   String[] @default([])
-  isAutomatic Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  mediaUrls   String[]  @default([])
+  isAutomatic Boolean   @default(false)
+  // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
+  // dalla scheda cliente. Non cambia lo sblocco "doppio cieco" della Review.
+  hiddenAt    DateTime?
+  createdAt   DateTime  @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   client  User    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -1207,22 +1242,61 @@ enum ContentReportStatus {
   DISMISSED
 }
 
+// Misura presa risolvendo una segnalazione (docs/CHANGELOG.md §144 — DSA
+// art. 17: la motivazione deve dire quale restrizione è stata applicata).
+// Le misure compatibili con ciascun tipo di contenuto sono in
+// `MODERATION_ACTIONS_BY_TARGET` (packages/shared).
+enum ModerationAction {
+  // Solo un avvertimento all'autore, il contenuto resta.
+  WARN
+  // Chiede all'autore di correggere il contenuto (profilo con dati falsi).
+  REQUEST_CORRECTION
+  // Nasconde recensione / recensione sul cliente / richiesta.
+  HIDE_CONTENT
+  // Toglie il profilo del professionista da ricerca e pagina pubblica.
+  SUSPEND_PROFILE
+  // Sospende l'account dell'autore (niente accesso, profilo non visibile).
+  SUSPEND_USER
+}
+
 model ContentReport {
-  id             String                  @id @default(uuid())
-  reporterId     String
-  targetType     ContentReportTargetType
-  targetId       String
-  reason         String
-  details        String?
-  status         ContentReportStatus     @default(OPEN)
-  createdAt      DateTime                @default(now())
-  resolvedAt     DateTime?
+  id                    String                  @id @default(uuid())
+  reporterId            String
+  targetType            ContentReportTargetType
+  targetId              String
+  reason                String
+  details               String?
+  status                ContentReportStatus     @default(OPEN)
+  createdAt             DateTime                @default(now())
+  resolvedAt            DateTime?
   // Motivazione scritta dalla decisione admin (DSA art. 16/17: "notice and
   // action" + "statement of reasons") — obbligatoria per RESOLVED (la
   // motivazione che va comunicata a chi ha subito la segnalazione accolta),
   // facoltativa per DISMISSED. `null` per le segnalazioni già decise prima
   // dell'introduzione di questo campo.
-  resolutionNote String?
+  resolutionNote        String?
+  // Misura applicata (solo RESOLVED). `null` per DISMISSED e per le
+  // segnalazioni decise prima di docs/CHANGELOG.md §144.
+  action                ModerationAction?
+  // L'admin ha segnalato il caso alle autorità (DSA art. 18: sospetto reato
+  // che minaccia vita o sicurezza delle persone).
+  authoritiesNotifiedAt DateTime?
+  // "Annulla misura" (ricorso accolto, errore): la misura viene tolta, la
+  // segnalazione resta nell'archivio con la motivazione dell'annullamento.
+  revertedAt            DateTime?
+  revertNote            String?
+  // Autore del contenuto al momento della decisione: destinatario della
+  // motivazione (DSA art. 17), salvato per mostrargli le decisioni che lo
+  // riguardano in /segnalazioni senza ricalcolarlo dal contenuto (che può
+  // nel frattempo sparire). Nessuna relazione: se l'utente elimina
+  // l'account la segnalazione resta comunque nello storico.
+  contentOwnerId        String?
+  // Contestazione dell'autore (reclamo interno, DSA art. 20). Esito:
+  // "Annulla misura" (revertedAt) oppure ricorso respinto (sotto).
+  appealText            String?
+  appealedAt            DateTime?
+  appealRejectedAt      DateTime?
+  appealRejectNote      String?
 
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
@@ -1232,6 +1306,7 @@ model ContentReport {
   // farebbe una scansione sequenziale dell'intera tabella una volta
   // cresciuta.
   @@index([reporterId, targetType, targetId, createdAt])
+  @@index([contentOwnerId])
   @@map("content_reports")
 }
 

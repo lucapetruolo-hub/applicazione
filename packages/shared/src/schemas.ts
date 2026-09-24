@@ -718,11 +718,17 @@ export type CreateContentReportInput = z.infer<typeof createContentReportSchema>
 export const resolveContentReportSchema = z
   .object({
     status: z.enum(["RESOLVED", "DISMISSED"]),
+    // Misura presa (docs/CHANGELOG.md §144): obbligatoria per RESOLVED, deve
+    // essere compatibile col tipo segnalato (`MODERATION_ACTIONS_BY_TARGET`,
+    // verificato dal server che conosce il tipo).
+    action: z.enum(["WARN", "REQUEST_CORRECTION", "HIDE_CONTENT", "SUSPEND_PROFILE", "SUSPEND_USER"]).optional(),
     // Motivazione scritta della decisione (DSA art. 16/17, "statement of
     // reasons"): obbligatoria solo per RESOLVED — è il testo che verrà
     // comunicato a chi ha scritto il contenuto segnalato; per DISMISSED
     // (nessuna azione presa) resta facoltativa.
     resolutionNote: z.string().trim().max(2000).optional(),
+    // L'admin ha avvisato le autorità (DSA art. 18).
+    authoritiesNotified: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.status === "RESOLVED" && !data.resolutionNote) {
@@ -732,8 +738,23 @@ export const resolveContentReportSchema = z
         message: "Indica il motivo della decisione prima di risolvere la segnalazione.",
       });
     }
+    if (data.status === "RESOLVED" && !data.action) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["action"], message: "Scegli la misura da applicare." });
+    }
   });
 export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;
+
+/** "Annulla misura" (ricorso accolto o errore) e "Respingi ricorso": motivazione obbligatoria. */
+export const contentReportDecisionNoteSchema = z.object({
+  note: z.string().trim().min(3, "Scrivi la motivazione.").max(2000),
+});
+export type ContentReportDecisionNoteInput = z.infer<typeof contentReportDecisionNoteSchema>;
+
+/** Contestazione dell'autore del contenuto (reclamo interno, DSA art. 20). */
+export const contentReportAppealSchema = z.object({
+  text: z.string().trim().min(10, "Spiega in almeno 10 caratteri perché contesti la decisione.").max(2000),
+});
+export type ContentReportAppealInput = z.infer<typeof contentReportAppealSchema>;
 
 // ---------------------------------------------------------------------------
 // MANOVIA — dati fiscali professionista, pagamenti lavoro, commissioni,

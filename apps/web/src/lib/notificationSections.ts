@@ -108,6 +108,12 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
       ? `/dashboard/richieste?open=${guidedRequestId}`
       : `/le-mie-richieste?tab=richieste&open=${guidedRequestId}`;
   }
+  // Esiti di segnalazioni e decisioni sui propri contenuti (docs/CHANGELOG.md
+  // §144): tutti nella pagina /segnalazioni, con motivazione e ricorso.
+  if (type.startsWith("CONTENT_REPORT_")) {
+    const contentReportId = getPayloadValue(payload, "contentReportId");
+    return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";
+  }
   const destination = notificationDestination(type);
   if (!destination) return null;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
