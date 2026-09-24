@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Map as GoogleMap, Marker } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map as GoogleMap, Marker } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
@@ -104,10 +104,22 @@ export function ResultsMap({
   const center = initialPoints[0] ?? fallbackCenter ?? ROME_FALLBACK;
   const initialZoom = initialPoints.length === 1 || (initialPoints.length === 0 && fallbackCenter) ? 12 : 6;
 
+  // Anteprima temporanea (richiesta esplicita dell'utente: "fammi vedere in
+  // modo che posso scegliere fra segnaposto classici o avanzati",
+  // docs/CHANGELOG.md §139): `?segnaposto=avanzati` nell'URL mostra i marker
+  // avanzati (foto/icona del professionista nel segnaposto, mappa vettoriale
+  // con Map ID di prova). Da togliere una volta scelta la versione.
+  const [advancedPreview, setAdvancedPreview] = useState(false);
+  useEffect(() => {
+    setAdvancedPreview(new URLSearchParams(window.location.search).get("segnaposto") === "avanzati");
+  }, []);
+
   return (
     <div className="results-map-container">
       <GoogleMapGate>
         <GoogleMap
+          key={advancedPreview ? "advanced" : "classic"}
+          {...(advancedPreview ? { mapId: "DEMO_MAP_ID" } : {})}
           {...(initialBounds ? { defaultBounds: initialBounds } : { defaultCenter: toLatLng(center), defaultZoom: initialZoom })}
           style={{ width: "100%", height: "100%" }}
           // Come prima con Leaflet (scrollWheelZoom disattivato): la rotellina
@@ -128,15 +140,28 @@ export function ResultsMap({
             onBoundsChange?.({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
           }}
         >
-          {withCoords.map((pro) => (
-            <Marker
-              key={pro.id}
-              position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
-              title={pro.businessName}
-              onClick={() => setSelected(pro)}
-              icon={MAP_PIN_ICON_URL}
-            />
-          ))}
+          {withCoords.map((pro) =>
+            advancedPreview ? (
+              <AdvancedMarker
+                key={pro.id}
+                position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
+                title={pro.businessName}
+                onClick={() => setSelected(pro)}
+              >
+                <div className="advanced-pin">
+                  <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={36} />
+                </div>
+              </AdvancedMarker>
+            ) : (
+              <Marker
+                key={pro.id}
+                position={toLatLng(markerPositions.get(pro.id) ?? [pro.latitude, pro.longitude])}
+                title={pro.businessName}
+                onClick={() => setSelected(pro)}
+                icon={MAP_PIN_ICON_URL}
+              />
+            ),
+          )}
         </GoogleMap>
       </GoogleMapGate>
 
@@ -180,6 +205,25 @@ export function ResultsMap({
           position: relative;
           width: 100%;
           height: 100%;
+        }
+        .results-map-container :global(.advanced-pin) {
+          position: relative;
+          padding: 3px;
+          background: #ffffff;
+          border: 2px solid #189a63;
+          border-radius: 50%;
+          box-shadow: 0 3px 8px rgba(15, 23, 42, 0.25);
+          cursor: pointer;
+        }
+        .results-map-container :global(.advanced-pin)::after {
+          content: "";
+          position: absolute;
+          left: 50%;
+          bottom: -8px;
+          transform: translateX(-50%);
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-top: 8px solid #189a63;
         }
         .map-banner {
           position: absolute;

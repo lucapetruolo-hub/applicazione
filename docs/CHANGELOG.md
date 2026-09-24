@@ -14469,3 +14469,21 @@ Verifica: typecheck, `next build`, Playwright con la mappa Google vera
 la chiave Google Maps" con l'indirizzo del sito. Nessun errore della pagina,
 anche digitando e salvando l'indirizzo nel profilo. Con la chiave corretta
 non verificato: serve la modifica su Google Cloud.
+
+## 139. Anteprima segnaposto avanzati (`?segnaposto=avanzati`)
+
+**Richiesta esplicita dell'utente**: "fammi vedere in modo che posso
+scegliere fra segnaposto classici o avanzati".
+
+**Decisione**: anteprima temporanea sulla mappa dei risultati. Con
+`?segnaposto=avanzati` nell'URL (es. `/cerca/idraulico/roma?segnaposto=avanzati`)
+la mappa usa i marker avanzati: la foto (o l'icona di categoria) del
+professionista in un cerchio bianco con bordo verde e punta, su mappa
+vettoriale con il Map ID di prova `DEMO_MAP_ID`. Senza parametro restano i
+marker classici di §138. Solo sulla mappa dei risultati: quella del raggio
+nel profilo ha un solo segnaposto e resta classica. Da togliere una volta
+scelta la versione. Se si scelgono gli avanzati, serve un Map ID vero in
+produzione (`DEMO_MAP_ID` è solo di prova).
+
+Verifica: typecheck e `next build`. L'aspetto reale si vede solo con la
+chiave Google corretta (§138).
