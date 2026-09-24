@@ -6,12 +6,6 @@ import { MapPin } from "lucide-react";
 import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-/**
- * Map ID di Google Cloud (Map Management), necessario per i marker
- * "avanzati". `DEMO_MAP_ID` è l'ID di prova di Google: funziona, ma per la
- * produzione va creato un Map ID proprio.
- */
-export const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
 
 /**
  * Unico ingresso a Google Maps nel sito (docs/CHANGELOG.md §133): carica lo
@@ -65,7 +59,10 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
   }
   return (
     <MapErrorBoundary>
-      <APIProvider apiKey={API_KEY} language="it" region="IT">
+      {/* Versione "quarterly" (aggiornata ogni tre mesi, più collaudata) invece
+          della "weekly" di default: gli errori di §135-§137 nascevano tutti
+          dentro il codice di Google (docs/CHANGELOG.md §138). */}
+      <APIProvider apiKey={API_KEY} language="it" region="IT" version="quarterly">
         {children}
       </APIProvider>
     </MapErrorBoundary>
