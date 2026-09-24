@@ -15,7 +15,8 @@ import { ProfessionalsService } from "./professionals.service";
 function buildService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
     professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1" }) },
-    lead: { findMany: vi.fn() },
+    lead: { findMany: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
+    quote: { groupBy: vi.fn().mockResolvedValue([]) },
     clientReview: { findMany: vi.fn().mockResolvedValue([]) },
     ...prismaOverrides,
   };
@@ -101,6 +102,23 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.phone);
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.email);
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.address);
+  });
+});
+
+describe("ProfessionalsService.getMyLeads — concorrenti che hanno già risposto (docs/CHANGELOG.md §147)", () => {
+  it("conta solo gli altri professionisti e i loro preventivi, mai chi sono", async () => {
+    const { service, prisma } = buildService({
+      lead: {
+        findMany: vi.fn().mockResolvedValue([buildLead()]),
+        groupBy: vi.fn().mockResolvedValue([{ guidedRequestId: "gr-1", _count: { _all: 3 } }]),
+      },
+      quote: { groupBy: vi.fn().mockResolvedValue([{ guidedRequestId: "gr-1", _count: { _all: 2 } }]) },
+    });
+    const leads = await service.getMyLeads("pro-user-1");
+    expect(leads[0]!.competitors).toEqual({ responded: 2, total: 2 });
+    expect(prisma.quote.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ professionalProfileId: { not: "pro-1" }, status: { not: "WITHDRAWN" } }) }),
+    );
   });
 });
 

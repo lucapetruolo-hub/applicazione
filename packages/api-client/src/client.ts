@@ -29,6 +29,7 @@ import type {
   ProfessionalBooking,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
+  ProfessionalInsights,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
@@ -793,6 +794,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       >("/reviews/recent", { cache: "no-store" }),
 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
+
+    /** Conta una visita al profilo pubblico (docs/CHANGELOG.md §147); il token serve solo a non contare il proprietario. */
+    recordProfileView: (id: string, token?: string | null) =>
+      request<{ ok: true }>(`/professionals/${id}/views`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }),
+
+    /** Numeri della Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+    getMyInsights: (token: string) =>
+      request<ProfessionalInsights>("/professionals/me/insights", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     getProfessionalAgenda: (id: string) =>
       request<ProfessionalAgenda>(`/professionals/${id}/agenda`, { cache: "no-store" }),

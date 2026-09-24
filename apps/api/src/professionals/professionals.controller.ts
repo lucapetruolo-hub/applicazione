@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
@@ -15,7 +16,9 @@ import {
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import {
   availabilityExceptionSchema,
   bookAgendaSlotSchema,
@@ -49,6 +52,7 @@ export class ProfessionalsController {
   constructor(
     private readonly professionalsService: ProfessionalsService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly jwtService: JwtService,
   ) {}
 
   @Get("search")
@@ -165,6 +169,13 @@ export class ProfessionalsController {
     return { imageUrl };
   }
 
+  /** Numeri della Home "Oggi": risposta, recensioni, visite rispetto alla zona (docs/CHANGELOG.md §147). */
+  @UseGuards(JwtAuthGuard)
+  @Get("me/insights")
+  getMyInsights(@Req() req: AuthenticatedRequest) {
+    return this.professionalsService.getMyInsights(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me/leads")
   getMyLeads(@Req() req: AuthenticatedRequest) {
@@ -246,6 +257,26 @@ export class ProfessionalsController {
   @Get(":id")
   getById(@Param("id") id: string) {
     return this.professionalsService.getById(id);
+  }
+
+  /**
+   * Una visita al profilo pubblico (docs/CHANGELOG.md §147). Pubblica: il
+   * token, se c'è, serve solo a non contare il proprietario che guarda il
+   * proprio profilo. Limitata per non farsi gonfiare i numeri.
+   */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(":id/views")
+  async recordView(@Param("id") id: string, @Headers("authorization") authorization?: string) {
+    let viewerUserId: string | null = null;
+    if (authorization?.startsWith("Bearer ")) {
+      try {
+        viewerUserId = this.jwtService.verify<{ sub: string }>(authorization.slice(7)).sub;
+      } catch {
+        viewerUserId = null;
+      }
+    }
+    await this.professionalsService.recordProfileView(id, viewerUserId);
+    return { ok: true };
   }
 
   @Get(":id/agenda")

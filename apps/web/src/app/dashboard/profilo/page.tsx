@@ -15,6 +15,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { BoostSection } from "@/components/BoostSection";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -488,10 +489,10 @@ export default function DashboardProfiloPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" gap="$5">
-      <YStack width="100%" maxWidth={560} gap="$5">
+      <YStack width="100%" maxWidth={760} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Il tuo profilo professionista
+            Profilo e visibilità
           </Text>
           <Text color={brand.grafite70}>
             Queste informazioni sono visibili pubblicamente su Professionisti e determinano in quali ricerche
@@ -1132,6 +1133,10 @@ export default function DashboardProfiloPage() {
         <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}
         </Button>
+
+        {/* Pacchetti di visibilità: spostati qui dalla Dashboard
+            (docs/CHANGELOG.md §147). */}
+        <BoostSection />
       </YStack>
 
       {cropImageSrc ? (

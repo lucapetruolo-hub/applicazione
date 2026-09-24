@@ -239,6 +239,7 @@ model ProfessionalProfile {
   availabilityExceptions AvailabilityException[]
   guidedRequests         GuidedRequest[]
   metrics                ProfessionalMetrics?
+  profileViews           ProfileViewDay[]
   timelineEvents         ConversationEvent[]
   externalJobs           ExternalJob[]
   // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
@@ -1816,4 +1817,21 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@map("audit_logs")
+}
+
+// Visite al profilo pubblico, contate per giorno (docs/CHANGELOG.md §147):
+// servono alla Home "Oggi" del professionista ("12 visite, la media della
+// tua zona è 28", CLAUDE.md §8). Un contatore per profilo e giorno, mai la
+// singola visita: nessun dato personale di chi guarda (niente IP, niente
+// utente), e la tabella resta piccola.
+model ProfileViewDay {
+  professionalProfileId String
+  day                   DateTime @db.Date
+  count                 Int      @default(0)
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@id([professionalProfileId, day])
+  @@index([day])
+  @@map("profile_view_days")
 }

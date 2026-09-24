@@ -71,8 +71,24 @@ function reviewTimeAgo(iso: string): string {
 }
 
 export function ProfessionalDetailContent({ professional }: { professional: ProfessionalDetail }) {
-  const { user, token } = useAuth();
+  const { user, token, isLoading: isAuthLoading } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+
+  // Visita al profilo (CLAUDE.md §8, dati comparativi in Home "Oggi",
+  // docs/CHANGELOG.md §147): una sola per scheda del browser e per profilo.
+  // Si aspetta la sessione così il server riconosce il titolare che guarda
+  // il proprio profilo e non la conta. Mai bloccante: errori ignorati.
+  useEffect(() => {
+    if (isAuthLoading) return;
+    const key = `profile_view:${professional.id}`;
+    try {
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, "1");
+    } catch {
+      // sessionStorage non disponibile: si conta comunque una volta per montaggio.
+    }
+    apiClient.recordProfileView(professional.id, token ?? undefined).catch(() => undefined);
+  }, [isAuthLoading, professional.id, token]);
   const [isSaving, setIsSaving] = useState(false);
   const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);

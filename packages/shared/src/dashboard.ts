@@ -69,6 +69,12 @@ export type ProfessionalLead = {
    */
   expiresAt: string | null;
   /**
+   * Quanti altri professionisti hanno ricevuto la stessa richiesta e quanti
+   * hanno già inviato un preventivo (docs/CHANGELOG.md §147): solo numeri,
+   * mai chi sono né cosa hanno offerto.
+   */
+  competitors: { responded: number; total: number };
+  /**
    * Preventivo eventualmente già inviato per questo lead (null se non ancora
    * inviato). `clientProposedDate` valorizzata solo quando status è
    * MODIFICATION_REQUESTED: il cliente ha proposto una data diversa tra le
@@ -403,3 +409,17 @@ export type ChatThreadSummary = {
 export type RealtimeEvent =
   | { kind: "chat_message"; guidedRequestId: string; professionalProfileId: string; event: ConversationEvent }
   | { kind: "notification"; notification: { id: string; type: string; payload: unknown; createdAt: string } };
+
+/** Numeri della Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+export type ProfessionalInsights = {
+  /** Es. "Idraulico a Latina": la zona con cui ci si confronta. */
+  areaLabel: string;
+  /** Altri professionisti visibili della stessa categoria e città. */
+  areaProfessionals: number;
+  avgResponseTimeMinutes: number | null;
+  areaAvgResponseTimeMinutes: number | null;
+  rating: number | null;
+  reviewCount: number;
+  profileViews30d: number;
+  areaAvgProfileViews30d: number | null;
+};

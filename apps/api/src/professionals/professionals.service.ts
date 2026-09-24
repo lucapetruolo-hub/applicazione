@@ -14,6 +14,7 @@ import {
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalDetail,
+  type ProfessionalInsights,
   type ProfessionalLead,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
@@ -712,6 +713,79 @@ export class ProfessionalsService {
     return profile.id;
   }
 
+  /**
+   * Una visita al profilo pubblico (docs/CHANGELOG.md §147): contatore per
+   * giorno, mai la singola visita né chi guarda. Non conta il proprietario
+   * che guarda il proprio profilo né un profilo non visibile.
+   */
+  async recordProfileView(professionalProfileId: string, viewerUserId: string | null): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true },
+    });
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.isDemo) return;
+    if (viewerUserId && viewerUserId === profile.userId) return;
+    const day = new Date();
+    day.setUTCHours(0, 0, 0, 0);
+    await this.prisma.profileViewDay.upsert({
+      where: { professionalProfileId_day: { professionalProfileId, day } },
+      create: { professionalProfileId, day, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Numeri per la Home "Oggi" (docs/CHANGELOG.md §147, CLAUDE.md §8: "il
+   * tuo profilo ha ricevuto 12 visite, la media di categoria+zona è 28"):
+   * tempo medio di risposta, recensioni e visite degli ultimi 30 giorni,
+   * confrontati con la media dei professionisti della stessa categoria e
+   * città. Medie `null` se in zona non c'è nessun altro con cui confrontarsi.
+   */
+  async getMyInsights(userId: string): Promise<ProfessionalInsights> {
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const me = await this.prisma.professionalProfile.findUniqueOrThrow({
+      where: { id: professionalProfileId },
+      select: { categoryId: true, city: true, category: { select: { label: true } }, metrics: { select: { avgResponseTimeMinutes: true } } },
+    });
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    since.setUTCHours(0, 0, 0, 0);
+    const peers = await this.prisma.professionalProfile.findMany({
+      where: {
+        id: { not: professionalProfileId },
+        categoryId: me.categoryId,
+        city: { equals: me.city, mode: "insensitive" },
+        deletedAt: null,
+        suspendedAt: null,
+        isDemo: false,
+      },
+      select: { id: true, metrics: { select: { avgResponseTimeMinutes: true } } },
+    });
+    const [myViews, peerViews, reviews] = await Promise.all([
+      this.prisma.profileViewDay.aggregate({ where: { professionalProfileId, day: { gte: since } }, _sum: { count: true } }),
+      peers.length > 0
+        ? this.prisma.profileViewDay.aggregate({ where: { professionalProfileId: { in: peers.map((p) => p.id) }, day: { gte: since } }, _sum: { count: true } })
+        : Promise.resolve({ _sum: { count: 0 } }),
+      this.prisma.review.aggregate({
+        where: { hiddenAt: null, booking: { professionalProfileId, clientReview: { isNot: null } } },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+    ]);
+    const peerResponseTimes = peers.map((p) => p.metrics?.avgResponseTimeMinutes).filter((v): v is number => typeof v === "number");
+    const round = (value: number) => Math.round(value);
+    return {
+      areaLabel: `${me.category.label} a ${me.city}`,
+      areaProfessionals: peers.length,
+      avgResponseTimeMinutes: me.metrics?.avgResponseTimeMinutes != null ? round(me.metrics.avgResponseTimeMinutes) : null,
+      areaAvgResponseTimeMinutes:
+        peerResponseTimes.length > 0 ? round(peerResponseTimes.reduce((sum, v) => sum + v, 0) / peerResponseTimes.length) : null,
+      rating: reviews._count._all > 0 && reviews._avg.rating != null ? Math.round(reviews._avg.rating * 10) / 10 : null,
+      reviewCount: reviews._count._all,
+      profileViews30d: myViews._sum.count ?? 0,
+      areaAvgProfileViews30d: peers.length > 0 ? round((peerViews._sum.count ?? 0) / peers.length) : null,
+    };
+  }
+
   async getMyLeads(userId: string): Promise<ProfessionalLead[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
 
@@ -755,6 +829,24 @@ export class ProfessionalsService {
             orderBy: { createdAt: "desc" },
           })
         : [];
+    // Quanti professionisti hanno già risposto alla stessa richiesta, su
+    // quanti l'hanno ricevuta (docs/CHANGELOG.md §147, decisione esplicita
+    // dell'utente): solo i numeri, mai chi sono né cosa hanno offerto. Due
+    // query raggruppate per l'intera pagina, mai una per richiesta.
+    const requestIds = [...new Set(leads.map((lead) => lead.guidedRequest.id))];
+    const [leadCounts, quoteCounts] =
+      requestIds.length > 0
+        ? await Promise.all([
+            this.prisma.lead.groupBy({ by: ["guidedRequestId"], where: { guidedRequestId: { in: requestIds } }, _count: { _all: true } }),
+            this.prisma.quote.groupBy({
+              by: ["guidedRequestId"],
+              where: { guidedRequestId: { in: requestIds }, professionalProfileId: { not: professionalProfileId }, status: { not: "WITHDRAWN" } },
+              _count: { _all: true },
+            }),
+          ])
+        : [[], []];
+    const leadsPerRequest = new Map(leadCounts.map((row) => [row.guidedRequestId, row._count._all]));
+    const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
     const clientReviewsByClientId = new Map<string, typeof clientReviews>();
     for (const clientReview of clientReviews) {
       const existing = clientReviewsByClientId.get(clientReview.clientId) ?? [];
@@ -787,6 +879,10 @@ export class ProfessionalsService {
         // `null` per un Lead senza scadenza (righe create prima di questa
         // funzionalità) o già scaduto/con preventivo (non più pertinente).
         expiresAt: lead.expiresAt ? lead.expiresAt.toISOString() : null,
+        competitors: {
+          responded: otherQuotesPerRequest.get(lead.guidedRequest.id) ?? 0,
+          total: Math.max(0, (leadsPerRequest.get(lead.guidedRequest.id) ?? 1) - 1),
+        },
         quote: quote
           ? {
               id: quote.id,

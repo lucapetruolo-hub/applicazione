@@ -64,7 +64,7 @@ export default function DashboardStatistichePage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={960} gap="$7">
+      <YStack width="100%" maxWidth={1000} gap="$7">
         <XStack alignItems="center" gap="$3">
           <YStack
             width={44}

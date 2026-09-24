@@ -288,13 +288,12 @@ export function accountMenuUnreadCounts(isProfessional: boolean, notifications: 
   const chat = countByTypes(notifications, CHAT_MESSAGE_TYPES);
   if (isProfessional) {
     const { richieste, lavori } = professionalSectionCounts(notifications);
-    // "Dashboard" (riepilogo di entrambe le sezioni) porta il totale;
-    // "Richieste ricevute" (/dashboard/richieste, l'inbox completa dove
-    // vivono davvero dettaglio e azioni dopo la deduplicazione) porta solo
-    // gli aggiornamenti pertinenti a quella sezione. "Chat" (richiesta
-    // esplicita dell'utente) porta solo i messaggi di conversazione non
-    // letti, un sottoinsieme di "richieste".
-    return { "/dashboard": richieste + lavori, "/dashboard/richieste": richieste, "/chat": chat };
+    // Menu a sezioni (docs/CHANGELOG.md §147): richieste e lavori vivono
+    // entrambi in "Richieste e lavori", che porta il totale. "Oggi" non ha
+    // numeretto (mostra già i propri contatori in pagina, un secondo badge
+    // uguale sarebbe un doppione). "Messaggi" (richiesta esplicita
+    // dell'utente) porta solo i messaggi di conversazione non letti.
+    return { "/dashboard/richieste": richieste + lavori, "/chat": chat };
   }
   const { richieste, lavori } = clientSectionCounts(notifications);
   return { "/le-mie-richieste": richieste + lavori, "/chat": chat };
