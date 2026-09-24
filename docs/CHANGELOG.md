@@ -14566,3 +14566,38 @@ Imbianchino, quadro elettrico → Elettricista, pulizia di casa → Pulizie.
 File già in WebP e di peso simile a quella dell'idraulico (160-280 KB),
 quindi copiati senza ricomprimerli. Le altre categorie restano sull'icona
 colorata finché non arriva una foto vera.
+
+## 143. "Elimina" su tutte le richieste scadute e chiuse, nascoste e visibili agli admin
+
+**Richiesta esplicita dell'utente**: analisi di dove aggiungere "Elimina" al
+menu hamburger delle schede in "Richieste ricevute", poi: "aggiungi a quelle
+scadute e chiuse, e nascondile, in modo che un admin possa vederle".
+
+**Decisione**:
+- "Elimina richiesta" compare ora su **ogni** scheda Scaduta o Chiusa
+  (rifiutata dal professionista, preventivo ritirato, preventivo rifiutato
+  dal cliente), non più solo con preventivo ritirato o account cliente
+  eliminato. Mai sulle schede Da quotare/In attesa/Modifiche (c'è un cliente
+  che aspetta: si usa "Rifiuta" o "Ritira preventivo") né su
+  Accettate/Completate/Annullate (c'è un intervento reale: si usa
+  "Archivia"). Il server (`ProfessionalsService.deleteLead`) applica la
+  stessa regola: 403 su una richiesta ancora attiva.
+- **Niente più cancellazione dal database**: nuovo campo
+  `Lead.hiddenByProfessionalAt` (migrazione
+  `20260924140000_lead_hidden_by_professional`). La scheda sparisce da
+  `getMyLeads`; il Lead conserva prezzo e metriche, Quote e GuidedRequest
+  restano intatte per il cliente. Nella stessa transazione la richiesta
+  viene silenziata per il professionista (`GuidedRequestUserState.mutedAt`),
+  così nessuna notifica lo riporta a una scheda che non vede più.
+- **Admin**: `GET /admin/hidden-leads` e nuova sezione "Richieste eliminate
+  dai professionisti" in `/admin` (voce anche nel menu laterale): data,
+  professionista (link al profilo), categoria/città/descrizione, nome del
+  cliente e stato della scheda al momento dell'eliminazione. Mai telefono,
+  email o indirizzo del cliente.
+- Nella scheda espansa il motivo della chiusura resta visibile anche
+  accanto al link "Elimina richiesta".
+
+**Verifica**: typecheck API e web, 4 nuovi test su `deleteLead` (nasconde
+senza cancellare, silenzia, rifiuta richieste attive e lead altrui), tutti i
+33 test API verdi; `prisma migrate diff` fra migrazioni e schema su un
+Postgres locale: nessuna differenza.

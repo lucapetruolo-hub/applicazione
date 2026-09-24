@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { AdminContactMessage, AdminContentReport, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
+import type { AdminContactMessage, AdminContentReport, AdminHiddenLead, AdminUserRow, AdminUsersByRole } from "@professionisti/api-client";
 import { Button, H1, H2, Icon, Paragraph, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -50,6 +50,12 @@ export default function AdminPage() {
   const [contactMessages, setContactMessages] = useState<AdminContactMessage[] | null>(null);
   const [contactMessagesError, setContactMessagesError] = useState<string | null>(null);
 
+  // Richieste "eliminate" dai professionisti in /dashboard/richieste:
+  // nascoste solo a loro, mai cancellate (richiesta esplicita dell'utente,
+  // "in modo che un admin possa vederle" — docs/CHANGELOG.md §143).
+  const [hiddenLeads, setHiddenLeads] = useState<AdminHiddenLead[] | null>(null);
+  const [hiddenLeadsError, setHiddenLeadsError] = useState<string | null>(null);
+
   function reloadReports() {
     if (!token) return;
     apiClient
@@ -76,6 +82,10 @@ export default function AdminPage() {
       .adminListWaitlist(token)
       .then(setWaitlist)
       .catch((err) => setWaitlistError(err instanceof Error ? err.message : "Errore nel caricamento."));
+    apiClient
+      .adminListHiddenLeads(token)
+      .then(setHiddenLeads)
+      .catch((err) => setHiddenLeadsError(err instanceof Error ? err.message : "Errore nel caricamento."));
     reloadReports();
     reloadContactMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,6 +220,56 @@ export default function AdminPage() {
         </YStack>
 
         <YStack gap="$3">
+          <div id="richieste-eliminate" style={{ scrollMarginTop: 96 }} />
+          <H2 size="$6">Richieste eliminate dai professionisti</H2>
+          <Text color={brand.grafite70}>
+            Tolte dalla lista &quot;Richieste ricevute&quot; del professionista, ma mai cancellate: il cliente continua a vederle.
+          </Text>
+          {hiddenLeadsError ? (
+            <Text color={brand.urgenza}>{hiddenLeadsError}</Text>
+          ) : hiddenLeads === null ? (
+            <SkeletonTableRows rows={3} cols={5} />
+          ) : hiddenLeads.length === 0 ? (
+            <Text color={brand.grafite70}>Nessuna richiesta eliminata finora.</Text>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Eliminata il</th>
+                    <th>Professionista</th>
+                    <th>Richiesta</th>
+                    <th>Cliente</th>
+                    <th>Stato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hiddenLeads.map((row) => (
+                    <tr key={row.leadId}>
+                      <td>{new Date(row.hiddenAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}</td>
+                      <td>
+                        <Link href={`/professionista/${row.professionalProfileId}`}>{row.businessName}</Link>
+                      </td>
+                      <td>
+                        <strong>
+                          {row.categoryLabel} · {row.city}
+                        </strong>
+                        <br />
+                        {row.description.length > 140 ? `${row.description.slice(0, 140)}…` : row.description}
+                        <br />
+                        <small>Inviata il {new Date(row.requestCreatedAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}</small>
+                      </td>
+                      <td>{row.clientAccountDeleted ? "Account eliminato" : row.clientName ?? "—"}</td>
+                      <td>{row.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </YStack>
+
+        <YStack gap="$3">
           <div id="lista-attesa" style={{ scrollMarginTop: 96 }} />
           <H2 size="$6">Lista d&apos;attesa (&quot;Arriviamo presto nella tua zona&quot;)</H2>
           {waitlistError ? (
@@ -259,6 +319,7 @@ function AdminSidebar() {
     { href: "#utenti-registrati", label: "Utenti registrati" },
     { href: "#segnalazioni", label: "Segnalazioni" },
     { href: "#messaggi", label: "Messaggi" },
+    { href: "#richieste-eliminate", label: "Richieste eliminate" },
     { href: "#lista-attesa", label: "Lista d'attesa" },
     // Pagina separata (non un'ancora sulla stessa pagina, a differenza
     // delle voci sopra): finanza/DAC7/regole di commissione/verifiche
