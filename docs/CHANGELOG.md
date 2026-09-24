@@ -14487,3 +14487,20 @@ produzione (`DEMO_MAP_ID` è solo di prova).
 
 Verifica: typecheck e `next build`. L'aspetto reale si vede solo con la
 chiave Google corretta (§138).
+
+## 140. Scelti i segnaposto avanzati
+
+**Decisione esplicita dell'utente**, dopo il confronto dal vivo di §139 (con
+la chiave corretta la mappa ora si vede): "ok lascia gli avanzati".
+
+**Decisione**: la mappa dei risultati usa sempre i marker avanzati, cioè la
+foto (o l'icona di categoria) del professionista in un cerchio bianco con
+bordo verde e punta. Tolta l'anteprima `?segnaposto=avanzati`. Map ID da
+`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` (costante `GOOGLE_MAPS_MAP_ID` in
+`GoogleMapGate`), con fallback `DEMO_MAP_ID` finché non si imposta quello
+vero (checklist pre-lancio, punto 4). La mappa del raggio di ingaggio in
+dashboard resta con il `Marker` classico: un solo segnaposto, nessun
+vantaggio dalla foto. Aggiornati stack e checklist in CLAUDE.md.
+
+Verifica: typecheck e `next build`. Aspetto dal vivo verificato dall'utente
+durante l'anteprima.
