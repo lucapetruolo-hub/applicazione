@@ -14439,3 +14439,33 @@ sito da cui si sta navigando. Un indirizzo diverso da
 è la causa più probabile.
 
 Verifica: typecheck e `next build`. Il rifiuto reale non è riproducibile qui.
+
+## 138. Causa trovata: `ApiTargetBlockedMapError`; mappa classica senza Map ID
+
+**Segnalazione dell'utente**: dopo §137 ancora errori interni di Google
+(`a.getRootNode`, `b.keys`).
+
+**Diagnosi (verificata)**: caricando la mappa Google vera nel browser di
+prova, con la chiave dell'utente e il dominio del sito simulato, Google
+risponde **`ApiTargetBlockedMapError`**: la chiave del sito non ha **Maps
+JavaScript API** tra le API consentite ("Limitazioni API" della chiave su
+Google Cloud). Tutti gli errori interni di §135-§137 erano conseguenze di
+questo rifiuto. Si corregge solo su Google Cloud.
+
+**Decisione (codice)**:
+- Marker classici (`Marker` con icona SVG del brand in data URL,
+  `apps/web/src/components/MapPin.tsx`) al posto di `AdvancedMarker`, e
+  niente Map ID: la mappa non dipende più dai componenti web `gmp-*` delle
+  API recenti, dove nascevano gli errori, e sparisce un passo di
+  configurazione (`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` non serve più). Google
+  segnala `google.maps.Marker` come deprecato dal 2024 ma non ne ha
+  annunciato la dismissione.
+- `APIProvider` con `version="quarterly"`, più collaudata della "weekly" di
+  default.
+
+Verifica: typecheck, `next build`, Playwright con la mappa Google vera
+(dominio simulato, chiave reale): `/cerca/idraulico/roma` e
+`/dashboard/profilo` mostrano "Mappa non disponibile: Google ha rifiutato
+la chiave Google Maps" con l'indirizzo del sito. Nessun errore della pagina,
+anche digitando e salvando l'indirizzo nel profilo. Con la chiave corretta
+non verificato: serve la modifica su Google Cloud.

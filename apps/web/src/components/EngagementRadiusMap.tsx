@@ -5,10 +5,10 @@
 // la libreria di mappe direttamente — vede solo l'interfaccia props qui
 // sotto, stabile indipendentemente dal provider (Leaflet fino a
 // docs/CHANGELOG.md §133, ora Google Maps).
-import { AdvancedMarker, Circle, Map as GoogleMap } from "@vis.gl/react-google-maps";
+import { Circle, Map as GoogleMap, Marker } from "@vis.gl/react-google-maps";
 import { brand } from "@professionisti/ui";
-import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
-import { MapPin } from "@/components/MapPin";
+import { GoogleMapGate } from "@/components/GoogleMapGate";
+import { MAP_PIN_ICON_URL } from "@/components/MapPin";
 
 export type EngagementRadiusMapProps = {
   /** Posizione fissa del professionista (marker), mai spostabile da qui. */
@@ -33,7 +33,6 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
     <div style={{ height: 360, width: "100%", borderRadius: 4, overflow: "hidden" }}>
       <GoogleMapGate>
         <GoogleMap
-          mapId={GOOGLE_MAPS_MAP_ID}
           defaultCenter={center}
           // Zoom 9 ≈ 25 km di raggio (il massimo consentito) visibili in 360 px
           // di altezza: il cerchio più grande resta sempre nell'inquadratura,
@@ -46,9 +45,7 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
           fullscreenControl={false}
           clickableIcons={false}
         >
-          <AdvancedMarker position={center}>
-            <MapPin />
-          </AdvancedMarker>
+          <Marker position={center} icon={MAP_PIN_ICON_URL} clickable={false} />
           {/* Il raggio di google.maps.Circle è in metri: conversione km→m qui, unico punto che lo fa. */}
           <Circle
             center={center}
