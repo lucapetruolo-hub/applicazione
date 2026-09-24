@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
 import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
@@ -21,8 +21,25 @@ export const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? 
  * riquadro con il pulsante per attivare la mappa; senza chiave un messaggio
  * neutro (stesso pattern "non configurato" di Stripe/Cloudinary/Resend).
  */
+/**
+ * Google chiama `window.gm_authFailure` quando rifiuta chiave/configurazione
+ * (indirizzo del sito non autorizzato, API non abilitata, fatturazione...):
+ * la mappa resta a metà e i suoi componenti vanno in errore dentro il codice
+ * di Google (docs/CHANGELOG.md §137). Qui lo si intercetta per mostrare un
+ * messaggio chiaro, con l'indirizzo da cui si sta navigando.
+ */
+function useGoogleAuthFailure(): boolean {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const w = window as unknown as { gm_authFailure?: () => void };
+    w.gm_authFailure = () => setFailed(true);
+  }, []);
+  return failed;
+}
+
 export function GoogleMapGate({ children }: { children: ReactNode }) {
   const consent = useCookieConsent();
+  const authFailed = useGoogleAuthFailure();
 
   if (!API_KEY) {
     return <MapPlaceholder text="Mappa non configurata (manca la chiave Google Maps)." />;
@@ -33,6 +50,16 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
         <button type="button" className="map-consent-button" onClick={grantCookieConsent}>
           Mostra la mappa
         </button>
+      </MapPlaceholder>
+    );
+  }
+  if (authFailed) {
+    return (
+      <MapPlaceholder text="Mappa non disponibile: Google ha rifiutato la chiave Google Maps.">
+        <small className="map-error-detail">
+          Indirizzo del sito: {typeof window !== "undefined" ? window.location.host : ""} — deve essere tra i siti
+          consentiti della chiave, con Maps JavaScript API abilitata e la fatturazione attiva.
+        </small>
       </MapPlaceholder>
     );
   }
