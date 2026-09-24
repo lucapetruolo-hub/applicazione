@@ -648,33 +648,38 @@ enum LeadStatus {
 }
 
 model Lead {
-  id                    String     @id @default(uuid())
-  guidedRequestId       String
-  professionalProfileId String
-  priceEurCents         Int
-  status                LeadStatus @default(PENDING)
+  id                     String     @id @default(uuid())
+  guidedRequestId        String
+  professionalProfileId  String
+  priceEurCents          Int
+  status                 LeadStatus @default(PENDING)
   // Nota facoltativa lasciata dal professionista quando rifiuta la
   // richiesta (es. "non copro quella zona"), mostrata al cliente.
-  declineNote           String?
+  declineNote            String?
   // Nota privata del professionista sulla richiesta, mai vista dal cliente
   // (pagina /dashboard/richieste) — a differenza di Booking.professionalNote,
   // valorizzabile fin dalla ricezione del lead, prima ancora che esista un
   // preventivo/prenotazione.
-  professionalNote      String?
+  professionalNote       String?
   // Scadenza del singolo Lead (non della GuidedRequest nel suo complesso,
   // vedi GuidedRequest.expiresAt): passato questo momento senza una Quote
   // collegata, il job schedulato lo marca EXPIRED e pesca il prossimo
   // candidato dalla coda di riserva. Nullable per lo stesso motivo di
   // GuidedRequest.expiresAt (righe esistenti create prima di questa
   // funzionalità, mai retroattivamente scadute).
-  expiresAt             DateTime?
+  expiresAt              DateTime?
   // True se questo Lead è nato da un'espansione (scadenza o rifiuto di un
   // Lead precedente, o coinvolgimento di un professionista iscritto dopo),
   // non dal fan-out iniziale — utile solo per capire a colpo d'occhio
   // l'origine di un Lead in eventuali audit/debug, non usato oggi in UI.
-  wasExpanded           Boolean    @default(false)
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @default(now()) @updatedAt
+  wasExpanded            Boolean    @default(false)
+  // "Elimina" dal menu della scheda in /dashboard/richieste (docs/CHANGELOG.md
+  // §143): la richiesta sparisce solo per il professionista, mai cancellata
+  // dal database — resta visibile agli admin (/admin, "Richieste eliminate")
+  // e conserva prezzo del lead e metriche di risposta.
+  hiddenByProfessionalAt DateTime?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @default(now()) @updatedAt
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -1203,15 +1208,15 @@ enum ContentReportStatus {
 }
 
 model ContentReport {
-  id         String                  @id @default(uuid())
-  reporterId String
-  targetType ContentReportTargetType
-  targetId   String
-  reason     String
-  details    String?
-  status     ContentReportStatus     @default(OPEN)
-  createdAt  DateTime                @default(now())
-  resolvedAt DateTime?
+  id             String                  @id @default(uuid())
+  reporterId     String
+  targetType     ContentReportTargetType
+  targetId       String
+  reason         String
+  details        String?
+  status         ContentReportStatus     @default(OPEN)
+  createdAt      DateTime                @default(now())
+  resolvedAt     DateTime?
   // Motivazione scritta dalla decisione admin (DSA art. 16/17: "notice and
   // action" + "statement of reasons") — obbligatoria per RESOLVED (la
   // motivazione che va comunicata a chi ha subito la segnalazione accolta),
@@ -1343,8 +1348,8 @@ model ProfessionalFiscalProfile {
 
   // --- Comuni a entrambi (residenza fiscale — richiesta DAC7 sempre,
   // indipendentemente dal possesso di P.IVA, principio generale DAC7) ---
-  taxResidenceCountry  String? // Codice ISO del paese di residenza fiscale
-  foreignTin           String? // TIN estero, se la residenza fiscale è fuori Italia
+  taxResidenceCountry    String? // Codice ISO del paese di residenza fiscale
+  foreignTin             String? // TIN estero, se la residenza fiscale è fuori Italia
   // Stato di rilascio del codice fiscale/NIF/P.IVA (può differire dalla
   // residenza fiscale — es. un cittadino straniero con codice fiscale
   // italiano ma residenza fiscale nel proprio paese). Determina anche quale
@@ -1610,12 +1615,12 @@ model PlatformDac7Settings {
   sendingEntityIn     String? // P.IVA/identificativo fiscale di Manovia stessa (es. "IT01234567890")
   platformName        String?
   platformIdValue     String? // Numero di registrazione della piattaforma presso l'autorità competente
-  platformIdType      String  @default("OECD201") // Codice lista OECD del tipo di identificativo — vedi disclaimer in Dac7Service
-  transmittingCountry String  @default("IT")
-  receivingCountry    String  @default("IT")
+  platformIdType      String   @default("OECD201") // Codice lista OECD del tipo di identificativo — vedi disclaimer in Dac7Service
+  transmittingCountry String   @default("IT")
+  receivingCountry    String   @default("IT")
   // Contatore progressivo per costruire un MessageRefId univoco ad ogni
   // esportazione (mai riutilizzato) — incrementato da Dac7Service.
-  messageSequence     Int     @default(0)
+  messageSequence     Int      @default(0)
   updatedAt           DateTime @updatedAt
 
   @@map("platform_dac7_settings")

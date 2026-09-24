@@ -227,6 +227,22 @@ export type AdminContentReport = {
 };
 
 /** Messaggio dal form "Contatti" del footer, vista admin (richiesta esplicita dell'utente). */
+/** Richiesta "eliminata" da un professionista: nascosta a lui, visibile in /admin (docs/CHANGELOG.md §143). */
+export type AdminHiddenLead = {
+  leadId: string;
+  guidedRequestId: string;
+  professionalProfileId: string;
+  businessName: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  reason: string;
+  requestCreatedAt: string;
+  hiddenAt: string;
+};
+
 export type AdminContactMessage = {
   id: string;
   role: "CLIENT" | "PROFESSIONAL" | "OTHER";
@@ -898,7 +914,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ note }),
       }),
 
-    /** Il professionista elimina dalla propria lista una richiesta il cui account cliente è stato eliminato. */
+    /** Il professionista elimina dalla propria lista una richiesta scaduta o chiusa (nascosta, resta visibile agli admin). */
     deleteLead: (token: string, leadId: string) =>
       request<void>(`/professionals/me/leads/${leadId}`, {
         method: "DELETE",
@@ -1085,6 +1101,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Messaggi dal form "Contatti", vista admin. */
     adminListContactMessages: (token: string) =>
       request<AdminContactMessage[]>("/admin/contact-messages", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListHiddenLeads: (token: string) =>
+      request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveContactMessage: (token: string, id: string) =>
       request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}`, {

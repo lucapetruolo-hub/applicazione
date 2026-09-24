@@ -103,3 +103,59 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.address);
   });
 });
+
+describe("ProfessionalsService.deleteLead — nasconde, non cancella (docs/CHANGELOG.md §143)", () => {
+  function buildDeleteService(lead: Record<string, unknown>, closedQuote: unknown = null) {
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1" }) },
+      lead: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "lead-1",
+          professionalProfileId: "pro-1",
+          guidedRequestId: "gr-1",
+          status: "PENDING",
+          guidedRequest: { client: { deletedAt: null } },
+          ...lead,
+        }),
+        update: vi.fn().mockReturnValue("lead-update"),
+        delete: vi.fn(),
+      },
+      quote: { findFirst: vi.fn().mockResolvedValue(closedQuote) },
+      guidedRequestUserState: { upsert: vi.fn().mockReturnValue("state-upsert") },
+      $transaction: vi.fn().mockResolvedValue([]),
+    };
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    return { service, prisma };
+  }
+
+  it.each(["EXPIRED", "DECLINED"])("nasconde un lead %s e silenzia le sue notifiche, senza cancellarlo", async (status) => {
+    const { service, prisma } = buildDeleteService({ status });
+    await service.deleteLead("user-1", "lead-1");
+    expect(prisma.lead.delete).not.toHaveBeenCalled();
+    expect(prisma.lead.update).toHaveBeenCalledWith({ where: { id: "lead-1" }, data: { hiddenByProfessionalAt: expect.any(Date) } });
+    expect(prisma.guidedRequestUserState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId_guidedRequestId: { userId: "user-1", guidedRequestId: "gr-1" } } }),
+    );
+    expect(prisma.$transaction).toHaveBeenCalledWith(["lead-update", "state-upsert"]);
+  });
+
+  it("nasconde un lead con preventivo ritirato o rifiutato dal cliente", async () => {
+    const { service, prisma } = buildDeleteService({ status: "PENDING" }, { id: "quote-1" });
+    await service.deleteLead("user-1", "lead-1");
+    expect(prisma.quote.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: { in: ["WITHDRAWN", "REJECTED"] } }) }),
+    );
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("rifiuta una richiesta ancora attiva (da quotare, in attesa, accettata)", async () => {
+    const { service, prisma } = buildDeleteService({ status: "PENDING" }, null);
+    await expect(service.deleteLead("user-1", "lead-1")).rejects.toThrow("Puoi eliminare solo una richiesta scaduta o chiusa.");
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta il lead di un altro professionista", async () => {
+    const { service } = buildDeleteService({ professionalProfileId: "pro-2", status: "EXPIRED" });
+    await expect(service.deleteLead("user-1", "lead-1")).rejects.toThrow("Questa richiesta non è tua.");
+  });
+});

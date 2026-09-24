@@ -1030,7 +1030,9 @@ function RequestCard({
   const revealedAddress = booking ? (formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${gr.city}` : null)) : null;
   const whatsAppLink = buildWhatsAppLink(revealedPhone);
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
-  const canDelete = gr.clientAccountDeleted || quoteWithdrawn;
+  // "Elimina" su ogni richiesta scaduta o chiusa (docs/CHANGELOG.md §143):
+  // la nasconde solo al professionista, resta visibile agli admin.
+  const canDelete = stage === "scaduta" || stage === "chiusa";
 
   // Data/ora dell'intervento visibile già nell'anteprima non espansa
   // (richiesta esplicita dell'utente: "deve essere visualizzata già la
@@ -1320,7 +1322,7 @@ function RequestCard({
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
   }
-  if ((stage === "scaduta" || stage === "chiusa") && canDelete) {
+  if (canDelete) {
     menuActions.push({
       icon: "trash-2",
       text: quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta",
@@ -1929,12 +1931,12 @@ function RequestCard({
               </Text>
             ) : null}
 
-            {(stage === "scaduta" || stage === "chiusa") && !canDelete ? (
+            {canDelete ? (
               <Text fontSize={12.5} color={brand.grafite70}>
                 {stage === "chiusa" ? describeClosedReason(lead) : "Questa richiesta è scaduta: la coda di riserva è stata già inoltrata ad altri professionisti."}
               </Text>
             ) : null}
-            {(stage === "scaduta" || stage === "chiusa") && canDelete ? (
+            {canDelete ? (
               !confirmingDelete ? (
                 <Text fontSize={12.5} fontWeight="700" color={brand.urgenza} cursor="pointer" onPress={() => setConfirmingDelete(true)}>
                   {quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta"}

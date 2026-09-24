@@ -261,4 +261,75 @@ export class AdminService {
     const updated = await this.prisma.contactMessage.update({ where: { id }, data: { resolved: true } });
     return { id: updated.id, resolved: updated.resolved };
   }
+
+  /**
+   * Richieste che un professionista ha "eliminato" dalla propria lista
+   * (`ProfessionalsService.deleteLead`, docs/CHANGELOG.md §143): richiesta
+   * esplicita dell'utente, "nascondile, in modo che un admin possa vederle".
+   * Solo i dati per capire cosa è stato tolto e perché — mai telefono,
+   * email o indirizzo del cliente.
+   */
+  async listHiddenLeads(): Promise<AdminHiddenLeadRow[]> {
+    const leads = await this.prisma.lead.findMany({
+      where: { hiddenByProfessionalAt: { not: null } },
+      orderBy: { hiddenByProfessionalAt: "desc" },
+      include: {
+        professionalProfile: { select: { id: true, businessName: true } },
+        guidedRequest: {
+          select: {
+            id: true,
+            description: true,
+            city: true,
+            createdAt: true,
+            category: { select: { label: true } },
+            client: { select: { name: true, surname: true, deletedAt: true } },
+            quotes: { select: { professionalProfileId: true, status: true } },
+          },
+        },
+      },
+    });
+    return leads.map((lead) => {
+      const quote = lead.guidedRequest.quotes.find((q) => q.professionalProfileId === lead.professionalProfileId);
+      const client = lead.guidedRequest.client;
+      return {
+        leadId: lead.id,
+        guidedRequestId: lead.guidedRequest.id,
+        professionalProfileId: lead.professionalProfile.id,
+        businessName: lead.professionalProfile.businessName,
+        clientName: client.deletedAt ? null : [client.name, client.surname].filter(Boolean).join(" ") || null,
+        clientAccountDeleted: client.deletedAt !== null,
+        categoryLabel: lead.guidedRequest.category.label,
+        city: lead.guidedRequest.city,
+        description: lead.guidedRequest.description,
+        reason: hiddenLeadReason(lead.status, quote?.status ?? null, client.deletedAt !== null),
+        requestCreatedAt: lead.guidedRequest.createdAt.toISOString(),
+        hiddenAt: (lead.hiddenByProfessionalAt as Date).toISOString(),
+      };
+    });
+  }
+}
+
+export type AdminHiddenLeadRow = {
+  leadId: string;
+  guidedRequestId: string;
+  professionalProfileId: string;
+  businessName: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  reason: string;
+  requestCreatedAt: string;
+  hiddenAt: string;
+};
+
+/** Stato della scheda al momento in cui è stata eliminata, in parole. */
+function hiddenLeadReason(leadStatus: string, quoteStatus: string | null, clientAccountDeleted: boolean): string {
+  if (leadStatus === "EXPIRED") return "Scaduta";
+  if (leadStatus === "DECLINED") return "Rifiutata dal professionista";
+  if (quoteStatus === "WITHDRAWN") return "Preventivo ritirato";
+  if (quoteStatus === "REJECTED") return "Preventivo rifiutato dal cliente";
+  if (clientAccountDeleted) return "Account cliente eliminato";
+  return "Chiusa";
 }

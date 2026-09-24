@@ -714,7 +714,9 @@ export class ProfessionalsService {
     const professionalProfileId = await this.requireMyProfileId(userId);
 
     const leads = await this.prisma.lead.findMany({
-      where: { professionalProfileId },
+      // Le richieste "eliminate" dal professionista restano nel database,
+      // solo nascoste a lui (deleteLead, docs/CHANGELOG.md §143).
+      where: { professionalProfileId, hiddenByProfessionalAt: null },
       include: {
         guidedRequest: {
           include: {
@@ -934,20 +936,18 @@ export class ProfessionalsService {
   }
 
   /**
-   * Il professionista elimina dalla propria lista "Richieste ricevute" una
-   * richiesta non più azionabile, in due casi distinti: (1) l'account
-   * cliente è stato eliminato (`QuotesService.createOrUpdate` blocca già
-   * l'invio di un nuovo preventivo su un account eliminato); (2) il
-   * professionista stesso ha ritirato il proprio preventivo (`Quote.status
-   * === "WITHDRAWN"`, `QuotesService.withdrawByProfessional`) — richiesta
-   * esplicita dell'utente: un preventivo ritirato da lui non porterà mai a
-   * nulla, resterebbe altrimenti a ingombrare la lista per sempre.
-   * Elimina solo il proprio Lead (non la GuidedRequest, che può avere altri
-   * Lead verso altri professionisti nello stesso fan-out, né la Quote
-   * ritirata: il cliente deve continuare a vederla nella propria cronologia
-   * — questa eliminazione riguarda solo la vista del professionista):
-   * nessun impatto su Quote già inviate, che non hanno una relazione
-   * diretta con Lead nello schema (CLAUDE.md §14).
+   * "Elimina" dal menu della scheda in "Richieste ricevute" (docs/CHANGELOG.md
+   * §143): consentito solo su una richiesta non più azionabile — scaduta,
+   * rifiutata dal professionista, preventivo ritirato o rifiutato dal
+   * cliente — oppure con l'account cliente eliminato. Stessa classificazione
+   * di `classifyLeadStage` (apps/web) per gli stadi "scaduta"/"chiusa".
+   *
+   * Non cancella nulla (richiesta esplicita dell'utente: "nascondile, in modo
+   * che un admin possa vederle"): valorizza `Lead.hiddenByProfessionalAt`,
+   * la scheda sparisce da `getMyLeads` e resta visibile in /admin. Il Lead
+   * conserva prezzo e metriche; la Quote e la GuidedRequest restano intatte
+   * per il cliente. Silenzia anche le notifiche di quella richiesta per il
+   * professionista: una notifica porterebbe a una scheda che non vede più.
    */
   async deleteLead(userId: string, leadId: string): Promise<void> {
     const professionalProfileId = await this.requireMyProfileId(userId);
@@ -960,19 +960,26 @@ export class ProfessionalsService {
       throw new ForbiddenException("Questa richiesta non è tua.");
     }
     const clientAccountDeleted = lead.guidedRequest.client.deletedAt !== null;
-    if (!clientAccountDeleted) {
-      const withdrawnQuote = await this.prisma.quote.findFirst({
-        where: { guidedRequestId: lead.guidedRequestId, professionalProfileId, status: "WITHDRAWN" },
+    const leadClosed = lead.status === "EXPIRED" || lead.status === "DECLINED";
+    if (!clientAccountDeleted && !leadClosed) {
+      const closedQuote = await this.prisma.quote.findFirst({
+        where: { guidedRequestId: lead.guidedRequestId, professionalProfileId, status: { in: ["WITHDRAWN", "REJECTED"] } },
         select: { id: true },
       });
-      if (!withdrawnQuote) {
-        throw new ForbiddenException(
-          "Puoi eliminare una richiesta solo se l'account del cliente è stato eliminato o se hai ritirato il tuo preventivo.",
-        );
+      if (!closedQuote) {
+        throw new ForbiddenException("Puoi eliminare solo una richiesta scaduta o chiusa.");
       }
     }
 
-    await this.prisma.lead.delete({ where: { id: leadId } });
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.lead.update({ where: { id: leadId }, data: { hiddenByProfessionalAt: now } }),
+      this.prisma.guidedRequestUserState.upsert({
+        where: { userId_guidedRequestId: { userId, guidedRequestId: lead.guidedRequestId } },
+        create: { userId, guidedRequestId: lead.guidedRequestId, mutedAt: now },
+        update: { mutedAt: now },
+      }),
+    ]);
   }
 
   /**

@@ -37,6 +37,12 @@ export class AdminController {
     return this.adminService.listContactMessages();
   }
 
+  /** Richieste "eliminate" dai professionisti: nascoste solo a loro, mai cancellate (docs/CHANGELOG.md §143). */
+  @Get("hidden-leads")
+  listHiddenLeads() {
+    return this.adminService.listHiddenLeads();
+  }
+
   @Patch("contact-messages/:id")
   resolveContactMessage(@Param("id") id: string) {
     return this.adminService.resolveContactMessage(id);
