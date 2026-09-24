@@ -23,15 +23,33 @@ export const ADMIN_ROLE_DESCRIPTION: Record<AdminRoleValue, string> = {
   FINANCE: "Finanza, DAC7, commissioni, rimborsi e contestazioni, statistiche.",
 };
 
-/** `null` su un admin vale come SUPER: nessun admin creato prima dei ruoli perde l'accesso. */
-export function adminCan(adminRole: AdminRoleValue | null | undefined, scope: AdminScope): boolean {
-  const role = adminRole ?? "SUPER";
-  if (role === "SUPER" || scope === "ANY") return true;
-  if (scope === "MODERATION") return role === "MODERATOR";
-  if (scope === "FINANCE") return role === "FINANCE";
+/**
+ * Ruoli effettivi di un admin: combinabili (es. Moderatore + Finanza,
+ * docs/CHANGELOG.md §146). Una lista vuota su un ADMIN vale come SUPER:
+ * nessun admin creato prima dei ruoli perde l'accesso. SUPER da solo
+ * assorbe gli altri.
+ */
+export function normalizeAdminRoles(roles: readonly AdminRoleValue[] | null | undefined): AdminRoleValue[] {
+  const unique = adminRoles.filter((role) => roles?.includes(role));
+  if (unique.length === 0 || unique.includes("SUPER")) return ["SUPER"];
+  return unique;
+}
+
+export function adminCan(roles: readonly AdminRoleValue[] | null | undefined, scope: AdminScope): boolean {
+  const effective = normalizeAdminRoles(roles);
+  if (effective.includes("SUPER") || scope === "ANY") return true;
+  if (scope === "MODERATION") return effective.includes("MODERATOR");
+  if (scope === "FINANCE") return effective.includes("FINANCE");
   return false;
 }
 
-/** Assegna o toglie il ruolo admin (`null` = non più admin). */
-export const adminRoleUpdateSchema = z.object({ adminRole: z.enum(adminRoles).nullable() });
+/** Etichetta leggibile dei ruoli, es. "Moderatore + Finanza". */
+export function adminRolesLabel(roles: readonly AdminRoleValue[] | null | undefined): string {
+  return normalizeAdminRoles(roles)
+    .map((role) => ADMIN_ROLE_LABEL[role])
+    .join(" + ");
+}
+
+/** Assegna o toglie i ruoli admin (lista vuota = non più admin). */
+export const adminRoleUpdateSchema = z.object({ adminRoles: z.array(z.enum(adminRoles)).max(3) });
 export type AdminRoleUpdateInput = z.infer<typeof adminRoleUpdateSchema>;

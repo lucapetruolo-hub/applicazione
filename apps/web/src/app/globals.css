@@ -507,6 +507,240 @@ a {
   border-top: 1px solid #f0dcc0;
   font-size: 12px;
 }
+/* Pagine personali (docs/CHANGELOG.md §147): menu a sezioni del
+   professionista (barra scorrevole su telefono, colonna da 1000px) e barra
+   di schede del cliente. Le pagine dentro restano centrate come prima. */
+.acct-shell {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.acct-main {
+  min-width: 0;
+  flex: 1;
+}
+.acct-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  scrollbar-width: none;
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+}
+.acct-nav::-webkit-scrollbar {
+  display: none;
+}
+.acct-nav-group {
+  display: contents;
+}
+.acct-nav-title {
+  display: none;
+}
+.acct-nav-link,
+.acct-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.acct-nav-link:hover,
+.acct-tab:hover {
+  background: #fdefe1;
+}
+.acct-nav-link.is-active,
+.acct-tab.is-active {
+  background: #2b2420;
+  color: #ffffff;
+}
+.acct-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.acct-client {
+  width: 100%;
+}
+.acct-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  justify-content: flex-start;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  scrollbar-width: none;
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+}
+.acct-tabs::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 760px) {
+  .acct-tabs {
+    justify-content: center;
+  }
+}
+@media (min-width: 1000px) {
+  .acct-shell {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 24px 16px 0;
+    gap: 8px;
+  }
+  .acct-nav {
+    position: sticky;
+    top: 88px;
+    flex-direction: column;
+    width: 232px;
+    flex-shrink: 0;
+    overflow-x: visible;
+    padding: 12px;
+    border: none;
+    border-radius: 16px;
+  }
+  .acct-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .acct-nav-group + .acct-nav-group {
+    margin-top: 10px;
+  }
+  .acct-nav-title {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6e6459;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 12px 6px;
+  }
+}
+/* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+/* Sempre 3 riquadri affiancati (anche su telefono, più compatti): con
+   auto-fill restava una colonna vuota su desktop e su telefono si
+   impilavano occupando mezza pagina. */
+.today-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 599px) {
+  .today-kpis {
+    gap: 8px;
+  }
+  .today-kpis .admin-kpi {
+    padding: 12px;
+  }
+  .today-kpis .admin-kpi-value {
+    font-size: 22px;
+  }
+  .today-kpis .admin-kpi-label {
+    font-size: 12px;
+  }
+}
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  text-decoration: none;
+  color: #2b2420;
+  border: 1px solid transparent;
+}
+.today-row:hover {
+  border-color: #f0dcc0;
+}
+.today-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+.today-row-sub {
+  color: #6e6459;
+  font-size: 13px;
+}
+.today-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.today-deadline {
+  color: #8a6d00;
+}
+.today-deadline.is-urgent {
+  color: #dc3545;
+}
+.today-competitors {
+  color: #6e6459;
+}
+.today-row-cta {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #189a63;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.today-time {
+  flex-shrink: 0;
+  min-width: 96px;
+  font-weight: 800;
+  font-size: 14px;
+}
+.today-empty {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #6e6459;
+  font-size: 14px;
+}
+@media (max-width: 520px) {
+  .today-row {
+    flex-wrap: wrap;
+  }
+  .today-row-cta {
+    margin-left: auto;
+  }
+}
 /* Griglia dei contatori della home admin. */
 .admin-kpi-grid {
   display: grid;

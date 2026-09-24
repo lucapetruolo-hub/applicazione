@@ -308,7 +308,7 @@ function DashboardFiscaleContent() {
   const pivaCheck = checkFiscalId(fields.vatNumber ?? "", fields.fiscalIdIssuingCountry, "vatNumber");
 
   return (
-    <Section title="Dati fiscali e pagamenti" maxWidth={720}>
+    <Section title="Dati fiscali e pagamenti" maxWidth={760}>
       <YStack gap="$5">
         <Text fontSize={14} color={brand.grafite70}>
           Questi dati non sono mai visibili pubblicamente — servono solo per la rendicontazione fiscale (DAC7) e, se scegli di attivarli, per i

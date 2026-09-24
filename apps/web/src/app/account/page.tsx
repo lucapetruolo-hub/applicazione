@@ -372,7 +372,7 @@ export default function AccountPage() {
           aperto") — la navigazione tra le voci resta disponibile dal
           menu a tendina dell'header (AccountMenu), che le elenca già
           tutte. */}
-      <YStack width="100%" maxWidth={640} gap="$5">
+      <YStack width="100%" maxWidth={760} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Impostazioni dell&apos;account

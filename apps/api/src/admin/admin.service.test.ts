@@ -153,18 +153,24 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
   });
 
   it("non toglie l'ultimo super admin", async () => {
-    const { service } = build({ id: "u2", role: "ADMIN", adminRole: "SUPER", deletedAt: null, professionalProfile: null }, 1);
-    await expect(service.setAdminRole("admin-1", "u2", "MODERATOR")).rejects.toThrow("almeno un super admin");
+    const { service } = build({ id: "u2", role: "ADMIN", adminRoles: ["SUPER"], deletedAt: null, professionalProfile: null }, 1);
+    await expect(service.setAdminRoles("admin-1", "u2", ["MODERATOR"])).rejects.toThrow("almeno un super admin");
   });
 
-  it("togliendo il ruolo admin a un professionista torna professionista", async () => {
-    const { service, prisma } = build({ id: "u2", role: "ADMIN", adminRole: "MODERATOR", deletedAt: null, professionalProfile: { id: "p1" } });
-    await service.setAdminRole("admin-1", "u2", null);
-    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "PROFESSIONAL", adminRole: null } });
+  it("togliendo i ruoli admin a un professionista torna professionista", async () => {
+    const { service, prisma } = build({ id: "u2", role: "ADMIN", adminRoles: ["MODERATOR"], deletedAt: null, professionalProfile: { id: "p1" } });
+    await service.setAdminRoles("admin-1", "u2", []);
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "PROFESSIONAL", adminRoles: [] } });
+  });
+
+  it("assegna insieme moderatore e finanza (docs/CHANGELOG.md §146)", async () => {
+    const { service, prisma } = build({ id: "u2", role: "CLIENT", adminRoles: [], deletedAt: null, professionalProfile: null });
+    await service.setAdminRoles("admin-1", "u2", ["FINANCE", "MODERATOR"]);
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "ADMIN", adminRoles: ["MODERATOR", "FINANCE"] } });
   });
 
   it("nessuno cambia il proprio ruolo", async () => {
-    const { service } = build({ id: "admin-1", role: "ADMIN", adminRole: "SUPER", deletedAt: null, professionalProfile: null });
-    await expect(service.setAdminRole("admin-1", "admin-1", null)).rejects.toThrow("tuo stesso ruolo");
+    const { service } = build({ id: "admin-1", role: "ADMIN", adminRoles: ["SUPER"], deletedAt: null, professionalProfile: null });
+    await expect(service.setAdminRoles("admin-1", "admin-1", [])).rejects.toThrow("tuo stesso ruolo");
   });
 });

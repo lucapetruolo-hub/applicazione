@@ -14744,3 +14744,109 @@ rimborsi; CSV corretto; ⌘K → scheda del cliente → "Sospendi account" →
 `/auth/me` del cliente 403; registro con le azioni e i motivi; anteprima di
 un profilo dopo la misura; menu e "Sezione non disponibile" per la finanza;
 Home con andamento a 1280px e 390px.
+
+## 146. Ruoli admin combinabili (Moderatore e Finanza insieme)
+
+**Richiesta esplicita dell'utente**: "dai la possibilità di rendere
+moderatore E finanza e non O".
+
+**Decisione**: `User.adminRole` (un solo valore) diventa `User.adminRoles`
+(lista), migrazione `20260924200000_admin_roles_combinable`: aggiunge la
+colonna, copia il ruolo già assegnato e solo dopo toglie la vecchia —
+nessun admin perde il proprio ruolo. Regole in
+`packages/shared/src/adminRoles.ts`: `normalizeAdminRoles` (lista vuota su
+un ADMIN = SUPER, SUPER assorbe gli altri), `adminCan(lista, area)` vero se
+almeno un ruolo copre l'area, `adminRolesLabel` ("Moderatore + Finanza").
+Nella scheda utente il pannello diventa "Ruoli di amministratore" con
+caselle (Moderatore, Finanza, Super admin; spuntando Super admin le altre
+risultano incluse); nessuna casella = non più admin. Stesse protezioni di
+prima: mai togliere l'ultimo super admin né cambiare i propri ruoli.
+`/auth/me`, tabella Utenti, CSV e registro mostrano la combinazione.
+
+**Verifica**: typecheck API e web; 57/57 test API (nuovi: combinazione
+Moderatore + Finanza nel guard e nel servizio); `prisma migrate diff`
+senza differenze; migrazione applicata al database di prova con admin a
+ruolo singolo (SUPER/MODERATOR/FINANCE copiati correttamente). Account
+Moderatore + Finanza: 200 su segnalazioni, rimborsi e DAC7, 403 sul
+registro; menu con entrambe le aree e senza "Registro azioni"; pannello
+caselle e cronologia "Ruolo cambiato in moderatore + finanza" verificati.
+
+## 147. Area professionista e cliente a sezioni, Home "Oggi", visite al profilo
+
+**Richiesta esplicita dell'utente (CEO)**: "raggruppa meglio le varie
+pagine, rendile più fruibili [...] magari in sezioni", prendendo spunto da
+come era stata rifatta l'area admin. Approvati i tre punti critici ("critici
+tutti e 3 sì") e tutti i tattici, più: visite al profilo, divisione delle
+tre pagine più grandi, tutto nella stessa PR per una sola build Vercel.
+
+**Decisioni**:
+- **Menu a sezioni per il professionista** (`AccountShell`,
+  `apps/web/src/components/account/AccountShell.tsx`, montato dai
+  `layout.tsx` di `/dashboard`, `/chat`, `/account`, `/le-mie-richieste`,
+  `/professionisti-salvati`, `/segnalazioni`): colonna fissa a sinistra da
+  1000px, barra scorrevole in alto su telefono, come l'area admin (§144).
+  **Ribalta §45** ("non far vedere quel menu sempre lì fisso"), con
+  approvazione esplicita. Gruppi in `apps/web/src/lib/accountMenuItems.ts`
+  (`PROFESSIONAL_NAV`): Lavoro (Oggi, Richieste e lavori, Messaggi, Agenda),
+  La tua attività (Profilo e visibilità, Statistiche), Impostazioni
+  (Account, Dati fiscali e pagamenti, Segnalazioni e decisioni), Come
+  cliente. Resta vero §46 (Chat voce a sé) e §88 (dati fiscali separati dal
+  profilo pubblico). Il menu a tendina dell'header resta.
+- **Cliente**: nessuna colonna (poche voci), una barra di schede sotto
+  l'header: Richieste, Messaggi, Salvati, Account (Segnalazioni dentro
+  Account). Ogni richiesta chiusa mostra **un solo pulsante "cosa devi fare
+  ora"** (`apps/web/src/lib/clientNextAction.ts`): "Confronta i N
+  preventivi"/"Guarda il preventivo", "Conferma che il lavoro è terminato"
+  (appuntamento passato), "Lascia una recensione". Nessun pulsante quando la
+  mossa spetta al professionista.
+- **Home "Oggi"** (`/dashboard`, riscritta): tolte le due liste paginate
+  (erano un doppione di Richieste e lavori). Tre contatori (richieste da
+  rispondere, date proposte dai clienti, messaggi non letti), "Da rispondere
+  ora" con **scadenza** e **"N su M altri professionisti hanno già
+  risposto"** (decisione esplicita dell'utente, punto critico 3: solo il
+  numero, mai chi), date da confermare, appuntamenti di oggi e domani, "Il
+  tuo andamento" (visite al profilo, tempo di risposta, recensioni rispetto
+  a stessa categoria e città, CLAUDE.md §8) e al massimo un suggerimento.
+  Nessun acquisto in Home: i pacchetti Boost (`BoostSection`, prezzi
+  invariati, sempre "In arrivo") sono ora in fondo a "Profilo e visibilità".
+- **Visite al profilo**: tabella `ProfileViewDay` (un contatore per
+  profilo e giorno, nessun dato su chi visita), migrazione
+  `20260924210000_profile_view_days`. `POST /professionals/:id/views`
+  (pubblica, 20/min per IP) non conta il titolare, i profili demo, sospesi o
+  eliminati; il profilo pubblico la chiama una volta per scheda del browser
+  (sessionStorage). `GET /professionals/me/insights` dà i numeri della Home;
+  `GET /professionals/me/leads` aggiunge `competitors {responded,total}`
+  (preventivi non ritirati degli altri professionisti sulla stessa
+  richiesta), mostrato anche nelle schede "Da preventivare" di Richieste e
+  lavori.
+- **Agenda**: la scheda "Prenotazioni" **non** è diventata un link come
+  proposto: guardando il codice era il calendario degli appuntamenti (con i
+  lavori esterni, che si aggiungono solo lì), non un elenco doppione. È
+  diventata "Calendario", con un link a Richieste e lavori per l'elenco.
+- **Notifiche**: già portavano alla richiesta giusta; il numeretto del menu
+  professionista è ora solo su "Richieste e lavori" (richieste + lavori),
+  non più doppio su "Oggi".
+- **Larghezze uniformi**: 1000px per le pagine di lavoro/elenco (Oggi,
+  Richieste e lavori, Agenda, Statistiche, Le mie richieste), 760px per i
+  moduli (Profilo e visibilità, Account, Dati fiscali, Segnalazioni,
+  Salvati).
+- **Pagine divise** (nessun cambiamento di comportamento, solo spostamento
+  in cartelle `_components/`): `dashboard/richieste` 2203 → 638 righe
+  (+ `RequestCard`, `requestHelpers`), `le-mie-richieste` 2176 → 604
+  (+ `GuidedRequestCard`, `BookingSection`, `QuoteCard`,
+  `clientRequestHelpers`), `dashboard/agenda` 2302 → 1637 (+
+  `SlotEditorModal`, `AgendaEventsList`, `agendaHelpers`; il resto è il
+  componente principale, che tiene lo stato del calendario e andrebbe
+  diviso con un intervento più profondo).
+
+**Bug trovato in verifica e corretto prima del push**: la nuova rotta
+`me/insights` era stata inserita tra `@UseGuards(JwtAuthGuard)` e
+`@Get("me/leads")`, che restava senza guard (500 sulla lista richieste).
+
+**Verifica**: typecheck API e web, 58/58 test API (nuovo: conteggio dei
+concorrenti), `next build`. Database di prova con due idraulici a Roma, un
+cliente e una richiesta con un preventivo del secondo: `competitors`
+"1 su 2" e "nessuno degli altri 2"; due visite anonime dalla stessa scheda
+= 1 visita, visita del titolare non contata; Home "Oggi", menu, Richieste
+e lavori, Profilo e visibilità (Boost), Agenda ("Calendario") a 1280px e
+390px; barra del cliente e "Guarda il preventivo" a 1280px e 390px.
