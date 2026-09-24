@@ -20,7 +20,7 @@ import { SkeletonSummaryRow } from "@/components/Skeleton";
 export default function AdminHomePage() {
   const { overview } = useAdminOverview();
   const { user, token } = useAuth();
-  const adminRole = user?.adminRole ?? "SUPER";
+  const adminRoles = user?.adminRoles ?? [];
   const [trends, setTrends] = useState<AdminTrends | null>(null);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function AdminHomePage() {
           { href: "/admin/pagamenti", value: overview.openDisputes, label: "Contestazioni di pagamento", scope: "FINANCE" as AdminScope },
         ]
       : []
-  ).filter((item) => adminCan(adminRole, item.scope));
+  ).filter((item) => adminCan(adminRoles, item.scope));
   const numbers = overview
     ? [
         { href: "/admin/utenti?ruolo=CLIENT", value: overview.clients, label: "Clienti" },

@@ -159,7 +159,7 @@ export class NotificationsService {
   emailAdminsNewReport(report: { targetType: ContentReportTargetType; reason: string }): void {
     void (async () => {
       const admins = await this.prisma.user.findMany({
-        where: { role: "ADMIN", suspendedAt: null, OR: [{ adminRole: null }, { adminRole: { in: ["SUPER", "MODERATOR"] } }] },
+        where: { role: "ADMIN", suspendedAt: null, OR: [{ adminRoles: { isEmpty: true } }, { adminRoles: { hasSome: ["SUPER", "MODERATOR"] } }] },
         select: { email: true },
       });
       const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";

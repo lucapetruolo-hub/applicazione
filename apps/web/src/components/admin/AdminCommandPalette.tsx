@@ -18,12 +18,12 @@ export function AdminCommandPalette({
   open,
   onClose,
   token,
-  adminRole,
+  adminRoles,
 }: {
   open: boolean;
   onClose: () => void;
   token: string;
-  adminRole: AdminRoleName | null;
+  adminRoles: AdminRoleName[];
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +56,7 @@ export function AdminCommandPalette({
 
   const items: Item[] = useMemo(() => {
     const query = q.trim().toLowerCase();
-    const pages = ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRole, item.scope))
+    const pages = ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRoles, item.scope))
       .filter((item) => !query || item.label.toLowerCase().includes(query))
       .map((item) => ({ key: `page-${item.href}`, title: item.label, href: item.href, group: "Sezioni" }));
     const users = (results?.users ?? []).map((u) => ({
@@ -66,7 +66,7 @@ export function AdminCommandPalette({
       href: `/admin/utenti/${u.id}`,
       group: "Utenti",
     }));
-    const reports = adminCan(adminRole, "MODERATION")
+    const reports = adminCan(adminRoles, "MODERATION")
       ? (results?.reports ?? []).map((r) => ({
           key: `report-${r.id}`,
           title: r.reason,
@@ -76,7 +76,7 @@ export function AdminCommandPalette({
         }))
       : [];
     return [...pages, ...users, ...reports];
-  }, [q, results, adminRole]);
+  }, [q, results, adminRoles]);
 
   useEffect(() => setActive(0), [items.length]);
 

@@ -27,7 +27,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
  * esisteva solo sopra i 1300px, su telefono e portatili piccoli non c'era
  * alcuna navigazione. I numeri rossi sono le cose ancora da gestire.
  */
-export function AdminNav({ overview, adminRole, onOpenSearch }: { overview: AdminOverview | null; adminRole: AdminRoleName | null; onOpenSearch: () => void }) {
+export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: AdminOverview | null; adminRoles: AdminRoleName[]; onOpenSearch: () => void }) {
   const pathname = usePathname();
   return (
     <nav className="admin-nav" aria-label="Sezioni amministrazione">
@@ -37,7 +37,7 @@ export function AdminNav({ overview, adminRole, onOpenSearch }: { overview: Admi
         <span>Cerca</span>
         <kbd className="admin-kbd">⌘K</kbd>
       </button>
-      {ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRole, item.scope)).map((item) => {
+      {ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRoles, item.scope)).map((item) => {
         const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         const count = overview && item.badge ? item.badge(overview) : 0;
         return (

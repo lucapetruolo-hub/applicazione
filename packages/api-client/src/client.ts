@@ -205,7 +205,7 @@ export type AdminUserRow = {
   name: string | null;
   surname: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
-  adminRole: AdminRoleName | null;
+  adminRoles: AdminRoleName[];
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
@@ -233,7 +233,7 @@ export type AdminUserDetail = {
   surname: string | null;
   phone: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
-  adminRole: AdminRoleName | null;
+  adminRoles: AdminRoleName[];
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
@@ -425,8 +425,8 @@ export type CurrentUser = {
    * `role === "PROFESSIONAL"`.
    */
   isProfessional: boolean;
-  /** Area di competenza di un ADMIN (docs/CHANGELOG.md §145), `null` per gli altri ruoli. */
-  adminRole?: "SUPER" | "MODERATOR" | "FINANCE" | null;
+  /** Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146); vuota per gli altri ruoli. */
+  adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;
@@ -1231,8 +1231,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     adminReactivateUser: (token: string, id: string, note: string) =>
       request<{ id: string }>(`/admin/users/${id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) }),
 
-    adminSetAdminRole: (token: string, id: string, adminRole: AdminRoleName | null) =>
-      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRole }) }),
+    /** Ruoli admin combinabili (docs/CHANGELOG.md §146); lista vuota = non più admin. */
+    adminSetAdminRoles: (token: string, id: string, adminRoles: AdminRoleName[]) =>
+      request<{ id: string }>(`/admin/users/${id}/admin-role`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ adminRoles }) }),
 
     adminAuditLog: (token: string, page = 1, entityType?: string) =>
       request<AdminAuditLogPage>(`/admin/audit-log?page=${page}${entityType ? `&entityType=${encodeURIComponent(entityType)}` : ""}`, {

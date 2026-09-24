@@ -34,15 +34,15 @@ enum UserRole {
 }
 
 model User {
-  id                  String     @id @default(uuid())
-  role                UserRole   @default(CLIENT)
+  id                  String      @id @default(uuid())
+  role                UserRole    @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email               String?    @unique
+  email               String?     @unique
   passwordHash        String?
-  phone               String?    @unique
-  googleId            String?    @unique
+  phone               String?     @unique
+  googleId            String?     @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
   name                String?
@@ -67,8 +67,8 @@ model User {
   postalCode          String?
   city                String?
   province            String?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
   // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
   // prenotazioni/recensioni create da questo utente hanno FK dirette su
@@ -90,11 +90,12 @@ model User {
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
   suspensionNote      String?
-  // Area di competenza di un ADMIN (docs/CHANGELOG.md §145): SUPER vede e fa
-  // tutto (e assegna i ruoli), MODERATOR segnalazioni/messaggi/utenti,
-  // FINANCE finanza/rimborsi/DAC7/statistiche. `null` su un ADMIN vale come
+  // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
+  // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
+  // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
+  // [MODERATOR, FINANCE] vede entrambe. Lista vuota su un ADMIN vale come
   // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
-  adminRole           AdminRole?
+  adminRoles          AdminRole[] @default([])
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):

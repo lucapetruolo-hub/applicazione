@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { MODERATION_ACTIONS_BY_TARGET, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { MODERATION_ACTIONS_BY_TARGET, normalizeAdminRoles, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -12,7 +12,7 @@ export type AdminUserRow = {
   name: string | null;
   surname: string | null;
   role: string;
-  adminRole: string | null;
+  adminRoles: string[];
   businessName: string | null;
   professionalProfileId: string | null;
   profileSuspended: boolean;
@@ -97,7 +97,7 @@ export class AdminService {
       u.name ?? "",
       u.surname ?? "",
       u.role,
-      u.adminRole ?? "",
+      u.adminRoles.join("+"),
       u.businessName ?? "",
       u.deletedAt ? "eliminato" : u.suspendedAt ? "sospeso" : u.profileSuspended ? "profilo nascosto" : "attivo",
       u.createdAt.slice(0, 10),
@@ -218,7 +218,7 @@ export class AdminService {
       surname: user.surname,
       phone: user.phone,
       role: user.role,
-      adminRole: user.role === "ADMIN" ? (user.adminRole ?? "SUPER") : null,
+      adminRoles: user.role === "ADMIN" ? normalizeAdminRoles(user.adminRoles) : [],
       createdAt: user.createdAt.toISOString(),
       deletedAt: user.deletedAt?.toISOString() ?? null,
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
@@ -282,31 +282,42 @@ export class AdminService {
   }
 
   /**
-   * Assegna o toglie il ruolo di amministratore (solo super admin,
-   * docs/CHANGELOG.md §145). `null` = non più admin: torna professionista se
-   * ha un profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
-   * cambiare il proprio ruolo (niente blocchi fuori dal pannello).
+   * Assegna o toglie i ruoli di amministratore (solo super admin,
+   * docs/CHANGELOG.md §145-§146). I ruoli si combinano (es. Moderatore +
+   * Finanza); lista vuota = non più admin: torna professionista se ha un
+   * profilo, altrimenti cliente. Mai togliere l'ultimo super admin né
+   * cambiare i propri ruoli (niente blocchi fuori dal pannello).
    */
-  async setAdminRole(adminUserId: string, userId: string, adminRole: AdminRoleValue | null) {
+  async setAdminRoles(adminUserId: string, userId: string, roles: AdminRoleValue[]) {
     if (userId === adminUserId) throw new BadRequestException("Non puoi cambiare il tuo stesso ruolo.");
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, adminRole: true, deletedAt: true, professionalProfile: { select: { id: true } } },
+      select: { id: true, role: true, adminRoles: true, deletedAt: true, professionalProfile: { select: { id: true } } },
     });
     if (!target || target.deletedAt) throw new NotFoundException("Utente non trovato.");
-    const wasSuper = target.role === "ADMIN" && (target.adminRole ?? "SUPER") === "SUPER";
-    if (wasSuper && adminRole !== "SUPER") {
-      const supers = await this.prisma.user.count({ where: { role: "ADMIN", OR: [{ adminRole: "SUPER" }, { adminRole: null }] } });
+    const nextRoles = roles.length === 0 ? [] : normalizeAdminRoles(roles);
+    const wasSuper = target.role === "ADMIN" && normalizeAdminRoles(target.adminRoles).includes("SUPER");
+    if (wasSuper && !nextRoles.includes("SUPER")) {
+      const supers = await this.prisma.user.count({
+        where: { role: "ADMIN", OR: [{ adminRoles: { has: "SUPER" } }, { adminRoles: { isEmpty: true } }] },
+      });
       if (supers <= 1) throw new BadRequestException("Serve almeno un super admin.");
     }
-    const oldValue = target.role === "ADMIN" ? (target.adminRole ?? "SUPER") : target.role;
+    const oldValue = target.role === "ADMIN" ? normalizeAdminRoles(target.adminRoles).join("+") : target.role;
     const data =
-      adminRole === null
-        ? { role: target.professionalProfile ? ("PROFESSIONAL" as const) : ("CLIENT" as const), adminRole: null }
-        : { role: "ADMIN" as const, adminRole };
+      nextRoles.length === 0
+        ? { role: target.professionalProfile ? ("PROFESSIONAL" as const) : ("CLIENT" as const), adminRoles: [] as AdminRoleValue[] }
+        : { role: "ADMIN" as const, adminRoles: nextRoles };
     await this.prisma.user.update({ where: { id: userId }, data });
-    await this.auditLogService.record({ entityType: "User", entityId: userId, fieldName: "adminRole", oldValue, newValue: adminRole ?? data.role, changedByUserId: adminUserId });
-    return { id: userId, role: data.role, adminRole: data.adminRole };
+    await this.auditLogService.record({
+      entityType: "User",
+      entityId: userId,
+      fieldName: "adminRoles",
+      oldValue,
+      newValue: nextRoles.length ? nextRoles.join("+") : data.role,
+      changedByUserId: adminUserId,
+    });
+    return { id: userId, role: data.role, adminRoles: data.adminRoles };
   }
 
   /** Registro delle azioni admin (docs/CHANGELOG.md §145): chi ha fatto cosa e quando. */
@@ -520,7 +531,7 @@ export class AdminService {
     if (!user) {
       throw new NotFoundException("Nessun utente registrato con questa email.");
     }
-    const updated = await this.prisma.user.update({ where: { email }, data: { role: "ADMIN", adminRole: "SUPER" } });
+    const updated = await this.prisma.user.update({ where: { email }, data: { role: "ADMIN", adminRoles: ["SUPER"] } });
     return { email: updated.email as string, role: updated.role };
   }
 
@@ -1010,7 +1021,7 @@ const USER_ROW_SELECT = {
   name: true,
   surname: true,
   role: true,
-  adminRole: true,
+  adminRoles: true,
   createdAt: true,
   deletedAt: true,
   suspendedAt: true,
@@ -1024,7 +1035,7 @@ function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>)
     name: u.name,
     surname: u.surname,
     role: u.role,
-    adminRole: u.role === "ADMIN" ? (u.adminRole ?? "SUPER") : null,
+    adminRoles: u.role === "ADMIN" ? normalizeAdminRoles(u.adminRoles) : [],
     businessName: u.professionalProfile?.businessName ?? null,
     professionalProfileId: u.professionalProfile?.id ?? null,
     profileSuspended: u.professionalProfile?.suspendedAt != null,
@@ -1065,7 +1076,10 @@ const ROLE_SHORT_LABEL: Record<string, string> = {
 /** Frase leggibile per una riga del registro. */
 function auditLabel(fieldName: string | null, newValue: string | null): string {
   if (fieldName === "suspendedAt") return newValue === "SUSPENDED" ? "Account sospeso" : "Account riattivato";
-  if (fieldName === "adminRole") return `Ruolo cambiato in ${newValue ? (ROLE_SHORT_LABEL[newValue] ?? newValue) : "—"}`;
+  if (fieldName === "adminRole" || fieldName === "adminRoles") {
+    const labels = (newValue ?? "").replace(/"/g, "").replace(/[[\]]/g, "").split(/[+,]/).filter(Boolean).map((v) => ROLE_SHORT_LABEL[v] ?? v);
+    return `Ruolo cambiato in ${labels.join(" + ") || "—"}`;
+  }
   if (fieldName === "revert") return "Misura annullata";
   if (fieldName === "appeal") return "Contestazione respinta";
   if (fieldName === "status" && newValue?.startsWith("RESOLVED")) {

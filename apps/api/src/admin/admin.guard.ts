@@ -27,12 +27,12 @@ export class AdminGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const user = await this.prisma.user.findUnique({ where: { id: request.user.userId }, select: { role: true, adminRole: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: request.user.userId }, select: { role: true, adminRoles: true } });
     if (user?.role !== "ADMIN") {
       throw new ForbiddenException("Accesso riservato agli amministratori.");
     }
     const scope = this.reflector.getAllAndOverride<AdminScope | undefined>(ADMIN_SCOPE_KEY, [context.getHandler(), context.getClass()]) ?? "ANY";
-    if (!adminCan(user.adminRole, scope)) {
+    if (!adminCan(user.adminRoles, scope)) {
       throw new ForbiddenException("Questa sezione non rientra nel tuo ruolo di amministratore.");
     }
     return true;

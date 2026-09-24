@@ -14744,3 +14744,29 @@ rimborsi; CSV corretto; ⌘K → scheda del cliente → "Sospendi account" →
 `/auth/me` del cliente 403; registro con le azioni e i motivi; anteprima di
 un profilo dopo la misura; menu e "Sezione non disponibile" per la finanza;
 Home con andamento a 1280px e 390px.
+
+## 146. Ruoli admin combinabili (Moderatore e Finanza insieme)
+
+**Richiesta esplicita dell'utente**: "dai la possibilità di rendere
+moderatore E finanza e non O".
+
+**Decisione**: `User.adminRole` (un solo valore) diventa `User.adminRoles`
+(lista), migrazione `20260924200000_admin_roles_combinable`: aggiunge la
+colonna, copia il ruolo già assegnato e solo dopo toglie la vecchia —
+nessun admin perde il proprio ruolo. Regole in
+`packages/shared/src/adminRoles.ts`: `normalizeAdminRoles` (lista vuota su
+un ADMIN = SUPER, SUPER assorbe gli altri), `adminCan(lista, area)` vero se
+almeno un ruolo copre l'area, `adminRolesLabel` ("Moderatore + Finanza").
+Nella scheda utente il pannello diventa "Ruoli di amministratore" con
+caselle (Moderatore, Finanza, Super admin; spuntando Super admin le altre
+risultano incluse); nessuna casella = non più admin. Stesse protezioni di
+prima: mai togliere l'ultimo super admin né cambiare i propri ruoli.
+`/auth/me`, tabella Utenti, CSV e registro mostrano la combinazione.
+
+**Verifica**: typecheck API e web; 57/57 test API (nuovi: combinazione
+Moderatore + Finanza nel guard e nel servizio); `prisma migrate diff`
+senza differenze; migrazione applicata al database di prova con admin a
+ruolo singolo (SUPER/MODERATOR/FINANCE copiati correttamente). Account
+Moderatore + Finanza: 200 su segnalazioni, rimborsi e DAC7, 403 sul
+registro; menu con entrambe le aree e senza "Registro azioni"; pannello
+caselle e cronologia "Ruolo cambiato in moderatore + finanza" verificati.

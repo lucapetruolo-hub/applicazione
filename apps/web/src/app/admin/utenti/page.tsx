@@ -7,7 +7,7 @@ import type { AdminUsersPage, AdminUsersQuery } from "@professionisti/api-client
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { ADMIN_ROLE_LABEL } from "@professionisti/shared";
+import { adminRolesLabel } from "@professionisti/shared";
 import { AdminPageHeader, AdminPill, downloadTextFile, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
@@ -132,7 +132,7 @@ function UtentiContent() {
                     <Link href={`/admin/utenti/${row.id}`}>{row.email ?? "(senza email)"}</Link>
                   </td>
                   <td>{[row.name, row.surname].filter(Boolean).join(" ") || "—"}</td>
-                  <td>{row.role === "ADMIN" && row.adminRole ? `Admin · ${ADMIN_ROLE_LABEL[row.adminRole]}` : ROLE_LABEL[row.role]}</td>
+                  <td>{row.role === "ADMIN" ? `Admin · ${adminRolesLabel(row.adminRoles)}` : ROLE_LABEL[row.role]}</td>
                   <td>
                     {row.businessName && row.professionalProfileId && !row.deletedAt ? (
                       <Link href={`/professionista/${row.professionalProfileId}`} target="_blank">

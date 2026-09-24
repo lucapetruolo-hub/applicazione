@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { AdminRoleName, AdminUserDetail } from "@professionisti/api-client";
-import { ADMIN_ROLE_DESCRIPTION, ADMIN_ROLE_LABEL, CONTENT_REPORT_TARGET_LABEL, adminCan, adminRoles, moderationActionAdminLabel } from "@professionisti/shared";
+import { ADMIN_ROLE_DESCRIPTION, ADMIN_ROLE_LABEL, CONTENT_REPORT_TARGET_LABEL, adminCan, adminRolesLabel, moderationActionAdminLabel } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -22,7 +22,7 @@ const KIND_ICON: Record<string, string> = { account: "👤", request: "📝", bo
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const { user: me, token } = useAuth();
-  const myRole = me?.adminRole ?? "SUPER";
+  const myRoles = me?.adminRoles ?? [];
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +65,7 @@ export default function AdminUserDetailPage() {
           description={[detail.email, detail.phone].filter(Boolean).join(" · ") || undefined}
         />
         <XStack gap="$2" flexWrap="wrap" marginTop={-8}>
-          <AdminPill>{detail.role === "ADMIN" && detail.adminRole ? `Admin · ${ADMIN_ROLE_LABEL[detail.adminRole]}` : ROLE_LABEL[detail.role]}</AdminPill>
+          <AdminPill>{detail.role === "ADMIN" ? `Admin · ${adminRolesLabel(detail.adminRoles)}` : ROLE_LABEL[detail.role]}</AdminPill>
           {detail.deletedAt ? <AdminPill>Eliminato il {formatAdminDate(detail.deletedAt)}</AdminPill> : null}
           {detail.suspendedAt ? <AdminPill tone="danger">Sospeso dal {formatAdminDate(detail.suspendedAt)}</AdminPill> : null}
           {!detail.suspendedAt && detail.professionalProfile?.suspendedAt ? <AdminPill tone="warn">Profilo tolto dalla ricerca</AdminPill> : null}
@@ -106,11 +106,11 @@ export default function AdminUserDetailPage() {
         ))}
       </div>
 
-      {adminCan(myRole, "MODERATION") && !detail.deletedAt && detail.role !== "ADMIN" ? (
+      {adminCan(myRoles, "MODERATION") && !detail.deletedAt && detail.role !== "ADMIN" ? (
         <SuspendPanel detail={detail} token={token ?? ""} onChanged={reload} />
       ) : null}
 
-      {adminCan(myRole, "SUPER") && !detail.deletedAt && !isSelf ? <AdminRolePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+      {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf ? <AdminRolePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
 
       {detail.reportsReceived.length > 0 ? (
         <YStack gap="$2">
@@ -243,17 +243,28 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
   );
 }
 
+/**
+ * Ruoli admin combinabili (docs/CHANGELOG.md §146): Moderatore e Finanza si
+ * possono spuntare insieme; Super admin comprende già tutto. Nessuna
+ * casella = non più admin.
+ */
 function AdminRolePanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
-  const current: AdminRoleName | "NONE" = detail.role === "ADMIN" ? (detail.adminRole ?? "SUPER") : "NONE";
-  const [value, setValue] = useState<AdminRoleName | "NONE">(current);
+  const current: AdminRoleName[] = detail.role === "ADMIN" ? detail.adminRoles : [];
+  const [selected, setSelected] = useState<AdminRoleName[]>(current);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSuper = selected.includes("SUPER");
+  const changed = [...selected].sort().join() !== [...current].sort().join();
+
+  function toggle(role: AdminRoleName) {
+    setSelected((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+  }
 
   async function save() {
     setBusy(true);
     setError(null);
     try {
-      await apiClient.adminSetAdminRole(token, detail.id, value === "NONE" ? null : value);
+      await apiClient.adminSetAdminRoles(token, detail.id, isSuper ? ["SUPER"] : selected);
       onChanged();
     } catch (err) {
       setError(errorMessage(err));
@@ -262,31 +273,32 @@ function AdminRolePanel({ detail, token, onChanged }: { detail: AdminUserDetail;
     }
   }
 
+  const checkbox = (role: AdminRoleName, disabled = false) => (
+    <label key={role} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.55 : 1 }}>
+      <input type="checkbox" checked={isSuper && role !== "SUPER" ? true : selected.includes(role)} disabled={disabled} onChange={() => toggle(role)} />
+      <span>
+        <strong>{ADMIN_ROLE_LABEL[role]}</strong> — {ADMIN_ROLE_DESCRIPTION[role]}
+      </span>
+    </label>
+  );
+
   return (
     <AdminCard>
       <Text fontWeight="700" color={brand.grafite}>
-        Ruolo di amministratore
+        Ruoli di amministratore
+      </Text>
+      <Text fontSize="$3" color={brand.grafite70}>
+        Puoi spuntarne più di uno. Nessuna casella: {detail.professionalProfile ? "resta professionista" : "resta cliente"}, senza accesso al pannello.
       </Text>
       <YStack gap="$2">
-        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, cursor: "pointer" }}>
-          <input type="radio" name="admin-role" checked={value === "NONE"} onChange={() => setValue("NONE")} />
-          <span>
-            <strong>Nessuno</strong> — {detail.professionalProfile ? "professionista" : "cliente"}, senza accesso al pannello
-          </span>
-        </label>
-        {adminRoles.map((role) => (
-          <label key={role} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, cursor: "pointer" }}>
-            <input type="radio" name="admin-role" checked={value === role} onChange={() => setValue(role)} />
-            <span>
-              <strong>{ADMIN_ROLE_LABEL[role]}</strong> — {ADMIN_ROLE_DESCRIPTION[role]}
-            </span>
-          </label>
-        ))}
+        {checkbox("MODERATOR", isSuper)}
+        {checkbox("FINANCE", isSuper)}
+        {checkbox("SUPER")}
       </YStack>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack>
-        <Button variant="primary" size="$3" disabled={busy || value === current} onPress={save}>
-          {busy ? "…" : "Salva ruolo"}
+        <Button variant="primary" size="$3" disabled={busy || !changed} onPress={save}>
+          {busy ? "…" : "Salva ruoli"}
         </Button>
       </XStack>
     </AdminCard>

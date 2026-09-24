@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN";
-  const adminRole = isAdmin ? (user?.adminRole ?? "SUPER") : null;
+  const adminRoles = isAdmin ? (user?.adminRoles ?? []) : [];
 
   // ⌘K / Ctrl+K apre la ricerca globale ovunque nel pannello.
   useEffect(() => {
@@ -93,12 +93,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const section = [...ADMIN_NAV_ITEMS]
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) => (item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)));
-  const allowed = !section || adminCan(adminRole, section.scope);
+  const allowed = !section || adminCan(adminRoles, section.scope);
 
   return (
     <AdminOverviewContext.Provider value={{ overview, refresh: refreshOverview }}>
       <div className="admin-shell">
-        <AdminNav overview={overview} adminRole={adminRole} onOpenSearch={() => setSearchOpen(true)} />
+        <AdminNav overview={overview} adminRoles={adminRoles} onOpenSearch={() => setSearchOpen(true)} />
         <main className="admin-main">
           {allowed ? (
             children
@@ -110,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
         </main>
       </div>
-      <AdminCommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} token={token} adminRole={adminRole} />
+      <AdminCommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} token={token} adminRoles={adminRoles} />
     </AdminOverviewContext.Provider>
   );
 }
