@@ -1122,7 +1122,7 @@ export default function DashboardProfiloPage() {
       {pendingHref ? (
         // Popup "modifiche non salvate" (richiesta esplicita dell'utente,
         // docs/CHANGELOG.md §136): stesso overlay del popup disponibilità
-        // qui sotto. Click fuori = "Annulla", si resta sulla pagina.
+        // qui sotto. Click fuori dal popup = si resta sulla pagina.
         <div
           role="dialog"
           aria-modal="true"
@@ -1154,17 +1154,18 @@ export default function DashboardProfiloPage() {
                   </Text>
                 ) : null}
               </YStack>
-              <YStack gap="$2">
-                <Button variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave} opacity={isSavingBeforeLeave ? 0.6 : 1}>
-                  {isSavingBeforeLeave ? "Salvataggio..." : "Salva ed esci"}
+              {/* Due soli pulsanti, verde e rosso (richiesta esplicita
+                  dell'utente); per restare sulla pagina basta toccare fuori
+                  dal popup. Il rosso della variante "urgent" qui è usato
+                  per l'azione distruttiva (le modifiche vanno perse). */}
+              <XStack gap="$3" flexWrap="wrap">
+                <Button flex={1} variant="primary" onPress={handleSaveAndLeave} disabled={isSavingBeforeLeave} opacity={isSavingBeforeLeave ? 0.6 : 1}>
+                  {isSavingBeforeLeave ? "Salvataggio..." : "Salva"}
                 </Button>
-                <Button variant="ghost" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
+                <Button flex={1} variant="urgent" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
                   Esci senza salvare
                 </Button>
-                <Button variant="ghost" onPress={cancelLeave} disabled={isSavingBeforeLeave}>
-                  Resta sulla pagina
-                </Button>
-              </YStack>
+              </XStack>
             </YStack>
           </div>
         </div>

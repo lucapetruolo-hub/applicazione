@@ -14386,10 +14386,11 @@ visibile nel riquadro indica la causa reale.
   campi del form principale e com'erano all'ultimo caricamento/salvataggio
   (esclusi la foto profilo, salvata subito al caricamento, e il raggio di
   ingaggio, che ha il suo "Salva"). Con modifiche in sospeso, un click su un
-  link interno del sito apre il popup "Salvare le modifiche?" con **Salva ed
-  esci** (stessa validazione e salvataggio del bottone in fondo; se fallisce,
-  l'errore compare nel popup e si resta sulla pagina), **Esci senza
-  salvare** e **Resta sulla pagina**; chiusura/ricarica della scheda → avviso
+  link interno del sito apre il popup "Salvare le modifiche?" con due soli
+  pulsanti, su richiesta esplicita dell'utente: **Salva** verde (stessa
+  validazione e salvataggio del bottone in fondo, poi prosegue verso il link;
+  se fallisce, l'errore compare nel popup e si resta sulla pagina) ed **Esci
+  senza salvare** rosso; toccando fuori dal popup si resta sulla pagina; chiusura/ricarica della scheda → avviso
   nativo del browser. Logica riusabile in
   `apps/web/src/lib/useUnsavedChangesGuard.ts` (listener in cattura sul
   `document`, gira prima di `next/link`). Limite noto: non intercetta il
@@ -14411,6 +14412,6 @@ visibile nel riquadro indica la causa reale.
 
 Verifica: typecheck, `next build`; Playwright con API simulata sul popup: senza
 modifiche il link naviga subito; con una modifica al nome compare il popup,
-"Resta sulla pagina" chiude e si resta, "Salva ed esci" salva e naviga, "Esci
-senza salvare" naviga senza salvare; nessun errore in console. La mappa reale
+"Salva" salva e naviga, "Esci senza salvare" naviga senza salvare; nessun
+errore in console. La mappa reale
 non è verificabile qui (Google non si carica da questo ambiente).
