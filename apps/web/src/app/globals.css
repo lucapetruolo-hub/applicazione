@@ -1287,3 +1287,60 @@ a.admin-kpi:hover {
     font-size: 16px !important;
   }
 }
+
+/* Campi email/password dei moduli di accesso (AuthField, docs/CHANGELOG.md
+   §151): stesso aspetto di `Field` di packages/ui. */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.auth-field-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 0 12px;
+}
+.auth-field-box.has-error {
+  border-color: #c8362b;
+}
+.auth-field-box:focus-within {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.auth-field-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.auth-field-box input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  color: #2b2420;
+  padding: 0;
+}
+.auth-field-box input::placeholder {
+  color: #9a9087;
+}
+.auth-field-hint,
+.auth-field-error {
+  font-size: 13px;
+  color: #6e6459;
+}
+.auth-field-error {
+  color: #c8362b;
+}

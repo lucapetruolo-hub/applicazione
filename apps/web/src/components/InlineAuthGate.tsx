@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { emailPasswordSchema, registerSchema } from "@professionisti/shared";
-import { Button, Field, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -261,7 +262,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
               all'autoComplete già presente, stesso motivo di /registrati. */}
           <form onSubmit={(e) => e.preventDefault()}>
             <YStack gap="$3">
-              <Field
+              <AuthField
                 label="Email"
                 value={email}
                 onChangeText={setEmail}
@@ -272,7 +273,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                 nativeID="email"
                 accessibilityLabel="Email"
               />
-              <Field
+              <AuthField
                 label="Password"
                 rightElement={
                   <Text
@@ -294,7 +295,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                 onSubmitEditing={mode === "login" ? handleLogin : undefined}
               />
               {mode === "register" ? (
-                <Field
+                <AuthField
                   label="Conferma password"
                   rightElement={
                     <Text

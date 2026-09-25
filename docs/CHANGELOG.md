@@ -14952,3 +14952,33 @@ Su desktop nulla cambia.
 **Verifica**: Playwright con profilo iPhone 13: tutti i campi visibili
 della home a 16px; a 1280px i campi restano alle dimensioni di prima
 (13-16px).
+
+## 151. iPhone chiedeva di salvare la password a ogni carattere
+
+**Richiesta esplicita dell'utente**: "quando un utente si sta registrando
+sia come cliente che professionista e va ad immettere la password, iPhone
+gli chiede ad ogni carattere di salvare la password, risolvi".
+
+**Causa (verificata nel DOM con un MutationObserver)**: a ogni tasto gli
+attributi `name` e `type` del campo password venivano riscritti (e con
+`Field`/react-native-web anche `value`, su tutti i campi del modulo). Per
+Safari un campo password che "cambia" è una password nuova da salvare. Il
+tentativo precedente (un `<form>` reale e `autocomplete="new-password"`)
+non toccava questa causa. Non basta nemmeno un `<input>` nativo gestito da
+React: la build di React inclusa in Next, dopo ogni evento di scrittura
+("restore controlled state" → `updateInput`), svuota `name` e riscrive
+`type` del campo, anche se non è controllato.
+
+**Decisione**: nuovo `AuthField` (`apps/web/src/components/AuthField.tsx`)
+per email e password in `/registrati`, `/accedi` e nel riquadro di
+accesso `InlineAuthGate`. L'`<input>` è creato a mano dentro un
+contenitore, fuori dalla gestione di React: gli attributi si scrivono solo
+quando cambiano davvero (mostra/nascondi password), il testo arriva al
+modulo con un listener nativo, Invio invia. Stesso aspetto di `Field`
+(classi `.auth-field*`). `name` stabile uguale all'`id`, per aiutare i
+gestori di password ad abbinare email e password.
+
+**Verifica**: Playwright con profilo iPhone 13 su `/registrati` (cliente
+e professionista) e `/accedi`: prima 12-52 modifiche di attributi per 4
+caratteri, ora 0; mostra/nascondi password funziona; registrazione di un
+nuovo account e accesso con Invio riusciti.

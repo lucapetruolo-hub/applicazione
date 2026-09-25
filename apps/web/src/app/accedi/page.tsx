@@ -4,7 +4,8 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { emailPasswordSchema } from "@professionisti/shared";
-import { Button, Field, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -108,7 +109,7 @@ function AccediForm() {
         ) : null}
 
         <YStack gap="$4">
-          <Field
+          <AuthField
             label="Email"
             value={email}
             onChangeText={setEmail}
@@ -134,7 +135,7 @@ function AccediForm() {
             accessibilityLabel="Email"
             onSubmitEditing={handleLogin}
           />
-          <Field
+          <AuthField
             label="Password"
             rightElement={
               <Text

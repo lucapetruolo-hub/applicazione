@@ -4,7 +4,8 @@ import { Suspense, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -459,7 +460,7 @@ function RegistratiForm() {
          */}
         <form onSubmit={(e) => e.preventDefault()}>
           <YStack gap="$4">
-            <Field
+            <AuthField
               label="Email"
               value={email}
               onChangeText={setEmail}
@@ -470,7 +471,7 @@ function RegistratiForm() {
               nativeID="email"
               accessibilityLabel="Email"
             />
-            <Field
+            <AuthField
               label="Password"
               hint="Minimo 8 caratteri"
               rightElement={
@@ -496,7 +497,7 @@ function RegistratiForm() {
               nativeID="new-password"
               accessibilityLabel="Password"
             />
-            <Field
+            <AuthField
               label="Conferma password"
               rightElement={
                 <Text
