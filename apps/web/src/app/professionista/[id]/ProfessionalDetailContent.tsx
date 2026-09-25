@@ -270,8 +270,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             avvolta in una `Surface` — incoerenza visiva mai risolta prima
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
         <Surface gap="$4">
-        <XStack gap="$3" alignItems="flex-start" justifyContent="space-between">
-          <XStack gap="$3" alignItems="flex-start" flex={1}>
+        <XStack gap="$3" alignItems="flex-start">
+          <XStack gap="$3" alignItems="flex-start" flex={1} minWidth={0}>
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}
               onPress={() => {
@@ -286,9 +286,9 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   solo intuirne un'icona piccola accanto al nome. */}
               <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} />
             </YStack>
-            <YStack gap="$2" flex={1}>
+            <YStack gap="$2" flex={1} minWidth={0}>
               <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                   {professional.businessName}
                 </Text>
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
@@ -317,18 +317,18 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               {professional.completedJobsTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
                 <XStack alignItems="center" gap="$3" flexWrap="wrap">
                   {professional.completedJobsTotal > 0 ? (
-                    <XStack alignItems="center" gap={4}>
+                    <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
                       <Icon name="check" size={13} strokeWidth={2} color={brand.grafite70} />
-                      <Text fontSize={12.5} color={brand.grafite70}>
+                      <Text fontSize={12.5} color={brand.grafite70} flexShrink={1}>
                         {professional.completedJobsTotal} {professional.completedJobsTotal === 1 ? "lavoro completato" : "lavori completati"} in
                         totale
                       </Text>
                     </XStack>
                   ) : null}
                   {professional.avgResponseTimeMinutes !== null ? (
-                    <XStack alignItems="center" gap={4}>
+                    <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
                       <Icon name="clock" size={13} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize={12.5} color={brand.grafite70}>
+                      <Text fontSize={12.5} color={brand.grafite70} flexShrink={1}>
                         Risponde in genere entro {formatResponseTime(professional.avgResponseTimeMinutes)}
                       </Text>
                     </XStack>
@@ -337,7 +337,14 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               ) : null}
             </YStack>
           </XStack>
+        </XStack>
 
+        {/* Passaparola: per i lavori di casa la raccomandazione gira su
+            WhatsApp, quindi il bottone apre la condivisione nativa del
+            dispositivo (che su mobile include WhatsApp/contatti) e ripiega
+            sulla copia del link dove l'API non esiste (desktop senza
+            navigator.share). */}
+        <XStack gap="$3" flexWrap="wrap" alignItems="center">
           {user?.role === "CLIENT" ? (
             <Button
               variant={isSaved ? "primary" : "secondary"}
@@ -354,14 +361,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </XStack>
             </Button>
           ) : null}
-        </XStack>
-
-        {/* Passaparola: per i lavori di casa la raccomandazione gira su
-            WhatsApp, quindi il bottone apre la condivisione nativa del
-            dispositivo (che su mobile include WhatsApp/contatti) e ripiega
-            sulla copia del link dove l'API non esiste (desktop senza
-            navigator.share). */}
-        <XStack gap="$4" flexWrap="wrap">
           <Button variant="ghost" size="$3" onPress={handleShare}>
             <XStack alignItems="center" gap="$2">
               <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografia} />

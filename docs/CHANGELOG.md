@@ -15137,3 +15137,19 @@ diurna. Playwright con profilo iPhone 13: passo 1 vuoto → "Seleziona una
 categoria."; tre passi compilati e inviati; da desktop `/preventivo?
 professionista=<id>` senza altri parametri mostra la scheda del
 professionista e la categoria bloccata.
+
+## 155. Profilo pubblico: il tasto "Salva" copriva il nome
+
+Richiesta esplicita dell'utente: nel profilo pubblico del professionista
+il tasto "Salva" finiva sopra il nome. Causa: il tasto stava nella stessa
+riga di foto (140px) e testi, e su schermi stretti la colonna del nome non
+aveva spazio.
+
+Decisione: "Salva" si sposta nella riga delle azioni, prima di "Condividi
+il profilo" e "Segnala" (`ProfessionalDetailContent.tsx`). La colonna del
+nome ha `minWidth={0}`, così un nome lungo va a capo invece di uscire.
+Nello stesso punto "Risponde in genere entro…" usciva dal bordo destro
+della scheda su iPhone: ora va a capo.
+
+Verifica: `tsc`; Playwright da cliente con profilo iPhone 13 e desktop
+1280px, nome, badge e tasto non si sovrappongono.
