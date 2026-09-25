@@ -15043,3 +15043,27 @@ Playwright: pagina a 1280px e 390px; spegnendo "Messaggi · Sito" un
 messaggio reale del cliente non genera più il popup, riaccendendolo sì;
 interruttori di "Account e sicurezza" disabilitati; campanella con gruppi e
 link alle impostazioni a 1280px e 390px.
+
+## 153. "Prova il suono" non si sentiva
+
+**Richiesta esplicita dell'utente**: "nella pagina appena aggiunta delle
+notifiche, in 'prova il suono' non si sente".
+
+**Causa**: i browser permettono l'audio solo dopo un gesto dell'utente. Lo
+sblocco del contesto audio (`resume()`) partiva al primo tocco ma era
+asincrono, e `playNotificationSound` suonava solo se il contesto era già
+attivo: al primo tocco su "Prova il suono" il suono veniva saltato. In più
+il volume (0,08) era molto basso, quasi impercettibile dall'altoparlante di
+un telefono.
+
+**Decisione** (`apps/web/src/lib/notificationSound.ts`): ogni riproduzione
+chiede la ripresa del contesto dentro il gesto e suona appena è pronto;
+allo sblocco si suona un campione muto (necessario a Safari su iPhone);
+volume alzato (0,35, onda triangolare, sempre breve). Sotto il pulsante una
+nota: su iPhone, in modalità silenziosa, i suoni del sito restano muti come
+le notifiche delle altre app (scelta voluta: non forziamo la categoria
+audio "playback", che interromperebbe anche la musica dell'utente).
+
+**Verifica**: Playwright con politica autoplay che richiede un gesto, a
+1280px e con profilo iPhone 13: al primo tocco in assoluto su "Prova il
+suono" partono le due note (2 oscillatori creati; prima 0).
