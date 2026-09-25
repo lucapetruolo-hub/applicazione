@@ -8,28 +8,21 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { toMyState } from "./guided-request-user-state.service";
+import { computeLeadExpiry, LEADS_PER_REQUEST, selectLeadRecipients, type LeadCandidateSignals } from "./lead-routing";
+
+/** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
+type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | null; radiusKm: number | null };
 
 // Lead standard vs urgente: la richiesta "ora" ha margine più alto per il
 // professionista che risponde per primo (CLAUDE.md §7.5).
 const LEAD_PRICE_STANDARD_EUR_CENTS = 500;
 const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 
-// Selezione intelligente dei Lead (CLAUDE.md §14): quanti professionisti
-// contatta al massimo il fan-out iniziale di una singola richiesta guidata,
-// anche quando i candidati compatibili (categoria + raggio) sono di più —
-// richiesta esplicita dell'utente, per non sommergere il cliente di
-// preventivi concorrenti né i professionisti fuori selezione di
-// notifiche inutili. Stesso approccio già in uso per LEAD_PRICE_*
-// sopra: costante in cima al file, facile da modificare.
-const MAX_LEADS_PER_REQUEST = 3;
-
-// Scadenza del singolo Lead: passato questo tempo senza che il
-// professionista abbia inviato una Quote, il job schedulato lo marca
-// EXPIRED e pesca il prossimo candidato dalla coda di riserva (vedi
-// expandLeadQueue). Le urgenti scadono molto più in fretta: un allagamento
-// non può aspettare 4 ore una risposta.
-const URGENT_LEAD_EXPIRY_MINUTES = 20;
-const STANDARD_LEAD_EXPIRY_HOURS = 4;
+// Quanti professionisti ricevono una richiesta, entro quando devono
+// rispondere e con che ordine vengono scelti: in ./lead-routing.ts
+// (docs/CHANGELOG.md §154). 3 per le normali, 5 per le urgenti; 4 ore
+// contate solo tra le 8 e le 21 (ora italiana) per le normali, 20 minuti per
+// le urgenti; ordine per punteggio di qualità, mai per boost a pagamento.
 
 // Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
 // aperta senza nessuna Quote ricevuta, il job schedulato la chiude
@@ -145,6 +138,7 @@ export class GuidedRequestsService {
               isUrgent: input.isUrgent,
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
+              forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
             },
@@ -165,26 +159,28 @@ export class GuidedRequestsService {
     // esatto sulla stringa città: ogni professionista imposta il proprio
     // raggio (standard/urgente, vedi updateEngagementRadiusSchema),
     // rispettato da matchProfilesForFanOut sotto.
-    const matchingProfiles = input.professionalProfileId
-      ? await this.prisma.professionalProfile.findMany({ where: { id: input.professionalProfileId } })
+    const matchingProfiles: MatchedCandidate[] = input.professionalProfileId
+      ? (await this.prisma.professionalProfile.findMany({ where: { id: input.professionalProfileId } })).map((profile) => ({
+          profile,
+          distanceKm: null,
+          radiusKm: null,
+        }))
       : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent);
 
-    // Selezione intelligente (CLAUDE.md §14): sopra MAX_LEADS_PER_REQUEST
-    // candidati non li contatta tutti — sceglie i migliori per rating +
-    // 1 slot riservato a un professionista nuovo, il resto va in coda di
-    // riserva (pescata da expandLeadQueue quando un Lead scade/viene
-    // rifiutato). Una richiesta diretta a un professionista specifico non
-    // passa da qui: è già una scelta esplicita del cliente, nessuna
-    // selezione da fare.
+    // Selezione per punteggio di qualità (docs/CHANGELOG.md §154): i
+    // migliori subito (3, o 5 se urgente), un posto per un nuovo, il resto in
+    // coda di riserva (pescata da expandLeadQueue quando un Lead scade o
+    // viene rifiutato). Una richiesta diretta non passa da qui: il cliente ha
+    // già scelto.
     const { selected: leadRecipients, reserve: reserveCandidateIds } = input.professionalProfileId
-      ? { selected: matchingProfiles, reserve: [] as string[] }
-      : await this.selectLeadCandidates(matchingProfiles);
+      ? { selected: matchingProfiles.map((m) => m.profile), reserve: [] as string[] }
+      : await this.selectLeadCandidates(matchingProfiles, { isUrgent: input.isUrgent, preferredDate: null });
 
     const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
     const requestExpiresAt = this.computeRequestExpiry(input.isUrgent);
 
     if (leadRecipients.length > 0) {
-      const leadExpiresAt = this.computeLeadExpiry(input.isUrgent);
+      const leadExpiresAt = computeLeadExpiry(input.isUrgent);
       await this.prisma.lead.createMany({
         data: leadRecipients.map((profile) => ({
           guidedRequestId: guidedRequest.id,
@@ -200,26 +196,18 @@ export class GuidedRequestsService {
         data: { status: "MATCHED", reserveCandidateIds, expiresAt: requestExpiresAt },
       });
 
-      await this.prisma.notification.createMany({
-        data: leadRecipients.map((profile) => ({
-          userId: profile.userId,
-          channel: "PUSH" as const,
-          type: "NEW_LEAD",
-          payload: {
-            guidedRequestId: guidedRequest.id,
-            category: category.label,
-            city: input.city ?? null,
-            isUrgent: input.isUrgent,
-          },
-        })),
-      });
-
-      // Stessa notifica anche via email (NotificationsService.emailNewLead):
-      // qui le notifiche in-app sono create in blocco, senza passare da notify().
-      this.notificationsService.emailNewLead(
-        leadRecipients.map((profile) => profile.userId),
-        { category: category.label, city: input.city ?? null, isUrgent: input.isUrgent },
-      );
+      // Notifica a ogni destinatario con `notify` (docs/CHANGELOG.md §154):
+      // prima era una createMany diretta, che saltava il push in tempo reale
+      // (il professionista la vedeva solo al controllo successivo, fino a
+      // 45s dopo) e le preferenze di notifica; `notify` fa anche l'email.
+      for (const profile of leadRecipients) {
+        await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
+          guidedRequestId: guidedRequest.id,
+          category: category.label,
+          city: input.city ?? null,
+          isUrgent: input.isUrgent,
+        });
+      }
 
       // Metriche di affidabilità (CLAUDE.md §15, evento 1): ogni
       // destinatario del fan-out ha appena "ricevuto una richiesta".
@@ -580,33 +568,38 @@ export class GuidedRequestsService {
    * intero fan-out perso, peggio del comportamento meno preciso che
    * sostituisce.
    */
-  private async matchProfilesForFanOut(categoryId: string, city: string, isUrgent: boolean): Promise<ProfessionalProfile[]> {
+  private async matchProfilesForFanOut(
+    categoryId: string,
+    city: string,
+    isUrgent: boolean,
+    excludeProfileId?: string,
+  ): Promise<MatchedCandidate[]> {
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
-    const candidates = await this.prisma.professionalProfile.findMany({ where: { categoryId, deletedAt: null, suspendedAt: null } });
+    const candidates = await this.prisma.professionalProfile.findMany({
+      where: { categoryId, deletedAt: null, suspendedAt: null, ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}) },
+    });
     const trimmedCity = city.trim();
-    // Città facoltativa per una richiesta "online" (richiesta esplicita
-    // dell'utente, CLAUDE.md): senza una zona da cui calcolare una
-    // distanza, il raggio di ingaggio geografico non ha nulla su cui
-    // applicarsi — il match ricade sui soli professionisti che offrono
-    // consulenza da remoto (`remoteAvailable`), a prescindere da dove si
-    // trovano.
+    // Città facoltativa per una richiesta "online": senza una zona il raggio
+    // non si applica, il match ricade su chi offre consulenza da remoto.
     if (!trimmedCity) {
-      return candidates.filter((profile) => profile.remoteAvailable);
+      return candidates.filter((profile) => profile.remoteAvailable).map((profile) => ({ profile, distanceKm: null, radiusKm: null }));
     }
     const requestComune = findComuneByName(trimmedCity);
     if (!requestComune) {
-      return candidates.filter((profile) => profile.city.toLowerCase() === trimmedCity.toLowerCase());
+      return candidates
+        .filter((profile) => profile.city.toLowerCase() === trimmedCity.toLowerCase())
+        .map((profile) => ({ profile, distanceKm: null, radiusKm: null }));
     }
-    return candidates.filter((profile) => {
-      // Professionista senza coordinate reali ancora (0,0 placeholder, vedi
-      // upsertMyProfile) — mai dentro un raggio, stessa convenzione già
-      // usata da ResultsMap.tsx per escludere i puntini senza posizione.
-      if (profile.latitude === 0 && profile.longitude === 0) return false;
+    const matched: MatchedCandidate[] = [];
+    for (const profile of candidates) {
+      // Senza coordinate reali (0,0 placeholder) mai dentro un raggio.
+      if (profile.latitude === 0 && profile.longitude === 0) continue;
       const radiusKm = isUrgent ? profile.urgentEngagementRadiusKm : profile.engagementRadiusKm;
       const distanceKm = calculateDistanceKm(requestComune.lat, requestComune.lon, profile.latitude, profile.longitude);
-      return distanceKm <= radiusKm;
-    });
+      if (distanceKm <= radiusKm) matched.push({ profile, distanceKm, radiusKm });
+    }
+    return matched;
   }
 
   /**
@@ -663,7 +656,7 @@ export class GuidedRequestsService {
           guidedRequestId: request.id,
           professionalProfileId: profile.id,
           priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
-          expiresAt: this.computeLeadExpiry(request.isUrgent),
+          expiresAt: computeLeadExpiry(request.isUrgent),
           wasExpanded: true,
         },
       });
@@ -686,76 +679,121 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Sceglie chi riceve davvero un Lead tra i candidati compatibili
-   * (matchProfilesForFanOut) quando sono più di MAX_LEADS_PER_REQUEST —
-   * richiesta esplicita dell'utente. Priorità per rating decrescente
-   * (stesso rating già calcolato live da ProfessionalsService.search/
-   * getById dalle recensioni reali, mai un valore salvato — niente nuovo
-   * campo "punteggio di affidabilità": qui riusa lo stesso segnale che il
-   * sistema calcola già), ma con 1 slot sempre riservato a un
-   * professionista scelto a caso tra quelli senza recensioni ancora:
-   * altrimenti un professionista nuovo non riceverebbe mai un lead finché
-   * non ne accumula uno per vie traverse. I candidati non selezionati
-   * restano in `reserve`, in ordine di priorità: expandLeadQueue li pesca
-   * da lì quando un Lead scade o viene rifiutato.
+   * Sceglie chi riceve davvero un Lead (docs/CHANGELOG.md §154): raccoglie
+   * i segnali di ogni candidato (metriche di risposta e affidabilità,
+   * recensioni, distanza, disponibilità nel giorno chiesto, ultimo
+   * preventivo inviato, richieste ricevute in settimana) e delega il
+   * punteggio e la scelta a `selectLeadRecipients` (./lead-routing.ts).
    */
-  private async selectLeadCandidates(candidates: ProfessionalProfile[]): Promise<{ selected: ProfessionalProfile[]; reserve: string[] }> {
-    if (candidates.length <= MAX_LEADS_PER_REQUEST) {
-      return { selected: candidates, reserve: [] };
-    }
+  private async selectLeadCandidates(
+    candidates: MatchedCandidate[],
+    request: { isUrgent: boolean; preferredDate: Date | null },
+  ): Promise<{ selected: ProfessionalProfile[]; reserve: string[] }> {
+    if (candidates.length === 0) return { selected: [], reserve: [] };
+    const ids = candidates.map((c) => c.profile.id);
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+    const [metrics, lastQuotes, recentLeads, slots] = await Promise.all([
+      this.prisma.professionalMetrics.findMany({ where: { professionalProfileId: { in: ids } } }),
+      this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: ids } }, _max: { createdAt: true } }),
+      this.prisma.lead.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: ids }, createdAt: { gte: weekAgo } }, _count: { _all: true } }),
+      request.preferredDate
+        ? this.prisma.availabilitySlot.findMany({ where: { professionalProfileId: { in: ids } }, select: { professionalProfileId: true, dayOfWeek: true, date: true } })
+        : Promise.resolve([] as { professionalProfileId: string; dayOfWeek: number; date: Date | null }[]),
+    ]);
+    const metricsBy = new Map(metrics.map((m) => [m.professionalProfileId, m]));
+    const lastQuoteBy = new Map(lastQuotes.map((q) => [q.professionalProfileId, q._max.createdAt]));
+    const recentBy = new Map(recentLeads.map((l) => [l.professionalProfileId, l._count._all]));
+    const preferredDay = request.preferredDate ? request.preferredDate.toISOString().slice(0, 10) : null;
+    const preferredWeekday = request.preferredDate ? request.preferredDate.getUTCDay() : null;
 
-    const ratings = await this.getRatingsByProfile(candidates.map((c) => c.id));
-    const rated = candidates.filter((c) => ratings.has(c.id)).sort((a, b) => ratings.get(b.id)! - ratings.get(a.id)!);
-    const unrated = candidates.filter((c) => !ratings.has(c.id));
-
-    const selected: ProfessionalProfile[] = [];
-    if (unrated.length > 0) {
-      const randomIndex = Math.floor(Math.random() * unrated.length);
-      selected.push(...unrated.splice(randomIndex, 1));
-    }
-    selected.push(...rated.splice(0, MAX_LEADS_PER_REQUEST - selected.length));
-    // Se restano slot liberi (poche persone con rating, riserva "nuovo
-    // professionista" già usata) li riempie con altri senza recensioni.
-    selected.push(...unrated.splice(0, MAX_LEADS_PER_REQUEST - selected.length));
-
-    return { selected, reserve: [...rated, ...unrated].map((c) => c.id) };
-  }
-
-  /**
-   * Rating medio per gruppo di professionisti in un'unica query batch —
-   * stessa formula già in uso in ProfessionalsService.search/getById
-   * (CLAUDE.md: "il rating è sempre calcolato dalle recensioni reali, mai
-   * un valore statico"), riusata qui per selectLeadCandidates invece di
-   * introdurre un secondo modo di calcolarlo. Un professionista senza
-   * recensioni non compare nella mappa (non "zero", proprio assente):
-   * selectLeadCandidates lo riconosce così come "senza dati sufficienti".
-   */
-  private async getRatingsByProfile(profileIds: string[]): Promise<Map<string, number>> {
-    if (profileIds.length === 0) return new Map();
-    const bookings = await this.prisma.booking.findMany({
-      where: { professionalProfileId: { in: profileIds } },
-      include: { review: true },
+    const signals: LeadCandidateSignals[] = candidates.map(({ profile, distanceKm, radiusKm }) => {
+      const m = metricsBy.get(profile.id);
+      const lastQuote = lastQuoteBy.get(profile.id) ?? null;
+      const mySlots = slots.filter((s) => s.professionalProfileId === profile.id);
+      return {
+        id: profile.id,
+        avgResponseTimeMinutes: m?.avgResponseTimeMinutes ?? null,
+        requestsReceived: m?.totalRequestsReceived ?? 0,
+        responsesSent: m?.totalResponsesMeasured ?? 0,
+        avgRating: m?.avgRating ?? null,
+        reviewCount: m?.reviewCount ?? 0,
+        honoredAppointments: m?.honoredAppointments ?? 0,
+        totalAppointments: m?.totalAppointments ?? 0,
+        distanceKm,
+        radiusKm,
+        availableOnPreferredDay:
+          preferredDay === null
+            ? null
+            : mySlots.some((s) => (s.date ? s.date.toISOString().slice(0, 10) === preferredDay : s.dayOfWeek === preferredWeekday)),
+        daysSinceLastQuote: lastQuote ? (Date.now() - lastQuote.getTime()) / 86_400_000 : null,
+        leadsLast7Days: recentBy.get(profile.id) ?? 0,
+      };
     });
-    const ratingsByProfile = new Map<string, number[]>();
-    for (const booking of bookings) {
-      if (!booking.review) continue;
-      const list = ratingsByProfile.get(booking.professionalProfileId) ?? [];
-      list.push(booking.review.rating);
-      ratingsByProfile.set(booking.professionalProfileId, list);
-    }
-    const result = new Map<string, number>();
-    for (const [profileId, values] of ratingsByProfile) {
-      result.set(profileId, Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10);
-    }
-    return result;
-  }
 
-  private computeLeadExpiry(isUrgent: boolean): Date {
-    return isUrgent ? addMinutes(new Date(), URGENT_LEAD_EXPIRY_MINUTES) : addHours(new Date(), STANDARD_LEAD_EXPIRY_HOURS);
+    const { selected, reserve } = selectLeadRecipients(signals, request.isUrgent ? LEADS_PER_REQUEST.urgent : LEADS_PER_REQUEST.standard);
+    const profileById = new Map(candidates.map((c) => [c.profile.id, c.profile]));
+    return { selected: selected.map((id) => profileById.get(id)!), reserve };
   }
 
   private computeRequestExpiry(isUrgent: boolean): Date {
     return isUrgent ? addDays(new Date(), URGENT_REQUEST_EXPIRY_DAYS) : addDays(new Date(), STANDARD_REQUEST_EXPIRY_DAYS);
+  }
+
+  /**
+   * Inoltra una richiesta diretta ad altri professionisti simili quando
+   * quello scelto non ha risposto in tempo o ha rifiutato, se il cliente ha
+   * lasciato attiva la casella (docs/CHANGELOG.md §154). Una sola volta: la
+   * prima chiamata "prenota" l'inoltro con un update condizionato su
+   * `forwardedAt` nullo, così due espansioni concorrenti non lo raddoppiano.
+   * Stessa selezione per punteggio delle richieste generiche, escluso il
+   * professionista scelto; poi la richiesta prosegue come una generica
+   * (coda di riserva inclusa).
+   */
+  private async forwardDirectRequest(guidedRequestId: string): Promise<void> {
+    const claimed = await this.prisma.guidedRequest.updateMany({
+      where: { id: guidedRequestId, forwardedAt: null, forwardIfNoReply: true, status: { in: ["OPEN", "MATCHED"] } },
+      data: { forwardedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, include: { category: true } });
+    if (!request) return;
+
+    const matched = await this.matchProfilesForFanOut(request.categoryId, request.city, request.isUrgent, request.professionalProfileId ?? undefined);
+    const { selected, reserve } = await this.selectLeadCandidates(matched, { isUrgent: request.isUrgent, preferredDate: request.preferredDate });
+
+    if (selected.length === 0) {
+      await this.notificationsService.notify(request.clientId, "REQUEST_FORWARD_NO_MATCH", { guidedRequestId });
+      return;
+    }
+
+    await this.prisma.lead.createMany({
+      data: selected.map((profile) => ({
+        guidedRequestId,
+        professionalProfileId: profile.id,
+        priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
+        expiresAt: computeLeadExpiry(request.isUrgent),
+        wasExpanded: true,
+      })),
+      skipDuplicates: true,
+    });
+    await this.prisma.guidedRequest.update({ where: { id: guidedRequestId }, data: { reserveCandidateIds: reserve, status: "MATCHED" } });
+
+    for (const profile of selected) {
+      await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
+        guidedRequestId,
+        category: request.category.label,
+        city: request.city,
+        isUrgent: request.isUrgent,
+      });
+      await this.professionalMetricsService.recordRequestReceived(profile.id);
+      await this.timelineService.log(
+        guidedRequestId,
+        profile.id,
+        "SYSTEM",
+        "Il cliente aveva scelto un altro professionista che non ha risposto: la richiesta è stata inoltrata anche a te.",
+      );
+    }
+    await this.notificationsService.notify(request.clientId, "REQUEST_FORWARDED", { guidedRequestId, count: selected.length });
   }
 
   /** Combina preferredDate (data pura, mezzanotte UTC) + preferredTimeSlot ("HH:MM-HH:MM") nell'orario di inizio esatto originariamente richiesto — null se la richiesta non ne porta uno. */
@@ -785,6 +823,16 @@ export class GuidedRequestsService {
    * pescare due volte lo stesso candidato dalla coda o perderne uno.
    */
   async expandLeadQueue(guidedRequestId: string): Promise<void> {
+    // Richiesta diretta senza risposta: se il cliente l'ha chiesto, la si
+    // inoltra ad altri professionisti simili (docs/CHANGELOG.md §154).
+    const pre = await this.prisma.guidedRequest.findUnique({
+      where: { id: guidedRequestId },
+      select: { reserveCandidateIds: true, professionalProfileId: true, forwardIfNoReply: true, forwardedAt: true },
+    });
+    if (pre && pre.reserveCandidateIds.length === 0 && pre.professionalProfileId && pre.forwardIfNoReply && !pre.forwardedAt) {
+      await this.forwardDirectRequest(guidedRequestId);
+      return;
+    }
     type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean };
     let notifyTarget: NotifyTarget | null;
 
@@ -810,7 +858,7 @@ export class GuidedRequestsService {
               guidedRequestId,
               professionalProfileId: candidate.id,
               priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
-              expiresAt: this.computeLeadExpiry(request.isUrgent),
+              expiresAt: computeLeadExpiry(request.isUrgent),
               wasExpanded: true,
             },
           });

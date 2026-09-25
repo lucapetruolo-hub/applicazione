@@ -29,8 +29,8 @@ export type NotificationTopicInfo = {
 export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopicInfo> = {
   richieste: {
     professional: { label: "Nuove richieste", description: "Quando un cliente ti chiede un preventivo." },
-    client: { label: "Le tue richieste", description: "Se un professionista rifiuta o la richiesta scade." },
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED"],
+    client: { label: "Le tue richieste", description: "Se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {

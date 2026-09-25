@@ -189,6 +189,13 @@ export const guidedRequestSchema = z
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.string().uuid().optional(),
     /**
+     * Richiesta diretta a un professionista: se non risponde in tempo o
+     * rifiuta, inoltrala ad altri professionisti simili (docs/CHANGELOG.md
+     * §154, decisione dell'utente: casella attiva di default, il cliente
+     * può toglierla). Ignorata per le richieste generiche.
+     */
+    forwardIfNoReply: z.boolean().default(false),
+    /**
      * Data+fascia oraria preferita: valorizzate solo quando la richiesta
      * parte da una fascia "generica" dell'agenda pubblica di un
      * professionista (AvailabilitySlot.maxBookings > 1) — vedi

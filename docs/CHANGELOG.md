@@ -15067,3 +15067,73 @@ audio "playback", che interromperebbe anche la musica dell'utente).
 **Verifica**: Playwright con politica autoplay che richiede un gesto, a
 1280px e con profilo iPhone 13: al primo tocco in assoluto su "Prova il
 suono" partono le due note (2 oscillatori creati; prima 0).
+
+## 154. Richiesta di preventivo: pagina in 3 passi e nuove regole di smistamento
+
+**Richiesta esplicita dell'utente (CEO)**: "migliora anche la pagina
+richiesta preventivo, sia a un professionista specifico che in generale, e
+migliora il modo in cui si decide a quale professionista mandarla prima, a
+quanti se ne manda e in quanto tempo devono rispondere". Proposta del CEO
+approvata per intero ("procedi sia con le tre critiche che con le quattro
+tattiche").
+
+**Decisioni critiche (approvate dall'utente)**:
+1. **Quanti**: 3 professionisti per una richiesta normale (come prima), 5
+   per un'urgente, con 20 minuti per rispondere.
+2. **Richiesta diretta senza risposta**: casella al riepilogo, attiva di
+   default, "se [nome] non risponde entro ... o non è disponibile, inoltrala
+   fino ad altri N professionisti simili della zona". `GuidedRequest.
+   forwardIfNoReply` e `forwardedAt` (migrazione
+   `20260925140000_guided_request_forwarding`). Quando il Lead diretto
+   scade o viene rifiutato, `expandLeadQueue` chiama
+   `forwardDirectRequest`: una sola volta (update condizionato su
+   `forwardedAt` nullo, sicuro con espansioni concorrenti), stessa selezione
+   per punteggio delle generiche escluso il professionista scelto, poi la
+   richiesta prosegue come generica (coda di riserva inclusa). Il cliente
+   riceve "REQUEST_FORWARDED" (o "REQUEST_FORWARD_NO_MATCH" se in zona non
+   c'è nessun altro), argomento "Le tue richieste".
+3. **Boost fuori dallo smistamento**: il boost di visibilità continua a
+   contare solo nei risultati di ricerca; chi riceve una richiesta si decide
+   solo per qualità. Non va cambiato senza discuterne con l'utente.
+
+**Decisioni tattiche**:
+- **Bug reale**: il fan-out del nuovo lead creava le notifiche con una
+  `createMany` diretta, saltando il push in tempo reale (il professionista
+  la vedeva solo al controllo successivo, fino a 45s dopo) e le
+  preferenze di notifica (§152). Ora `notify()` per ogni destinatario, che
+  fa anche l'email.
+- **Orologio diurno**: le 4 ore per rispondere a una richiesta normale
+  contano solo tra le 8 e le 21, ora italiana (ora legale inclusa):
+  richiesta alle 23 → scade alle 12 del giorno dopo, non alle 3 di notte.
+  Le urgenti restano 20 minuti di orologio. `addDaytimeHours` in
+  `apps/api/src/guided-requests/lead-routing.ts`.
+- **Punteggio di qualità** (`leadQualityScore`, stesso file): prima solo la
+  media recensioni. Ora velocità e costanza nel rispondere 30%, recensioni
+  (media prudente verso 3,5 con poche recensioni) 20%, appuntamenti
+  rispettati 15%, vicinanza entro il raggio 15%, disponibilità in agenda
+  nel giorno chiesto 10%, ultimo preventivo inviato 10%; poi una
+  correzione di equità per chi ha già ricevuto molte richieste in
+  settimana. Senza dati un valore neutro, mai zero. Resta il posto per un
+  professionista nuovo (nessuna recensione e meno di 5 richieste ricevute),
+  scelto a caso.
+- **Pagina in 3 passi** (`GuidedRequestForm`): "Il lavoro" (categoria,
+  tipo, interruttore "È urgente?" anche da /preventivo, orario se diretta,
+  descrizione, foto), "Dove" (città e indirizzo, facoltativi se online),
+  "Riepilogo" (cosa succede dopo l'invio: a chi arriva, quanti, entro
+  quando, contatti nascosti fino all'accettazione; riepilogo modificabile;
+  casella di inoltro per le dirette). Controlli per passo, passi fatti
+  cliccabili per tornare indietro. Il professionista scelto è caricato dal
+  suo id (prima dipendeva da nome/foto/categoria nel link e con il solo id
+  la pagina tornava generica), con valutazione e tempo medio di risposta.
+  Il campo città ha ora lo stesso fondo bianco degli altri.
+
+**Verifica**: 77/77 test API (13 nuovi: orologio diurno estate/inverno e a
+cavallo della sera, urgenti di notte, punteggio, 3/5 destinatari, posto al
+nuovo); typecheck; `next build`. Su database di prova: richiesta generica →
+3 destinatari; diretta con inoltro → il professionista rifiuta → il
+secondo idraulico riceve la richiesta, il cliente la notifica
+"REQUEST_FORWARDED", `forwardedAt` valorizzato; scadenza del Lead
+diurna. Playwright con profilo iPhone 13: passo 1 vuoto → "Seleziona una
+categoria."; tre passi compilati e inviati; da desktop `/preventivo?
+professionista=<id>` senza altri parametri mostra la scheda del
+professionista e la categoria bloccata.
