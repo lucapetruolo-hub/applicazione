@@ -532,7 +532,9 @@ a {
   scrollbar-width: none;
   position: sticky;
   top: 64px;
-  z-index: 50;
+  /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
+     "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
+  z-index: 30;
 }
 .acct-nav::-webkit-scrollbar {
   display: none;
@@ -595,7 +597,9 @@ a {
   scrollbar-width: none;
   position: sticky;
   top: 64px;
-  z-index: 50;
+  /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
+     "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
+  z-index: 30;
 }
 .acct-tabs::-webkit-scrollbar {
   display: none;
@@ -934,4 +938,100 @@ a.admin-kpi:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 24px rgba(43, 36, 24, 0.09);
   border-color: #189a63;
+}
+
+/* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
+.acct-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(43, 32, 19, 0.12);
+  z-index: 1000;
+  padding: 8px;
+}
+.acct-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  margin-bottom: 4px;
+}
+.acct-menu-head-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.acct-menu-head-text strong {
+  font-size: 15px;
+  color: #2b2420;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-menu-head-text span {
+  font-size: 12px;
+  color: #6e6459;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-menu-title {
+  display: block;
+  padding: 10px 8px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6e6459;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.acct-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.acct-menu-link:hover {
+  background: #fdefe1;
+}
+.acct-menu-link.is-active {
+  background: #fdefe1;
+}
+.acct-menu-logout {
+  margin-top: 4px;
+  border-top: 1px solid #f0dcc0;
+  padding-top: 4px;
+}
+.acct-menu-logout .acct-menu-link {
+  color: #dc3545;
+}
+/* Su telefono la tendina si aggancia ai bordi dello schermo, non al nome:
+   per il cliente il nome non è all'estrema destra (c'è "Preventivo") e la
+   tendina usciva dallo schermo a sinistra. */
+@media (max-width: 599px) {
+  .acct-menu {
+    position: fixed;
+    top: 60px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: calc(100vh - 76px);
+  }
 }

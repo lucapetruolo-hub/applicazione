@@ -2,15 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Avatar, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { usePathname } from "next/navigation";
+import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { getAccountMenuItems } from "@/lib/accountMenuItems";
+import { getAccountMenuGroups, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 
 export function AccountMenu() {
   const { user, logout, unreadCount, unreadNotifications } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // Si chiude cambiando pagina e con Esc.
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -24,7 +39,7 @@ export function AccountMenu() {
 
   if (!user) return null;
 
-  const items = getAccountMenuItems(user.isProfessional);
+  const groups = getAccountMenuGroups(user.isProfessional);
 
   // Richiesta esplicita dell'utente: un professionista è identificato dalla
   // propria attività, non dal nome dell'intestatario dell'account — un
@@ -82,74 +97,54 @@ export function AccountMenu() {
       </YStack>
 
       {isOpen ? (
-        <YStack
-          position="absolute"
-          top="100%"
-          right={0}
-          marginTop="$2"
-          minWidth={220}
-          backgroundColor={brand.calce}
-          borderRadius={radiusDoc}
-          overflow="hidden"
-          zIndex={1000}
-          shadowColor="rgba(43,32,19,0)"
-          shadowRadius={0}
-          shadowOffset={{ width: 0, height: 0 }}
-          shadowOpacity={1}
-        >
-          {items.map((item) => {
-            const itemUnreadCount = menuUnreadCounts[item.href] ?? 0;
-            return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: "none" }} onClick={() => setIsOpen(false)}>
-                <XStack
-                  paddingHorizontal="$4"
-                  paddingVertical="$3"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  gap="$2"
-                  hoverStyle={{ backgroundColor: brand.gesso }}
-                >
-                  <Text fontSize="$3" color={brand.grafite}>
-                    {item.label}
-                  </Text>
-                  {itemUnreadCount > 0 ? (
-                    <YStack
-                      backgroundColor={brand.urgenza}
-                      borderRadius={999}
-                      minWidth={18}
-                      height={18}
-                      paddingHorizontal={4}
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
-                        {itemUnreadCount > 9 ? "9+" : itemUnreadCount}
-                      </Text>
-                    </YStack>
-                  ) : null}
-                </XStack>
-              </Link>
-            );
-          })}
-          <YStack borderTopWidth={1} borderTopColor={brand.filetto}>
-            <YStack
-              paddingHorizontal="$4"
-              paddingVertical="$3"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: brand.gesso }}
-              onPress={() => {
+        // Stessi gruppi e icone del menu laterale (docs/CHANGELOG.md §148):
+        // intestazione con chi sei, poi le sezioni, "Esci" in fondo.
+        <div className="acct-menu" role="menu" aria-label="Il mio account">
+          <div className="acct-menu-head">
+            <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={36} />
+            <div className="acct-menu-head-text">
+              <strong>{displayName}</strong>
+              <span>{user.isProfessional ? "Account professionista" : user.email ?? "Il tuo account"}</span>
+            </div>
+          </div>
+          {groups.map((group) => (
+            <div key={group.title}>
+              <span className="acct-menu-title">{group.title}</span>
+              {group.items.map((item) => {
+                const itemUnreadCount = menuUnreadCounts[item.href] ?? 0;
+                const active = isNavItemActive(item, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    role="menuitem"
+                    className={`acct-menu-link${active ? " is-active" : ""}`}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Icon name={item.icon} size={16} color={active ? brand.grafite : brand.grafite70} />
+                    <span>{item.label}</span>
+                    {itemUnreadCount > 0 ? <span className="acct-nav-badge">{itemUnreadCount > 9 ? "9+" : itemUnreadCount}</span> : null}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+          <div className="acct-menu-logout">
+            <button
+              type="button"
+              role="menuitem"
+              className="acct-menu-link"
+              onClick={() => {
                 setIsOpen(false);
                 logout();
               }}
-              accessibilityRole="button"
-              accessibilityLabel="Esci dal tuo account"
+              aria-label="Esci dal tuo account"
             >
-              <Text fontSize="$3" color={brand.urgenza} fontWeight="600">
-                Esci
-              </Text>
-            </YStack>
-          </YStack>
-        </YStack>
+              Esci
+            </button>
+          </div>
+        </div>
       ) : null}
     </YStack>
   );

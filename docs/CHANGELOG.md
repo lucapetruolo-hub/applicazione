@@ -14850,3 +14850,35 @@ cliente e una richiesta con un preventivo del secondo: `competitors`
 = 1 visita, visita del titolare non contata; Home "Oggi", menu, Richieste
 e lavori, Profilo e visibilità (Boost), Agenda ("Calendario") a 1280px e
 390px; barra del cliente e "Guarda il preventivo" a 1280px e 390px.
+
+## 148. Tendina "Il mio account" sopra la barra delle sezioni, e a gruppi
+
+**Richiesta esplicita dell'utente**: "quando sono già in un menu e clicco
+sul nome in alto a destra, il menu che compare va dietro il menu a
+scorrimento orizzontale appena creato, correggi e poi suddividi meglio
+anche quel menu a tendina".
+
+**Causa**: la barra delle sezioni (§147, `.acct-nav`/`.acct-tabs`, sticky)
+aveva `z-index: 50`, più dell'header (`SiteHeader`, `z-index: 40`) dentro
+cui vive la tendina: tutta la tendina finiva sotto la barra.
+
+**Decisioni**:
+- Barra delle sezioni a `z-index: 30`, sempre sotto l'header.
+- Tendina rifatta (`AccountMenu.tsx`, classi `.acct-menu*`): intestazione
+  con foto, nome e tipo di account (email per il cliente), poi gli stessi
+  gruppi e icone del menu laterale (`getAccountMenuGroups` in
+  `accountMenuItems.ts`, che sostituisce l'elenco piatto
+  `getAccountMenuItems`), pagina corrente evidenziata, numeretti, "Esci"
+  separato in fondo. Cliente: "Le tue richieste" (richieste, messaggi,
+  salvati) e "Impostazioni" (account, segnalazioni). Si chiude cambiando
+  pagina, con Esc o cliccando fuori.
+- Su telefono (<600px) la tendina si aggancia ai bordi dello schermo e
+  scorre se è più alta: per il cliente il nome non è all'estrema destra
+  (c'è "Preventivo") e la tendina usciva dallo schermo a sinistra
+  (trovato in verifica, x = -36px).
+
+**Verifica**: typecheck web, `next build`; Playwright con la tendina
+aperta su `/dashboard` (1280px), `/dashboard/richieste` (390px) e
+`/le-mie-richieste` (390px, cliente): il punto più basso della tendina è
+la tendina stessa (`elementFromPoint`), non la barra; tendina dentro lo
+schermo in tutti e tre i casi.
