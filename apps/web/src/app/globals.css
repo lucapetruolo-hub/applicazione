@@ -1035,3 +1035,255 @@ a.admin-kpi:hover {
     max-height: calc(100vh - 76px);
   }
 }
+
+/* Statistiche del professionista (docs/CHANGELOG.md §149). */
+.pstats-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.pstats-presets {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.pstats-presets::-webkit-scrollbar {
+  display: none;
+}
+.pstats-preset {
+  flex-shrink: 0;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pstats-preset:hover {
+  background: #fdefe1;
+}
+.pstats-preset.is-active {
+  background: #2b2420;
+  border-color: #2b2420;
+  color: #ffffff;
+}
+.pstats-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.pstats-custom label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.pstats-custom input {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 10px;
+  border: 1px solid #f0dcc0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2b2420;
+}
+.pstats-apply {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: none;
+  background: #189a63;
+  color: #ffffff;
+  cursor: pointer;
+}
+.pstats-error {
+  font-size: 13px;
+  color: #dc3545;
+  font-weight: 600;
+}
+.pstats-period {
+  font-size: 13px;
+  color: #6e6459;
+  flex-basis: 100%;
+}
+.pstats-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.pstats-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 2px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: #2b2420;
+  cursor: pointer;
+}
+.pstats-kpi:hover {
+  border-color: #f0dcc0;
+}
+.pstats-kpi.is-active {
+  border-color: #0e7a4c;
+}
+.pstats-kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.pstats-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.pstats-kpi-delta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.pstats-kpi-delta.is-up {
+  color: #128052;
+}
+.pstats-kpi-delta.is-down {
+  color: #c42a39;
+}
+.pstats-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pstats-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pstats-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #2b2420;
+}
+.pstats-card-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6e6459;
+}
+.pstats-card-head strong {
+  font-size: 22px;
+  color: #2b2420;
+  white-space: nowrap;
+}
+.pstats-table summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.pstats-table-scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.pstats-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.pstats-table th,
+.pstats-table td {
+  padding: 6px 10px;
+  text-align: right;
+  border-bottom: 1px solid #f0dcc0;
+  white-space: nowrap;
+}
+.pstats-table th:first-child {
+  text-align: left;
+}
+.pstats-table thead th {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  color: #6e6459;
+}
+.pstats-ratios {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.pstats-ratio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f7f6f4;
+}
+.pstats-ratio-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #2b2420;
+}
+.pstats-ratio-detail {
+  font-size: 12px;
+  color: #6e6459;
+}
+@media (max-width: 799px) {
+  .pstats-ratios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 599px) {
+  .pstats-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pstats-kpi {
+    padding: 12px;
+  }
+  .pstats-kpi-value {
+    font-size: 22px;
+  }
+  .pstats-card {
+    padding: 14px;
+  }
+  .pstats-card-head {
+    flex-direction: column;
+  }
+}
+
+/* Niente zoom automatico toccando un campo di testo (richiesta esplicita
+   dell'utente, docs/CHANGELOG.md §150): Safari su iPhone/iPad ingrandisce
+   la pagina se il testo del campo è sotto i 16px e poi la vista resta
+   spostata. Sui dispositivi touch ogni campo scrive quindi a 16px (vince
+   anche sugli stili inline). Lo zoom con due dita resta possibile: non
+   usiamo maximum-scale/user-scalable, servirebbero a chi vede poco. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

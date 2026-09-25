@@ -423,3 +423,47 @@ export type ProfessionalInsights = {
   profileViews30d: number;
   areaAvgProfileViews30d: number | null;
 };
+
+/**
+ * Statistiche del professionista su un periodo scelto (docs/CHANGELOG.md
+ * §149): dalla visita al profilo all'incasso, con il confronto sul periodo
+ * precedente di pari durata. Date come "YYYY-MM-DD", giorni in UTC.
+ */
+export type ProfessionalStatsTotals = {
+  /** Visite al profilo pubblico (`ProfileViewDay`). */
+  views: number;
+  /** Richieste ricevute (`Lead` creati). */
+  requests: number;
+  /** Preventivi inviati. */
+  quotes: number;
+  /** Lavori ottenuti: prenotazioni nate nel periodo. */
+  won: number;
+  /** Lavori completati e confermati da entrambi (stessa regola delle entrate). */
+  completed: number;
+  revenueEurCents: number;
+  reviews: number;
+  ratingAvg: number | null;
+};
+
+export type ProfessionalStatsBucket = {
+  /** "2026-09-24" (giorno) o "2026-09" (mese). */
+  key: string;
+  label: string;
+  views: number;
+  requests: number;
+  quotes: number;
+  won: number;
+  completed: number;
+  revenueEurCents: number;
+};
+
+export type ProfessionalStats = {
+  from: string;
+  to: string;
+  granularity: "day" | "month";
+  buckets: ProfessionalStatsBucket[];
+  totals: ProfessionalStatsTotals;
+  previousFrom: string;
+  previousTo: string;
+  previous: ProfessionalStatsTotals;
+};

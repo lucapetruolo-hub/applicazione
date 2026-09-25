@@ -30,6 +30,7 @@ import type {
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
   ProfessionalInsights,
+  ProfessionalStats,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
@@ -1498,6 +1499,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     // professionista autenticato — CLAUDE.md §103.
     myRevenueAnalytics: (token: string) =>
       request<RevenueAnalyticsSummary>("/professionals/me/revenue-analytics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Statistiche sul periodo scelto (date "YYYY-MM-DD"), docs/CHANGELOG.md §149. */
+    myProfessionalStats: (token: string, from: string, to: string) =>
+      request<ProfessionalStats>(`/professionals/me/stats?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminExportDac7Period: (token: string, id: string) =>
       request<unknown>(`/admin/dac7/periods/${id}/export`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

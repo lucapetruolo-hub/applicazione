@@ -14882,3 +14882,73 @@ aperta su `/dashboard` (1280px), `/dashboard/richieste` (390px) e
 `/le-mie-richieste` (390px, cliente): il punto più basso della tendina è
 la tendina stessa (`elementFromPoint`), non la barra; tendina dentro lo
 schermo in tutti e tre i casi.
+
+## 149. Statistiche del professionista con filtro del periodo, nomi cliccabili in chat
+
+**Richieste esplicite dell'utente (CEO)**: "migliora la pagina statistiche,
+ed aggiungi anche ad esempio un filtro dove puoi selezionare un periodo da
+far visualizzare sul grafico"; "fai in modo che nei messaggi e chat si può
+cliccare sia sul nome di chi manda i messaggi da una parte e l'altra".
+
+**Statistiche (`/dashboard/statistiche`)**. Prima: solo le entrate, con lo
+stesso pannello dell'admin (§103) e un selettore 3/6/12/24 mesi che
+cambiava solo il grafico. Ora:
+- filtro del periodo per tutta la pagina: 7 giorni, 30 giorni (default),
+  3 mesi, 12 mesi, quest'anno, personalizzato (date Dal/Al, massimo due
+  anni, controllato anche lato server);
+- sei tessere, ognuna confrontata col periodo precedente di pari durata:
+  visite al profilo (`ProfileViewDay`, §147), richieste ricevute (`Lead`),
+  preventivi inviati, lavori ottenuti (prenotazioni nate nel periodo),
+  lavori completati ed entrate (stessa regola "doppia conferma" di §99);
+- toccando una tessera il grafico mostra quella metrica: barre per giorno
+  fino a 92 giorni, per mese oltre, una metrica e un asse alla volta
+  (`StatsBarChart`, disegnato alla larghezza reale così su telefono le
+  etichette restano leggibili), tooltip al passaggio, tabella dei dati;
+- "Come stai lavorando": richieste a cui hai risposto, preventivi
+  accettati, valore medio per lavoro, recensioni nel periodo (solo quelle
+  pubbliche), ognuna col valore del periodo precedente.
+API: `GET /professionals/me/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`
+(`RevenueAnalyticsService.getProfessionalStats`, raggruppamento in
+`bucketStatsRows`, giorni in UTC). L'admin mantiene il suo pannello entrate
+invariato.
+
+**Chat**. In `ConversationView` (usata da `/chat` e dalle finestre di
+conversazione) il nome di entrambe le parti è cliccabile, nelle nuvolette e
+nell'intestazione: professionista → profilo pubblico; cliente visto dal
+professionista → scheda cliente (`ClientProfileModal`, caricata al clic
+dalle richieste ricevute se la pagina non la passa già: nessun contatto
+prima dell'accettazione, CLAUDE.md §5.9); il cliente che clicca il proprio
+nome → `/account`. Prima in `/chat` il nome del cliente non era cliccabile
+e l'intestazione non lo era per nessuno. Corretto anche un difetto trovato
+in verifica: in "Richieste e lavori" la scheda cliente aperta dalla
+conversazione finiva dietro la finestra (stesso `z-index`); ora sta sopra.
+
+**Verifica**: typecheck API e web, 60/60 test API (nuovi: raggruppamento
+per giorno e per mese con i periodi a zero), `next build`. Playwright su
+database di prova: 30 giorni, 12 mesi (per mese) e periodo personalizzato
+con il confronto giusto; periodo oltre due anni e date invertite → 400;
+tessera → grafico; tooltip; pagina a 1280px e 390px. Chat: il
+professionista clicca il nome del cliente → scheda aperta; il proprio nome
+→ proprio profilo; il cliente clicca il professionista → profilo pubblico,
+il proprio nome → `/account`.
+
+## 150. Niente zoom automatico toccando un campo di testo su telefono
+
+**Richiesta esplicita dell'utente**: "quando si clicca su un campo di
+scrittura, non effettuare lo zoom altrimenti si sfalsa la vista della
+pagina, o trova una soluzione".
+
+**Causa**: Safari su iPhone/iPad ingrandisce la pagina quando si tocca un
+campo il cui testo è sotto i 16px (molti campi del sito sono a 13-15px) e
+dopo la vista resta spostata.
+
+**Decisione**: in `globals.css`, solo sui dispositivi touch
+(`hover: none` e `pointer: coarse`), ogni `input` di testo, `textarea` e
+`select` scrive a 16px (`!important`, vince anche sugli stili inline).
+Scartato di proposito `maximum-scale=1`/`user-scalable=no` nel viewport:
+toglierebbe anche lo zoom con due dita a chi vede poco (accessibilità).
+Su desktop nulla cambia.
+
+**Verifica**: Playwright con profilo iPhone 13: tutti i campi visibili
+della home a 16px; a 1280px i campi restano alle dimensioni di prima
+(13-16px).

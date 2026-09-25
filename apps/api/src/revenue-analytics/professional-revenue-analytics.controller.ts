@@ -1,4 +1,6 @@
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { professionalStatsQuerySchema, type ProfessionalStatsQuery } from "@professionisti/shared";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { RevenueAnalyticsService } from "./revenue-analytics.service";
 
@@ -18,5 +20,12 @@ export class ProfessionalRevenueAnalyticsController {
   async getMySummary(@Req() req: AuthenticatedRequest) {
     const professionalProfileId = await this.revenueAnalyticsService.resolveMyProfessionalProfileId(req.user.userId);
     return this.revenueAnalyticsService.getSummary(professionalProfileId);
+  }
+
+  /** Statistiche sul periodo scelto, con confronto col periodo precedente (docs/CHANGELOG.md §149). */
+  @Get("stats")
+  async getMyStats(@Req() req: AuthenticatedRequest, @Query(new ZodValidationPipe(professionalStatsQuerySchema)) query: ProfessionalStatsQuery) {
+    const professionalProfileId = await this.revenueAnalyticsService.resolveMyProfessionalProfileId(req.user.userId);
+    return this.revenueAnalyticsService.getProfessionalStats(professionalProfileId, query.from, query.to);
   }
 }
