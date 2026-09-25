@@ -1,4 +1,6 @@
-import { Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
+import { notificationPreferencesSchema, type NotificationPreferences } from "@professionisti/shared";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { NotificationsService } from "./notifications.service";
 
@@ -16,6 +18,17 @@ export class NotificationsController {
   @Get("unread")
   listUnread(@Req() req: AuthenticatedRequest) {
     return this.notificationsService.listUnread(req.user.userId);
+  }
+
+  /** Preferenze per argomento e canale, popup e suono (docs/CHANGELOG.md §152). */
+  @Get("preferences")
+  preferences(@Req() req: AuthenticatedRequest) {
+    return this.notificationsService.preferencesOf(req.user.userId);
+  }
+
+  @Put("preferences")
+  updatePreferences(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(notificationPreferencesSchema)) body: NotificationPreferences) {
+    return this.notificationsService.updatePreferences(req.user.userId, body);
   }
 
   @Post("mark-all-read")

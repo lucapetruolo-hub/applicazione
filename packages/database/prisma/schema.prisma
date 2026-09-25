@@ -96,6 +96,10 @@ model User {
   // [MODERATOR, FINANCE] vede entrambe. Lista vuota su un ADMIN vale come
   // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
   adminRoles          AdminRole[] @default([])
+  // Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152):
+  // JSON validato da `notificationPreferencesSchema` (packages/shared),
+  // null = valori predefiniti (`resolveNotificationPreferences`).
+  notificationPrefs   Json?
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):

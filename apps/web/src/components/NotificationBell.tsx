@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import { Icon, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationCopy } from "@/lib/notificationCopy";
 import { notificationDeepLink } from "@/lib/notificationSections";
+import { notificationTopicStyle } from "@/lib/notificationTopicStyle";
 
 type HistoryItem = { id: string; type: string; payload: unknown; createdAt: string; readAt: string | null };
 
@@ -24,6 +26,22 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
 
+function groupByDay(items: HistoryItem[]): { label: string; items: HistoryItem[] }[] {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfYesterday = new Date(startOfToday.getTime() - 86_400_000);
+  const groups: { label: string; items: HistoryItem[] }[] = [
+    { label: "Oggi", items: [] },
+    { label: "Ieri", items: [] },
+    { label: "Prima", items: [] },
+  ];
+  for (const item of items) {
+    const t = new Date(item.createdAt).getTime();
+    groups[t >= startOfToday.getTime() ? 0 : t >= startOfYesterday.getTime() ? 1 : 2]!.items.push(item);
+  }
+  return groups.filter((g) => g.items.length > 0);
+}
+
 /**
  * Riga di una singola notifica — eliminabile in due modi (richiesta
  * esplicita dell'utente): un piccolo pulsante "x" in alto a destra, o uno
@@ -37,10 +55,12 @@ function timeAgo(iso: string): string {
  */
 function NotificationRow({
   item,
+  isProfessional,
   onOpen,
   onDelete,
 }: {
   item: HistoryItem;
+  isProfessional: boolean;
   onOpen: (item: HistoryItem) => void;
   onDelete: (id: string) => void;
 }) {
@@ -49,6 +69,8 @@ function NotificationRow({
   const draggingRef = useRef(false);
 
   const copy = notificationCopy(item.type);
+  // Icona e colore per argomento invece dell'emoji (docs/CHANGELOG.md §152).
+  const topic = notificationTopicStyle(item.type, isProfessional);
   const isUnread = item.readAt === null;
   const destination = notificationDeepLink(item.type, item.payload);
 
@@ -118,20 +140,13 @@ function NotificationRow({
             più "da app moderna" (richiesta esplicita dell'utente), lo
             stesso principio già in uso per le icone categoria colorate
             altrove nel prodotto. */}
-        <YStack
-          width={36}
-          height={36}
-          borderRadius={999}
-          alignItems="center"
-          justifyContent="center"
-          backgroundColor={isUnread ? brand.cianografiaVelo : brand.gesso}
-          flexShrink={0}
-        >
-          <Text fontSize={17} lineHeight={19}>
-            {copy.icon}
-          </Text>
+        <YStack width={36} height={36} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={topic.tint} flexShrink={0}>
+          <Icon name={topic.icon} size={17} color={topic.color} />
         </YStack>
         <YStack flex={1} flexBasis={0} gap={2} paddingRight={20}>
+          <Text fontSize={11} fontWeight="700" color={topic.color}>
+            {topic.title}
+          </Text>
           <Text fontSize="$2" color={brand.grafite} fontWeight={isUnread ? "700" : "500"}>
             {copy.message}
           </Text>
@@ -170,7 +185,7 @@ function NotificationRow({
 }
 
 export function NotificationBell() {
-  const { token, unreadCount, markNotificationsRead } = useAuth();
+  const { token, user, unreadCount, markNotificationsRead } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
@@ -292,9 +307,9 @@ export function NotificationBell() {
             angoli più morbidi (radiusDocLg) e ombra più profonda/diffusa. */}
         <YStack
           className="notification-bell-panel-inner"
-          maxHeight={440}
+          maxHeight={500}
           overflow="hidden"
-          backgroundColor="rgba(255,255,255,0.86)"
+          backgroundColor={brand.calce}
           borderRadius={radiusDocLg}
           borderWidth={1}
           borderColor="rgba(255,255,255,0.6)"
@@ -327,7 +342,7 @@ export function NotificationBell() {
               </XStack>
             ) : null}
           </XStack>
-          <YStack maxHeight={380} overflow="scroll">
+          <YStack maxHeight={360} overflow="scroll" flexShrink={1}>
             {isLoading ? (
               <Text padding="$4" fontSize="$2" color={brand.grafite70}>
                 Caricamento...
@@ -346,9 +361,27 @@ export function NotificationBell() {
                 </Text>
               </YStack>
             ) : (
-              history.map((item) => <NotificationRow key={item.id} item={item} onOpen={handleItemClick} onDelete={handleDelete} />)
+              // Raggruppate per giorno (docs/CHANGELOG.md §152): "Oggi", "Ieri", "Prima".
+              groupByDay(history).map((group) => (
+                <YStack key={group.label}>
+                  <Text paddingHorizontal="$4" paddingTop="$3" paddingBottom="$1" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
+                    {group.label}
+                  </Text>
+                  {group.items.map((item) => (
+                    <NotificationRow key={item.id} item={item} isProfessional={!!user?.isProfessional} onOpen={handleItemClick} onDelete={handleDelete} />
+                  ))}
+                </YStack>
+              ))
             )}
           </YStack>
+          <XStack borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$4" paddingVertical="$3" justifyContent="center">
+            <Link href="/account/notifiche" onClick={() => setIsOpen(false)} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icon name="sliders-horizontal" size={14} color={brand.cianografiaScuro} />
+              <Text fontSize="$2" fontWeight="700" color={brand.cianografiaScuro}>
+                Impostazioni notifiche
+              </Text>
+            </Link>
+          </XStack>
         </YStack>
         </div>
       ) : null}

@@ -1,85 +1,66 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationDeepLink } from "@/lib/notificationSections";
+import { notificationTopicStyle } from "@/lib/notificationTopicStyle";
 
 function ToastCard({
   id,
-  icon,
   message,
   type,
   payload,
+  isProfessional,
   onDismiss,
   onOpen,
 }: {
   id: string;
-  icon: string;
   message: string;
   type: string;
   payload: unknown;
+  isProfessional: boolean;
   onDismiss: (id: string) => void;
   onOpen: (type: string, payload: unknown) => void;
 }) {
-  // Niente più sparizione automatica dopo pochi secondi (richiesta esplicita
-  // dell'utente: "non è ben comprensibile, rendila visualizzabile fino a
-  // che non si visualizza e apre effettivamente quell'aggiornamento") — il
-  // banner resta a schermo finché non viene aperto (click sul corpo) o
-  // chiuso esplicitamente con la "x", mai da solo.
+  // Niente sparizione automatica (richiesta esplicita dell'utente): il
+  // banner resta finché non viene aperto o chiuso con la "x".
   const destination = notificationDeepLink(type, payload);
+  // Titolo, icona e colore dell'argomento (docs/CHANGELOG.md §152).
+  const topic = notificationTopicStyle(type, isProfessional);
+  const aggregated = id.startsWith("batch-");
 
   return (
-    <XStack
-      alignItems="center"
-      gap="$3"
-      paddingHorizontal="$4"
-      paddingVertical="$3"
-      backgroundColor={brand.calce}
-      borderWidth={1}
-      borderColor={brand.filetto}
-      borderRadius="$3"
-      shadowColor="rgba(20,24,30,0.2)"
-      shadowRadius={16}
-      shadowOffset={{ width: 0, height: 4 }}
-      maxWidth={360}
-      cursor="pointer"
-      onPress={() => {
-        // Richiesta esplicita dell'utente: cliccare il banner deve aprire
-        // l'aggiornamento a cui si riferisce, non solo chiuderlo — naviga
-        // alla pagina/tab giusti (se il tipo di notifica ne conosce uno) e
-        // lo chiude comunque, stesso effetto di prima per i tipi ignoti.
-        if (destination) onOpen(type, payload);
-        onDismiss(id);
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={destination ? `${message} — tocca per aprire` : `${message} — tocca per chiudere`}
-    >
-      <Text fontSize={22} lineHeight={22}>
-        {icon}
-      </Text>
-      <Text fontSize="$3" color={brand.grafite} fontWeight="600" flex={1}>
-        {message}
-      </Text>
-      {/* Tasto di chiusura esplicito: senza sparizione automatica il
-          banner non ha più un modo di andarsene da solo — questa "x"
-          lo chiude senza aprire l'aggiornamento (stopPropagation, mai
-          navigare dal solo tasto di chiusura). */}
-      <XStack
-        padding={4}
-        cursor="pointer"
-        onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
+    <div className="toast-card" role="status" style={{ borderLeftColor: topic.color }}>
+      <button
+        type="button"
+        className="toast-card-body"
+        onClick={() => {
+          if (destination) onOpen(type, payload);
           onDismiss(id);
         }}
-        accessibilityRole="button"
-        accessibilityLabel="Chiudi la notifica"
+        aria-label={destination ? `${message} — apri` : `${message} — chiudi`}
       >
+        <span className="toast-card-icon" style={{ background: topic.tint }}>
+          <Icon name={aggregated ? "bell-ring" : topic.icon} size={18} color={aggregated ? brand.grafite : topic.color} />
+        </span>
+        <span className="toast-card-text">
+          <span className="toast-card-title" style={{ color: aggregated ? brand.grafite70 : topic.color }}>
+            {aggregated ? "Aggiornamenti" : topic.title}
+          </span>
+          <span className="toast-card-message">{message}</span>
+          {destination ? <span className="toast-card-cta">Apri →</span> : null}
+        </span>
+      </button>
+      <button type="button" className="toast-card-close" onClick={() => onDismiss(id)} aria-label="Chiudi la notifica">
         <Icon name="x" size={16} color={brand.grafite70} />
-      </XStack>
-    </XStack>
+      </button>
+    </div>
   );
 }
+
+/** Popup visibili insieme: oltre, un riepilogo "+N altre" (niente muro di avvisi). */
+const MAX_VISIBLE_TOASTS = 3;
 
 /**
  * Popup "toast" per nuove notifiche (richiesta esplicita dell'utente:
@@ -94,7 +75,7 @@ function ToastCard({
  * dashboard/le-mie-richieste.
  */
 export function ToastStack() {
-  const { toasts, dismissToast } = useAuth();
+  const { toasts, dismissToast, user } = useAuth();
   const router = useRouter();
 
   if (toasts.length === 0) return null;
@@ -105,27 +86,30 @@ export function ToastStack() {
     router.push(destination);
   }
 
-  // `position="fixed"` non è un valore tipizzato per il prop `position` di
-  // Tamagui (React Native non lo supporta) — stesso limite già documentato
-  // per l'header sticky (SiteHeader.tsx) e ResultsListWithMap.tsx: un `<div>`
-  // grezzo con lo style fixed, lo stack di toast vero resta uno YStack
-  // Tamagui al suo interno.
+  const visible = toasts.slice(-MAX_VISIBLE_TOASTS);
+  const hidden = toasts.length - visible.length;
+
+  // In alto a destra sotto l'header su desktop, in alto al centro su
+  // telefono (`.toast-stack` in globals.css); animazione d'ingresso dall'alto.
   return (
-    <div style={{ position: "fixed", top: 16, left: 0, right: 0, zIndex: 2000, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-      <YStack alignItems="center" gap="$2" pointerEvents="box-none">
-        {toasts.map((toast) => (
-          <ToastCard
-            key={toast.id}
-            id={toast.id}
-            icon={toast.icon}
-            message={toast.message}
-            type={toast.type}
-            payload={toast.payload}
-            onDismiss={dismissToast}
-            onOpen={openNotification}
-          />
-        ))}
-      </YStack>
+    <div className="toast-stack" aria-live="polite">
+      {hidden > 0 ? (
+        <button type="button" className="toast-more" onClick={() => toasts.slice(0, hidden).forEach((t) => dismissToast(t.id))}>
+          +{hidden} {hidden === 1 ? "altra notifica" : "altre notifiche"} · chiudi
+        </button>
+      ) : null}
+      {visible.map((toast) => (
+        <ToastCard
+          key={toast.id}
+          id={toast.id}
+          message={toast.message}
+          type={toast.type}
+          payload={toast.payload}
+          isProfessional={!!user?.isProfessional}
+          onDismiss={dismissToast}
+          onOpen={openNotification}
+        />
+      ))}
     </div>
   );
 }

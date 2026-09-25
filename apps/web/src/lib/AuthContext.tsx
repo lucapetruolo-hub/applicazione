@@ -2,10 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { CurrentUser } from "@professionisti/api-client";
-import type { RealtimeEvent } from "@professionisti/shared";
+import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
+import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
@@ -41,6 +42,9 @@ type AuthContextValue = {
    * era l'aggiornamento prima che sparisca.
    */
   unreadNotifications: UnreadNotification[];
+  /** Preferenze di notifica (argomenti, canali, popup, suono) — docs/CHANGELOG.md §152. `null` finché non caricate. */
+  notificationPrefs: NotificationPreferences | null;
+  setNotificationPrefs: (prefs: NotificationPreferences) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -57,6 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // generare un toast tutte insieme — solo quelle arrivate DOPO vengono
   // segnalate. Azzerato ad ogni cambio utente (login/logout).
   const seenNotificationIdsRef = useRef<Set<string> | null>(null);
+  const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPreferences | null>(null);
+  // Letto dentro `checkForNewNotifications` (callback stabile) per sapere
+  // se mostrare il popup e suonare, senza ricrearla a ogni cambio.
+  const notificationPrefsRef = useRef<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+  const setNotificationPrefs = useCallback((prefs: NotificationPreferences) => {
+    notificationPrefsRef.current = prefs;
+    setNotificationPrefsState(prefs);
+  }, []);
 
   const loadUser = useCallback(async (currentToken: string) => {
     try {
@@ -187,6 +199,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       for (const n of freshOnes) {
         seen.add(n.id);
       }
+      // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
+      // spegnere separatamente; la campanella e il numeretto restano.
+      const prefs = notificationPrefsRef.current;
+      if (freshOnes.length > 0 && prefs.sound) playNotificationSound();
+      if (!prefs.popups) return;
       if (freshOnes.length === 1) {
         // Caso comune: un solo evento in questo giro di poll, stesso
         // messaggio simpatico specifico di sempre.
@@ -217,6 +234,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Silenzioso, stesso principio di refreshUnreadCount: un toast mancato non deve rompere l'app.
     }
   }, []);
+
+  useEffect(() => {
+    installNotificationSoundUnlock();
+  }, []);
+
+  // Preferenze di notifica, ricaricate a ogni cambio di utente.
+  useEffect(() => {
+    if (!user || !token) {
+      notificationPrefsRef.current = DEFAULT_NOTIFICATION_PREFERENCES;
+      setNotificationPrefsState(null);
+      return;
+    }
+    apiClient
+      .notificationPreferences(token)
+      .then(setNotificationPrefs)
+      .catch(() => undefined);
+  }, [user, token, setNotificationPrefs]);
 
   // Aggiorna conteggio+toast ogni volta che l'utente (dis)connesso cambia, non solo al primo mount.
   useEffect(() => {
@@ -295,6 +329,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toasts,
         dismissToast,
         unreadNotifications,
+        notificationPrefs,
+        setNotificationPrefs,
       }}
     >
       {children}

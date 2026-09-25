@@ -43,6 +43,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     title: "Impostazioni",
     items: [
       { href: "/account", label: "Account", icon: "shield" },
+      { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
       { href: "/dashboard/fiscale", label: "Dati fiscali e pagamenti", icon: "coins" },
       { href: "/segnalazioni", label: "Segnalazioni e decisioni", icon: "flag" },
     ],
@@ -68,7 +69,7 @@ export const CLIENT_TABS: AccountNavItem[] = [
   { href: "/le-mie-richieste", label: "Richieste", icon: "file-text" },
   { href: "/chat", label: "Messaggi", icon: "message-circle" },
   { href: "/professionisti-salvati", label: "Salvati", icon: "heart" },
-  { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni"] },
+  { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni", "/account/notifiche"] },
 ];
 
 /**
@@ -92,6 +93,7 @@ export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[]
       title: "Impostazioni",
       items: [
         { href: "/account", label: "Account", icon: "user-round" },
+        { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
         { href: "/segnalazioni", label: "Segnalazioni e decisioni", icon: "flag" },
       ],
     },
@@ -101,5 +103,6 @@ export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[]
 /** La voce è quella della pagina corrente? `/dashboard` solo in modo esatto. */
 export function isNavItemActive(item: AccountNavItem, pathname: string): boolean {
   const matches = [item.href, ...(item.alsoMatches ?? [])];
-  return matches.some((href) => (href === "/dashboard" ? pathname === "/dashboard" : pathname === href || pathname.startsWith(`${href}/`)));
+  // `/dashboard` e `/account` solo esatti: le loro sottopagine hanno una voce propria.
+  return matches.some((href) => (href === "/dashboard" || href === "/account" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)));
 }

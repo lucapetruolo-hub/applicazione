@@ -31,6 +31,7 @@ import type {
   ProfessionalFiscalProfileInput,
   ProfessionalInsights,
   ProfessionalStats,
+  NotificationPreferences,
   ProfessionalLead,
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
@@ -1380,6 +1381,17 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     /** Cronologia completa (lette + non lette), per il pulsante a campanella nell'header. */
+    /** Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152). */
+    notificationPreferences: (token: string) =>
+      request<NotificationPreferences>("/notifications/preferences", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    updateNotificationPreferences: (token: string, prefs: NotificationPreferences) =>
+      request<NotificationPreferences>("/notifications/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(prefs),
+      }),
+
     notificationHistory: (token: string) =>
       request<{ id: string; type: string; payload: unknown; createdAt: string; readAt: string | null }[]>("/notifications/history", {
         headers: { Authorization: `Bearer ${token}` },

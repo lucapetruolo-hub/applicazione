@@ -14982,3 +14982,64 @@ gestori di password ad abbinare email e password.
 e professionista) e `/accedi`: prima 12-52 modifiche di attributi per 4
 caratteri, ora 0; mostra/nascondi password funziona; registrazione di un
 nuovo account e accesso con Invio riusciti.
+
+## 152. Notifiche: tendina, popup con suono e impostazioni per argomento e canale
+
+**Richiesta esplicita dell'utente (CEO)**: "migliora la tendina delle
+notifiche ed anche i popup [...] magari aggiungendo anche un leggero suono;
+poi bisogna aggiungere un qualcosa nelle impostazioni dove si possono
+scegliere [...] per quali aggiornamenti arriveranno le notifiche, e se si
+vuole il suono, e si può disattivare mail ed sms [...] valuta tu bene il da
+farsi".
+
+**Decisioni (valutate dal CEO, nessun prezzo o scelta legale nuova)**:
+- **Per argomento, non per singolo tipo**: ~25 tipi di notifica
+  raggruppati in 6 argomenti (`packages/shared/src/notifications.ts`):
+  richieste, preventivi e date, lavori e appuntamenti, messaggi, promemoria,
+  account e sicurezza, con etichette diverse per professionista e cliente.
+  Per ognuno tre canali: sito (campanella e popup), email, SMS. In più due
+  interruttori generali: popup a comparsa e suono.
+- **"Account e sicurezza" sempre acceso** su sito ed email: le decisioni di
+  moderazione vanno comunicate per legge (DSA art. 17). Imposto anche lato
+  server (`resolveNotificationPreferences`).
+- **Onestà sui canali**: gli SMS non partono ancora da nessuna parte
+  (Twilio rimandato): la colonna c'è, spenta di default (serve il consenso
+  e hanno un costo), con "In arrivo". Le email oggi partono solo per nuove
+  richieste, promemoria degli appuntamenti e decisioni sull'account: negli
+  altri argomenti l'interruttore email mostra "In arrivo" e la scelta è già
+  salvata.
+- **Dati**: `User.notificationPrefs` (JSON, migrazione
+  `20260925120000_notification_prefs`, `null` = valori predefiniti).
+  `GET/PUT /notifications/preferences`. `NotificationsService.notify`: con
+  il sito spento la notifica resta in cronologia ma nasce letta (niente
+  badge, popup, push), come una richiesta silenziata (§130); l'email del
+  nuovo lead e i promemoria del giorno prima rispettano l'email
+  dell'argomento.
+- **Pagina `/account/notifiche`** (voce "Notifiche" nel menu del
+  professionista sotto Impostazioni e nella tendina del cliente; link anche
+  in fondo alla campanella): interruttori che si salvano da soli
+  ("Salvato"), "Prova il suono", su telefono ogni argomento diventa una
+  scheda con i tre interruttori.
+- **Suono**: due note brevi e morbide generate con la Web Audio API
+  (`apps/web/src/lib/notificationSound.ts`), nessun file audio; parte solo
+  dopo la prima interazione con la pagina (regola dei browser).
+- **Campanella**: notifiche raggruppate per giorno (Oggi, Ieri, Prima),
+  icona e colore per argomento al posto dell'emoji, titolo dell'argomento
+  sopra il testo, link "Impostazioni notifiche" in fondo. Corretto anche lo
+  sfondo: il pannello, dentro l'header che ha già un blur, con un secondo
+  `backdrop-filter` diventava trasparente e si leggeva la pagina sotto; ora
+  è bianco pieno.
+- **Popup**: titolo dell'argomento, icona, barra colorata a sinistra,
+  "Apri →", animazione d'ingresso (nessuna con "riduci movimento"), in alto
+  a destra sotto l'header su desktop e in alto su telefono, al massimo 3
+  insieme con "+N altre notifiche · chiudi". Restano finché non si aprono o
+  chiudono (scelta dell'utente, invariata).
+
+**Verifica**: 64/64 test API (nuovi: argomento spento sul sito → notifica
+già letta senza push; sito spento ed email accesa → email del lead
+inviata; account non disattivabile; salvataggio forza account acceso; email
+del lead non inviata a chi l'ha spenta); typecheck, `next build`.
+Playwright: pagina a 1280px e 390px; spegnendo "Messaggi · Sito" un
+messaggio reale del cliente non genera più il popup, riaccendendolo sì;
+interruttori di "Account e sicurezza" disabilitati; campanella con gruppi e
+link alle impostazioni a 1280px e 390px.
