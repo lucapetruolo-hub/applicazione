@@ -56,6 +56,7 @@ describe("NotificationsService.notify su richiesta silenziata", () => {
     const prisma = {
       guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
+      user: { findUnique: vi.fn().mockResolvedValue({ notificationPrefs: null }) },
     };
     const realtime = { publish: vi.fn() };
     const email = { send: vi.fn().mockResolvedValue(true) };
@@ -82,7 +83,14 @@ describe("NotificationsService — email sul nuovo lead", () => {
     const prisma = {
       guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_LEAD", payload: {}, createdAt: new Date() }) },
-      user: { findMany: vi.fn().mockResolvedValue([{ email: "pro@example.com", name: "Pro" }, { email: null, name: "Senza email" }]) },
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ notificationPrefs: null }),
+        findMany: vi.fn().mockResolvedValue([
+          { email: "pro@example.com", name: "Pro", notificationPrefs: null },
+          { email: null, name: "Senza email", notificationPrefs: null },
+          { email: "muto@example.com", name: "Email spenta", notificationPrefs: { topics: { richieste: { inApp: true, email: false, sms: false } } } },
+        ]),
+      },
     };
     const email = { send: vi.fn().mockResolvedValue(true) };
     const service = new NotificationsService(prisma as never, { publish: vi.fn() } as never, email as never);
@@ -105,3 +113,60 @@ describe("NotificationsService — email sul nuovo lead", () => {
     expect(email.send).not.toHaveBeenCalled();
   });
 });
+
+describe("NotificationsService — preferenze di notifica (docs/CHANGELOG.md §152)", () => {
+  function build(prefs: unknown) {
+    const prisma = {
+      guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(null) },
+      notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ notificationPrefs: prefs }),
+        findMany: vi.fn().mockResolvedValue([{ email: "pro@example.com", name: "Pro", notificationPrefs: prefs }]),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    };
+    const realtime = { publish: vi.fn() };
+    const email = { send: vi.fn().mockResolvedValue(true) };
+    return { service: new NotificationsService(prisma as never, realtime as never, email as never), prisma, realtime, email };
+  }
+
+  it("argomento spento sul sito: notifica già letta, niente push", async () => {
+    const { service, prisma, realtime } = build({ topics: { preventivi: { inApp: false, email: true, sms: false } } });
+    await service.notify("u-1", "NEW_QUOTE", { guidedRequestId: "gr-1" });
+    expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ readAt: expect.any(Date) }) });
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it("sito spento ma email accesa: l'email del nuovo lead parte lo stesso", async () => {
+    const { service, email, realtime } = build({ topics: { richieste: { inApp: false, email: true, sms: false } } });
+    await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });
+    await vi.waitFor(() => expect(email.send).toHaveBeenCalledTimes(1));
+    expect(realtime.publish).not.toHaveBeenCalled();
+  });
+
+  it("account e sicurezza non si spengono: la notifica arriva comunque", async () => {
+    const { service, realtime } = build({ topics: { account: { inApp: false, email: false, sms: false } } });
+    await service.notify("u-1", "ACCOUNT_REACTIVATED", { note: "ok" });
+    expect(realtime.publish).toHaveBeenCalled();
+  });
+
+  it("salvando, 'Account e sicurezza' resta acceso su sito ed email", async () => {
+    const { service, prisma } = build(null);
+    const saved = await service.updatePreferences("u-1", {
+      topics: {
+        richieste: { inApp: true, email: false, sms: true },
+        preventivi: { inApp: true, email: true, sms: false },
+        lavori: { inApp: true, email: true, sms: false },
+        messaggi: { inApp: false, email: false, sms: false },
+        promemoria: { inApp: true, email: true, sms: false },
+        account: { inApp: false, email: false, sms: false },
+      },
+      popups: false,
+      sound: false,
+    });
+    expect(saved.topics.account).toEqual({ inApp: true, email: true, sms: false });
+    expect(saved.topics.richieste).toEqual({ inApp: true, email: false, sms: true });
+    expect(prisma.user.update).toHaveBeenCalled();
+  });
+});
+

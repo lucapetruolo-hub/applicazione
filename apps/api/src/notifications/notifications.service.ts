@@ -3,7 +3,15 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
-import { CONTENT_REPORT_TARGET_LABEL, moderationActionOwnerText, type ContentReportTargetType, type ModerationAction } from "@professionisti/shared";
+import {
+  CONTENT_REPORT_TARGET_LABEL,
+  moderationActionOwnerText,
+  notificationChannelEnabled,
+  resolveNotificationPreferences,
+  type ContentReportTargetType,
+  type ModerationAction,
+  type NotificationPreferences,
+} from "@professionisti/shared";
 
 function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -61,8 +69,14 @@ export class NotificationsService {
     const muted = guidedRequestId
       ? await this.prisma.guidedRequestUserState.findFirst({ where: { userId, guidedRequestId, mutedAt: { not: null } }, select: { id: true } })
       : null;
-    if (muted) {
+    // Argomento spento sul canale "sito" nelle preferenze (docs/CHANGELOG.md
+    // §152): stesso trattamento di una richiesta silenziata, la notifica
+    // resta nella cronologia ma nasce letta.
+    const prefs = await this.preferencesOf(userId);
+    if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
+      // Sito spento ma email accesa: l'email parte lo stesso. Mai per una richiesta silenziata.
+      if (!muted && type === "NEW_LEAD" && notificationChannelEnabled(prefs, type, "email")) this.emailNewLeadFromPayload(userId, payload);
       return;
     }
 
@@ -74,14 +88,30 @@ export class NotificationsService {
     if (MODERATION_EMAIL_TYPES.has(type)) {
       this.emailModeration(userId, type, payload as Record<string, unknown>);
     }
-    if (type === "NEW_LEAD") {
-      const { category, city, isUrgent } = payload as Record<string, unknown>;
-      this.emailNewLead([userId], {
-        category: typeof category === "string" ? category : "Richiesta",
-        city: typeof city === "string" ? city : null,
-        isUrgent: isUrgent === true,
-      });
+    if (type === "NEW_LEAD" && notificationChannelEnabled(prefs, type, "email")) {
+      this.emailNewLeadFromPayload(userId, payload);
     }
+  }
+
+  private emailNewLeadFromPayload(userId: string, payload: Prisma.InputJsonValue): void {
+    const { category, city, isUrgent } = payload as Record<string, unknown>;
+    this.emailNewLead([userId], {
+      category: typeof category === "string" ? category : "Richiesta",
+      city: typeof city === "string" ? city : null,
+      isUrgent: isUrgent === true,
+    });
+  }
+
+  /** Preferenze di notifica dell'utente, con i valori predefiniti per ciò che non ha scelto (docs/CHANGELOG.md §152). */
+  async preferencesOf(userId: string): Promise<NotificationPreferences> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { notificationPrefs: true } });
+    return resolveNotificationPreferences(user?.notificationPrefs ?? null);
+  }
+
+  async updatePreferences(userId: string, prefs: NotificationPreferences): Promise<NotificationPreferences> {
+    const resolved = resolveNotificationPreferences(prefs);
+    await this.prisma.user.update({ where: { id: userId }, data: { notificationPrefs: resolved } });
+    return resolved;
   }
 
   /**
@@ -182,7 +212,9 @@ export class NotificationsService {
 
   private async sendNewLeadEmails(userIds: string[], lead: NewLeadEmailPayload): Promise<void> {
     if (userIds.length === 0) return;
-    const users = await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { email: true, name: true } });
+    const users = (
+      await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { email: true, name: true, notificationPrefs: true } })
+    ).filter((user) => notificationChannelEnabled(resolveNotificationPreferences(user.notificationPrefs ?? null), "NEW_LEAD", "email"));
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
     const where = lead.city ? ` a ${lead.city}` : "";
     const subject = `${lead.isUrgent ? "URGENTE — " : ""}Nuova richiesta: ${lead.category}${where}`;

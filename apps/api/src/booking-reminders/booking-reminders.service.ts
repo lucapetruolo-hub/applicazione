@@ -3,6 +3,11 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
+import { notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
+
+function wantsReminderEmail(stored: unknown): boolean {
+  return notificationChannelEnabled(resolveNotificationPreferences(stored), "BOOKING_REMINDER", "email");
+}
 
 // Finestra di invio: 23-25 ore prima dell'intervento. Il cron gira ogni 30
 // minuti (sotto) — una finestra di 2 ore garantisce che ogni prenotazione
@@ -47,8 +52,8 @@ export class BookingRemindersService {
     const bookings = await this.prisma.booking.findMany({
       where: { status: "CONFIRMED", reminderSentAt: null, scheduledAt: { gte: windowStart, lte: windowEnd } },
       include: {
-        client: { select: { email: true, name: true } },
-        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true } } } },
+        client: { select: { email: true, name: true, notificationPrefs: true } },
+        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, notificationPrefs: true } } } },
       },
     });
     if (bookings.length === 0) return;
@@ -59,14 +64,15 @@ export class BookingRemindersService {
       const clientName = booking.client.name ?? "Cliente";
       const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
 
-      if (booking.client.email) {
+      // Solo a chi non ha spento le email di "Lavori e appuntamenti" (docs/CHANGELOG.md §152).
+      if (booking.client.email && wantsReminderEmail(booking.client.notificationPrefs)) {
         await this.emailService.send({
           to: booking.client.email,
           subject: `Promemoria: ${professionalName} domani alle ${booking.scheduledAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}`,
           html: `<p>Ciao ${clientName},</p><p>ti ricordiamo l'appuntamento con <strong>${professionalName}</strong> il <strong>${when}</strong>.</p><p>Se non puoi più essere presente, contatta il professionista il prima possibile dalla sezione <a href="${frontendUrl}/le-mie-richieste">Le mie richieste</a>.</p>`,
         });
       }
-      if (booking.professionalProfile.user.email) {
+      if (booking.professionalProfile.user.email && wantsReminderEmail(booking.professionalProfile.user.notificationPrefs)) {
         await this.emailService.send({
           to: booking.professionalProfile.user.email,
           subject: `Promemoria: intervento domani alle ${booking.scheduledAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}`,

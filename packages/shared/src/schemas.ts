@@ -911,3 +911,12 @@ export const guidedRequestUserStateSchema = z
   })
   .refine((value) => Object.values(value).some((v) => v !== undefined), { message: "Nessuna modifica indicata." });
 export type GuidedRequestUserStateInput = z.infer<typeof guidedRequestUserStateSchema>;
+
+/** Periodo delle statistiche del professionista (docs/CHANGELOG.md §149). */
+export const professionalStatsQuerySchema = z
+  .object({
+    from: z.string().date("Data di inizio non valida"),
+    to: z.string().date("Data di fine non valida"),
+  })
+  .refine((q) => q.from <= q.to, { message: "La data di inizio deve precedere quella di fine.", path: ["from"] });
+export type ProfessionalStatsQuery = z.infer<typeof professionalStatsQuerySchema>;

@@ -14882,3 +14882,164 @@ aperta su `/dashboard` (1280px), `/dashboard/richieste` (390px) e
 `/le-mie-richieste` (390px, cliente): il punto più basso della tendina è
 la tendina stessa (`elementFromPoint`), non la barra; tendina dentro lo
 schermo in tutti e tre i casi.
+
+## 149. Statistiche del professionista con filtro del periodo, nomi cliccabili in chat
+
+**Richieste esplicite dell'utente (CEO)**: "migliora la pagina statistiche,
+ed aggiungi anche ad esempio un filtro dove puoi selezionare un periodo da
+far visualizzare sul grafico"; "fai in modo che nei messaggi e chat si può
+cliccare sia sul nome di chi manda i messaggi da una parte e l'altra".
+
+**Statistiche (`/dashboard/statistiche`)**. Prima: solo le entrate, con lo
+stesso pannello dell'admin (§103) e un selettore 3/6/12/24 mesi che
+cambiava solo il grafico. Ora:
+- filtro del periodo per tutta la pagina: 7 giorni, 30 giorni (default),
+  3 mesi, 12 mesi, quest'anno, personalizzato (date Dal/Al, massimo due
+  anni, controllato anche lato server);
+- sei tessere, ognuna confrontata col periodo precedente di pari durata:
+  visite al profilo (`ProfileViewDay`, §147), richieste ricevute (`Lead`),
+  preventivi inviati, lavori ottenuti (prenotazioni nate nel periodo),
+  lavori completati ed entrate (stessa regola "doppia conferma" di §99);
+- toccando una tessera il grafico mostra quella metrica: barre per giorno
+  fino a 92 giorni, per mese oltre, una metrica e un asse alla volta
+  (`StatsBarChart`, disegnato alla larghezza reale così su telefono le
+  etichette restano leggibili), tooltip al passaggio, tabella dei dati;
+- "Come stai lavorando": richieste a cui hai risposto, preventivi
+  accettati, valore medio per lavoro, recensioni nel periodo (solo quelle
+  pubbliche), ognuna col valore del periodo precedente.
+API: `GET /professionals/me/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`
+(`RevenueAnalyticsService.getProfessionalStats`, raggruppamento in
+`bucketStatsRows`, giorni in UTC). L'admin mantiene il suo pannello entrate
+invariato.
+
+**Chat**. In `ConversationView` (usata da `/chat` e dalle finestre di
+conversazione) il nome di entrambe le parti è cliccabile, nelle nuvolette e
+nell'intestazione: professionista → profilo pubblico; cliente visto dal
+professionista → scheda cliente (`ClientProfileModal`, caricata al clic
+dalle richieste ricevute se la pagina non la passa già: nessun contatto
+prima dell'accettazione, CLAUDE.md §5.9); il cliente che clicca il proprio
+nome → `/account`. Prima in `/chat` il nome del cliente non era cliccabile
+e l'intestazione non lo era per nessuno. Corretto anche un difetto trovato
+in verifica: in "Richieste e lavori" la scheda cliente aperta dalla
+conversazione finiva dietro la finestra (stesso `z-index`); ora sta sopra.
+
+**Verifica**: typecheck API e web, 60/60 test API (nuovi: raggruppamento
+per giorno e per mese con i periodi a zero), `next build`. Playwright su
+database di prova: 30 giorni, 12 mesi (per mese) e periodo personalizzato
+con il confronto giusto; periodo oltre due anni e date invertite → 400;
+tessera → grafico; tooltip; pagina a 1280px e 390px. Chat: il
+professionista clicca il nome del cliente → scheda aperta; il proprio nome
+→ proprio profilo; il cliente clicca il professionista → profilo pubblico,
+il proprio nome → `/account`.
+
+## 150. Niente zoom automatico toccando un campo di testo su telefono
+
+**Richiesta esplicita dell'utente**: "quando si clicca su un campo di
+scrittura, non effettuare lo zoom altrimenti si sfalsa la vista della
+pagina, o trova una soluzione".
+
+**Causa**: Safari su iPhone/iPad ingrandisce la pagina quando si tocca un
+campo il cui testo è sotto i 16px (molti campi del sito sono a 13-15px) e
+dopo la vista resta spostata.
+
+**Decisione**: in `globals.css`, solo sui dispositivi touch
+(`hover: none` e `pointer: coarse`), ogni `input` di testo, `textarea` e
+`select` scrive a 16px (`!important`, vince anche sugli stili inline).
+Scartato di proposito `maximum-scale=1`/`user-scalable=no` nel viewport:
+toglierebbe anche lo zoom con due dita a chi vede poco (accessibilità).
+Su desktop nulla cambia.
+
+**Verifica**: Playwright con profilo iPhone 13: tutti i campi visibili
+della home a 16px; a 1280px i campi restano alle dimensioni di prima
+(13-16px).
+
+## 151. iPhone chiedeva di salvare la password a ogni carattere
+
+**Richiesta esplicita dell'utente**: "quando un utente si sta registrando
+sia come cliente che professionista e va ad immettere la password, iPhone
+gli chiede ad ogni carattere di salvare la password, risolvi".
+
+**Causa (verificata nel DOM con un MutationObserver)**: a ogni tasto gli
+attributi `name` e `type` del campo password venivano riscritti (e con
+`Field`/react-native-web anche `value`, su tutti i campi del modulo). Per
+Safari un campo password che "cambia" è una password nuova da salvare. Il
+tentativo precedente (un `<form>` reale e `autocomplete="new-password"`)
+non toccava questa causa. Non basta nemmeno un `<input>` nativo gestito da
+React: la build di React inclusa in Next, dopo ogni evento di scrittura
+("restore controlled state" → `updateInput`), svuota `name` e riscrive
+`type` del campo, anche se non è controllato.
+
+**Decisione**: nuovo `AuthField` (`apps/web/src/components/AuthField.tsx`)
+per email e password in `/registrati`, `/accedi` e nel riquadro di
+accesso `InlineAuthGate`. L'`<input>` è creato a mano dentro un
+contenitore, fuori dalla gestione di React: gli attributi si scrivono solo
+quando cambiano davvero (mostra/nascondi password), il testo arriva al
+modulo con un listener nativo, Invio invia. Stesso aspetto di `Field`
+(classi `.auth-field*`). `name` stabile uguale all'`id`, per aiutare i
+gestori di password ad abbinare email e password.
+
+**Verifica**: Playwright con profilo iPhone 13 su `/registrati` (cliente
+e professionista) e `/accedi`: prima 12-52 modifiche di attributi per 4
+caratteri, ora 0; mostra/nascondi password funziona; registrazione di un
+nuovo account e accesso con Invio riusciti.
+
+## 152. Notifiche: tendina, popup con suono e impostazioni per argomento e canale
+
+**Richiesta esplicita dell'utente (CEO)**: "migliora la tendina delle
+notifiche ed anche i popup [...] magari aggiungendo anche un leggero suono;
+poi bisogna aggiungere un qualcosa nelle impostazioni dove si possono
+scegliere [...] per quali aggiornamenti arriveranno le notifiche, e se si
+vuole il suono, e si può disattivare mail ed sms [...] valuta tu bene il da
+farsi".
+
+**Decisioni (valutate dal CEO, nessun prezzo o scelta legale nuova)**:
+- **Per argomento, non per singolo tipo**: ~25 tipi di notifica
+  raggruppati in 6 argomenti (`packages/shared/src/notifications.ts`):
+  richieste, preventivi e date, lavori e appuntamenti, messaggi, promemoria,
+  account e sicurezza, con etichette diverse per professionista e cliente.
+  Per ognuno tre canali: sito (campanella e popup), email, SMS. In più due
+  interruttori generali: popup a comparsa e suono.
+- **"Account e sicurezza" sempre acceso** su sito ed email: le decisioni di
+  moderazione vanno comunicate per legge (DSA art. 17). Imposto anche lato
+  server (`resolveNotificationPreferences`).
+- **Onestà sui canali**: gli SMS non partono ancora da nessuna parte
+  (Twilio rimandato): la colonna c'è, spenta di default (serve il consenso
+  e hanno un costo), con "In arrivo". Le email oggi partono solo per nuove
+  richieste, promemoria degli appuntamenti e decisioni sull'account: negli
+  altri argomenti l'interruttore email mostra "In arrivo" e la scelta è già
+  salvata.
+- **Dati**: `User.notificationPrefs` (JSON, migrazione
+  `20260925120000_notification_prefs`, `null` = valori predefiniti).
+  `GET/PUT /notifications/preferences`. `NotificationsService.notify`: con
+  il sito spento la notifica resta in cronologia ma nasce letta (niente
+  badge, popup, push), come una richiesta silenziata (§130); l'email del
+  nuovo lead e i promemoria del giorno prima rispettano l'email
+  dell'argomento.
+- **Pagina `/account/notifiche`** (voce "Notifiche" nel menu del
+  professionista sotto Impostazioni e nella tendina del cliente; link anche
+  in fondo alla campanella): interruttori che si salvano da soli
+  ("Salvato"), "Prova il suono", su telefono ogni argomento diventa una
+  scheda con i tre interruttori.
+- **Suono**: due note brevi e morbide generate con la Web Audio API
+  (`apps/web/src/lib/notificationSound.ts`), nessun file audio; parte solo
+  dopo la prima interazione con la pagina (regola dei browser).
+- **Campanella**: notifiche raggruppate per giorno (Oggi, Ieri, Prima),
+  icona e colore per argomento al posto dell'emoji, titolo dell'argomento
+  sopra il testo, link "Impostazioni notifiche" in fondo. Corretto anche lo
+  sfondo: il pannello, dentro l'header che ha già un blur, con un secondo
+  `backdrop-filter` diventava trasparente e si leggeva la pagina sotto; ora
+  è bianco pieno.
+- **Popup**: titolo dell'argomento, icona, barra colorata a sinistra,
+  "Apri →", animazione d'ingresso (nessuna con "riduci movimento"), in alto
+  a destra sotto l'header su desktop e in alto su telefono, al massimo 3
+  insieme con "+N altre notifiche · chiudi". Restano finché non si aprono o
+  chiudono (scelta dell'utente, invariata).
+
+**Verifica**: 64/64 test API (nuovi: argomento spento sul sito → notifica
+già letta senza push; sito spento ed email accesa → email del lead
+inviata; account non disattivabile; salvataggio forza account acceso; email
+del lead non inviata a chi l'ha spenta); typecheck, `next build`.
+Playwright: pagina a 1280px e 390px; spegnendo "Messaggi · Sito" un
+messaggio reale del cliente non genera più il popup, riaccendendolo sì;
+interruttori di "Account e sicurezza" disabilitati; campanella con gruppi e
+link alle impostazioni a 1280px e 390px.

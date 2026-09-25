@@ -9,3 +9,4 @@ export * from "./adminRoles";
 export * from "./plans";
 export * from "./professionals";
 export * from "./schemas";
+export * from "./notifications";

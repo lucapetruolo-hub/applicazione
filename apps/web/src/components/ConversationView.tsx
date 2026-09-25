@@ -7,6 +7,7 @@ import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionis
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
+import { ClientProfileModal, type ClientReviewSummary } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -131,6 +132,37 @@ export function ConversationView({
     viewerRole === "PROFESSIONAL"
       ? user?.businessName ?? user?.name ?? null
       : [user?.name, user?.surname].filter(Boolean).join(" ") || user?.name || null;
+  // Nomi cliccabili da entrambe le parti (docs/CHANGELOG.md §149, richiesta
+  // esplicita dell'utente): professionista → profilo pubblico; cliente →
+  // la sua scheda (vista dal professionista) o il proprio Account (visto
+  // da sé). Se il chiamante non ha passato `onOpenClientProfile` (es. la
+  // pagina /chat), la scheda si carica qui al clic dalle richieste
+  // ricevute: stessi dati di `RequestCard`, niente contatti prima
+  // dell'accettazione (CLAUDE.md §5.9).
+  const [clientCard, setClientCard] = useState<{ name: string; birthDate: string | null; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
+  async function openClientCard() {
+    try {
+      const leads = await apiClient.myLeads(token);
+      const request = leads.find((lead) => lead.guidedRequest.id === guidedRequestId)?.guidedRequest;
+      setClientCard({
+        name: request?.clientName ?? otherPartyName ?? ACTOR_LABEL.CLIENT,
+        birthDate: request?.clientBirthDate ?? null,
+        imageUrl: request?.clientImageUrl ?? otherPartyImageUrl ?? null,
+        reviews: request?.clientReviews ?? [],
+      });
+    } catch {
+      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, birthDate: null, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
+    }
+  }
+  function openProfileOf(actor: ConversationEvent["actor"]): (() => void) | undefined {
+    if (actor === "PROFESSIONAL") return () => router.push(`/professionista/${professionalProfileId}`);
+    if (actor !== "CLIENT") return undefined;
+    if (viewerRole === "CLIENT") return () => router.push("/account");
+    return onOpenClientProfile ?? (() => void openClientCard());
+  }
+  const otherActor: ConversationEvent["actor"] = viewerRole === "PROFESSIONAL" ? "CLIENT" : "PROFESSIONAL";
+  const headerOnPress = openProfileOf(otherActor);
+
   function displayNameFor(actor: ConversationEvent["actor"]): string {
     if (actor === "SYSTEM") return ACTOR_LABEL.SYSTEM;
     const name = actor === viewerRole ? myDisplayName : otherPartyName;
@@ -466,9 +498,22 @@ export function ConversationView({
               questo comportamento è invariato rispetto a prima). */}
           {otherPartyName ? (
             <>
-              <Avatar name={otherPartyName} imageUrl={otherPartyImageUrl} size={36} />
+              <XStack cursor={headerOnPress ? "pointer" : undefined} onPress={headerOnPress} accessibilityRole={headerOnPress ? "button" : undefined}>
+                <Avatar name={otherPartyName} imageUrl={otherPartyImageUrl} size={36} />
+              </XStack>
               <YStack minWidth={0} flex={1}>
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite} numberOfLines={1}>
+                <Text
+                  fontFamily="$heading"
+                  fontWeight="800"
+                  fontSize="$5"
+                  color={brand.grafite}
+                  numberOfLines={1}
+                  cursor={headerOnPress ? "pointer" : undefined}
+                  hoverStyle={headerOnPress ? { textDecorationLine: "underline" } : undefined}
+                  onPress={headerOnPress}
+                  accessibilityRole={headerOnPress ? "link" : undefined}
+                  accessibilityLabel={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
+                >
                   {otherPartyName}
                 </Text>
                 <Text fontSize="$1" color={brand.grafite70}>
@@ -534,18 +579,7 @@ export function ConversationView({
               // qualunque chat), quelli dell'altra parte a sinistra —
               // richiesta esplicita dell'utente.
               const isMine = event.actor === viewerRole;
-              // Nome cliccabile → "la pagina relativa" (richiesta esplicita
-              // dell'utente): il professionista ha sempre un profilo
-              // pubblico reale (`professionalProfileId` è già garantito da
-              // ogni chiamante); il cliente no, quindi lì il click esiste
-              // solo se il chiamante ha passato `onOpenClientProfile` (ha
-              // già i dati per aprire la stessa scheda usata altrove).
-              const nameOnPress =
-                event.actor === "PROFESSIONAL"
-                  ? () => router.push(`/professionista/${professionalProfileId}`)
-                  : event.actor === "CLIENT" && onOpenClientProfile
-                    ? onOpenClientProfile
-                    : undefined;
+              const nameOnPress = openProfileOf(event.actor);
               return (
                 <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
                   <YStack
@@ -856,6 +890,16 @@ export function ConversationView({
       </YStack>
 
       {openPhoto ? <PhotoLightbox photos={openPhoto.photos} initialIndex={openPhoto.index} onClose={() => setOpenPhoto(null)} /> : null}
+      {clientCard ? (
+        <ClientProfileModal
+          name={clientCard.name}
+          birthDate={clientCard.birthDate}
+          imageUrl={clientCard.imageUrl}
+          reviews={clientCard.reviews}
+          token={token}
+          onClose={() => setClientCard(null)}
+        />
+      ) : null}
 
       {cameraStream ? (
         // Cattura webcam da computer, stesso pattern overlay DOM grezzo già

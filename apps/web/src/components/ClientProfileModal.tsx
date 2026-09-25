@@ -116,7 +116,7 @@ export function ClientProfileModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: 1100, // sopra la finestra della conversazione (TimelineModal, 1000), da cui si apre cliccando il nome
         padding: 16,
       }}
     >
