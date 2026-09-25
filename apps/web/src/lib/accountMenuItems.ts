@@ -1,8 +1,8 @@
 import type { IconName } from "@professionisti/ui";
 
-export type AccountMenuItem = { href: string; label: string };
-
-export type AccountNavItem = AccountMenuItem & {
+export type AccountNavItem = {
+  href: string;
+  label: string;
   icon: IconName;
   /** Altri percorsi che appartengono a questa voce (per evidenziarla). */
   alsoMatches?: string[];
@@ -16,7 +16,7 @@ export type AccountNavGroup = { title: string; items: AccountNavItem[] };
  * §45 ma nella forma dell'area admin): prima il lavoro di tutti i giorni,
  * poi la propria attività, le impostazioni e, separate, le pagine da
  * cliente. Unica fonte di verità per il menu laterale (`AccountShell`) e
- * per la tendina "Il mio account" dell'header.
+ * per la tendina "Il mio account" dell'header (`getAccountMenuGroups`).
  *
  * `isProfessional` (da `CurrentUser`, non `role`) decide la voce mostrata:
  * un professionista promosso ad ADMIN mantiene il proprio profilo e deve
@@ -71,12 +71,30 @@ export const CLIENT_TABS: AccountNavItem[] = [
   { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni"] },
 ];
 
-/** Voci della tendina "Il mio account" nell'header, nello stesso ordine del menu. */
-export function getAccountMenuItems(isProfessional: boolean): AccountMenuItem[] {
-  if (isProfessional) return PROFESSIONAL_NAV.flatMap((group) => group.items.map(({ href, label }) => ({ href, label })));
+/**
+ * Gruppi della tendina "Il mio account" nell'header (docs/CHANGELOG.md
+ * §148, richiesta esplicita dell'utente: "suddividi meglio anche quel menu
+ * a tendina"). Professionista: stessi gruppi del menu laterale. Cliente:
+ * le sue richieste, poi account e segnalazioni.
+ */
+export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[] {
+  if (isProfessional) return PROFESSIONAL_NAV;
   return [
-    ...CLIENT_TABS.map(({ href, label }) => ({ href, label: label === "Richieste" ? "Le mie richieste" : label === "Salvati" ? "Professionisti salvati" : label })),
-    { href: "/segnalazioni", label: "Segnalazioni e decisioni" },
+    {
+      title: "Le tue richieste",
+      items: [
+        { href: "/le-mie-richieste", label: "Le mie richieste", icon: "file-text" },
+        { href: "/chat", label: "Messaggi", icon: "message-circle" },
+        { href: "/professionisti-salvati", label: "Professionisti salvati", icon: "heart" },
+      ],
+    },
+    {
+      title: "Impostazioni",
+      items: [
+        { href: "/account", label: "Account", icon: "user-round" },
+        { href: "/segnalazioni", label: "Segnalazioni e decisioni", icon: "flag" },
+      ],
+    },
   ];
 }
 
