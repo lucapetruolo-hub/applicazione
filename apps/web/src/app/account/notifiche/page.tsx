@@ -100,9 +100,12 @@ export default function NotifichePage() {
                 checked={notificationPrefs.sound}
                 onChange={() => void save({ ...notificationPrefs, sound: !notificationPrefs.sound })}
                 extra={
-                  <button type="button" className="notif-link" onClick={() => playNotificationSound()}>
-                    Prova il suono
-                  </button>
+                  <>
+                    <button type="button" className="notif-link" onClick={() => playNotificationSound()}>
+                      Prova il suono
+                    </button>
+                    <small>Su iPhone non si sente se il telefono è in modalità silenziosa, come le notifiche delle altre app.</small>
+                  </>
                 }
               />
             </section>

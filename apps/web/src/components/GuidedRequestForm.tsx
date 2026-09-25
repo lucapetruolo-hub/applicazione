@@ -13,6 +13,7 @@ import {
   isProfessionalCategorySlug,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
+  type ProfessionalDetail,
 } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -99,7 +100,7 @@ export type GuidedRequestFormProps = {
 };
 
 export function GuidedRequestForm({
-  isUrgent,
+  isUrgent: isUrgentInitial,
   basePath,
   title,
   subtitle,
@@ -109,6 +110,14 @@ export function GuidedRequestForm({
 }: GuidedRequestFormProps) {
   const searchParams = useSearchParams();
   const { user, token, isLoading, refreshUser } = useAuth();
+  // Urgenza scelta anche da qui, non solo arrivando da /urgente
+  // (docs/CHANGELOG.md §154): interruttore "È urgente?" al passo 1.
+  const [isUrgent, setIsUrgent] = useState(isUrgentInitial);
+  // Modulo in 3 passi (docs/CHANGELOG.md §154): il lavoro, dove, riepilogo.
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Richiesta diretta: inoltrarla ad altri se il professionista non
+  // risponde in tempo (decisione dell'utente: attiva di default).
+  const [forwardIfNoReply, setForwardIfNoReply] = useState(true);
 
   const initialCategory = searchParams.get("categoria");
   const initialCity = searchParams.get("citta") ?? "";
@@ -249,6 +258,24 @@ export function GuidedRequestForm({
     initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
   );
   const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
+
+  // Dati del professionista scelto caricati dal suo id (docs/CHANGELOG.md
+  // §154): prima dipendevano dai parametri del link (nome, foto,
+  // categoria) e con il solo id la pagina tornava generica. I parametri
+  // restano come valore iniziale, finché la risposta non arriva.
+  const [professional, setProfessional] = useState<ProfessionalDetail | null>(null);
+  useEffect(() => {
+    if (!professionalProfileId) return;
+    apiClient
+      .getProfessional(professionalProfileId)
+      .then((detail) => {
+        setProfessional(detail);
+        setCategorySlug(detail.categorySlug);
+      })
+      .catch(() => undefined);
+  }, [professionalProfileId]);
+  const shownProfessionalName = professional?.businessName ?? professionalName;
+  const shownProfessionalImage = professional?.imageUrl ?? professionalImageUrl;
   // Esempio del campo "Descrivi il lavoro" specifico per la categoria scelta
   // (richiesta esplicita dell'utente) — prima di scegliere una categoria
   // resta il placeholder generico passato dal chiamante, mai un esempio
@@ -432,55 +459,50 @@ export function GuidedRequestForm({
     }
   }
 
+  /** Controlli del passo 1 (il lavoro) e del passo 2 (dove): null se tutto a posto. */
+  function validateStep(which: 1 | 2): string | null {
+    if (which === 1) {
+      if (!categorySlug) return "Seleziona una categoria.";
+      if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
+      return null;
+    }
+    // Città, indirizzo e destinatario obbligatori solo a domicilio: per una
+    // consulenza online restano facoltativi (richiesta esplicita dell'utente).
+    if (serviceMode === "HOME") {
+      if (!city.trim()) return "Indica la città in cui serve l'intervento.";
+      if (!street.trim()) return "Indica l'indirizzo.";
+      if (!recipientName.trim() || !recipientSurname.trim()) return "Indica nome e cognome di chi riceverà il professionista.";
+      if (!recipientPhone.trim()) return "Indica un numero di telefono.";
+      if (!houseNumber.trim()) return "Indica il numero civico.";
+      if (!postalCode.trim()) return "Indica il CAP.";
+      if (!province.trim()) return "Indica la provincia.";
+    }
+    return null;
+  }
+
+  function goToStep(next: 1 | 2 | 3) {
+    setError(null);
+    if (next > step) {
+      const problem = validateStep(1) ?? (next === 3 ? validateStep(2) : null);
+      if (problem) {
+        setError(problem);
+        if (validateStep(1)) setStep(1);
+        return;
+      }
+    }
+    setStep(next);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function handleSubmit() {
     setError(null);
-    if (!categorySlug) {
-      setError("Seleziona una categoria.");
+    const problem = validateStep(1) ?? validateStep(2);
+    if (problem) {
+      setError(problem);
       return;
     }
-    if (description.trim().length < 10) {
-      setError("Descrivi il lavoro con almeno 10 caratteri.");
-      return;
-    }
-    // Città (e indirizzo/destinatario) obbligatori solo per un intervento
-    // a domicilio (richiesta esplicita dell'utente: "la città poiché si è
-    // selezionato online non dev'essere obbligatoria") — per una
-    // consulenza online il campo resta facoltativo, nessuna validazione da
-    // applicare qui.
-    if (serviceMode === "HOME") {
-      if (!city.trim()) {
-        setError("Indica la città in cui serve l'intervento.");
-        return;
-      }
-      if (!street.trim()) {
-        setError("Indica l'indirizzo.");
-        return;
-      }
-      if (!recipientName.trim() || !recipientSurname.trim()) {
-        setError("Indica nome e cognome di chi riceverà il professionista.");
-        return;
-      }
-      if (!recipientPhone.trim()) {
-        setError("Indica un numero di telefono.");
-        return;
-      }
-      if (!houseNumber.trim()) {
-        setError("Indica il numero civico.");
-        return;
-      }
-      if (!postalCode.trim()) {
-        setError("Indica il CAP.");
-        return;
-      }
-      if (!province.trim()) {
-        setError("Indica la provincia.");
-        return;
-      }
-    }
-    // Gate di autenticazione spostato qui, all'ultimo passo prima
-    // dell'invio (F2.2): tutto il resto del modulo — categoria,
-    // descrizione, foto — resta compilabile da anonimo. Il gate si apre
-    // sopra la pagina, nulla di quanto già scritto/selezionato va perso.
+    // Gate di autenticazione all'ultimo passo prima dell'invio (F2.2): tutto
+    // il resto del modulo resta compilabile da anonimo.
     if (!user || !token) {
       setShowAuthGate(true);
       return;
@@ -522,6 +544,7 @@ export function GuidedRequestForm({
         serviceMode,
         photoUrls: uploadedUrls,
         professionalProfileId,
+        forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
       });
@@ -600,7 +623,7 @@ export function GuidedRequestForm({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             {title}
           </Text>
-          {professionalProfileId && professionalName ? (
+          {professionalProfileId && shownProfessionalName ? (
             // Richiesta rivolta a un professionista specifico (si arriva dal
             // suo profilo pubblico o da una fascia della sua agenda): il
             // sottotitolo generico ("lo inviamo subito ai professionisti
@@ -620,23 +643,40 @@ export function GuidedRequestForm({
                 paddingHorizontal="$4"
                 paddingVertical="$3"
               >
-                <ProfessionalAvatar imageUrl={professionalImageUrl} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
+                <ProfessionalAvatar imageUrl={shownProfessionalImage} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
                 <YStack>
                   <Text fontSize="$2" color={brand.grafite70}>
                     Stai inviando una richiesta a
                   </Text>
                   <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
-                    {professionalName}
+                    {shownProfessionalName}
                   </Text>
+                  {professional ? (
+                    <Text fontSize="$2" color={brand.grafite70}>
+                      {[
+                        professional.categoryLabel,
+                        professional.rating !== null && professional.reviewCount > 0
+                          ? `★ ${professional.rating.toLocaleString("it-IT")} (${professional.reviewCount})`
+                          : null,
+                        professional.avgResponseTimeMinutes !== null ? `di solito risponde in ${formatResponseTime(professional.avgResponseTimeMinutes)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  ) : null}
                 </YStack>
               </XStack>
-              <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva solo a {professionalName}, nessun altro professionista la riceve.</Text>
+              <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva a {shownProfessionalName}.</Text>
             </>
           ) : (
             <Text color={brand.grafite70}>{subtitle}</Text>
           )}
         </YStack>
 
+        <StepIndicator step={step} onGo={goToStep} />
+
+        {step === 1 ? (
+          <>
         {professionalProfileId && selectedCategory ? (
           // Categoria già determinata dal professionista scelto (si arriva
           // qui dal suo profilo, con categoria e id già nell'URL): non ha
@@ -787,6 +827,18 @@ export function GuidedRequestForm({
           </XStack>
         </YStack>
 
+        <label className="guided-urgent-toggle">
+          <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
+          <span>
+            <strong>È urgente?</strong>
+            <small>
+              {isUrgent
+                ? "Sì: la mandiamo subito a più professionisti, che hanno 20 minuti per risponderti."
+                : "Attivalo per un guasto che non può aspettare (es. allagamento, niente corrente)."}
+            </small>
+          </span>
+        </label>
+
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
             <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
@@ -920,8 +972,15 @@ export function GuidedRequestForm({
           ) : null}
         </YStack>
 
+          </>
+        ) : null}
+
+        {step === 2 ? (
+          <>
         <YStack gap="$2">
           <FieldLabel>{serviceMode === "ONLINE" ? "Città (facoltativa)" : "Città"}</FieldLabel>
+          {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
+          <div className="guided-city">
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete
               items={ALL_ITALIAN_CITY_NAMES}
@@ -935,6 +994,7 @@ export function GuidedRequestForm({
               minChars={3}
             />
           </YStack>
+          </div>
           {serviceMode === "ONLINE" ? (
             // Richiesta esplicita dell'utente: "la città poiché si è
             // selezionato online non dev'essere obbligatoria... deve
@@ -1026,20 +1086,59 @@ export function GuidedRequestForm({
           </YStack>
         ) : null}
 
+          </>
+        ) : null}
+
+        {step === 3 ? (
+          <RequestSummary
+            isUrgent={isUrgent}
+            professionalName={professionalProfileId ? shownProfessionalName ?? "il professionista" : null}
+            categoryLabel={selectedCategory?.label ?? ""}
+            serviceMode={serviceMode}
+            description={description}
+            city={city}
+            address={[street, houseNumber].filter((v) => v.trim()).join(" ")}
+            photosCount={photos.length}
+            slotLabel={
+              finalPreferredDate && finalPreferredTimeSlot
+                ? pickableSlotLabel({ date: finalPreferredDate, startTime: finalPreferredTimeSlot.split("-")[0]!, endTime: finalPreferredTimeSlot.split("-")[1]! })
+                : null
+            }
+            forwardIfNoReply={forwardIfNoReply}
+            onToggleForward={() => setForwardIfNoReply((v) => !v)}
+            onEdit={goToStep}
+          />
+        ) : null}
+
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
 
-        <Button
-          variant={isUrgent ? "urgent" : "primary"}
-          onPress={() => handleSubmit()}
-          disabled={isSubmitting || isUploadingPhoto}
-          opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
-        >
-          {isSubmitting ? submittingLabel : submitLabel}
-        </Button>
+        <XStack gap="$2" flexWrap="wrap">
+          {step > 1 ? (
+            <Button variant="secondary" onPress={() => goToStep((step - 1) as 1 | 2)} flexGrow={1} flexBasis={120}>
+              Indietro
+            </Button>
+          ) : null}
+          {step < 3 ? (
+            <Button variant="primary" onPress={() => goToStep((step + 1) as 2 | 3)} flexGrow={2} flexBasis={200}>
+              Avanti
+            </Button>
+          ) : (
+            <Button
+              variant={isUrgent ? "urgent" : "primary"}
+              onPress={() => handleSubmit()}
+              disabled={isSubmitting || isUploadingPhoto}
+              opacity={isSubmitting || isUploadingPhoto ? 0.6 : 1}
+              flexGrow={2}
+              flexBasis={200}
+            >
+              {isSubmitting ? submittingLabel : submitLabel}
+            </Button>
+          )}
+        </XStack>
       </YStack>
     </YStack>
     {showAuthGate ? (
@@ -1051,3 +1150,122 @@ export function GuidedRequestForm({
     </>
   );
 }
+
+function formatResponseTime(minutes: number): string {
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} min`;
+  const hours = Math.round(minutes / 60);
+  return hours === 1 ? "1 ora" : `${hours} ore`;
+}
+
+const STEPS = ["Il lavoro", "Dove", "Riepilogo"] as const;
+
+/** Avanzamento del modulo (docs/CHANGELOG.md §154); si torna indietro toccando un passo già fatto. */
+function StepIndicator({ step, onGo }: { step: 1 | 2 | 3; onGo: (next: 1 | 2 | 3) => void }) {
+  return (
+    <ol className="guided-steps" aria-label="Passaggi della richiesta">
+      {STEPS.map((label, index) => {
+        const n = (index + 1) as 1 | 2 | 3;
+        const state = n === step ? "is-current" : n < step ? "is-done" : "";
+        return (
+          <li key={label} className={state} aria-current={n === step ? "step" : undefined}>
+            <button type="button" onClick={() => n < step && onGo(n)} disabled={n >= step}>
+              <span className="guided-step-dot">{n < step ? "✓" : n}</span>
+              <span>{label}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * Riepilogo prima dell'invio (docs/CHANGELOG.md §154): cosa si sta
+ * chiedendo e, soprattutto, cosa succede dopo — a chi arriva, quanti
+ * professionisti, entro quando devono rispondere.
+ */
+function RequestSummary({
+  isUrgent,
+  professionalName,
+  categoryLabel,
+  serviceMode,
+  description,
+  city,
+  address,
+  photosCount,
+  slotLabel,
+  forwardIfNoReply,
+  onToggleForward,
+  onEdit,
+}: {
+  isUrgent: boolean;
+  professionalName: string | null;
+  categoryLabel: string;
+  serviceMode: "HOME" | "ONLINE";
+  description: string;
+  city: string;
+  address: string;
+  photosCount: number;
+  slotLabel: string | null;
+  forwardIfNoReply: boolean;
+  onToggleForward: () => void;
+  onEdit: (step: 1 | 2) => void;
+}) {
+  const responseTime = isUrgent ? "20 minuti" : "4 ore (contate dalle 8 alle 21)";
+  return (
+    <YStack gap="$4">
+      <div className="guided-next">
+        <strong>Cosa succede dopo l&apos;invio</strong>
+        {professionalName ? (
+          <ul>
+            <li>La richiesta arriva a {professionalName}, che ha {responseTime} per risponderti con un preventivo.</li>
+            <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
+          </ul>
+        ) : (
+          <ul>
+            <li>
+              La mandiamo subito a fino a {isUrgent ? "5" : "3"} professionisti, i più adatti della tua zona, scelti per rapidità di risposta,
+              recensioni, affidabilità e vicinanza.
+            </li>
+            <li>Ognuno ha {responseTime} per risponderti. Se qualcuno non risponde, la richiesta passa al successivo.</li>
+            <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
+          </ul>
+        )}
+      </div>
+
+      {professionalName ? (
+        <label className="guided-forward">
+          <input type="checkbox" checked={forwardIfNoReply} onChange={onToggleForward} />
+          <span>
+            Se {professionalName} non risponde entro {responseTime} o non è disponibile, inoltrala fino ad altri {isUrgent ? "5" : "3"}{" "}
+            professionisti simili della zona.
+          </span>
+        </label>
+      ) : null}
+
+      <div className="guided-recap">
+        <div>
+          <span>Il lavoro</span>
+          <button type="button" onClick={() => onEdit(1)}>
+            Modifica
+          </button>
+        </div>
+        <p>
+          <strong>{categoryLabel}</strong> · {serviceMode === "HOME" ? "A domicilio" : "Online"}
+          {isUrgent ? " · Urgente" : ""}
+          {slotLabel ? ` · ${slotLabel}` : ""}
+        </p>
+        <p className="guided-recap-text">{description}</p>
+        {photosCount > 0 ? <p>{photosCount === 1 ? "1 foto o video" : `${photosCount} foto o video`}</p> : null}
+        <div>
+          <span>Dove</span>
+          <button type="button" onClick={() => onEdit(2)}>
+            Modifica
+          </button>
+        </div>
+        <p>{[address, city].filter((v) => v.trim()).join(", ") || (serviceMode === "ONLINE" ? "Consulenza online" : "—")}</p>
+      </div>
+    </YStack>
+  );
+}
+

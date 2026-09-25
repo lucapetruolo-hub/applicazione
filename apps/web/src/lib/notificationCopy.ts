@@ -19,6 +19,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
   GUIDED_REQUEST_EXPIRED: { icon: "⏱️", message: "La tua richiesta è scaduta senza risposte." },
+  // Richiesta diretta inoltrata ad altri dopo nessuna risposta (docs/CHANGELOG.md §154).
+  REQUEST_FORWARDED: { icon: "📨", message: "Il professionista scelto non ha risposto: abbiamo inoltrato la richiesta ad altri professionisti simili." },
+  REQUEST_FORWARD_NO_MATCH: { icon: "📭", message: "Il professionista scelto non ha risposto e in zona non ce ne sono altri disponibili per ora." },
   BOOKING_NO_SHOW_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato che non ti sei presentato a un appuntamento." },
   TIMELINE_MESSAGE_FROM_CLIENT: { icon: "💬", message: "Il cliente ti ha scritto un messaggio." },
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },

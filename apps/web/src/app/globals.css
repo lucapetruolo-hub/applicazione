@@ -1640,3 +1640,168 @@ a.admin-kpi:hover {
     align-items: stretch;
   }
 }
+
+/* Richiesta di preventivo in 3 passi (docs/CHANGELOG.md §154). */
+.guided-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+}
+.guided-steps li {
+  flex: 1;
+  min-width: 0;
+}
+.guided-steps button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-top: 3px solid #f0dcc0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  text-align: left;
+  cursor: default;
+}
+.guided-steps li.is-current button {
+  border-top-color: #189a63;
+  color: #2b2420;
+}
+.guided-steps li.is-done button {
+  border-top-color: #189a63;
+  cursor: pointer;
+}
+.guided-step-dot {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: #f0dcc0;
+  color: #2b2420;
+}
+.guided-steps li.is-current .guided-step-dot,
+.guided-steps li.is-done .guided-step-dot {
+  background: #189a63;
+  color: #ffffff;
+}
+.guided-urgent-toggle,
+.guided-forward {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  cursor: pointer;
+}
+.guided-urgent-toggle input,
+.guided-forward input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: #c8362b;
+  flex-shrink: 0;
+}
+.guided-forward input {
+  accent-color: #189a63;
+}
+.guided-urgent-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.guided-urgent-toggle strong {
+  font-size: 15px;
+  color: #2b2420;
+}
+.guided-urgent-toggle small {
+  font-size: 13px;
+  color: #6e6459;
+}
+.guided-urgent-toggle:has(input:checked) {
+  border-color: #c8362b;
+  background: #fbeae7;
+}
+.guided-forward span {
+  font-size: 14px;
+  color: #2b2420;
+  line-height: 1.45;
+}
+.guided-next {
+  padding: 16px;
+  border-radius: 14px;
+  background: #dcf3e7;
+  color: #0e4f33;
+}
+.guided-next strong {
+  font-size: 15px;
+}
+.guided-next ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.guided-recap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+}
+.guided-recap > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+.guided-recap > div span {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e6459;
+}
+.guided-recap button {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  padding: 0;
+}
+.guided-recap p {
+  margin: 0;
+  font-size: 14px;
+  color: #2b2420;
+}
+.guided-recap-text {
+  white-space: pre-wrap;
+  color: #6e6459 !important;
+}
+.guided-city input {
+  background-color: #ffffff !important;
+}
+@media (max-width: 599px) {
+  .guided-steps button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 12px;
+  }
+}

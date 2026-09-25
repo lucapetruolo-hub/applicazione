@@ -616,6 +616,10 @@ model GuidedRequest {
   // (photoUrls, portfolioUrls, subTags) invece di una tabella dedicata o
   // di un campo Json: qui non serve altro che leggerla/consumarla in ordine.
   reserveCandidateIds   String[]                   @default([])
+  // Richiesta diretta: inoltrarla ad altri se il professionista non
+  // risponde (docs/CHANGELOG.md §154) e quando è stata inoltrata.
+  forwardIfNoReply      Boolean                    @default(false)
+  forwardedAt           DateTime?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
