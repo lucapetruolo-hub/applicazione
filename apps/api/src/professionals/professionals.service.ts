@@ -1,3 +1,4 @@
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
@@ -90,6 +91,7 @@ export class ProfessionalsService {
     private readonly guidedRequestsService: GuidedRequestsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -650,6 +652,8 @@ export class ProfessionalsService {
     // creazione del profilo, coerente con come funziona già oggi il resto
     // del sistema.
     if (isFirstTimeCreation) {
+      // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
+      await this.subscriptionsService.ensureTrial(profile.id);
       await this.guidedRequestsService.matchNewProfileToOpenRequests({
         id: profile.id,
         userId,
@@ -1620,6 +1624,7 @@ export class ProfessionalsService {
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+      await this.subscriptionsService.afterJobAccepted(professionalProfileId);
       return { bookingId: booking.id };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {

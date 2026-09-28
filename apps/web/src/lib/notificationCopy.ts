@@ -40,6 +40,11 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Sospensione/riattivazione decise dalla scheda utente admin (docs/CHANGELOG.md §145).
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
+  // Abbonamento a livelli (docs/CHANGELOG.md §161).
+  SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Sorpresa: ti regaliamo un altro mese gratis!" },
+  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo mese gratis sta per finire: scegli il livello che fa per te." },
+  SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello questo mese." },
+  SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi nel tuo livello questo mese." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
 };
 

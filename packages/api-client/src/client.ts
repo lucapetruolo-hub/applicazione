@@ -1,4 +1,6 @@
 import type {
+  MySubscription,
+  SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
@@ -1200,7 +1202,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 
-    createSubscriptionCheckout: (token: string, plan: "PRO" | "BUSINESS") =>
+    getMySubscription: (token: string) =>
+      request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    createSubscriptionCheckout: (token: string, plan: SubscriptionTier) =>
       request<{ url: string | null }>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },

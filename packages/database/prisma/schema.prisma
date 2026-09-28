@@ -452,13 +452,19 @@ model SavedProfessional {
 // Monetizzazione — abbonamenti SaaS (CLAUDE.md §6)
 // ---------------------------------------------------------------------------
 
+// Livelli dell'abbonamento unico (docs/CHANGELOG.md §161, CLAUDE.md §6):
+// BASE, PLUS, PRO. FREE e BUSINESS restano solo per compatibilità con le
+// righe già esistenti: BUSINESS vale come PRO, FREE come nessun livello.
 enum SubscriptionPlan {
   FREE
   PRO
   BUSINESS
+  BASE
+  PLUS
 }
 
 enum SubscriptionStatus {
+  TRIALING
   ACTIVE
   PAST_DUE
   CANCELED
@@ -471,6 +477,16 @@ model Subscription {
   status                SubscriptionStatus @default(ACTIVE)
   stripeSubscriptionId  String?            @unique
   currentPeriodEnd      DateTime?
+  // Prova gratuita (docs/CHANGELOG.md §161): primo mese gratis per tutti,
+  // senza limite di lavori. Allungata di un mese, una volta sola, a chi non
+  // ha ancora avuto lavori (bonusMonthGrantedAt), comunicato solo pochi
+  // giorni prima della scadenza.
+  trialEndsAt           DateTime?
+  bonusMonthGrantedAt   DateTime?
+  trialEndingNotifiedAt DateTime?
+  // Ultimo avviso sul limite mensile inviato, es. "2026-09:80" o
+  // "2026-09:100": evita di ripeterlo a ogni lavoro accettato.
+  usageNoticeKey        String?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

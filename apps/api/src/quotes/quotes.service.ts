@@ -1,3 +1,4 @@
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { ProposeQuoteDateInput, QuoteSelfInput } from "@professionisti/shared";
@@ -14,6 +15,7 @@ export class QuotesService {
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async createOrUpdate(userId: string, input: QuoteSelfInput) {
@@ -385,6 +387,7 @@ export class QuotesService {
       // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
       // diventato una prenotazione reale ("accettato" in questo dominio).
       await this.professionalMetricsService.recordJobAccepted(professionalProfile.id);
+      await this.subscriptionsService.afterJobAccepted(professionalProfile.id);
       await this.timelineService.log(
         quote.guidedRequestId,
         professionalProfile.id,

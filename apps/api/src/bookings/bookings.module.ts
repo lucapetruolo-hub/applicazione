@@ -1,3 +1,4 @@
+import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
@@ -8,7 +9,7 @@ import { BookingsController } from "./bookings.controller";
 import { BookingsService } from "./bookings.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule],
+  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule, SubscriptionsModule],
   controllers: [BookingsController],
   providers: [BookingsService],
 })

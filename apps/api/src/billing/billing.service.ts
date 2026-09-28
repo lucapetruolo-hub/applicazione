@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
+import type { SubscriptionTier } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
@@ -15,10 +16,15 @@ const BOOST_PRICES_EUR_CENTS: Record<string, number> = {
 };
 const BOOST_DURATION_DAYS = 30;
 
-const SUBSCRIPTION_PRICE_ENV: Record<"PRO" | "BUSINESS", string> = {
+// Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161): un
+// prezzo Stripe mensile per livello.
+const SUBSCRIPTION_PRICE_ENV: Record<SubscriptionTier, string> = {
+  BASE: "STRIPE_PRICE_BASE",
+  PLUS: "STRIPE_PRICE_PLUS",
   PRO: "STRIPE_PRICE_PRO",
-  BUSINESS: "STRIPE_PRICE_BUSINESS",
 };
+// Stripe accetta un `trial_end` solo almeno 48 ore nel futuro.
+const MIN_TRIAL_END_MS = 48 * 60 * 60 * 1000;
 
 @Injectable()
 export class BillingService {
@@ -53,13 +59,13 @@ export class BillingService {
     return profile;
   }
 
-  async createSubscriptionCheckout(userId: string, plan: "PRO" | "BUSINESS") {
+  async createSubscriptionCheckout(userId: string, plan: SubscriptionTier) {
     const stripe = this.requireStripe();
     const profile = await this.requireMyProfile(userId);
 
     const priceId = process.env[SUBSCRIPTION_PRICE_ENV[plan]];
     if (!priceId) {
-      throw new BadRequestException(`Prezzo Stripe non configurato per il piano ${plan} (${SUBSCRIPTION_PRICE_ENV[plan]}).`);
+      throw new BadRequestException(`Prezzo Stripe non configurato per il livello ${plan} (${SUBSCRIPTION_PRICE_ENV[plan]}).`);
     }
 
     // Nessun `invoice_creation` qui: per le Checkout Session in modalità
@@ -68,12 +74,20 @@ export class BillingService {
     // configurabile da questo parametro — che l'API Stripe accetta solo in
     // modalità `payment`, vedi sotto). Il professionista la riceve già via
     // email Stripe e può scaricarla dal Customer Portal.
+    // Chi sceglie un livello durante la prova gratuita non perde i giorni
+    // rimasti: il primo addebito parte alla fine della prova.
+    const current = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
+    const trialEnd =
+      current?.status === "TRIALING" && current.trialEndsAt && current.trialEndsAt.getTime() - Date.now() > MIN_TRIAL_END_MS
+        ? Math.floor(current.trialEndsAt.getTime() / 1000)
+        : undefined;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: trialEnd ? { trial_end: trialEnd } : undefined,
       customer_email: profile.user.email ?? undefined,
-      success_url: `${this.frontendUrl()}/dashboard?abbonamento=attivato`,
-      cancel_url: `${this.frontendUrl()}/per-professionisti`,
+      success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
+      cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
       metadata: { kind: "subscription", professionalProfileId: profile.id, plan },
     });
 
@@ -175,13 +189,13 @@ export class BillingService {
         await this.prisma.subscription.upsert({
           where: { professionalProfileId: metadata.professionalProfileId },
           update: {
-            plan: metadata.plan as "PRO" | "BUSINESS",
+            plan: metadata.plan as SubscriptionTier,
             status: "ACTIVE",
             stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
           },
           create: {
             professionalProfileId: metadata.professionalProfileId,
-            plan: metadata.plan as "PRO" | "BUSINESS",
+            plan: metadata.plan as SubscriptionTier,
             status: "ACTIVE",
             stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined,
           },
@@ -257,6 +271,23 @@ export class BillingService {
         Boolean(account.payouts_enabled),
         requirementsStatus,
       );
+    }
+
+    // Ciclo di vita dell'abbonamento (docs/CHANGELOG.md §161): pagamento non
+    // riuscito, pagamento tornato a posto, disdetta.
+    if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+      const stripeSubscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+      if (stripeSubscriptionId) {
+        await this.prisma.subscription.updateMany({
+          where: { stripeSubscriptionId, status: { not: "CANCELED" } },
+          data: { status: event.type === "invoice.paid" ? "ACTIVE" : "PAST_DUE" },
+        });
+      }
+    }
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      await this.prisma.subscription.updateMany({ where: { stripeSubscriptionId: subscription.id }, data: { status: "CANCELED" } });
     }
 
     return { received: true };

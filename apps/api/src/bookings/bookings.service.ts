@@ -1,3 +1,4 @@
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type { CancelBookingByProfessionalInput, ClientConfirmCompleteInput, CompleteBookingInput } from "@professionisti/shared";
@@ -15,6 +16,7 @@ export class BookingsService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
     private readonly jobPaymentsService: JobPaymentsService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   /**
@@ -85,6 +87,8 @@ export class BookingsService {
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
     // diventato una prenotazione reale ("accettato" in questo dominio).
     await this.professionalMetricsService.recordJobAccepted(quote.professionalProfileId);
+    // Conteggio lavori del mese e avviso vicino al limite (docs/CHANGELOG.md §161).
+    await this.subscriptionsService.afterJobAccepted(quote.professionalProfileId);
 
     await this.timelineService.log(
       quote.guidedRequestId,

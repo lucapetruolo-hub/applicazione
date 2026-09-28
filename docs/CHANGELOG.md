@@ -15303,3 +15303,62 @@ Verifica:
 - `lead-routing.test.ts`: 3 test nuovi, cioè 35 minuti di giorno, 60 di
   notte e i confini 21:59/22:00/7:00;
 - 79/79 test API; `tsc` su api e web.
+
+## 161. Abbonamento unico a livelli: prova gratuita, mese regalato, limite di lavori
+
+Richiesta dell'utente ("quando pronto, unisci e continua"), realizza la
+decisione del 28/09/2026 (§160, CLAUDE.md §6). Sostituisce i piani
+Free/Pro/Business per funzioni.
+
+- **Livelli** (`packages/shared/src/plans.ts`, `SUBSCRIPTION_TIERS`): Base
+  €19 / 5 lavori accettati al mese, Plus €39 / 15, Pro €69 / senza limite.
+  Tutte le funzioni in ogni livello (`SUBSCRIPTION_FEATURES`, solo funzioni
+  che il sito offre davvero: tolto il vecchio "Badge verificato", falso).
+  "Lavoro accettato" = una `Booking` nata nel mese (ora italiana) da
+  preventivo accettato, data concordata o prenotazione dall'agenda;
+  quelle annullate dal cliente non contano.
+- **Schema** (`20260928120000_subscription_tiers`): valori `BASE`/`PLUS` in
+  `SubscriptionPlan`, `TRIALING`/`PAST_DUE` in `SubscriptionStatus`,
+  colonne `trialEndsAt`, `bonusMonthGrantedAt`, `trialEndingNotifiedAt`,
+  `usageNoticeKey`. `FREE` e `BUSINESS` restano per le righe vecchie
+  (`BUSINESS` vale come Pro).
+- **Prova gratuita per tutti, compresi i già iscritti**
+  (`20260928120100_subscription_trial_backfill`: 30 giorni da oggi per chi
+  non ha un abbonamento pagato). I nuovi la ricevono alla creazione del
+  profilo (`SubscriptionsService.ensureTrial`).
+- **Mese regalato a sorpresa** (cron giornaliero alle 9,
+  `SubscriptionsService.runTrialCheck`): a 3 giorni dalla fine della prova,
+  chi non ha ancora nessun lavoro riceve altri 30 giorni e la notifica
+  `SUBSCRIPTION_BONUS_MONTH`; mai annunciato prima, una volta sola. Agli
+  altri, `SUBSCRIPTION_TRIAL_ENDING`. Il regalo dopo un primo mese già
+  pagato arriverà con Stripe attivo.
+- **Limite senza blocco** (`SubscriptionsService.afterJobAccepted`, chiamato
+  nei tre punti che creano una `Booking`): notifica
+  `SUBSCRIPTION_LIMIT_NEAR` all'80% e `SUBSCRIPTION_LIMIT_REACHED` al 100%,
+  una volta al mese. Nessun lavoro viene bloccato: cosa succede oltre il
+  limite è ancora una decisione aperta dell'utente. Nessun limite durante
+  la prova, neanche per chi sceglie un livello prima della fine.
+- **Dopo la prova senza livello** (`TRIAL_ENDED`): per ora nessun blocco,
+  da decidere con l'utente.
+- **Stripe**: checkout per livello (`STRIPE_PRICE_BASE`/`PLUS`/`PRO`); chi
+  sceglie durante la prova paga dalla fine della prova (`trial_end`).
+  Webhook nuovi: `invoice.payment_failed` → `PAST_DUE`, `invoice.paid` →
+  `ACTIVE`, `customer.subscription.deleted` → `CANCELED`.
+- **Web**: `/per-professionisti` rifatta (3 livelli, funzioni comuni, primo
+  mese gratis); nuova `/dashboard/abbonamento` (stato, lavori del mese con
+  barra, scelta del livello; senza Stripe i tasti sono spenti con un
+  messaggio chiaro), voce "Abbonamento" nel menu del professionista; testi
+  delle 4 notifiche nuove, che portano alla pagina. `/termini` §4: tolto
+  "piano Free", ora descrive l'abbonamento a livelli.
+
+Verifica:
+- `subscription-rules.test.ts` (11 test: mese in ora italiana
+  estate/inverno, stati, limiti, avvisi 80/100 una volta al mese); 90/90
+  test API; `tsc` su api e web.
+- Sul database e2e con il servizio compilato: mese regalato dato una volta
+  e poi solo avviso di fine prova; Base con 6 lavori → avviso al 4° e al
+  5°, nulla al 6°; lavori annullati dal cliente non contati.
+- API: `GET /professionals/me/subscription` (professionista in prova; 404
+  per un cliente); checkout senza Stripe → 400 chiaro.
+- Playwright desktop 1280 e iPhone 390: `/dashboard/abbonamento` in prova e
+  con Base 4 su 5, `/per-professionisti`; nessun overflow né errore.

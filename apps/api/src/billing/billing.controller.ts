@@ -5,7 +5,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { BillingService } from "./billing.service";
 
-const subscriptionCheckoutSchema = z.object({ plan: z.enum(["PRO", "BUSINESS"]) });
+const subscriptionCheckoutSchema = z.object({ plan: z.enum(["BASE", "PLUS", "PRO"]) });
 const boostCheckoutSchema = z.object({ type: z.enum(["BOOST_LOCALE", "BADGE_REPUTAZIONE", "STORIA_SUCCESSO"]) });
 
 @Controller("billing")
@@ -16,7 +16,7 @@ export class BillingController {
   @Post("subscription/checkout")
   createSubscriptionCheckout(
     @Req() req: AuthenticatedRequest,
-    @Body(new ZodValidationPipe(subscriptionCheckoutSchema)) body: { plan: "PRO" | "BUSINESS" },
+    @Body(new ZodValidationPipe(subscriptionCheckoutSchema)) body: { plan: "BASE" | "PLUS" | "PRO" },
   ) {
     return this.billingService.createSubscriptionCheckout(req.user.userId, body.plan);
   }

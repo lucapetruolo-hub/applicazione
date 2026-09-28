@@ -19,4 +19,5 @@ Letto dal CEO a ogni consultazione. Aggiornato dal CEO. Una riga per voce, con d
 - Città e 3 categorie di lancio (proposta: capoluogo medio dove l'utente ha contatti; idraulico, elettricista, pulizie).
 - Lanciare senza incassare fino a P.IVA/società + parere del commercialista.
 - Pagamenti online: l'utente vuole "ragionarci meglio". Opzioni sul tavolo: A) abbonati pagano solo il costo del pagamento, B) lavori pagati online fuori dal limite mensile, C) commissione + costi. Mai abbonamento + commissione obbligatori insieme.
+- Cosa succede a fine prova senza livello scelto (oggi nessun blocco, CHANGELOG §161).
 - Cosa succede al limite di lavori (lavoro extra a pagamento o passaggio al livello superiore) e se chi manca un'urgenza di notte perde punteggio.
