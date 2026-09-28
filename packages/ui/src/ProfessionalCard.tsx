@@ -93,6 +93,12 @@ export type ProfessionalCardProps = {
    * qui da campi non tutti disponibili su questo tipo leggero.
    */
   isNewProfile?: boolean;
+  /**
+   * Assicurazione RC professionale dichiarata dal professionista
+   * (docs/CHANGELOG.md §157): nessuno la controlla ancora, quindi la pillola
+   * dice "dichiarata" e non usa la spunta verde riservata a "Verificato".
+   */
+  hasLiabilityInsurance?: boolean;
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
   services?: ProfessionalCardService[];
@@ -136,6 +142,7 @@ export function ProfessionalCard({
   verified,
   boosted,
   isNewProfile,
+  hasLiabilityInsurance,
   remoteAvailable,
   services,
   availabilityPreview,
@@ -246,6 +253,17 @@ export function ProfessionalCard({
                   <Icon name="sparkles" size={13} color={brand.cianografia} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
                     Nuovo profilo
+                  </Text>
+                </XStack>
+              ) : null}
+              {hasLiabilityInsurance ? (
+                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+                  <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite}>
+                    Assicurazione RC
+                  </Text>
+                  <Text fontFamily="$body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
+                    dichiarata
                   </Text>
                 </XStack>
               ) : null}

@@ -15164,3 +15164,40 @@ mandiamo subito a più professionisti, che hanno 20 minuti per
 risponderti.").
 
 Verifica: `tsc`.
+
+## 157. Badge e filtro "Assicurazione RC professionale"
+
+Richiesta esplicita dell'utente: un badge per l'assicurazione RC
+professionale nella scheda del professionista e un filtro in ricerca per
+vedere solo i profili assicurati.
+
+Il dato esisteva già: `ProfessionalProfile.hasLiabilityInsurance`, casella
+spuntata dal professionista in `/dashboard/profilo`, finora mostrata solo in
+fondo al profilo pubblico tra i "dati dichiarati".
+
+- `ProfessionalSearchResult.hasLiabilityInsurance`: restituito dalla
+  ricerca e dai professionisti salvati.
+- Badge "Assicurazione RC · dichiarata" (icona scudo con spunta,
+  `shield-check` aggiunta a `packages/ui`):
+  - nella card dei risultati (`ProfessionalCard`), accanto a "Nuovo
+    profilo";
+  - nell'intestazione del profilo pubblico (`.rc-badge`).
+- Filtri di ricerca: nuova sezione "Assicurazione" con l'interruttore "Solo
+  con assicurazione RC professionale". Conta nel numero dei filtri attivi e
+  si azzera con "Reimposta filtri". Il filtro lavora sulla pagina, come gli
+  altri.
+- `/dashboard/profilo`: sotto la casella una riga spiega che spuntarla
+  mostra il badge e fa comparire nei filtri, e di spuntarla solo con polizza
+  attiva.
+
+Perché "dichiarata" e non una spunta verde: nessuno controlla ancora la
+polizza. Mostrarla come verificata sarebbe lo stesso problema di "Profili
+verificati" (checklist pre-lancio, punti 15-16). Il badge usa un colore
+neutro, mai il verde riservato a "Verificato". Quando esisterà una verifica
+vera (polizza caricata e controllata da un admin), il badge potrà diventare
+"verificata".
+
+Verifica: `tsc` su ui, api e web; API di ricerca con un professionista
+assicurato; Playwright con profilo iPhone 13:
+- badge nella card e nel profilo, senza uscire dalla scheda;
+- filtro attivo: da 3 a 1 risultato, "Mostra 1 risultato", "Filtri (1)".

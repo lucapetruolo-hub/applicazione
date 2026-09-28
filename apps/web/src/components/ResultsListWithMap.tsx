@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, SlidersHorizontal, X, Zap } from "lucide-react";
+import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -153,7 +153,7 @@ export function ResultsListWithMap({
   // "Intervento urgente?" preselezionato dalla homepage (per rendere subito
   // visibile che il filtro è attivo), altrimenti "Consulenza online" come
   // prima.
-  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | null>(
+  const [expandedSection, setExpandedSection] = useState<"online" | "availability" | "language" | "insurance" | null>(
     initialUrgentOnly ? "availability" : "online",
   );
 
@@ -165,6 +165,10 @@ export function ResultsListWithMap({
   // serve più un controllo a sé sempre visibile qui: il filtro arriva già
   // preimpostato e resta comunque regolabile dentro il pannello Filtri.
   const [filterUrgentOnly, setFilterUrgentOnly] = useState(initialUrgentOnly ?? false);
+
+  // Solo profili con assicurazione RC professionale dichiarata
+  // (docs/CHANGELOG.md §157, richiesta esplicita dell'utente).
+  const [filterInsuredOnly, setFilterInsuredOnly] = useState(false);
 
   // Popup centrato (richiesta esplicita dell'utente), stesso pattern
   // overlay già in uso altrove nel prodotto (BookingDetailPanel,
@@ -235,11 +239,14 @@ export function ResultsListWithMap({
     if (filterAvailability === "today" && !hasAvailabilityWithinDays(pro, 0)) return false;
     if (filterAvailability === "3days" && !hasAvailabilityWithinDays(pro, 2)) return false;
     if (selectedLanguage && !pro.spokenLanguages.includes(selectedLanguage)) return false;
+    if (filterInsuredOnly && !pro.hasLiabilityInsurance) return false;
     return true;
   }
 
   const activeFilterCount =
-    (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) + (selectedLanguage ? 1 : 0);
+    (filterUrgentOnly ? 1 : 0) + (filterOnlineOnly ? 1 : 0) + (filterAvailability !== "any" ? 1 : 0) +
+    (selectedLanguage ? 1 : 0) +
+    (filterInsuredOnly ? 1 : 0);
 
   // Pool gia' filtrato dai filtri attivi: lista E mappa leggono da qui, cosi'
   // i puntini sulla mappa corrispondono sempre alle schede visibili (bug
@@ -252,7 +259,7 @@ export function ResultsListWithMap({
   // (richiesta esplicita dell'utente, riferimento miodottore.it).
   const filteredResultsCount = (showMap ? filteredOrderedVisible : filteredProfessionals).length;
 
-  function toggleSection(section: "online" | "availability" | "language") {
+  function toggleSection(section: "online" | "availability" | "language" | "insurance") {
     setExpandedSection((prev) => (prev === section ? null : section));
   }
 
@@ -370,6 +377,39 @@ export function ResultsListWithMap({
               </div>
 
               <div className="filters-section">
+                <button type="button" className="filters-section-header" onClick={() => toggleSection("insurance")}>
+                  <span className="filters-section-title">Assicurazione</span>
+                  {expandedSection === "insurance" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
+                </button>
+                {expandedSection === "insurance" ? (
+                  <div className="filters-section-content">
+                    <label className="filters-toggle-row">
+                      <span>
+                        <ShieldCheck size={14} strokeWidth={1.5} style={{ verticalAlign: "-2px", marginRight: 6 }} />
+                        Solo con assicurazione RC professionale
+                      </span>
+                      <span
+                        className={`filters-switch${filterInsuredOnly ? " on" : ""}`}
+                        onClick={() => setFilterInsuredOnly((v) => !v)}
+                        role="switch"
+                        aria-checked={filterInsuredOnly}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setFilterInsuredOnly((v) => !v);
+                          }
+                        }}
+                      >
+                        <span className="filters-switch-knob" />
+                      </span>
+                    </label>
+                    <span className="filters-empty">Dichiarata dal professionista, non ancora verificata da noi.</span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="filters-section">
                 <button type="button" className="filters-section-header" onClick={() => toggleSection("language")}>
                   <span className="filters-section-title">Lingua parlata</span>
                   {expandedSection === "language" ? <ChevronUp size={18} strokeWidth={1.5} /> : <ChevronDown size={18} strokeWidth={1.5} />}
@@ -415,6 +455,7 @@ export function ResultsListWithMap({
                     setFilterAvailability("any");
                     setLanguageQuery("");
                     setSelectedLanguage(null);
+                    setFilterInsuredOnly(false);
                   }}
                 >
                   Reimposta filtri
@@ -554,6 +595,7 @@ export function ResultsListWithMap({
               verified={pro.verified}
               boosted={pro.boosted}
               isNewProfile={pro.isNewProfile}
+              hasLiabilityInsurance={pro.hasLiabilityInsurance}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}

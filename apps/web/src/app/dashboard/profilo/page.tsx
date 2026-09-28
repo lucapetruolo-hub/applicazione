@@ -779,6 +779,10 @@ export default function DashboardProfiloPage() {
               Ho un'assicurazione di responsabilità civile professionale (RC)
             </Text>
           </YStack>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Se la spunti, sul tuo profilo e nei risultati compare il badge &quot;Assicurazione RC dichiarata&quot;, e i clienti che
+            filtrano per assicurazione ti trovano. Spuntala solo se la polizza è attiva.
+          </Text>
         </Surface>
 
         <YStack

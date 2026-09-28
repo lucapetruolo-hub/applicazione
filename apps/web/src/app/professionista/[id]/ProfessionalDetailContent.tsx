@@ -294,6 +294,15 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
                 {professional.boosted ? <Badge variant="pro">In evidenza</Badge> : null}
                 {professional.isNewProfile ? <Badge variant="nuovo">Nuovo profilo</Badge> : null}
+                {professional.hasLiabilityInsurance ? (
+                  <span className="rc-badge" title="Dichiarata dal professionista, non ancora verificata da noi">
+                    <span>
+                      <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
+                      Assicurazione RC
+                    </span>
+                    <small>dichiarata</small>
+                  </span>
+                ) : null}
               </XStack>
               <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
                 {professional.categoryLabel} · {professional.city}
@@ -436,7 +445,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             ) : null}
             {professional.hasLiabilityInsurance ? (
               <XStack alignItems="center" gap="$2">
-                <Icon name="check" size={14} strokeWidth={2} color={brand.grafite70} />
+                <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize="$2" color={brand.grafite70}>
                   Assicurazione RC professionale
                 </Text>

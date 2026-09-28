@@ -148,6 +148,7 @@ export class ProfessionalsService {
         services: mapServices(profile.services),
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
+        hasLiabilityInsurance: profile.hasLiabilityInsurance,
         availabilityPreview: preview?.days ?? [],
         nextAvailableSlotHome: preview?.nextAvailableSlotHome ?? null,
         nextAvailableSlotOnline: preview?.nextAvailableSlotOnline ?? null,
