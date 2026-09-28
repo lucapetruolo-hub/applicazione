@@ -232,6 +232,13 @@ model ProfessionalProfile {
   // accedere alla dashboard (a meno che anche `User.suspendedAt` sia
   // valorizzato). Filtrato ovunque insieme a `deletedAt`.
   suspendedAt DateTime?
+  // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): fuori dalla
+  // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
+  // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
+  // TRIAL_ENDED, SUBSCRIPTION_ENDED o LIMIT_REACHED (`PauseReason` in
+  // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
+  pausedAt     DateTime?
+  pausedReason String?
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
@@ -487,6 +494,11 @@ model Subscription {
   // Ultimo avviso sul limite mensile inviato, es. "2026-09:80" o
   // "2026-09:100": evita di ripeterlo a ogni lavoro accettato.
   usageNoticeKey        String?
+  // Rinnovo automatico (docs/CHANGELOG.md §162): annullato = attivo fino a
+  // currentPeriodEnd, poi non si rinnova. periodNoticeFor = scadenza per cui
+  // è già partito l'avviso di rinnovo o di fine.
+  cancelAtPeriodEnd     Boolean            @default(false)
+  periodNoticeFor       DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

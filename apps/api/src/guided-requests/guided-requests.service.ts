@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -57,17 +58,21 @@ export class GuidedRequestsService {
       throw new BadRequestException("Categoria non valida.");
     }
 
-    let targetProfile: { id: string; deletedAt: Date | null; suspendedAt: Date | null } | null = null;
+    let targetProfile: { id: string; deletedAt: Date | null; suspendedAt: Date | null; pausedAt: Date | null } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true, suspendedAt: true },
+        select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
       // applicato altrove alle query pubbliche su ProfessionalProfile.
       if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt) {
         throw new NotFoundException("Professionista non trovato.");
+      }
+      // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162).
+      if (targetProfile.pausedAt) {
+        throw new ConflictException(NOT_ACCEPTING_REQUESTS);
       }
     }
 
@@ -577,7 +582,7 @@ export class GuidedRequestsService {
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
-      where: { categoryId, deletedAt: null, suspendedAt: null, ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}) },
+      where: { categoryId, deletedAt: null, suspendedAt: null, pausedAt: null, ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}) },
     });
     const trimmedCity = city.trim();
     // Città facoltativa per una richiesta "online": senza una zona il raggio

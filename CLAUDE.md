@@ -393,11 +393,25 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - **Mese regalato a sorpresa:** a chi non ha avuto nessun preventivo
   accettato si regala un altro mese, comunicato solo in prossimità della
   scadenza del primo mese (gratis o pagato), non all'iscrizione.
-- **Dopo la prova senza livello scelto:** oggi nessun blocco, da decidere
-  con l'utente.
-- **Raggiunto il limite, niente blocco:** avviso all'80% del limite, poi
-  lavoro extra a pagamento o passaggio al livello superiore dal mese dopo
-  (consiglio del Pricing Lead, dettaglio da decidere).
+- **Il mese gratuito vale come Base** (5 lavori). Sulla pagina prezzi Base
+  mostra "€19" barrato e "Gratuito", con la condizione in piccolo ("il
+  primo mese, poi €19/mese"): il mese gratis non si annuncia altrove.
+- **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
+  docs/CHANGELOG.md §162): a fine mese gratuito senza livello, ad
+  abbonamento concluso e ai lavori del mese esauriti il profilo esce dalla
+  ricerca e dallo smistamento, non accetta richieste dirette né prenotazioni
+  (resta visibile dal link); banner fisso in Home e in Abbonamento. Ogni
+  nuovo punto che mostra professionisti o assegna richieste deve filtrare
+  anche `pausedAt`. **Nessuna pausa finché i pagamenti non sono attivi**
+  (`STRIPE_SECRET_KEY` assente): senza, nessuno potrebbe scegliere un
+  livello e a fine prova la ricerca resterebbe vuota.
+- **Al limite:** si continua pagando solo la differenza verso il livello
+  superiore (nel mese gratuito la differenza piena verso Base, con un
+  abbonamento pagato la differenza per i giorni che mancano al rinnovo),
+  altrimenti si riparte il 1° del mese.
+- **Rinnovo automatico** mensile con avviso 3 giorni prima (sito + email);
+  annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
+  Passare a un livello inferiore non è ancora previsto.
 - Prezzi e limiti da rivedere sui dati dei primi mesi.
 - Si incassa solo con P.IVA/società e parere del commercialista (checklist
   §10). **Pagamenti online (commissione, costo del metodo di pagamento): ancora
@@ -604,6 +618,7 @@ produzione):
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
    `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+   `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +

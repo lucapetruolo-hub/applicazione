@@ -22,6 +22,18 @@ export class BillingController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post("subscription/cancel")
+  cancelSubscription(@Req() req: AuthenticatedRequest) {
+    return this.billingService.setCancelAtPeriodEnd(req.user.userId, true);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("subscription/resume")
+  resumeSubscription(@Req() req: AuthenticatedRequest) {
+    return this.billingService.setCancelAtPeriodEnd(req.user.userId, false);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post("leads/:leadId/checkout")
   createLeadCheckout(@Req() req: AuthenticatedRequest, @Param("leadId") leadId: string) {
     return this.billingService.createLeadCheckout(req.user.userId, leadId);

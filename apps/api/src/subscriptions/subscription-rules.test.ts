@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyLimit, romeMonthKey, romeMonthStart, subscriptionState, tierOfPlan, usageNoticeToSend } from "./subscription-rules";
+import { monthlyLimit, pauseReason, periodNoticeToSend, romeMonthKey, romeMonthStart, subscriptionState, tierOfPlan, usageNoticeToSend } from "./subscription-rules";
 
 const NOW = new Date("2026-09-28T10:00:00Z");
 const future = new Date("2026-10-10T00:00:00Z");
@@ -22,15 +22,23 @@ describe("stato e limite", () => {
     expect(tierOfPlan("BUSINESS")).toBe("PRO");
     expect(tierOfPlan("FREE")).toBeNull();
   });
-  it("prova in corso: nessun limite", () => {
+  it("mese gratuito in corso: vale come Base (5 lavori)", () => {
     const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
     expect(subscriptionState(row, NOW)).toBe("TRIAL");
-    expect(monthlyLimit(row, NOW)).toBeNull();
+    expect(monthlyLimit(row, NOW)).toBe(5);
   });
-  it("prova finita senza livello: TRIAL_ENDED, nessun limite (nessun blocco)", () => {
+  it("prova finita senza livello: TRIAL_ENDED", () => {
     const row = { plan: "FREE", status: "TRIALING", trialEndsAt: past };
     expect(subscriptionState(row, NOW)).toBe("TRIAL_ENDED");
     expect(monthlyLimit(row, NOW)).toBeNull();
+  });
+  it("una riga attiva senza livello (vecchio piano gratuito) vale come prova finita", () => {
+    expect(subscriptionState({ plan: "FREE", status: "ACTIVE", trialEndsAt: null }, NOW)).toBe("TRIAL_ENDED");
+  });
+  it("annullato: attivo fino alla scadenza, poi concluso anche senza webhook", () => {
+    const row = { plan: "BASE", status: "ACTIVE", trialEndsAt: null, cancelAtPeriodEnd: true };
+    expect(subscriptionState({ ...row, currentPeriodEnd: future }, NOW)).toBe("ACTIVE");
+    expect(subscriptionState({ ...row, currentPeriodEnd: past }, NOW)).toBe("CANCELED");
   });
   it("Base attivo: 5 lavori, Plus 15, Pro senza limite", () => {
     expect(monthlyLimit({ plan: "BASE", status: "ACTIVE", trialEndsAt: null }, NOW)).toBe(5);
@@ -39,9 +47,41 @@ describe("stato e limite", () => {
   });
 });
 
-it("livello scelto durante la prova: nessun limite fino alla fine della prova", () => {
-  expect(monthlyLimit({ plan: "BASE", status: "ACTIVE", trialEndsAt: future }, NOW)).toBeNull();
-  expect(monthlyLimit({ plan: "BASE", status: "ACTIVE", trialEndsAt: past }, NOW)).toBe(5);
+it("livello scelto durante la prova: vale subito il limite del livello", () => {
+  expect(monthlyLimit({ plan: "BASE", status: "ACTIVE", trialEndsAt: future }, NOW)).toBe(5);
+  expect(monthlyLimit({ plan: "PLUS", status: "ACTIVE", trialEndsAt: future }, NOW)).toBe(15);
+});
+
+describe("account in pausa", () => {
+  it("mese gratuito: operativo fino al 5° lavoro, in pausa al 5°", () => {
+    const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
+    expect(pauseReason(row, 4, NOW)).toBeNull();
+    expect(pauseReason(row, 5, NOW)).toBe("LIMIT_REACHED");
+  });
+  it("prova finita senza livello o abbonamento concluso: in pausa", () => {
+    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: past }, 0, NOW)).toBe("TRIAL_ENDED");
+    expect(pauseReason({ plan: "BASE", status: "CANCELED", trialEndsAt: null }, 0, NOW)).toBe("SUBSCRIPTION_ENDED");
+    expect(pauseReason(null, 0, NOW)).toBe("TRIAL_ENDED");
+  });
+  it("Pro non va mai in pausa per il limite; un pagamento non riuscito non mette in pausa", () => {
+    expect(pauseReason({ plan: "PRO", status: "ACTIVE", trialEndsAt: null }, 500, NOW)).toBeNull();
+    expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null }, 3, NOW)).toBeNull();
+  });
+});
+
+describe("avviso prima della scadenza", () => {
+  const inTwoDays = new Date(NOW.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const base = { plan: "BASE", status: "ACTIVE", trialEndsAt: null, currentPeriodEnd: inTwoDays };
+  it("rinnovo automatico: avviso una volta sola per scadenza", () => {
+    expect(periodNoticeToSend(base, NOW, 3)).toBe("RENEWING");
+    expect(periodNoticeToSend({ ...base, noticeFor: inTwoDays }, NOW, 3)).toBeNull();
+  });
+  it("annullato: avviso di fine invece che di rinnovo", () => {
+    expect(periodNoticeToSend({ ...base, cancelAtPeriodEnd: true }, NOW, 3)).toBe("ENDING");
+  });
+  it("scadenza lontana: nessun avviso", () => {
+    expect(periodNoticeToSend({ ...base, currentPeriodEnd: future }, NOW, 3)).toBeNull();
+  });
 });
 
 describe("avvisi di utilizzo (80% e 100%)", () => {

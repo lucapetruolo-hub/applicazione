@@ -42,9 +42,14 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Sorpresa: ti regaliamo un altro mese gratis!" },
-  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo mese gratis sta per finire: scegli il livello che fa per te." },
+  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo mese gratuito sta per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello questo mese." },
-  SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi nel tuo livello questo mese." },
+  SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi questo mese: il profilo è fuori dalle ricerche. Passa al livello superiore pagando solo la differenza." },
+  SUBSCRIPTION_PAUSED: { icon: "⏸️", message: "Il tuo account è in pausa: scegli un livello per renderlo di nuovo visibile e operativo." },
+  SUBSCRIPTION_RENEWING: { icon: "🔁", message: "Il tuo abbonamento si rinnova automaticamente tra pochi giorni." },
+  SUBSCRIPTION_RENEWED: { icon: "✅", message: "Abbonamento rinnovato: grazie!" },
+  SUBSCRIPTION_ENDING: { icon: "⏳", message: "Il tuo abbonamento annullato finisce tra pochi giorni: puoi riattivarlo quando vuoi." },
+  SUBSCRIPTION_PAYMENT_FAILED: { icon: "⚠️", message: "Pagamento dell'abbonamento non riuscito: controlla il metodo di pagamento." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
 };
 

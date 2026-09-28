@@ -2,7 +2,10 @@
  * Regole pure dell'abbonamento a livelli (docs/CHANGELOG.md §161), testate
  * in `subscription-rules.test.ts`.
  */
-import { USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type PauseReason, type SubscriptionTier } from "@professionisti/shared";
+
+/** Risposta a chi prova a scrivere o prenotare un professionista in pausa. */
+export const NOT_ACCEPTING_REQUESTS = "Questo professionista al momento non accetta nuove richieste. Cerca altri professionisti nella tua zona.";
 
 const ROME_PARTS = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit" });
 const ROME_OFFSET = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", timeZoneName: "shortOffset" });
@@ -53,25 +56,69 @@ export type SubscriptionRow = {
   plan: string;
   status: string;
   trialEndsAt: Date | null;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: Date | null;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
   if (!row || row.status === "TRIALING") {
     return row?.trialEndsAt && row.trialEndsAt.getTime() > now.getTime() ? "TRIAL" : "TRIAL_ENDED";
   }
-  if (row.status === "PAST_DUE") return "PAST_DUE";
   if (row.status === "CANCELED") return "CANCELED";
+  // Annullato con giorni ancora pagati: attivo fino alla scadenza. Rete di
+  // sicurezza se il webhook di fine abbonamento di Stripe tardasse.
+  if (row.cancelAtPeriodEnd && row.currentPeriodEnd && row.currentPeriodEnd.getTime() <= now.getTime()) return "CANCELED";
+  // Una riga attiva senza livello (vecchio piano gratuito) vale come prova finita.
+  if (!tierOfPlan(row.plan)) return "TRIAL_ENDED";
+  if (row.status === "PAST_DUE") return "PAST_DUE";
   return "ACTIVE";
 }
 
-/** Limite mensile di lavori accettati: nessuno durante la prova o con il livello Pro. */
+/**
+ * Limite mensile di lavori accettati. Il mese gratuito vale come il livello
+ * Base (decisione dell'utente, docs/CHANGELOG.md §162); Pro senza limite.
+ */
 export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | null {
-  // Chi sceglie un livello durante la prova resta senza limite fino alla fine della prova.
-  if (row?.trialEndsAt && row.trialEndsAt.getTime() > now.getTime()) return null;
   const state = subscriptionState(row, now);
+  if (state === "TRIAL") return subscriptionTierInfo("BASE").monthlyAcceptedJobs;
   if (state !== "ACTIVE" && state !== "PAST_DUE") return null;
   const tier = row ? tierOfPlan(row.plan) : null;
   return tier ? subscriptionTierInfo(tier).monthlyAcceptedJobs : null;
+}
+
+/**
+ * Perché l'account è in pausa (fuori dalla ricerca, niente nuove richieste),
+ * o null se è operativo. Decisione dell'utente, docs/CHANGELOG.md §162: prova
+ * finita senza livello, abbonamento concluso, o lavori del mese esauriti. Un
+ * pagamento non riuscito non mette in pausa: Stripe riprova per qualche
+ * giorno e, se non va, chiude l'abbonamento.
+ */
+export function pauseReason(row: SubscriptionRow | null, acceptedJobsThisMonth: number, now: Date): PauseReason | null {
+  const state = subscriptionState(row, now);
+  if (state === "TRIAL_ENDED") return "TRIAL_ENDED";
+  if (state === "CANCELED") return "SUBSCRIPTION_ENDED";
+  const limit = monthlyLimit(row, now);
+  if (limit !== null && acceptedJobsThisMonth >= limit) return "LIMIT_REACHED";
+  return null;
+}
+
+/**
+ * Quale avviso di scadenza mandare: "RENEWING" pochi giorni prima del
+ * rinnovo automatico, "ENDING" se l'abbonamento è stato annullato. Una
+ * volta sola per scadenza (`noticeFor` = scadenza già avvisata).
+ */
+export function periodNoticeToSend(
+  row: SubscriptionRow & { noticeFor?: Date | null },
+  now: Date,
+  noticeDays: number,
+): "RENEWING" | "ENDING" | null {
+  const state = subscriptionState(row, now);
+  if (state !== "ACTIVE" && state !== "PAST_DUE") return null;
+  const end = row.currentPeriodEnd;
+  if (!end || end.getTime() <= now.getTime()) return null;
+  if (end.getTime() - now.getTime() > noticeDays * 24 * 60 * 60 * 1000) return null;
+  if (row.noticeFor && row.noticeFor.getTime() === end.getTime()) return null;
+  return row.cancelAtPeriodEnd ? "ENDING" : "RENEWING";
 }
 
 /**

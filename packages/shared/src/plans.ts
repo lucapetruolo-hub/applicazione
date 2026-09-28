@@ -26,13 +26,28 @@ export const SUBSCRIPTION_FEATURES = [
   "Statistiche della tua attività",
 ] as const;
 
-/** Primo mese gratis per tutti. */
+/** Primo mese gratis per tutti: vale come il livello Base (stesso limite di lavori). */
 export const TRIAL_DAYS = 30;
 /** Mese regalato a chi non ha ancora avuto lavori: comunicato solo pochi giorni prima della scadenza. */
 export const BONUS_MONTH_DAYS = 30;
 export const BONUS_MONTH_NOTICE_DAYS = 3;
 /** Avviso quando si usa questa quota del limite mensile. */
 export const USAGE_WARNING_RATIO = 0.8;
+
+/** Avviso di rinnovo automatico (o di fine abbonamento annullato) questi giorni prima. */
+export const RENEWAL_NOTICE_DAYS = 3;
+
+/**
+ * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
+ * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
+ * rinnova un livello, o finché non passa al livello superiore / al mese dopo.
+ */
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "LIMIT_REACHED";
+
+/** Differenza di prezzo mensile tra due livelli (mai negativa). */
+export function tierPriceDifferenceEurCents(from: SubscriptionTier, to: SubscriptionTier): number {
+  return Math.max(0, subscriptionTierInfo(to).priceEurCents - subscriptionTierInfo(from).priceEurCents);
+}
 
 export function subscriptionTierInfo(tier: SubscriptionTier) {
   return SUBSCRIPTION_TIERS.find((t) => t.tier === tier)!;
@@ -41,15 +56,21 @@ export function subscriptionTierInfo(tier: SubscriptionTier) {
 /**
  * Stato dell'abbonamento visto dal professionista (`GET
  * /professionals/me/subscription`).
- * - `TRIAL`: prova gratuita in corso, senza limite di lavori.
- * - `TRIAL_ENDED`: prova finita e nessun livello scelto. Oggi non blocca
- *   nulla: cosa succede dopo va ancora deciso con l'utente.
- * - `ACTIVE`/`PAST_DUE`/`CANCELED`: abbonamento a pagamento via Stripe.
+ * - `TRIAL`: mese gratuito in corso, con il limite di lavori del livello Base.
+ * - `TRIAL_ENDED`: mese gratuito finito e nessun livello scelto: account in pausa.
+ * - `ACTIVE`/`PAST_DUE`: abbonamento a pagamento via Stripe, rinnovo automatico.
+ * - `CANCELED`: abbonamento concluso: account in pausa.
  */
 export type MySubscription = {
   state: "TRIAL" | "TRIAL_ENDED" | "ACTIVE" | "PAST_DUE" | "CANCELED";
   /** Livello pagato; null durante e dopo la prova se non ne è stato scelto uno. */
   tier: SubscriptionTier | null;
+  /** Account in pausa (fuori dalla ricerca, niente nuove richieste) e perché. */
+  pausedReason: PauseReason | null;
+  /** Prossimo rinnovo automatico, o fine dell'abbonamento se annullato. */
+  currentPeriodEnd: string | null;
+  /** Annullato: resta attivo fino a `currentPeriodEnd`, poi non si rinnova. */
+  cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;

@@ -25,6 +25,7 @@ import {
   type UpdateEngagementRadiusInput,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
@@ -99,9 +100,11 @@ export class ProfessionalsService {
       where: {
         // Un professionista che ha eliminato l'account non deve mai
         // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
-        // né uno sospeso da un admin (docs/CHANGELOG.md §144).
+        // né uno sospeso da un admin (docs/CHANGELOG.md §144), né uno in pausa
+        // per l'abbonamento (§162).
         deletedAt: null,
         suspendedAt: null,
+        pausedAt: null,
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
@@ -492,6 +495,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
+      acceptingRequests: !profile.pausedAt,
       reviews: reviews.map((review) => ({
         id: review.id,
         rating: review.rating,
@@ -1558,10 +1562,13 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true },
+      select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt) {
       throw new NotFoundException("Professionista non trovato.");
+    }
+    if (profile.pausedAt) {
+      throw new ConflictException(NOT_ACCEPTING_REQUESTS);
     }
 
     const date = parseIsoDateUtc(input.date);

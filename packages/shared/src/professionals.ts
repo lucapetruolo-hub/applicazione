@@ -287,6 +287,12 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
   yearsOfExperience: number | null;
   certifications: string | null;
   hasLiabilityInsurance: boolean;
+  /**
+   * Falso quando l'account è in pausa per l'abbonamento (docs/CHANGELOG.md
+   * §162): il profilo resta visibile dal link ma non accetta nuove richieste
+   * né prenotazioni. Mai il motivo: è un fatto tra il professionista e noi.
+   */
+  acceptingRequests: boolean;
 };
 
 export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
