@@ -831,11 +831,7 @@ export function GuidedRequestForm({
           <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
           <span>
             <strong>È urgente?</strong>
-            <small>
-              {isUrgent
-                ? "Sì: la mandiamo subito a più professionisti, che hanno 20 minuti per risponderti."
-                : "Attivalo per un guasto che non può aspettare (es. allagamento, niente corrente)."}
-            </small>
+            {isUrgent ? <small>Sì: la mandiamo subito a più professionisti, che hanno 20 minuti per risponderti.</small> : null}
           </span>
         </label>
 

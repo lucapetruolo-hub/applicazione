@@ -15153,3 +15153,14 @@ della scheda su iPhone: ora va a capo.
 
 Verifica: `tsc`; Playwright da cliente con profilo iPhone 13 e desktop
 1280px, nome, badge e tasto non si sovrappongono.
+
+## 156. Richiesta di preventivo: niente spiegazione sotto "È urgente?" finché non è attivo
+
+Richiesta esplicita dell'utente: sotto l'interruttore "È urgente?"
+(`GuidedRequestForm.tsx`) c'era sempre una riga di spiegazione ("Attivalo
+per un guasto che non può aspettare…"). Ora da spento mostra solo "È
+urgente?"; la spiegazione compare solo quando lo si attiva ("Sì: la
+mandiamo subito a più professionisti, che hanno 20 minuti per
+risponderti.").
+
+Verifica: `tsc`.
