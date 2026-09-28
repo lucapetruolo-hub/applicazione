@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
-import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, findComuneByName, type ProfessionalCategorySlug } from "@professionisti/shared";
+import {
+  PROFESSIONAL_CATEGORIES,
+  POPULAR_SERVICES,
+  ALL_ITALIAN_CITY_NAMES,
+  PROFILE_DECLARATION_TEXT,
+  findComuneByName,
+  type ProfessionalCategorySlug,
+} from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -135,6 +142,11 @@ export default function DashboardProfiloPage() {
   const [yearsOfExperience, setYearsOfExperience] = useState("");
   const [certifications, setCertifications] = useState("");
   const [hasLiabilityInsurance, setHasLiabilityInsurance] = useState(false);
+  // Dichiarazione di responsabilità (docs/CHANGELOG.md §158): casella da
+  // spuntare al primo salvataggio (o quando cambia il testo), poi basta una
+  // riga sopra il bottone.
+  const [declarationAlreadyAccepted, setDeclarationAlreadyAccepted] = useState(false);
+  const [declarationChecked, setDeclarationChecked] = useState(false);
   // Conteggio reale di quante volte ogni lingua è già stata inserita da un
   // altro professionista sulla piattaforma (richiesta esplicita dell'utente:
   // "fra i primi 10 risultati non saranno in ordine alfabetico ma in ordine
@@ -196,6 +208,7 @@ export default function DashboardProfiloPage() {
           setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
           setCertifications(profile.certifications ?? "");
           setHasLiabilityInsurance(profile.hasLiabilityInsurance);
+          setDeclarationAlreadyAccepted(profile.profileDeclarationAccepted);
           // 0,0 = comune non ancora geocodificato (stessa convenzione già
           // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
           // raggio di ingaggio centrata sull'oceano davanti all'Africa.
@@ -319,9 +332,15 @@ export default function DashboardProfiloPage() {
       return false;
     }
 
+    if (!declarationAlreadyAccepted && !declarationChecked) {
+      setError("Per salvare il profilo spunta la dichiarazione qui sopra il bottone.");
+      return false;
+    }
+
     setIsSubmitting(true);
     try {
       await apiClient.upsertMyProfessionalProfile(token as string, {
+        profileDeclarationAccepted: declarationAlreadyAccepted ? undefined : true,
         businessName: businessName.trim(),
         categorySlug: categorySlug as ProfessionalCategorySlug,
         city: city.trim(),
@@ -348,6 +367,7 @@ export default function DashboardProfiloPage() {
       });
       setSaved(true);
       setSavedSnapshot(formSnapshot);
+      setDeclarationAlreadyAccepted(true);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -1133,6 +1153,26 @@ export default function DashboardProfiloPage() {
             Profilo salvato!
           </Text>
         ) : null}
+
+        {declarationAlreadyAccepted ? (
+          <p className="profile-declaration-note" title={PROFILE_DECLARATION_TEXT}>
+            Salvando confermi la dichiarazione che hai già accettato: i dati del profilo sono veri e aggiornati e sei l&apos;unico
+            responsabile dei lavori che svolgi.{" "}
+            <Link href="/termini" target="_blank">
+              Termini di servizio
+            </Link>
+          </p>
+        ) : (
+          <label className="profile-declaration">
+            <input type="checkbox" checked={declarationChecked} onChange={(e) => setDeclarationChecked(e.target.checked)} />
+            <span>
+              {PROFILE_DECLARATION_TEXT}{" "}
+              <Link href="/termini" target="_blank">
+                Leggi i Termini
+              </Link>
+            </span>
+          </label>
+        )}
 
         <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}

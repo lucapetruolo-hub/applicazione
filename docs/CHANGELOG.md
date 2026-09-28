@@ -15201,3 +15201,41 @@ Verifica: `tsc` su ui, api e web; API di ricerca con un professionista
 assicurato; Playwright con profilo iPhone 13:
 - badge nella card e nel profilo, senza uscire dalla scheda;
 - filtro attivo: da 3 a 1 risultato, "Mostra 1 risultato", "Filtri (1)".
+
+## 158. Dichiarazione di responsabilità al salvataggio del profilo
+
+Richiesta esplicita dell'utente: cliccando "Salva profilo", il
+professionista deve assumersi la responsabilità di quello che ha inserito.
+Posizione e testo li ha proposti il consiglio legale (Chief Legal Advisor).
+
+- **`/dashboard/profilo`, primo salvataggio.** Sopra "Salva profilo" c'è
+  una casella obbligatoria con il testo di `PROFILE_DECLARATION_TEXT`
+  (`packages/shared/src/schemas.ts`) e un link ai Termini. Senza la spunta
+  il salvataggio si ferma con un messaggio.
+- **Salvataggi successivi.** La casella diventa una riga fissa: "Salvando
+  confermi la dichiarazione che hai già accettato…". La casella torna solo
+  se cambia la versione del testo.
+- **Server.** `ProfessionalProfile.profileDeclarationAcceptedAt` e
+  `profileDeclarationVersion` (migrazione
+  `20260928100000_profile_declaration`), stesso schema di
+  `fiscalDeclarationAcceptedAt/Version`. `upsertMyProfile` rifiuta con 400
+  un salvataggio senza la versione attuale già accettata e senza
+  `profileDeclarationAccepted: true`. `GET /professionals/me` espone
+  `profileDeclarationAccepted`.
+- **Profili esistenti.** Hanno la colonna vuota: al prossimo salvataggio
+  devono spuntare la casella.
+- **`/termini` §4.** Nuova frase sulla dichiarazione al salvataggio, sulla
+  registrazione di data e versione, e sul fatto che certificazioni e RC
+  sono dichiarate e non verificate dalla piattaforma.
+
+Da far validare a un avvocato (checklist pre-lancio 11bis). Il consiglio
+legale avverte che la dichiarazione è una prova a nostro favore, ma non
+sostituisce una verifica vera e non esonera del tutto la piattaforma.
+
+Verifica:
+- `tsc` su api e web;
+- API sul DB di prova: senza flag → 400; con flag → 200 e colonne
+  valorizzate (versione `2026-09-28`); senza flag dopo l'accettazione →
+  200;
+- Playwright su iPhone 13: "Salva" senza spunta mostra l'errore; con la
+  spunta mostra "Profilo salvato!" e poi la riga di conferma.

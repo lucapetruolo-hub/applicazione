@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   findComuneByName,
+  PROFILE_DECLARATION_VERSION,
   type AvailabilitySlotInput,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
@@ -529,6 +530,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
+      profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
     };
   }
 
@@ -562,7 +564,21 @@ export class ProfessionalsService {
     // già aperte in zona (vedi matchNewProfileToOpenRequests più sotto) —
     // un professionista che modifica il profilo esistente non deve
     // riceverne di nuove ogni volta che salva.
-    const isFirstTimeCreation = (await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } })) === null;
+    const existingProfile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { id: true, profileDeclarationVersion: true },
+    });
+    const isFirstTimeCreation = existingProfile === null;
+
+    // Dichiarazione di responsabilità (docs/CHANGELOG.md §158): senza la
+    // versione attuale già accettata, il salvataggio richiede la casella.
+    const declarationAlreadyAccepted = existingProfile?.profileDeclarationVersion === PROFILE_DECLARATION_VERSION;
+    if (!declarationAlreadyAccepted && !input.profileDeclarationAccepted) {
+      throw new BadRequestException("Per salvare il profilo conferma la dichiarazione sui dati inseriti.");
+    }
+    const declarationData = input.profileDeclarationAccepted
+      ? { profileDeclarationAcceptedAt: new Date(), profileDeclarationVersion: PROFILE_DECLARATION_VERSION }
+      : {};
 
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },
@@ -584,6 +600,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        ...declarationData,
       },
       create: {
         userId,
@@ -602,6 +619,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        ...declarationData,
       },
       include: { category: true },
     });
@@ -665,6 +683,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
+      profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
     };
   }
 

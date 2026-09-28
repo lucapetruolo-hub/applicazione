@@ -208,6 +208,11 @@ model ProfessionalProfile {
   // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
   certifications           String?
   hasLiabilityInsurance    Boolean  @default(false)
+  // Dichiarazione di responsabilità accettata salvando il profilo
+  // (docs/CHANGELOG.md §158): quando e quale versione del testo
+  // (PROFILE_DECLARATION_VERSION in packages/shared).
+  profileDeclarationAcceptedAt DateTime?
+  profileDeclarationVersion    String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
