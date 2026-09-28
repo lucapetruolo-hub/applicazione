@@ -31,6 +31,7 @@ import { JobPaymentsModule } from "./job-payments/job-payments.module";
 import { Dac7Module } from "./dac7/dac7.module";
 import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.module";
 import { RealtimeModule } from "./realtime/realtime.module";
+import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 
 @Module({
@@ -90,6 +91,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // Promemoria automatici anti no-show (Resend) — CEO, tattico:
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
+    SubscriptionsModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

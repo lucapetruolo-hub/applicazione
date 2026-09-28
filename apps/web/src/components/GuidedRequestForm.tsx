@@ -666,7 +666,15 @@ export function GuidedRequestForm({
                   ) : null}
                 </YStack>
               </XStack>
-              <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva a {shownProfessionalName}.</Text>
+              {professional && !professional.acceptingRequests ? (
+                // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il server rifiuterebbe l'invio.
+                <Text color={brand.urgenza} fontWeight="700">
+                  {shownProfessionalName} al momento non accetta nuove richieste. Puoi inviarla ai professionisti della tua zona dalla{" "}
+                  <Link href={`/preventivo?categoria=${professional.categorySlug}`}>richiesta di preventivo</Link>.
+                </Text>
+              ) : (
+                <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva a {shownProfessionalName}.</Text>
+              )}
             </>
           ) : (
             <Text color={brand.grafite70}>{subtitle}</Text>

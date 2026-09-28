@@ -376,8 +376,9 @@ avvio dell'API (stesso meccanismo del seed iniziale, vedi §2).
 ### Monetizzazione professionista — abbonamento unico a livelli
 
 **Decisione dell'utente del 28/09/2026 (docs/CHANGELOG.md §160), sostituisce
-i piani Free/Pro/Business per funzioni** (oggi ancora in
-`packages/shared/src/plans.ts`, da rifare): un solo abbonamento con **tutte
+i piani Free/Pro/Business per funzioni** (implementata in §161:
+`packages/shared/src/plans.ts`, `apps/api/src/subscriptions/`,
+`/dashboard/abbonamento`): un solo abbonamento con **tutte
 le funzionalità per tutti**, a livelli che si distinguono solo per il
 numero di **lavori accettati** al mese (Booking creato quando il cliente
 accetta il preventivo, mai i "completati", che segna il professionista).
@@ -392,9 +393,25 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - **Mese regalato a sorpresa:** a chi non ha avuto nessun preventivo
   accettato si regala un altro mese, comunicato solo in prossimità della
   scadenza del primo mese (gratis o pagato), non all'iscrizione.
-- **Raggiunto il limite, niente blocco:** avviso all'80% del limite, poi
-  lavoro extra a pagamento o passaggio al livello superiore dal mese dopo
-  (consiglio del Pricing Lead, dettaglio da decidere).
+- **Il mese gratuito vale come Base** (5 lavori). Sulla pagina prezzi Base
+  mostra "€19" barrato e "Gratuito", con la condizione in piccolo ("il
+  primo mese, poi €19/mese"): il mese gratis non si annuncia altrove.
+- **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
+  docs/CHANGELOG.md §162): a fine mese gratuito senza livello, ad
+  abbonamento concluso e ai lavori del mese esauriti il profilo esce dalla
+  ricerca e dallo smistamento, non accetta richieste dirette né prenotazioni
+  (resta visibile dal link); banner fisso in Home e in Abbonamento. Ogni
+  nuovo punto che mostra professionisti o assegna richieste deve filtrare
+  anche `pausedAt`. **Nessuna pausa finché i pagamenti non sono attivi**
+  (`STRIPE_SECRET_KEY` assente): senza, nessuno potrebbe scegliere un
+  livello e a fine prova la ricerca resterebbe vuota.
+- **Al limite:** si continua pagando solo la differenza verso il livello
+  superiore (nel mese gratuito la differenza piena verso Base, con un
+  abbonamento pagato la differenza per i giorni che mancano al rinnovo),
+  altrimenti si riparte il 1° del mese.
+- **Rinnovo automatico** mensile con avviso 3 giorni prima (sito + email);
+  annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
+  Passare a un livello inferiore non è ancora previsto.
 - Prezzi e limiti da rivedere sui dati dei primi mesi.
 - Si incassa solo con P.IVA/società e parere del commercialista (checklist
   §10). **Pagamenti online (commissione, costo del metodo di pagamento): ancora
@@ -499,7 +516,7 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - [x] Promemoria automatici anti no-show (email) — CEO, tattico: "prima di considerare l'MVP davvero completo". `apps/api/src/email/email.service.ts` (`EmailService`, wrapper Resend, mai crash senza `RESEND_API_KEY`: logga e ritorna `false`, stesso pattern di Stripe/Cloudinary/Google) + `apps/api/src/booking-reminders/booking-reminders.service.ts` (`@Cron(EVERY_30_MINUTES)`, non BullMQ — `@nestjs/schedule` è il pattern già in uso in questo codebase per i job schedulati, es. `GuidedRequestsService.runExpiryCheck`, nonostante BullMQ resti nella tabella §2 come scelta nominale mai davvero collegata). Un'email al cliente e una al professionista quando una `Booking CONFIRMED` è 23-25 ore nel futuro, una sola volta per prenotazione (`Booking.reminderSentAt`, marcato anche se l'invio fallisce — mai un retry infinito sulla stessa riga ogni 30 minuti). Solo email per ora: SMS (Twilio, in tabella §2) rimandato, nessun canale push aggiuntivo necessario finché l'email basta a coprire il caso d'uso.
 - [x] Abbonamenti Stripe (upsell da Free a Pro/Business) — `POST /billing/subscription/checkout` crea una Stripe Checkout Session (mode subscription), webhook `POST /billing/webhook` (firma verificata, body raw) aggiorna `Subscription` su `checkout.session.completed`. Pagina `/per-professionisti` collegata al checkout reale.
 - [x] Pacchetti di visibilità/boost ricerca — `POST /billing/boost/checkout` (Boost locale/Badge reputazione/Storia di successo, 30gg), sezione "Aumenta la tua visibilità" in dashboard. Pagamento lead: `POST /billing/leads/:id/checkout` implementato e testato lato API, non ancora esposto in UI (i lead restano visibili gratis in dashboard, vedi nota sopra).
-  - **Da fare prima del lancio**: il codice Stripe è completo e testato (percorso "non configurato" verificato end-to-end), ma servono le chiavi reali per attivarlo — variabili d'ambiente richieste su `apps/api`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`, più `FRONTEND_URL` per i redirect di successo/annullo. Senza queste variabili gli endpoint rispondono con un errore chiaro invece di andare in crash (stesso pattern già usato per `GOOGLE_CLIENT_ID`).
+  - **Da fare prima del lancio**: il codice Stripe è completo e testato (percorso "non configurato" verificato end-to-end), ma servono le chiavi reali per attivarlo — variabili d'ambiente richieste su `apps/api`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_BASE`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO` (un prezzo mensile per livello, docs/CHANGELOG.md §161), più `FRONTEND_URL` per i redirect di successo/annullo. Senza queste variabili gli endpoint rispondono con un errore chiaro invece di andare in crash (stesso pattern già usato per `GOOGLE_CLIENT_ID`).
 - [x] Flusso "richiesta urgente" con instant-match — `/urgente` riusa lo stesso motore di `/preventivo` (componente condiviso `GuidedRequestForm`) con `isUrgent=true`: lead a prezzo maggiorato (€8 vs €5, CLAUDE.md §7.5), fan-out identico, badge "🔴 Urgente" visibile nella dashboard professionista. "Instant-match" oggi significa fan-out immediato via API, non ancora push notification in tempo reale al professionista: quello arriva con l'integrazione notifiche (Resend/Twilio + BullMQ), stessa dipendenza dei promemoria anti no-show.
 - [x] Area account cliente ("Il mio account") — menu a tendina nell'header (`AccountMenu`, click-to-open) con voci diverse per ruolo: cliente → Impostazioni dell'account, Professionisti salvati, Le mie visite; professionista → Dashboard, Profilo pubblico, Impostazioni dell'account. Elenco voci centralizzato in `apps/web/src/lib/accountMenuItems.ts`, condiviso da `AccountMenu` e `AccountSidebar` (niente duplicazione). `PATCH /auth/me` (nome/cognome/data di nascita/email/telefono), `POST /auth/change-password` (password attuale opzionale se l'account è nato con Google Sign-In e non ha ancora una password — `GET/PATCH /auth/me` espone `hasPassword` per distinguere "Impostare la password" da "Aggiorna password" in UI) e `DELETE /auth/me` (cancellazione account, cascade su tutte le entità collegate via Prisma `onDelete: Cascade`, richiede di scrivere "ELIMINA" per conferma) su `/account` — layout a due colonne (sidebar sinistra + campi a destra, righe etichetta/valore) modellato sullo screenshot di miodottore.it fornito dall'utente. Rispetto a quel riferimento, omesse volutamente "Cambia firma" e "Sicurezza dell'account" (2FA): nessuna funzionalità reale dietro in questo dominio, e "Wallet"/"I miei pagamenti": nel nostro modello il cliente non paga sulla piattaforma (paga il professionista, per lead/abbonamento/boost) — da aggiungere solo se il modello di business cambia. `SavedProfessional` (nuovo modello Prisma) + `GET/POST/DELETE /saved-professionals` per il tasto "♡ Salva" sul profilo professionista e la lista `/professionisti-salvati`.
 - [x] Immagine profilo professionista — `ProfessionalProfile.imageUrl` (nuovo campo Prisma), upload via `POST /professionals/me/image` (`FileInterceptor`, JWT-guarded) che carica su **Cloudinary** (scelto con l'utente al posto di Vercel Blob o di salvare il file nel database: gratuito, CDN + resize automatico inclusi, `apps/api/src/cloudinary/`) e salva l'URL sul profilo. UI di caricamento in `/dashboard/profilo` (bottone "Carica immagine" + anteprima circolare, input file nascosto attivato via ref, niente drag&drop). L'immagine è visibile ovunque compare `ProfessionalCard` nei risultati (`/cerca`, `/cerca/[categoria]`, homepage, `/professionisti-salvati`) tramite il nuovo componente `apps/web/src/components/ProfessionalAvatar.tsx`, che mostra l'immagine se presente e altrimenti ricade sull'icona colorata di categoria (`CategoryIconBadge`) già esistente — stesso slot `icon` di `ProfessionalCard`, nessuna modifica a `packages/ui` (l'`<img>` resta web-only in `apps/web`, coerente con la nota già presente su `CategoryIconBadge`).
@@ -598,8 +615,11 @@ produzione):
    migrazioni si applicano da sole al primo avvio sul DB vuoto, le
    categorie si ripopolano via `CategoriesSeedService`).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
-   `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/
-   `STRIPE_PRICE_BUSINESS`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
+   `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
+   `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+   `customer.subscription.created`, `customer.subscription.updated`,
+   `customer.subscription.deleted`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i

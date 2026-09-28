@@ -34,6 +34,75 @@ const MODERATION_EMAIL_TYPES = new Set([
   "ACCOUNT_REACTIVATED",
 ]);
 
+/** Avvisi dell'abbonamento che partono anche via email (docs/CHANGELOG.md §162): riguardano addebiti e visibilità. */
+const SUBSCRIPTION_EMAIL_TYPES = new Set([
+  "SUBSCRIPTION_TRIAL_ENDING",
+  "SUBSCRIPTION_LIMIT_REACHED",
+  "SUBSCRIPTION_PAUSED",
+  "SUBSCRIPTION_RENEWING",
+  "SUBSCRIPTION_RENEWED",
+  "SUBSCRIPTION_ENDING",
+  "SUBSCRIPTION_PAYMENT_FAILED",
+]);
+
+const DATE_IT = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long", year: "numeric" });
+
+function formatDateIt(value: unknown): string {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? DATE_IT.format(new Date(value)) : "";
+}
+
+function formatEur(cents: unknown): string {
+  return typeof cents === "number" ? `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}` : "";
+}
+
+/** Oggetto e testo delle email dell'abbonamento; il link porta sempre alla pagina Abbonamento. */
+export function subscriptionEmail(type: string, payload: Record<string, unknown>): { subject: string; text: string } | null {
+  const tier = typeof payload.tierLabel === "string" ? payload.tierLabel : "";
+  const date = formatDateIt(payload.date);
+  switch (type) {
+    case "SUBSCRIPTION_TRIAL_ENDING":
+      return {
+        subject: "Il tuo mese gratuito sta per finire",
+        text: `Il tuo mese gratuito finisce il ${date}. Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.`,
+      };
+    case "SUBSCRIPTION_LIMIT_REACHED":
+      return {
+        subject: "Hai raggiunto i lavori compresi nel tuo livello",
+        text: "Hai raggiunto i lavori accettati compresi nel tuo livello per questo mese: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Passa al livello superiore pagando solo la differenza, oppure riparti dal primo del mese prossimo.",
+      };
+    case "SUBSCRIPTION_PAUSED":
+      return {
+        subject: "Il tuo account è in pausa",
+        text:
+          payload.reason === "SUBSCRIPTION_ENDED"
+            ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo."
+            : "Il tuo mese gratuito è finito: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.",
+      };
+    case "SUBSCRIPTION_RENEWING":
+      return {
+        subject: `Il tuo abbonamento ${tier} si rinnova il ${date}`,
+        text: `Il tuo abbonamento ${tier} si rinnova automaticamente il ${date} (${formatEur(payload.amountEurCents)} al mese). Se non vuoi rinnovarlo, puoi annullarlo dalla pagina Abbonamento: resta attivo fino a quella data.`,
+      };
+    case "SUBSCRIPTION_RENEWED":
+      return {
+        subject: `Abbonamento ${tier} rinnovato`,
+        text: `Abbiamo rinnovato il tuo abbonamento ${tier}: addebito di ${formatEur(payload.amountEurCents)}. Il prossimo rinnovo è il ${date}.`,
+      };
+    case "SUBSCRIPTION_ENDING":
+      return {
+        subject: `Il tuo abbonamento finisce il ${date}`,
+        text: `Hai annullato l'abbonamento ${tier}: resta attivo fino al ${date}, poi il tuo profilo non comparirà più nelle ricerche. Puoi riattivarlo in qualsiasi momento dalla pagina Abbonamento.`,
+      };
+    case "SUBSCRIPTION_PAYMENT_FAILED":
+      return {
+        subject: "Pagamento dell'abbonamento non riuscito",
+        text: "Non siamo riusciti ad addebitare il rinnovo del tuo abbonamento. Riproveremo nei prossimi giorni: controlla il metodo di pagamento per non andare in pausa.",
+      };
+    default:
+      return null;
+  }
+}
+
 export type NewLeadEmailPayload = { category: string; city: string | null; isUrgent: boolean };
 
 @Injectable()
@@ -87,6 +156,9 @@ export class NotificationsService {
     });
     if (MODERATION_EMAIL_TYPES.has(type)) {
       this.emailModeration(userId, type, payload as Record<string, unknown>);
+    }
+    if (SUBSCRIPTION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
+      this.emailSubscription(userId, type, payload as Record<string, unknown>);
     }
     if (type === "NEW_LEAD" && notificationChannelEnabled(prefs, type, "email")) {
       this.emailNewLeadFromPayload(userId, payload);
@@ -201,6 +273,20 @@ export class NotificationsService {
       await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, subject, html })] : [])));
     })().catch((err: unknown) => {
       this.logger.error(`Email admin nuova segnalazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }
+
+  private emailSubscription(userId: string, type: string, payload: Record<string, unknown>): void {
+    void (async () => {
+      const content = subscriptionEmail(type, payload);
+      if (!content) return;
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (!user?.email) return;
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+      const html = `<p>${escapeHtml(content.text)}</p><p><a href="${frontendUrl}/dashboard/abbonamento">Apri la pagina Abbonamento</a></p>`;
+      await this.emailService.send({ to: user.email, subject: content.subject, html });
+    })().catch((err: unknown) => {
+      this.logger.error(`Email abbonamento non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
   }
 

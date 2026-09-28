@@ -27,6 +27,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     {} as never, // guidedRequestsService
     {} as never, // professionalMetricsService
     {} as never, // timelineService
+    {} as never, // subscriptionsService
   );
   return { service, prisma };
 }
@@ -142,7 +143,7 @@ describe("ProfessionalsService.deleteLead — nasconde, non cancella (docs/CHANG
       guidedRequestUserState: { upsert: vi.fn().mockReturnValue("state-upsert") },
       $transaction: vi.fn().mockResolvedValue([]),
     };
-    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     return { service, prisma };
   }
 

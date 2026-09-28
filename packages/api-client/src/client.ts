@@ -1,4 +1,6 @@
 import type {
+  MySubscription,
+  SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
@@ -1200,11 +1202,21 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 
-    createSubscriptionCheckout: (token: string, plan: "PRO" | "BUSINESS") =>
+    getMySubscription: (token: string) =>
+      request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    createSubscriptionCheckout: (token: string, plan: SubscriptionTier) =>
       request<{ url: string | null }>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),
+      }),
+
+    /** Annulla il rinnovo automatico (resta attivo fino alla scadenza) o lo riattiva. */
+    setSubscriptionRenewal: (token: string, renew: boolean) =>
+      request<{ ok: true }>(`/billing/subscription/${renew ? "resume" : "cancel"}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     createLeadCheckout: (token: string, leadId: string) =>

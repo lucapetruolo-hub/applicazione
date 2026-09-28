@@ -74,7 +74,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     activeChannels: ["inApp"],
   },
   account: {
-    professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account. Obbligatorie per legge." },
+    professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account, scadenze e limiti dell'abbonamento." },
     client: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account. Obbligatorie per legge." },
     types: [
       "CONTENT_REPORT_DECISION",
@@ -83,6 +83,16 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "CONTENT_REPORT_APPEAL_REJECTED",
       "ACCOUNT_SUSPENDED",
       "ACCOUNT_REACTIVATED",
+      // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
+      "SUBSCRIPTION_BONUS_MONTH",
+      "SUBSCRIPTION_TRIAL_ENDING",
+      "SUBSCRIPTION_LIMIT_NEAR",
+      "SUBSCRIPTION_LIMIT_REACHED",
+      "SUBSCRIPTION_PAUSED",
+      "SUBSCRIPTION_RENEWING",
+      "SUBSCRIPTION_RENEWED",
+      "SUBSCRIPTION_ENDING",
+      "SUBSCRIPTION_PAYMENT_FAILED",
     ],
     locked: true,
     activeChannels: ["inApp", "email"],

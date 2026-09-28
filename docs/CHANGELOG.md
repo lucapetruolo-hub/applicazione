@@ -15303,3 +15303,143 @@ Verifica:
 - `lead-routing.test.ts`: 3 test nuovi, cioè 35 minuti di giorno, 60 di
   notte e i confini 21:59/22:00/7:00;
 - 79/79 test API; `tsc` su api e web.
+
+## 161. Abbonamento unico a livelli: prova gratuita, mese regalato, limite di lavori
+
+Richiesta dell'utente ("quando pronto, unisci e continua"), realizza la
+decisione del 28/09/2026 (§160, CLAUDE.md §6). Sostituisce i piani
+Free/Pro/Business per funzioni.
+
+- **Livelli** (`packages/shared/src/plans.ts`, `SUBSCRIPTION_TIERS`): Base
+  €19 / 5 lavori accettati al mese, Plus €39 / 15, Pro €69 / senza limite.
+  Tutte le funzioni in ogni livello (`SUBSCRIPTION_FEATURES`, solo funzioni
+  che il sito offre davvero: tolto il vecchio "Badge verificato", falso).
+  "Lavoro accettato" = una `Booking` nata nel mese (ora italiana) da
+  preventivo accettato, data concordata o prenotazione dall'agenda;
+  quelle annullate dal cliente non contano.
+- **Schema** (`20260928120000_subscription_tiers`): valori `BASE`/`PLUS` in
+  `SubscriptionPlan`, `TRIALING`/`PAST_DUE` in `SubscriptionStatus`,
+  colonne `trialEndsAt`, `bonusMonthGrantedAt`, `trialEndingNotifiedAt`,
+  `usageNoticeKey`. `FREE` e `BUSINESS` restano per le righe vecchie
+  (`BUSINESS` vale come Pro).
+- **Prova gratuita per tutti, compresi i già iscritti**
+  (`20260928120100_subscription_trial_backfill`: 30 giorni da oggi per chi
+  non ha un abbonamento pagato). I nuovi la ricevono alla creazione del
+  profilo (`SubscriptionsService.ensureTrial`).
+- **Mese regalato a sorpresa** (cron giornaliero alle 9,
+  `SubscriptionsService.runTrialCheck`): a 3 giorni dalla fine della prova,
+  chi non ha ancora nessun lavoro riceve altri 30 giorni e la notifica
+  `SUBSCRIPTION_BONUS_MONTH`; mai annunciato prima, una volta sola. Agli
+  altri, `SUBSCRIPTION_TRIAL_ENDING`. Il regalo dopo un primo mese già
+  pagato arriverà con Stripe attivo.
+- **Limite senza blocco** (`SubscriptionsService.afterJobAccepted`, chiamato
+  nei tre punti che creano una `Booking`): notifica
+  `SUBSCRIPTION_LIMIT_NEAR` all'80% e `SUBSCRIPTION_LIMIT_REACHED` al 100%,
+  una volta al mese. Nessun lavoro viene bloccato: cosa succede oltre il
+  limite è ancora una decisione aperta dell'utente. Nessun limite durante
+  la prova, neanche per chi sceglie un livello prima della fine.
+- **Dopo la prova senza livello** (`TRIAL_ENDED`): per ora nessun blocco,
+  da decidere con l'utente.
+- **Stripe**: checkout per livello (`STRIPE_PRICE_BASE`/`PLUS`/`PRO`); chi
+  sceglie durante la prova paga dalla fine della prova (`trial_end`).
+  Webhook nuovi: `invoice.payment_failed` → `PAST_DUE`, `invoice.paid` →
+  `ACTIVE`, `customer.subscription.deleted` → `CANCELED`.
+- **Web**: `/per-professionisti` rifatta (3 livelli, funzioni comuni, primo
+  mese gratis); nuova `/dashboard/abbonamento` (stato, lavori del mese con
+  barra, scelta del livello; senza Stripe i tasti sono spenti con un
+  messaggio chiaro), voce "Abbonamento" nel menu del professionista; testi
+  delle 4 notifiche nuove, che portano alla pagina. `/termini` §4: tolto
+  "piano Free", ora descrive l'abbonamento a livelli.
+
+Verifica:
+- `subscription-rules.test.ts` (11 test: mese in ora italiana
+  estate/inverno, stati, limiti, avvisi 80/100 una volta al mese); 90/90
+  test API; `tsc` su api e web.
+- Sul database e2e con il servizio compilato: mese regalato dato una volta
+  e poi solo avviso di fine prova; Base con 6 lavori → avviso al 4° e al
+  5°, nulla al 6°; lavori annullati dal cliente non contati.
+- API: `GET /professionals/me/subscription` (professionista in prova; 404
+  per un cliente); checkout senza Stripe → 400 chiaro.
+- Playwright desktop 1280 e iPhone 390: `/dashboard/abbonamento` in prova e
+  con Base 4 su 5, `/per-professionisti`; nessun overflow né errore.
+
+## 162. Account in pausa, rinnovo automatico, annullamento, "paga la differenza" e prezzo barrato
+
+Richiesta esplicita dell'utente, in risposta alle decisioni aperte del §161:
+a fine prova senza livello l'account va "in standby" con un banner in Home
+("abbonamento concluso, rendi di nuovo visibile e operativo il tuo
+account") che porta all'abbonamento; rinnovo automatico con avviso vicino
+alla scadenza e al rinnovo; una sezione per annullare, con account attivo
+fino alla fine dei giorni pagati; raggiunto il limite, banner fisso in Home
+e in Abbonamento, profilo non più visibile nelle ricerche e niente nuove
+richieste, e per continuare si paga solo la differenza; sulla pagina prezzi
+non dire "1 mese gratis" ma barrare €19 e scrivere "Gratuito", come
+un'offerta; il mese gratuito vale come Base.
+
+Decisioni prese:
+- **Pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`, migrazione
+  `20260928130000_subscription_pause`): motivo calcolato da `pauseReason`
+  (`subscription-rules.ts`: `TRIAL_ENDED`, `SUBSCRIPTION_ENDED`,
+  `LIMIT_REACHED`) e scritto da `SubscriptionsService.syncPause`, chiamato
+  dopo ogni lavoro accettato, a ogni cambio da Stripe, all'apertura della
+  pagina Abbonamento e ogni ora (`runPauseSweep`, che riattiva anche chi
+  riparte col mese nuovo). Filtrato in ricerca, smistamento
+  (`matchProfilesForFanOut`), richiesta diretta e prenotazione dall'agenda
+  (409 con `NOT_ACCEPTING_REQUESTS`). Il profilo pubblico resta raggiungibile
+  dal link ma senza agenda né tasto preventivo (`acceptingRequests`), con
+  "Cerca altri" nella stessa categoria. I profili dimostrativi non vanno mai
+  in pausa, e nessuno ci va finché `STRIPE_SECRET_KEY` non è impostata (oggi
+  in produzione non lo è: senza, nessuno potrebbe scegliere un livello e a
+  fine prova la ricerca resterebbe vuota); in quel caso niente avvisi sul
+  limite. Un pagamento non riuscito (`PAST_DUE`) non mette in pausa: Stripe
+  riprova e alla fine chiude l'abbonamento. Richieste e lavori già in corso
+  restano attivi.
+- **Mese gratuito = Base**: `monthlyLimit` durante la prova vale 5 (prima
+  nessun limite). Chi sceglie un livello durante la prova ha subito il suo
+  limite.
+- **Paga la differenza**: un solo endpoint (`POST
+  /billing/subscription/checkout`). Nel mese gratuito un livello superiore
+  costa subito solo la differenza verso Base (€20 o €50, riga una tantum
+  nella Checkout con `trial_end`; se Base era già scelto, pagamento a parte
+  `kind: "tier_upgrade"` e cambio prezzo senza proporzionale); con un
+  abbonamento pagato Stripe addebita subito la differenza per i giorni che
+  mancano al rinnovo (`proration_behavior: "always_invoice"`), senza pagina
+  di pagamento. Livello inferiore non ancora previsto.
+- **Rinnovo e annullamento**: `POST /billing/subscription/cancel` e
+  `/resume` (`cancel_at_period_end`); `Subscription.cancelAtPeriodEnd`,
+  `currentPeriodEnd` e livello sincronizzati dai webhook
+  `customer.subscription.created/updated/deleted` (nuovi da abilitare su
+  Stripe). Id dell'abbonamento delle fatture letto da
+  `parent.subscription_details` (versione API Stripe attuale: il vecchio
+  `invoice.subscription` non esiste più, il codice del §161 non l'avrebbe
+  mai trovato). Avvisi: `SUBSCRIPTION_RENEWING` o `SUBSCRIPTION_ENDING` 3
+  giorni prima (`runPeriodNotices`, una volta per scadenza con
+  `periodNoticeFor`), `SUBSCRIPTION_RENEWED` al rinnovo pagato,
+  `SUBSCRIPTION_PAYMENT_FAILED`, `SUBSCRIPTION_PAUSED`. Gli avvisi che
+  riguardano addebiti e visibilità partono anche via email
+  (`subscriptionEmail` in `notifications.service.ts`).
+- **Pagina prezzi**: tolto ogni "mese gratis"; Base con etichetta "Offerta di
+  benvenuto", €19 barrato e "Gratuito". Resta in piccolo "il primo mese, poi
+  €19/mese": senza, un professionista crederebbe Base gratis per sempre e
+  poi si vedrebbe addebitare il rinnovo automatico (omissione ingannevole).
+  Nessun conto alla rovescia o scadenza inventata. CTA "Iscriviti gratis".
+- **Web**: `SubscriptionPauseBanner` (non si chiude) in `/dashboard` e
+  `/dashboard/abbonamento`; nella pagina Abbonamento Base con prezzo barrato
+  durante il mese gratuito, "Passa a Plus/Pro" con il costo della
+  differenza, sezione "Rinnovo automatico" con annullamento a conferma e
+  "Riattiva il rinnovo". Richiesta diretta verso un professionista in pausa:
+  avviso nel modulo. `/termini` §4 descrive rinnovo, annullamento e pausa.
+
+Verifica:
+- `subscription-rules.test.ts` 19 test (pausa, mese gratuito = Base,
+  annullato fino alla scadenza, avviso di rinnovo una volta); 98/98 test
+  API; `tsc` su api, web e mobile.
+- Database e2e col servizio compilato (con una `STRIPE_SECRET_KEY` finta; senza, nessuna pausa, verificato): pausa al 5° lavoro del mese
+  gratuito, tolta passando a Plus; avviso di rinnovo una volta; annullato →
+  avviso di fine, poi alla scadenza pausa e notifica anche senza webhook;
+  fuori dalla ricerca e `acceptingRequests: false`; pagamento non riuscito
+  → `PAST_DUE` senza pausa; rinnovo → notifica.
+- Playwright 1280 e 390: Home in pausa (fine prova), Abbonamento al limite,
+  `/per-professionisti`, profilo pubblico in pausa; nessun overflow né
+  errore. Il flusso Stripe reale non è provato: servono le chiavi di test.
+

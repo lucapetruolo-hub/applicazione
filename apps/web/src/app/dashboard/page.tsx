@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalBooking, ProfessionalInsights, ProfessionalLead } from "@professionisti/shared";
+import type { MySubscription, ProfessionalBooking, ProfessionalInsights, ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -10,6 +10,7 @@ import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
+import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -25,6 +26,7 @@ export default function DashboardTodayPage() {
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
+  const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -38,6 +40,7 @@ export default function DashboardTodayPage() {
     apiClient.myLeads(token).then(setLeads).catch(onError);
     apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsights(null));
+    apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
   }, [token, user?.isProfessional]);
 
   // I conti alla rovescia si aggiornano da soli ogni minuto.
@@ -120,6 +123,8 @@ export default function DashboardTodayPage() {
         </YStack>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+
+        {subscription ? <SubscriptionPauseBanner sub={subscription} /> : null}
 
         <div className="today-kpis">
           <TodayCounter href="/dashboard/richieste?stage=da_quotare" icon="file-text" value={toAnswer.length} label="Richieste da rispondere" urgent={toAnswer.length > 0} loading={loading} />

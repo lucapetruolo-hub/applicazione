@@ -116,6 +116,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     const contentReportId = getPayloadValue(payload, "contentReportId");
     return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";
   }
+  if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
   const destination = notificationDestination(type);
   if (!destination) return null;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
