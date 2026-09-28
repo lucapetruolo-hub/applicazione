@@ -15443,3 +15443,46 @@ Verifica:
   `/per-professionisti`, profilo pubblico in pausa; nessun overflow né
   errore. Il flusso Stripe reale non è provato: servono le chiavi di test.
 
+
+## 163. Note e motivazione a lavoro terminato, pagina admin "Lavori terminati"
+
+Richiesta esplicita dell'utente: quando professionista e cliente cliccano
+"Lavoro terminato", oltre alle foto/video possono lasciare delle note; il
+professionista deve motivare se aggiunge voci o se il totale è più alto o
+più basso del preventivo; note e foto/video visibili dall'area admin.
+
+Decisioni prese:
+- **Regola unica** `completionDeviation` (`packages/shared/src/completion.ts`),
+  usata dal modulo e dal server: motivo obbligatorio se c'è almeno una voce
+  finale che non era nel preventivo (confronto per nome, senza maiuscole e
+  spazi) o se il totale è sotto la somma dei minimi o sopra la somma dei
+  massimi del preventivo. Una voce "su richiesta" toglie il tetto massimo.
+  Prenotazioni senza preventivo (agenda): nessun confronto.
+- **Dati** (migrazione `20260928150000_completion_notes`):
+  `Booking.professionalCompletionNote`, `completionChangeReason`,
+  `clientCompletionNote`. `PATCH /bookings/:id/complete` accetta `note` e
+  `changeReason` e risponde 400 se il motivo serve e manca;
+  `PATCH /bookings/:id/client-confirm-complete` accetta `note`.
+- **Web**: in `CompleteJobModal` il riquadro "…: spiega il motivo *" compare
+  da solo appena gli importi escono dal preventivo o si aggiunge una voce,
+  con la fascia del preventivo; campo "Note sul lavoro svolto" facoltativo.
+  In `ClientCompleteModal` campo "Note sul lavoro" facoltativo.
+- **Admin**: nuova pagina `/admin/lavori` ("Lavori terminati", visibile a
+  ogni ruolo admin: serve a moderazione e finanza), `GET
+  /admin/completed-jobs?filter=all|changes|notes`. Per ogni lavoro: voci
+  finali (le aggiunte segnate), totale rispetto al preventivo con etichetta
+  "Più alto/Più basso del preventivo", motivo del professionista, note e
+  foto/video di entrambe le parti, link alle schede utente. Esclusi i profili
+  dimostrativi. Ultimi 200 lavori.
+- Le note restano solo per l'admin: il cliente non vede il motivo del
+  professionista (non richiesto).
+
+Verifica:
+- `completion-deviation.test.ts` (5 test); 103/103 test API; `tsc` su api,
+  web e mobile.
+- API sul database e2e: preventivo €60–90 accettato, chiusura a €105 con una
+  voce aggiunta senza motivo → 400 "Hai aggiunto 1 voce non preventivata e il
+  totale è più alto del preventivo: spiega il motivo…"; con motivo → 200;
+  conferma del cliente con nota → 200; filtri admin corretti; un cliente
+  riceve 403.
+- Playwright 1280 e 390 su `/admin/lavori`: nessun overflow né errore.

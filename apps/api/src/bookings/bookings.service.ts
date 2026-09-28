@@ -1,7 +1,7 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
-import type { CancelBookingByProfessionalInput, ClientConfirmCompleteInput, CompleteBookingInput } from "@professionisti/shared";
+import { completionDeviation, completionDeviationText, type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -252,7 +252,7 @@ export class BookingsService {
       throw new NotFoundException("Profilo professionista non trovato.");
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: true } });
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { include: { items: true } } } });
     if (!booking || booking.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
@@ -261,6 +261,13 @@ export class BookingsService {
     }
 
     const finalAmountEurCents = input.items.reduce((sum, item) => sum + item.priceEurCents, 0);
+    // Voci aggiunte o totale fuori dal preventivo vanno motivate
+    // (docs/CHANGELOG.md §163): stessa regola del modulo, mai fidarsi del client.
+    const deviation = completionDeviation(booking.quote?.items ?? [], input.items);
+    const changeReason = input.changeReason?.trim() || null;
+    if (deviation?.needsReason && !changeReason) {
+      throw new BadRequestException(`${completionDeviationText(deviation)}: spiega il motivo prima di confermare.`);
+    }
 
     await this.prisma.$transaction([
       this.prisma.bookingFinalItem.deleteMany({ where: { bookingId } }),
@@ -269,7 +276,13 @@ export class BookingsService {
       }),
       this.prisma.booking.update({
         where: { id: bookingId },
-        data: { status: "COMPLETED", finalAmountEurCents, professionalCompletionPhotoUrls: input.photoUrls },
+        data: {
+          status: "COMPLETED",
+          finalAmountEurCents,
+          professionalCompletionPhotoUrls: input.photoUrls,
+          professionalCompletionNote: input.note?.trim() || null,
+          completionChangeReason: deviation?.needsReason ? changeReason : null,
+        },
       }),
     ]);
 
@@ -339,7 +352,7 @@ export class BookingsService {
 
     await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { clientConfirmedCompletedAt: new Date(), clientCompletionPhotoUrls: input.photoUrls },
+      data: { clientConfirmedCompletedAt: new Date(), clientCompletionPhotoUrls: input.photoUrls, clientCompletionNote: input.note?.trim() || null },
     });
 
     if (booking.quote) {

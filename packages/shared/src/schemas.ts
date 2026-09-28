@@ -389,6 +389,10 @@ export type BookingFinalItemInput = z.infer<typeof bookingFinalItemSchema>;
 export const completeBookingSchema = z.object({
   items: z.array(bookingFinalItemSchema).min(1, "Aggiungi almeno una voce.").max(20),
   photoUrls: z.array(z.string().url()).max(5).default([]),
+  /** Note facoltative sul lavoro svolto (docs/CHANGELOG.md §163), lette dall'admin. */
+  note: z.string().trim().max(1000).optional(),
+  /** Motivo di voci aggiunte o totale fuori dal preventivo: obbligatorio in quel caso (`completionDeviation`). */
+  changeReason: z.string().trim().max(1000).optional(),
 });
 export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
 
@@ -400,6 +404,8 @@ export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
  */
 export const clientConfirmCompleteSchema = z.object({
   photoUrls: z.array(z.string().url()).max(5).default([]),
+  /** Note facoltative del cliente sul lavoro (docs/CHANGELOG.md §163), lette dall'admin. */
+  note: z.string().trim().max(1000).optional(),
 });
 export type ClientConfirmCompleteInput = z.infer<typeof clientConfirmCompleteSchema>;
 

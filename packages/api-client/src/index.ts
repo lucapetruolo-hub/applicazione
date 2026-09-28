@@ -3,6 +3,7 @@ export type {
   ApiClient,
   ApiClientConfig,
   AdminContactMessage,
+  AdminCompletedJob,
   AdminHiddenLead,
   AdminContentReport,
   AdminUserRow,

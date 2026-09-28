@@ -60,8 +60,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
-  async function handleClientConfirmComplete(photoUrls: string[]) {
-    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
+  async function handleClientConfirmComplete(photoUrls: string[], note: string | undefined) {
+    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls, note });
     setShowClientCompleteModal(false);
     if (booking.status === "COMPLETED" && !booking.hasReview) {
       setShowReviewModal(true);

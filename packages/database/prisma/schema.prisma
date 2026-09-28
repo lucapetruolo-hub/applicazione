@@ -925,6 +925,11 @@ model Booking {
   // scritto, non alla sola documentazione del lavoro).
   professionalCompletionPhotoUrls String[]  @default([])
   clientCompletionPhotoUrls       String[]  @default([])
+  // Note a lavoro terminato e motivo delle differenze dal preventivo
+  // (docs/CHANGELOG.md §163): lette dall'admin in /admin/lavori.
+  professionalCompletionNote      String?
+  completionChangeReason          String?
+  clientCompletionNote            String?
   // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
   // richiesta esplicita dell'utente ("servono i completed da entrambi").
   // Indipendente da `status` (che resta COMPLETED solo grazie

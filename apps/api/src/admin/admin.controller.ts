@@ -141,6 +141,14 @@ export class AdminController {
     return this.adminService.listHiddenLeads();
   }
 
+  // Qualunque admin: note e differenze di prezzo servono sia alla
+  // moderazione sia alla finanza (contestazioni).
+  @RequireAdminScope("ANY")
+  @Get("completed-jobs")
+  listCompletedJobs(@Query("filter") filter?: string) {
+    return this.adminService.listCompletedJobs(filter === "changes" || filter === "notes" ? filter : "all");
+  }
+
   @RequireAdminScope("MODERATION")
   @Patch("contact-messages/:id")
   resolveContactMessage(@Param("id") id: string) {

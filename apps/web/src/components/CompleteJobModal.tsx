@@ -2,12 +2,26 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
-import type { CompleteBookingInput } from "@professionisti/shared";
+import { completionDeviation, completionDeviationText, type CompleteBookingInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 
 const MAX_COMPLETION_PHOTOS = 5;
+const MAX_NOTE_LENGTH = 1000;
+
+const textareaStyle = {
+  width: "100%",
+  boxSizing: "border-box" as const,
+  minHeight: 76,
+  padding: 10,
+  borderRadius: 4,
+  border: `1px solid ${brand.filetto}`,
+  fontSize: 14,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  resize: "vertical" as const,
+};
 
 const smallInputStyle = {
   padding: 10,
@@ -70,6 +84,8 @@ export function CompleteJobModal({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [note, setNote] = useState("");
+  const [changeReason, setChangeReason] = useState("");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -117,6 +133,16 @@ export function CompleteJobModal({
     .filter((row) => row.name.trim() || row.price.trim())
     .map((row) => ({ name: row.name.trim(), cents: parseEuroToCents(row.price) }));
   const totalEurCents = [...parsedQuoted, ...parsedExtra].reduce((sum, row) => sum + (row.cents ?? 0), 0);
+  // Voci aggiunte o totale fuori dal preventivo: motivo obbligatorio
+  // (docs/CHANGELOG.md §163). Calcolato solo quando tutti gli importi del
+  // preventivo sono compilati, per non chiederlo a metà inserimento.
+  const deviation = parsedQuoted.every((row) => row.cents !== null)
+    ? completionDeviation(
+        quotedItems,
+        [...parsedQuoted, ...parsedExtra].filter((row) => row.name && row.cents !== null).map((row) => ({ name: row.name, priceEurCents: row.cents as number })),
+      )
+    : null;
+  const needsReason = Boolean(deviation?.needsReason);
 
   async function handleSubmit() {
     setError(null);
@@ -142,10 +168,19 @@ export function CompleteJobModal({
       setError("Aggiungi almeno una voce con il relativo importo.");
       return;
     }
+    if (needsReason && !changeReason.trim()) {
+      setError("Spiega il motivo delle differenze rispetto al preventivo.");
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await onComplete({ items, photoUrls });
+      await onComplete({
+        items,
+        photoUrls,
+        note: note.trim() || undefined,
+        changeReason: needsReason ? changeReason.trim() : undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -286,6 +321,41 @@ export function CompleteJobModal({
             €{(totalEurCents / 100).toFixed(2)}
           </Text>
         </XStack>
+
+        {needsReason && deviation ? (
+          <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
+            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+              {completionDeviationText(deviation)}: spiega il motivo *
+            </Text>
+            <Text fontSize="$2" color={brand.grafite70}>
+              Preventivo: €{(deviation.quoteMinEurCents / 100).toFixed(0)}
+              {deviation.quoteMaxEurCents !== null && deviation.quoteMaxEurCents !== deviation.quoteMinEurCents
+                ? ` – €${(deviation.quoteMaxEurCents / 100).toFixed(0)}`
+                : ""}
+              . Il motivo resta agli atti e può essere letto dal nostro team in caso di contestazione.
+            </Text>
+            <textarea
+              value={changeReason}
+              onChange={(e) => setChangeReason(e.target.value.slice(0, MAX_NOTE_LENGTH))}
+              placeholder="Es. il tubo era da sostituire per intero, non solo il raccordo"
+              aria-label="Motivo delle differenze dal preventivo"
+              style={textareaStyle}
+            />
+          </YStack>
+        ) : null}
+
+        <YStack gap="$1">
+          <Text fontSize="$2" color={brand.grafite70}>
+            Note sul lavoro svolto (opzionale)
+          </Text>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, MAX_NOTE_LENGTH))}
+            placeholder="Es. consigliato un controllo tra 6 mesi"
+            aria-label="Note sul lavoro svolto"
+            style={textareaStyle}
+          />
+        </YStack>
 
         {/* Foto/video del lavoro terminato (richiesta esplicita
             dell'utente), distinte dalle foto della recensione. */}

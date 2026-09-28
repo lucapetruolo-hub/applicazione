@@ -388,6 +388,31 @@ export type AdminContentReport = {
 
 /** Messaggio dal form "Contatti" del footer, vista admin (richiesta esplicita dell'utente). */
 /** Richiesta "eliminata" da un professionista: nascosta a lui, visibile in /admin (docs/CHANGELOG.md §143). */
+/** Lavoro terminato visto dall'admin (docs/CHANGELOG.md §163). */
+export type AdminCompletedJob = {
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  description: string | null;
+  scheduledAt: string;
+  updatedAt: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  professionalCompleted: boolean;
+  clientConfirmedAt: string | null;
+  quoteMinEurCents: number | null;
+  quoteMaxEurCents: number | null;
+  finalAmountEurCents: number | null;
+  finalItems: { name: string; priceEurCents: number; added: boolean }[];
+  direction: "ABOVE" | "BELOW" | null;
+  changeReason: string | null;
+  professionalNote: string | null;
+  clientNote: string | null;
+  professionalPhotoUrls: string[];
+  clientPhotoUrls: string[];
+};
+
 export type AdminHiddenLead = {
   leadId: string;
   guidedRequestId: string;
@@ -1361,6 +1386,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       }),
+
+    adminListCompletedJobs: (token: string, filter: "all" | "changes" | "notes") =>
+      request<AdminCompletedJob[]>(`/admin/completed-jobs?filter=${filter}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

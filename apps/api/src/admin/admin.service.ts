@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { MODERATION_ACTIONS_BY_TARGET, normalizeAdminRoles, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -970,6 +970,68 @@ export class AdminService {
       };
     });
   }
+
+  /**
+   * Lavori terminati (docs/CHANGELOG.md §163): note, foto/video di entrambe
+   * le parti e motivo delle differenze dal preventivo. `filter`: "changes"
+   * solo con voci aggiunte o totale fuori preventivo, "notes" solo con note.
+   */
+  async listCompletedJobs(filter: "all" | "changes" | "notes"): Promise<AdminCompletedJobRow[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        OR: [{ status: "COMPLETED" }, { clientConfirmedCompletedAt: { not: null } }],
+        // I profili dimostrativi del seed hanno decine di lavori finti senza note.
+        professionalProfile: { isDemo: false },
+        ...(filter === "changes" ? { completionChangeReason: { not: null } } : {}),
+        ...(filter === "notes" ? { AND: [{ OR: [{ professionalCompletionNote: { not: null } }, { clientCompletionNote: { not: null } }] }] } : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      include: {
+        finalItems: true,
+        professionalProfile: { select: { id: true, userId: true, businessName: true } },
+        client: { select: { id: true, name: true, surname: true, deletedAt: true } },
+        quote: {
+          select: {
+            items: true,
+            guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } },
+          },
+        },
+      },
+    });
+    return bookings.map((booking) => {
+      const deviation = completionDeviation(booking.quote?.items ?? [], booking.finalItems);
+      const added = new Set(deviation?.addedItemNames ?? []);
+      const request = booking.quote?.guidedRequest ?? null;
+      return {
+        bookingId: booking.id,
+        guidedRequestId: request?.id ?? null,
+        categoryLabel: request?.category.label ?? null,
+        city: request?.city ?? null,
+        description: request?.description ?? null,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        updatedAt: booking.updatedAt.toISOString(),
+        professional: { profileId: booking.professionalProfile.id, userId: booking.professionalProfile.userId, businessName: booking.professionalProfile.businessName },
+        client: {
+          userId: booking.client.id,
+          name: booking.client.deletedAt ? null : [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+          accountDeleted: booking.client.deletedAt !== null,
+        },
+        professionalCompleted: booking.status === "COMPLETED",
+        clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+        quoteMinEurCents: deviation?.quoteMinEurCents ?? null,
+        quoteMaxEurCents: deviation?.quoteMaxEurCents ?? null,
+        finalAmountEurCents: booking.finalAmountEurCents,
+        finalItems: booking.finalItems.map((item) => ({ name: item.name, priceEurCents: item.priceEurCents, added: added.has(item.name.trim()) })),
+        direction: deviation?.direction ?? null,
+        changeReason: booking.completionChangeReason,
+        professionalNote: booking.professionalCompletionNote,
+        clientNote: booking.clientCompletionNote,
+        professionalPhotoUrls: booking.professionalCompletionPhotoUrls,
+        clientPhotoUrls: booking.clientCompletionPhotoUrls,
+      };
+    });
+  }
 }
 
 export type AdminHiddenLeadRow = {
@@ -1089,3 +1151,27 @@ function auditLabel(fieldName: string | null, newValue: string | null): string {
   if (fieldName === "status" && newValue === "DISMISSED") return "Segnalazione non accolta";
   return [fieldName, newValue].filter(Boolean).join(" → ") || "Modifica";
 }
+
+export type AdminCompletedJobRow = {
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  description: string | null;
+  scheduledAt: string;
+  updatedAt: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  professionalCompleted: boolean;
+  clientConfirmedAt: string | null;
+  quoteMinEurCents: number | null;
+  quoteMaxEurCents: number | null;
+  finalAmountEurCents: number | null;
+  finalItems: { name: string; priceEurCents: number; added: boolean }[];
+  direction: "ABOVE" | "BELOW" | null;
+  changeReason: string | null;
+  professionalNote: string | null;
+  clientNote: string | null;
+  professionalPhotoUrls: string[];
+  clientPhotoUrls: string[];
+};
