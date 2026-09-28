@@ -602,7 +602,22 @@ export const professionalProfileSelfSchema = professionalProfileSchema
   .extend({
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
+    // Dichiarazione di responsabilità sul profilo (docs/CHANGELOG.md §158):
+    // obbligatoria al primo salvataggio e quando cambia la versione del
+    // testo, poi confermata implicitamente a ogni salvataggio.
+    profileDeclarationAccepted: z.boolean().optional(),
   });
+
+/**
+ * Versione e testo della dichiarazione che il professionista accetta salvando
+ * il profilo (docs/CHANGELOG.md §158, testo proposto dal consiglio legale, da
+ * far validare a un avvocato — checklist pre-lancio 11bis). Cambiando il
+ * testo va cambiata la versione: il professionista la riconferma al primo
+ * salvataggio successivo. Stesso schema di FISCAL_DECLARATION_VERSION.
+ */
+export const PROFILE_DECLARATION_VERSION = "2026-09-28";
+export const PROFILE_DECLARATION_TEXT =
+  "Dichiaro che i dati del mio profilo (qualifiche, certificazioni, assicurazione RC, prezzi) sono veri e aggiornati e che ho i requisiti di legge per i lavori che offro. Sono l'unico responsabile dei lavori che svolgo e mi impegno ad aggiornare i dati. Contenuti falsi possono essere rimossi e il profilo sospeso, come previsto dai Termini di servizio.";
 export type ProfessionalProfileSelfInput = z.infer<typeof professionalProfileSelfSchema>;
 
 /**

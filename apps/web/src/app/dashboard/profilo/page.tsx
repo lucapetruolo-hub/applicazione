@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
-import { PROFESSIONAL_CATEGORIES, POPULAR_SERVICES, ALL_ITALIAN_CITY_NAMES, findComuneByName, type ProfessionalCategorySlug } from "@professionisti/shared";
+import {
+  PROFESSIONAL_CATEGORIES,
+  POPULAR_SERVICES,
+  ALL_ITALIAN_CITY_NAMES,
+  PROFILE_DECLARATION_TEXT,
+  findComuneByName,
+  type ProfessionalCategorySlug,
+} from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -322,6 +329,11 @@ export default function DashboardProfiloPage() {
     setIsSubmitting(true);
     try {
       await apiClient.upsertMyProfessionalProfile(token as string, {
+        // Accettazione implicita: il testo è sopra il bottone e cliccando
+        // "Salva profilo" il professionista lo accetta (docs/CHANGELOG.md
+        // §159, scelta dell'utente al posto della casella). Il server
+        // registra data e versione a ogni salvataggio.
+        profileDeclarationAccepted: true,
         businessName: businessName.trim(),
         categorySlug: categorySlug as ProfessionalCategorySlug,
         city: city.trim(),
@@ -779,6 +791,10 @@ export default function DashboardProfiloPage() {
               Ho un'assicurazione di responsabilità civile professionale (RC)
             </Text>
           </YStack>
+          <Text fontSize="$2" color={brand.grafite70}>
+            Se la spunti, sul tuo profilo e nei risultati compare il badge &quot;Assicurazione RC dichiarata&quot;, e i clienti che
+            filtrano per assicurazione ti trovano. Spuntala solo se la polizza è attiva.
+          </Text>
         </Surface>
 
         <YStack
@@ -1129,6 +1145,13 @@ export default function DashboardProfiloPage() {
             Profilo salvato!
           </Text>
         ) : null}
+
+        <p className="profile-declaration-note">
+          Cliccando &quot;Salva profilo&quot; accetti questa dichiarazione: &laquo;{PROFILE_DECLARATION_TEXT}&raquo;{" "}
+          <Link href="/termini" target="_blank">
+            Leggi i Termini
+          </Link>
+        </p>
 
         <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}

@@ -15137,3 +15137,169 @@ diurna. Playwright con profilo iPhone 13: passo 1 vuoto → "Seleziona una
 categoria."; tre passi compilati e inviati; da desktop `/preventivo?
 professionista=<id>` senza altri parametri mostra la scheda del
 professionista e la categoria bloccata.
+
+## 155. Profilo pubblico: il tasto "Salva" copriva il nome
+
+Richiesta esplicita dell'utente: nel profilo pubblico del professionista
+il tasto "Salva" finiva sopra il nome. Causa: il tasto stava nella stessa
+riga di foto (140px) e testi, e su schermi stretti la colonna del nome non
+aveva spazio.
+
+Decisione: "Salva" si sposta nella riga delle azioni, prima di "Condividi
+il profilo" e "Segnala" (`ProfessionalDetailContent.tsx`). La colonna del
+nome ha `minWidth={0}`, così un nome lungo va a capo invece di uscire.
+Nello stesso punto "Risponde in genere entro…" usciva dal bordo destro
+della scheda su iPhone: ora va a capo.
+
+Verifica: `tsc`; Playwright da cliente con profilo iPhone 13 e desktop
+1280px, nome, badge e tasto non si sovrappongono.
+
+## 156. Richiesta di preventivo: niente spiegazione sotto "È urgente?" finché non è attivo
+
+Richiesta esplicita dell'utente: sotto l'interruttore "È urgente?"
+(`GuidedRequestForm.tsx`) c'era sempre una riga di spiegazione ("Attivalo
+per un guasto che non può aspettare…"). Ora da spento mostra solo "È
+urgente?"; la spiegazione compare solo quando lo si attiva ("Sì: la
+mandiamo subito a più professionisti, che hanno 20 minuti per
+risponderti.").
+
+Verifica: `tsc`.
+
+## 157. Badge e filtro "Assicurazione RC professionale"
+
+Richiesta esplicita dell'utente: un badge per l'assicurazione RC
+professionale nella scheda del professionista e un filtro in ricerca per
+vedere solo i profili assicurati.
+
+Il dato esisteva già: `ProfessionalProfile.hasLiabilityInsurance`, casella
+spuntata dal professionista in `/dashboard/profilo`, finora mostrata solo in
+fondo al profilo pubblico tra i "dati dichiarati".
+
+- `ProfessionalSearchResult.hasLiabilityInsurance`: restituito dalla
+  ricerca e dai professionisti salvati.
+- Badge "Assicurazione RC · dichiarata" (icona scudo con spunta,
+  `shield-check` aggiunta a `packages/ui`):
+  - nella card dei risultati (`ProfessionalCard`), accanto a "Nuovo
+    profilo";
+  - nell'intestazione del profilo pubblico (`.rc-badge`).
+- Filtri di ricerca: nuova sezione "Assicurazione" con l'interruttore "Solo
+  con assicurazione RC professionale". Conta nel numero dei filtri attivi e
+  si azzera con "Reimposta filtri". Il filtro lavora sulla pagina, come gli
+  altri.
+- `/dashboard/profilo`: sotto la casella una riga spiega che spuntarla
+  mostra il badge e fa comparire nei filtri, e di spuntarla solo con polizza
+  attiva.
+
+Perché "dichiarata" e non una spunta verde: nessuno controlla ancora la
+polizza. Mostrarla come verificata sarebbe lo stesso problema di "Profili
+verificati" (checklist pre-lancio, punti 15-16). Il badge usa un colore
+neutro, mai il verde riservato a "Verificato". Quando esisterà una verifica
+vera (polizza caricata e controllata da un admin), il badge potrà diventare
+"verificata".
+
+Verifica: `tsc` su ui, api e web; API di ricerca con un professionista
+assicurato; Playwright con profilo iPhone 13:
+- badge nella card e nel profilo, senza uscire dalla scheda;
+- filtro attivo: da 3 a 1 risultato, "Mostra 1 risultato", "Filtri (1)".
+
+## 158. Dichiarazione di responsabilità al salvataggio del profilo
+
+Richiesta esplicita dell'utente: cliccando "Salva profilo", il
+professionista deve assumersi la responsabilità di quello che ha inserito.
+Posizione e testo li ha proposti il consiglio legale (Chief Legal Advisor).
+
+- **`/dashboard/profilo`, primo salvataggio.** Sopra "Salva profilo" c'è
+  una casella obbligatoria con il testo di `PROFILE_DECLARATION_TEXT`
+  (`packages/shared/src/schemas.ts`) e un link ai Termini. Senza la spunta
+  il salvataggio si ferma con un messaggio.
+- **Salvataggi successivi.** La casella diventa una riga fissa: "Salvando
+  confermi la dichiarazione che hai già accettato…". La casella torna solo
+  se cambia la versione del testo.
+- **Server.** `ProfessionalProfile.profileDeclarationAcceptedAt` e
+  `profileDeclarationVersion` (migrazione
+  `20260928100000_profile_declaration`), stesso schema di
+  `fiscalDeclarationAcceptedAt/Version`. `upsertMyProfile` rifiuta con 400
+  un salvataggio senza la versione attuale già accettata e senza
+  `profileDeclarationAccepted: true`. `GET /professionals/me` espone
+  `profileDeclarationAccepted`.
+- **Profili esistenti.** Hanno la colonna vuota: al prossimo salvataggio
+  devono spuntare la casella.
+- **`/termini` §4.** Nuova frase sulla dichiarazione al salvataggio, sulla
+  registrazione di data e versione, e sul fatto che certificazioni e RC
+  sono dichiarate e non verificate dalla piattaforma.
+
+Da far validare a un avvocato (checklist pre-lancio 11bis). Il consiglio
+legale avverte che la dichiarazione è una prova a nostro favore, ma non
+sostituisce una verifica vera e non esonera del tutto la piattaforma.
+
+Verifica:
+- `tsc` su api e web;
+- API sul DB di prova: senza flag → 400; con flag → 200 e colonne
+  valorizzate (versione `2026-09-28`); senza flag dopo l'accettazione →
+  200;
+- Playwright su iPhone 13: "Salva" senza spunta mostra l'errore; con la
+  spunta mostra "Profilo salvato!" e poi la riga di conferma.
+
+## 159. Dichiarazione del profilo accettata cliccando "Salva profilo"
+
+Richiesta esplicita dell'utente: niente casella da spuntare. Come su altri
+siti, cliccando "Salva profilo" il professionista accetta la dichiarazione
+di §158.
+
+- Sopra il bottone, sempre visibile: "Cliccando "Salva profilo" accetti
+  questa dichiarazione: «…»", con il link "Leggi i Termini".
+- Il sito invia sempre `profileDeclarationAccepted: true`. Il server
+  registra data e versione a ogni salvataggio, quindi resta la data
+  dell'ultima conferma. La regola lato server di §158 non cambia: un
+  salvataggio senza dichiarazione viene rifiutato.
+
+Il consiglio legale aveva proposto la casella perché dimostra meglio il
+consenso. L'accettazione implicita è una prova più debole, da far valutare
+all'avvocato insieme al testo (checklist 11bis).
+
+Verifica: `tsc`; Playwright su iPhone 13 con un profilo che non aveva mai
+accettato. Nessuna casella, "Salva profilo" → "Profilo salvato!", versione
+`2026-09-28` salvata.
+
+## 160. Tempi di risposta delle urgenti e modello di ricavo (decisioni dell'utente)
+
+Decisioni esplicite dell'utente, prese dopo il parere del consiglio di
+esperti.
+
+- **Urgenti.** Da 20 minuti a **35 minuti tra le 7 e le 22** e **60 minuti
+  di notte**, ora italiana (`urgentResponseMinutes` in
+  `apps/api/src/guided-requests/lead-routing.ts`). Il Growth Lead proponeva
+  anche un tasto "Me ne occupo io" per prendere in carico la richiesta prima
+  del preventivo: l'utente l'ha escluso. Il professionista risponde, come
+  oggi, con un preventivo o rifiutando.
+- **Normali.** Restano 4 ore contate tra le 8 e le 21.
+- **Testi aggiornati:** `GuidedRequestForm.tsx` (interruttore "È urgente?" e
+  riepilogo "35 minuti (60 minuti tra le 22 e le 7)") e i commenti in
+  `leadDeadline.ts` e `requestHelpers.tsx`.
+- **Modello di ricavo.** Abbonamento unico a tre livelli (~19/39/69 €;
+  5, 15 e illimitati lavori accettati al mese), con tutte le funzioni per
+  tutti.
+  - Primo mese gratis per tutti.
+  - Un secondo mese regalato a chi non ha avuto preventivi accettati,
+    comunicato solo vicino alla scadenza del primo mese.
+  - Niente lead a pagamento.
+  - Da tarare sui dati dei primi mesi.
+  - Scritto in CLAUDE.md §6, e §7.3 segnato come superato. Il codice
+    (`plans.ts`, billing) è ancora il vecchio: va rifatto in una PR
+    dedicata.
+- **Pagamenti online:** ancora da decidere.
+
+Skill del consiglio di esperti (`.claude/skills/professionisti-ceo-esperti`),
+su richiesta dell'utente di consumare meno token:
+- la memoria unica è divisa in `decisioni.md`, letto dal CEO, e in
+  `esperti/<ruolo>.md`, uno per esperto, massimo 20 righe;
+- ogni esperto legge solo il proprio file, che non viene più copiato nel
+  prompt;
+- gli esperti aggiornano il proprio file e possono modificare direttamente
+  `SKILL.md` per migliorarsi (autorizzazione esplicita dell'utente). Non
+  possono toccare i cancelli sulle decisioni critiche e sul merge.
+
+Verifica:
+- `lead-routing.test.ts`: 3 test nuovi, cioè 35 minuti di giorno, 60 di
+  notte e i confini 21:59/22:00/7:00;
+- 79/79 test API; `tsc` su api e web.

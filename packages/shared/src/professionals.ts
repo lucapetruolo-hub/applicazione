@@ -208,6 +208,8 @@ export type ProfessionalSearchResult = {
   subTags: string[];
   /** Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata" nel pannello filtri di ricerca) — sempre almeno una in pratica ("Italiano" precompilato), ma tecnicamente può essere vuota se il professionista le rimuove tutte. */
   spokenLanguages: string[];
+  /** Assicurazione RC professionale dichiarata dal professionista (non verificata): badge nella card e filtro di ricerca, docs/CHANGELOG.md §157. */
+  hasLiabilityInsurance: boolean;
   /** Vuota se il professionista non ha alcuna fascia configurata nei prossimi giorni. */
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
   /**

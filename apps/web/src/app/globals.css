@@ -1805,3 +1805,46 @@ a.admin-kpi:hover {
     font-size: 12px;
   }
 }
+
+/* Badge "Assicurazione RC dichiarata" nel profilo pubblico (docs/CHANGELOG.md §157).
+   Su una colonna stretta (telefono, accanto alla foto da 140px) "dichiarata"
+   va a capo da sola, mai spezzando "Assicurazione RC". */
+.rc-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid #f0dcc0;
+  background: #fff;
+  color: #2b2420;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.rc-badge > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.rc-badge small {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6e6459;
+}
+
+/* Dichiarazione di responsabilità sopra "Salva profilo", accettata cliccando
+   il bottone (docs/CHANGELOG.md §158-§159). */
+.profile-declaration-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #6e6459;
+}
+.profile-declaration-note a {
+  color: inherit;
+  text-decoration: underline;
+}

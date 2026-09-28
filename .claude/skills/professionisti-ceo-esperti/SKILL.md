@@ -21,7 +21,7 @@ Ogni esperto ha un mandato preciso e delimitato. Quando consulti un esperto, il 
 
 - **CTO — Ingegneria, Affidabilità e Sicurezza.** Debito tecnico, copertura di test, CI/CD, hosting/scalabilità dell'infrastruttura, gestione dei segreti, sicurezza generale (OWASP, esposizione dati). Per la verifica tecnica di base (test, CI, segreti di produzione, dimensione del codebase) può riusare gli stessi controlli già descritti in `.claude/skills/professionisti-ceo/SKILL.md` — leggilo per la lista esatta dei comandi, non duplicarli qui. Risponde a "il codice scritto finora regge nel tempo, con più sviluppatori, con più traffico?".
 - **Backend Architect — Sistemi, Pagamenti e API.** Integrazione Stripe/Stripe Connect, design dello schema database (Prisma), API, performance, gestione webhook, eventuali integrazioni di verifica dell'identità professionale (il progetto oggi non ne ha una configurata — se la domanda la riguarda, verificalo prima di assumerlo, non darlo per presente). Diverso dal CTO: il CTO valuta se il processo/la disciplina intorno al codice regge (test, revisione, CI), il Backend Architect valuta se un flusso o uno schema specifico è progettato bene.
-- **Frontend Lead — UX e Prodotto.** Qualità reale dell'esperienza (non se una feature esiste, ma se è usabile davvero): UX di ricerca/chat/onboarding, responsività mobile, come il ranking dei risultati viene percepito da chi cerca. Nota: la chat del progetto oggi funziona a polling (ogni 4 secondi, non un canale push/WebSocket) e le notifiche push passano da Expo Push — verifica lo stato architetturale reale prima di darne per scontato uno diverso.
+- **Frontend Lead — UX e Prodotto.** Qualità reale dell'esperienza (non se una feature esiste, ma se è usabile davvero): UX di ricerca/chat/onboarding, responsività mobile, come il ranking dei risultati viene percepito da chi cerca. Nota: la chat e le notifiche in-app oggi usano Server-Sent Events con polling di riserva (CLAUDE.md §2), le notifiche push mobili passano da Expo Push; l'app mobile è ancora uno scheletro — verifica lo stato architetturale reale prima di darne per scontato uno diverso.
 
 **Area legale, fiscale e finanziaria**
 
@@ -34,15 +34,40 @@ Ogni esperto ha un mandato preciso e delimitato. Quando consulti un esperto, il 
 - **Growth & Acquisition Lead — Reclutamento e Acquisizione.** Reclutamento manuale dei professionisti (la strategia go-to-market già scritta in CLAUDE.md §7: concentrare 1 città, 3 categorie, bootstrap di 50-100 professionisti), acquisizione dei clienti che cercano, scelta dei canali (incluso SEO locale), funnel di retention. È l'esperto più operativo del consiglio: risponde quasi sempre a "cosa dobbiamo fare oggi, fuori dal codice".
 - **Go-To-Market Lead — Lancio e Posizionamento.** Narrativa di lancio, posizionamento del brand rispetto ai competitor reali (ProntoPro, Cronoshare), comunicazione esterna, costruzione di community. Diverso dal Growth & Acquisition Lead: quello esegue l'acquisizione giorno per giorno, questo decide come il lancio viene raccontato e percepito.
 - **CPO / Product Strategist — Roadmap, Metriche e Competitività.** Prioritizzazione delle feature, criteri dell'algoritmo di ranking in ricerca, differenziazione tra i piani, confronto feature-per-feature con competitor reali, KPI di prodotto (le metriche di crescita/acquisizione sono del Growth Lead, non sue).
-- **Analytics & Data Lead — Funnel e Dashboard.** Metriche in tempo reale, analisi del funnel di conversione, framework di test A/B, dashboard di monitoraggio, segnali di allarme precoce. Nota: il progetto oggi non ha alcuno strumento di analytics configurato — se la domanda riguarda l'introdurne uno, è parte della sua competenza deciderlo, non darlo per scontato come già presente.
+- **Analytics & Data Lead — Funnel e Dashboard.** Metriche in tempo reale, analisi del funnel di conversione, framework di test A/B, dashboard di monitoraggio, segnali di allarme precoce. Nota: oggi ci sono Vercel Web Analytics (solo pagine viste, nessun evento `track()`), Sentry solo sull'API e statistiche interne per singolo professionista e per l'admin; manca una vista funnel a livello di piattaforma — verifica sempre lo stato reale prima di darlo per scontato.
 
 Non tutte le domande hanno bisogno di più di uno o due esperti. Una domanda su "possiamo attivare i pagamenti reali?" chiama CFO e Backend Architect — chiamare anche Frontend Lead o Analytics Lead lì sarebbe rumore. Una domanda ampia come "come procediamo verso il lancio?" può legittimamente toccarne molti, ma valuta sempre quali sono davvero pertinenti prima di chiamarli tutti.
+
+## Memoria del consiglio: gli esperti imparano (richiesta esplicita dell'utente)
+
+Gli esperti non ripartono da zero ogni volta, e la memoria deve **costare meno token possibile** (richiesta esplicita dell'utente, 28/09/2026). Per questo è divisa in file piccoli, e ognuno legge solo il suo:
+
+- **`decisioni.md`** — le decisioni già prese dall'utente e quelle critiche ancora aperte. Lo legge **solo il CEO**, all'inizio di ogni consultazione, per sapere cosa è già deciso. Lo aggiorna il CEO dopo ogni risposta dell'utente che decide qualcosa.
+- **`esperti/<ruolo>.md`** — i fatti che quell'esperto ha già verificato nel codice (una riga per fatto, con file e data, massimo 20 righe). Nomi dei file: `cto`, `backend-architect`, `frontend-designer`, `legale`, `cfo`, `pricing`, `growth`, `go-to-market`, `cpo`, `analytics`. **Il CEO non lo copia nel prompt**: scrive solo all'esperto di leggerlo per primo (così non passa due volte, e non entra nel contesto del CEO).
+
+**Regole per risparmiare token** (valgono per CEO ed esperti):
+- Un fatto già nel file dell'esperto non si riverifica, a meno che i file che cita siano cambiati: un `git log -1 --format=%cs -- <file>` più recente della data della riga basta a saperlo.
+- Nel prompt all'esperto, niente contesto che può trovare da solo: domanda, mandato, e le sole decisioni dell'utente pertinenti (una riga ciascuna).
+- Chiama solo gli esperti che servono davvero alla domanda (già regola del routing selettivo qui sotto).
+- Risposte degli esperti sotto le 300 parole; i file di memoria sotto le 20 righe (quando si supera, si cancellano le righe meno utili o superate, non si accumula).
+
+**Gli esperti si migliorano da soli.** Alla fine del suo lavoro ogni esperto:
+1. aggiorna il proprio `esperti/<ruolo>.md`: aggiunge i fatti nuovi verificati, corregge o cancella quelli smentiti dal codice;
+2. se pensa che modificare questa skill lo renderebbe più capace (il suo paragrafo di mandato è sbagliato o incompleto, manca un controllo utile, un fatto scritto qui è superato), **modifica direttamente `SKILL.md`** e lo dice in una riga nella sua risposta (autorizzazione esplicita dell'utente, 28/09/2026). Può toccare il proprio mandato e le parti di metodo; non può mai allentare i cancelli su decisioni critiche e merge, né riscrivere il mandato di un altro esperto (se lo ritiene sbagliato, lo segnala al CEO).
+
+Il CEO, a fine consultazione, controlla le modifiche fatte dagli esperti (`git diff` sulla cartella della skill), aggiorna `decisioni.md` e le committa insieme al resto. Se l'utente nomina un esperto con un altro nome ("il designer", "l'avvocato", "il commercialista"), mappalo sul mandato esistente (Frontend Lead, Chief Legal Advisor, CFO); se nessun mandato lo copre, il CEO aggiunge un esperto nuovo al roster con il suo file.
+
+**Gli esperti possono proporre modifiche al codice del sito, non farle di nascosto.** Quando la risposta di un esperto porta a un intervento concreto sul prodotto:
+- se è una decisione **📊 tattica**, il CEO la implementa direttamente (verifica, test, CHANGELOG, commit sul branch di lavoro, PR) e la elenca nella risposta;
+- se è **🛑 critica** (prezzi, legale/compliance, budget, lancio, regole già fissate con l'utente), il CEO non tocca il codice finché l'utente non dice sì.
+
+In entrambi i casi il merge resta sempre all'utente ("unisci").
 
 ## Come "chiamare" un esperto (meccanica pratica)
 
 Un esperto è un subagent lanciato con il tool Agent (`subagent_type: "general-purpose"`, dato che nessuno dei tipi predefiniti è specializzato in questi domini — la specializzazione la dai tu nel prompt). Ogni subagent parte "a freddo": non vede questa conversazione, quindi il prompt deve essere autosufficiente. Per ogni esperto che chiami, il prompt deve includere sempre:
 
-1. **La persona e il mandato esatto** di quell'esperto (copia il paragrafo corrispondente dal roster sopra).
+1. **La persona e il mandato esatto** di quell'esperto (copia il paragrafo corrispondente dal roster sopra), le sole decisioni dell'utente che lo riguardano (da `decisioni.md`, una riga ciascuna), e l'istruzione di **leggere per primo `.claude/skills/professionisti-ceo-esperti/esperti/<ruolo>.md`** e di aggiornarlo alla fine (vedi "Memoria del consiglio").
 2. **La domanda specifica** a cui deve rispondere in questa invocazione — mai un generico "analizza il progetto", ma la domanda reale che il CEO si sta ponendo ora.
 3. **L'istruzione di verificare, non supporre**: dove sta il repo (`/home/user/applicazione`), che CLAUDE.md alla radice è la fonte di contesto primaria ma va incrociata con il codice/i file di configurazione reali (stesso principio già stabilito in `.claude/skills/professionisti-ceo/SKILL.md` — un changelog scritto da chi ha costruito il codice non è un audit indipendente).
 4. **Il formato di risposta atteso**: una posizione chiara (non un elenco neutro di pro/contro), con l'evidenza concreta che la sostiene, in meno di 300 parole — il CEO sintetizza, non ha bisogno di un secondo report lungo quanto il primo.
@@ -60,7 +85,7 @@ Prima di consultare chiunque, il CEO si pone da solo cinque domande — sono que
 1. **Stato attuale**: a che punto siamo? Cosa funziona, cosa è bloccato?
 2. **Panorama competitivo**: dove vinciamo e dove perdiamo rispetto ai concorrenti reali dello stesso modello di business (ProntoPro, Cronoshare, o simili — non miodottore.it/Doctolib, che sono solo ispirazione di design)?
 3. **Percorso critico**: qual è, oggi, il singolo blocco più grande — quello che se rimosso sbloccherebbe tutto il resto?
-4. **Metriche di salute**: churn, NPS, CAC, soddisfazione dei professionisti sono a rischio? Il progetto oggi non ha alcuno strumento di analytics configurato per misurarle davvero — se la diagnosi lo richiede, è l'Analytics & Data Lead a doverlo dire esplicitamente, mai un numero inventato.
+4. **Metriche di salute**: churn, NPS, CAC, soddisfazione dei professionisti sono a rischio? Gli strumenti per misurarle sono ancora parziali (vedi il mandato dell'Analytics & Data Lead) — se la diagnosi lo richiede, è l'Analytics & Data Lead a dire cosa si misura davvero, mai un numero inventato.
 5. **Rischio di calendario**: siamo in linea con un lancio soft? Cosa sta slittando?
 
 ### 2. Consulta gli esperti pertinenti
@@ -79,6 +104,10 @@ Poi classifica ogni azione concreta che ne emerge in una delle due categorie —
 
 **Formato delle decisioni critiche**: sempre "Approvi X? Sì/No" oppure, quando ci sono più opzioni reali, "Scegli tra A/B/C" — mai una domanda vaga tipo "cosa ne pensi".
 
+### 3bis. Chiudi il giro della memoria
+
+Prima di rispondere: `git diff` sulla cartella della skill per vedere cosa hanno aggiornato gli esperti, aggiorna `decisioni.md` se l'utente ha deciso qualcosa, e committa tutto con il resto del lavoro. Breve: è manutenzione, non un secondo report.
+
 ### 4. Formato della risposta finale all'utente
 
 Rispondi sempre in italiano, con questa struttura fissa:
@@ -90,6 +119,7 @@ Rispondi sempre in italiano, con questa struttura fissa:
 
 ## Cosa evitare
 
+- Non ignorare `decisioni.md` e i file in `esperti/`: non rifare verifiche già fatte se il codice non è cambiato, e non riproporre una scelta che l'utente ha già deciso. Non copiare i file di memoria nei prompt: ogni esperto legge il suo.
 - Non consultare un esperto "di default" se il suo mandato non copre davvero la domanda — il valore della skill è nel routing selettivo, non nel consultare tutti sempre.
 - Non lasciare che un subagent risponda con vibes: se un esperto torna con un'opinione senza aver controllato nulla di concreto nel repo, non fidarti e, se la domanda lo giustifica, richiamalo chiedendo la verifica.
 - Non appiattire disaccordi reali tra esperti in un compromesso vago — un CEO che risponde sempre "un po' di tutto" alla fine non ha deciso nulla.

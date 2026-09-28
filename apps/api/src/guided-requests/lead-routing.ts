@@ -8,9 +8,17 @@
 /** Professionisti contattati subito: 3 per una richiesta normale, 5 per un'urgente (decisione dell'utente). */
 export const LEADS_PER_REQUEST = { standard: 3, urgent: 5 } as const;
 
-/** Tempo per rispondere: 4 ore "di giorno" per una normale, 20 minuti di orologio per un'urgente. */
+/**
+ * Tempo per rispondere: 4 ore "di giorno" per una normale; per un'urgente 35
+ * minuti di giorno (7-22, ora italiana) e 60 di notte (decisione dell'utente,
+ * docs/CHANGELOG.md §160: 20 minuti erano troppo pochi per un artigiano in
+ * cantiere avvisato solo da sito ed email).
+ */
 export const STANDARD_RESPONSE_HOURS = 4;
-export const URGENT_RESPONSE_MINUTES = 20;
+export const URGENT_RESPONSE_MINUTES_DAY = 35;
+export const URGENT_RESPONSE_MINUTES_NIGHT = 60;
+export const URGENT_DAY_START_HOUR = 7;
+export const URGENT_DAY_END_HOUR = 22;
 
 /** Fascia in cui scorre il tempo di risposta delle richieste normali, ora italiana. */
 export const RESPONSE_DAY_START_HOUR = 8;
@@ -42,8 +50,14 @@ export function addDaytimeHours(from: Date, hours: number): Date {
   return new Date(t);
 }
 
+/** Minuti per rispondere a un'urgente arrivata in questo momento: di giorno o di notte, ora italiana. */
+export function urgentResponseMinutes(now: Date = new Date()): number {
+  const h = romeHour(now);
+  return h >= URGENT_DAY_START_HOUR && h < URGENT_DAY_END_HOUR ? URGENT_RESPONSE_MINUTES_DAY : URGENT_RESPONSE_MINUTES_NIGHT;
+}
+
 export function computeLeadExpiry(isUrgent: boolean, now: Date = new Date()): Date {
-  return isUrgent ? new Date(now.getTime() + URGENT_RESPONSE_MINUTES * 60_000) : addDaytimeHours(now, STANDARD_RESPONSE_HOURS);
+  return isUrgent ? new Date(now.getTime() + urgentResponseMinutes(now) * 60_000) : addDaytimeHours(now, STANDARD_RESPONSE_HOURS);
 }
 
 export type LeadCandidateSignals = {

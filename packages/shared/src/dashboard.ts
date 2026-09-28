@@ -26,6 +26,8 @@ export type MyProfessionalProfile = {
   yearsOfExperience: number | null;
   certifications: string | null;
   hasLiabilityInsurance: boolean;
+  /** Ha già accettato la versione attuale della dichiarazione di responsabilità (docs/CHANGELOG.md §158). */
+  profileDeclarationAccepted: boolean;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
