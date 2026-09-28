@@ -21,8 +21,8 @@ const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 // Quanti professionisti ricevono una richiesta, entro quando devono
 // rispondere e con che ordine vengono scelti: in ./lead-routing.ts
 // (docs/CHANGELOG.md §154). 3 per le normali, 5 per le urgenti; 4 ore
-// contate solo tra le 8 e le 21 (ora italiana) per le normali, 20 minuti per
-// le urgenti; ordine per punteggio di qualità, mai per boost a pagamento.
+// contate solo tra le 8 e le 21 (ora italiana) per le normali, 35 minuti per
+// le urgenti di giorno (7-22) e 60 di notte (§160); ordine per punteggio di qualità, mai per boost a pagamento.
 
 // Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
 // aperta senza nessuna Quote ricevuta, il job schedulato la chiude

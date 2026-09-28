@@ -37,7 +37,7 @@ export function formatSlotRange(startIso: string, endIso: string | null): string
  * "Rispondi entro..." per una richiesta non ancora quotata — richiesta
  * esplicita dell'utente (revisione UX, finitura §10: "evidenziare quanto
  * manca alla scadenza della richiesta spinge a quotare in fretta"). Gli
- * orizzonti reali (CLAUDE.md §14) sono brevi — 20 minuti per le urgenti,
+ * orizzonti reali (CLAUDE.md §14) sono brevi — 35-60 minuti per le urgenti,
  * fino a 4 ore per le standard — mai giorni, quindi il formato resta
  * sempre minuti/ore, mai una data. `null` se la scadenza è già passata
  * (il job schedulato la marcherà EXPIRED a breve, non ha senso mostrare un

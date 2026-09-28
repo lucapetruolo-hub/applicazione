@@ -1,7 +1,7 @@
 /**
  * "Rispondi entro …" per un lead (CLAUDE.md §14): condiviso da Richieste e
  * lavori e dalla Home "Oggi" (docs/CHANGELOG.md §147). Gli orizzonti reali
- * sono brevi (20 minuti le urgenti, fino a 4 ore le standard), quindi
+ * sono brevi (35-60 minuti le urgenti, fino a 4 ore le standard), quindi
  * sempre minuti/ore. `null` se la scadenza è passata o non nota.
  */
 export function formatLeadDeadline(expiresAt: string | null): { label: string; urgent: boolean } | null {

@@ -40,23 +40,34 @@ Non tutte le domande hanno bisogno di più di uno o due esperti. Una domanda su 
 
 ## Memoria del consiglio: gli esperti imparano (richiesta esplicita dell'utente)
 
-Gli esperti non ripartono da zero ogni volta. Diventano più esperti a ogni consultazione, in tre modi:
+Gli esperti non ripartono da zero ogni volta, e la memoria deve **costare meno token possibile** (richiesta esplicita dell'utente, 28/09/2026). Per questo è divisa in file piccoli, e ognuno legge solo il suo:
 
-1. **Memoria condivisa — `memoria.md`** (in questa stessa cartella). Contiene, per ogni esperto, i fatti già verificati nel codice (con file e data) e le decisioni già prese dall'utente, più un registro delle decisioni critiche ancora aperte. **Prima di chiamare un esperto** leggi `memoria.md` e incolla nel suo prompt la sua sezione e le decisioni dell'utente pertinenti, con l'istruzione: "questi sono fatti già verificati: non rifare il lavoro, ma se il codice nel frattempo è cambiato correggili".
-2. **Aggiornamento dopo ogni consultazione.** Finita la sintesi, e prima di rispondere all'utente, il CEO aggiorna `memoria.md`: aggiunge i fatti nuovi verificati, corregge o cancella quelli che il codice ha smentito, registra nel "Registro decisioni" ogni decisione che l'utente ha preso (con data), e tiene in "Decisioni critiche aperte" quelle ancora in attesa del suo sì/no. Voci brevi, una riga ciascuna, sempre con il file di riferimento: è una memoria, non un secondo CHANGELOG.
-3. **La skill si corregge da sola.** Se una consultazione mostra che questo file è sbagliato o superato — un mandato che manca, un fatto ormai falso scritto qui, un esperto che serve e non c'è, o una domanda dell'utente che nessun mandato copre — il CEO modifica direttamente `SKILL.md` nello stesso giro, e lo dice all'utente in una riga (autorizzazione esplicita dell'utente, 28/09/2026). Se l'utente nomina un esperto con un altro nome ("il designer", "l'avvocato", "il commercialista"), mappalo sul mandato esistente (Frontend Lead, Chief Legal Advisor, CFO); se nessun mandato lo copre, aggiungi un esperto nuovo al roster.
+- **`decisioni.md`** — le decisioni già prese dall'utente e quelle critiche ancora aperte. Lo legge **solo il CEO**, all'inizio di ogni consultazione, per sapere cosa è già deciso. Lo aggiorna il CEO dopo ogni risposta dell'utente che decide qualcosa.
+- **`esperti/<ruolo>.md`** — i fatti che quell'esperto ha già verificato nel codice (una riga per fatto, con file e data, massimo 20 righe). Nomi dei file: `cto`, `backend-architect`, `frontend-designer`, `legale`, `cfo`, `pricing`, `growth`, `go-to-market`, `cpo`, `analytics`. **Il CEO non lo copia nel prompt**: scrive solo all'esperto di leggerlo per primo (così non passa due volte, e non entra nel contesto del CEO).
+
+**Regole per risparmiare token** (valgono per CEO ed esperti):
+- Un fatto già nel file dell'esperto non si riverifica, a meno che i file che cita siano cambiati: un `git log -1 --format=%cs -- <file>` più recente della data della riga basta a saperlo.
+- Nel prompt all'esperto, niente contesto che può trovare da solo: domanda, mandato, e le sole decisioni dell'utente pertinenti (una riga ciascuna).
+- Chiama solo gli esperti che servono davvero alla domanda (già regola del routing selettivo qui sotto).
+- Risposte degli esperti sotto le 300 parole; i file di memoria sotto le 20 righe (quando si supera, si cancellano le righe meno utili o superate, non si accumula).
+
+**Gli esperti si migliorano da soli.** Alla fine del suo lavoro ogni esperto:
+1. aggiorna il proprio `esperti/<ruolo>.md`: aggiunge i fatti nuovi verificati, corregge o cancella quelli smentiti dal codice;
+2. se pensa che modificare questa skill lo renderebbe più capace (il suo paragrafo di mandato è sbagliato o incompleto, manca un controllo utile, un fatto scritto qui è superato), **modifica direttamente `SKILL.md`** e lo dice in una riga nella sua risposta (autorizzazione esplicita dell'utente, 28/09/2026). Può toccare il proprio mandato e le parti di metodo; non può mai allentare i cancelli su decisioni critiche e merge, né riscrivere il mandato di un altro esperto (se lo ritiene sbagliato, lo segnala al CEO).
+
+Il CEO, a fine consultazione, controlla le modifiche fatte dagli esperti (`git diff` sulla cartella della skill), aggiorna `decisioni.md` e le committa insieme al resto. Se l'utente nomina un esperto con un altro nome ("il designer", "l'avvocato", "il commercialista"), mappalo sul mandato esistente (Frontend Lead, Chief Legal Advisor, CFO); se nessun mandato lo copre, il CEO aggiunge un esperto nuovo al roster con il suo file.
 
 **Gli esperti possono proporre modifiche al codice del sito, non farle di nascosto.** Quando la risposta di un esperto porta a un intervento concreto sul prodotto:
 - se è una decisione **📊 tattica**, il CEO la implementa direttamente (verifica, test, CHANGELOG, commit sul branch di lavoro, PR) e la elenca nella risposta;
 - se è **🛑 critica** (prezzi, legale/compliance, budget, lancio, regole già fissate con l'utente), il CEO non tocca il codice finché l'utente non dice sì.
 
-In entrambi i casi il merge resta sempre all'utente ("unisci"). Le modifiche a `SKILL.md` e `memoria.md` sono manutenzione del consiglio: il CEO le fa sempre, e le committa insieme al resto. Non vanno mai usate per allentare i cancelli qui sopra (decisioni critiche, merge solo su "unisci"): quelli li cambia solo l'utente.
+In entrambi i casi il merge resta sempre all'utente ("unisci").
 
 ## Come "chiamare" un esperto (meccanica pratica)
 
 Un esperto è un subagent lanciato con il tool Agent (`subagent_type: "general-purpose"`, dato che nessuno dei tipi predefiniti è specializzato in questi domini — la specializzazione la dai tu nel prompt). Ogni subagent parte "a freddo": non vede questa conversazione, quindi il prompt deve essere autosufficiente. Per ogni esperto che chiami, il prompt deve includere sempre:
 
-1. **La persona e il mandato esatto** di quell'esperto (copia il paragrafo corrispondente dal roster sopra), più **la sua sezione di `memoria.md`** e le decisioni dell'utente che lo riguardano.
+1. **La persona e il mandato esatto** di quell'esperto (copia il paragrafo corrispondente dal roster sopra), le sole decisioni dell'utente che lo riguardano (da `decisioni.md`, una riga ciascuna), e l'istruzione di **leggere per primo `.claude/skills/professionisti-ceo-esperti/esperti/<ruolo>.md`** e di aggiornarlo alla fine (vedi "Memoria del consiglio").
 2. **La domanda specifica** a cui deve rispondere in questa invocazione — mai un generico "analizza il progetto", ma la domanda reale che il CEO si sta ponendo ora.
 3. **L'istruzione di verificare, non supporre**: dove sta il repo (`/home/user/applicazione`), che CLAUDE.md alla radice è la fonte di contesto primaria ma va incrociata con il codice/i file di configurazione reali (stesso principio già stabilito in `.claude/skills/professionisti-ceo/SKILL.md` — un changelog scritto da chi ha costruito il codice non è un audit indipendente).
 4. **Il formato di risposta atteso**: una posizione chiara (non un elenco neutro di pro/contro), con l'evidenza concreta che la sostiene, in meno di 300 parole — il CEO sintetizza, non ha bisogno di un secondo report lungo quanto il primo.
@@ -93,9 +104,9 @@ Poi classifica ogni azione concreta che ne emerge in una delle due categorie —
 
 **Formato delle decisioni critiche**: sempre "Approvi X? Sì/No" oppure, quando ci sono più opzioni reali, "Scegli tra A/B/C" — mai una domanda vaga tipo "cosa ne pensi".
 
-### 3bis. Aggiorna la memoria del consiglio
+### 3bis. Chiudi il giro della memoria
 
-Prima di rispondere, aggiorna `memoria.md` (e `SKILL.md` se serve) come descritto in "Memoria del consiglio" qui sopra. Non è facoltativo: un consiglio che dimentica tutto tra una domanda e l'altra rifà sempre lo stesso lavoro e rischia di contraddire decisioni già prese dall'utente.
+Prima di rispondere: `git diff` sulla cartella della skill per vedere cosa hanno aggiornato gli esperti, aggiorna `decisioni.md` se l'utente ha deciso qualcosa, e committa tutto con il resto del lavoro. Breve: è manutenzione, non un secondo report.
 
 ### 4. Formato della risposta finale all'utente
 
@@ -108,7 +119,7 @@ Rispondi sempre in italiano, con questa struttura fissa:
 
 ## Cosa evitare
 
-- Non ignorare `memoria.md`: non rifare verifiche già fatte se il codice non è cambiato, e non proporre di nuovo una scelta che l'utente ha già deciso (è nel Registro decisioni).
+- Non ignorare `decisioni.md` e i file in `esperti/`: non rifare verifiche già fatte se il codice non è cambiato, e non riproporre una scelta che l'utente ha già deciso. Non copiare i file di memoria nei prompt: ogni esperto legge il suo.
 - Non consultare un esperto "di default" se il suo mandato non copre davvero la domanda — il valore della skill è nel routing selettivo, non nel consultare tutti sempre.
 - Non lasciare che un subagent risponda con vibes: se un esperto torna con un'opinione senza aver controllato nulla di concreto nel repo, non fidarti e, se la domanda lo giustifica, richiamalo chiedendo la verifica.
 - Non appiattire disaccordi reali tra esperti in un compromesso vago — un CEO che risponde sempre "un po' di tutto" alla fine non ha deciso nulla.

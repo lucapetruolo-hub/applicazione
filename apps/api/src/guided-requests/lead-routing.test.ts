@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addDaytimeHours, computeLeadExpiry, leadQualityScore, selectLeadRecipients, type LeadCandidateSignals } from "./lead-routing";
+import {
+  addDaytimeHours,
+  computeLeadExpiry,
+  leadQualityScore,
+  selectLeadRecipients,
+  urgentResponseMinutes,
+  type LeadCandidateSignals,
+} from "./lead-routing";
 
 // Settembre: ora legale, Roma = UTC+2.
 describe("addDaytimeHours (tempo di risposta solo tra le 8 e le 21, ora italiana)", () => {
@@ -19,9 +26,20 @@ describe("addDaytimeHours (tempo di risposta solo tra le 8 e le 21, ora italiana
     expect(addDaytimeHours(new Date("2026-12-10T22:00:00Z"), 4).toISOString()).toBe("2026-12-11T11:00:00.000Z");
   });
 
-  it("le urgenti restano 20 minuti di orologio anche di notte", () => {
+  it("urgenti di giorno: 35 minuti (10:00 ora italiana)", () => {
+    const now = new Date("2026-09-24T08:00:00Z");
+    expect(computeLeadExpiry(true, now).getTime() - now.getTime()).toBe(35 * 60_000);
+  });
+
+  it("urgenti di notte: 60 minuti (03:00 ora italiana)", () => {
     const now = new Date("2026-09-24T01:00:00Z");
-    expect(computeLeadExpiry(true, now).getTime() - now.getTime()).toBe(20 * 60_000);
+    expect(computeLeadExpiry(true, now).getTime() - now.getTime()).toBe(60 * 60_000);
+  });
+
+  it("urgenti: il giorno va dalle 7 alle 22 (21:59 → 35, 22:00 → 60, 7:00 → 35)", () => {
+    expect(urgentResponseMinutes(new Date("2026-09-24T19:59:00Z"))).toBe(35);
+    expect(urgentResponseMinutes(new Date("2026-09-24T20:00:00Z"))).toBe(60);
+    expect(urgentResponseMinutes(new Date("2026-09-24T05:00:00Z"))).toBe(35);
   });
 });
 

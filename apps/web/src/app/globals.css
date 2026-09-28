@@ -1836,35 +1836,15 @@ a.admin-kpi:hover {
   color: #6e6459;
 }
 
-/* Dichiarazione di responsabilità sopra "Salva profilo" (docs/CHANGELOG.md §158). */
-.profile-declaration {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #f0dcc0;
-  background: #fffaf2;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: #2b2420;
-  cursor: pointer;
+/* Dichiarazione di responsabilità sopra "Salva profilo", accettata cliccando
+   il bottone (docs/CHANGELOG.md §158-§159). */
+.profile-declaration-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #6e6459;
 }
-.profile-declaration input {
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  flex-shrink: 0;
-  accent-color: #1a9c5f;
-}
-.profile-declaration a,
 .profile-declaration-note a {
   color: inherit;
   text-decoration: underline;
-}
-.profile-declaration-note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #6e6459;
 }

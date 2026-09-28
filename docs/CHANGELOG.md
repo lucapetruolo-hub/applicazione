@@ -15239,3 +15239,67 @@ Verifica:
   200;
 - Playwright su iPhone 13: "Salva" senza spunta mostra l'errore; con la
   spunta mostra "Profilo salvato!" e poi la riga di conferma.
+
+## 159. Dichiarazione del profilo accettata cliccando "Salva profilo"
+
+Richiesta esplicita dell'utente: niente casella da spuntare. Come su altri
+siti, cliccando "Salva profilo" il professionista accetta la dichiarazione
+di §158.
+
+- Sopra il bottone, sempre visibile: "Cliccando "Salva profilo" accetti
+  questa dichiarazione: «…»", con il link "Leggi i Termini".
+- Il sito invia sempre `profileDeclarationAccepted: true`. Il server
+  registra data e versione a ogni salvataggio, quindi resta la data
+  dell'ultima conferma. La regola lato server di §158 non cambia: un
+  salvataggio senza dichiarazione viene rifiutato.
+
+Il consiglio legale aveva proposto la casella perché dimostra meglio il
+consenso. L'accettazione implicita è una prova più debole, da far valutare
+all'avvocato insieme al testo (checklist 11bis).
+
+Verifica: `tsc`; Playwright su iPhone 13 con un profilo che non aveva mai
+accettato. Nessuna casella, "Salva profilo" → "Profilo salvato!", versione
+`2026-09-28` salvata.
+
+## 160. Tempi di risposta delle urgenti e modello di ricavo (decisioni dell'utente)
+
+Decisioni esplicite dell'utente, prese dopo il parere del consiglio di
+esperti.
+
+- **Urgenti.** Da 20 minuti a **35 minuti tra le 7 e le 22** e **60 minuti
+  di notte**, ora italiana (`urgentResponseMinutes` in
+  `apps/api/src/guided-requests/lead-routing.ts`). Il Growth Lead proponeva
+  anche un tasto "Me ne occupo io" per prendere in carico la richiesta prima
+  del preventivo: l'utente l'ha escluso. Il professionista risponde, come
+  oggi, con un preventivo o rifiutando.
+- **Normali.** Restano 4 ore contate tra le 8 e le 21.
+- **Testi aggiornati:** `GuidedRequestForm.tsx` (interruttore "È urgente?" e
+  riepilogo "35 minuti (60 minuti tra le 22 e le 7)") e i commenti in
+  `leadDeadline.ts` e `requestHelpers.tsx`.
+- **Modello di ricavo.** Abbonamento unico a tre livelli (~19/39/69 €;
+  5, 15 e illimitati lavori accettati al mese), con tutte le funzioni per
+  tutti.
+  - Primo mese gratis per tutti.
+  - Un secondo mese regalato a chi non ha avuto preventivi accettati,
+    comunicato solo vicino alla scadenza del primo mese.
+  - Niente lead a pagamento.
+  - Da tarare sui dati dei primi mesi.
+  - Scritto in CLAUDE.md §6, e §7.3 segnato come superato. Il codice
+    (`plans.ts`, billing) è ancora il vecchio: va rifatto in una PR
+    dedicata.
+- **Pagamenti online:** ancora da decidere.
+
+Skill del consiglio di esperti (`.claude/skills/professionisti-ceo-esperti`),
+su richiesta dell'utente di consumare meno token:
+- la memoria unica è divisa in `decisioni.md`, letto dal CEO, e in
+  `esperti/<ruolo>.md`, uno per esperto, massimo 20 righe;
+- ogni esperto legge solo il proprio file, che non viene più copiato nel
+  prompt;
+- gli esperti aggiornano il proprio file e possono modificare direttamente
+  `SKILL.md` per migliorarsi (autorizzazione esplicita dell'utente). Non
+  possono toccare i cancelli sulle decisioni critiche e sul merge.
+
+Verifica:
+- `lead-routing.test.ts`: 3 test nuovi, cioè 35 minuti di giorno, 60 di
+  notte e i confini 21:59/22:00/7:00;
+- 79/79 test API; `tsc` su api e web.

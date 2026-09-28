@@ -831,7 +831,7 @@ export function GuidedRequestForm({
           <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
           <span>
             <strong>È urgente?</strong>
-            {isUrgent ? <small>Sì: la mandiamo subito a più professionisti, che hanno 20 minuti per risponderti.</small> : null}
+            {isUrgent ? <small>Sì: la mandiamo subito a più professionisti, che hanno 35 minuti per risponderti (60 di notte).</small> : null}
           </span>
         </label>
 
@@ -1207,7 +1207,7 @@ function RequestSummary({
   onToggleForward: () => void;
   onEdit: (step: 1 | 2) => void;
 }) {
-  const responseTime = isUrgent ? "20 minuti" : "4 ore (contate dalle 8 alle 21)";
+  const responseTime = isUrgent ? "35 minuti (60 minuti tra le 22 e le 7)" : "4 ore (contate dalle 8 alle 21)";
   return (
     <YStack gap="$4">
       <div className="guided-next">
