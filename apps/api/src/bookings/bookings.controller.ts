@@ -5,11 +5,16 @@ import {
   cancelBookingByProfessionalSchema,
   clientConfirmCompleteSchema,
   completeBookingSchema,
+  jobIssueChatOutcomeSchema,
+  jobIssueResponseSchema,
+  reportJobIssueSchema,
   updateBookingMeetingLinkSchema,
   updateBookingNoteSchema,
   type CancelBookingByProfessionalInput,
   type ClientConfirmCompleteInput,
   type CompleteBookingInput,
+  type JobIssueResponseInput,
+  type ReportJobIssueInput,
   type UpdateBookingMeetingLinkInput,
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
@@ -149,6 +154,27 @@ export class BookingsController {
   @Get("me")
   listMine(@Req() req: AuthenticatedRequest) {
     return this.bookingsService.listForClient(req.user.userId);
+  }
+
+  /** Il cliente segnala un problema sul lavoro: mancata presentazione o lavoro non andato bene (docs/CHANGELOG.md §164). */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/issue")
+  reportIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportJobIssueSchema)) body: ReportJobIssueInput) {
+    return this.bookingsService.reportIssue(req.user.userId, id, body);
+  }
+
+  /** Il cliente chiude la fase in chat: "abbiamo risolto" o "fai decidere al vostro team" (§165). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/issue/chat-outcome")
+  closeIssueChat(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueChatOutcomeSchema)) body: { outcome: "RESOLVED" | "ESCALATE" }) {
+    return this.bookingsService.closeIssueChat(req.user.userId, id, body.outcome);
+  }
+
+  /** Il professionista risponde alla segnalazione con la sua versione. */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/issue/response")
+  respondToIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueResponseSchema)) body: JobIssueResponseInput) {
+    return this.bookingsService.respondToIssue(req.user.userId, id, body);
   }
 
   /** Il cliente segnala che il professionista non si è presentato all'appuntamento e chiede un rimborso. */

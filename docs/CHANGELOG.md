@@ -15443,3 +15443,202 @@ Verifica:
   `/per-professionisti`, profilo pubblico in pausa; nessun overflow né
   errore. Il flusso Stripe reale non è provato: servono le chiavi di test.
 
+
+## 163. Note e motivazione a lavoro terminato, pagina admin "Lavori terminati"
+
+Richiesta esplicita dell'utente: quando professionista e cliente cliccano
+"Lavoro terminato", oltre alle foto/video possono lasciare delle note; il
+professionista deve motivare se aggiunge voci o se il totale è più alto o
+più basso del preventivo; note e foto/video visibili dall'area admin.
+
+Decisioni prese:
+- **Regola unica** `completionDeviation` (`packages/shared/src/completion.ts`),
+  usata dal modulo e dal server: motivo obbligatorio se c'è almeno una voce
+  finale che non era nel preventivo (confronto per nome, senza maiuscole e
+  spazi) o se il totale è sotto la somma dei minimi o sopra la somma dei
+  massimi del preventivo. Una voce "su richiesta" toglie il tetto massimo.
+  Prenotazioni senza preventivo (agenda): nessun confronto.
+- **Dati** (migrazione `20260928150000_completion_notes`):
+  `Booking.professionalCompletionNote`, `completionChangeReason`,
+  `clientCompletionNote`. `PATCH /bookings/:id/complete` accetta `note` e
+  `changeReason` e risponde 400 se il motivo serve e manca;
+  `PATCH /bookings/:id/client-confirm-complete` accetta `note`.
+- **Web**: in `CompleteJobModal` il riquadro "…: spiega il motivo *" compare
+  da solo appena gli importi escono dal preventivo o si aggiunge una voce,
+  con la fascia del preventivo; campo "Note sul lavoro svolto" facoltativo.
+  In `ClientCompleteModal` campo "Note sul lavoro" facoltativo.
+- **Admin**: nuova pagina `/admin/lavori` ("Lavori terminati", visibile a
+  ogni ruolo admin: serve a moderazione e finanza), `GET
+  /admin/completed-jobs?filter=all|changes|notes`. Per ogni lavoro: voci
+  finali (le aggiunte segnate), totale rispetto al preventivo con etichetta
+  "Più alto/Più basso del preventivo", motivo del professionista, note e
+  foto/video di entrambe le parti, link alle schede utente. Esclusi i profili
+  dimostrativi. Ultimi 200 lavori.
+- Le note restano solo per l'admin: il cliente non vede il motivo del
+  professionista (non richiesto).
+
+Verifica:
+- `completion-deviation.test.ts` (5 test); 103/103 test API; `tsc` su api,
+  web e mobile.
+- API sul database e2e: preventivo €60–90 accettato, chiusura a €105 con una
+  voce aggiunta senza motivo → 400 "Hai aggiunto 1 voce non preventivata e il
+  totale è più alto del preventivo: spiega il motivo…"; con motivo → 200;
+  conferma del cliente con nota → 200; filtri admin corretti; un cliente
+  riceve 403.
+- Playwright 1280 e 390 su `/admin/lavori`: nessun overflow né errore.
+
+## 164. Segnalazioni di un problema sul lavoro: mancata presentazione e lavoro non andato bene
+
+Richiesta dell'utente: valutare quando il cliente può dire che il lavoro non
+è andato a buon fine, sia per un lavoro fatto male sia per un professionista
+che non si è presentato. Proposta approvata dall'utente il 29/09/2026 ("sì a
+tutte e tre"): finestre di 7 e 14 giorni, mancata presentazione accolta che
+abbassa il punteggio nello smistamento, recensione possibile dopo la
+decisione.
+
+Decisioni prese:
+- **Quando** (`jobIssueTypesAllowed`, `packages/shared/src/jobIssues.ts`,
+  ricalcolato sul server): "Il professionista non si è presentato" dalla
+  fine dell'appuntamento, entro 7 giorni, solo se il cliente non ha già
+  confermato il lavoro; "Il lavoro non è andato bene" dall'inizio
+  dell'appuntamento, entro 14 giorni dall'ultimo tra fine appuntamento,
+  chiusura del professionista (`Booking.professionalCompletedAt`, nuovo) e
+  conferma del cliente, così vale anche per difetti scoperti dopo. Solo su
+  lavori confermati o completati, una segnalazione per lavoro.
+- **Dati** (migrazione `20260929090000_job_issues`): modello `JobIssue`
+  (tipo, descrizione, foto/video, stato OPEN/UPHELD/REJECTED, risposta del
+  professionista, motivazione e autore della decisione).
+- **Cliente**: "Segnala un problema" nella scheda del lavoro e dentro la
+  finestra "Lavoro terminato" ("Non è andato tutto bene?"), con
+  `ReportIssueModal`: scelta del tipo (solo quelli ammessi adesso),
+  descrizione obbligatoria, foto facoltative, contatti del professionista per
+  la mancata presentazione. Sostituisce il vecchio popup "Non presentato"
+  (`ReportNoShowModal`, rimosso); `PATCH /bookings/:id/report-no-show` resta
+  e crea la stessa segnalazione. Lo stato ("In esame", "Accolta",
+  "Respinta" con la motivazione) compare nella scheda.
+- **Professionista**: notifica `JOB_ISSUE_REPORTED` e `JobIssuePanel` nella
+  scheda della richiesta, per rispondere con la propria versione finché la
+  segnalazione è in esame (`PATCH /bookings/:id/issue/response`).
+- **Admin**: nuova pagina `/admin/problemi` ("Problemi segnalati", contatore
+  nel menu, ogni ruolo admin): versione del cliente, risposta del
+  professionista, note e foto a lavoro terminato di entrambi; decisione
+  "Accogli" o "Respingi" con motivazione obbligatoria (`PATCH
+  /admin/job-issues/:id`), registrata nel registro azioni e notificata a
+  entrambe le parti (`JOB_ISSUE_RESOLVED`).
+- **Punteggio**: una mancata presentazione accolta conta come appuntamento
+  non onorato (`recordNoShowConfirmed`: se il professionista aveva chiuso il
+  lavoro, toglie l'onorato già contato), quindi abbassa l'affidabilità usata
+  nello smistamento (`lead-routing.ts`). Un lavoro fatto male accolto non
+  tocca il punteggio: pesa già la recensione.
+- **Recensione** (`clientCanReview`): mai mentre la segnalazione è in esame;
+  dopo la decisione il cliente può recensire anche un lavoro mai chiuso. La
+  recensione automatica a 5 stelle al professionista (dopo 3 giorni) non
+  parte se c'è una segnalazione in esame o accolta.
+- Nessun rimborso automatico: i pagamenti in piattaforma non sono attivi.
+
+Verifica:
+- `job-issues.test.ts` (9 test sulle finestre e sulla recensione); 112/112
+  test API; `tsc` su api, web e mobile.
+- API sul database e2e: appuntamento finito da 2 giorni → ammessi entrambi i
+  tipi; descrizione corta → 400; segnalazione → 201; seconda → 409;
+  recensione durante l'esame → 403; risposta del professionista → 200 (del
+  cliente → 403); decisione "accolta" → 200, seconda decisione → 400;
+  appuntamenti del professionista 1 su 0 onorati; recensione dopo la
+  decisione → 201; notifiche con il lato giusto; contatore admin a zero.
+- Playwright 1280 e 390: finestra "Segnala un problema" e pagina admin,
+  nessun overflow né errore. Trovato e corretto nel giro: il pulsante
+  "Conferma che il lavoro è terminato" in cima alla scheda restava anche con
+  una segnalazione (`clientNextAction`).
+
+## 165. Segnalazioni: prima si prova a risolvere in chat
+
+Richiesta esplicita dell'utente: per "non si è presentato" e "lavoro non
+andato bene", come prima soluzione dare la possibilità di contattare il
+professionista in chat per trovare insieme una soluzione; se non ci
+riescono, proseguire come nel §164.
+
+Decisioni prese:
+- **Nuovi stati** `CHAT` e `RESOLVED` di `JobIssueStatus` (migrazione
+  `20260929120000_job_issue_chat`). Una segnalazione nasce in `CHAT`; solo
+  le prenotazioni dirette dall'agenda, che non hanno una chat, passano
+  subito al nostro team (`OPEN`).
+- **In chat**: alla segnalazione compare nella chat della richiesta un
+  messaggio con cosa è successo e l'invito a trovare una soluzione; il
+  professionista riceve `JOB_ISSUE_REPORTED` e nella sua scheda il tasto
+  "Apri la chat col cliente". Il cliente, dopo l'invio, ha subito "Apri la
+  chat".
+- **Chiusura della fase in chat, decisa dal cliente** (`PATCH
+  /bookings/:id/issue/chat-outcome`): "Abbiamo risolto" → `RESOLVED`,
+  segnalazione chiusa senza admin (notifica `JOB_ISSUE_SETTLED` al
+  professionista); "Non abbiamo risolto" (etichetta accorciata su richiesta dell'utente) →
+  `OPEN`, arriva in `/admin/problemi` e il professionista può aggiungere la
+  sua versione (`JOB_ISSUE_ESCALATED`). Il professionista non può chiudere
+  la fase in chat al posto del cliente. Nessun limite di tempo per la chat.
+- **Admin**: schede "Da decidere" (solo `OPEN`, unico contatore del menu),
+  "In chat tra le parti" (sola lettura) e "Chiuse" (accolte, respinte,
+  risolte tra le parti).
+- **Recensione e punteggio**: durante la chat la recensione resta bloccata;
+  dopo un accordo si può recensire; nessuna recensione automatica a 5 stelle
+  finché la segnalazione è aperta. Un accordo in chat non tocca il
+  punteggio: solo una mancata presentazione accolta dal team lo abbassa.
+
+Verifica:
+- `job-issues.test.ts` aggiornato (recensione in chat e dopo un accordo);
+  113/113 test API; `tsc` su api, web e mobile.
+- API sul database e2e: segnalazione → `CHAT`, visibile solo nella scheda
+  "In chat" dell'admin; recensione in chat → 403; il professionista non può
+  chiudere la chat (403); "fai decidere" → `OPEN` e in "Da decidere";
+  seconda chiusura → 400; altra segnalazione "abbiamo risolto" →
+  `RESOLVED`, recensione possibile, in "Chiuse"; messaggi in chat e
+  notifiche creati.
+- Playwright 390 e 1280 sulla scheda del cliente in fase chat: nessun
+  overflow né errore.
+
+## 166. Chat leggibili dagli admin, avviso di sicurezza in chat, pagina "Sicurezza e truffe"
+
+Richieste esplicite dell'utente: gli admin devono poter vedere le chat tra
+cliente e professionista anche senza una segnalazione; nella chat deve
+esserci un avviso come "Non inquadrare QR code e non condividere numeri di
+telefono o dati personali. Resta sempre in questa chat e segnala
+comportamenti sospetti. Scopri di più", e "Scopri di più" deve aprire una
+pagina che spiega come difendersi (modello: pagina "Phishing" di Subito.it).
+
+Decisioni prese:
+- **Admin → Chat** (`/admin/chat`, voce di menu per Super admin e
+  Moderatore, `@RequireAdminScope("MODERATION")`: sono conversazioni
+  private, la Finanza non le vede). Elenco di tutte le coppie
+  richiesta-professionista con ultimo messaggio, cliente, professionista,
+  richiesta e numero di messaggi, ricerca per nome, cognome o email del
+  cliente e nome del professionista (`GET /admin/conversations?q=`, ultime
+  200). Dettaglio in sola lettura (`/admin/chat/[richiesta]/[professionista]`,
+  `GET /admin/conversations/:guidedRequestId/:professionalProfileId`):
+  cliente a sinistra, professionista a destra, messaggi automatici al
+  centro, foto/video, link alle schede utente e alla segnalazione se c'è.
+  **Ogni apertura viene registrata** nel registro azioni (`AuditLog`,
+  `entityType: "Conversation"`). "Leggi la chat" anche dalle schede di
+  `/admin/problemi` e `/admin/lavori`.
+- **Privacy**: `/privacy` §3 dice ora che le conversazioni possono essere
+  lette dal personale autorizzato per sicurezza e qualità (segnalazioni,
+  contestazioni, abusi) e che ogni lettura è registrata. Da far verificare
+  al legale insieme al resto dell'informativa (checklist pre-lancio).
+- **Avviso in chat** (`ConversationView`): riquadro fisso sopra i messaggi,
+  sempre visibile anche scorrendo, con icona scudo e il testo chiesto
+  dall'utente; "Scopri di più" apre `/sicurezza` in una nuova scheda.
+- **Pagina `/sicurezza` ("Sicurezza e truffe")**: resta nella chat e perché;
+  cos'è il phishing; come riconoscerlo (richieste di dati sensibili, link e
+  QR code, fretta ed errori); come proteggersi (restare in chat, non aprire
+  link o allegati che chiedono dati di pagamento, non condividere dati o
+  codici, false telefonate e codici SMS); cosa fare (non cliccare, segnalare
+  dal profilo o dal menu della richiesta, Contatti, cambiare password,
+  chiamare la banca). Adattata a noi: niente servizio di pagamento in chat
+  da citare, nessuna promessa non vera. Link nel footer e nella sitemap.
+
+Verifica:
+- API sul database e2e: elenco (18 chat), ricerca ("Due" → 6, testo
+  inesistente → 0), dettaglio con segnalazione collegata, riga nel registro
+  azioni; un cliente riceve 403, un admin con solo il ruolo Finanza 403.
+- `tsc` su api e web; Playwright: `/sicurezza` 390, `/admin/chat` 1280,
+  dettaglio chat 390, avviso nella chat del cliente 390; nessun overflow né
+  errore. Corretti nel giro: avviso che scorreva via coi messaggi (ora
+  fisso), icona schiacciata, conteggio "messaggi scritti" che includeva gli
+  eventi automatici (ora totale dei messaggi).

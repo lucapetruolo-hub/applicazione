@@ -18,10 +18,13 @@ const MAX_COMPLETION_PHOTOS = 5;
 export function ClientCompleteModal({
   onClose,
   onConfirm,
+  onReportProblem,
   uploadPhoto,
 }: {
   onClose: () => void;
-  onConfirm: (photoUrls: string[]) => Promise<void>;
+  onConfirm: (photoUrls: string[], note: string | undefined) => Promise<void>;
+  /** Apre "Segnala un problema" (docs/CHANGELOG.md §164), se il cliente può ancora farlo. */
+  onReportProblem?: () => void;
   uploadPhoto: (file: File) => Promise<string>;
 }) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -29,6 +32,7 @@ export function ClientCompleteModal({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [note, setNote] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,7 +68,7 @@ export function ClientCompleteModal({
     setError(null);
     setIsSaving(true);
     try {
-      await onConfirm(photoUrls);
+      await onConfirm(photoUrls, note.trim() || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -110,8 +114,38 @@ export function ClientCompleteModal({
             Confermi che il lavoro è terminato?
           </Text>
           <Text fontSize="$3" color={brand.grafite70}>
-            Puoi allegare qualche foto del lavoro svolto, poi ti chiederemo di lasciare una recensione al professionista.
+            Puoi allegare qualche foto del lavoro svolto e delle note, poi ti chiederemo di lasciare una recensione al professionista.
           </Text>
+          {onReportProblem ? (
+            <Text fontSize="$3" color={brand.urgenza} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={onReportProblem}>
+              Non è andato tutto bene? Segnala un problema
+            </Text>
+          ) : null}
+        </YStack>
+
+        {/* Note del cliente (docs/CHANGELOG.md §163), lette dall'admin. */}
+        <YStack gap="$1">
+          <Text fontSize="$2" color={brand.grafite70}>
+            Note sul lavoro (opzionale)
+          </Text>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 1000))}
+            placeholder="Es. lavoro pulito, finito in tempo"
+            aria-label="Note sul lavoro"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              minHeight: 76,
+              padding: 10,
+              borderRadius: 4,
+              border: `1px solid ${brand.filetto}`,
+              fontSize: 14,
+              fontFamily: "inherit",
+              color: brand.grafite,
+              resize: "vertical",
+            }}
+          />
         </YStack>
 
         <YStack gap="$1">

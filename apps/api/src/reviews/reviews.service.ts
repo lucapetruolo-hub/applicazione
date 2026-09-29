@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import type { ReviewInput } from "@professionisti/shared";
+import { clientCanReview, type ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 
@@ -88,7 +88,7 @@ export class ReviewsService {
   async create(clientId: string, input: ReviewInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: input.bookingId },
-      include: { review: true },
+      include: { review: true, issue: { select: { status: true } } },
     });
     if (!booking) {
       throw new NotFoundException("Prenotazione non trovata.");
@@ -96,20 +96,25 @@ export class ReviewsService {
     if (booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
-    // Recensione solo da prenotazione confermata/completata (CLAUDE.md §8):
-    // niente recensioni libere, per credibilità del sistema reputazionale.
-    if (booking.status !== "COMPLETED") {
-      throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
-    }
-    // Il cliente deve prima confermare dal proprio lato che il lavoro è
-    // davvero terminato (richiesta esplicita dell'utente: "servono i
-    // completed da entrambi... le recensioni saranno subito effettuabili"
-    // — subito dopo la PROPRIA conferma, non prima).
-    if (!booking.clientConfirmedCompletedAt) {
-      throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
-    }
+    // Recensione solo da prenotazione confermata/completata (CLAUDE.md §8),
+    // dopo la conferma del cliente ("servono i completed da entrambi"),
+    // oppure dopo la decisione dell'admin su una segnalazione del cliente
+    // (docs/CHANGELOG.md §164). Mai mentre la segnalazione è in esame.
     if (booking.review) {
       throw new ConflictException("Hai già recensito questa prenotazione.");
+    }
+    const allowed = clientCanReview({
+      status: booking.status,
+      clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,
+      hasReview: false,
+      issueStatus: booking.issue?.status ?? null,
+    });
+    if (!allowed) {
+      if (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") {
+        throw new ForbiddenException("Potrai recensire quando la tua segnalazione sarà chiusa.");
+      }
+      if (booking.status !== "COMPLETED") throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
+      throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
     }
 
     const review = await this.prisma.review.create({
@@ -145,7 +150,13 @@ export class ReviewsService {
     }
 
     const staleClientReviews = await this.prisma.clientReview.findMany({
-      where: { isAutomatic: false, createdAt: { lt: threshold }, booking: { review: { is: null } } },
+      // Mai una recensione automatica a 5 stelle al professionista se il
+      // cliente ha segnalato un problema ancora aperto o accolto (§164-§165).
+      where: {
+        isAutomatic: false,
+        createdAt: { lt: threshold },
+        booking: { review: { is: null }, OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
+      },
     });
     for (const clientReview of staleClientReviews) {
       await this.prisma.review.create({

@@ -23,6 +23,7 @@ import {
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
+  toJobIssueSummary,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
@@ -1161,6 +1162,7 @@ export class ProfessionalsService {
           },
         },
         finalItems: true,
+        issue: true,
         clientReview: true,
       },
       orderBy: { scheduledAt: "asc" },
@@ -1262,6 +1264,8 @@ export class ProfessionalsService {
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       hasClientReview: booking.clientReview !== null,
+      // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
+      issue: toJobIssueSummary(booking.issue),
     }));
   }
 

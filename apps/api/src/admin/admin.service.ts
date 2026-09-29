@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { MODERATION_ACTIONS_BY_TARGET, normalizeAdminRoles, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -29,6 +29,8 @@ export type AdminOverview = {
   openMessages: number;
   pendingRefunds: number;
   openDisputes: number;
+  /** Segnalazioni di problemi sul lavoro da decidere (docs/CHANGELOG.md §164). */
+  openJobIssues: number;
   newUsers7d: number;
   clients: number;
   professionals: number;
@@ -496,7 +498,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -509,8 +511,9 @@ export class AdminService {
         this.prisma.user.count({ where: { suspendedAt: { not: null } } }),
         this.prisma.lead.count({ where: { hiddenByProfessionalAt: { not: null } } }),
         this.prisma.waitlistSignup.count(),
+        this.prisma.jobIssue.count({ where: { status: "OPEN" } }),
       ]);
-    return { openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist };
+    return { openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues };
   }
 
   /**
@@ -970,6 +973,287 @@ export class AdminService {
       };
     });
   }
+
+  /**
+   * Lavori terminati (docs/CHANGELOG.md §163): note, foto/video di entrambe
+   * le parti e motivo delle differenze dal preventivo. `filter`: "changes"
+   * solo con voci aggiunte o totale fuori preventivo, "notes" solo con note.
+   */
+  async listCompletedJobs(filter: "all" | "changes" | "notes"): Promise<AdminCompletedJobRow[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        OR: [{ status: "COMPLETED" }, { clientConfirmedCompletedAt: { not: null } }],
+        // I profili dimostrativi del seed hanno decine di lavori finti senza note.
+        professionalProfile: { isDemo: false },
+        ...(filter === "changes" ? { completionChangeReason: { not: null } } : {}),
+        ...(filter === "notes" ? { AND: [{ OR: [{ professionalCompletionNote: { not: null } }, { clientCompletionNote: { not: null } }] }] } : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      include: {
+        finalItems: true,
+        professionalProfile: { select: { id: true, userId: true, businessName: true } },
+        client: { select: { id: true, name: true, surname: true, deletedAt: true } },
+        quote: {
+          select: {
+            items: true,
+            guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } },
+          },
+        },
+      },
+    });
+    return bookings.map((booking) => {
+      const deviation = completionDeviation(booking.quote?.items ?? [], booking.finalItems);
+      const added = new Set(deviation?.addedItemNames ?? []);
+      const request = booking.quote?.guidedRequest ?? null;
+      return {
+        bookingId: booking.id,
+        guidedRequestId: request?.id ?? null,
+        categoryLabel: request?.category.label ?? null,
+        city: request?.city ?? null,
+        description: request?.description ?? null,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        updatedAt: booking.updatedAt.toISOString(),
+        professional: { profileId: booking.professionalProfile.id, userId: booking.professionalProfile.userId, businessName: booking.professionalProfile.businessName },
+        client: {
+          userId: booking.client.id,
+          name: booking.client.deletedAt ? null : [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+          accountDeleted: booking.client.deletedAt !== null,
+        },
+        professionalCompleted: booking.status === "COMPLETED",
+        clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+        quoteMinEurCents: deviation?.quoteMinEurCents ?? null,
+        quoteMaxEurCents: deviation?.quoteMaxEurCents ?? null,
+        finalAmountEurCents: booking.finalAmountEurCents,
+        finalItems: booking.finalItems.map((item) => ({ name: item.name, priceEurCents: item.priceEurCents, added: added.has(item.name.trim()) })),
+        direction: deviation?.direction ?? null,
+        changeReason: booking.completionChangeReason,
+        professionalNote: booking.professionalCompletionNote,
+        clientNote: booking.clientCompletionNote,
+        professionalPhotoUrls: booking.professionalCompletionPhotoUrls,
+        clientPhotoUrls: booking.clientCompletionPhotoUrls,
+      };
+    });
+  }
+
+  /**
+   * Segnalazioni di problemi sul lavoro (docs/CHANGELOG.md §164-§165): da
+   * decidere ("open"), ancora in chat tra le parti ("chat") o chiuse
+   * ("closed"), con tutto ciò che serve per
+   * decidere: descrizione e foto del cliente, versione del professionista,
+   * note e foto a lavoro terminato, importi.
+   */
+  async listJobIssues(view: "open" | "chat" | "closed"): Promise<AdminJobIssueRow[]> {
+    const issues = await this.prisma.jobIssue.findMany({
+      where:
+        view === "open" ? { status: "OPEN" } : view === "chat" ? { status: "CHAT" } : { status: { in: ["UPHELD", "REJECTED", "RESOLVED"] } },
+      orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
+      take: 200,
+      include: {
+        booking: {
+          include: {
+            professionalProfile: { select: { id: true, userId: true, businessName: true } },
+            client: { select: { id: true, name: true, surname: true, deletedAt: true } },
+            quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
+          },
+        },
+      },
+    });
+    return issues.map((issue) => {
+      const booking = issue.booking;
+      const request = booking.quote?.guidedRequest ?? null;
+      return {
+        issue: toJobIssueSummary(issue) as JobIssueSummary,
+        bookingId: booking.id,
+        guidedRequestId: request?.id ?? null,
+        categoryLabel: request?.category.label ?? null,
+        city: request?.city ?? null,
+        requestDescription: request?.description ?? null,
+        scheduledAt: booking.scheduledAt.toISOString(),
+        bookingStatus: booking.status,
+        professional: { profileId: booking.professionalProfile.id, userId: booking.professionalProfile.userId, businessName: booking.professionalProfile.businessName },
+        client: {
+          userId: booking.client.id,
+          name: booking.client.deletedAt ? null : [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+          accountDeleted: booking.client.deletedAt !== null,
+        },
+        finalAmountEurCents: booking.finalAmountEurCents,
+        professionalCompletedAt: booking.professionalCompletedAt?.toISOString() ?? null,
+        clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+        professionalCompletionNote: booking.professionalCompletionNote,
+        completionChangeReason: booking.completionChangeReason,
+        clientCompletionNote: booking.clientCompletionNote,
+        professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
+        clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
+      };
+    });
+  }
+
+  /**
+   * Decisione su una segnalazione (docs/CHANGELOG.md §164, decisione
+   * dell'utente): una mancata presentazione accolta conta come appuntamento
+   * non onorato e abbassa l'affidabilità nello smistamento. Cliente e
+   * professionista ricevono la decisione con la motivazione; da qui il
+   * cliente può recensire.
+   */
+  async resolveJobIssue(adminUserId: string, issueId: string, input: ResolveJobIssueInput): Promise<{ id: string; status: string }> {
+    const issue = await this.prisma.jobIssue.findUnique({
+      where: { id: issueId },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            clientId: true,
+            status: true,
+            professionalProfileId: true,
+            professionalProfile: { select: { userId: true } },
+            quote: { select: { guidedRequestId: true } },
+          },
+        },
+      },
+    });
+    if (!issue) throw new NotFoundException("Segnalazione non trovata.");
+    if (issue.status !== "OPEN") throw new BadRequestException("La segnalazione è già stata decisa.");
+
+    const note = input.note.trim();
+    await this.prisma.jobIssue.update({
+      where: { id: issueId },
+      data: { status: input.decision, resolutionNote: note, resolvedAt: new Date(), resolvedByUserId: adminUserId },
+    });
+    if (input.decision === "UPHELD" && issue.type === "NO_SHOW") {
+      await this.professionalMetricsService.recordNoShowConfirmed(issue.booking.professionalProfileId, issue.booking.status === "COMPLETED");
+    }
+    await this.auditLogService.record({
+      entityType: "JobIssue",
+      entityId: issueId,
+      fieldName: "status",
+      oldValue: "OPEN",
+      newValue: input.decision,
+      changedByUserId: adminUserId,
+      reason: note,
+    });
+    const payload = { bookingId: issue.booking.id, guidedRequestId: issue.booking.quote?.guidedRequestId ?? null, issueType: issue.type, decision: input.decision, note };
+    await this.notificationsService.notify(issue.booking.clientId, "JOB_ISSUE_RESOLVED", { ...payload, audience: "CLIENT" });
+    await this.notificationsService.notify(issue.booking.professionalProfile.userId, "JOB_ISSUE_RESOLVED", { ...payload, audience: "PROFESSIONAL" });
+    return { id: issueId, status: input.decision };
+  }
+
+  /**
+   * Tutte le chat tra cliente e professionista (docs/CHANGELOG.md §166,
+   * richiesta esplicita dell'utente: anche senza una segnalazione). Una riga
+   * per coppia richiesta-professionista, la più recente in cima; `q` filtra
+   * per nome del cliente o del professionista o per email del cliente.
+   */
+  async listConversations(q?: string): Promise<AdminConversationRow[]> {
+    const query = q?.trim();
+    const events = await this.prisma.conversationEvent.findMany({
+      where: query
+        ? {
+            OR: [
+              { professionalProfile: { businessName: { contains: query, mode: "insensitive" } } },
+              { guidedRequest: { client: { name: { contains: query, mode: "insensitive" } } } },
+              { guidedRequest: { client: { surname: { contains: query, mode: "insensitive" } } } },
+              { guidedRequest: { client: { email: { contains: query, mode: "insensitive" } } } },
+            ],
+          }
+        : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+      select: {
+        guidedRequestId: true,
+        professionalProfileId: true,
+        actor: true,
+        message: true,
+        createdAt: true,
+        guidedRequest: { select: { city: true, category: { select: { label: true } }, client: { select: { id: true, name: true, surname: true, deletedAt: true } } } },
+        professionalProfile: { select: { businessName: true, userId: true } },
+      },
+    });
+    const rows = new Map<string, AdminConversationRow>();
+    for (const event of events) {
+      const key = `${event.guidedRequestId}:${event.professionalProfileId}`;
+      const existing = rows.get(key);
+      if (existing) {
+        existing.messageCount += 1;
+        continue;
+      }
+      if (rows.size >= 200) continue;
+      const client = event.guidedRequest.client;
+      rows.set(key, {
+        guidedRequestId: event.guidedRequestId,
+        professionalProfileId: event.professionalProfileId,
+        categoryLabel: event.guidedRequest.category.label,
+        city: event.guidedRequest.city,
+        clientUserId: client.id,
+        clientName: client.deletedAt ? null : [client.name, client.surname].filter(Boolean).join(" ") || null,
+        professionalUserId: event.professionalProfile.userId,
+        businessName: event.professionalProfile.businessName,
+        lastMessage: event.message,
+        lastActor: event.actor,
+        lastMessageAt: event.createdAt.toISOString(),
+        messageCount: 1,
+      });
+    }
+    return [...rows.values()];
+  }
+
+  /**
+   * Una chat per intero, in sola lettura. Ogni lettura resta nel registro
+   * azioni: sono conversazioni private, l'accesso va tracciato.
+   */
+  async getConversation(adminUserId: string, guidedRequestId: string, professionalProfileId: string): Promise<AdminConversationDetail> {
+    const request = await this.prisma.guidedRequest.findUnique({
+      where: { id: guidedRequestId },
+      select: {
+        id: true,
+        city: true,
+        description: true,
+        category: { select: { label: true } },
+        client: { select: { id: true, name: true, surname: true, deletedAt: true } },
+      },
+    });
+    const professional = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { id: true, userId: true, businessName: true },
+    });
+    if (!request || !professional) throw new NotFoundException("Chat non trovata.");
+    const events = await this.prisma.conversationEvent.findMany({
+      where: { guidedRequestId, professionalProfileId },
+      orderBy: { createdAt: "asc" },
+    });
+    if (events.length === 0) throw new NotFoundException("Chat non trovata.");
+    await this.auditLogService.record({
+      entityType: "Conversation",
+      entityId: `${guidedRequestId}:${professionalProfileId}`,
+      fieldName: "read",
+      changedByUserId: adminUserId,
+      reason: "Lettura della chat da parte di un admin",
+    });
+    const issue = await this.prisma.jobIssue.findFirst({
+      where: { booking: { professionalProfileId, quote: { guidedRequestId } } },
+      select: { type: true, status: true },
+    });
+    const client = request.client;
+    return {
+      guidedRequestId,
+      professionalProfileId,
+      categoryLabel: request.category.label,
+      city: request.city,
+      requestDescription: request.description,
+      clientUserId: client.id,
+      clientName: client.deletedAt ? null : [client.name, client.surname].filter(Boolean).join(" ") || null,
+      professionalUserId: professional.userId,
+      businessName: professional.businessName,
+      issue: issue ? { type: issue.type, status: issue.status } : null,
+      events: events.map((event) => ({
+        id: event.id,
+        actor: event.actor,
+        message: event.message,
+        mediaUrls: event.mediaUrls,
+        createdAt: event.createdAt.toISOString(),
+      })),
+    };
+  }
 }
 
 export type AdminHiddenLeadRow = {
@@ -1089,3 +1373,78 @@ function auditLabel(fieldName: string | null, newValue: string | null): string {
   if (fieldName === "status" && newValue === "DISMISSED") return "Segnalazione non accolta";
   return [fieldName, newValue].filter(Boolean).join(" → ") || "Modifica";
 }
+
+export type AdminCompletedJobRow = {
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  description: string | null;
+  scheduledAt: string;
+  updatedAt: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  professionalCompleted: boolean;
+  clientConfirmedAt: string | null;
+  quoteMinEurCents: number | null;
+  quoteMaxEurCents: number | null;
+  finalAmountEurCents: number | null;
+  finalItems: { name: string; priceEurCents: number; added: boolean }[];
+  direction: "ABOVE" | "BELOW" | null;
+  changeReason: string | null;
+  professionalNote: string | null;
+  clientNote: string | null;
+  professionalPhotoUrls: string[];
+  clientPhotoUrls: string[];
+};
+
+export type AdminJobIssueRow = {
+  issue: JobIssueSummary;
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  requestDescription: string | null;
+  scheduledAt: string;
+  bookingStatus: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  finalAmountEurCents: number | null;
+  professionalCompletedAt: string | null;
+  clientConfirmedAt: string | null;
+  professionalCompletionNote: string | null;
+  completionChangeReason: string | null;
+  clientCompletionNote: string | null;
+  professionalCompletionPhotoUrls: string[];
+  clientCompletionPhotoUrls: string[];
+};
+
+export type AdminConversationRow = {
+  guidedRequestId: string;
+  professionalProfileId: string;
+  categoryLabel: string;
+  city: string;
+  clientUserId: string;
+  clientName: string | null;
+  professionalUserId: string;
+  businessName: string;
+  lastMessage: string;
+  lastActor: string;
+  lastMessageAt: string;
+  /** Messaggi nella chat, compresi quelli automatici del ciclo di vita. */
+  messageCount: number;
+};
+
+export type AdminConversationDetail = {
+  guidedRequestId: string;
+  professionalProfileId: string;
+  categoryLabel: string;
+  city: string;
+  requestDescription: string;
+  clientUserId: string;
+  clientName: string | null;
+  professionalUserId: string;
+  businessName: string;
+  issue: { type: string; status: string } | null;
+  events: { id: string; actor: string; message: string; mediaUrls: string[]; createdAt: string }[];
+};

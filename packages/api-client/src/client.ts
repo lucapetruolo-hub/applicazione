@@ -51,12 +51,23 @@ import type {
   UpdateBookingMeetingLinkInput,
   UpdateBookingNoteInput,
   UpdateEngagementRadiusInput,
+  JobIssueResponseInput,
+  JobIssueSummary,
+  JobIssueType,
+  ReportJobIssueInput,
+  ResolveJobIssueInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
 
 export type ClientBooking = {
   id: string;
+  /** Segnalazione di un problema già inviata dal cliente (docs/CHANGELOG.md §164). */
+  issue: JobIssueSummary | null;
+  /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
+  issueTypesAllowed: JobIssueType[];
+  /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
+  canReview: boolean;
   scheduledAt: string;
   /** Fine della fascia (richiesta esplicita dell'utente), null se non nota (data indicata a mano o prenotazione precedente a questa funzionalità). */
   scheduledEndAt: string | null;
@@ -300,6 +311,7 @@ export type AdminOverview = {
   suspendedUsers: number;
   hiddenLeads: number;
   waitlist: number;
+  openJobIssues: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -388,6 +400,75 @@ export type AdminContentReport = {
 
 /** Messaggio dal form "Contatti" del footer, vista admin (richiesta esplicita dell'utente). */
 /** Richiesta "eliminata" da un professionista: nascosta a lui, visibile in /admin (docs/CHANGELOG.md §143). */
+/** Lavoro terminato visto dall'admin (docs/CHANGELOG.md §163). */
+export type AdminCompletedJob = {
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  description: string | null;
+  scheduledAt: string;
+  updatedAt: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  professionalCompleted: boolean;
+  clientConfirmedAt: string | null;
+  quoteMinEurCents: number | null;
+  quoteMaxEurCents: number | null;
+  finalAmountEurCents: number | null;
+  finalItems: { name: string; priceEurCents: number; added: boolean }[];
+  direction: "ABOVE" | "BELOW" | null;
+  changeReason: string | null;
+  professionalNote: string | null;
+  clientNote: string | null;
+  professionalPhotoUrls: string[];
+  clientPhotoUrls: string[];
+};
+
+/** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */
+export type AdminConversation = {
+  guidedRequestId: string;
+  professionalProfileId: string;
+  categoryLabel: string;
+  city: string;
+  clientUserId: string;
+  clientName: string | null;
+  professionalUserId: string;
+  businessName: string;
+  lastMessage: string;
+  lastActor: string;
+  lastMessageAt: string;
+  messageCount: number;
+};
+
+export type AdminConversationDetail = Omit<AdminConversation, "lastMessage" | "lastActor" | "lastMessageAt" | "messageCount"> & {
+  requestDescription: string;
+  issue: { type: JobIssueType; status: JobIssueSummary["status"] } | null;
+  events: { id: string; actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM"; message: string; mediaUrls: string[]; createdAt: string }[];
+};
+
+/** Segnalazione di un problema vista dall'admin (docs/CHANGELOG.md §164). */
+export type AdminJobIssue = {
+  issue: JobIssueSummary;
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  requestDescription: string | null;
+  scheduledAt: string;
+  bookingStatus: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  finalAmountEurCents: number | null;
+  professionalCompletedAt: string | null;
+  clientConfirmedAt: string | null;
+  professionalCompletionNote: string | null;
+  completionChangeReason: string | null;
+  clientCompletionNote: string | null;
+  professionalCompletionPhotoUrls: string[];
+  clientCompletionPhotoUrls: string[];
+};
+
 export type AdminHiddenLead = {
   leadId: string;
   guidedRequestId: string;
@@ -1361,6 +1442,52 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       }),
+
+    adminListConversations: (token: string, q?: string) =>
+      request<AdminConversation[]>(`/admin/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminGetConversation: (token: string, guidedRequestId: string, professionalProfileId: string) =>
+      request<AdminConversationDetail>(`/admin/conversations/${guidedRequestId}/${professionalProfileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminListJobIssues: (token: string, view: "open" | "chat" | "closed") =>
+      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
+      request<{ id: string; status: string }>(`/admin/job-issues/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    reportJobIssue: (token: string, bookingId: string, input: ReportJobIssueInput) =>
+      request<{ id: string; status: string }>(`/bookings/${bookingId}/issue`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    closeJobIssueChat: (token: string, bookingId: string, outcome: "RESOLVED" | "ESCALATE") =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/issue/chat-outcome`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ outcome }),
+      }),
+
+    respondToJobIssue: (token: string, bookingId: string, input: JobIssueResponseInput) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/response`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    adminListCompletedJobs: (token: string, filter: "all" | "changes" | "notes") =>
+      request<AdminCompletedJob[]>(`/admin/completed-jobs?filter=${filter}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

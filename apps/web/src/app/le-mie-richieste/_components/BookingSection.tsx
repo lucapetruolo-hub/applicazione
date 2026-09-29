@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { ReportNoShowModal } from "@/components/ReportNoShowModal";
+import { ReportIssueModal } from "@/components/ReportIssueModal";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
@@ -31,6 +32,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [issueBusy, setIssueBusy] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
 
   async function handleReopenBooking() {
@@ -60,8 +63,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
-  async function handleClientConfirmComplete(photoUrls: string[]) {
-    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls });
+  async function handleClientConfirmComplete(photoUrls: string[], note: string | undefined) {
+    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls, note });
     setShowClientCompleteModal(false);
     if (booking.status === "COMPLETED" && !booking.hasReview) {
       setShowReviewModal(true);
@@ -81,8 +84,22 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     onChanged();
   }
 
-  const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
-  const noShowEligible = booking.status === "CONFIRMED" && new Date(referenceEnd).getTime() <= Date.now() && !booking.refundRequested;
+  // Fine della fase in chat di una segnalazione (§165), decisa dal cliente.
+  async function closeIssueChat(outcome: "RESOLVED" | "ESCALATE") {
+    setIssueError(null);
+    setIssueBusy(true);
+    try {
+      await apiClient.closeJobIssueChat(token, booking.id, outcome);
+      onChanged();
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIssueBusy(false);
+    }
+  }
+
+  // Segnalazioni (docs/CHANGELOG.md §164): quali si possono inviare lo decide il server.
+  const canReportIssue = booking.issueTypesAllowed.length > 0;
 
   return (
     <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
@@ -139,19 +156,59 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </Text>
       ) : null}
 
-      {noShowEligible ? (
+      {canReportIssue ? (
         <Text color={brand.urgenza} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowNoShowModal(true)}>
-          Non presentato
+          Segnala un problema
         </Text>
       ) : null}
 
-      {booking.status === "CONFIRMED" && booking.refundRequested ? (
+      {booking.issue ? (
+        <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          <Text fontSize="$2" fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
+            Hai segnalato: {JOB_ISSUE_LABEL[booking.issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[booking.issue.status]}
+          </Text>
+          {booking.issue.status === "CHAT" ? (
+            <YStack gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                Prova a trovare una soluzione con {booking.businessName} in chat. Se non vi accordate, chiedi al nostro team di decidere.
+              </Text>
+              <XStack gap="$2" flexWrap="wrap">
+                {booking.guidedRequestId ? (
+                  <Button variant="primary" size="$2" height={36} onPress={() => setShowTimeline(true)}>
+                    Apri la chat
+                  </Button>
+                ) : null}
+                <Button variant="secondary" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("RESOLVED")}>
+                  Abbiamo risolto
+                </Button>
+                <Button variant="ghost" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("ESCALATE")}>
+                  Non abbiamo risolto
+                </Button>
+              </XStack>
+              {issueError ? (
+                <Text fontSize="$2" color={brand.urgenza}>
+                  {issueError}
+                </Text>
+              ) : null}
+            </YStack>
+          ) : booking.issue.status === "RESOLVED" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai indicato che avete risolto il problema con {booking.businessName}.
+            </Text>
+          ) : booking.issue.status === "OPEN" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Il nostro team la sta esaminando e ha avvisato {booking.businessName}. Ti comunichiamo la decisione qui e per notifica.
+            </Text>
+          ) : booking.issue.resolutionNote ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Decisione: {booking.issue.resolutionNote}
+            </Text>
+          ) : null}
+        </YStack>
+      ) : booking.status === "CONFIRMED" && booking.refundRequested ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize="$2" fontWeight="600" color={brand.urgenza}>
             Hai segnalato la mancata presentazione
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            Abbiamo avvisato {booking.businessName}. Contattalo direttamente per accordarvi su un rimborso.
           </Text>
         </YStack>
       ) : null}
@@ -221,22 +278,46 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       ) : null}
 
       {showNoShowModal ? (
-        <ReportNoShowModal
+        <ReportIssueModal
           businessName={booking.businessName}
           phone={booking.professionalPhone}
           email={booking.professionalEmail}
-          address={booking.professionalAddress}
-          onClose={() => setShowNoShowModal(false)}
-          onRequestRefund={async () => {
-            await apiClient.reportBookingNoShow(token, booking.id);
+          allowedTypes={booking.issueTypesAllowed}
+          onClose={() => {
+            setShowNoShowModal(false);
             onChanged();
           }}
+          onSubmit={async (input) => {
+            await apiClient.reportJobIssue(token, booking.id, input);
+          }}
+          onOpenChat={
+            booking.guidedRequestId
+              ? () => {
+                  setShowNoShowModal(false);
+                  setShowTimeline(true);
+                  onChanged();
+                }
+              : undefined
+          }
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
 
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {!booking.clientConfirmedCompletedAt ? (
+          {booking.hasReview ? (
+            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+              Recensione inviata
+            </Text>
+          ) : booking.canReview ? (
+            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
+              Lascia una recensione
+            </Button>
+          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Potrai lasciare la recensione quando la segnalazione sarà chiusa.
+            </Text>
+          ) : !booking.clientConfirmedCompletedAt ? (
             <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </Button>
@@ -244,20 +325,24 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             <Text fontSize="$2" color={brand.grafite70}>
               Hai confermato il completamento. In attesa che anche il professionista lo segnali per poter lasciare una recensione.
             </Text>
-          ) : booking.hasReview ? (
-            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-              Recensione inviata
-            </Text>
-          ) : (
-            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
-              Lascia una recensione
-            </Button>
-          )}
+          ) : null}
         </YStack>
       ) : null}
 
       {showClientCompleteModal ? (
-        <ClientCompleteModal onClose={() => setShowClientCompleteModal(false)} onConfirm={handleClientConfirmComplete} uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)} />
+        <ClientCompleteModal
+          onClose={() => setShowClientCompleteModal(false)}
+          onConfirm={handleClientConfirmComplete}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+          onReportProblem={
+            canReportIssue
+              ? () => {
+                  setShowClientCompleteModal(false);
+                  setShowNoShowModal(true);
+                }
+              : undefined
+          }
+        />
       ) : null}
       {showReviewModal ? (
         <ReviewModal
