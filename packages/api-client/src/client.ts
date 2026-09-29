@@ -51,12 +51,23 @@ import type {
   UpdateBookingMeetingLinkInput,
   UpdateBookingNoteInput,
   UpdateEngagementRadiusInput,
+  JobIssueResponseInput,
+  JobIssueSummary,
+  JobIssueType,
+  ReportJobIssueInput,
+  ResolveJobIssueInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
 
 export type ClientBooking = {
   id: string;
+  /** Segnalazione di un problema già inviata dal cliente (docs/CHANGELOG.md §164). */
+  issue: JobIssueSummary | null;
+  /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
+  issueTypesAllowed: JobIssueType[];
+  /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
+  canReview: boolean;
   scheduledAt: string;
   /** Fine della fascia (richiesta esplicita dell'utente), null se non nota (data indicata a mano o prenotazione precedente a questa funzionalità). */
   scheduledEndAt: string | null;
@@ -300,6 +311,7 @@ export type AdminOverview = {
   suspendedUsers: number;
   hiddenLeads: number;
   waitlist: number;
+  openJobIssues: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -411,6 +423,28 @@ export type AdminCompletedJob = {
   clientNote: string | null;
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
+};
+
+/** Segnalazione di un problema vista dall'admin (docs/CHANGELOG.md §164). */
+export type AdminJobIssue = {
+  issue: JobIssueSummary;
+  bookingId: string;
+  guidedRequestId: string | null;
+  categoryLabel: string | null;
+  city: string | null;
+  requestDescription: string | null;
+  scheduledAt: string;
+  bookingStatus: string;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+  finalAmountEurCents: number | null;
+  professionalCompletedAt: string | null;
+  clientConfirmedAt: string | null;
+  professionalCompletionNote: string | null;
+  completionChangeReason: string | null;
+  clientCompletionNote: string | null;
+  professionalCompletionPhotoUrls: string[];
+  clientCompletionPhotoUrls: string[];
 };
 
 export type AdminHiddenLead = {
@@ -1385,6 +1419,30 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<AdminContactMessage[]>(`/admin/contact-messages${resolved ? "?resolved=true" : ""}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
+      }),
+
+    adminListJobIssues: (token: string, view: "open" | "closed") =>
+      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
+      request<{ id: string; status: string }>(`/admin/job-issues/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    reportJobIssue: (token: string, bookingId: string, input: ReportJobIssueInput) =>
+      request<{ id: string; status: string }>(`/bookings/${bookingId}/issue`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    respondToJobIssue: (token: string, bookingId: string, input: JobIssueResponseInput) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/response`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     adminListCompletedJobs: (token: string, filter: "all" | "changes" | "notes") =>

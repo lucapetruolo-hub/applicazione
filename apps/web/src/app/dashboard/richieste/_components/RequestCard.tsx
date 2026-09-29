@@ -12,6 +12,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
@@ -874,6 +875,17 @@ export function RequestCard({
                 </XStack>
               ) : null}
             </YStack>
+          ) : null}
+
+          {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
+          {booking?.issue ? (
+            <JobIssuePanel
+              issue={booking.issue}
+              onRespond={async (response) => {
+                await apiClient.respondToJobIssue(token, booking.id, { response });
+                onChanged();
+              }}
+            />
           ) : null}
 
           {/* Sezione 4 — Note personali */}

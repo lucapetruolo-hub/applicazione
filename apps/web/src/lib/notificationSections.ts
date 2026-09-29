@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_REOPENED_BY_CLIENT"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",
@@ -117,6 +117,14 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";
   }
   if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
+  // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a
+  // entrambe le parti, il lato è nel payload come per i promemoria.
+  if (type === "JOB_ISSUE_RESOLVED") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    const professional = getPayloadValue(payload, "audience") === "PROFESSIONAL";
+    if (!guidedRequestId) return professional ? "/dashboard/richieste" : "/le-mie-richieste?tab=lavori";
+    return professional ? `/dashboard/richieste?open=${guidedRequestId}` : `/le-mie-richieste?tab=lavori&open=${guidedRequestId}`;
+  }
   const destination = notificationDestination(type);
   if (!destination) return null;
   const guidedRequestId = getPayloadValue(payload, "guidedRequestId");

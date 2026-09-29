@@ -1,7 +1,16 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
-import { completionDeviation, completionDeviationText, type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
+import {
+  JOB_ISSUE_LABEL,
+  completionDeviation,
+  completionDeviationText,
+  clientCanReview,
+  jobIssueTypesAllowed,
+  toJobIssueSummary,
+  type JobIssueResponseInput,
+  type ReportJobIssueInput,
+  type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -281,6 +290,7 @@ export class BookingsService {
           finalAmountEurCents,
           professionalCompletionPhotoUrls: input.photoUrls,
           professionalCompletionNote: input.note?.trim() || null,
+          professionalCompletedAt: new Date(),
           completionChangeReason: deviation?.needsReason ? changeReason : null,
         },
       }),
@@ -565,42 +575,87 @@ export class BookingsService {
    * rimborsare in piattaforma (non ancora attivo, CLAUDE.md §9).
    */
   async reportProfessionalNoShow(clientId: string, bookingId: string) {
+    // Vecchio percorso "Non presentato": ora è una segnalazione come le
+    // altre (docs/CHANGELOG.md §164), con la stessa finestra di 7 giorni.
+    await this.reportIssue(clientId, bookingId, {
+      type: "NO_SHOW",
+      description: "Il professionista non si è presentato all'appuntamento.",
+      photoUrls: [],
+    });
+    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { refundRequestedAt: true } });
+    return { bookingId, refundRequested: true, refundRequestedAt: (booking.refundRequestedAt ?? new Date()).toISOString() };
+  }
+
+  /**
+   * Il cliente segnala un problema sul lavoro (docs/CHANGELOG.md §164):
+   * mancata presentazione (entro 7 giorni dalla fine dell'appuntamento) o
+   * lavoro non andato bene (entro 14 giorni). Finestre ricalcolate qui, mai
+   * fidarsi del client. Una sola segnalazione per lavoro; la decide un admin.
+   */
+  async reportIssue(clientId: string, bookingId: string, input: ReportJobIssueInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { professionalProfile: true, quote: true },
+      include: { professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } }, issue: { select: { id: true } } },
     });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
-    if (booking.status !== "CONFIRMED") {
-      throw new ForbiddenException("Solo un lavoro confermato può essere segnalato come non presentato.");
+    if (booking.issue) {
+      throw new ConflictException("Hai già segnalato un problema su questo lavoro.");
     }
-    const referenceEnd = booking.scheduledEndAt ?? booking.scheduledAt;
-    if (referenceEnd.getTime() > Date.now()) {
-      throw new ForbiddenException("L'appuntamento non è ancora terminato.");
-    }
-    if (booking.refundRequested) {
-      throw new ForbiddenException("Hai già segnalato questo appuntamento.");
+    const allowed = jobIssueTypesAllowed({ ...booking, hasIssue: false }, new Date());
+    if (!allowed.includes(input.type)) {
+      throw new BadRequestException(
+        input.type === "NO_SHOW"
+          ? "La mancata presentazione si può segnalare dalla fine dell'appuntamento, entro 7 giorni, se non hai già confermato il lavoro."
+          : "Un lavoro non andato bene si può segnalare dall'inizio dell'appuntamento, entro 14 giorni dalla sua conclusione.",
+      );
     }
 
-    const refundRequestedAt = new Date();
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { refundRequested: true, refundRequestedAt } });
+    const issue = await this.prisma.jobIssue.create({
+      data: { bookingId, type: input.type, description: input.description.trim(), photoUrls: input.photoUrls },
+    });
+    // Compatibilità col vecchio flag "rimborso richiesto", letto dal professionista.
+    if (input.type === "NO_SHOW") {
+      await this.prisma.booking.update({ where: { id: bookingId }, data: { refundRequested: true, refundRequestedAt: new Date() } });
+    }
 
-    await this.notificationsService.notify(booking.professionalProfile.userId, "BOOKING_NO_SHOW_REPORTED", {
+    await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
+      issueType: input.type,
       guidedRequestId: booking.quote?.guidedRequestId,
     });
-
     if (booking.quote) {
       await this.timelineService.log(
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        "Il cliente ha segnalato che il professionista non si è presentato e ha richiesto un rimborso.",
+        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. La segnalazione è in esame.`,
       );
     }
+    return { id: issue.id, status: issue.status };
+  }
 
-    return { bookingId, refundRequested: true, refundRequestedAt: refundRequestedAt.toISOString() };
+  /** Il professionista risponde alla segnalazione con la sua versione, finché è in esame. */
+  async respondToIssue(professionalUserId: string, bookingId: string, input: JobIssueResponseInput) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } } },
+    });
+    if (!booking || booking.professionalProfile.userId !== professionalUserId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
+    if (booking.issue.status !== "OPEN") throw new BadRequestException("La segnalazione è già stata decisa.");
+
+    await this.prisma.jobIssue.update({
+      where: { id: booking.issue.id },
+      data: { professionalResponse: input.response.trim(), professionalRespondedAt: new Date() },
+    });
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "PROFESSIONAL", "Il professionista ha risposto alla segnalazione.");
+    }
+    return { bookingId };
   }
 
   /**
@@ -637,6 +692,7 @@ export class BookingsService {
         professionalProfile: { include: { user: true } },
         review: true,
         finalItems: true,
+        issue: true,
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
         // anche i dati della richiesta guidata originale (titolo/categoria,
         // descrizione, foto) e del preventivo accettato (voci/note) — non
@@ -648,9 +704,20 @@ export class BookingsService {
       orderBy: { scheduledAt: "desc" },
     });
 
+    const now = new Date();
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
+      // Segnalazione di un problema (docs/CHANGELOG.md §164): quella già
+      // inviata, quali si possono inviare adesso, e se si può recensire.
+      issue: toJobIssueSummary(booking.issue),
+      issueTypesAllowed: jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
+      canReview: clientCanReview({
+        status: booking.status,
+        clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt,
+        hasReview: booking.review !== null,
+        issueStatus: booking.issue?.status ?? null,
+      }),
       // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta
       // la fascia oraria, non solo l'inizio) — null per prenotazioni senza
       // una fascia con fine nota (data indicata a mano, o create prima di

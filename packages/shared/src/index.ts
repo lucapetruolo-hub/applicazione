@@ -11,3 +11,4 @@ export * from "./professionals";
 export * from "./schemas";
 export * from "./notifications";
 export * from "./completion";
+export * from "./jobIssues";

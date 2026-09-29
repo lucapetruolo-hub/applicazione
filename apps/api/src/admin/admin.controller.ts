@@ -4,6 +4,8 @@ import {
   contentReportDecisionNoteSchema,
   type AdminRoleUpdateInput,
   resolveContentReportSchema,
+  resolveJobIssueSchema,
+  type ResolveJobIssueInput,
   type ContentReportDecisionNoteInput,
   type ResolveContentReportInput,
 } from "@professionisti/shared";
@@ -139,6 +141,20 @@ export class AdminController {
   @Get("hidden-leads")
   listHiddenLeads() {
     return this.adminService.listHiddenLeads();
+  }
+
+  // Segnalazioni di problemi sul lavoro (docs/CHANGELOG.md §164): qualunque
+  // admin, come "Lavori terminati".
+  @RequireAdminScope("ANY")
+  @Get("job-issues")
+  listJobIssues(@Query("view") view?: string) {
+    return this.adminService.listJobIssues(view === "closed" ? "closed" : "open");
+  }
+
+  @RequireAdminScope("ANY")
+  @Patch("job-issues/:id")
+  resolveJobIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(resolveJobIssueSchema)) body: ResolveJobIssueInput) {
+    return this.adminService.resolveJobIssue(req.user.userId, id, body);
   }
 
   // Qualunque admin: note e differenze di prezzo servono sia alla

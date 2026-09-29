@@ -930,6 +930,9 @@ model Booking {
   professionalCompletionNote      String?
   completionChangeReason          String?
   clientCompletionNote            String?
+  // Quando il professionista ha segnato il lavoro come terminato: parte da
+  // qui la finestra per segnalare un lavoro fatto male (docs/CHANGELOG.md §164).
+  professionalCompletedAt         DateTime?
   // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
   // richiesta esplicita dell'utente ("servono i completed da entrambi").
   // Indipendente da `status` (che resta COMPLETED solo grazie
@@ -1000,6 +1003,7 @@ model Booking {
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
+  issue        JobIssue?
   review       Review?
   clientReview ClientReview?
   // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
@@ -1880,4 +1884,43 @@ model ProfileViewDay {
   @@id([professionalProfileId, day])
   @@index([day])
   @@map("profile_view_days")
+}
+
+// ---------------------------------------------------------------------------
+// Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164)
+// ---------------------------------------------------------------------------
+
+enum JobIssueType {
+  NO_SHOW
+  BAD_WORK
+}
+
+enum JobIssueStatus {
+  OPEN
+  UPHELD
+  REJECTED
+}
+
+// Il cliente segnala che il professionista non si è presentato o che il
+// lavoro non è andato bene; il professionista può rispondere, un admin
+// decide. Una sola segnalazione per lavoro.
+model JobIssue {
+  id                      String         @id @default(uuid())
+  bookingId               String         @unique
+  type                    JobIssueType
+  description             String
+  photoUrls               String[]       @default([])
+  status                  JobIssueStatus @default(OPEN)
+  professionalResponse    String?
+  professionalRespondedAt DateTime?
+  resolutionNote          String?
+  resolvedAt              DateTime?
+  resolvedByUserId        String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("job_issues")
 }

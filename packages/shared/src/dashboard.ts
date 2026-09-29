@@ -1,3 +1,4 @@
+import type { JobIssueSummary } from "./jobIssues";
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
@@ -294,6 +295,8 @@ export type ProfessionalBooking = {
   clientCompletionPhotoUrls: string[];
   /** Vero se il professionista ha già recensito il cliente per questa prenotazione. */
   hasClientReview: boolean;
+  /** Segnalazione del cliente (mancata presentazione o lavoro non andato bene), con l'eventuale risposta (docs/CHANGELOG.md §164). */
+  issue: JobIssueSummary | null;
 };
 
 /**

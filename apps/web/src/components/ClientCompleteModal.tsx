@@ -18,10 +18,13 @@ const MAX_COMPLETION_PHOTOS = 5;
 export function ClientCompleteModal({
   onClose,
   onConfirm,
+  onReportProblem,
   uploadPhoto,
 }: {
   onClose: () => void;
   onConfirm: (photoUrls: string[], note: string | undefined) => Promise<void>;
+  /** Apre "Segnala un problema" (docs/CHANGELOG.md §164), se il cliente può ancora farlo. */
+  onReportProblem?: () => void;
   uploadPhoto: (file: File) => Promise<string>;
 }) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -113,6 +116,11 @@ export function ClientCompleteModal({
           <Text fontSize="$3" color={brand.grafite70}>
             Puoi allegare qualche foto del lavoro svolto e delle note, poi ti chiederemo di lasciare una recensione al professionista.
           </Text>
+          {onReportProblem ? (
+            <Text fontSize="$3" color={brand.urgenza} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={onReportProblem}>
+              Non è andato tutto bene? Segnala un problema
+            </Text>
+          ) : null}
         </YStack>
 
         {/* Note del cliente (docs/CHANGELOG.md §163), lette dall'admin. */}

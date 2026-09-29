@@ -164,6 +164,24 @@ export class ProfessionalMetricsService {
     await this.refreshScore(professionalProfileId);
   }
 
+  /**
+   * Mancata presentazione confermata da un admin su segnalazione del cliente
+   * (docs/CHANGELOG.md §164): conta come appuntamento non onorato. Se il
+   * professionista aveva chiuso il lavoro (già contato come onorato), si
+   * toglie quell'onorato invece di aggiungere un appuntamento.
+   */
+  async recordNoShowConfirmed(professionalProfileId: string, wasCountedHonored: boolean): Promise<void> {
+    if (wasCountedHonored) {
+      await this.prisma.professionalMetrics.updateMany({
+        where: { professionalProfileId, honoredAppointments: { gt: 0 } },
+        data: { honoredAppointments: { decrement: 1 } },
+      });
+      await this.refreshScore(professionalProfileId);
+      return;
+    }
+    await this.recordAppointmentOutcome(professionalProfileId, false);
+  }
+
   /** Evento 7: qualunque azione del professionista (login, risposta, aggiornamento disponibilità) — nessun incremento, solo il timestamp. */
   async touchActivity(professionalProfileId: string): Promise<void> {
     await this.prisma.professionalMetrics.upsert({

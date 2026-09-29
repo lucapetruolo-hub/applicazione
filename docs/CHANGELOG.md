@@ -15486,3 +15486,66 @@ Verifica:
   conferma del cliente con nota → 200; filtri admin corretti; un cliente
   riceve 403.
 - Playwright 1280 e 390 su `/admin/lavori`: nessun overflow né errore.
+
+## 164. Segnalazioni di un problema sul lavoro: mancata presentazione e lavoro non andato bene
+
+Richiesta dell'utente: valutare quando il cliente può dire che il lavoro non
+è andato a buon fine, sia per un lavoro fatto male sia per un professionista
+che non si è presentato. Proposta approvata dall'utente il 29/09/2026 ("sì a
+tutte e tre"): finestre di 7 e 14 giorni, mancata presentazione accolta che
+abbassa il punteggio nello smistamento, recensione possibile dopo la
+decisione.
+
+Decisioni prese:
+- **Quando** (`jobIssueTypesAllowed`, `packages/shared/src/jobIssues.ts`,
+  ricalcolato sul server): "Il professionista non si è presentato" dalla
+  fine dell'appuntamento, entro 7 giorni, solo se il cliente non ha già
+  confermato il lavoro; "Il lavoro non è andato bene" dall'inizio
+  dell'appuntamento, entro 14 giorni dall'ultimo tra fine appuntamento,
+  chiusura del professionista (`Booking.professionalCompletedAt`, nuovo) e
+  conferma del cliente, così vale anche per difetti scoperti dopo. Solo su
+  lavori confermati o completati, una segnalazione per lavoro.
+- **Dati** (migrazione `20260929090000_job_issues`): modello `JobIssue`
+  (tipo, descrizione, foto/video, stato OPEN/UPHELD/REJECTED, risposta del
+  professionista, motivazione e autore della decisione).
+- **Cliente**: "Segnala un problema" nella scheda del lavoro e dentro la
+  finestra "Lavoro terminato" ("Non è andato tutto bene?"), con
+  `ReportIssueModal`: scelta del tipo (solo quelli ammessi adesso),
+  descrizione obbligatoria, foto facoltative, contatti del professionista per
+  la mancata presentazione. Sostituisce il vecchio popup "Non presentato"
+  (`ReportNoShowModal`, rimosso); `PATCH /bookings/:id/report-no-show` resta
+  e crea la stessa segnalazione. Lo stato ("In esame", "Accolta",
+  "Respinta" con la motivazione) compare nella scheda.
+- **Professionista**: notifica `JOB_ISSUE_REPORTED` e `JobIssuePanel` nella
+  scheda della richiesta, per rispondere con la propria versione finché la
+  segnalazione è in esame (`PATCH /bookings/:id/issue/response`).
+- **Admin**: nuova pagina `/admin/problemi` ("Problemi segnalati", contatore
+  nel menu, ogni ruolo admin): versione del cliente, risposta del
+  professionista, note e foto a lavoro terminato di entrambi; decisione
+  "Accogli" o "Respingi" con motivazione obbligatoria (`PATCH
+  /admin/job-issues/:id`), registrata nel registro azioni e notificata a
+  entrambe le parti (`JOB_ISSUE_RESOLVED`).
+- **Punteggio**: una mancata presentazione accolta conta come appuntamento
+  non onorato (`recordNoShowConfirmed`: se il professionista aveva chiuso il
+  lavoro, toglie l'onorato già contato), quindi abbassa l'affidabilità usata
+  nello smistamento (`lead-routing.ts`). Un lavoro fatto male accolto non
+  tocca il punteggio: pesa già la recensione.
+- **Recensione** (`clientCanReview`): mai mentre la segnalazione è in esame;
+  dopo la decisione il cliente può recensire anche un lavoro mai chiuso. La
+  recensione automatica a 5 stelle al professionista (dopo 3 giorni) non
+  parte se c'è una segnalazione in esame o accolta.
+- Nessun rimborso automatico: i pagamenti in piattaforma non sono attivi.
+
+Verifica:
+- `job-issues.test.ts` (9 test sulle finestre e sulla recensione); 112/112
+  test API; `tsc` su api, web e mobile.
+- API sul database e2e: appuntamento finito da 2 giorni → ammessi entrambi i
+  tipi; descrizione corta → 400; segnalazione → 201; seconda → 409;
+  recensione durante l'esame → 403; risposta del professionista → 200 (del
+  cliente → 403); decisione "accolta" → 200, seconda decisione → 400;
+  appuntamenti del professionista 1 su 0 onorati; recensione dopo la
+  decisione → 201; notifiche con il lato giusto; contatore admin a zero.
+- Playwright 1280 e 390: finestra "Segnala un problema" e pagina admin,
+  nessun overflow né errore. Trovato e corretto nel giro: il pulsante
+  "Conferma che il lavoro è terminato" in cima alla scheda restava anche con
+  una segnalazione (`clientNextAction`).

@@ -13,6 +13,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/segnalazioni", label: "Segnalazioni", icon: "flag", scope: "MODERATION", badge: (o) => o.openReports + o.pendingAppeals },
   { href: "/admin/messaggi", label: "Messaggi", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
   { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
+  { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues },
   { href: "/admin/lavori", label: "Lavori terminati", icon: "badge-check", scope: "ANY" },
   { href: "/admin/pagamenti", label: "Rimborsi e contestazioni", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
