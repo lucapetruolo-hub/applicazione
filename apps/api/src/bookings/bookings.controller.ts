@@ -8,6 +8,8 @@ import {
   jobIssueChatOutcomeSchema,
   jobIssueResponseSchema,
   reportJobIssueSchema,
+  appealJobIssueSchema,
+  type AppealJobIssueInput,
   updateBookingMeetingLinkSchema,
   updateBookingNoteSchema,
   type CancelBookingByProfessionalInput,
@@ -23,6 +25,7 @@ import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
+import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 const updateStatusSchema = z.object({ status: z.enum(["CONFIRMED", "COMPLETED", "CANCELED", "NO_SHOW"]) });
 const MAX_MEDIA_SIZE_BYTES = 50 * 1024 * 1024;
@@ -32,6 +35,7 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly jobIssueOutcomeService: JobIssueOutcomeService,
   ) {}
 
   /**
@@ -177,7 +181,28 @@ export class BookingsController {
     return this.bookingsService.respondToIssue(req.user.userId, id, body);
   }
 
-  /** Il cliente segnala che il professionista non si è presentato all'appuntamento e chiede un rimborso. */
+  /** Il professionista risponde alla richiesta di informazioni del nostro team (72 ore, §167). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/issue/info")
+  answerIssueInfo(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueResponseSchema)) body: JobIssueResponseInput) {
+    return this.jobIssueOutcomeService.answerInfo(req.user.userId, id, body.response.trim());
+  }
+
+  /** Ricorso del professionista entro 30 giorni da una decisione accolta (§167). */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/issue/appeal")
+  appealIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(appealJobIssueSchema)) body: AppealJobIssueInput) {
+    return this.jobIssueOutcomeService.appeal(req.user.userId, id, body.text.trim());
+  }
+
+  /** Mancata presentazione accolta: il cliente invia la stessa richiesta ad altri professionisti (§167). */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/issue/redispatch")
+  redispatchIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.jobIssueOutcomeService.redispatch(req.user.userId, id);
+  }
+
+  /** Vecchio percorso: il cliente segnala che il professionista non si è presentato (ora una segnalazione come le altre). */
   @UseGuards(JwtAuthGuard)
   @Patch(":id/report-no-show")
   reportNoShow(@Req() req: AuthenticatedRequest, @Param("id") id: string) {

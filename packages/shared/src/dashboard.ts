@@ -29,6 +29,9 @@ export type MyProfessionalProfile = {
   hasLiabilityInsurance: boolean;
   /** Ha già accettato la versione attuale della dichiarazione di responsabilità (docs/CHANGELOG.md §158). */
   profileDeclarationAccepted: boolean;
+  /** Misure in corso per segnalazioni accolte (docs/CHANGELOG.md §167): fino a quando. */
+  demotedUntil?: string | null;
+  requestsBlockedUntil?: string | null;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */

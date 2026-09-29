@@ -82,7 +82,12 @@ export type LeadCandidateSignals = {
   daysSinceLastQuote: number | null;
   /** Richieste ricevute negli ultimi 7 giorni (per distribuire il lavoro). */
   leadsLast7Days: number;
+  /** Profilo abbassato per segnalazioni accolte (docs/CHANGELOG.md §167). */
+  demoted?: boolean;
 };
+
+/** Quanto vale il punteggio di un profilo abbassato per segnalazioni accolte (§167). */
+export const DEMOTED_SCORE_FACTOR = 0.5;
 
 /**
  * Punteggio di qualità 0-1 per scegliere chi riceve per primo una
@@ -119,7 +124,9 @@ export function leadQualityScore(c: LeadCandidateSignals): number {
   const base =
     0.3 * responsiveness + 0.2 * ratingScore + 0.15 * reliability + 0.15 * proximity + 0.1 * availability + 0.1 * activity;
   const fairness = 1 / (1 + 0.1 * c.leadsLast7Days);
-  return base * fairness;
+  // Seconda segnalazione accolta in 30 giorni: per 14 giorni il punteggio si
+  // dimezza (decisione dell'utente, §167).
+  return base * fairness * (c.demoted ? DEMOTED_SCORE_FACTOR : 1);
 }
 
 /**
@@ -136,7 +143,7 @@ export function selectLeadRecipients(
   const ranked = [...candidates].sort((a, b) => leadQualityScore(b) - leadQualityScore(a));
   if (ranked.length <= max) return { selected: ranked.map((c) => c.id), reserve: [] };
 
-  const isNewcomer = (c: LeadCandidateSignals) => c.reviewCount === 0 && c.requestsReceived < 5;
+  const isNewcomer = (c: LeadCandidateSignals) => c.reviewCount === 0 && c.requestsReceived < 5 && !c.demoted;
   const topIds = new Set(ranked.slice(0, max).map((c) => c.id));
   const newcomersOutsideTop = ranked.filter((c) => isNewcomer(c) && !topIds.has(c.id));
   const hasNewcomerInTop = ranked.slice(0, max).some(isNewcomer);

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, professionalRestrictions, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -52,17 +52,29 @@ export class GuidedRequestsService {
     private readonly timelineService: TimelineService,
   ) {}
 
-  async create(clientId: string, input: GuidedRequestInput) {
+  /**
+   * `opts.excludeProfileId`: professionista da escludere dallo smistamento
+   * (richiesta rinviata ad altri dopo una mancata presentazione accolta,
+   * docs/CHANGELOG.md §167).
+   */
+  async create(clientId: string, input: GuidedRequestInput, opts: { excludeProfileId?: string } = {}) {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
     }
 
-    let targetProfile: { id: string; deletedAt: Date | null; suspendedAt: Date | null; pausedAt: Date | null } | null = null;
+    let targetProfile: {
+      id: string;
+      deletedAt: Date | null;
+      suspendedAt: Date | null;
+      pausedAt: Date | null;
+      demotedUntil: Date | null;
+      requestsBlockedUntil: Date | null;
+    } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true },
+        select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
@@ -71,7 +83,8 @@ export class GuidedRequestsService {
         throw new NotFoundException("Professionista non trovato.");
       }
       // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162).
-      if (targetProfile.pausedAt) {
+      // Account in pausa, o bloccato per segnalazioni accolte (§167).
+      if (targetProfile.pausedAt || professionalRestrictions(targetProfile, new Date()).blocked) {
         throw new ConflictException(NOT_ACCEPTING_REQUESTS);
       }
     }
@@ -170,7 +183,7 @@ export class GuidedRequestsService {
           distanceKm: null,
           radiusKm: null,
         }))
-      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent);
+      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, opts.excludeProfileId);
 
     // Selezione per punteggio di qualità (docs/CHANGELOG.md §154): i
     // migliori subito (3, o 5 se urgente), un posto per un nuovo, il resto in
@@ -582,7 +595,15 @@ export class GuidedRequestsService {
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
-      where: { categoryId, deletedAt: null, suspendedAt: null, pausedAt: null, ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}) },
+      where: {
+        categoryId,
+        deletedAt: null,
+        suspendedAt: null,
+        pausedAt: null,
+        // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
+        OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+        ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
+      },
     });
     const trimmedCity = city.trim();
     // Città facoltativa per una richiesta "online": senza una zona il raggio
@@ -732,6 +753,7 @@ export class GuidedRequestsService {
             : mySlots.some((s) => (s.date ? s.date.toISOString().slice(0, 10) === preferredDay : s.dayOfWeek === preferredWeekday)),
         daysSinceLastQuote: lastQuote ? (Date.now() - lastQuote.getTime()) / 86_400_000 : null,
         leadsLast7Days: recentBy.get(profile.id) ?? 0,
+        demoted: professionalRestrictions(profile, new Date()).demoted,
       };
     });
 
@@ -849,7 +871,15 @@ export class GuidedRequestsService {
 
           const [nextCandidateId, ...remainingReserve] = request.reserveCandidateIds;
           const candidate = await tx.professionalProfile.findUnique({ where: { id: nextCandidateId } });
-          if (!candidate) {
+          // Scartato anche se nel frattempo è uscito dallo smistamento
+          // (eliminato, sospeso, in pausa, bloccato per segnalazioni, §167).
+          if (
+            !candidate ||
+            candidate.deletedAt ||
+            candidate.suspendedAt ||
+            candidate.pausedAt ||
+            professionalRestrictions(candidate, new Date()).blocked
+          ) {
             // Il candidato non esiste più (profilo eliminato nel
             // frattempo): lo scarta e aggiorna comunque la coda, così non
             // resta bloccato lì per sempre — il prossimo trigger proverà

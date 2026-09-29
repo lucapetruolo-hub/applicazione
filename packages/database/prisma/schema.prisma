@@ -239,6 +239,13 @@ model ProfessionalProfile {
   // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
   pausedAt     DateTime?
   pausedReason String?
+  // Misure progressive sulle segnalazioni accolte (docs/CHANGELOG.md §167,
+  // decisione dell'utente): alla 2ª segnalazione accolta in 30 giorni il
+  // profilo scende nello smistamento e nella ricerca per 14 giorni
+  // (`demotedUntil`); alla 3ª non riceve nuove richieste per 14 giorni
+  // (`requestsBlockedUntil`). Regole in packages/shared/src/jobIssues.ts.
+  demotedUntil         DateTime?
+  requestsBlockedUntil DateTime?
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
@@ -1919,6 +1926,34 @@ model JobIssue {
   resolutionNote          String?
   resolvedAt              DateTime?
   resolvedByUserId        String?
+  // Controversie standard sul modello Amazon A-Z (§167): passaggio al
+  // nostro team (CLIENT = il cliente dice "non abbiamo risolto",
+  // PRO_NO_REPLY = il professionista non ha scritto in chat entro 48 ore).
+  // Da `escalatedAt` il professionista ha 72 ore per dare la sua versione.
+  escalatedAt             DateTime?
+  escalationReason        String?
+  // Richiesta di informazioni dell'admin: 72 ore per rispondere.
+  infoRequestText         String?
+  infoRequestedAt         DateTime?
+  infoResponse            String?
+  infoRespondedAt         DateTime?
+  // Decisione automatica a favore del cliente se il professionista non
+  // risponde in tempo: NO_EVIDENCE o NO_INFO (null = decisa da un admin).
+  autoDecision            String?
+  // Misura applicata al professionista con la decisione "accolta":
+  // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
+  sanction                String?
+  // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
+  // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
+  appealText              String?
+  appealedAt              DateTime?
+  appealDecision          String?
+  appealNote              String?
+  appealResolvedAt        DateTime?
+  appealResolvedByUserId  String?
+  // Richiesta nuova inviata ad altri professionisti dopo una mancata
+  // presentazione accolta (pulsante del cliente).
+  redispatchedGuidedRequestId String?
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 

@@ -56,6 +56,7 @@ import type {
   JobIssueType,
   ReportJobIssueInput,
   ResolveJobIssueInput,
+  ResolveJobIssueAppealInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -312,6 +313,10 @@ export type AdminOverview = {
   hiddenLeads: number;
   waitlist: number;
   openJobIssues: number;
+  /** Ricorsi dei professionisti da decidere (docs/CHANGELOG.md §167). */
+  jobIssueAppeals: number;
+  /** Pagamenti online attivi: senza, la pagina rimborsi resta nascosta. */
+  paymentsEnabled: boolean;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -457,8 +462,10 @@ export type AdminJobIssue = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
+  /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
+  decidedByMe: boolean;
   finalAmountEurCents: number | null;
   professionalCompletedAt: string | null;
   clientConfirmedAt: string | null;
@@ -1246,9 +1253,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     myClientBookings: (token: string) =>
       request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    /** Il cliente segnala che il professionista non si è presentato e chiede un rimborso. */
+    /** Il cliente segnala che il professionista non si è presentato (una segnalazione come le altre, §164). */
     reportBookingNoShow: (token: string, bookingId: string) =>
-      request<{ bookingId: string; refundRequested: boolean; refundRequestedAt: string }>(`/bookings/${bookingId}/report-no-show`, {
+      request<{ bookingId: string; issueId: string; status: string }>(`/bookings/${bookingId}/report-no-show`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1455,7 +1462,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         cache: "no-store",
       }),
 
-    adminListJobIssues: (token: string, view: "open" | "chat" | "closed") =>
+    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed") =>
       request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
@@ -1463,6 +1470,43 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    adminRequestJobIssueInfo: (token: string, id: string, text: string) =>
+      request<{ id: string }>(`/admin/job-issues/${id}/request-info`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text }),
+      }),
+
+    adminDecideJobIssueAppeal: (token: string, id: string, input: ResolveJobIssueAppealInput) =>
+      request<{ id: string; appealDecision: string }>(`/admin/job-issues/${id}/appeal`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Il professionista risponde alla richiesta di informazioni (72 ore). */
+    answerJobIssueInfo: (token: string, bookingId: string, response: string) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/info`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ response }),
+      }),
+
+    /** Ricorso del professionista entro 30 giorni da una decisione accolta. */
+    appealJobIssue: (token: string, bookingId: string, text: string) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/appeal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text }),
+      }),
+
+    /** Mancata presentazione accolta: stessa richiesta inviata ad altri professionisti. */
+    redispatchJobIssue: (token: string, bookingId: string) =>
+      request<{ guidedRequestId: string }>(`/bookings/${bookingId}/issue/redispatch`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     reportJobIssue: (token: string, bookingId: string, input: ReportJobIssueInput) =>

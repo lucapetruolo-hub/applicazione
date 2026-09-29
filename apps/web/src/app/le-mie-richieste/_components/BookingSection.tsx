@@ -6,6 +6,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
+import { ClientIssueStatus } from "./ClientIssueStatus";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
@@ -98,6 +99,20 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
+  // Mancata presentazione accolta: stessa richiesta ad altri professionisti (§167).
+  async function redispatch() {
+    setIssueError(null);
+    setIssueBusy(true);
+    try {
+      await apiClient.redispatchJobIssue(token, booking.id);
+      onChanged();
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIssueBusy(false);
+    }
+  }
+
   // Segnalazioni (docs/CHANGELOG.md §164): quali si possono inviare lo decide il server.
   const canReportIssue = booking.issueTypesAllowed.length > 0;
 
@@ -167,43 +182,14 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           <Text fontSize="$2" fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
             Hai segnalato: {JOB_ISSUE_LABEL[booking.issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[booking.issue.status]}
           </Text>
-          {booking.issue.status === "CHAT" ? (
-            <YStack gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
-                Prova a trovare una soluzione con {booking.businessName} in chat. Se non vi accordate, chiedi al nostro team di decidere.
-              </Text>
-              <XStack gap="$2" flexWrap="wrap">
-                {booking.guidedRequestId ? (
-                  <Button variant="primary" size="$2" height={36} onPress={() => setShowTimeline(true)}>
-                    Apri la chat
-                  </Button>
-                ) : null}
-                <Button variant="secondary" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("RESOLVED")}>
-                  Abbiamo risolto
-                </Button>
-                <Button variant="ghost" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("ESCALATE")}>
-                  Non abbiamo risolto
-                </Button>
-              </XStack>
-              {issueError ? (
-                <Text fontSize="$2" color={brand.urgenza}>
-                  {issueError}
-                </Text>
-              ) : null}
-            </YStack>
-          ) : booking.issue.status === "RESOLVED" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Hai indicato che avete risolto il problema con {booking.businessName}.
-            </Text>
-          ) : booking.issue.status === "OPEN" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Il nostro team la sta esaminando e ha avvisato {booking.businessName}. Ti comunichiamo la decisione qui e per notifica.
-            </Text>
-          ) : booking.issue.resolutionNote ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Decisione: {booking.issue.resolutionNote}
-            </Text>
-          ) : null}
+          <ClientIssueStatus
+            booking={booking}
+            busy={issueBusy}
+            error={issueError}
+            onOpenChat={booking.guidedRequestId ? () => setShowTimeline(true) : null}
+            onCloseChat={closeIssueChat}
+            onRedispatch={redispatch}
+          />
         </YStack>
       ) : booking.status === "CONFIRMED" && booking.refundRequested ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>

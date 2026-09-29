@@ -24,6 +24,8 @@ import {
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
   toJobIssueSummary,
+  professionalRestrictions,
+  jobPaidOnline,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
@@ -106,6 +108,9 @@ export class ProfessionalsService {
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
+        // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
+        // in pausa, fuori dalla ricerca finché non può ricevere richieste.
+        OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
         ...(category ? { category: { slug: category } } : {}),
         ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
         ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
@@ -167,7 +172,13 @@ export class ProfessionalsService {
 
     // Ranking sponsorizzabile: boost attivo prima, poi rating, poi numero
     // recensioni (CLAUDE.md §1 — il ranking è la leva di monetizzazione).
+    // Un profilo abbassato per segnalazioni accolte (§167) va in fondo per
+    // 14 giorni, anche se ha un boost.
+    const now = new Date();
+    const demotedIds = new Set(profiles.filter((p) => professionalRestrictions(p, now).demoted).map((p) => p.id));
     results.sort((a, b) => {
+      const demotedDiff = Number(demotedIds.has(a.id)) - Number(demotedIds.has(b.id));
+      if (demotedDiff !== 0) return demotedDiff;
       if (a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;
@@ -496,7 +507,7 @@ export class ProfessionalsService {
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
-      acceptingRequests: !profile.pausedAt,
+      acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
       reviews: reviews.map((review) => ({
         id: review.id,
         rating: review.rating,
@@ -538,6 +549,8 @@ export class ProfessionalsService {
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
+      demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
+      requestsBlockedUntil: profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date() ? profile.requestsBlockedUntil.toISOString() : null,
     };
   }
 
@@ -1163,6 +1176,7 @@ export class ProfessionalsService {
         },
         finalItems: true,
         issue: true,
+        jobPayment: { select: { paymentMethod: true, status: true } },
         clientReview: true,
       },
       orderBy: { scheduledAt: "asc" },
@@ -1265,7 +1279,7 @@ export class ProfessionalsService {
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       hasClientReview: booking.clientReview !== null,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
-      issue: toJobIssueSummary(booking.issue),
+      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment) }),
     }));
   }
 
@@ -1566,12 +1580,12 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true },
+      select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
-    if (profile.pausedAt) {
+    if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {
       throw new ConflictException(NOT_ACCEPTING_REQUESTS);
     }
 

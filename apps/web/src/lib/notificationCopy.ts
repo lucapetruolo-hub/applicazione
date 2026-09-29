@@ -41,9 +41,15 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
-  JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: scrivigli in chat per trovare una soluzione." },
+  JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
   JOB_ISSUE_SETTLED: { icon: "🤝", message: "Il cliente ha indicato che il problema è stato risolto con te." },
-  JOB_ISSUE_ESCALATED: { icon: "⚖️", message: "Il cliente ha chiesto al nostro team di decidere sulla segnalazione: aggiungi la tua versione." },
+  JOB_ISSUE_ESCALATED: { icon: "⚖️", message: "Il cliente ha chiesto al nostro team di decidere sulla segnalazione: invia la tua versione entro 72 ore." },
+  // Controversie standard (docs/CHANGELOG.md §167).
+  JOB_ISSUE_AUTO_ESCALATED: { icon: "⚖️", message: "Non hai risposto in chat entro 48 ore: la segnalazione è passata al nostro team. Invia la tua versione entro 72 ore." },
+  JOB_ISSUE_TEAM_REVIEW: { icon: "⚖️", message: "Il professionista non ti ha risposto entro 48 ore: la tua segnalazione è passata al nostro team." },
+  JOB_ISSUE_INFO_REQUESTED: { icon: "📝", message: "Il nostro team ti chiede altre informazioni su una segnalazione: rispondi entro 72 ore." },
+  JOB_ISSUE_APPEAL_DECIDED: { icon: "⚖️", message: "C'è una decisione sul ricorso contro una segnalazione: tocca per leggerla." },
+  JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Sorpresa: ti regaliamo un altro mese gratis!" },

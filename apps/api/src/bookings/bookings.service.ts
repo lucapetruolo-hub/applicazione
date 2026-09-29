@@ -8,6 +8,9 @@ import {
   clientCanReview,
   jobIssueTypesAllowed,
   toJobIssueSummary,
+  jobPaidOnline,
+  jobIssueCanEscalate,
+  jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
   type ReportJobIssueInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
@@ -16,6 +19,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
+import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @Injectable()
 export class BookingsService {
@@ -26,6 +30,7 @@ export class BookingsService {
     private readonly timelineService: TimelineService,
     private readonly jobPaymentsService: JobPaymentsService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly jobIssueOutcomeService: JobIssueOutcomeService,
   ) {}
 
   /**
@@ -565,25 +570,18 @@ export class BookingsService {
   }
 
   /**
-   * Il cliente segnala che il professionista non si è presentato
-   * all'appuntamento e chiede un rimborso (richiesta esplicita
-   * dell'utente) — consentito solo su una prenotazione CONFIRMED propria,
-   * e solo dopo che la data/ora prevista è realmente passata (mai fidarsi
-   * del client per questo controllo). Non tocca `status`: il
-   * professionista può ancora segnarla completata/annullarla, questa è
-   * solo una segnalazione + notifica, nessun pagamento reale da
-   * rimborsare in piattaforma (non ancora attivo, CLAUDE.md §9).
+   * Vecchio percorso "Non presentato": ora è una segnalazione come le altre
+   * (docs/CHANGELOG.md §164), con la stessa finestra di 7 giorni. Non segna
+   * più "rimborso richiesto" (§167): un rimborso parte solo da una
+   * segnalazione accolta su un lavoro pagato sul sito.
    */
   async reportProfessionalNoShow(clientId: string, bookingId: string) {
-    // Vecchio percorso "Non presentato": ora è una segnalazione come le
-    // altre (docs/CHANGELOG.md §164), con la stessa finestra di 7 giorni.
-    await this.reportIssue(clientId, bookingId, {
+    const issue = await this.reportIssue(clientId, bookingId, {
       type: "NO_SHOW",
       description: "Il professionista non si è presentato all'appuntamento.",
       photoUrls: [],
     });
-    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { refundRequestedAt: true } });
-    return { bookingId, refundRequested: true, refundRequestedAt: (booking.refundRequestedAt ?? new Date()).toISOString() };
+    return { bookingId, issueId: issue.id, status: issue.status };
   }
 
   /**
@@ -617,12 +615,17 @@ export class BookingsService {
     // (prenotazione diretta dall'agenda): si passa subito al nostro team.
     const inChat = booking.quote !== null;
     const issue = await this.prisma.jobIssue.create({
-      data: { bookingId, type: input.type, description: input.description.trim(), photoUrls: input.photoUrls, status: inChat ? "CHAT" : "OPEN" },
+      data: {
+        bookingId,
+        type: input.type,
+        description: input.description.trim(),
+        photoUrls: input.photoUrls,
+        status: inChat ? "CHAT" : "OPEN",
+        // Senza chat va subito al nostro team: da qui le 72 ore per la
+        // versione del professionista (§167).
+        ...(inChat ? {} : { escalatedAt: new Date(), escalationReason: "CLIENT" }),
+      },
     });
-    // Compatibilità col vecchio flag "rimborso richiesto", letto dal professionista.
-    if (input.type === "NO_SHOW") {
-      await this.prisma.booking.update({ where: { id: bookingId }, data: { refundRequested: true, refundRequestedAt: new Date() } });
-    }
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
@@ -636,7 +639,7 @@ export class BookingsService {
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Provate a trovare una soluzione qui in chat; se non ci riuscite, il cliente può chiedere al nostro team di decidere.`,
+        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il professionista ha 48 ore per rispondere qui in chat e provare a trovare una soluzione; se non risponde la segnalazione passa da sola al nostro team, se non trovate un accordo il cliente può chiedere al nostro team di decidere.`,
       );
     }
     return { id: issue.id, status: issue.status };
@@ -655,16 +658,39 @@ export class BookingsService {
     if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
+    const now = new Date();
+    if (outcome === "ESCALATE") {
+      // Come il contatto diretto di Amazon (§167): il professionista ha 48
+      // ore per rispondere; prima il cliente può passarla al team solo se ha
+      // già risposto senza risolvere.
+      const replies = await this.jobIssueOutcomeService.proChatReplies([
+        {
+          id: booking.issue.id,
+          createdAt: booking.issue.createdAt,
+          professionalRespondedAt: booking.issue.professionalRespondedAt,
+          guidedRequestId: booking.quote?.guidedRequestId ?? null,
+          professionalProfileId: booking.professionalProfileId,
+        },
+      ]);
+      const chat = { status: booking.issue.status, createdAt: booking.issue.createdAt, proRepliedAt: replies.get(booking.issue.id) ?? null };
+      if (!jobIssueCanEscalate(chat, now)) {
+        throw new BadRequestException(
+          "Il professionista ha 48 ore per risponderti in chat: se non risponde la segnalazione passa da sola al nostro team.",
+        );
+      }
+    }
 
     const status = outcome === "RESOLVED" ? "RESOLVED" : "OPEN";
     await this.prisma.jobIssue.update({
       where: { id: booking.issue.id },
-      data: { status, ...(outcome === "RESOLVED" ? { resolvedAt: new Date() } : {}) },
+      data: { status, ...(outcome === "RESOLVED" ? { resolvedAt: now } : { escalatedAt: now, escalationReason: "CLIENT" }) },
     });
     await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_ESCALATED", {
       bookingId,
       issueType: booking.issue.type,
       guidedRequestId: booking.quote?.guidedRequestId,
+      audience: "PROFESSIONAL",
+      ...(outcome === "ESCALATE" ? { evidenceDueAt: jobIssueEvidenceDueAt(now).toISOString() } : {}),
     });
     if (booking.quote) {
       await this.timelineService.log(
@@ -673,7 +699,7 @@ export class BookingsService {
         "CLIENT",
         outcome === "RESOLVED"
           ? "Il cliente ha indicato che il problema è stato risolto con il professionista."
-          : "Il cliente ha chiesto al nostro team di decidere sulla segnalazione.",
+          : "Il cliente ha chiesto al nostro team di decidere sulla segnalazione. Il professionista ha 72 ore per inviare la sua versione.",
       );
     }
     return { bookingId, status };
@@ -736,6 +762,7 @@ export class BookingsService {
         review: true,
         finalItems: true,
         issue: true,
+        jobPayment: { select: { paymentMethod: true, status: true } },
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
         // anche i dati della richiesta guidata originale (titolo/categoria,
         // descrizione, foto) e del preventivo accettato (voci/note) — non
@@ -748,12 +775,26 @@ export class BookingsService {
     });
 
     const now = new Date();
+    const chatReplies = await this.jobIssueOutcomeService.proChatReplies(
+      bookings
+        .filter((b) => b.issue?.status === "CHAT")
+        .map((b) => ({
+          id: b.issue!.id,
+          createdAt: b.issue!.createdAt,
+          professionalRespondedAt: b.issue!.professionalRespondedAt,
+          guidedRequestId: b.quote?.guidedRequestId ?? null,
+          professionalProfileId: b.professionalProfileId,
+        })),
+    );
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
       // Segnalazione di un problema (docs/CHANGELOG.md §164): quella già
       // inviata, quali si possono inviare adesso, e se si può recensire.
-      issue: toJobIssueSummary(booking.issue),
+      issue: toJobIssueSummary(booking.issue, {
+        proRepliedAt: booking.issue ? chatReplies.get(booking.issue.id) : null,
+        paidOnline: jobPaidOnline(booking.jobPayment),
+      }),
       issueTypesAllowed: jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
       canReview: clientCanReview({
         status: booking.status,

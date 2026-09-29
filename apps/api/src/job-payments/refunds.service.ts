@@ -93,9 +93,13 @@ export class RefundsService {
       if (!this.stripe) {
         throw new BadRequestException("Rimborso Stripe non configurato su questo ambiente (STRIPE_SECRET_KEY mancante).");
       }
+      // Addebito con destinazione al professionista (Stripe Connect): il
+      // rimborso riprende la sua quota dal suo conto Stripe, come la
+      // garanzia A-Z di Amazon preleva dal venditore (docs/CHANGELOG.md §167).
       const stripeRefund = await this.stripe.refunds.create({
         payment_intent: refund.jobPayment.stripePaymentIntentId,
         amount: refund.amountEurCents,
+        reverse_transfer: true,
       });
       stripeRefundId = stripeRefund.id;
     }

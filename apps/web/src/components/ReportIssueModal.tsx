@@ -86,6 +86,12 @@ export function ReportIssueModal({
       setError("Descrivi cosa è successo (almeno 10 caratteri).");
       return;
     }
+    // Prove minime (docs/CHANGELOG.md §167): le foto per un lavoro fatto
+    // male; per la mancata presentazione basta la chat.
+    if (type === "BAD_WORK" && photoUrls.length === 0) {
+      setError("Aggiungi almeno una foto del lavoro: ci serve per valutare la segnalazione.");
+      return;
+    }
     setIsSaving(true);
     try {
       await onSubmit({ type, description: description.trim(), photoUrls });
@@ -135,8 +141,9 @@ export function ReportIssueModal({
             {onOpenChat ? (
               <>
                 <Text color={brand.grafite70}>
-                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Come primo passo provate a trovare una soluzione
-                  insieme in chat. Se non ci riuscite, dalla scheda del lavoro puoi chiedere al nostro team di decidere.
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo: ha 48 ore per risponderti e proporti una
+                  soluzione. Se non risponde, la segnalazione passa da sola al nostro team; se risponde ma non vi accordate, dalla scheda del
+                  lavoro puoi chiedere al nostro team di decidere.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
@@ -150,8 +157,8 @@ export function ReportIssueModal({
             ) : (
               <>
                 <Text color={brand.grafite70}>
-                  Abbiamo avvisato {businessName}, che può rispondere con la sua versione. Il nostro team esamina la segnalazione e ti comunica la
-                  decisione. Dopo la decisione potrai lasciare la recensione.
+                  Abbiamo avvisato {businessName}, che ha 72 ore per inviare la sua versione: se non risponde, la segnalazione è accolta. Poi il
+                  nostro team decide entro 2 giorni e ti comunica l&apos;esito. Dopo la decisione potrai lasciare la recensione.
                 </Text>
                 <Button variant="primary" size="$3" height={44} alignSelf="flex-start" onPress={onClose}>
                   Chiudi
@@ -235,7 +242,7 @@ export function ReportIssueModal({
 
             <YStack gap="$1">
               <Text fontSize="$2" color={brand.grafite70}>
-                Foto o video (opzionale, fino a {MAX_PHOTOS})
+                {type === "BAD_WORK" ? `Foto o video del lavoro (almeno una, fino a ${MAX_PHOTOS})` : `Foto o video (opzionale, fino a ${MAX_PHOTOS})`}
               </Text>
               <XStack flexWrap="wrap" gap="$2">
                 {photoUrls.map((url) => (

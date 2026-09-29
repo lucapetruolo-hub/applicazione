@@ -30,6 +30,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     timelineService as never,
     jobPaymentsService as never,
     { afterJobAccepted: vi.fn() } as never,
+    {} as never,
   );
   return { service, prisma, notificationsService, professionalMetricsService, timelineService };
 }

@@ -886,6 +886,14 @@ export function RequestCard({
                 await apiClient.respondToJobIssue(token, booking.id, { response });
                 onChanged();
               }}
+              onAnswerInfo={async (response) => {
+                await apiClient.answerJobIssueInfo(token, booking.id, response);
+                onChanged();
+              }}
+              onAppeal={async (text) => {
+                await apiClient.appealJobIssue(token, booking.id, text);
+                onChanged();
+              }}
             />
           ) : null}
 
