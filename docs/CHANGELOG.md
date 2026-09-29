@@ -15570,7 +15570,7 @@ Decisioni prese:
 - **Chiusura della fase in chat, decisa dal cliente** (`PATCH
   /bookings/:id/issue/chat-outcome`): "Abbiamo risolto" → `RESOLVED`,
   segnalazione chiusa senza admin (notifica `JOB_ISSUE_SETTLED` al
-  professionista); "Non abbiamo risolto: fai decidere al vostro team" →
+  professionista); "Non abbiamo risolto" (etichetta accorciata su richiesta dell'utente) →
   `OPEN`, arriva in `/admin/problemi` e il professionista può aggiungere la
   sua versione (`JOB_ISSUE_ESCALATED`). Il professionista non può chiudere
   la fase in chat al posto del cliente. Nessun limite di tempo per la chat.

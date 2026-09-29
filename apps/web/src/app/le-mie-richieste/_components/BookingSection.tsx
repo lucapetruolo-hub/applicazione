@@ -182,7 +182,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
                   Abbiamo risolto
                 </Button>
                 <Button variant="ghost" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("ESCALATE")}>
-                  Non abbiamo risolto: fai decidere al vostro team
+                  Non abbiamo risolto
                 </Button>
               </XStack>
               {issueError ? (
