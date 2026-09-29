@@ -32,6 +32,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [issueBusy, setIssueBusy] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
 
   async function handleReopenBooking() {
@@ -80,6 +82,20 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
   function closeReviewModal() {
     setShowReviewModal(false);
     onChanged();
+  }
+
+  // Fine della fase in chat di una segnalazione (§165), decisa dal cliente.
+  async function closeIssueChat(outcome: "RESOLVED" | "ESCALATE") {
+    setIssueError(null);
+    setIssueBusy(true);
+    try {
+      await apiClient.closeJobIssueChat(token, booking.id, outcome);
+      onChanged();
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIssueBusy(false);
+    }
   }
 
   // Segnalazioni (docs/CHANGELOG.md §164): quali si possono inviare lo decide il server.
@@ -148,10 +164,38 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
       {booking.issue ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={booking.issue.status === "REJECTED" ? brand.grafite : brand.urgenza}>
+          <Text fontSize="$2" fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
             Hai segnalato: {JOB_ISSUE_LABEL[booking.issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[booking.issue.status]}
           </Text>
-          {booking.issue.status === "OPEN" ? (
+          {booking.issue.status === "CHAT" ? (
+            <YStack gap="$2">
+              <Text fontSize="$2" color={brand.grafite70}>
+                Prova a trovare una soluzione con {booking.businessName} in chat. Se non vi accordate, chiedi al nostro team di decidere.
+              </Text>
+              <XStack gap="$2" flexWrap="wrap">
+                {booking.guidedRequestId ? (
+                  <Button variant="primary" size="$2" height={36} onPress={() => setShowTimeline(true)}>
+                    Apri la chat
+                  </Button>
+                ) : null}
+                <Button variant="secondary" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("RESOLVED")}>
+                  Abbiamo risolto
+                </Button>
+                <Button variant="ghost" size="$2" height={36} disabled={issueBusy} opacity={issueBusy ? 0.6 : 1} onPress={() => closeIssueChat("ESCALATE")}>
+                  Non abbiamo risolto: fai decidere al vostro team
+                </Button>
+              </XStack>
+              {issueError ? (
+                <Text fontSize="$2" color={brand.urgenza}>
+                  {issueError}
+                </Text>
+              ) : null}
+            </YStack>
+          ) : booking.issue.status === "RESOLVED" ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai indicato che avete risolto il problema con {booking.businessName}.
+            </Text>
+          ) : booking.issue.status === "OPEN" ? (
             <Text fontSize="$2" color={brand.grafite70}>
               Il nostro team la sta esaminando e ha avvisato {booking.businessName}. Ti comunichiamo la decisione qui e per notifica.
             </Text>
@@ -246,6 +290,15 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           onSubmit={async (input) => {
             await apiClient.reportJobIssue(token, booking.id, input);
           }}
+          onOpenChat={
+            booking.guidedRequestId
+              ? () => {
+                  setShowNoShowModal(false);
+                  setShowTimeline(true);
+                  onChanged();
+                }
+              : undefined
+          }
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
@@ -260,9 +313,9 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
               Lascia una recensione
             </Button>
-          ) : booking.issue?.status === "OPEN" ? (
+          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? (
             <Text fontSize="$2" color={brand.grafite70}>
-              Potrai lasciare la recensione dopo la decisione sulla tua segnalazione.
+              Potrai lasciare la recensione quando la segnalazione sarà chiusa.
             </Text>
           ) : !booking.clientConfirmedCompletedAt ? (
             <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>

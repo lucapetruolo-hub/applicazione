@@ -60,6 +60,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
       "JOB_ISSUE_REPORTED",
       "JOB_ISSUE_RESOLVED",
+      "JOB_ISSUE_SETTLED",
+      "JOB_ISSUE_ESCALATED",
       "BOOKING_REMINDER",
     ],
     activeChannels: ["inApp", "email"],

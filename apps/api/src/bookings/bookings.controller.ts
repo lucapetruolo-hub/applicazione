@@ -5,6 +5,7 @@ import {
   cancelBookingByProfessionalSchema,
   clientConfirmCompleteSchema,
   completeBookingSchema,
+  jobIssueChatOutcomeSchema,
   jobIssueResponseSchema,
   reportJobIssueSchema,
   updateBookingMeetingLinkSchema,
@@ -160,6 +161,13 @@ export class BookingsController {
   @Post(":id/issue")
   reportIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportJobIssueSchema)) body: ReportJobIssueInput) {
     return this.bookingsService.reportIssue(req.user.userId, id, body);
+  }
+
+  /** Il cliente chiude la fase in chat: "abbiamo risolto" o "fai decidere al vostro team" (§165). */
+  @UseGuards(JwtAuthGuard)
+  @Patch(":id/issue/chat-outcome")
+  closeIssueChat(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueChatOutcomeSchema)) body: { outcome: "RESOLVED" | "ESCALATE" }) {
+    return this.bookingsService.closeIssueChat(req.user.userId, id, body.outcome);
   }
 
   /** Il professionista risponde alla segnalazione con la sua versione. */

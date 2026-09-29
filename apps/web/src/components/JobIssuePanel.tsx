@@ -7,11 +7,21 @@ import { MediaPreview } from "@/components/MediaPreview";
 
 /**
  * Segnalazione del cliente vista dal professionista (docs/CHANGELOG.md
- * §164): cosa ha scritto il cliente, e finché è in esame un campo per
- * rispondere con la propria versione, che il nostro team legge prima di
- * decidere. Dopo la decisione mostra esito e motivazione.
+ * §164-§165): cosa ha scritto il cliente. Prima fase: invito a trovare una
+ * soluzione in chat. Se il cliente la passa al nostro team, un campo per
+ * rispondere con la propria versione, letta prima di decidere. Dopo la
+ * decisione mostra esito e motivazione.
  */
-export function JobIssuePanel({ issue, onRespond }: { issue: JobIssueSummary; onRespond: (response: string) => Promise<void> }) {
+export function JobIssuePanel({
+  issue,
+  onRespond,
+  onOpenChat,
+}: {
+  issue: JobIssueSummary;
+  onRespond: (response: string) => Promise<void>;
+  /** Apre la chat col cliente: prima fase della segnalazione (§165). */
+  onOpenChat?: () => void;
+}) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +70,23 @@ export function JobIssuePanel({ issue, onRespond }: { issue: JobIssueSummary; on
         </YStack>
       ) : null}
 
-      {issue.status === "OPEN" ? (
+      {issue.status === "CHAT" ? (
+        <YStack gap="$2">
+          <Text fontSize="$2" color={brand.grafite70}>
+            Scrivi al cliente in chat e provate a trovare una soluzione insieme. Se non vi accordate, il cliente può chiedere al nostro team di
+            decidere: in quel caso potrai aggiungere la tua versione.
+          </Text>
+          {onOpenChat ? (
+            <Button variant="primary" size="$2" height={36} alignSelf="flex-start" onPress={onOpenChat}>
+              Apri la chat col cliente
+            </Button>
+          ) : null}
+        </YStack>
+      ) : issue.status === "RESOLVED" ? (
+        <Text fontSize="$2" color={brand.grafite}>
+          Il cliente ha indicato che avete risolto il problema.
+        </Text>
+      ) : issue.status === "OPEN" ? (
         <YStack gap="$2">
           <Text fontSize="$2" color={brand.grafite70}>
             Il nostro team decide dopo aver letto anche la tua versione.{" "}

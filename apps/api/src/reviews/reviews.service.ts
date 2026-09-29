@@ -110,7 +110,9 @@ export class ReviewsService {
       issueStatus: booking.issue?.status ?? null,
     });
     if (!allowed) {
-      if (booking.issue?.status === "OPEN") throw new ForbiddenException("Potrai recensire dopo la decisione sulla tua segnalazione.");
+      if (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") {
+        throw new ForbiddenException("Potrai recensire quando la tua segnalazione sarà chiusa.");
+      }
       if (booking.status !== "COMPLETED") throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
       throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
     }
@@ -149,11 +151,11 @@ export class ReviewsService {
 
     const staleClientReviews = await this.prisma.clientReview.findMany({
       // Mai una recensione automatica a 5 stelle al professionista se il
-      // cliente ha segnalato un problema in esame o accolto (§164).
+      // cliente ha segnalato un problema ancora aperto o accolto (§164-§165).
       where: {
         isAutomatic: false,
         createdAt: { lt: threshold },
-        booking: { review: { is: null }, OR: [{ issue: { is: null } }, { issue: { status: "REJECTED" } }] },
+        booking: { review: { is: null }, OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
       },
     });
     for (const clientReview of staleClientReviews) {

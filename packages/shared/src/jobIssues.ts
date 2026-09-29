@@ -9,14 +9,17 @@ import { z } from "zod";
  * - "Il lavoro non è andato bene": dall'inizio dell'appuntamento, entro 14
  *   giorni dall'ultimo tra fine appuntamento, chiusura del professionista e
  *   conferma del cliente (difetti scoperti dopo).
- * Una sola segnalazione per lavoro. La decide un admin; una mancata
+ * Una sola segnalazione per lavoro. Prima fase (§165, decisione
+ * dell'utente): cliente e professionista provano a risolvere in chat
+ * (`CHAT`); se si accordano la segnalazione si chiude (`RESOLVED`), se no il
+ * cliente la passa al nostro team (`OPEN`), che decide. Una mancata
  * presentazione accolta abbassa l'affidabilità del professionista, e la
- * recensione si può lasciare dopo la decisione.
+ * recensione si può lasciare dopo la chiusura.
  */
 
 export const jobIssueTypes = ["NO_SHOW", "BAD_WORK"] as const;
 export type JobIssueType = (typeof jobIssueTypes)[number];
-export type JobIssueStatus = "OPEN" | "UPHELD" | "REJECTED";
+export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED";
 
 export const NO_SHOW_REPORT_DAYS = 7;
 export const BAD_WORK_REPORT_DAYS = 14;
@@ -27,7 +30,9 @@ export const JOB_ISSUE_LABEL: Record<JobIssueType, string> = {
 };
 
 export const JOB_ISSUE_STATUS_LABEL: Record<JobIssueStatus, string> = {
-  OPEN: "In esame",
+  CHAT: "In chat con il professionista",
+  RESOLVED: "Risolta con il professionista",
+  OPEN: "In esame dal nostro team",
   UPHELD: "Accolta",
   REJECTED: "Respinta",
 };
@@ -85,6 +90,9 @@ export const jobIssueResponseSchema = z.object({
 });
 export type JobIssueResponseInput = z.infer<typeof jobIssueResponseSchema>;
 
+export const jobIssueChatOutcomeSchema = z.object({ outcome: z.enum(["RESOLVED", "ESCALATE"]) });
+export type JobIssueChatOutcomeInput = z.infer<typeof jobIssueChatOutcomeSchema>;
+
 export const resolveJobIssueSchema = z.object({
   decision: z.enum(["UPHELD", "REJECTED"]),
   note: z.string().trim().min(3, "Scrivi la motivazione della decisione.").max(1000),
@@ -94,8 +102,8 @@ export type ResolveJobIssueInput = z.infer<typeof resolveJobIssueSchema>;
 /**
  * Il cliente può recensire: dopo aver confermato un lavoro completato, come
  * prima; oppure dopo la decisione dell'admin su una sua segnalazione, anche
- * se il lavoro non è mai stato chiuso (es. mancata presentazione). Mai
- * mentre una segnalazione è in esame.
+ * se il lavoro non è mai stato chiuso (es. mancata presentazione), o dopo
+ * un accordo in chat. Mai mentre la segnalazione è aperta (in chat o in esame).
  */
 export function clientCanReview(b: {
   status: string;
@@ -104,8 +112,8 @@ export function clientCanReview(b: {
   issueStatus: JobIssueStatus | null;
 }): boolean {
   if (b.hasReview) return false;
-  if (b.issueStatus === "OPEN") return false;
-  if (b.issueStatus === "UPHELD" || b.issueStatus === "REJECTED") return true;
+  if (b.issueStatus === "OPEN" || b.issueStatus === "CHAT") return false;
+  if (b.issueStatus === "UPHELD" || b.issueStatus === "REJECTED" || b.issueStatus === "RESOLVED") return true;
   return b.status === "COMPLETED" && b.clientConfirmedCompletedAt !== null;
 }
 

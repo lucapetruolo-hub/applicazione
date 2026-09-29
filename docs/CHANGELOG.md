@@ -15549,3 +15549,47 @@ Verifica:
   nessun overflow né errore. Trovato e corretto nel giro: il pulsante
   "Conferma che il lavoro è terminato" in cima alla scheda restava anche con
   una segnalazione (`clientNextAction`).
+
+## 165. Segnalazioni: prima si prova a risolvere in chat
+
+Richiesta esplicita dell'utente: per "non si è presentato" e "lavoro non
+andato bene", come prima soluzione dare la possibilità di contattare il
+professionista in chat per trovare insieme una soluzione; se non ci
+riescono, proseguire come nel §164.
+
+Decisioni prese:
+- **Nuovi stati** `CHAT` e `RESOLVED` di `JobIssueStatus` (migrazione
+  `20260929120000_job_issue_chat`). Una segnalazione nasce in `CHAT`; solo
+  le prenotazioni dirette dall'agenda, che non hanno una chat, passano
+  subito al nostro team (`OPEN`).
+- **In chat**: alla segnalazione compare nella chat della richiesta un
+  messaggio con cosa è successo e l'invito a trovare una soluzione; il
+  professionista riceve `JOB_ISSUE_REPORTED` e nella sua scheda il tasto
+  "Apri la chat col cliente". Il cliente, dopo l'invio, ha subito "Apri la
+  chat".
+- **Chiusura della fase in chat, decisa dal cliente** (`PATCH
+  /bookings/:id/issue/chat-outcome`): "Abbiamo risolto" → `RESOLVED`,
+  segnalazione chiusa senza admin (notifica `JOB_ISSUE_SETTLED` al
+  professionista); "Non abbiamo risolto: fai decidere al vostro team" →
+  `OPEN`, arriva in `/admin/problemi` e il professionista può aggiungere la
+  sua versione (`JOB_ISSUE_ESCALATED`). Il professionista non può chiudere
+  la fase in chat al posto del cliente. Nessun limite di tempo per la chat.
+- **Admin**: schede "Da decidere" (solo `OPEN`, unico contatore del menu),
+  "In chat tra le parti" (sola lettura) e "Chiuse" (accolte, respinte,
+  risolte tra le parti).
+- **Recensione e punteggio**: durante la chat la recensione resta bloccata;
+  dopo un accordo si può recensire; nessuna recensione automatica a 5 stelle
+  finché la segnalazione è aperta. Un accordo in chat non tocca il
+  punteggio: solo una mancata presentazione accolta dal team lo abbassa.
+
+Verifica:
+- `job-issues.test.ts` aggiornato (recensione in chat e dopo un accordo);
+  113/113 test API; `tsc` su api, web e mobile.
+- API sul database e2e: segnalazione → `CHAT`, visibile solo nella scheda
+  "In chat" dell'admin; recensione in chat → 403; il professionista non può
+  chiudere la chat (403); "fai decidere" → `OPEN` e in "Da decidere";
+  seconda chiusura → 400; altra segnalazione "abbiamo risolto" →
+  `RESOLVED`, recensione possibile, in "Chiuse"; messaggi in chat e
+  notifiche creati.
+- Playwright 390 e 1280 sulla scheda del cliente in fase chat: nessun
+  overflow né errore.

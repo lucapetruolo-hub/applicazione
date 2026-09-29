@@ -612,8 +612,12 @@ export class BookingsService {
       );
     }
 
+    // Prima fase in chat (§165): cliente e professionista provano a
+    // risolvere da soli. Senza una richiesta collegata non c'è chat
+    // (prenotazione diretta dall'agenda): si passa subito al nostro team.
+    const inChat = booking.quote !== null;
     const issue = await this.prisma.jobIssue.create({
-      data: { bookingId, type: input.type, description: input.description.trim(), photoUrls: input.photoUrls },
+      data: { bookingId, type: input.type, description: input.description.trim(), photoUrls: input.photoUrls, status: inChat ? "CHAT" : "OPEN" },
     });
     // Compatibilità col vecchio flag "rimborso richiesto", letto dal professionista.
     if (input.type === "NO_SHOW") {
@@ -623,6 +627,43 @@ export class BookingsService {
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
       issueType: input.type,
+      inChat,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      professionalProfileId: booking.professionalProfileId,
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Provate a trovare una soluzione qui in chat; se non ci riuscite, il cliente può chiedere al nostro team di decidere.`,
+      );
+    }
+    return { id: issue.id, status: issue.status };
+  }
+
+  /**
+   * Fine della prima fase in chat (§165), decisa dal cliente: "abbiamo
+   * risolto" chiude la segnalazione; "non abbiamo risolto" la passa al
+   * nostro team, che decide come prima.
+   */
+  async closeIssueChat(clientId: string, bookingId: string, outcome: "RESOLVED" | "ESCALATE") {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { issue: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } },
+    });
+    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
+    if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
+
+    const status = outcome === "RESOLVED" ? "RESOLVED" : "OPEN";
+    await this.prisma.jobIssue.update({
+      where: { id: booking.issue.id },
+      data: { status, ...(outcome === "RESOLVED" ? { resolvedAt: new Date() } : {}) },
+    });
+    await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_ESCALATED", {
+      bookingId,
+      issueType: booking.issue.type,
       guidedRequestId: booking.quote?.guidedRequestId,
     });
     if (booking.quote) {
@@ -630,10 +671,12 @@ export class BookingsService {
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. La segnalazione è in esame.`,
+        outcome === "RESOLVED"
+          ? "Il cliente ha indicato che il problema è stato risolto con il professionista."
+          : "Il cliente ha chiesto al nostro team di decidere sulla segnalazione.",
       );
     }
-    return { id: issue.id, status: issue.status };
+    return { bookingId, status };
   }
 
   /** Il professionista risponde alla segnalazione con la sua versione, finché è in esame. */
@@ -646,7 +689,7 @@ export class BookingsService {
       throw new ForbiddenException("Questa prenotazione non è tua.");
     }
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
-    if (booking.issue.status !== "OPEN") throw new BadRequestException("La segnalazione è già stata decisa.");
+    if (booking.issue.status !== "OPEN" && booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione è già chiusa.");
 
     await this.prisma.jobIssue.update({
       where: { id: booking.issue.id },

@@ -11,7 +11,7 @@ import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatA
 import { MediaPreview } from "@/components/MediaPreview";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
-type View = "open" | "closed";
+type View = "open" | "chat" | "closed";
 
 function Photos({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;
@@ -91,8 +91,9 @@ function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token: strin
 }
 
 /**
- * Problemi segnalati dai clienti (docs/CHANGELOG.md §164): mancata
- * presentazione o lavoro non andato bene. Tutto ciò che serve a decidere
+ * Problemi segnalati dai clienti (docs/CHANGELOG.md §164-§165): mancata
+ * presentazione o lavoro non andato bene. Prima fase in chat tra le parti;
+ * qui si decide solo quando il cliente chiede l'intervento del team. Tutto ciò che serve a decidere
  * in una scheda: versione del cliente, risposta del professionista, note e
  * foto a lavoro terminato. Visibile a ogni ruolo admin.
  */
@@ -116,12 +117,13 @@ export default function AdminProblemiPage() {
     <YStack>
       <AdminPageHeader
         title="Problemi segnalati"
-        description="Mancate presentazioni e lavori non andati bene segnalati dai clienti. Leggi le due versioni e decidi con una motivazione."
+        description="Mancate presentazioni e lavori non andati bene che cliente e professionista non hanno risolto in chat. Leggi le due versioni e decidi con una motivazione."
       />
       <AdminTabs
         tabs={[
           { key: "open", label: "Da decidere" },
-          { key: "closed", label: "Decise" },
+          { key: "chat", label: "In chat tra le parti" },
+          { key: "closed", label: "Chiuse" },
         ]}
         value={view}
         onChange={setView}
@@ -130,7 +132,9 @@ export default function AdminProblemiPage() {
       {rows === null && !error ? (
         <SkeletonTableRows rows={3} cols={4} />
       ) : rows && rows.length === 0 ? (
-        <Text color={brand.grafite70}>{view === "open" ? "Nessuna segnalazione da decidere." : "Nessuna segnalazione decisa finora."}</Text>
+        <Text color={brand.grafite70}>
+          {view === "open" ? "Nessuna segnalazione da decidere." : view === "chat" ? "Nessuna segnalazione in chat tra le parti." : "Nessuna segnalazione chiusa finora."}
+        </Text>
       ) : rows && token ? (
         <YStack gap="$3">
           {rows.map((row) => (
@@ -151,7 +155,7 @@ export default function AdminProblemiPage() {
                   </Text>
                 </YStack>
                 <YStack alignItems="flex-end" gap="$1">
-                  <AdminPill tone={row.issue.status === "OPEN" ? "warn" : row.issue.status === "UPHELD" ? "danger" : "neutral"}>
+                  <AdminPill tone={row.issue.status === "OPEN" ? "warn" : row.issue.status === "UPHELD" ? "danger" : row.issue.status === "RESOLVED" ? "ok" : "neutral"}>
                     {JOB_ISSUE_STATUS_LABEL[row.issue.status]}
                   </AdminPill>
                   <Text fontSize={13} color={brand.grafite70}>
@@ -198,6 +202,14 @@ export default function AdminProblemiPage() {
 
               {row.issue.status === "OPEN" ? (
                 <DecisionForm row={row} token={token} onDone={() => setReload((n) => n + 1)} />
+              ) : row.issue.status === "CHAT" ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Cliente e professionista stanno provando a risolvere in chat: la segnalazione arriva qui da decidere solo se il cliente lo chiede.
+                </Text>
+              ) : row.issue.status === "RESOLVED" ? (
+                <Text fontWeight="700" color={brand.grafite}>
+                  Risolta tra le parti il {formatAdminDate(row.issue.resolvedAt, true)}
+                </Text>
               ) : (
                 <YStack gap="$1" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
                   <Text fontWeight="700" color={brand.grafite}>

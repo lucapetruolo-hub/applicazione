@@ -1037,15 +1037,17 @@ export class AdminService {
   }
 
   /**
-   * Segnalazioni di problemi sul lavoro (docs/CHANGELOG.md §164): da
-   * decidere ("open") o già decise ("closed"), con tutto ciò che serve per
+   * Segnalazioni di problemi sul lavoro (docs/CHANGELOG.md §164-§165): da
+   * decidere ("open"), ancora in chat tra le parti ("chat") o chiuse
+   * ("closed"), con tutto ciò che serve per
    * decidere: descrizione e foto del cliente, versione del professionista,
    * note e foto a lavoro terminato, importi.
    */
-  async listJobIssues(view: "open" | "closed"): Promise<AdminJobIssueRow[]> {
+  async listJobIssues(view: "open" | "chat" | "closed"): Promise<AdminJobIssueRow[]> {
     const issues = await this.prisma.jobIssue.findMany({
-      where: view === "open" ? { status: "OPEN" } : { status: { not: "OPEN" } },
-      orderBy: { createdAt: view === "open" ? "asc" : "desc" },
+      where:
+        view === "open" ? { status: "OPEN" } : view === "chat" ? { status: "CHAT" } : { status: { in: ["UPHELD", "REJECTED", "RESOLVED"] } },
+      orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
       take: 200,
       include: {
         booking: {

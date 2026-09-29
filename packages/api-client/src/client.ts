@@ -1421,7 +1421,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         cache: "no-store",
       }),
 
-    adminListJobIssues: (token: string, view: "open" | "closed") =>
+    adminListJobIssues: (token: string, view: "open" | "chat" | "closed") =>
       request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
@@ -1436,6 +1436,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    closeJobIssueChat: (token: string, bookingId: string, outcome: "RESOLVED" | "ESCALATE") =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/issue/chat-outcome`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ outcome }),
       }),
 
     respondToJobIssue: (token: string, bookingId: string, input: JobIssueResponseInput) =>

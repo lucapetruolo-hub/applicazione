@@ -148,7 +148,7 @@ export class AdminController {
   @RequireAdminScope("ANY")
   @Get("job-issues")
   listJobIssues(@Query("view") view?: string) {
-    return this.adminService.listJobIssues(view === "closed" ? "closed" : "open");
+    return this.adminService.listJobIssues(view === "closed" || view === "chat" ? view : "open");
   }
 
   @RequireAdminScope("ANY")

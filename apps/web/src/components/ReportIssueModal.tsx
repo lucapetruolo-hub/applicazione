@@ -18,8 +18,8 @@ const HINT: Record<JobIssueType, string> = {
  * "Segnala un problema" (docs/CHANGELOG.md §164, decisione dell'utente):
  * il cliente sceglie tra mancata presentazione e lavoro non andato bene
  * (solo quelli ammessi adesso, `allowedTypes`), descrive cosa è successo e
- * può allegare foto/video. La segnalazione la decide il nostro team, dopo
- * aver sentito anche il professionista. Sostituisce il vecchio popup "Non
+ * può allegare foto/video. Prima fase in chat col professionista (§165);
+ * se non si accordano decide il nostro team. Sostituisce il vecchio popup "Non
  * presentato"; i contatti del professionista restano visibili per provare
  * prima a sentirlo.
  */
@@ -31,6 +31,7 @@ export function ReportIssueModal({
   onClose,
   onSubmit,
   uploadPhoto,
+  onOpenChat,
 }: {
   businessName: string;
   phone: string | null;
@@ -39,6 +40,8 @@ export function ReportIssueModal({
   onClose: () => void;
   onSubmit: (input: ReportJobIssueInput) => Promise<void>;
   uploadPhoto: (file: File) => Promise<string>;
+  /** Apre la chat col professionista: prima fase della segnalazione (§165). Assente senza chat (prenotazione dall'agenda). */
+  onOpenChat?: () => void;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -129,13 +132,32 @@ export function ReportIssueModal({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
-            <Text color={brand.grafite70}>
-              Abbiamo avvisato {businessName}, che può rispondere con la sua versione. Il nostro team esamina la segnalazione e ti comunica la decisione. Dopo la
-              decisione potrai lasciare la recensione.
-            </Text>
-            <Button variant="primary" size="$3" height={44} alignSelf="flex-start" onPress={onClose}>
-              Chiudi
-            </Button>
+            {onOpenChat ? (
+              <>
+                <Text color={brand.grafite70}>
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Come primo passo provate a trovare una soluzione
+                  insieme in chat. Se non ci riuscite, dalla scheda del lavoro puoi chiedere al nostro team di decidere.
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
+                    Apri la chat
+                  </Button>
+                  <Button variant="ghost" size="$3" height={44} onPress={onClose}>
+                    Chiudi
+                  </Button>
+                </XStack>
+              </>
+            ) : (
+              <>
+                <Text color={brand.grafite70}>
+                  Abbiamo avvisato {businessName}, che può rispondere con la sua versione. Il nostro team esamina la segnalazione e ti comunica la
+                  decisione. Dopo la decisione potrai lasciare la recensione.
+                </Text>
+                <Button variant="primary" size="$3" height={44} alignSelf="flex-start" onPress={onClose}>
+                  Chiudi
+                </Button>
+              </>
+            )}
           </YStack>
         ) : (
           <>
@@ -144,7 +166,9 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               <Text fontSize="$3" color={brand.grafite70}>
-                Il nostro team esamina ogni segnalazione e sente anche {businessName} prima di decidere.
+                {onOpenChat
+                  ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
+                  : `Il nostro team esamina ogni segnalazione e sente anche ${businessName} prima di decidere.`}
               </Text>
             </YStack>
 

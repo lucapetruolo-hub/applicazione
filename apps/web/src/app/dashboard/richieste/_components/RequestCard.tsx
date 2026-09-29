@@ -881,6 +881,7 @@ export function RequestCard({
           {booking?.issue ? (
             <JobIssuePanel
               issue={booking.issue}
+              onOpenChat={myProfileId ? openTimeline : undefined}
               onRespond={async (response) => {
                 await apiClient.respondToJobIssue(token, booking.id, { response });
                 onChanged();

@@ -1896,6 +1896,9 @@ enum JobIssueType {
 }
 
 enum JobIssueStatus {
+  // Prima fase: cliente e professionista provano a risolvere in chat (§165).
+  CHAT
+  RESOLVED
   OPEN
   UPHELD
   REJECTED
