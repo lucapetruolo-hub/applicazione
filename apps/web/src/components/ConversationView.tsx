@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ConversationEvent } from "@professionisti/shared";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -534,6 +535,31 @@ export function ConversationView({
         ) : null}
       </XStack>
 
+      {/* Avviso di sicurezza sempre visibile in cima alla chat
+          (docs/CHANGELOG.md §166, richiesta esplicita dell'utente). */}
+      <XStack
+        gap="$2"
+        alignItems="flex-start"
+        padding="$3"
+        marginHorizontal={20}
+        marginTop="$3"
+        marginBottom="$2"
+        flexShrink={0}
+        borderRadius="$3"
+        backgroundColor={brand.cianografiaVelo}
+        role="note"
+      >
+        <YStack flexShrink={0}>
+          <Icon name="shield-check" size={18} color={brand.cianografia} strokeWidth={1.75} />
+        </YStack>
+        <Text fontSize="$2" color={brand.grafite} flex={1}>
+          Non inquadrare QR code e non condividere numeri di telefono o dati personali. Resta sempre in questa chat e segnala comportamenti
+          sospetti.{" "}
+          <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografia, fontWeight: 700 }}>
+            Scopri di più
+          </Link>
+        </Text>
+      </XStack>
       {/* Unica regione scorrevole del pannello — intestazione e modulo di
           invio restano sempre visibili sopra/sotto, come in una chat vera,
           invece di scorrere via insieme ai messaggi su una cronologia

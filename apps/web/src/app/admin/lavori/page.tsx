@@ -110,6 +110,11 @@ export default function AdminLavoriPage() {
                       {job.client.accountDeleted ? "account eliminato" : <Link href={`/admin/utenti/${job.client.userId}`}>{job.client.name ?? "cliente"}</Link>}
                       {` · appuntamento del ${formatAdminDate(job.scheduledAt)}`}
                     </Text>
+                    {job.guidedRequestId ? (
+                      <Link href={`/admin/chat/${job.guidedRequestId}/${job.professional.profileId}`} style={{ fontSize: 13, fontWeight: 700 }}>
+                        Leggi la chat
+                      </Link>
+                    ) : null}
                   </YStack>
                   <YStack alignItems="flex-end" gap="$1">
                     {job.finalAmountEurCents !== null ? (

@@ -153,6 +153,11 @@ export default function AdminProblemiPage() {
                     {" · cliente "}
                     {row.client.accountDeleted ? "account eliminato" : <Link href={`/admin/utenti/${row.client.userId}`}>{row.client.name ?? "cliente"}</Link>}
                   </Text>
+                  {row.guidedRequestId ? (
+                    <Link href={`/admin/chat/${row.guidedRequestId}/${row.professional.profileId}`} style={{ fontSize: 13, fontWeight: 700 }}>
+                      Leggi la chat
+                    </Link>
+                  ) : null}
                 </YStack>
                 <YStack alignItems="flex-end" gap="$1">
                   <AdminPill tone={row.issue.status === "OPEN" ? "warn" : row.issue.status === "UPHELD" ? "danger" : row.issue.status === "RESOLVED" ? "ok" : "neutral"}>

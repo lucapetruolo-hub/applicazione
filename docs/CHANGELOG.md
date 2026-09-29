@@ -15593,3 +15593,52 @@ Verifica:
   notifiche creati.
 - Playwright 390 e 1280 sulla scheda del cliente in fase chat: nessun
   overflow né errore.
+
+## 166. Chat leggibili dagli admin, avviso di sicurezza in chat, pagina "Sicurezza e truffe"
+
+Richieste esplicite dell'utente: gli admin devono poter vedere le chat tra
+cliente e professionista anche senza una segnalazione; nella chat deve
+esserci un avviso come "Non inquadrare QR code e non condividere numeri di
+telefono o dati personali. Resta sempre in questa chat e segnala
+comportamenti sospetti. Scopri di più", e "Scopri di più" deve aprire una
+pagina che spiega come difendersi (modello: pagina "Phishing" di Subito.it).
+
+Decisioni prese:
+- **Admin → Chat** (`/admin/chat`, voce di menu per Super admin e
+  Moderatore, `@RequireAdminScope("MODERATION")`: sono conversazioni
+  private, la Finanza non le vede). Elenco di tutte le coppie
+  richiesta-professionista con ultimo messaggio, cliente, professionista,
+  richiesta e numero di messaggi, ricerca per nome, cognome o email del
+  cliente e nome del professionista (`GET /admin/conversations?q=`, ultime
+  200). Dettaglio in sola lettura (`/admin/chat/[richiesta]/[professionista]`,
+  `GET /admin/conversations/:guidedRequestId/:professionalProfileId`):
+  cliente a sinistra, professionista a destra, messaggi automatici al
+  centro, foto/video, link alle schede utente e alla segnalazione se c'è.
+  **Ogni apertura viene registrata** nel registro azioni (`AuditLog`,
+  `entityType: "Conversation"`). "Leggi la chat" anche dalle schede di
+  `/admin/problemi` e `/admin/lavori`.
+- **Privacy**: `/privacy` §3 dice ora che le conversazioni possono essere
+  lette dal personale autorizzato per sicurezza e qualità (segnalazioni,
+  contestazioni, abusi) e che ogni lettura è registrata. Da far verificare
+  al legale insieme al resto dell'informativa (checklist pre-lancio).
+- **Avviso in chat** (`ConversationView`): riquadro fisso sopra i messaggi,
+  sempre visibile anche scorrendo, con icona scudo e il testo chiesto
+  dall'utente; "Scopri di più" apre `/sicurezza` in una nuova scheda.
+- **Pagina `/sicurezza` ("Sicurezza e truffe")**: resta nella chat e perché;
+  cos'è il phishing; come riconoscerlo (richieste di dati sensibili, link e
+  QR code, fretta ed errori); come proteggersi (restare in chat, non aprire
+  link o allegati che chiedono dati di pagamento, non condividere dati o
+  codici, false telefonate e codici SMS); cosa fare (non cliccare, segnalare
+  dal profilo o dal menu della richiesta, Contatti, cambiare password,
+  chiamare la banca). Adattata a noi: niente servizio di pagamento in chat
+  da citare, nessuna promessa non vera. Link nel footer e nella sitemap.
+
+Verifica:
+- API sul database e2e: elenco (18 chat), ricerca ("Due" → 6, testo
+  inesistente → 0), dettaglio con segnalazione collegata, riga nel registro
+  azioni; un cliente riceve 403, un admin con solo il ruolo Finanza 403.
+- `tsc` su api e web; Playwright: `/sicurezza` 390, `/admin/chat` 1280,
+  dettaglio chat 390, avviso nella chat del cliente 390; nessun overflow né
+  errore. Corretti nel giro: avviso che scorreva via coi messaggi (ora
+  fisso), icona schiacciata, conteggio "messaggi scritti" che includeva gli
+  eventi automatici (ora totale dei messaggi).

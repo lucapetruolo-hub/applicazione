@@ -4,6 +4,8 @@ export type {
   ApiClientConfig,
   AdminContactMessage,
   AdminCompletedJob,
+  AdminConversation,
+  AdminConversationDetail,
   AdminJobIssue,
   AdminHiddenLead,
   AdminContentReport,

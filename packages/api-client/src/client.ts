@@ -425,6 +425,28 @@ export type AdminCompletedJob = {
   clientPhotoUrls: string[];
 };
 
+/** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */
+export type AdminConversation = {
+  guidedRequestId: string;
+  professionalProfileId: string;
+  categoryLabel: string;
+  city: string;
+  clientUserId: string;
+  clientName: string | null;
+  professionalUserId: string;
+  businessName: string;
+  lastMessage: string;
+  lastActor: string;
+  lastMessageAt: string;
+  messageCount: number;
+};
+
+export type AdminConversationDetail = Omit<AdminConversation, "lastMessage" | "lastActor" | "lastMessageAt" | "messageCount"> & {
+  requestDescription: string;
+  issue: { type: JobIssueType; status: JobIssueSummary["status"] } | null;
+  events: { id: string; actor: "CLIENT" | "PROFESSIONAL" | "SYSTEM"; message: string; mediaUrls: string[]; createdAt: string }[];
+};
+
 /** Segnalazione di un problema vista dall'admin (docs/CHANGELOG.md §164). */
 export type AdminJobIssue = {
   issue: JobIssueSummary;
@@ -1417,6 +1439,18 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Messaggi dal form "Contatti", vista admin. */
     adminListContactMessages: (token: string, resolved = false) =>
       request<AdminContactMessage[]>(`/admin/contact-messages${resolved ? "?resolved=true" : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminListConversations: (token: string, q?: string) =>
+      request<AdminConversation[]>(`/admin/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminGetConversation: (token: string, guidedRequestId: string, professionalProfileId: string) =>
+      request<AdminConversationDetail>(`/admin/conversations/${guidedRequestId}/${professionalProfileId}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       }),

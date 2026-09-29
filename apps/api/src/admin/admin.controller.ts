@@ -143,6 +143,24 @@ export class AdminController {
     return this.adminService.listHiddenLeads();
   }
 
+  // Chat tra cliente e professionista (docs/CHANGELOG.md §166): moderazione,
+  // perché sono conversazioni private; ogni lettura va nel registro azioni.
+  @RequireAdminScope("MODERATION")
+  @Get("conversations")
+  listConversations(@Query("q") q?: string) {
+    return this.adminService.listConversations(q);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Get("conversations/:guidedRequestId/:professionalProfileId")
+  getConversation(
+    @Req() req: AuthenticatedRequest,
+    @Param("guidedRequestId") guidedRequestId: string,
+    @Param("professionalProfileId") professionalProfileId: string,
+  ) {
+    return this.adminService.getConversation(req.user.userId, guidedRequestId, professionalProfileId);
+  }
+
   // Segnalazioni di problemi sul lavoro (docs/CHANGELOG.md §164): qualunque
   // admin, come "Lavori terminati".
   @RequireAdminScope("ANY")
