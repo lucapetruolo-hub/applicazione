@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
 import { ClientIssueStatus } from "./ClientIssueStatus";
+import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
@@ -171,6 +172,19 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </Text>
       ) : null}
 
+      {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
+      {booking.payment && booking.status !== "CANCELED" ? (
+        <JobPaymentStatus
+          payment={booking.payment}
+          audience="client"
+          businessName={booking.businessName}
+          onPay={async (part) => {
+            const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
+            if (url) window.location.href = url;
+          }}
+        />
+      ) : null}
+
       {canReportIssue ? (
         <Text color={brand.urgenza} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowNoShowModal(true)}>
           Segnala un problema
@@ -269,6 +283,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           phone={booking.professionalPhone}
           email={booking.professionalEmail}
           allowedTypes={booking.issueTypesAllowed}
+          assisted={booking.payment?.method !== "DIRECT"}
           onClose={() => {
             setShowNoShowModal(false);
             onChanged();

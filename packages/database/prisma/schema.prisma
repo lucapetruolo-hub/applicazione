@@ -1593,6 +1593,28 @@ model JobPayment {
   stripePaymentIntentId String? @unique
   stripeTransferId      String? @unique
 
+  // --- Pagamento online con acconto e saldo (docs/CHANGELOG.md §168) ---
+  // Il cliente sceglie il metodo accettando il preventivo. Online: acconto
+  // del 20% dell'importo massimo subito (`stripePaymentIntentId`), saldo a
+  // lavoro chiuso (`balancePaymentIntentId`); Manovia trattiene i soldi e li
+  // trasferisce al professionista alla conferma del cliente o 7 giorni dopo
+  // la chiusura (`releaseDueAt`), meno il costo Stripe e la commissione.
+  // Fasi (`onlineStage`, `JobPaymentOnlineStage` in packages/shared):
+  // AWAITING_DEPOSIT, DEPOSIT_PAID, AWAITING_BALANCE, PAID, RELEASED, REFUNDED.
+  onlineStage              String?
+  depositEurCents          Int?
+  depositPaidAt            DateTime?
+  balancePaymentIntentId   String?   @unique
+  balancePaidAt            DateTime?
+  paidEurCents             Int       @default(0)
+  stripeFeeEurCents        Int       @default(0)
+  refundedEurCents         Int       @default(0)
+  releaseDueAt             DateTime?
+  releasedAt               DateTime?
+  // Saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
+  // caso arriva al nostro team.
+  balanceUnpaidAt          DateTime?
+
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
   directReportedById String? // User.id di chi ha dichiarato l'importo (di norma il professionista)
@@ -1909,6 +1931,9 @@ enum JobIssueStatus {
   OPEN
   UPHELD
   REJECTED
+  // Pagamento diretto (§168): cliente e professionista non si sono
+  // accordati; niente decisione del nostro team, il cliente può recensire.
+  UNRESOLVED
 }
 
 // Il cliente segnala che il professionista non si è presentato o che il

@@ -21,7 +21,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
   const notificationsService = { notify: vi.fn() };
   const professionalMetricsService = { recordJobAccepted: vi.fn() };
   const timelineService = { log: vi.fn() };
-  const jobPaymentsService = {};
+  const jobPaymentsService = { createAtAcceptance: vi.fn() };
 
   const service = new BookingsService(
     prisma as never,
@@ -32,7 +32,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     { afterJobAccepted: vi.fn() } as never,
     {} as never,
   );
-  return { service, prisma, notificationsService, professionalMetricsService, timelineService };
+  return { service, prisma, notificationsService, professionalMetricsService, timelineService, jobPaymentsService };
 }
 
 function baseQuote(overrides: Record<string, unknown> = {}) {
@@ -44,6 +44,7 @@ function baseQuote(overrides: Record<string, unknown> = {}) {
     estimatedStartDate: new Date("2026-10-01T10:00:00Z"),
     estimatedEndDate: new Date("2026-10-01T11:00:00Z"),
     booking: null,
+    items: [{ priceMinEurCents: 20000, priceMaxEurCents: 30000 }],
     guidedRequest: {
       clientId: "client-1",
       serviceMode: "HOME",
@@ -101,7 +102,7 @@ describe("BookingsService.createFromQuote", () => {
 
     const result = await service.createFromQuote("client-1", "quote-1");
 
-    expect(result).toEqual({ bookingId: "new-booking-1" });
+    expect(result).toEqual({ bookingId: "new-booking-1", paymentMethod: "DIRECT" });
     expect(prisma.booking.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -120,5 +121,23 @@ describe("BookingsService.createFromQuote", () => {
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.any(Object));
     expect(professionalMetricsService.recordJobAccepted).toHaveBeenCalledWith("pro-1");
     expect(timelineService.log).toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
+  it("con il pagamento online crea il pagamento con acconto sull'importo massimo del preventivo", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-2" });
+
+    const result = await service.createFromQuote("client-1", "quote-1", "ONLINE");
+
+    expect(result).toEqual({ bookingId: "new-booking-2", paymentMethod: "ONLINE" });
+    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith({
+      bookingId: "new-booking-2",
+      choice: "ONLINE",
+      quoteMaxEurCents: 30000,
+      clientUserId: "client-1",
+    });
   });
 });

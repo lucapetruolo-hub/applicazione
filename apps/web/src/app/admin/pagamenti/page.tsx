@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
+import type { AdminUnpaidBalance } from "@professionisti/shared";
+import Link from "next/link";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -35,14 +37,16 @@ export default function AdminPagamentiPage() {
   const { refresh } = useAdminOverview();
   const [refunds, setRefunds] = useState<AdminRefund[] | null>(null);
   const [disputes, setDisputes] = useState<AdminDispute[] | null>(null);
+  const [unpaid, setUnpaid] = useState<AdminUnpaidBalance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
-    Promise.all([apiClient.adminListRefunds(token), apiClient.adminListDisputes(token)])
-      .then(([r, d]) => {
+    Promise.all([apiClient.adminListRefunds(token), apiClient.adminListDisputes(token), apiClient.adminListUnpaidBalances(token)])
+      .then(([r, d, u]) => {
         setRefunds(r);
         setDisputes(d);
+        setUnpaid(u);
         setError(null);
       })
       .catch((err) => setError(errorMessage(err)));
@@ -55,8 +59,23 @@ export default function AdminPagamentiPage() {
 
   return (
     <YStack gap="$6">
-      <AdminPageHeader title="Rimborsi e contestazioni" description="Richieste di rimborso e contestazioni sui pagamenti dei lavori." />
+      <AdminPageHeader
+        title="Pagamenti e rimborsi"
+        description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi delle segnalazioni accolte e degli annullamenti partono da soli; qui restano quelli da controllare."
+      />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+
+      <YStack gap="$3">
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          Saldi non pagati
+        </Text>
+        <Text fontSize={13} color={brand.grafite70}>
+          Clienti che non hanno pagato il saldo online entro 7 giorni dalla chiusura del lavoro: il professionista ha ricevuto quanto già
+          pagato. Sollecita il cliente; se paga dal sito il saldo arriva da solo al professionista.
+        </Text>
+        {unpaid && unpaid.length === 0 ? <Text color={brand.grafite70}>Nessun saldo scoperto.</Text> : null}
+        {unpaid?.map((row) => <UnpaidCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+      </YStack>
 
       <YStack gap="$3">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -201,6 +220,65 @@ function DisputeCard({ dispute, token, onChanged }: { dispute: AdminDispute; tok
           ) : null}
         </YStack>
       ) : null}
+    </AdminCard>
+  );
+}
+
+function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token: string; onChanged: () => void }) {
+  const [note, setNote] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const eur = (c: number) => `€${(c / 100).toFixed(2)}`;
+
+  async function close() {
+    setError(null);
+    if (note.trim().length < 3) {
+      setError("Scrivi come si è chiuso il saldo.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiClient.adminCloseUnpaidBalance(token, row.jobPaymentId, note.trim());
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <Text fontWeight="800" color={brand.grafite}>
+        Saldo scoperto: {eur(row.dueEurCents)}
+      </Text>
+      <Text fontSize={13} color={brand.grafite70}>
+        Importo finale {row.finalAmountEurCents !== null ? eur(row.finalAmountEurCents) : "—"} · pagato {eur(row.paidEurCents)} · dal{" "}
+        {formatAdminDate(row.balanceUnpaidAt, true)}
+      </Text>
+      <Text fontSize={13} color={brand.grafite70}>
+        Cliente <Link href={`/admin/utenti/${row.client.userId}`}>{row.client.name ?? row.client.email}</Link> ({row.client.email}) · professionista{" "}
+        <Link href={`/admin/utenti/${row.professional.userId}`}>{row.professional.businessName}</Link>
+      </Text>
+      {open ? (
+        <YStack gap="$2">
+          <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+          <XStack gap="$2">
+            <Button variant="primary" size="$3" disabled={busy} onPress={close}>
+              {busy ? "…" : "Chiudi il saldo"}
+            </Button>
+            <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+              Annulla
+            </Button>
+          </XStack>
+        </YStack>
+      ) : (
+        <Button variant="secondary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+          Chiudi il saldo
+        </Button>
+      )}
     </AdminCard>
   );
 }

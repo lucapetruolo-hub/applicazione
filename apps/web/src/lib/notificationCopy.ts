@@ -49,6 +49,15 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_ISSUE_TEAM_REVIEW: { icon: "⚖️", message: "Il professionista non ti ha risposto entro 48 ore: la tua segnalazione è passata al nostro team." },
   JOB_ISSUE_INFO_REQUESTED: { icon: "📝", message: "Il nostro team ti chiede altre informazioni su una segnalazione: rispondi entro 72 ore." },
   JOB_ISSUE_APPEAL_DECIDED: { icon: "⚖️", message: "C'è una decisione sul ricorso contro una segnalazione: tocca per leggerla." },
+  JOB_ISSUE_UNRESOLVED: { icon: "🤝", message: "Il cliente ha indicato che non avete trovato un accordo sulla segnalazione (pagamento diretto)." },
+  // Pagamenti online dei lavori (docs/CHANGELOG.md §168).
+  JOB_DEPOSIT_PAID: { icon: "💳", message: "Il cliente ha pagato l'acconto online per un lavoro." },
+  JOB_BALANCE_PAID: { icon: "💳", message: "Il cliente ha pagato il saldo online: riceverai l'accredito alla sua conferma o entro 7 giorni." },
+  JOB_BALANCE_DUE: { icon: "💳", message: "Il lavoro è chiuso: paga il saldo online per completare il pagamento." },
+  JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
+  JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
+  JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
+  ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).

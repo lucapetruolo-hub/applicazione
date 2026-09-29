@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -296,9 +297,23 @@ function LeMieRichiesteContent() {
   // crea subito la prenotazione. QuoteCard gestisce da sé stato di
   // caricamento ed errore; qui basta propagare la chiamata reale e
   // ricaricare l'elenco al successo.
-  async function handleAcceptQuote(quoteId: string) {
+  // Con il pagamento online si va subito al checkout Stripe dell'acconto
+  // (§168); se non parte, la prenotazione resta e l'acconto si paga dalla
+  // scheda del lavoro.
+  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    await apiClient.acceptQuote(token, quoteId);
+    const { bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
+    if (paymentMethod === "ONLINE") {
+      try {
+        const { url } = await apiClient.jobPaymentCheckout(token, bookingId, "deposit");
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      } catch {
+        // la scheda del lavoro mostra "Paga l'acconto"
+      }
+    }
     reload();
   }
 

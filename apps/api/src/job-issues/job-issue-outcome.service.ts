@@ -11,7 +11,6 @@ import {
   jobIssueEvidenceDueAt,
   jobIssueOutcomeText,
   jobIssueSanctionFor,
-  jobPaidOnline,
   type JobIssueAutoDecision,
   type JobIssueSanction,
 } from "@professionisti/shared";
@@ -21,6 +20,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
+import { OnlineMoneyService } from "../job-payments/online-money.service";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -55,6 +55,7 @@ export class JobIssueOutcomeService {
     private readonly auditLogService: AuditLogService,
     private readonly timelineService: TimelineService,
     private readonly guidedRequestsService: GuidedRequestsService,
+    private readonly onlineMoneyService: OnlineMoneyService,
   ) {}
 
   /** Primo messaggio del professionista in chat dopo la segnalazione, per ogni segnalazione indicata. */
@@ -125,7 +126,7 @@ export class JobIssueOutcomeService {
       reason: input.note,
     });
 
-    const online = jobPaidOnline(booking.jobPayment);
+    const online = booking.jobPayment?.paymentMethod === "MANOVIA";
     const payload = {
       bookingId: booking.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
@@ -183,33 +184,43 @@ export class JobIssueOutcomeService {
   }
 
   /**
-   * Garanzia del pagamento sul sito (decisione dell'utente): se il lavoro è
-   * stato pagato con Stripe e la segnalazione è accolta, parte la richiesta
-   * di rimborso completo al cliente, che la Finanza esegue da
-   * "Rimborsi e contestazioni" (l'importo viene ripreso dal conto Stripe del
-   * professionista). Con il pagamento diretto nessun rimborso da parte nostra.
+   * Garanzia del pagamento online (decisione dell'utente, §167-§168): se il
+   * lavoro è pagato sul sito con Stripe e la segnalazione è accolta, il
+   * cliente riceve subito il rimborso di quanto pagato (se i soldi erano già
+   * passati al professionista, la sua quota viene ripresa dal suo conto
+   * Stripe). Se Stripe non risponde, la richiesta resta alla Finanza in
+   * "Rimborsi e contestazioni". Con il pagamento diretto nessun rimborso.
    */
   private async requestRefundIfPaidOnline(
     issueId: string,
     booking: { clientId: string; jobPayment: { id: string; paymentMethod: string; status: string; grossAmountEurCents: number } | null },
   ): Promise<void> {
     const payment = booking.jobPayment;
-    if (!payment || !jobPaidOnline(payment) || payment.status === "REFUNDED") return;
-    const existing = await this.prisma.refund.findFirst({ where: { jobPaymentId: payment.id, status: { in: ["REQUESTED", "APPROVED", "PROCESSED"] } } });
+    if (!payment || payment.paymentMethod !== "MANOVIA") return;
+    try {
+      await this.onlineMoneyService.refundOnline(payment.id, "ALL", `Segnalazione accolta (${issueId}): rimborso garantito del pagamento online.`, null);
+      return;
+    } catch (err) {
+      this.logger.warn(`Rimborso automatico non riuscito per ${issueId}: ${(err as Error).message}`);
+    }
+    const existing = await this.prisma.refund.findFirst({ where: { jobPaymentId: payment.id, status: { in: ["REQUESTED", "APPROVED"] } } });
     if (existing) return;
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: payment.id } });
+    const amount = jp.paidEurCents - jp.refundedEurCents;
+    if (amount <= 0) return;
     const refund = await this.prisma.refund.create({
       data: {
         jobPaymentId: payment.id,
-        amountEurCents: payment.grossAmountEurCents,
-        reason: `Segnalazione accolta (${issueId}): rimborso garantito del pagamento sul sito.`,
+        amountEurCents: amount,
+        reason: `Segnalazione accolta (${issueId}): rimborso garantito del pagamento online.`,
         requestedById: booking.clientId,
       },
     });
     await this.auditLogService.record({
       entityType: "Refund",
       entityId: refund.id,
-      newValue: { amountEurCents: payment.grossAmountEurCents, jobPaymentId: payment.id, jobIssueId: issueId },
-      reason: "Rimborso richiesto automaticamente per una segnalazione accolta.",
+      newValue: { amountEurCents: amount, jobPaymentId: payment.id, jobIssueId: issueId },
+      reason: "Rimborso automatico non riuscito: richiesta passata alla Finanza.",
     });
   }
 
@@ -377,7 +388,9 @@ export class JobIssueOutcomeService {
       })),
     );
     for (const issue of chats) {
-      const reason = jobIssueAutoEscalation({ status: issue.status, createdAt: issue.createdAt, proRepliedAt: replies.get(issue.id) ?? null }, now);
+      // Pagamento diretto (§168): resta tra cliente e professionista, mai al nostro team.
+      const assisted = issue.booking.jobPayment?.paymentMethod !== "DIRECT";
+      const reason = jobIssueAutoEscalation({ status: issue.status, createdAt: issue.createdAt, proRepliedAt: replies.get(issue.id) ?? null, assisted }, now);
       if (!reason) continue;
       const moved = await this.prisma.jobIssue.updateMany({
         where: { id: issue.id, status: "CHAT" },

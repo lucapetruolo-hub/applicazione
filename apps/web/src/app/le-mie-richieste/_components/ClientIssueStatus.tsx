@@ -41,7 +41,9 @@ export function ClientIssueStatus({
     return (
       <YStack gap="$2">
         <Text fontSize="$2" color={brand.grafite70}>
-          {issue.proRepliedInChat
+          {!issue.assisted
+            ? `Hai scelto il pagamento diretto: il problema va risolto con ${pro}. Scrivetevi in chat e cercate un accordo. Non possiamo rimborsarti né decidere per voi; accordo o no, potrai lasciare la recensione.`
+            : issue.proRepliedInChat
             ? `${pro} ti ha risposto in chat. Se non trovate un accordo, chiedi al nostro team di decidere.`
             : `${pro} ha tempo fino a ${formatIssueDeadline(issue.chatReplyDueAt)} per risponderti in chat e proporti una soluzione. Se non risponde, la segnalazione passa da sola al nostro team.`}
         </Text>
@@ -60,6 +62,23 @@ export function ClientIssueStatus({
             </Button>
           ) : null}
         </XStack>
+        {errorText}
+      </YStack>
+    );
+  }
+
+  if (issue.status === "UNRESOLVED") {
+    return (
+      <YStack gap="$2">
+        <Text fontSize="$2" color={brand.grafite70}>
+          Non avete trovato un accordo con {pro}. Avendo scelto il pagamento diretto, la questione resta tra voi: puoi lasciare la recensione
+          per raccontare com&apos;è andata.
+        </Text>
+        {issue.canRedispatch ? (
+          <Button variant="primary" size="$2" height={36} alignSelf="flex-start" disabled={busy} opacity={busy ? 0.6 : 1} onPress={onRedispatch}>
+            Invia la richiesta ad altri professionisti
+          </Button>
+        ) : null}
         {errorText}
       </YStack>
     );

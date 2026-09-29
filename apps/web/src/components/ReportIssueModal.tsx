@@ -32,6 +32,7 @@ export function ReportIssueModal({
   onSubmit,
   uploadPhoto,
   onOpenChat,
+  assisted = true,
 }: {
   businessName: string;
   phone: string | null;
@@ -42,6 +43,8 @@ export function ReportIssueModal({
   uploadPhoto: (file: File) => Promise<string>;
   /** Apre la chat col professionista: prima fase della segnalazione (§165). Assente senza chat (prenotazione dall'agenda). */
   onOpenChat?: () => void;
+  /** Lavoro pagato online: segnalazione con la nostra assistenza. False con il pagamento diretto (§168). */
+  assisted?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -138,7 +141,24 @@ export function ReportIssueModal({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
-            {onOpenChat ? (
+            {!assisted ? (
+              <>
+                <Text color={brand.grafite70}>
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Avendo scelto il pagamento diretto, il
+                  problema va risolto tra voi: accordo o no, dalla scheda del lavoro potrai chiudere la segnalazione e lasciare la recensione.
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  {onOpenChat ? (
+                    <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
+                      Apri la chat
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="$3" height={44} onPress={onClose}>
+                    Chiudi
+                  </Button>
+                </XStack>
+              </>
+            ) : onOpenChat ? (
               <>
                 <Text color={brand.grafite70}>
                   Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo: ha 48 ore per risponderti e proporti una
@@ -173,7 +193,9 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               <Text fontSize="$3" color={brand.grafite70}>
-                {onOpenChat
+                {!assisted
+                  ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
+                  : onOpenChat
                   ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
                   : `Il nostro team esamina ogni segnalazione e sente anche ${businessName} prima di decidere.`}
               </Text>

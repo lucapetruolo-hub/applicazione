@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
   requestRefundSchema,
   openDisputeSchema,
@@ -32,10 +32,12 @@ export class JobPaymentsController {
     return this.jobPaymentsService.getForBooking(bookingId);
   }
 
+  /** Pagamento online (§168): checkout Stripe dell'acconto o del saldo. */
   @UseGuards(JwtAuthGuard)
-  @Post("manovia-checkout")
-  initiateManoviaCheckout(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string) {
-    return this.jobPaymentsService.initiateManoviaCheckout(req.user.userId, bookingId);
+  @Post("checkout/:part")
+  checkout(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string, @Param("part") part: string) {
+    if (part !== "deposit" && part !== "balance") throw new BadRequestException("Parte del pagamento non valida.");
+    return this.jobPaymentsService.createCheckout(req.user.userId, bookingId, part);
   }
 
   @UseGuards(JwtAuthGuard)

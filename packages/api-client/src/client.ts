@@ -53,6 +53,9 @@ import type {
   UpdateEngagementRadiusInput,
   JobIssueResponseInput,
   JobIssueSummary,
+  JobPaymentSummary,
+  AdminUnpaidBalance,
+  JobPaymentChoice,
   JobIssueType,
   ReportJobIssueInput,
   ResolveJobIssueInput,
@@ -67,6 +70,8 @@ export type ClientBooking = {
   issue: JobIssueSummary | null;
   /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
   issueTypesAllowed: JobIssueType[];
+  /** Pagamento del lavoro (§168): online con acconto e saldo, o diretto. Null per prenotazioni senza scelta. */
+  payment: JobPaymentSummary | null;
   /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
   canReview: boolean;
   scheduledAt: string;
@@ -315,8 +320,10 @@ export type AdminOverview = {
   openJobIssues: number;
   /** Ricorsi dei professionisti da decidere (docs/CHANGELOG.md §167). */
   jobIssueAppeals: number;
-  /** Pagamenti online attivi: senza, la pagina rimborsi resta nascosta. */
+  /** Pagamenti online attivi (chiave Stripe presente). */
   paymentsEnabled: boolean;
+  /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
+  unpaidBalances: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1115,10 +1122,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
      * Accetta un preventivo: crea la prenotazione. L'indirizzo di lavoro
      * strutturato (destinatario, via, civico, CAP, provincia) non viene più
      * raccolto qui — arriva dalla GuidedRequest, compilata fin dall'invio
-     * della richiesta (richiesta esplicita dell'utente).
+     * della richiesta (richiesta esplicita dell'utente). Con il metodo di
+     * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string) =>
-      request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
+      request<{ bookingId: string; paymentMethod: JobPaymentChoice }>(`/bookings/from-quote/${quoteId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentMethod }),
+      }),
+
+    /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
+    jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>
+      request<{ url: string | null }>(`/bookings/${bookingId}/job-payment/checkout/${part}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1627,8 +1643,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     bookingJobPayment: (token: string, bookingId: string) =>
       request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    initiateManoviaCheckout: (token: string, bookingId: string) =>
-      request<{ url: string }>(`/bookings/${bookingId}/job-payment/manovia-checkout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
 
     requestJobRefund: (token: string, bookingId: string, input: RequestRefundInput) =>
       request<{ id: string }>(`/bookings/${bookingId}/job-payment/refund`, {
@@ -1645,6 +1660,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListUnpaidBalances: (token: string) =>
+      request<AdminUnpaidBalance[]>("/admin/unpaid-balances", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminCloseUnpaidBalance: (token: string, jobPaymentId: string, note: string) =>
+      request<void>(`/admin/unpaid-balances/${jobPaymentId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
+      }),
 
     adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

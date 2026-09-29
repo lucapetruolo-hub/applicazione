@@ -6,12 +6,12 @@ import { PRISMA } from "../prisma/prisma.module";
 // già alcuna regola (stesso principio di CategoriesSeedService: un ambiente
 // nuovo non deve mai trovarsi senza NESSUNA regola di commissione — una
 // commissione "assente" verrebbe letta come 0%, silenziosamente sbagliato).
-// La percentuale (10%) è un valore di partenza ragionevole ma del tutto
-// arbitrario in questa sessione — da rivedere con l'utente/un commercialista
-// prima del lancio reale (CLAUDE.md §88): resta comunque un DATO in tabella,
-// mai una costante nel codice, modificabile da /admin senza deploy.
+// La percentuale è il 5% sui pagamenti online, pagato dal professionista
+// (decisione dell'utente, docs/CHANGELOG.md §168; prima era un 10% di prova):
+// resta comunque un DATO in tabella, mai una costante nel codice,
+// modificabile da /admin senza deploy.
 const DEFAULT_GLOBAL_RULE_NAME = "Commissione standard (default)";
-const DEFAULT_GLOBAL_RULE_BASIS_POINTS = 1000; // 10,00%
+const DEFAULT_GLOBAL_RULE_BASIS_POINTS = 500; // 5,00%
 
 @Injectable()
 export class PlatformFeeRulesService implements OnModuleInit {

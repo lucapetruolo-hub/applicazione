@@ -1,9 +1,10 @@
 /**
  * Domande "Cosa succede se...": testo fornito verbatim dall'utente,
  * pubblicato come scritto sulla stessa autorizzazione esplicita di
- * "Garanzia Piattaforma" (§30, risposta "Pubblicale come scritte") —
- * promette rimborsi/sostituzioni non ancora implementati (nessun
- * pagamento in piattaforma per il lavoro, CLAUDE.md §9).
+ * "Garanzia Piattaforma" (§30, risposta "Pubblicale come scritte").
+ * Risposte allineate alle regole reali di pagamento e segnalazioni
+ * (docs/CHANGELOG.md §168): prima promettevano rimborso e sostituto
+ * "entro 4 ore" e "non paghi la differenza", mai esistiti.
  *
  * Non più una sezione a sé con una propria eyebrow "Cosa succede se...":
  * richiesta esplicita dell'utente di unire questi elementi alla lista
@@ -14,15 +15,15 @@
 export const WHAT_IF_ITEMS = [
   {
     question: "Cosa succede se il professionista non si presenta?",
-    answer: "Ti rimborsiamo immediatamente e troviamo un sostituto entro 4 ore.",
+    answer: "Se hai pagato online ti rimborsiamo l'acconto e con un tasto mandi la stessa richiesta ad altri professionisti della zona. Se hai scelto il pagamento diretto, ti mettiamo in contatto con il professionista per trovare un accordo.",
   },
   {
     question: "Cosa succede se il lavoro non è fatto bene?",
-    answer: "Hai 14 giorni per segnalarlo. Il professionista rientra a sue spese o ti rimborsiamo.",
+    answer: "Hai 14 giorni per segnalarlo, con una foto. Il professionista ha 48 ore per proporti una soluzione; se hai pagato online e non vi accordate decide il nostro team e, se la segnalazione è accolta, ti rimborsiamo.",
   },
   {
     question: "Cosa succede se il preventivo finale è più alto di quello concordato?",
-    answer: "Non paghi la differenza. Il prezzo concordato in piattaforma è vincolante.",
+    answer: "Il professionista deve motivare ogni voce aggiunta o differenza dal preventivo, e la vedi prima di pagare il saldo. Se non sei d'accordo puoi segnalarlo.",
   },
   {
     question: "Posso cambiare professionista dopo aver ricevuto il preventivo?",

@@ -19,7 +19,7 @@ import { z } from "zod";
 
 export const jobIssueTypes = ["NO_SHOW", "BAD_WORK"] as const;
 export type JobIssueType = (typeof jobIssueTypes)[number];
-export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED";
+export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED" | "UNRESOLVED";
 
 export const NO_SHOW_REPORT_DAYS = 7;
 export const BAD_WORK_REPORT_DAYS = 14;
@@ -35,6 +35,7 @@ export const JOB_ISSUE_STATUS_LABEL: Record<JobIssueStatus, string> = {
   OPEN: "In esame dal nostro team",
   UPHELD: "Accolta",
   REJECTED: "Respinta",
+  UNRESOLVED: "Non risolta tra voi (pagamento diretto)",
 };
 
 /**
@@ -78,9 +79,9 @@ export const JOB_ISSUE_AUTO_DECISION_NOTE: Record<JobIssueAutoDecision, string> 
   NO_INFO: `Il professionista non ha inviato le informazioni richieste entro ${JOB_ISSUE_INFO_HOURS} ore. La segnalazione è accolta automaticamente.`,
 };
 
-/** Lavoro pagato sul sito con Stripe (pagamento andato a buon fine): dà diritto al rimborso se la segnalazione è accolta. */
-export function jobPaidOnline(jobPayment: { paymentMethod: string; status: string } | null | undefined): boolean {
-  return !!jobPayment && jobPayment.paymentMethod === "MANOVIA" && ["CONFIRMED", "DISPUTED", "REFUNDED"].includes(jobPayment.status);
+/** Lavoro pagato online con Stripe (§168): ha la nostra assistenza e il rimborso se la segnalazione è accolta. */
+export function jobPaidOnline(jobPayment: { paymentMethod: string } | null | undefined): boolean {
+  return !!jobPayment && jobPayment.paymentMethod === "MANOVIA";
 }
 
 /** Misure progressive: 1ª accolta avvertimento, 2ª in 30 giorni più in basso, 3ª niente nuove richieste. */
@@ -96,11 +97,16 @@ export type JobIssueAppealDecision = "ACCEPTED" | "REJECTED";
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-type ChatIssue = { status: string; createdAt: Date; proRepliedAt: Date | null };
+/**
+ * `assisted`: il lavoro è pagato online, quindi ha la nostra assistenza
+ * (§168). Con il pagamento diretto la segnalazione resta tra cliente e
+ * professionista: niente passaggio al team, né automatico né su richiesta.
+ */
+type ChatIssue = { status: string; createdAt: Date; proRepliedAt: Date | null; assisted?: boolean };
 
 /** In chat il professionista non ha scritto entro 48 ore: la segnalazione passa da sola al team. */
 export function jobIssueAutoEscalation(issue: ChatIssue, now: Date): JobIssueEscalationReason | null {
-  if (issue.status !== "CHAT" || issue.proRepliedAt) return null;
+  if (issue.status !== "CHAT" || issue.proRepliedAt || issue.assisted === false) return null;
   return now.getTime() - issue.createdAt.getTime() >= JOB_ISSUE_PRO_REPLY_HOURS * HOUR_MS ? "PRO_NO_REPLY" : null;
 }
 
@@ -111,6 +117,8 @@ export function jobIssueAutoEscalation(issue: ChatIssue, now: Date): JobIssueEsc
  */
 export function jobIssueCanEscalate(issue: ChatIssue, now: Date): boolean {
   if (issue.status !== "CHAT") return false;
+  // Pagamento diretto: "Non abbiamo risolto" chiude la segnalazione tra le parti, in qualunque momento.
+  if (issue.assisted === false) return true;
   return !!issue.proRepliedAt || now.getTime() - issue.createdAt.getTime() >= JOB_ISSUE_PRO_REPLY_HOURS * HOUR_MS;
 }
 
@@ -296,6 +304,8 @@ export type JobIssueSummary = {
   autoDecision: JobIssueAutoDecision | null;
   /** Lavoro pagato sul sito con Stripe: se la segnalazione è accolta il cliente è rimborsato. */
   paidOnline: boolean;
+  /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
+  assisted: boolean;
   sanction: JobIssueSanction | null;
   appealedAt: string | null;
   appealText: string | null;
@@ -393,7 +403,7 @@ export function clientCanReview(b: {
 }): boolean {
   if (b.hasReview) return false;
   if (b.issueStatus === "OPEN" || b.issueStatus === "CHAT") return false;
-  if (b.issueStatus === "UPHELD" || b.issueStatus === "REJECTED" || b.issueStatus === "RESOLVED") return true;
+  if (b.issueStatus === "UPHELD" || b.issueStatus === "REJECTED" || b.issueStatus === "RESOLVED" || b.issueStatus === "UNRESOLVED") return true;
   return b.status === "COMPLETED" && b.clientConfirmedCompletedAt !== null;
 }
 
@@ -430,13 +440,14 @@ type IssueRow = {
  */
 export function toJobIssueSummary(
   issue: IssueRow | null,
-  extra: { proRepliedAt?: Date | null; paidOnline?: boolean } = {},
+  extra: { proRepliedAt?: Date | null; paidOnline?: boolean; assisted?: boolean } = {},
   now: Date = new Date(),
 ): JobIssueSummary | null {
   if (!issue) return null;
   const escalatedAt = issue.escalatedAt ?? (issue.status === "OPEN" ? issue.createdAt : null);
   const proRepliedAt = extra.proRepliedAt ?? issue.professionalRespondedAt;
-  const chat = { status: issue.status, createdAt: issue.createdAt, proRepliedAt };
+  const assisted = extra.assisted !== false;
+  const chat = { status: issue.status, createdAt: issue.createdAt, proRepliedAt, assisted };
   const phase = jobIssueReviewPhase({ ...issue, escalatedAt });
   return {
     id: issue.id,
@@ -452,7 +463,7 @@ export function toJobIssueSummary(
     escalatedAt: issue.escalatedAt?.toISOString() ?? null,
     escalationReason: (issue.escalationReason as JobIssueEscalationReason | null) ?? null,
     proRepliedInChat: !!proRepliedAt,
-    chatReplyDueAt: issue.status === "CHAT" ? jobIssueChatReplyDueAt(issue.createdAt).toISOString() : null,
+    chatReplyDueAt: issue.status === "CHAT" && assisted ? jobIssueChatReplyDueAt(issue.createdAt).toISOString() : null,
     canEscalate: jobIssueCanEscalate(chat, now),
     reviewPhase: phase?.phase ?? null,
     phaseDueAt: phase?.dueAt.toISOString() ?? null,
@@ -462,13 +473,15 @@ export function toJobIssueSummary(
     infoRespondedAt: issue.infoRespondedAt?.toISOString() ?? null,
     autoDecision: (issue.autoDecision as JobIssueAutoDecision | null) ?? null,
     paidOnline: !!extra.paidOnline,
+    assisted,
     sanction: (issue.sanction as JobIssueSanction | null) ?? null,
     appealedAt: issue.appealedAt?.toISOString() ?? null,
     appealText: issue.appealText,
     appealDecision: (issue.appealDecision as JobIssueAppealDecision | null) ?? null,
     appealNote: issue.appealNote,
     canAppeal: jobIssueCanAppeal(issue, now),
-    canRedispatch: issue.type === "NO_SHOW" && issue.status === "UPHELD" && !issue.redispatchedGuidedRequestId,
+    // Anche con il pagamento diretto, se non vi siete accordati (§168).
+    canRedispatch: issue.type === "NO_SHOW" && (issue.status === "UPHELD" || issue.status === "UNRESOLVED") && !issue.redispatchedGuidedRequestId,
     redispatchedGuidedRequestId: issue.redispatchedGuidedRequestId,
   };
 }

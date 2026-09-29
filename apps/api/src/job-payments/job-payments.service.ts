@@ -1,49 +1,68 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import Stripe from "stripe";
+import { Inject, Injectable } from "@nestjs/common";
+import type Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
+import { onlineDepositEurCents, type JobPaymentChoice } from "@professionisti/shared";
+import { OnlineMoneyService } from "./online-money.service";
 
 /**
- * Pagamento del lavoro (JobPayment) — CLAUDE.md §88. Distinto da
- * BillingService (che gestisce i pagamenti del PROFESSIONISTA verso
- * Manovia: abbonamento, lead, boost): questo modulo traccia il pagamento
- * del CLIENTE per il lavoro svolto, spezzato lordo/commissione/netto,
- * MANOVIA-mediato (Stripe Connect) o DIRETTO (fuori piattaforma,
- * commissione zero ma sempre tracciato).
- *
- * Creato automaticamente da BookingsService.completeWithFinalAmount (il
- * momento in cui l'importo lordo reale diventa noto, non prima — un
- * preventivo ha solo un range stimato) come DIRECT/AWAITING_CONFIRMATION:
- * è il default sempre disponibile, nessun professionista è mai bloccato da
- * Stripe Connect non ancora configurato. Passa a MANOVIA solo se il
- * cliente sceglie esplicitamente di pagare tramite la piattaforma
- * (initiateManoviaCheckout) e il professionista ha già completato
- * l'onboarding Stripe Connect.
+ * Pagamento del lavoro (JobPayment) — CLAUDE.md §88, docs/CHANGELOG.md §168.
+ * Distinto da BillingService (pagamenti del PROFESSIONISTA verso Manovia:
+ * abbonamento, boost). Il cliente sceglie il metodo accettando il
+ * preventivo: online (MANOVIA: acconto del 20% subito, saldo a lavoro
+ * chiuso, soldi in custodia e poi accreditati al professionista meno costo
+ * Stripe e commissione, vedi OnlineMoneyService) o diretto (DIRECT:
+ * importo dichiarato dal professionista a lavoro chiuso e confermato dal
+ * cliente, nessun movimento sul sito). Prenotazioni senza scelta (es.
+ * dall'agenda) restano DIRECT.
  */
 @Injectable()
 export class JobPaymentsService {
-  private readonly stripe: Stripe | null;
-
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly feeRulesService: PlatformFeeRulesService,
-  ) {
-    this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-  }
+    private readonly onlineMoneyService: OnlineMoneyService,
+  ) {}
 
-  private frontendUrl(): string {
-    return process.env.FRONTEND_URL ?? "http://localhost:3000";
+  /**
+   * Metodo di pagamento scelto dal cliente accettando il preventivo
+   * (docs/CHANGELOG.md §168). Online: acconto del 20% dell'importo massimo
+   * da pagare subito con Stripe. Diretto: nessun movimento sul sito, il
+   * pagamento si conferma a lavoro terminato come prima.
+   */
+  async createAtAcceptance(params: { bookingId: string; choice: JobPaymentChoice; quoteMaxEurCents: number; clientUserId: string }): Promise<void> {
+    const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
+    if (existing) return;
+    const online = params.choice === "ONLINE";
+    const jobPayment = await this.prisma.jobPayment.create({
+      data: {
+        bookingId: params.bookingId,
+        paymentMethod: online ? "MANOVIA" : "DIRECT",
+        status: "PENDING",
+        grossAmountEurCents: params.quoteMaxEurCents,
+        platformFeeEurCents: 0,
+        netAmountEurCents: params.quoteMaxEurCents,
+        ...(online ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: onlineDepositEurCents(params.quoteMaxEurCents) } : {}),
+      },
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jobPayment.id,
+      newValue: { paymentMethod: jobPayment.paymentMethod, depositEurCents: jobPayment.depositEurCents },
+      changedByUserId: params.clientUserId,
+      reason: online ? "Il cliente ha scelto il pagamento online (acconto + saldo)." : "Il cliente ha scelto il pagamento diretto al professionista.",
+    });
   }
 
   /**
-   * Creato al momento del completamento lavoro (BookingsService.
-   * completeWithFinalAmount) — mai prima, coerente col resto del progetto
-   * ("poco dato è meglio di un dato falso a zero", CLAUDE.md §15). Default
-   * DIRECT: nessuna commissione trattenuta finché il cliente non sceglie
-   * esplicitamente di pagare tramite Manovia.
+   * Chiusura del lavoro con l'importo finale (BookingsService.
+   * completeWithFinalAmount). Online: commissione sull'importo finale,
+   * saldo da pagare e data di accredito al professionista. Diretto (o
+   * prenotazioni senza scelta, es. dall'agenda): pagamento dichiarato dal
+   * professionista, da confermare dal cliente.
    */
   async createOnCompletion(params: {
     bookingId: string;
@@ -51,48 +70,62 @@ export class JobPaymentsService {
     reportedByUserId: string;
     // Vero se il cliente ha già confermato "lavoro terminato" dal proprio
     // lato PRIMA che il professionista completasse (ordine libero, CLAUDE.md
-    // §40: "il cliente deve poter cliccare a prescindere se il
-    // professionista l'abbia già cliccato o no") — in quel caso non c'è più
-    // nulla da confermare, il JobPayment nasce già CONFIRMED invece di
-    // restare per sempre AWAITING_CONFIRMATION (confirmDirect non verrebbe
-    // mai richiamato una seconda volta).
+    // §40) — il pagamento diretto nasce già CONFIRMED.
     alreadyConfirmedByClient?: boolean;
-  }): Promise<void> {
-    const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
-    if (existing) return; // idempotente — un secondo "Lavoro terminato" non deve mai duplicare il pagamento
+  }): Promise<{ balanceDueEurCents: number } | null> {
+    const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId }, include: { booking: true } });
 
-    const jobPayment = await this.prisma.jobPayment.create({
-      data: {
-        bookingId: params.bookingId,
-        paymentMethod: "DIRECT",
-        status: params.alreadyConfirmedByClient ? "CONFIRMED" : "AWAITING_CONFIRMATION",
-        grossAmountEurCents: params.grossAmountEurCents,
-        platformFeeEurCents: 0,
-        netAmountEurCents: params.grossAmountEurCents,
-        directReportedAt: new Date(),
-        directReportedById: params.reportedByUserId,
-        directConfirmedAt: params.alreadyConfirmedByClient ? new Date() : null,
-      },
-    });
+    if (existing?.paymentMethod === "MANOVIA") {
+      const rule = await this.feeRulesService.resolveRule({ professionalProfileId: existing.booking.professionalProfileId, categoryId: null });
+      const appFee = this.feeRulesService.computeFee(params.grossAmountEurCents, rule);
+      if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
+      const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee);
+      if (params.alreadyConfirmedByClient) await this.onlineMoneyService.releaseIfDue(existing.id).catch(() => false);
+      return result;
+    }
+
+    const directData = {
+      paymentMethod: "DIRECT" as const,
+      status: params.alreadyConfirmedByClient ? ("CONFIRMED" as const) : ("AWAITING_CONFIRMATION" as const),
+      grossAmountEurCents: params.grossAmountEurCents,
+      platformFeeEurCents: 0,
+      netAmountEurCents: params.grossAmountEurCents,
+      directReportedAt: new Date(),
+      directReportedById: params.reportedByUserId,
+      directConfirmedAt: params.alreadyConfirmedByClient ? new Date() : null,
+    };
+    const jobPayment = existing
+      ? await this.prisma.jobPayment.update({ where: { id: existing.id }, data: directData })
+      : await this.prisma.jobPayment.create({ data: { bookingId: params.bookingId, ...directData } });
 
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jobPayment.id,
       newValue: { paymentMethod: "DIRECT", grossAmountEurCents: params.grossAmountEurCents },
       changedByUserId: params.reportedByUserId,
-      reason: "Creato al completamento del lavoro (auto-dichiarazione professionista).",
+      reason: "Importo finale dichiarato dal professionista a lavoro terminato (pagamento diretto).",
     });
+    return null;
   }
 
   async getForBooking(bookingId: string) {
     return this.prisma.jobPayment.findUnique({ where: { bookingId } });
   }
 
-  /** Il cliente conferma un pagamento DIRECT — chiamato da BookingsService.clientConfirmComplete. */
+  /**
+   * Il cliente conferma il lavoro (BookingsService.clientConfirmComplete):
+   * col pagamento diretto vale come conferma di aver pagato; online fa
+   * partire l'accredito al professionista se il saldo è pagato.
+   */
   async confirmDirect(bookingId: string, clientUserId: string): Promise<void> {
     const jobPayment = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
+    if (jobPayment?.paymentMethod === "MANOVIA") {
+      // Mai bloccare la conferma del cliente: se l'accredito non riesce ora, lo riprova il giro orario.
+      await this.onlineMoneyService.releaseIfDue(jobPayment.id).catch(() => false);
+      return;
+    }
     if (!jobPayment || jobPayment.paymentMethod !== "DIRECT" || jobPayment.status !== "AWAITING_CONFIRMATION") {
-      return; // nessun pagamento DIRECT in attesa — nulla da confermare (es. già passato a MANOVIA)
+      return;
     }
     await this.prisma.jobPayment.update({
       where: { id: jobPayment.id },
@@ -109,136 +142,38 @@ export class JobPaymentsService {
     });
   }
 
-  /**
-   * Il cliente sceglie di pagare tramite Manovia invece che direttamente al
-   * professionista — richiede che il professionista abbia già completato
-   * l'onboarding Stripe Connect (charges_enabled). Ricalcola la commissione
-   * con la regola attiva ORA (non quella eventualmente già congelata, se
-   * il JobPayment era ancora DIRECT/mai passato da un calcolo commissione
-   * reale) e apre una Stripe Checkout Session in modalità "destination
-   * charge": il cliente paga l'intero importo lordo, Stripe trasferisce il
-   * netto al conto Connect del professionista trattenendo la commissione
-   * per Manovia (`application_fee_amount`).
-   */
-  async initiateManoviaCheckout(clientUserId: string, bookingId: string) {
-    if (!this.stripe) {
-      throw new BadRequestException(
-        "Il pagamento tramite Manovia non è ancora configurato su questo ambiente. Aggiungi STRIPE_SECRET_KEY per attivarlo.",
-      );
-    }
-
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { professionalProfile: { include: { fiscalProfile: true } } },
-    });
-    if (!booking || booking.clientId !== clientUserId) {
-      throw new ForbiddenException("Questa prenotazione non è tua.");
-    }
-
-    const jobPayment = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
-    if (!jobPayment) {
-      throw new NotFoundException("Nessun pagamento associato a questo lavoro (il lavoro non risulta ancora terminato).");
-    }
-    if (jobPayment.status === "CONFIRMED" || jobPayment.status === "REFUNDED") {
-      throw new BadRequestException("Questo pagamento è già stato concluso.");
-    }
-
-    const stripeAccountId = booking.professionalProfile.fiscalProfile?.stripeConnectAccountId;
-    const chargesEnabled = booking.professionalProfile.fiscalProfile?.stripeChargesEnabled ?? false;
-    if (!stripeAccountId || !chargesEnabled) {
-      throw new BadRequestException(
-        "Questo professionista non ha ancora completato l'attivazione dei pagamenti tramite Manovia. Puoi comunque pagarlo direttamente e confermarlo qui.",
-      );
-    }
-
-    const rule = await this.feeRulesService.resolveRule({
-      professionalProfileId: booking.professionalProfileId,
-      categoryId: null,
-    });
-    const platformFeeEurCents = this.feeRulesService.computeFee(jobPayment.grossAmountEurCents, rule);
-    const netAmountEurCents = jobPayment.grossAmountEurCents - platformFeeEurCents;
-
-    const previousMethod = jobPayment.paymentMethod;
-    await this.prisma.jobPayment.update({
-      where: { id: jobPayment.id },
-      data: {
-        paymentMethod: "MANOVIA",
-        status: "PENDING",
-        platformFeeEurCents,
-        netAmountEurCents,
-        appliedFeeRuleId: rule?.id ?? null,
-      },
-    });
-    if (previousMethod !== "MANOVIA") {
-      await this.auditLogService.record({
-        entityType: "JobPayment",
-        entityId: jobPayment.id,
-        fieldName: "paymentMethod",
-        oldValue: previousMethod,
-        newValue: "MANOVIA",
-        changedByUserId: clientUserId,
-        reason: "Il cliente ha scelto di pagare tramite Manovia invece che direttamente.",
-      });
-    }
-
-    const session = await this.stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            unit_amount: jobPayment.grossAmountEurCents,
-            product_data: { name: "Pagamento del lavoro tramite Manovia" },
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: platformFeeEurCents,
-        transfer_data: { destination: stripeAccountId },
-      },
-      success_url: `${this.frontendUrl()}/le-mie-richieste?pagamento=completato`,
-      cancel_url: `${this.frontendUrl()}/le-mie-richieste`,
-      metadata: { kind: "job_payment", jobPaymentId: jobPayment.id, bookingId },
-    });
-
-    return { url: session.url };
+  /** Checkout Stripe dell'acconto o del saldo (§168). */
+  createCheckout(clientUserId: string, bookingId: string, part: "deposit" | "balance") {
+    return this.onlineMoneyService.createCheckout(clientUserId, bookingId, part);
   }
 
-  /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9) — vedi BillingService.handleWebhookEvent. */
-  async handleManoviaCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
-    const jobPaymentId = session.metadata?.jobPaymentId;
-    if (!jobPaymentId) return;
+  /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */
+  handleManoviaCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    return this.onlineMoneyService.handleCheckoutCompleted(session);
+  }
 
-    const jobPayment = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId } });
-    if (!jobPayment) return;
-
-    await this.prisma.jobPayment.update({
-      where: { id: jobPaymentId },
-      data: {
-        status: "CONFIRMED",
-        stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-      },
-    });
-
-    await this.prisma.manoviaRevenue.create({
-      data: {
-        source: "JOB_COMMISSION",
-        amountEurCents: jobPayment.platformFeeEurCents,
-        jobPaymentId: jobPayment.id,
-        professionalProfileId: (await this.prisma.booking.findUnique({ where: { id: jobPayment.bookingId }, select: { professionalProfileId: true } }))
-          ?.professionalProfileId,
-      },
-    });
-
-    await this.auditLogService.record({
-      entityType: "JobPayment",
-      entityId: jobPayment.id,
-      fieldName: "status",
-      oldValue: jobPayment.status,
-      newValue: "CONFIRMED",
-      reason: "Pagamento Stripe Connect confermato via webhook.",
-    });
+  /**
+   * Annullamento di un lavoro pagato online (dal cliente o dal
+   * professionista): l'acconto torna al cliente per intero.
+   */
+  async refundOnCancel(bookingId: string, byUserId: string): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
+    if (!jp || jp.paymentMethod !== "MANOVIA" || jp.paidEurCents - jp.refundedEurCents <= 0) return;
+    try {
+      await this.onlineMoneyService.refundOnline(jp.id, "ALL", "Lavoro annullato: acconto rimborsato al cliente.", byUserId);
+    } catch {
+      // Stripe non raggiungibile: l'annullamento non si blocca, il rimborso
+      // passa alla Finanza in "Pagamenti e rimborsi".
+      const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { clientId: true } });
+      await this.prisma.refund.create({
+        data: {
+          jobPaymentId: jp.id,
+          amountEurCents: jp.paidEurCents - jp.refundedEurCents,
+          reason: "Lavoro annullato: rimborso dell'acconto (automatico non riuscito).",
+          requestedById: booking.clientId,
+        },
+      });
+    }
   }
 
   async listAll() {

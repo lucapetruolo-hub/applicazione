@@ -8,6 +8,8 @@ import {
   jobIssueChatOutcomeSchema,
   jobIssueResponseSchema,
   reportJobIssueSchema,
+  acceptQuoteSchema,
+  type AcceptQuoteInput,
   appealJobIssueSchema,
   type AppealJobIssueInput,
   updateBookingMeetingLinkSchema,
@@ -71,8 +73,8 @@ export class BookingsController {
 
   @UseGuards(JwtAuthGuard)
   @Post("from-quote/:quoteId")
-  createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string) {
-    return this.bookingsService.createFromQuote(req.user.userId, quoteId);
+  createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput) {
+    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -414,10 +414,14 @@ accetta il preventivo, mai i "completati", che segna il professionista).
   Passare a un livello inferiore non è ancora previsto.
 - Prezzi e limiti da rivedere sui dati dei primi mesi.
 - Si incassa solo con P.IVA/società e parere del commercialista (checklist
-  §10). **Pagamenti online dei lavori: si useranno con Stripe** (decisione
-  dell'utente, docs/CHANGELOG.md §167), con la garanzia di rimborso al cliente
-  se una sua segnalazione è accolta. Commissione e costo del metodo di
-  pagamento: **ancora da decidere con l'utente.**
+  §10). **Pagamento dei lavori** (decisioni dell'utente, docs/CHANGELOG.md
+  §168): accettando il preventivo il cliente sceglie **online con Stripe**
+  (acconto del 20% del massimo, saldo a lavoro chiuso, soldi in custodia
+  fino alla conferma o per 7 giorni, poi al professionista meno costo Stripe
+  e commissione del 5%; assistenza e rimborso sulle segnalazioni accolte)
+  oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
+  restano tra le parti, il cliente può comunque recensire). Il pagamento
+  diretto non paga commissione.
 
 ### Pacchetti di visibilità
 
@@ -533,6 +537,7 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - [x] Smistamento delle richieste di preventivo (docs/CHANGELOG.md §154, regole in `apps/api/src/guided-requests/lead-routing.ts`): 3 professionisti per le normali e 5 per le urgenti, scelti per punteggio di qualità (risposta, recensioni, affidabilità, vicinanza, disponibilità, attività, equità) con un posto a un nuovo; 4 ore contate solo tra le 8 e le 21 per le normali; per le urgenti 35 minuti tra le 7 e le 22 e 60 di notte (decisione dell'utente, §160, senza tasto "Me ne occupo io"); richiesta diretta inoltrata ad altri se non risponde (casella, attiva di default). **Il boost a pagamento non entra nello smistamento** (decisione dell'utente): non cambiarlo senza discuterne.
 - [x] Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, decisione dell'utente): il cliente segnala "non si è presentato" (dalla fine dell'appuntamento, entro 7 giorni) o "lavoro non andato bene" (entro 14 giorni), prima provano a risolvere in chat (§165) e, se il cliente lo chiede, un admin decide in `/admin/problemi`. Una mancata presentazione accolta abbassa l'affidabilità nello smistamento; la recensione si lascia dopo la decisione. Regole in `packages/shared/src/jobIssues.ts`.
 - [x] Controversie standard sul modello Amazon A-Z (docs/CHANGELOG.md §167, decisioni dell'utente): 48 ore al professionista in chat, poi 72 ore per la sua versione e 72 per le informazioni chieste (senza risposta la segnalazione è accolta da sola), decisione dell'admin entro 2 giorni, ricorso entro 30 giorni deciso da un admin diverso. Misure sulle segnalazioni accolte in 30 giorni: avvertimento, poi profilo più in basso in ricerca e smistamento per 14 giorni (`demotedUntil`), poi niente nuove richieste per 14 giorni (`requestsBlockedUntil`, da filtrare come `pausedAt` in ogni nuovo punto che mostra professionisti o assegna richieste). Lavoro pagato sul sito con Stripe + segnalazione accolta = rimborso completo al cliente. Regolamento in bozza per l'avvocato: `docs/legale/regolamento-controversie.md`.
+- [x] Pagamento online dei lavori con Stripe (docs/CHANGELOG.md §168): scelta online/diretto all'accettazione del preventivo, acconto 20% + saldo, custodia e accredito (`apps/api/src/job-payments/online-money.service.ts`, regole in `packages/shared/src/onlinePayments.ts`), rimborsi automatici su annullamento e segnalazione accolta, saldi non pagati in `/admin/pagamenti`. Con il pagamento diretto le segnalazioni non arrivano al team (stato `UNRESOLVED`). Termini §5-§6 scritti come attivi, da far verificare all'avvocato. Serve `STRIPE_SECRET_KEY` + Stripe Connect per andare live.
 - [x] Chat leggibili dagli admin e sicurezza in chat (docs/CHANGELOG.md §166): `/admin/chat` (Super admin e Moderatore) mostra tutte le conversazioni in sola lettura, ogni apertura resta nel registro azioni ed è dichiarata in `/privacy`; nella chat un avviso fisso anti-truffa rimanda a `/sicurezza`.
 - [x] Pannello admin minimale — `GET /admin/users` (JWT + `AdminGuard`, verifica il ruolo `ADMIN` rileggendolo dal DB ad ogni richiesta invece di fidarsi del JWT, così una promozione/retrocessione ha effetto immediato) restituisce utenti registrati divisi per ruolo (email, nome, ragione sociale se professionista, data). Pagina `/admin` (nessun link in UI, solo URL diretto) mostra le due liste. Promozione ad ADMIN self-service: `POST /admin/bootstrap` (`AdminBootstrapController`, deliberatamente **senza** `JwtAuthGuard`/`AdminGuard` — quei guard richiedono di essere già ADMIN, impossibile per il primissimo admin) protetto da `ADMIN_BOOTSTRAP_SECRET` (solo variabile d'ambiente su Railway, mai committata; senza quella variabile risponde con un errore chiaro, stesso pattern già usato per Stripe/Cloudinary/Google): email sconosciuta → 404, codice sbagliato → 403, altrimenti promuove e ritorna il nuovo ruolo. Pagina `/admin/promuovi` (form email+codice, nessun link in UI, nessun controllo di login — la protezione è il codice) evita di dover usare la console SQL di Railway per il primo admin.
 - [x] Mappa risultati responsive da mobile — `ResultsListWithMap.tsx` non usa più i props responsive di Tamagui per il layout mappa/lista (niente `order` — non supportato da React Native/Tamagui — né `position:"sticky"` tipizzato): usa classi CSS grezze via styled-jsx (incluso in Next.js, nessuna libreria aggiunta). Da mobile la mappa **non appare più automaticamente** (occupava subito spazio sotto la ricerca): un bottone "🗺️ Mostra mappa" nella barra sopra i risultati la apre/chiude a comando, a tutta larghezza sopra la lista. Sopra la soglia resta sempre visibile a fianco della lista (larghezza fluida 40%, tra 260 e 480px, per non forzare overflow orizzontale), alta e sticky in scroll. Soglia a **700px** (non lo `$gtMd` di Tamagui, 1021px): quella lasciava impilata la mappa anche su una finestra desktop "normale" non a schermo intero (~1000px) — bug reale segnalato dall'utente con screenshot, dove la mappa doveva stare a destra e invece appariva sotto la lista. Cliccando un puntino sulla mappa (`ResultsMap.tsx`) non si naviga più subito al profilo: appare un banner in basso sulla mappa (foto/icona categoria, nome attività, categoria+città, rating, "Verificato") con un tasto "✕" per chiuderlo — solo toccando il banner si apre il profilo completo, la mappa resta aperta nel frattempo.
@@ -699,8 +704,8 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 12. Integrazione reale con il tracciato ufficiale DPI23 dell'Agenzia delle
     Entrate (Desktop Telematico) — l'export DAC7 attuale è una bozza
     JSON/XML interna, non il formato ufficiale validato.
-13. Percentuale/regole di commissione MANOVIA reali — il 10% globale
-    seminato di default è un valore arbitrario di questa sessione.
+13. ~~Percentuale di commissione MANOVIA~~ — decisa dall'utente: 5% sui
+    pagamenti online, a carico del professionista (docs/CHANGELOG.md §168).
 14. Emissione fatture reali (`Invoice`, schema già pronto, nessuna UI di
     generazione) — dipende dalle risposte del punto 8.
 
@@ -711,10 +716,11 @@ davvero la verifica prima):
     verifica documenti/RC/KYC esiste in nessuna forma,
     `ProfessionalProfile.verified` non viene mai impostato a `true` da
     nessun punto del backend.
-16. Due delle quattro risposte di `WhatIfSection.tsx` (rimborso/
-    sostituzione entro 4 ore) promettono un meccanismo che non esiste.
-    Se la verifica KYC reale non fosse pronta per il lancio, questi due
-    punti (15/16) vanno comunque corretti/rimossi prima di andare in
+16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
+    allineate alle regole reali di pagamento e segnalazioni
+    (docs/CHANGELOG.md §168).
+    Se la verifica KYC reale non fosse pronta per il lancio, il punto 15
+    va comunque corretto/rimosso prima di andare in
     produzione — non deve mai restare un'affermazione falsa pubblicata dal
     vivo.
 

@@ -15788,3 +15788,124 @@ Verifica:
   - admin 1280 e 390 (esiti standard, scadenze, tab Ricorsi).
 - Corretto nel giro: la risposta alle informazioni non contava come versione
   del professionista (la fase tornava "in attesa della versione").
+
+## 168. Pagamento online dei lavori con Stripe (acconto + saldo) e pagamento diretto senza assistenza
+
+Richieste esplicite dell'utente:
+- "scrivi tutto come se fosse già attivo il pagamento su Stripe, sia i
+  termini sia backend del sito che frontend";
+- "al cliente deve essere chiaro che con pagamento diretto eventuali
+  problematiche vanno risolte direttamente con chi ha fornito il lavoro,
+  mentre se paga online può ricevere assistenza".
+
+Risposte dell'utente alle domande:
+- acconto + saldo, acconto del 20%;
+- accredito al professionista alla conferma del cliente o dopo 7 giorni;
+- costo Stripe e commissione del 5% a carico del professionista;
+- con il pagamento diretto nessun rimborso: mettiamo in contatto cliente e
+  professionista, che si accordano tra loro, e il cliente lascia comunque
+  la recensione;
+- saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
+  caso passa al nostro team.
+
+Decisioni prese (regole in `packages/shared/src/onlinePayments.ts`):
+
+- **Scelta all'accettazione del preventivo.** `POST
+  /bookings/from-quote/:id` riceve `paymentMethod` (`ONLINE`/`DIRECT`). Il
+  JobPayment ora nasce all'accettazione, non più a lavoro chiuso. Sul sito
+  "Accetta preventivo" apre la scelta (`PaymentChoice`), con online
+  preselezionato e l'acconto calcolato. Online: redirect a Stripe Checkout
+  per l'acconto.
+- **Online (`OnlineMoneyService`, `apps/api/src/job-payments/`).**
+  - Addebiti sul conto della piattaforma ("separate charges and
+    transfers" di Stripe Connect): acconto del 20% del massimo del
+    preventivo, saldo sull'importo finale quando il professionista chiude
+    il lavoro (notifica `JOB_BALANCE_DUE` e tasto "Paga il saldo").
+  - Il costo Stripe reale viene letto dalla balance transaction.
+  - Accredito (`transfers.create`) alla conferma del cliente, oppure
+    7 giorni dopo la chiusura (job orario). Mai con una segnalazione
+    aperta o accolta; mai senza conto Stripe del professionista (lo
+    avvisiamo e riproviamo).
+  - Importo accreditato: dovuto − costo Stripe − commissione (regola di
+    commissione a 5%; migrazione che porta il vecchio 10% di prova a 5%).
+    L'eccesso dell'acconto torna al cliente.
+  - Saldo non pagato entro 7 giorni: al professionista quanto incassato,
+    `balanceUnpaidAt`, avviso al cliente e agli admin Finanza/Super.
+    Nuova sezione "Saldi non pagati" in `/admin/pagamenti` (ora "Pagamenti
+    e rimborsi", sempre nel menu) con "Chiudi il saldo". Se il cliente
+    paga dopo, il saldo arriva subito al professionista.
+- **Rimborsi.**
+  - Annullamento (dal cliente o dal professionista): acconto rimborsato in
+    automatico.
+  - Segnalazione accolta: rimborso automatico di tutto il pagato.
+  - Rimborsi della Finanza: passano per `OnlineMoneyService.refundOnline`,
+    spalmati su saldo e acconto. Se i soldi erano già accreditati, storno
+    del trasferimento (`transfers.createReversal`, al posto del
+    `reverse_transfer` di §167, valido solo per gli addebiti con
+    destinazione).
+  - Se Stripe non risponde, l'annullamento non si blocca: il rimborso resta
+    alla Finanza.
+- **Diretto.**
+  - Nessun movimento sul sito: l'importo finale si conferma come prima.
+  - Le segnalazioni restano in chat tra le parti: nessun passaggio al
+    team, né automatico né su richiesta. "Non abbiamo risolto" chiude con
+    il nuovo stato `UNRESOLVED` ("Non risolta tra voi"), si può
+    recensire, e per la mancata presentazione c'è comunque "Invia la
+    richiesta ad altri professionisti".
+  - Nessuna misura né decisione nostra.
+  - Il cliente lo legge nella scelta del metodo, nella scheda del lavoro,
+    nella segnalazione e nei termini.
+- **Sito.**
+  - Riquadro `JobPaymentStatus` nella scheda del lavoro: per il cliente
+    stato, acconto, saldo e tasto di pagamento; per il professionista
+    commissione, costo Stripe, quanto riceve e quando.
+  - Nuove notifiche: `JOB_DEPOSIT_PAID`, `JOB_BALANCE_PAID`,
+    `JOB_BALANCE_DUE`, `JOB_BALANCE_UNPAID`, `JOB_PAYOUT_SENT`,
+    `JOB_PAYOUT_ACCOUNT_NEEDED`, `ADMIN_JOB_BALANCE_UNPAID`,
+    `JOB_ISSUE_UNRESOLVED`.
+  - "Garanzia Piattaforma" in homepage: il pagamento protetto non è più
+    "In arrivo". "Cosa succede se..." (`WhatIfSection`) allineato alle
+    regole reali: niente più "rimborso e sostituto entro 4 ore" né
+    "non paghi la differenza" (checklist punto 16). Pagina fiscale del professionista e `/per-professionisti`
+    con acconto, accredito e 5%.
+- **Termini** (`/termini`, aggiornati al 29/09/2026):
+  - nuovi §5 "Pagamento dei lavori" (online e diretto) e §6
+    "Segnalazioni sui lavori" (scadenze, misure, ricorso, natura non
+    vincolante, mediazione e giudice);
+  - §8 limitazione di responsabilità riscritta con l'eccezione dei
+    pagamenti online e dei diritti del consumatore.
+
+  Scritti come attivi su richiesta dell'utente. Vanno verificati da un
+  avvocato insieme al regolamento aggiornato
+  (`docs/legale/regolamento-controversie.md`).
+
+Schema: migrazione `20260929200000_online_job_payments`.
+- `JobIssueStatus.UNRESOLVED`.
+- Nuovi campi di `JobPayment`: `onlineStage`, acconto, saldo, pagato,
+  costo Stripe, rimborsato, date di accredito e saldo scoperto.
+- Commissione di default portata a 5%.
+
+Nota: senza `STRIPE_SECRET_KEY` il checkout risponde "Il pagamento online
+non è disponibile in questo momento" e l'accredito viene rimandato. Per
+andare davvero live servono le chiavi Stripe e Stripe Connect (checklist
+§10, punti 5-6).
+
+Verifica:
+- Test: 137 test API verdi (10 nuovi sulle regole di pagamento e sulle
+  segnalazioni con pagamento diretto); `tsc` su api, web e mobile.
+- API sul database e2e:
+  - accettazione online (acconto €80 su un massimo di €400) e diretta;
+  - checkout senza chiave → 400 chiaro;
+  - acconto simulato dal webhook → `DEPOSIT_PAID` e notifica al
+    professionista;
+  - chiusura a €350 → saldo €270, commissione €17,50, notifica al
+    cliente;
+  - saldo simulato → `PAID`; conferma del cliente → accredito rimandato
+    (professionista senza conto Stripe);
+  - pagamento diretto: segnalazione in chat, "Non abbiamo risolto" →
+    `UNRESOLVED`, recensione e "Invia ad altri" disponibili;
+  - annullamento online senza Stripe → prenotazione annullata e rimborso
+    di €30 alla Finanza.
+- Playwright 390/1280, senza overflow né errori: scelta del pagamento,
+  riquadro online e diretto del cliente, riquadro del professionista,
+  admin pagamenti.

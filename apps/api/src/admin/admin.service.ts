@@ -34,8 +34,10 @@ export type AdminOverview = {
   openJobIssues: number;
   /** Ricorsi dei professionisti su segnalazioni accolte, da decidere (§167). */
   jobIssueAppeals: number;
-  /** Pagamenti online attivi (chiave Stripe presente): senza, la pagina rimborsi resta nascosta (§167). */
+  /** Pagamenti online attivi (chiave Stripe presente). */
   paymentsEnabled: boolean;
+  /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
+  unpaidBalances: number;
   newUsers7d: number;
   clients: number;
   professionals: number;
@@ -504,7 +506,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -519,6 +521,7 @@ export class AdminService {
         this.prisma.waitlistSignup.count(),
         this.prisma.jobIssue.count({ where: { status: "OPEN" } }),
         this.prisma.jobIssue.count({ where: { appealedAt: { not: null }, appealDecision: null } }),
+        this.prisma.jobPayment.count({ where: { balanceUnpaidAt: { not: null } } }),
       ]);
     return {
       openReports,
@@ -535,6 +538,7 @@ export class AdminService {
       openJobIssues,
       jobIssueAppeals,
       paymentsEnabled: !!process.env.STRIPE_SECRET_KEY,
+      unpaidBalances,
     };
   }
 
@@ -1074,7 +1078,7 @@ export class AdminService {
             ? { status: "CHAT" }
             : view === "appeals"
               ? { appealedAt: { not: null }, appealDecision: null }
-              : { status: { in: ["UPHELD", "REJECTED", "RESOLVED"] } },
+              : { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } },
       orderBy: view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
       take: 200,
       include: {
@@ -1113,7 +1117,11 @@ export class AdminService {
       const request = booking.quote?.guidedRequest ?? null;
       const restrictions = professionalRestrictions(booking.professionalProfile, now);
       return {
-        issue: toJobIssueSummary(issue, { proRepliedAt: chatReplies.get(issue.id) ?? null, paidOnline: jobPaidOnline(booking.jobPayment) }) as JobIssueSummary,
+        issue: toJobIssueSummary(issue, {
+          proRepliedAt: chatReplies.get(issue.id) ?? null,
+          paidOnline: jobPaidOnline(booking.jobPayment),
+          assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+        }) as JobIssueSummary,
         bookingId: booking.id,
         guidedRequestId: request?.id ?? null,
         categoryLabel: request?.category.label ?? null,

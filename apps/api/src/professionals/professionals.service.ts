@@ -24,6 +24,7 @@ import {
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
   toJobIssueSummary,
+  toJobPaymentSummary,
   professionalRestrictions,
   jobPaidOnline,
 } from "@professionisti/shared";
@@ -1176,7 +1177,7 @@ export class ProfessionalsService {
         },
         finalItems: true,
         issue: true,
-        jobPayment: { select: { paymentMethod: true, status: true } },
+        jobPayment: true,
         clientReview: true,
       },
       orderBy: { scheduledAt: "asc" },
@@ -1279,7 +1280,9 @@ export class ProfessionalsService {
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
       hasClientReview: booking.clientReview !== null,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
-      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment) }),
+      issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
+      // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
+      payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
     }));
   }
 

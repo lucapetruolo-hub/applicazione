@@ -1,11 +1,33 @@
 # Regolamento per la risoluzione delle segnalazioni sui lavori — BOZZA
 
-> **Bozza da far verificare a un avvocato prima della pubblicazione.**
-> Non è pubblicata sul sito. Va inserita in `/termini` solo dopo l'approvazione
-> dell'avvocato (checklist pre-lancio, CLAUDE.md §10, punto 11bis).
-> Decisioni dell'utente del 29/09/2026 (docs/CHANGELOG.md §167). Tempistiche
+> **Bozza da far verificare a un avvocato.** Una sintesi è già in `/termini`
+> §5-§6 (richiesta dell'utente di scrivere tutto come se il pagamento online
+> fosse già attivo); questo documento e quei punti vanno rivisti insieme
+> (checklist pre-lancio, CLAUDE.md §10, punto 11bis).
+> Decisioni dell'utente del 29/09/2026 (docs/CHANGELOG.md §167-§168). Tempistiche
 > riprese dalla Garanzia dalla A alla Z di Amazon e adattate a un marketplace di
 > servizi a domicilio.
+
+## 0. Pagamento online o diretto (§168)
+
+Accettando il preventivo il cliente sceglie come pagare:
+
+- **Online con Stripe.**
+  - Acconto del 20% dell'importo massimo del preventivo, saldo a lavoro
+    chiuso sull'importo finale.
+  - Manovia tiene i soldi e li passa al professionista quando il cliente
+    conferma il lavoro, oppure 7 giorni dopo la chiusura.
+  - Con una segnalazione aperta i soldi restano fermi.
+  - Al professionista arriva l'importo meno il costo Stripe e la
+    commissione del 5%.
+  - Il cliente ha l'assistenza descritta qui sotto e il rimborso se la
+    segnalazione è accolta.
+- **Diretto al professionista.**
+  - La piattaforma non incassa, non rimborsa e non decide.
+  - In caso di problema mette in contatto le parti (chat), che si
+    accordano tra loro.
+  - Accordo o no, il cliente può lasciare la recensione.
+  - Le fasi 2-5 qui sotto valgono solo per i lavori pagati online.
 
 ## 1. Cosa si può segnalare e quando
 
@@ -65,12 +87,10 @@ Si può fare una sola segnalazione per ogni lavoro.
   - per una mancata presentazione, il cliente può inviare con un tasto la
     stessa richiesta ad altri professionisti della zona, escluso quello che
     non si è presentato;
-  - **lavoro pagato sul sito con Stripe:** il cliente riceve il rimborso
-    dell'importo pagato sul metodo di pagamento usato. L'importo viene
-    ripreso dal conto Stripe del professionista (inversione del trasferimento
-    Stripe Connect). Con il pagamento diretto al professionista non c'è
-    rimborso da parte nostra: la decisione vale per le misure sul profilo e
-    come elemento a favore del cliente.
+  - **lavoro pagato online:** il cliente riceve subito il rimborso di
+    quanto pagato, sul metodo di pagamento usato. Di norma i soldi sono
+    ancora in custodia; se erano già passati al professionista, la sua
+    quota viene ripresa dal suo conto Stripe (storno del trasferimento).
 - Dopo la decisione, o dopo un accordo in chat, il cliente può lasciare la
   recensione.
 
@@ -102,10 +122,11 @@ Se il ricorso è accolto:
 
 ## 7. Da verificare con l'avvocato
 
-1. **Clausola "non rispondiamo di danni"** (`/termini` §6-§7). Va rivista:
-   - è compatibile con il rimborso garantito sui pagamenti tramite sito?
-   - è compatibile con i limiti degli artt. 33 e 36 del Codice del Consumo
-     (clausole vessatorie verso il consumatore)?
+1. **Clausola di responsabilità** (`/termini` §8, riscritta il 29/09/2026
+   con l'eccezione dei pagamenti online). Va verificata con i limiti degli
+   artt. 33 e 36 del Codice del Consumo (clausole vessatorie verso il
+   consumatore). I termini con pagamenti e segnalazioni (§5-§6) sono già
+   pubblicati su richiesta dell'utente: vanno rivisti anche quelli.
 2. **Decisione automatica a favore del cliente** quando il professionista non
    risponde in 72 ore: va bene come regola contrattuale verso il
    professionista (P2B, Reg. UE 2019/1150: motivazione, reclamo interno)?
@@ -123,3 +144,10 @@ Se il ricorso è accolto:
 6. **Conservazione di chat e prove** (privacy): per quanto tempo le teniamo
    dopo la chiusura della segnalazione? Da allineare a
    `docs/registro-trattamenti.md`.
+7. **Custodia delle somme e ruolo di Manovia**: con "separate charges and
+   transfers" di Stripe Connect i soldi del cliente restano per alcuni giorni
+   sul conto Stripe della piattaforma. Serve confermare che è compatibile
+   col ruolo fiscale e regolamentare di Manovia (checklist, punti 7-9) e
+   come va scritto nei contratti con clienti e professionisti.
+8. **Saldo non pagato**: la sospensione dell'account del cliente che non
+   paga il saldo va prevista nei termini (oggi c'è, §5) e verificata.

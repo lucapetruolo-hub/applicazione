@@ -130,6 +130,11 @@ export function PerProfessionistiContent() {
             Se ti avvicini al limite del tuo livello ti avvisiamo prima, e puoi passare al livello superiore pagando
             solo la differenza. L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
           </Text>
+          <Text color={brand.grafite70} textAlign="center" maxWidth={640}>
+            Pagamenti online: i clienti possono pagarti con carta tramite Stripe, con acconto del 20% e saldo a lavoro finito. Ti
+            accreditiamo l&apos;importo alla conferma del cliente o dopo 7 giorni, meno il costo di Stripe e una commissione del 5%. Se il
+            cliente paga direttamente, nessuna commissione.
+          </Text>
           <Link href={ctaHref} style={{ textDecoration: "none" }}>
             <Button variant="primary">{ctaLabel}</Button>
           </Link>

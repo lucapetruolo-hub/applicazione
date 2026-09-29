@@ -25,7 +25,9 @@ export function PhaseDeadline({ row }: { row: AdminJobIssue }) {
   if (issue.status === "CHAT") {
     return (
       <Text fontSize={13} color={brand.grafite70}>
-        {issue.proRepliedInChat
+        {!issue.assisted
+          ? "Pagamento diretto: la segnalazione resta tra cliente e professionista, non arriva a noi."
+          : issue.proRepliedInChat
           ? "Il professionista ha risposto in chat: decide il cliente se passarla a noi."
           : `Il professionista deve rispondere in chat entro ${formatIssueDeadline(issue.chatReplyDueAt)}, poi passa da sola a noi.`}
       </Text>
