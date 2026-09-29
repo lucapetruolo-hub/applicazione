@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
-import { decideRefundSchema, resolveDisputeSchema, type DecideRefundInput, type ResolveDisputeInput } from "@professionisti/shared";
+import { closeUnpaidBalanceSchema, decideRefundSchema, resolveDisputeSchema, type DecideRefundInput, type ResolveDisputeInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { JobPaymentsService } from "./job-payments.service";
 import { RefundsService } from "./refunds.service";
 import { DisputesService } from "./disputes.service";
+import { OnlineMoneyService } from "./online-money.service";
 
 /** Vista admin su pagamenti/rimborsi/contestazioni — CLAUDE.md §88. */
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -16,6 +17,7 @@ export class AdminJobPaymentsController {
     private readonly jobPaymentsService: JobPaymentsService,
     private readonly refundsService: RefundsService,
     private readonly disputesService: DisputesService,
+    private readonly onlineMoneyService: OnlineMoneyService,
   ) {}
 
   @Get("finance/summary")
@@ -26,6 +28,17 @@ export class AdminJobPaymentsController {
   @Get("job-payments")
   listJobPayments() {
     return this.jobPaymentsService.listAll();
+  }
+
+  /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
+  @Get("unpaid-balances")
+  listUnpaidBalances() {
+    return this.onlineMoneyService.listUnpaidBalances();
+  }
+
+  @Patch("unpaid-balances/:id")
+  closeUnpaidBalance(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(closeUnpaidBalanceSchema)) body: { note: string }) {
+    return this.onlineMoneyService.closeUnpaidBalance(req.user.userId, id, body.note.trim());
   }
 
   @Get("refunds")

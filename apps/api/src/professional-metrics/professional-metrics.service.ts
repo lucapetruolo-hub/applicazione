@@ -182,6 +182,19 @@ export class ProfessionalMetricsService {
     await this.recordAppointmentOutcome(professionalProfileId, false);
   }
 
+  /**
+   * Ricorso accolto su una segnalazione (docs/CHANGELOG.md §167): la
+   * mancata presentazione o il lavoro fatto male non contano più, quindi
+   * l'appuntamento torna rispettato.
+   */
+  async revertNoShowConfirmed(professionalProfileId: string): Promise<void> {
+    await this.prisma.professionalMetrics.updateMany({
+      where: { professionalProfileId },
+      data: { honoredAppointments: { increment: 1 } },
+    });
+    await this.refreshScore(professionalProfileId);
+  }
+
   /** Evento 7: qualunque azione del professionista (login, risposta, aggiornamento disponibilità) — nessun incremento, solo il timestamp. */
   async touchActivity(professionalProfileId: string): Promise<void> {
     await this.prisma.professionalMetrics.upsert({

@@ -32,7 +32,7 @@ function buildService(report: Record<string, unknown>, overrides: Record<string,
   const notifications = { notify: vi.fn() };
   const metrics = { recomputeReviews: vi.fn() };
   const audit = { record: vi.fn() };
-  const service = new AdminService(prisma as never, notifications as never, metrics as never, audit as never);
+  const service = new AdminService(prisma as never, notifications as never, metrics as never, audit as never, {} as never);
   return { service, prisma, tx, notifications, metrics, audit };
 }
 
@@ -135,7 +135,7 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
     };
     const notifications = { notify: vi.fn() };
     const audit = { record: vi.fn() };
-    const service = new AdminService(prisma as never, notifications as never, {} as never, audit as never);
+    const service = new AdminService(prisma as never, notifications as never, {} as never, audit as never, {} as never);
     return { service, prisma, notifications, audit };
   }
 

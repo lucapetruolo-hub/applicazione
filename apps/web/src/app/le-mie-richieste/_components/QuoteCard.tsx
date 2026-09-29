@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatServicePriceRange, quotePriceTotals } from "@professionisti/shared";
+import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice } from "@professionisti/shared";
+import { PaymentChoice } from "@/components/PaymentChoice";
 import { Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -66,7 +67,7 @@ export function QuoteCard({
   quote: ClientGuidedRequest["quotes"][number];
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string) => Promise<void>;
+  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
   /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
   requestedTimeSlot: string | null;
   /** Richiesta di origine, per il bottone "Cronologia". */
@@ -91,6 +92,9 @@ export function QuoteCard({
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showPaymentInfo, setShowPaymentInfo] = useState(false);
+  // Scelta del metodo di pagamento prima di accettare (§168).
+  const [choosingPayment, setChoosingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("ONLINE");
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -108,7 +112,7 @@ export function QuoteCard({
     setError(null);
     setIsAccepting(true);
     try {
-      await onAcceptQuote(quote.id);
+      await onAcceptQuote(quote.id, paymentMethod);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -276,9 +280,11 @@ export function QuoteCard({
       {quote.status === "SENT" ? (
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
-              {isAccepting ? "Accettazione..." : "Accetta preventivo"}
-            </Button>
+            {!choosingPayment ? (
+              <Button variant="primary" size="$3" height={40} onPress={() => setChoosingPayment(true)}>
+                Accetta preventivo
+              </Button>
+            ) : null}
             {!isChoosingDate ? (
               <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
                 Modifica
@@ -292,6 +298,19 @@ export function QuoteCard({
               </Button>
             ) : null}
           </XStack>
+          {choosingPayment ? (
+            <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+              <PaymentChoice value={paymentMethod} onChange={setPaymentMethod} quoteMaxEurCents={priceTotals.totalMaxEurCents} />
+              <XStack gap="$2" flexWrap="wrap">
+                <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
+                  {isAccepting ? "Accettazione..." : paymentMethod === "ONLINE" ? "Accetta e paga l'acconto" : "Accetta preventivo"}
+                </Button>
+                <Button variant="ghost" size="$3" height={40} onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : null}
           {!isChoosingDate && confirmingReject ? (
             <XStack gap="$2" alignItems="center">
               <Text fontSize="$2" color={brand.urgenza}>
@@ -374,7 +393,7 @@ export function QuoteCard({
           </Text>
           {showPaymentInfo ? (
             <Text fontSize="$2" color={brand.grafite70}>
-              Il pagamento in piattaforma non è ancora attivo: accordati direttamente con il professionista sulle modalità di pagamento.
+              Il metodo di pagamento scelto, l&apos;acconto e il saldo sono nella sezione dell&apos;intervento qui sotto.
             </Text>
           ) : (
             <Text color={brand.cianografia} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowPaymentInfo(true)}>

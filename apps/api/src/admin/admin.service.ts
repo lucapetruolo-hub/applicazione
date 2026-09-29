@@ -1,10 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_LABEL, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 export type AdminUserRow = {
   id: string;
@@ -31,6 +32,12 @@ export type AdminOverview = {
   openDisputes: number;
   /** Segnalazioni di problemi sul lavoro da decidere (docs/CHANGELOG.md §164). */
   openJobIssues: number;
+  /** Ricorsi dei professionisti su segnalazioni accolte, da decidere (§167). */
+  jobIssueAppeals: number;
+  /** Pagamenti online attivi (chiave Stripe presente). */
+  paymentsEnabled: boolean;
+  /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
+  unpaidBalances: number;
   newUsers7d: number;
   clients: number;
   professionals: number;
@@ -46,6 +53,7 @@ export class AdminService {
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly auditLogService: AuditLogService,
+    private readonly jobIssueOutcomeService: JobIssueOutcomeService,
   ) {}
 
   /**
@@ -498,7 +506,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -512,8 +520,26 @@ export class AdminService {
         this.prisma.lead.count({ where: { hiddenByProfessionalAt: { not: null } } }),
         this.prisma.waitlistSignup.count(),
         this.prisma.jobIssue.count({ where: { status: "OPEN" } }),
+        this.prisma.jobIssue.count({ where: { appealedAt: { not: null }, appealDecision: null } }),
+        this.prisma.jobPayment.count({ where: { balanceUnpaidAt: { not: null } } }),
       ]);
-    return { openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues };
+    return {
+      openReports,
+      pendingAppeals,
+      openMessages,
+      pendingRefunds,
+      openDisputes,
+      newUsers7d,
+      clients,
+      professionals,
+      suspendedUsers,
+      hiddenLeads,
+      waitlist,
+      openJobIssues,
+      jobIssueAppeals,
+      paymentsEnabled: !!process.env.STRIPE_SECRET_KEY,
+      unpaidBalances,
+    };
   }
 
   /**
@@ -1043,27 +1069,59 @@ export class AdminService {
    * decidere: descrizione e foto del cliente, versione del professionista,
    * note e foto a lavoro terminato, importi.
    */
-  async listJobIssues(view: "open" | "chat" | "closed"): Promise<AdminJobIssueRow[]> {
+  async listJobIssues(view: "open" | "chat" | "appeals" | "closed", adminUserId: string): Promise<AdminJobIssueRow[]> {
     const issues = await this.prisma.jobIssue.findMany({
       where:
-        view === "open" ? { status: "OPEN" } : view === "chat" ? { status: "CHAT" } : { status: { in: ["UPHELD", "REJECTED", "RESOLVED"] } },
-      orderBy: { createdAt: view === "closed" ? "desc" : "asc" },
+        view === "open"
+          ? { status: "OPEN" }
+          : view === "chat"
+            ? { status: "CHAT" }
+            : view === "appeals"
+              ? { appealedAt: { not: null }, appealDecision: null }
+              : { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } },
+      orderBy: view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
       take: 200,
       include: {
         booking: {
           include: {
-            professionalProfile: { select: { id: true, userId: true, businessName: true } },
+            professionalProfile: { select: { id: true, userId: true, businessName: true, demotedUntil: true, requestsBlockedUntil: true } },
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
+            jobPayment: { select: { paymentMethod: true, status: true } },
           },
         },
       },
     });
+    const since = new Date(Date.now() - JOB_ISSUE_SANCTION_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const profileIds = [...new Set(issues.map((i) => i.booking.professionalProfileId))];
+    const upheldCounts = await this.prisma.jobIssue.findMany({
+      where: { status: "UPHELD", resolvedAt: { gte: since }, booking: { professionalProfileId: { in: profileIds } } },
+      select: { booking: { select: { professionalProfileId: true } } },
+    });
+    const upheldBy = new Map<string, number>();
+    for (const row of upheldCounts) upheldBy.set(row.booking.professionalProfileId, (upheldBy.get(row.booking.professionalProfileId) ?? 0) + 1);
+    const chatReplies = await this.jobIssueOutcomeService.proChatReplies(
+      issues
+        .filter((i) => i.status === "CHAT")
+        .map((i) => ({
+          id: i.id,
+          createdAt: i.createdAt,
+          professionalRespondedAt: i.professionalRespondedAt,
+          guidedRequestId: i.booking.quote?.guidedRequest.id ?? null,
+          professionalProfileId: i.booking.professionalProfileId,
+        })),
+    );
+    const now = new Date();
     return issues.map((issue) => {
       const booking = issue.booking;
       const request = booking.quote?.guidedRequest ?? null;
+      const restrictions = professionalRestrictions(booking.professionalProfile, now);
       return {
-        issue: toJobIssueSummary(issue) as JobIssueSummary,
+        issue: toJobIssueSummary(issue, {
+          proRepliedAt: chatReplies.get(issue.id) ?? null,
+          paidOnline: jobPaidOnline(booking.jobPayment),
+          assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+        }) as JobIssueSummary,
         bookingId: booking.id,
         guidedRequestId: request?.id ?? null,
         categoryLabel: request?.category.label ?? null,
@@ -1071,12 +1129,21 @@ export class AdminService {
         requestDescription: request?.description ?? null,
         scheduledAt: booking.scheduledAt.toISOString(),
         bookingStatus: booking.status,
-        professional: { profileId: booking.professionalProfile.id, userId: booking.professionalProfile.userId, businessName: booking.professionalProfile.businessName },
+        professional: {
+          profileId: booking.professionalProfile.id,
+          userId: booking.professionalProfile.userId,
+          businessName: booking.professionalProfile.businessName,
+          upheldLast30Days: upheldBy.get(booking.professionalProfileId) ?? 0,
+          demoted: restrictions.demoted,
+          blocked: restrictions.blocked,
+        },
         client: {
           userId: booking.client.id,
           name: booking.client.deletedAt ? null : [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
           accountDeleted: booking.client.deletedAt !== null,
         },
+        // Il ricorso lo decide un admin diverso da chi ha deciso la segnalazione (§167).
+        decidedByMe: issue.resolvedByUserId === adminUserId,
         finalAmountEurCents: booking.finalAmountEurCents,
         professionalCompletedAt: booking.professionalCompletedAt?.toISOString() ?? null,
         clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
@@ -1090,52 +1157,12 @@ export class AdminService {
   }
 
   /**
-   * Decisione su una segnalazione (docs/CHANGELOG.md §164, decisione
-   * dell'utente): una mancata presentazione accolta conta come appuntamento
-   * non onorato e abbassa l'affidabilità nello smistamento. Cliente e
-   * professionista ricevono la decisione con la motivazione; da qui il
-   * cliente può recensire.
+   * Decisione su una segnalazione (docs/CHANGELOG.md §164, §167): esito,
+   * misure progressive, affidabilità e rimborso dei lavori pagati sul sito
+   * sono in JobIssueOutcomeService, condiviso con le decisioni automatiche.
    */
   async resolveJobIssue(adminUserId: string, issueId: string, input: ResolveJobIssueInput): Promise<{ id: string; status: string }> {
-    const issue = await this.prisma.jobIssue.findUnique({
-      where: { id: issueId },
-      include: {
-        booking: {
-          select: {
-            id: true,
-            clientId: true,
-            status: true,
-            professionalProfileId: true,
-            professionalProfile: { select: { userId: true } },
-            quote: { select: { guidedRequestId: true } },
-          },
-        },
-      },
-    });
-    if (!issue) throw new NotFoundException("Segnalazione non trovata.");
-    if (issue.status !== "OPEN") throw new BadRequestException("La segnalazione è già stata decisa.");
-
-    const note = input.note.trim();
-    await this.prisma.jobIssue.update({
-      where: { id: issueId },
-      data: { status: input.decision, resolutionNote: note, resolvedAt: new Date(), resolvedByUserId: adminUserId },
-    });
-    if (input.decision === "UPHELD" && issue.type === "NO_SHOW") {
-      await this.professionalMetricsService.recordNoShowConfirmed(issue.booking.professionalProfileId, issue.booking.status === "COMPLETED");
-    }
-    await this.auditLogService.record({
-      entityType: "JobIssue",
-      entityId: issueId,
-      fieldName: "status",
-      oldValue: "OPEN",
-      newValue: input.decision,
-      changedByUserId: adminUserId,
-      reason: note,
-    });
-    const payload = { bookingId: issue.booking.id, guidedRequestId: issue.booking.quote?.guidedRequestId ?? null, issueType: issue.type, decision: input.decision, note };
-    await this.notificationsService.notify(issue.booking.clientId, "JOB_ISSUE_RESOLVED", { ...payload, audience: "CLIENT" });
-    await this.notificationsService.notify(issue.booking.professionalProfile.userId, "JOB_ISSUE_RESOLVED", { ...payload, audience: "PROFESSIONAL" });
-    return { id: issueId, status: input.decision };
+    return this.jobIssueOutcomeService.decide(issueId, { decision: input.decision, note: input.note.trim(), byUserId: adminUserId });
   }
 
   /**
@@ -1407,8 +1434,9 @@ export type AdminJobIssueRow = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
+  decidedByMe: boolean;
   finalAmountEurCents: number | null;
   professionalCompletedAt: string | null;
   clientConfirmedAt: string | null;

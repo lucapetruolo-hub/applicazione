@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",
@@ -119,9 +119,22 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
   // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a
   // entrambe le parti, il lato è nel payload come per i promemoria.
-  if (type === "JOB_ISSUE_RESOLVED") {
+  // Anche le notifiche delle controversie (§167): senza `audience` sono del professionista.
+  if (type === "JOB_ISSUE_SANCTION") return "/dashboard/richieste";
+  // Pagamenti online dei lavori (§168).
+  if (type === "JOB_PAYOUT_ACCOUNT_NEEDED") return "/dashboard/fiscale";
+  if (type === "ADMIN_JOB_BALANCE_UNPAID") return "/admin/pagamenti";
+  if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
-    const professional = getPayloadValue(payload, "audience") === "PROFESSIONAL";
+    return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
+  }
+  if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
+  if (type.startsWith("JOB_ISSUE_")) {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    const professional = getPayloadValue(payload, "audience") !== "CLIENT";
     if (!guidedRequestId) return professional ? "/dashboard/richieste" : "/le-mie-richieste?tab=lavori";
     return professional ? `/dashboard/richieste?open=${guidedRequestId}` : `/le-mie-richieste?tab=lavori&open=${guidedRequestId}`;
   }

@@ -6,7 +6,15 @@ import type { AdminOverview, AdminRoleName } from "@professionisti/api-client";
 import { adminCan, type AdminScope } from "@professionisti/shared";
 import { Icon, type IconName } from "@professionisti/ui";
 
-type NavItem = { href: string; label: string; icon: IconName; scope: AdminScope; badge?: (o: AdminOverview) => number };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  scope: AdminScope;
+  badge?: (o: AdminOverview) => number;
+  /** Voce nascosta finché la funzione non è attiva (es. rimborsi senza pagamenti online, §167). */
+  hidden?: (o: AdminOverview | null) => boolean;
+};
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Home", icon: "house", scope: "ANY" },
@@ -14,9 +22,9 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/messaggi", label: "Messaggi", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
   { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
   { href: "/admin/chat", label: "Chat", icon: "message-circle", scope: "MODERATION" },
-  { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues },
+  { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues + o.jobIssueAppeals },
   { href: "/admin/lavori", label: "Lavori terminati", icon: "badge-check", scope: "ANY" },
-  { href: "/admin/pagamenti", label: "Rimborsi e contestazioni", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes },
+  { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
   { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock", scope: "MODERATION" },
   { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },
@@ -40,7 +48,7 @@ export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: Adm
         <span>Cerca</span>
         <kbd className="admin-kbd">⌘K</kbd>
       </button>
-      {ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRoles, item.scope)).map((item) => {
+      {ADMIN_NAV_ITEMS.filter((item) => adminCan(adminRoles, item.scope) && !item.hidden?.(overview)).map((item) => {
         const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         const count = overview && item.badge ? item.badge(overview) : 0;
         return (

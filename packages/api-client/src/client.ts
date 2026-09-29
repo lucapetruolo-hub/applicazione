@@ -53,9 +53,13 @@ import type {
   UpdateEngagementRadiusInput,
   JobIssueResponseInput,
   JobIssueSummary,
+  JobPaymentSummary,
+  AdminUnpaidBalance,
+  JobPaymentChoice,
   JobIssueType,
   ReportJobIssueInput,
   ResolveJobIssueInput,
+  ResolveJobIssueAppealInput,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -66,6 +70,8 @@ export type ClientBooking = {
   issue: JobIssueSummary | null;
   /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
   issueTypesAllowed: JobIssueType[];
+  /** Pagamento del lavoro (§168): online con acconto e saldo, o diretto. Null per prenotazioni senza scelta. */
+  payment: JobPaymentSummary | null;
   /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
   canReview: boolean;
   scheduledAt: string;
@@ -312,6 +318,12 @@ export type AdminOverview = {
   hiddenLeads: number;
   waitlist: number;
   openJobIssues: number;
+  /** Ricorsi dei professionisti da decidere (docs/CHANGELOG.md §167). */
+  jobIssueAppeals: number;
+  /** Pagamenti online attivi (chiave Stripe presente). */
+  paymentsEnabled: boolean;
+  /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
+  unpaidBalances: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -457,8 +469,10 @@ export type AdminJobIssue = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
+  /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
+  decidedByMe: boolean;
   finalAmountEurCents: number | null;
   professionalCompletedAt: string | null;
   clientConfirmedAt: string | null;
@@ -1108,10 +1122,19 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
      * Accetta un preventivo: crea la prenotazione. L'indirizzo di lavoro
      * strutturato (destinatario, via, civico, CAP, provincia) non viene più
      * raccolto qui — arriva dalla GuidedRequest, compilata fin dall'invio
-     * della richiesta (richiesta esplicita dell'utente).
+     * della richiesta (richiesta esplicita dell'utente). Con il metodo di
+     * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string) =>
-      request<{ bookingId: string }>(`/bookings/from-quote/${quoteId}`, {
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
+      request<{ bookingId: string; paymentMethod: JobPaymentChoice }>(`/bookings/from-quote/${quoteId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ paymentMethod }),
+      }),
+
+    /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
+    jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>
+      request<{ url: string | null }>(`/bookings/${bookingId}/job-payment/checkout/${part}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1246,9 +1269,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     myClientBookings: (token: string) =>
       request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    /** Il cliente segnala che il professionista non si è presentato e chiede un rimborso. */
+    /** Il cliente segnala che il professionista non si è presentato (una segnalazione come le altre, §164). */
     reportBookingNoShow: (token: string, bookingId: string) =>
-      request<{ bookingId: string; refundRequested: boolean; refundRequestedAt: string }>(`/bookings/${bookingId}/report-no-show`, {
+      request<{ bookingId: string; issueId: string; status: string }>(`/bookings/${bookingId}/report-no-show`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       }),
@@ -1455,7 +1478,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         cache: "no-store",
       }),
 
-    adminListJobIssues: (token: string, view: "open" | "chat" | "closed") =>
+    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed") =>
       request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
@@ -1463,6 +1486,43 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
+      }),
+
+    adminRequestJobIssueInfo: (token: string, id: string, text: string) =>
+      request<{ id: string }>(`/admin/job-issues/${id}/request-info`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text }),
+      }),
+
+    adminDecideJobIssueAppeal: (token: string, id: string, input: ResolveJobIssueAppealInput) =>
+      request<{ id: string; appealDecision: string }>(`/admin/job-issues/${id}/appeal`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Il professionista risponde alla richiesta di informazioni (72 ore). */
+    answerJobIssueInfo: (token: string, bookingId: string, response: string) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/info`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ response }),
+      }),
+
+    /** Ricorso del professionista entro 30 giorni da una decisione accolta. */
+    appealJobIssue: (token: string, bookingId: string, text: string) =>
+      request<{ bookingId: string }>(`/bookings/${bookingId}/issue/appeal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text }),
+      }),
+
+    /** Mancata presentazione accolta: stessa richiesta inviata ad altri professionisti. */
+    redispatchJobIssue: (token: string, bookingId: string) =>
+      request<{ guidedRequestId: string }>(`/bookings/${bookingId}/issue/redispatch`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     reportJobIssue: (token: string, bookingId: string, input: ReportJobIssueInput) =>
@@ -1583,8 +1643,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     bookingJobPayment: (token: string, bookingId: string) =>
       request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    initiateManoviaCheckout: (token: string, bookingId: string) =>
-      request<{ url: string }>(`/bookings/${bookingId}/job-payment/manovia-checkout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
 
     requestJobRefund: (token: string, bookingId: string, input: RequestRefundInput) =>
       request<{ id: string }>(`/bookings/${bookingId}/job-payment/refund`, {
@@ -1601,6 +1660,16 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListUnpaidBalances: (token: string) =>
+      request<AdminUnpaidBalance[]>("/admin/unpaid-balances", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminCloseUnpaidBalance: (token: string, jobPaymentId: string, note: string) =>
+      request<void>(`/admin/unpaid-balances/${jobPaymentId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note }),
+      }),
 
     adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

@@ -587,8 +587,10 @@ function DashboardFiscaleContent() {
               Pagamenti tramite Manovia
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
-              Attivando questa opzione i clienti potranno pagarti direttamente in piattaforma: Manovia trattiene la propria commissione e ti
-              accredita il netto tramite Stripe. Resta comunque sempre possibile farsi pagare direttamente, senza attivare nulla qui.
+              I clienti che scelgono il pagamento online versano un acconto del 20% e il saldo a lavoro finito. Teniamo noi i soldi e te li
+              accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
+              la commissione Manovia del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
+              I clienti che scelgono il pagamento diretto ti pagano come vi accordate.
             </Text>
             {profile?.stripeChargesEnabled ? (
               <Badge variant="verificato">Pagamenti attivi</Badge>

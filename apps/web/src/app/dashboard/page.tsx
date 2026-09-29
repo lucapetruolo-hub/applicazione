@@ -11,6 +11,7 @@ import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
+import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -27,6 +28,7 @@ export default function DashboardTodayPage() {
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
+  const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -41,6 +43,10 @@ export default function DashboardTodayPage() {
     apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsights(null));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
+    apiClient
+      .getMyProfessionalProfile(token)
+      .then((p) => setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null))
+      .catch(() => setRestrictions(null));
   }, [token, user?.isProfessional]);
 
   // I conti alla rovescia si aggiornano da soli ogni minuto.
@@ -125,6 +131,7 @@ export default function DashboardTodayPage() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} /> : null}
+        {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
 
         <div className="today-kpis">
           <TodayCounter href="/dashboard/richieste?stage=da_quotare" icon="file-text" value={toAnswer.length} label="Richieste da rispondere" urgent={toAnswer.length > 0} loading={loading} />

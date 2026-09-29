@@ -32,6 +32,7 @@ export function ReportIssueModal({
   onSubmit,
   uploadPhoto,
   onOpenChat,
+  assisted = true,
 }: {
   businessName: string;
   phone: string | null;
@@ -42,6 +43,8 @@ export function ReportIssueModal({
   uploadPhoto: (file: File) => Promise<string>;
   /** Apre la chat col professionista: prima fase della segnalazione (§165). Assente senza chat (prenotazione dall'agenda). */
   onOpenChat?: () => void;
+  /** Lavoro pagato online: segnalazione con la nostra assistenza. False con il pagamento diretto (§168). */
+  assisted?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -84,6 +87,12 @@ export function ReportIssueModal({
     }
     if (description.trim().length < 10) {
       setError("Descrivi cosa è successo (almeno 10 caratteri).");
+      return;
+    }
+    // Prove minime (docs/CHANGELOG.md §167): le foto per un lavoro fatto
+    // male; per la mancata presentazione basta la chat.
+    if (type === "BAD_WORK" && photoUrls.length === 0) {
+      setError("Aggiungi almeno una foto del lavoro: ci serve per valutare la segnalazione.");
       return;
     }
     setIsSaving(true);
@@ -132,11 +141,29 @@ export function ReportIssueModal({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
-            {onOpenChat ? (
+            {!assisted ? (
               <>
                 <Text color={brand.grafite70}>
-                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Come primo passo provate a trovare una soluzione
-                  insieme in chat. Se non ci riuscite, dalla scheda del lavoro puoi chiedere al nostro team di decidere.
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Avendo scelto il pagamento diretto, il
+                  problema va risolto tra voi: accordo o no, dalla scheda del lavoro potrai chiudere la segnalazione e lasciare la recensione.
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  {onOpenChat ? (
+                    <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
+                      Apri la chat
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="$3" height={44} onPress={onClose}>
+                    Chiudi
+                  </Button>
+                </XStack>
+              </>
+            ) : onOpenChat ? (
+              <>
+                <Text color={brand.grafite70}>
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo: ha 48 ore per risponderti e proporti una
+                  soluzione. Se non risponde, la segnalazione passa da sola al nostro team; se risponde ma non vi accordate, dalla scheda del
+                  lavoro puoi chiedere al nostro team di decidere.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   <Button variant="primary" size="$3" height={44} onPress={onOpenChat}>
@@ -150,8 +177,8 @@ export function ReportIssueModal({
             ) : (
               <>
                 <Text color={brand.grafite70}>
-                  Abbiamo avvisato {businessName}, che può rispondere con la sua versione. Il nostro team esamina la segnalazione e ti comunica la
-                  decisione. Dopo la decisione potrai lasciare la recensione.
+                  Abbiamo avvisato {businessName}, che ha 72 ore per inviare la sua versione: se non risponde, la segnalazione è accolta. Poi il
+                  nostro team decide entro 2 giorni e ti comunica l&apos;esito. Dopo la decisione potrai lasciare la recensione.
                 </Text>
                 <Button variant="primary" size="$3" height={44} alignSelf="flex-start" onPress={onClose}>
                   Chiudi
@@ -166,7 +193,9 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               <Text fontSize="$3" color={brand.grafite70}>
-                {onOpenChat
+                {!assisted
+                  ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
+                  : onOpenChat
                   ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
                   : `Il nostro team esamina ogni segnalazione e sente anche ${businessName} prima di decidere.`}
               </Text>
@@ -235,7 +264,7 @@ export function ReportIssueModal({
 
             <YStack gap="$1">
               <Text fontSize="$2" color={brand.grafite70}>
-                Foto o video (opzionale, fino a {MAX_PHOTOS})
+                {type === "BAD_WORK" ? `Foto o video del lavoro (almeno una, fino a ${MAX_PHOTOS})` : `Foto o video (opzionale, fino a ${MAX_PHOTOS})`}
               </Text>
               <XStack flexWrap="wrap" gap="$2">
                 {photoUrls.map((url) => (

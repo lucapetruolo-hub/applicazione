@@ -1,28 +1,26 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Rimborsi (CLAUDE.md §88) — richiedibile da cliente o professionista su un
  * JobPayment esistente. L'approvazione è sempre un'azione admin (mai
- * automatica): per un JobPayment MANOVIA con Stripe configurato tenta un
- * vero `stripe.refunds.create`; per DIRECT non c'è alcun movimento reale da
+ * automatica): per un JobPayment MANOVIA rimborsa con Stripe tramite
+ * OnlineMoneyService (acconto e saldo, storno del trasferimento se già
+ * passato al professionista, §168); per DIRECT non c'è alcun movimento reale da
  * annullare su Stripe (il denaro non è mai passato dalla piattaforma), la
  * "elaborazione" è solo un cambio di stato che documenta l'accordo preso
  * fuori piattaforma.
  */
 @Injectable()
 export class RefundsService {
-  private readonly stripe: Stripe | null;
-
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
-  ) {
-    this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-  }
+    private readonly onlineMoneyService: OnlineMoneyService,
+  ) {}
 
   async request(userId: string, bookingId: string, input: { amountEurCents: number; reason?: string }) {
     const booking = await this.prisma.booking.findUnique({
@@ -88,23 +86,20 @@ export class RefundsService {
 
     await this.prisma.refund.update({ where: { id: refundId }, data: { status: "APPROVED" } });
 
-    let stripeRefundId: string | undefined;
-    if (refund.jobPayment.paymentMethod === "MANOVIA" && refund.jobPayment.stripePaymentIntentId) {
-      if (!this.stripe) {
-        throw new BadRequestException("Rimborso Stripe non configurato su questo ambiente (STRIPE_SECRET_KEY mancante).");
-      }
-      const stripeRefund = await this.stripe.refunds.create({
-        payment_intent: refund.jobPayment.stripePaymentIntentId,
-        amount: refund.amountEurCents,
-      });
-      stripeRefundId = stripeRefund.id;
+    // Pagamento online (§168): rimborso Stripe spalmato su acconto e saldo;
+    // se i soldi erano già passati al professionista, la sua quota viene
+    // ripresa dal suo conto Stripe (storno del trasferimento).
+    if (refund.jobPayment.paymentMethod === "MANOVIA") {
+      await this.onlineMoneyService.refundOnline(refund.jobPaymentId, refund.amountEurCents, refund.reason ?? "Rimborso approvato dalla Finanza.", adminUserId);
     }
 
     const processed = await this.prisma.refund.update({
       where: { id: refundId },
-      data: { status: "PROCESSED", processedAt: new Date(), stripeRefundId },
+      data: { status: "PROCESSED", processedAt: new Date() },
     });
-    await this.prisma.jobPayment.update({ where: { id: refund.jobPaymentId }, data: { status: "REFUNDED" } });
+    if (refund.jobPayment.paymentMethod === "DIRECT") {
+      await this.prisma.jobPayment.update({ where: { id: refund.jobPaymentId }, data: { status: "REFUNDED" } });
+    }
     await this.auditLogService.record({
       entityType: "Refund",
       entityId: refundId,

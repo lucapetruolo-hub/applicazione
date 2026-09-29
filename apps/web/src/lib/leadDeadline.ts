@@ -32,3 +32,20 @@ export function formatCompetitors({ responded, total }: { responded: number; tot
   if (responded === 0) return `Nessuno degli altri ${total} professionisti ha ancora risposto`;
   return `${responded} su ${total} altri professionisti ${responded === 1 ? "ha" : "hanno"} già risposto`;
 }
+
+/**
+ * Scadenza di una segnalazione (docs/CHANGELOG.md §167): giorno e ora
+ * leggibili, es. "mer 1 ottobre alle 14:30", ora italiana.
+ */
+export function formatIssueDeadline(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  const day = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  return `${day} alle ${time}`;
+}
+
+/** La scadenza è già passata (in attesa del controllo orario automatico). */
+export function isPastDeadline(iso: string | null): boolean {
+  return !!iso && new Date(iso).getTime() <= Date.now();
+}

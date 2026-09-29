@@ -5,6 +5,10 @@ import {
   type AdminRoleUpdateInput,
   resolveContentReportSchema,
   resolveJobIssueSchema,
+  resolveJobIssueAppealSchema,
+  jobIssueInfoRequestSchema,
+  type ResolveJobIssueAppealInput,
+  type JobIssueInfoRequestInput,
   type ResolveJobIssueInput,
   type ContentReportDecisionNoteInput,
   type ResolveContentReportInput,
@@ -13,11 +17,15 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminService } from "./admin.service";
+import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin")
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+  ) {}
 
   /** Contatori della home admin (docs/CHANGELOG.md §144). */
   @Get("overview")
@@ -165,14 +173,28 @@ export class AdminController {
   // admin, come "Lavori terminati".
   @RequireAdminScope("ANY")
   @Get("job-issues")
-  listJobIssues(@Query("view") view?: string) {
-    return this.adminService.listJobIssues(view === "closed" || view === "chat" ? view : "open");
+  listJobIssues(@Req() req: AuthenticatedRequest, @Query("view") view?: string) {
+    return this.adminService.listJobIssues(view === "closed" || view === "chat" || view === "appeals" ? view : "open", req.user.userId);
   }
 
   @RequireAdminScope("ANY")
   @Patch("job-issues/:id")
   resolveJobIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(resolveJobIssueSchema)) body: ResolveJobIssueInput) {
     return this.adminService.resolveJobIssue(req.user.userId, id, body);
+  }
+
+  /** Richiesta di informazioni al professionista: 72 ore per rispondere (§167). */
+  @RequireAdminScope("ANY")
+  @Patch("job-issues/:id/request-info")
+  requestJobIssueInfo(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(jobIssueInfoRequestSchema)) body: JobIssueInfoRequestInput) {
+    return this.jobIssueOutcomeService.requestInfo(req.user.userId, id, body.text.trim());
+  }
+
+  /** Decisione sul ricorso del professionista, da un admin diverso da chi ha deciso (§167). */
+  @RequireAdminScope("ANY")
+  @Patch("job-issues/:id/appeal")
+  decideJobIssueAppeal(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(resolveJobIssueAppealSchema)) body: ResolveJobIssueAppealInput) {
+    return this.jobIssueOutcomeService.decideAppeal(req.user.userId, id, { decision: body.decision, note: body.note.trim() });
   }
 
   // Qualunque admin: note e differenze di prezzo servono sia alla

@@ -16,8 +16,12 @@ const POINTS = [
     comingSoon: true,
   },
   {
-    text: "Pagamento protetto in piattaforma: paghi solo a lavoro concluso",
-    comingSoon: true,
+    text: "Pagamento online protetto: acconto del 20% e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",
+    comingSoon: false,
+  },
+  {
+    text: "Con il pagamento online, se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo",
+    comingSoon: false,
   },
 ];
 
@@ -36,7 +40,9 @@ const POINTS = [
  * è diretto tra cliente e professionista, Stripe Connect non configurato,
  * §9/§88) portano il badge "In arrivo" — stesso pattern già in uso in
  * `ProCtaSection.tsx` (`comingSoon`), riusato qui invece di inventarne uno
- * nuovo. "Mediazione in caso di controversia" è stata rimossa del tutto,
+ * nuovo. Pagamento online protetto e assistenza attivi dal §168 (decisione
+ * dell'utente: pagamento online con Stripe, acconto e saldo in custodia,
+ * rimborso sulle segnalazioni accolte). "Mediazione in caso di controversia" è stata rimossa del tutto,
  * non solo marcata "in arrivo": non esiste alcuna infrastruttura, nemmeno
  * allo stadio di bozza, per una promessa specifica come questa.
  */

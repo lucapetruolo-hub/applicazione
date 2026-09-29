@@ -8,6 +8,12 @@ import {
   clientCanReview,
   jobIssueTypesAllowed,
   toJobIssueSummary,
+  jobPaidOnline,
+  quotePriceTotals,
+  toJobPaymentSummary,
+  type JobPaymentChoice,
+  jobIssueCanEscalate,
+  jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
   type ReportJobIssueInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
@@ -16,6 +22,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
+import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @Injectable()
 export class BookingsService {
@@ -26,6 +33,7 @@ export class BookingsService {
     private readonly timelineService: TimelineService,
     private readonly jobPaymentsService: JobPaymentsService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly jobIssueOutcomeService: JobIssueOutcomeService,
   ) {}
 
   /**
@@ -38,10 +46,10 @@ export class BookingsService {
    * questi campi arrivavano da un input separato raccolto solo qui, in una
    * schermata dedicata all'accettazione).
    */
-  async createFromQuote(clientId: string, quoteId: string) {
+  async createFromQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice = "DIRECT") {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { guidedRequest: true, booking: true, professionalProfile: true },
+      include: { guidedRequest: true, booking: true, professionalProfile: true, items: true },
     });
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
@@ -82,6 +90,15 @@ export class BookingsService {
       },
     });
 
+    // Metodo di pagamento scelto dal cliente (§168): online con acconto del
+    // 20% sull'importo massimo, o diretto al professionista.
+    await this.jobPaymentsService.createAtAcceptance({
+      bookingId: booking.id,
+      choice: paymentMethod,
+      quoteMaxEurCents: quotePriceTotals(quote.items).totalMaxEurCents,
+      clientUserId: clientId,
+    });
+
     await this.prisma.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED" } });
     await this.prisma.guidedRequest.update({ where: { id: quote.guidedRequestId }, data: { status: "CLOSED", closedReason: "COMPLETED" } });
 
@@ -103,10 +120,12 @@ export class BookingsService {
       quote.guidedRequestId,
       quote.professionalProfileId,
       "CLIENT",
-      "Il cliente ha accettato il preventivo: prenotazione confermata.",
+      paymentMethod === "ONLINE"
+        ? "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento online (acconto ora, saldo a lavoro finito)."
+        : "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento diretto al professionista.",
     );
 
-    return { bookingId: booking.id };
+    return { bookingId: booking.id, paymentMethod };
   }
 
   /**
@@ -139,6 +158,7 @@ export class BookingsService {
       // stesso valore già usato da cancelByProfessional.
       data: { status, ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}) },
     });
+    if (status === "CANCELED") await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
 
     // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
     // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
@@ -323,12 +343,21 @@ export class BookingsService {
     // range stimato). Default DIRECT/in attesa di conferma del cliente,
     // mai bloccante: nessun professionista deve dipendere da Stripe Connect
     // configurato per poter chiudere un lavoro.
-    await this.jobPaymentsService.createOnCompletion({
+    const online = await this.jobPaymentsService.createOnCompletion({
       bookingId,
       grossAmountEurCents: finalAmountEurCents,
       reportedByUserId: professionalUserId,
       alreadyConfirmedByClient: booking.clientConfirmedCompletedAt !== null,
     });
+    // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
+    if (online && online.balanceDueEurCents > 0) {
+      await this.notificationsService.notify(booking.clientId, "JOB_BALANCE_DUE", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+        amountEurCents: online.balanceDueEurCents,
+        audience: "CLIENT",
+      });
+    }
 
     return { bookingId, status: "COMPLETED" as const, finalAmountEurCents };
   }
@@ -410,6 +439,8 @@ export class BookingsService {
       where: { id: bookingId },
       data: { status: "CANCELED", cancellationNote, canceledBy: "PROFESSIONAL" },
     });
+    // Lavoro pagato online (§168): l'acconto torna al cliente.
+    await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
 
     await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
       bookingId,
@@ -450,6 +481,8 @@ export class BookingsService {
     }
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
+    // Lavoro pagato online (§168): l'acconto torna al cliente.
+    await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
     if (booking.quote) {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
     }
@@ -561,29 +594,28 @@ export class BookingsService {
       );
     }
 
+    // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
+    await this.prisma.jobPayment.updateMany({
+      where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
+      data: { onlineStage: "AWAITING_DEPOSIT", status: "PENDING", releasedAt: null },
+    });
+
     return { bookingId, status: "CONFIRMED" as const };
   }
 
   /**
-   * Il cliente segnala che il professionista non si è presentato
-   * all'appuntamento e chiede un rimborso (richiesta esplicita
-   * dell'utente) — consentito solo su una prenotazione CONFIRMED propria,
-   * e solo dopo che la data/ora prevista è realmente passata (mai fidarsi
-   * del client per questo controllo). Non tocca `status`: il
-   * professionista può ancora segnarla completata/annullarla, questa è
-   * solo una segnalazione + notifica, nessun pagamento reale da
-   * rimborsare in piattaforma (non ancora attivo, CLAUDE.md §9).
+   * Vecchio percorso "Non presentato": ora è una segnalazione come le altre
+   * (docs/CHANGELOG.md §164), con la stessa finestra di 7 giorni. Non segna
+   * più "rimborso richiesto" (§167): un rimborso parte solo da una
+   * segnalazione accolta su un lavoro pagato sul sito.
    */
   async reportProfessionalNoShow(clientId: string, bookingId: string) {
-    // Vecchio percorso "Non presentato": ora è una segnalazione come le
-    // altre (docs/CHANGELOG.md §164), con la stessa finestra di 7 giorni.
-    await this.reportIssue(clientId, bookingId, {
+    const issue = await this.reportIssue(clientId, bookingId, {
       type: "NO_SHOW",
       description: "Il professionista non si è presentato all'appuntamento.",
       photoUrls: [],
     });
-    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { refundRequestedAt: true } });
-    return { bookingId, refundRequested: true, refundRequestedAt: (booking.refundRequestedAt ?? new Date()).toISOString() };
+    return { bookingId, issueId: issue.id, status: issue.status };
   }
 
   /**
@@ -595,7 +627,12 @@ export class BookingsService {
   async reportIssue(clientId: string, bookingId: string, input: ReportJobIssueInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } }, issue: { select: { id: true } } },
+      include: {
+        professionalProfile: { select: { userId: true } },
+        quote: { select: { guidedRequestId: true } },
+        issue: { select: { id: true } },
+        jobPayment: { select: { paymentMethod: true } },
+      },
     });
     if (!booking || booking.clientId !== clientId) {
       throw new ForbiddenException("Questa prenotazione non è tua.");
@@ -615,19 +652,27 @@ export class BookingsService {
     // Prima fase in chat (§165): cliente e professionista provano a
     // risolvere da soli. Senza una richiesta collegata non c'è chat
     // (prenotazione diretta dall'agenda): si passa subito al nostro team.
-    const inChat = booking.quote !== null;
+    // Pagamento diretto (§168): resta sempre tra le parti, niente team.
+    const assisted = booking.jobPayment?.paymentMethod !== "DIRECT";
+    const inChat = booking.quote !== null || !assisted;
     const issue = await this.prisma.jobIssue.create({
-      data: { bookingId, type: input.type, description: input.description.trim(), photoUrls: input.photoUrls, status: inChat ? "CHAT" : "OPEN" },
+      data: {
+        bookingId,
+        type: input.type,
+        description: input.description.trim(),
+        photoUrls: input.photoUrls,
+        status: inChat ? "CHAT" : "OPEN",
+        // Senza chat va subito al nostro team: da qui le 72 ore per la
+        // versione del professionista (§167).
+        ...(inChat ? {} : { escalatedAt: new Date(), escalationReason: "CLIENT" }),
+      },
     });
-    // Compatibilità col vecchio flag "rimborso richiesto", letto dal professionista.
-    if (input.type === "NO_SHOW") {
-      await this.prisma.booking.update({ where: { id: bookingId }, data: { refundRequested: true, refundRequestedAt: new Date() } });
-    }
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
       issueType: input.type,
       inChat,
+      assisted,
       guidedRequestId: booking.quote?.guidedRequestId,
       professionalProfileId: booking.professionalProfileId,
     });
@@ -636,7 +681,9 @@ export class BookingsService {
         booking.quote.guidedRequestId,
         booking.professionalProfileId,
         "CLIENT",
-        `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Provate a trovare una soluzione qui in chat; se non ci riuscite, il cliente può chiedere al nostro team di decidere.`,
+        assisted
+          ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il professionista ha 48 ore per rispondere qui in chat e provare a trovare una soluzione; se non risponde la segnalazione passa da sola al nostro team, se non trovate un accordo il cliente può chiedere al nostro team di decidere.`
+          : `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il lavoro è pagato direttamente al professionista: il problema va risolto tra voi, qui in chat. Accordo o no, il cliente potrà poi lasciare la recensione.`,
       );
     }
     return { id: issue.id, status: issue.status };
@@ -650,21 +697,74 @@ export class BookingsService {
   async closeIssueChat(clientId: string, bookingId: string, outcome: "RESOLVED" | "ESCALATE") {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { issue: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } },
+      include: {
+        issue: true,
+        professionalProfile: { select: { userId: true } },
+        quote: { select: { guidedRequestId: true } },
+        jobPayment: { select: { paymentMethod: true } },
+      },
     });
     if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
     if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
     if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat.");
+    const now = new Date();
+
+    // Pagamento diretto (§168): "Non abbiamo risolto" chiude la segnalazione
+    // tra le parti, senza il nostro team; il cliente può recensire.
+    if (booking.jobPayment?.paymentMethod === "DIRECT") {
+      const status = outcome === "RESOLVED" ? "RESOLVED" : "UNRESOLVED";
+      await this.prisma.jobIssue.update({ where: { id: booking.issue.id }, data: { status, resolvedAt: now } });
+      await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_UNRESOLVED", {
+        bookingId,
+        issueType: booking.issue.type,
+        guidedRequestId: booking.quote?.guidedRequestId,
+        audience: "PROFESSIONAL",
+      });
+      if (booking.quote) {
+        await this.timelineService.log(
+          booking.quote.guidedRequestId,
+          booking.professionalProfileId,
+          "CLIENT",
+          outcome === "RESOLVED"
+            ? "Il cliente ha indicato che il problema è stato risolto con il professionista."
+            : "Il cliente ha indicato che non avete trovato un accordo. Il lavoro era pagato direttamente: la questione resta tra voi.",
+        );
+      }
+      return { bookingId, status };
+    }
+
+    if (outcome === "ESCALATE") {
+      // Come il contatto diretto di Amazon (§167): il professionista ha 48
+      // ore per rispondere; prima il cliente può passarla al team solo se ha
+      // già risposto senza risolvere.
+      const replies = await this.jobIssueOutcomeService.proChatReplies([
+        {
+          id: booking.issue.id,
+          createdAt: booking.issue.createdAt,
+          professionalRespondedAt: booking.issue.professionalRespondedAt,
+          guidedRequestId: booking.quote?.guidedRequestId ?? null,
+          professionalProfileId: booking.professionalProfileId,
+        },
+      ]);
+      const chat = { status: booking.issue.status, createdAt: booking.issue.createdAt, proRepliedAt: replies.get(booking.issue.id) ?? null };
+      if (!jobIssueCanEscalate(chat, now)) {
+        throw new BadRequestException(
+          "Il professionista ha 48 ore per risponderti in chat: se non risponde la segnalazione passa da sola al nostro team.",
+        );
+      }
+    }
 
     const status = outcome === "RESOLVED" ? "RESOLVED" : "OPEN";
     await this.prisma.jobIssue.update({
       where: { id: booking.issue.id },
-      data: { status, ...(outcome === "RESOLVED" ? { resolvedAt: new Date() } : {}) },
+      data: { status, ...(outcome === "RESOLVED" ? { resolvedAt: now } : { escalatedAt: now, escalationReason: "CLIENT" }) },
     });
     await this.notificationsService.notify(booking.professionalProfile.userId, outcome === "RESOLVED" ? "JOB_ISSUE_SETTLED" : "JOB_ISSUE_ESCALATED", {
       bookingId,
       issueType: booking.issue.type,
       guidedRequestId: booking.quote?.guidedRequestId,
+      audience: "PROFESSIONAL",
+      ...(outcome === "ESCALATE" ? { evidenceDueAt: jobIssueEvidenceDueAt(now).toISOString() } : {}),
     });
     if (booking.quote) {
       await this.timelineService.log(
@@ -673,7 +773,7 @@ export class BookingsService {
         "CLIENT",
         outcome === "RESOLVED"
           ? "Il cliente ha indicato che il problema è stato risolto con il professionista."
-          : "Il cliente ha chiesto al nostro team di decidere sulla segnalazione.",
+          : "Il cliente ha chiesto al nostro team di decidere sulla segnalazione. Il professionista ha 72 ore per inviare la sua versione.",
       );
     }
     return { bookingId, status };
@@ -736,6 +836,7 @@ export class BookingsService {
         review: true,
         finalItems: true,
         issue: true,
+        jobPayment: true,
         // Richiesta esplicita dell'utente: "Lavori accettati" deve mostrare
         // anche i dati della richiesta guidata originale (titolo/categoria,
         // descrizione, foto) e del preventivo accettato (voci/note) — non
@@ -748,12 +849,29 @@ export class BookingsService {
     });
 
     const now = new Date();
+    const chatReplies = await this.jobIssueOutcomeService.proChatReplies(
+      bookings
+        .filter((b) => b.issue?.status === "CHAT")
+        .map((b) => ({
+          id: b.issue!.id,
+          createdAt: b.issue!.createdAt,
+          professionalRespondedAt: b.issue!.professionalRespondedAt,
+          guidedRequestId: b.quote?.guidedRequestId ?? null,
+          professionalProfileId: b.professionalProfileId,
+        })),
+    );
     return bookings.map((booking) => ({
       id: booking.id,
       scheduledAt: booking.scheduledAt.toISOString(),
       // Segnalazione di un problema (docs/CHANGELOG.md §164): quella già
       // inviata, quali si possono inviare adesso, e se si può recensire.
-      issue: toJobIssueSummary(booking.issue),
+      issue: toJobIssueSummary(booking.issue, {
+        proRepliedAt: booking.issue ? chatReplies.get(booking.issue.id) : null,
+        paidOnline: jobPaidOnline(booking.jobPayment),
+        assisted: booking.jobPayment?.paymentMethod !== "DIRECT",
+      }),
+      // Pagamento del lavoro (§168): metodo scelto, acconto, saldo, rimborsi.
+      payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents),
       issueTypesAllowed: jobIssueTypesAllowed({ ...booking, hasIssue: booking.issue !== null }, now),
       canReview: clientCanReview({
         status: booking.status,

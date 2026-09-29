@@ -15642,3 +15642,270 @@ Verifica:
   errore. Corretti nel giro: avviso che scorreva via coi messaggi (ora
   fisso), icona schiacciata, conteggio "messaggi scritti" che includeva gli
   eventi automatici (ora totale dei messaggi).
+
+## 167. Controversie standard sul modello Amazon A-Z: scadenze, misure progressive, ricorso, rinvio ad altri, rimborso con Stripe
+
+Richieste esplicite dell'utente, in risposta alla domanda al CEO su come
+rendere standard la risoluzione delle controversie:
+- procedura interna, senza agenzie esterne;
+- misure progressive sulle segnalazioni accolte:
+  1. la prima dà un avvertimento;
+  2. la seconda entro 30 giorni abbassa il profilo nello smistamento e nella
+     ricerca per 14 giorni;
+  3. la terza entro 30 giorni blocca le nuove richieste per 14 giorni;
+- anche "lavoro fatto male" abbassa il punteggio;
+- al cliente arriva l'esito; per la mancata presentazione, un pulsante che
+  manda la richiesta ad altri professionisti;
+- ricorso del professionista, esaminato da un admin diverso;
+- una bozza di regolamento per l'avvocato.
+
+Tempistiche: prima "tutto a 2 giorni", poi "prendiamo come riferimento come
+Amazon risolve le controversie e adattiamolo al nostro contesto, con tutte le
+tempistiche che possiamo usare". Infine: "apriremo Stripe come metodo di
+pagamento online e quindi il cliente deve sapere che usando Stripe ha
+maggiori garanzie".
+
+Decisioni prese (regole pure in `packages/shared/src/jobIssues.ts`, testate
+in `apps/api/src/bookings/job-issue-disputes.test.ts`):
+
+- **Scadenze sul modello Amazon A-Z.**
+  - *Contatto diretto in chat:* il professionista ha 48 ore per rispondere.
+    Se non scrive, la segnalazione passa da sola al team
+    (`escalationReason: PRO_NO_REPLY`). Il cliente può passarla prima solo
+    dopo una risposta non soddisfacente (`jobIssueCanEscalate`; prima
+    "Non abbiamo risolto" non compare e l'API risponde 400).
+  - *Versione del professionista:* 72 ore dal passaggio al team, altrimenti
+    la segnalazione è **accolta automaticamente** (`autoDecision:
+    NO_EVIDENCE`).
+  - *Richiesta di informazioni:* l'admin può chiedere informazioni; il
+    professionista ha 72 ore per rispondere, altrimenti la segnalazione è
+    accolta (`NO_INFO`). La risposta alle informazioni vale anche come sua
+    versione.
+  - *Decisione dell'admin:* entro 2 giorni da quando le prove sono complete.
+    In `/admin/problemi` ogni scheda mostra la fase e la scadenza, in rosso
+    se la decisione è in ritardo.
+  - *Ricorso:* entro 30 giorni.
+  - Le scadenze le applica `JobIssueOutcomeService.runDeadlines`
+    (`@Cron` ogni ora).
+- **Misure progressive** (`jobIssueSanctionFor`). Si contano le segnalazioni
+  accolte negli ultimi 30 giorni:
+  - 1ª: avvertimento;
+  - 2ª: `ProfessionalProfile.demotedUntil` a +14 giorni. Il punteggio di
+    smistamento si dimezza (`DEMOTED_SCORE_FACTOR`), il professionista non
+    prende il posto riservato ai nuovi e va in fondo ai risultati di
+    ricerca, anche con un boost;
+  - 3ª: `requestsBlockedUntil` a +14 giorni. Il profilo esce da ricerca,
+    smistamento e coda di riserva; niente richieste dirette né prenotazioni
+    dall'agenda (409 come la pausa); `acceptingRequests` è false.
+
+  La misura viene salvata sulla segnalazione (`sanction`), nel registro
+  azioni e in una notifica al professionista (argomento "Account", non si
+  spegne). In Home c'è un avviso fisso (`IssueSanctionBanner`).
+- **Affidabilità**: anche "lavoro fatto male" accolto abbassa gli
+  appuntamenti rispettati (`recordNoShowConfirmed` per entrambi i tipi).
+- **Esiti standard**: in `/admin/problemi`, 4 esiti già scritti per tipo
+  (`JOB_ISSUE_DECISION_TEMPLATES`) si inseriscono con un clic e si possono
+  ritoccare. Prima di decidere, l'admin vede la misura che scatterebbe e
+  quante segnalazioni accolte ha già il professionista. Il testo dell'esito
+  per cliente e professionista è sempre lo stesso schema
+  (`jobIssueOutcomeText`): esito, motivazione, ricorso (solo per il
+  professionista) e la frase "non impedisce di rivolgersi a mediazione o
+  giudice".
+- **Prove minime**: per "lavoro non andato bene" serve almeno una foto
+  (schema zod e modulo). Per la mancata presentazione basta la chat.
+- **Invia ad altri** (`POST /bookings/:id/issue/redispatch`): dopo una
+  mancata presentazione accolta, il cliente crea con un tasto una nuova
+  richiesta uguale (descrizione, foto, indirizzo), smistata escludendo quel
+  professionista (`GuidedRequestsService.create(..., { excludeProfileId })`).
+  Si può fare una volta sola, poi compare il link alla nuova richiesta.
+- **Ricorso** (`POST /bookings/:id/issue/appeal`, tab "Ricorsi" in
+  `/admin/problemi`, `PATCH /admin/job-issues/:id/appeal`):
+  - chi ha deciso la segnalazione non può decidere il ricorso (403);
+  - una decisione automatica la può rivedere qualunque admin;
+  - se il ricorso è accolto: la segnalazione diventa respinta,
+    l'affidabilità torna com'era (`revertNoShowConfirmed`), la misura viene
+    tolta e un rimborso non ancora eseguito viene annullato.
+- **Garanzia del pagamento con Stripe**:
+  - se un lavoro è pagato sul sito (JobPayment MANOVIA confermato) e la
+    segnalazione è accolta, parte da sola una richiesta di rimborso completo
+    al cliente;
+  - la Finanza la esegue da "Rimborsi e contestazioni" con
+    `reverse_transfer: true`, che riprende la quota dal conto Stripe del
+    professionista (addebito con destinazione Stripe Connect);
+  - con il pagamento diretto non c'è rimborso da parte nostra.
+
+  Il cliente legge del rimborso solo nell'esito di un lavoro davvero pagato
+  sul sito. **Non è ancora pubblicato altrove**: oggi i pagamenti online non
+  sono attivi, e annunciarlo sarebbe una promessa non vera (§113). Andrà
+  mostrato nella scelta del metodo di pagamento quando sarà attiva.
+- **Tolto il falso "rimborso richiesto"**: la segnalazione di mancata
+  presentazione non imposta più `Booking.refundRequested`, e il vecchio
+  `PATCH /bookings/:id/report-no-show` restituisce la segnalazione creata.
+- **"Rimborsi e contestazioni" nascosta** nel menu admin finché i pagamenti
+  online non sono attivi (`AdminOverview.paymentsEnabled`, cioè
+  `STRIPE_SECRET_KEY` presente). La pagina resta raggiungibile dal link.
+- **Regolamento per l'avvocato**: `docs/legale/regolamento-controversie.md`
+  (bozza, non pubblicata). Contiene la procedura, le scadenze, le misure, il
+  ricorso, la natura non vincolante della decisione, mediazione e giudice
+  sempre possibili, niente link ODR, e i punti da verificare. Tra questi: la
+  clausola "non rispondiamo di danni" di `/termini`, la decisione automatica
+  verso il professionista (P2B), il consenso all'inversione del
+  trasferimento Stripe e i tempi di conservazione di chat e prove.
+
+Schema: migrazione `20260929180000_job_issue_disputes`.
+- `ProfessionalProfile`: `demotedUntil`, `requestsBlockedUntil`.
+- `JobIssue`: `escalatedAt`, `escalationReason`, campi `info*`,
+  `autoDecision`, `sanction`, campi `appeal*`,
+  `redispatchedGuidedRequestId`.
+- Nuovo modulo `apps/api/src/job-issues/` (`JobIssueOutcomeService`),
+  condiviso da prenotazioni, area admin e job orario.
+- Nuove notifiche:
+  - `JOB_ISSUE_AUTO_ESCALATED`, `JOB_ISSUE_TEAM_REVIEW`,
+    `JOB_ISSUE_INFO_REQUESTED`, `JOB_ISSUE_APPEAL_DECIDED` (argomento
+    "Lavori");
+  - `JOB_ISSUE_SANCTION` (argomento "Account").
+
+Verifica:
+- 13 test nuovi sulle regole; 126 test API verdi; `tsc` su api, web e mobile.
+- API sul database e2e:
+  - "Non abbiamo risolto" subito → 400;
+  - dopo 48 ore simulate senza risposta, il job orario passa la segnalazione
+    al team e notifica entrambi;
+  - a +71 ore niente, a +73 ore accolta automaticamente con avvertimento e
+    affidabilità abbassata;
+  - "Invia ad altri": lead a tutti tranne il professionista escluso; il
+    secondo tentativo → 409;
+  - ricorso (testo corto → 400), accolto da un admin → segnalazione
+    respinta, affidabilità ripristinata, notifica a entrambi;
+  - richiesta di informazioni e risposta, decisione manuale alla 2ª
+    segnalazione → profilo abbassato;
+  - ricorso deciso dallo stesso admin → 403;
+  - ricerca: profilo abbassato in fondo; bloccato fuori dai risultati, con
+    `acceptingRequests` false e richiesta diretta → 409.
+- Playwright, nessun overflow né errore:
+  - cliente 390 (esito e link alla nuova richiesta);
+  - professionista 390 (pannello con misura e ricorso) e Home 390 (avviso);
+  - admin 1280 e 390 (esiti standard, scadenze, tab Ricorsi).
+- Corretto nel giro: la risposta alle informazioni non contava come versione
+  del professionista (la fase tornava "in attesa della versione").
+
+## 168. Pagamento online dei lavori con Stripe (acconto + saldo) e pagamento diretto senza assistenza
+
+Richieste esplicite dell'utente:
+- "scrivi tutto come se fosse già attivo il pagamento su Stripe, sia i
+  termini sia backend del sito che frontend";
+- "al cliente deve essere chiaro che con pagamento diretto eventuali
+  problematiche vanno risolte direttamente con chi ha fornito il lavoro,
+  mentre se paga online può ricevere assistenza".
+
+Risposte dell'utente alle domande:
+- acconto + saldo, acconto del 20%;
+- accredito al professionista alla conferma del cliente o dopo 7 giorni;
+- costo Stripe e commissione del 5% a carico del professionista;
+- con il pagamento diretto nessun rimborso: mettiamo in contatto cliente e
+  professionista, che si accordano tra loro, e il cliente lascia comunque
+  la recensione;
+- saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
+  caso passa al nostro team.
+
+Decisioni prese (regole in `packages/shared/src/onlinePayments.ts`):
+
+- **Scelta all'accettazione del preventivo.** `POST
+  /bookings/from-quote/:id` riceve `paymentMethod` (`ONLINE`/`DIRECT`). Il
+  JobPayment ora nasce all'accettazione, non più a lavoro chiuso. Sul sito
+  "Accetta preventivo" apre la scelta (`PaymentChoice`), con online
+  preselezionato e l'acconto calcolato. Online: redirect a Stripe Checkout
+  per l'acconto.
+- **Online (`OnlineMoneyService`, `apps/api/src/job-payments/`).**
+  - Addebiti sul conto della piattaforma ("separate charges and
+    transfers" di Stripe Connect): acconto del 20% del massimo del
+    preventivo, saldo sull'importo finale quando il professionista chiude
+    il lavoro (notifica `JOB_BALANCE_DUE` e tasto "Paga il saldo").
+  - Il costo Stripe reale viene letto dalla balance transaction.
+  - Accredito (`transfers.create`) alla conferma del cliente, oppure
+    7 giorni dopo la chiusura (job orario). Mai con una segnalazione
+    aperta o accolta; mai senza conto Stripe del professionista (lo
+    avvisiamo e riproviamo).
+  - Importo accreditato: dovuto − costo Stripe − commissione (regola di
+    commissione a 5%; migrazione che porta il vecchio 10% di prova a 5%).
+    L'eccesso dell'acconto torna al cliente.
+  - Saldo non pagato entro 7 giorni: al professionista quanto incassato,
+    `balanceUnpaidAt`, avviso al cliente e agli admin Finanza/Super.
+    Nuova sezione "Saldi non pagati" in `/admin/pagamenti` (ora "Pagamenti
+    e rimborsi", sempre nel menu) con "Chiudi il saldo". Se il cliente
+    paga dopo, il saldo arriva subito al professionista.
+- **Rimborsi.**
+  - Annullamento (dal cliente o dal professionista): acconto rimborsato in
+    automatico.
+  - Segnalazione accolta: rimborso automatico di tutto il pagato.
+  - Rimborsi della Finanza: passano per `OnlineMoneyService.refundOnline`,
+    spalmati su saldo e acconto. Se i soldi erano già accreditati, storno
+    del trasferimento (`transfers.createReversal`, al posto del
+    `reverse_transfer` di §167, valido solo per gli addebiti con
+    destinazione).
+  - Se Stripe non risponde, l'annullamento non si blocca: il rimborso resta
+    alla Finanza.
+- **Diretto.**
+  - Nessun movimento sul sito: l'importo finale si conferma come prima.
+  - Le segnalazioni restano in chat tra le parti: nessun passaggio al
+    team, né automatico né su richiesta. "Non abbiamo risolto" chiude con
+    il nuovo stato `UNRESOLVED` ("Non risolta tra voi"), si può
+    recensire, e per la mancata presentazione c'è comunque "Invia la
+    richiesta ad altri professionisti".
+  - Nessuna misura né decisione nostra.
+  - Il cliente lo legge nella scelta del metodo, nella scheda del lavoro,
+    nella segnalazione e nei termini.
+- **Sito.**
+  - Riquadro `JobPaymentStatus` nella scheda del lavoro: per il cliente
+    stato, acconto, saldo e tasto di pagamento; per il professionista
+    commissione, costo Stripe, quanto riceve e quando.
+  - Nuove notifiche: `JOB_DEPOSIT_PAID`, `JOB_BALANCE_PAID`,
+    `JOB_BALANCE_DUE`, `JOB_BALANCE_UNPAID`, `JOB_PAYOUT_SENT`,
+    `JOB_PAYOUT_ACCOUNT_NEEDED`, `ADMIN_JOB_BALANCE_UNPAID`,
+    `JOB_ISSUE_UNRESOLVED`.
+  - "Garanzia Piattaforma" in homepage: il pagamento protetto non è più
+    "In arrivo". "Cosa succede se..." (`WhatIfSection`) allineato alle
+    regole reali: niente più "rimborso e sostituto entro 4 ore" né
+    "non paghi la differenza" (checklist punto 16). Pagina fiscale del professionista e `/per-professionisti`
+    con acconto, accredito e 5%.
+- **Termini** (`/termini`, aggiornati al 29/09/2026):
+  - nuovi §5 "Pagamento dei lavori" (online e diretto) e §6
+    "Segnalazioni sui lavori" (scadenze, misure, ricorso, natura non
+    vincolante, mediazione e giudice);
+  - §8 limitazione di responsabilità riscritta con l'eccezione dei
+    pagamenti online e dei diritti del consumatore.
+
+  Scritti come attivi su richiesta dell'utente. Vanno verificati da un
+  avvocato insieme al regolamento aggiornato
+  (`docs/legale/regolamento-controversie.md`).
+
+Schema: migrazione `20260929200000_online_job_payments`.
+- `JobIssueStatus.UNRESOLVED`.
+- Nuovi campi di `JobPayment`: `onlineStage`, acconto, saldo, pagato,
+  costo Stripe, rimborsato, date di accredito e saldo scoperto.
+- Commissione di default portata a 5%.
+
+Nota: senza `STRIPE_SECRET_KEY` il checkout risponde "Il pagamento online
+non è disponibile in questo momento" e l'accredito viene rimandato. Per
+andare davvero live servono le chiavi Stripe e Stripe Connect (checklist
+§10, punti 5-6).
+
+Verifica:
+- Test: 137 test API verdi (10 nuovi sulle regole di pagamento e sulle
+  segnalazioni con pagamento diretto); `tsc` su api, web e mobile.
+- API sul database e2e:
+  - accettazione online (acconto €80 su un massimo di €400) e diretta;
+  - checkout senza chiave → 400 chiaro;
+  - acconto simulato dal webhook → `DEPOSIT_PAID` e notifica al
+    professionista;
+  - chiusura a €350 → saldo €270, commissione €17,50, notifica al
+    cliente;
+  - saldo simulato → `PAID`; conferma del cliente → accredito rimandato
+    (professionista senza conto Stripe);
+  - pagamento diretto: segnalazione in chat, "Non abbiamo risolto" →
+    `UNRESOLVED`, recensione e "Invia ad altri" disponibili;
+  - annullamento online senza Stripe → prenotazione annullata e rimborso
+    di €30 alla Finanza.
+- Playwright 390/1280, senza overflow né errori: scelta del pagamento,
+  riquadro online e diretto del cliente, riquadro del professionista,
+  admin pagamenti.

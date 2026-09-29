@@ -13,6 +13,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { JobIssuePanel } from "@/components/JobIssuePanel";
+import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
@@ -878,12 +879,22 @@ export function RequestCard({
           ) : null}
 
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
+          {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
+          {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
           {booking?.issue ? (
             <JobIssuePanel
               issue={booking.issue}
               onOpenChat={myProfileId ? openTimeline : undefined}
               onRespond={async (response) => {
                 await apiClient.respondToJobIssue(token, booking.id, { response });
+                onChanged();
+              }}
+              onAnswerInfo={async (response) => {
+                await apiClient.answerJobIssueInfo(token, booking.id, response);
+                onChanged();
+              }}
+              onAppeal={async (text) => {
+                await apiClient.appealJobIssue(token, booking.id, text);
                 onChanged();
               }}
             />

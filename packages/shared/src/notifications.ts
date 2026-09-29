@@ -62,6 +62,20 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_ISSUE_RESOLVED",
       "JOB_ISSUE_SETTLED",
       "JOB_ISSUE_ESCALATED",
+      // Controversie standard (docs/CHANGELOG.md §167).
+      "JOB_ISSUE_AUTO_ESCALATED",
+      "JOB_ISSUE_TEAM_REVIEW",
+      "JOB_ISSUE_INFO_REQUESTED",
+      "JOB_ISSUE_APPEAL_DECIDED",
+      "JOB_ISSUE_UNRESOLVED",
+      // Pagamenti online dei lavori (docs/CHANGELOG.md §168).
+      "JOB_DEPOSIT_PAID",
+      "JOB_BALANCE_PAID",
+      "JOB_BALANCE_DUE",
+      "JOB_BALANCE_UNPAID",
+      "JOB_PAYOUT_SENT",
+      "JOB_PAYOUT_ACCOUNT_NEEDED",
+      "ADMIN_JOB_BALANCE_UNPAID",
       "BOOKING_REMINDER",
     ],
     activeChannels: ["inApp", "email"],
@@ -87,6 +101,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "CONTENT_REPORT_REVERTED",
       "CONTENT_REPORT_APPEAL_REJECTED",
       "ACCOUNT_SUSPENDED",
+      // Misura per segnalazioni accolte (§167): non si spegne, come la sospensione.
+      "JOB_ISSUE_SANCTION",
       "ACCOUNT_REACTIVATED",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",

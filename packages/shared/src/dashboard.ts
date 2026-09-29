@@ -1,4 +1,5 @@
 import type { JobIssueSummary } from "./jobIssues";
+import type { JobPaymentSummary } from "./onlinePayments";
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
@@ -29,6 +30,9 @@ export type MyProfessionalProfile = {
   hasLiabilityInsurance: boolean;
   /** Ha già accettato la versione attuale della dichiarazione di responsabilità (docs/CHANGELOG.md §158). */
   profileDeclarationAccepted: boolean;
+  /** Misure in corso per segnalazioni accolte (docs/CHANGELOG.md §167): fino a quando. */
+  demotedUntil?: string | null;
+  requestsBlockedUntil?: string | null;
 };
 
 /** Lead ricevuto da un professionista in seguito a una richiesta guidata. */
@@ -297,6 +301,8 @@ export type ProfessionalBooking = {
   hasClientReview: boolean;
   /** Segnalazione del cliente (mancata presentazione o lavoro non andato bene), con l'eventuale risposta (docs/CHANGELOG.md §164). */
   issue: JobIssueSummary | null;
+  /** Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve il professionista. */
+  payment: JobPaymentSummary | null;
 };
 
 /**

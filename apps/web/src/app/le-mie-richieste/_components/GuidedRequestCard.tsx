@@ -1,5 +1,6 @@
 "use client";
 
+import type { JobPaymentChoice } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -49,7 +50,7 @@ export function GuidedRequestCard({
   stage: RequestStage;
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string) => Promise<void>;
+  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
   isOpen: boolean;
   onToggle: () => void;
   /** True se questa richiesta (o la sua prenotazione) ha un aggiornamento non letto. */
