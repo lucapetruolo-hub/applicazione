@@ -78,122 +78,22 @@ prima discuterne e aggiornare questo file.
   non in locale: `expo export` in locale è soggetto a un conflitto di
   versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
   risolverlo per un comando che non è il path di build reale.
-- **Deploy `apps/api` su Railway**: Railway (builder "Railpack") rileva da
-  solo il monorepo pnpm ed esegue `pnpm --filter @professionisti/api build`
-  / `start`, ignorando eventuali Build/Start Command custom impostati a
-  mano — per questo lo script `build` di `apps/api/package.json` costruisce
-  esplicitamente prima `@professionisti/database` e `@professionisti/shared`
-  (altrimenti TypeScript non trova quei moduli). Lo script `start` eseguiva
-  `prisma db push --accept-data-loss` ad ogni avvio prima di far partire il
-  server (scelta pragmatica iniziale, per non richiedere un comando manuale
-  separato in un'interfaccia che l'utente trova difficile da navigare) —
-  **sostituito** (CEO, audit tecnico: "un push che droppa una colonna è
-  perdita dati silenziosa", rischio segnalato come blocco reale prima di
-  avere utenti paganti) con migrazioni esplicite tracciate:
-  `packages/database/prisma/migrations/` contiene ora una migrazione
-  `baseline` generata dallo schema attuale (verificata: applicata a un
-  database vuoto produce uno schema identico, byte per byte via `prisma
-  migrate diff`, a quello che `db push` produceva), e lo script `start` di
-  `apps/api/package.json` esegue `prisma migrate deploy` — non distruttivo
-  per definizione, applica solo le migrazioni non ancora applicate, mai un
-  `push` che sincronizza forzando lo schema.
-  **Baseline del database esistente — automatica** (docs/CHANGELOG.md
-  §128): il database Render di produzione ha le tabelle create da `db push`
-  ma nessuno storico migrazioni, e `prisma migrate deploy` da solo fallisce
-  con `P3005` ("The database schema is not empty" — successo davvero al
-  primo deploy). Lo script `start` quindi non chiama più `migrate deploy`
-  direttamente ma `packages/database/scripts/migrate-deploy.mjs`: se e solo
-  se il deploy fallisce con `P3005`, marca la migrazione baseline come già
-  applicata (`migrate resolve --applied`, non tocca dati né schema) e
-  rilancia il deploy, che applica solo le migrazioni successive. Nessun
-  comando manuale contro il DB di produzione; un DB nuovo e vuoto (es. dopo
-  la scadenza 30gg) non dà `P3005` e riceve tutte le migrazioni da zero.
-  **Regola per la baseline**: `20260921212750_baseline` deve restare lo
-  schema **realmente presente** in produzione al momento del passaggio
-  (ultimo `db push`, commit `034f1a5`), mai lo schema corrente — ogni
-  cambiamento successivo va in una migrazione a parte (es.
-  `20260923080000_booking_reminder_sent_at`, `Booking.reminderSentAt`, che
-  in origine era finito per errore dentro la baseline e non sarebbe mai
-  arrivato in produzione). Nuove modifiche allo schema: `prisma migrate dev
-  --name <nome>` in locale, mai modificare una migrazione già committata.
-  Stesso problema si è presentato in passato per i **dati** (non solo lo schema): `db
-  push` sincronizza le tabelle ma non le righe, quindi la tabella
-  `categories` restava vuota in produzione (mai eseguito `prisma db seed`
-  lì) e ogni salvataggio di un profilo professionista falliva con
-  "Categoria non valida" (`ProfessionalsService.upsertMyProfile`, che cerca
-  la categoria per slug nel DB). Corretto con `CategoriesSeedService`
-  (`apps/api/src/categories/categories-seed.service.ts`, hook
-  `OnModuleInit`): sincronizza (upsert, idempotente) `PROFESSIONAL_CATEGORIES`
-  nella tabella `categories` a ogni avvio dell'API, stesso principio pragmatico
-  del punto sopra.
-  Deploy live e funzionante (registrazione, login email e login Google
-  testati sul sito reale): backend su Render (URL `<nome>.onrender.com`),
-  Postgres su Render (senza estensione PostGIS — vedi nota schema sotto),
-  variabili impostate: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
-  `FRONTEND_URL`. Render inietta `PORT` automaticamente — a differenza di
-  Railway NON va impostata manualmente nelle env var.
-  Il deploy è dichiarato come codice in **`render.yaml`** (Blueprint alla
-  radice del repo): Dashboard Render → New → Blueprint → selezionare il repo
-  crea API + database in un colpo solo. Le variabili segrete marcate
-  `sync: false` vanno valorizzate una sola volta dalla dashboard.
-  **Limiti free tier Render da ricordare**: il web service va in sleep dopo
-  15 min di inattività (cold start ~1 min alla prima richiesta — le
-  funzioni schedulate con `@nestjs/schedule` non girano mentre dorme);
-  il Postgres free (1 GB) scade dopo 30 giorni → alla scadenza creare un
-  nuovo DB free, aggiornare `DATABASE_URL` e rieseguire il seed
-  (lo script `start` di `apps/api` applica già da solo le migrazioni ad
-  ogni avvio, vedi sopra in questa sezione; le
-  categorie si ripopolano da sole via `CategoriesSeedService` — nessun
-  comando manuale necessario per quelle. Il seed dei dati demo, se
-  servisse, si rilancia a mano puntando `DATABASE_URL` locale
-  sull'External Connection String di Render con `?sslmode=require`).
-  Due problemi risolti durante il primo deploy (su Railway), entrambi
-  corretti nel codice (non solo in configurazione, per non doverli rifare
-  ad ogni nuovo ambiente) e ancora validi su Render:
-  1. `app.listen(port)` senza host esplicito si lega solo a IPv6 su
-     alcune piattaforme cloud → il proxy pubblico (IPv4) non raggiunge il
-     processo pur essendo partito correttamente nei log ("Application
-     failed to respond"). Fix: `app.listen(port, "0.0.0.0")` in
-     `apps/api/src/main.ts`.
-  2. Ogni piattaforma può iniettare un proprio `PORT` diverso da 3001 —
-     l'API legge sempre `process.env.PORT` (fallback 3001 in locale), mai
-     hardcodare la porta.
-  Sul frontend Vercel vanno impostate anche `NEXT_PUBLIC_API_URL` (verso
-  l'URL Render) e `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (esisteva solo in
-  `.env.local` locale, mai propagata a Vercel finché non serviva in
-  produzione) — più l'origine `https://applicazione-web.vercel.app`
-  aggiunta manualmente tra le "Authorized JavaScript origins" del Client
-  ID OAuth su Google Cloud Console (altrimenti `Error 400: origin_mismatch`).
-- **Deploy `apps/web` su Vercel — push che non attivano una build**: il
-  repository ha un solo branch (`claude/professionisti-platform-architecture-xr9gmn`,
-  nessun `main`). Il progetto Vercel (piano Hobby) risultava collegato al
-  repository GitHub giusto (Settings → Git → "Connected Git Repository"
-  mostrava `lucapetruolo-hub/applicazione`) ma i push non generavano più
-  alcuna build automatica — sintomo: il sito live restava fermo a una
-  versione vecchia anche dopo diversi commit, e persino "Redeploy" manuale
-  dalla dashboard ricostruiva lo stesso commit vecchio invece di quello più
-  recente. Su questo piano Vercel non espone un campo "Production Branch"
-  modificabile in UI: il branch di produzione viene dedotto dal branch
-  predefinito del repository al momento del collegamento, e non risulta
-  aggiornarsi da solo se quel riferimento cambia dopo. **Fix che ha
-  funzionato**: disconnect + reconnect del repository da Settings → Git
-  (forza Vercel a ri-rilevare il branch predefinito attuale). Non risolto
-  da un push vuoto da solo (provato prima, nessun effetto). Per un innesco
-  immediato di build senza aspettare il rilevamento automatico, un **Deploy
-  Hook** (Settings → Git → "Deploy Hooks", URL dedicato per branch) chiamato
-  via browser/`curl` funziona sempre indipendentemente da questo problema —
-  utile sia come verifica sia come soluzione ponte. Se ricapita in futuro,
-  ripartire da lì invece di affidarsi solo a push+attesa.
-  **Build saltate di proposito** (docs/CHANGELOG.md §131, quota piano
-  gratuito): `apps/web/vercel.json` → `ignoreCommand` esegue
-  `scripts/vercel-ignore-build.sh`, che salta tutte le anteprime (branch
-  diversi dalla produzione) e, in produzione, i commit che non toccano
-  `apps/web`, i pacchetti condivisi o le dipendenze. Se il sito "non si
-  aggiorna", controllare prima nel log del deploy se compare "build
-  saltata": è voluto per commit solo backend/mobile/docs. Redeploy e Deploy
-  Hook sullo stesso commit costruiscono sempre. Le immagini `next/image` su
-  Cloudinary sono ridimensionate da Cloudinary (`images.loaderFile`), non
-  dall'ottimizzatore di Vercel.
+- Lo script `build` di `apps/api` compila prima `@professionisti/database` e
+  `@professionisti/shared` (altrimenti TypeScript non trova quei moduli): non toglierlo.
+- **Migrazioni DB**: mai `prisma db push` in produzione. Lo `start` di
+  `apps/api` esegue `packages/database/scripts/migrate-deploy.mjs`
+  (`prisma migrate deploy`, con baseline automatica solo sull'errore `P3005`).
+  `20260921212750_baseline` deve restare lo schema realmente presente in
+  produzione al passaggio (commit `034f1a5`), mai lo schema corrente: ogni
+  modifica allo schema va in una nuova migrazione (`prisma migrate dev --name
+  <nome>` in locale), **mai modificare una migrazione già committata**. Le
+  categorie si sincronizzano a ogni avvio via `CategoriesSeedService`.
+- L'API ascolta su `app.listen(port, "0.0.0.0")` e legge sempre
+  `process.env.PORT` (fallback 3001): senza host esplicito il proxy IPv4 della
+  piattaforma non la raggiunge; non hardcodare la porta.
+- Deploy su Render/Vercel, variabili d'ambiente, limiti del free tier e "il
+  sito non si aggiorna" (build Vercel saltate di proposito o non innescate):
+  skill `deploy-ops` (`.claude/skills/deploy-ops/SKILL.md`).
 - **Sito privato finché il lancio non è ufficiale** (docs/CHANGELOG.md
   §132, richiesta esplicita dell'utente): `noindex` su tutto il sito (header
   `X-Robots-Tag` + meta robots), sitemap vuota, raggiungibile solo da chi
@@ -222,43 +122,7 @@ prima discuterne e aggiornare questo file.
 
 ---
 
-## 3. Architettura (vista d'insieme)
-
-```
-                         ┌─────────────────────┐
-                         │   packages/ui        │  Tamagui design system
-                         │ (componenti condivisi)│  condiviso da web + mobile
-                         └──────────┬───────────┘
-                    ┌───────────────┼────────────────┐
-                    ▼                                ▼
-          ┌──────────────────┐             ┌──────────────────────┐
-          │   apps/web        │             │   apps/mobile          │
-          │   Next.js (SSR)   │             │   Expo/React Native   │
-          │  - ricerca+SEO    │             │  - stessa UX           │
-          │  - profili pubblici│            │  - notifiche push       │
-          │  - dashboard pro   │            │  - dashboard pro        │
-          │  - dashboard cliente│           │  - dashboard cliente     │
-          └─────────┬─────────┘             └──────────┬────────────┘
-                    │              REST/OpenAPI (typed via api-client)
-                    └───────────────┬───────────────────┘
-                                    ▼
-                         ┌─────────────────────┐
-                         │     apps/api          │  NestJS
-                         │  - auth                │
-                         │  - search (Postgres/  │
-                         │    PostGIS → poi       │
-                         │    Meilisearch)        │
-                         │  - booking             │
-                         │  - billing (Stripe)    │
-                         │  - notifications        │
-                         └──────────┬───────────┘
-                                    ▼
-                    ┌───────────────┴───────────────┐
-                    ▼                                ▼
-          ┌──────────────────┐             ┌──────────────────────┐
-          │  PostgreSQL+PostGIS│           │   Redis (BullMQ jobs)  │
-          └──────────────────┘             └──────────────────────┘
-```
+## 3. Architettura (principi)
 
 Principi:
 - **Un solo backend (`apps/api`)** consumato sia da web che da mobile: niente
@@ -275,25 +139,6 @@ Principi:
 ---
 
 ## 4. Struttura cartelle (monorepo)
-
-```
-/
-├── apps/
-│   ├── web/                 # Next.js — sito pubblico + dashboard web
-│   ├── mobile/               # Expo/React Native — app iOS/Android
-│   └── api/                   # NestJS — backend unico
-├── packages/
-│   ├── ui/                    # Design system Tamagui condiviso
-│   ├── shared/                 # Tipi TS, zod schema, costanti (categorie, ecc.)
-│   ├── api-client/              # Client tipizzato per chiamare apps/api
-│   ├── config/                   # tsconfig/eslint/tamagui config condivisi
-│   └── database/                  # Prisma schema + migrations
-├── docs/                       # ADR e documentazione architetturale
-├── CLAUDE.md
-├── package.json
-├── pnpm-workspace.yaml
-└── turbo.json
-```
 
 Regola: nessun codice di business dentro `apps/web` o `apps/mobile` che non
 sia UI/routing — la logica va in `apps/api` o `packages/shared`.
@@ -346,6 +191,21 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     modificato da questo solo cambio di regola (il sito ha oggi zero emoji
     tranne l'eccezione già documentata in coda a §31): riguarda solo lo
     sviluppo futuro.
+11. **Filtri obbligatori nei nuovi punti pubblici**: ogni punto che mostra
+    profili o recensioni filtra `deletedAt`/`suspendedAt`/`hiddenAt`; ogni
+    punto che mostra professionisti o assegna richieste filtra anche
+    `pausedAt` e `requestsBlockedUntil`.
+12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
+    (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
+    qualunque admin.
+13. **Notifiche**: ogni nuovo tipo va assegnato a un argomento in
+    `packages/shared/src/notifications.ts` e ogni nuovo invio email/SMS
+    controlla `notificationChannelEnabled`; "Account e sicurezza" non si
+    spegne (DSA art. 17).
+14. **Il boost a pagamento non entra nello smistamento delle richieste**
+    (decisione dell'utente): non cambiarlo senza discuterne.
+15. Le voci di menu dell'area account stanno solo in
+    `apps/web/src/lib/accountMenuItems.ts`.
 
 ---
 
@@ -501,48 +361,27 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 
 ## 9. Stato del progetto
 
-- [x] Architettura approvata dall'utente
-- [x] Decisioni di prodotto (categorie, piani, go-to-market) approvate
-- [x] Scaffolding monorepo (Turborepo/pnpm) — build e typecheck verdi su tutti i package
-- [x] Setup `apps/api` (NestJS + Prisma + Postgres) — health check + endpoint categorie funzionanti
-- [x] Setup `apps/web` (Next.js) — home + pagine categoria SSG (`/cerca/[categoria]`)
-- [x] Setup `apps/mobile` (Expo Router) — home + schermata categoria, stessa struttura di rotte del web
-- [x] Design system condiviso (`packages/ui`) — Tamagui, `Button` e `ProfessionalCard` usati sia da web che da mobile
-- [x] Autenticazione (email+password + Google Sign-In, JWT via `apps/api`) — registrazione, login, logout, sessione persistita testati end-to-end, **in produzione** (sito Vercel + backend Railway, non solo in locale). Bug reale corretto: un professionista con account già esistente che si autenticava con Google dalla pagina `/registrati?ruolo=professionista` (es. da "Sei un professionista?" → "Iscriviti gratis" in header/`per-professionisti`, invece che da `/accedi`) finiva sempre su `/dashboard/profilo` invece che su `/dashboard` — la pagina trattava ogni autenticazione riuscita come una nuova registrazione. `/auth/register` e `/auth/google/verify` restituiscono già `isNewUser` (`AuthResult`, usato altrove per distinguere le due cose); `RegistratiForm.afterAuth` ora lo usa per decidere la destinazione: `/dashboard/profilo` solo se l'account è stato appena creato, `/dashboard` se esisteva già. Verificato con Playwright intercettando `/auth/google/verify` per simulare entrambi i casi (`isNewUser: true`/`false`).
-- [x] Ricerca professionisti per categoria/città — `GET /professionals/search` e `/professionals/:id` reali su Postgres, ranking boost→rating→recensioni, SSR/ISR su homepage, `/cerca/[categoria]` e `/professionista/[id]`. Filtro geografico ancora per città (stringa esatta), non raggio PostGIS — ma dal comune scelto in fase di registrazione del profilo si ricavano ora coordinate reali (vedi elenco comuni sotto), pronte per quando si passerà al filtro a raggio.
-- [x] Elenco completo comuni italiani con coordinate — `packages/shared/src/data/comuni.ts` (~7900 comuni, dati ISTAT: nome, provincia, regione, lat/lon), non solo i capoluoghi di provincia del precedente `ITALIAN_CITIES` (~110 voci, lasciato per compatibilità ma non più usato nei campi città). `findComuneByName()` usato server-side in `upsertMyProfile` per geocodificare `latitude`/`longitude` reali dal comune scelto dal professionista (prima restavano `0,0` come placeholder). Deciso con l'utente di non usare l'API Google Maps/Places (richiede carta di pagamento sull'account Google Cloud): il dataset ISTAT è gratuito e già completo.
-- [x] Mappa vera nei risultati di ricerca — `apps/web/src/components/ResultsMap.tsx` (Google Maps da docs/CHANGELOG.md §133, prima Leaflet + OpenStreetMap — vedi §2) mostrato di fianco all'elenco (`ResultsListWithMap.tsx`, layout lista a sinistra/mappa a destra sopra la soglia `$gtMd`, come da screenshot miodottore.it fornito dall'utente) su `/cerca/[categoria]` e `/cerca`. Un puntino per professionista con le coordinate reali del comune (vedi voce sopra); click sul puntino apre il profilo. Mostrata anche in modalità "Online" (vedi voce sotto): un professionista che offre consulenza da remoto resta comunque radicato in una zona. Import via `next/dynamic({ ssr: false })`: Leaflet legge `window` al caricamento del modulo, andrebbe in crash lato server se importato direttamente in un componente renderizzato in SSR. La mappa resta visibile anche con zero risultati (es. categoria senza nessun professionista in quella città): zooma comunque sulla città cercata (`findComuneByName` sul parametro città, passato come `fallbackCenter` a `ResultsMap`) invece di sparire o restare fissa sull'inquadratura di default su tutta Italia — coerente col comportamento di miodottore.it dove la mappa è sempre presente nei risultati.
-- [x] Autocomplete: elenco visibile subito, non solo dopo aver scritto — `packages/ui/src/Autocomplete.tsx` mostrava un menu vuoto finché non si digitava qualcosa; ora a fuoco con campo vuoto mostra comunque i primi risultati (categorie o comuni), coerente con la richiesta esplicita dell'utente di vedere subito un elenco. Bug corretto nello stesso giro: il menu a discesa spariva dietro alla sezione successiva della homepage — `overflow="hidden"` sull'intero `Hero` (packages/ui) tagliava anche il dropdown, non solo le macchie decorative di sfondo per cui era stato messo (che hanno già il proprio wrapper con `overflow="hidden"` interno, quindi quello esterno era ridondante). Il campo "Cosa cerchi" mostra **solo le categorie** (Idraulico, Giardiniere, ecc., come su miodottore.it), non nomi di attività specifiche — su richiesta esplicita dell'utente, `apps/web/src/lib/searchSuggestions.ts` (`buildSearchSuggestions`) è l'**unica fonte di verità** per l'elenco categorie, costruita da `PROFESSIONAL_CATEGORIES` (packages/shared): stessa lista usata per le caselle categoria cliccabili sotto la ricerca, riusabile anche per un eventuale menu laterale futuro senza doverla duplicare. Il menu a discesa (categorie e comuni) è ora scrollabile con la rotellina — `Autocomplete` avvolge i risultati in un `ScrollView` (da `tamagui`, cross-platform: web e Expo) con altezza massima fissa, invece di tagliare la lista a poche voci senza modo di vederne altre; `maxResults` di default alzato da 6 a 30. L'elenco comuni (`ALL_ITALIAN_CITY_NAMES`) contiene solo comuni italiani (dataset ISTAT, verificato: 20/20 regioni, 110/110 province). Il campo città (in ricerca, profilo professionista e richiesta guidata) mostra l'elenco solo da 3 caratteri digitati in poi (`minChars={3}` su `Autocomplete`) — con ~7900 comuni i primi risultati "a caso" a campo vuoto non aiutavano; il campo categorie della ricerca resta invece visibile subito (solo 10 voci, `minChars` di default a 0). I risultati filtrati sono ordinati con i match che **iniziano** per il testo digitato prima di quelli che lo contengono solo a metà — bug reale segnalato dall'utente: scrivendo "Roma" nel campo città poteva comparire prima "Fabrica di Roma" (l'ordine dei risultati seguiva l'ordine originale del dataset, raggruppato per regione/provincia, non la pertinenza rispetto alla query).
-- [x] Modalità di ricerca "A domicilio" / "Online" — tab nella barra di ricerca (`SearchBar`, homepage + pagine risultati), stesso pattern del riferimento miodottore.it ("In studio"/"Online") ma con etichette adattate al nostro dominio (interventi a casa, non studio medico). La ricerca filtra su `ProfessionalProfile.remoteAvailable` (nuovo campo, `POST /professionals/me` lo imposta da un checkbox in `/dashboard/profilo`, "Offro anche consulenza online" — realizza quanto già annunciato in CLAUDE.md §1 come "eventualmente consulenza da remoto"). Badge "📹 Online" su `ProfessionalCard` quando attivo. Il campo città resta selezionabile anche in modalità "Online" (opzionale): inizialmente veniva nascosto e scartato del tutto in questa modalità, ma un professionista che offre consulenza da remoto è comunque radicato in una zona, e un cliente può voler restringere la ricerca lì — richiesta esplicita dell'utente. Città e `remoteAvailable` sono filtri indipendenti in AND lato `ProfessionalsService.search`. La mappa risultati è mostrata anche in modalità "Online" (`showMap` sempre `true` in `CercaContent`/`CategoryContent`, decisione ribaltata rispetto a quando il campo città era nascosto): da mobile con lo stesso bottone "🗺️ Mostra mappa" della modalità "A domicilio", da desktop aperta subito a destra allo stesso modo.
-- [x] Pagina "tutti i professionisti" (`/cerca`, senza categoria) — raggiunta quando la ricerca non riconosce una categoria specifica (solo città, solo "Online", o nome libero): elenco già popolato via SSR (stesso pattern SEO di `/cerca/[categoria]`), non una pagina vuota in attesa di digitare qualcosa. Routing di ricerca centralizzato in `apps/web/src/lib/searchNavigation.ts` (`buildSearchDestination`), usato da homepage, header categoria e header "tutti i professionisti" così i tre punti di ingresso alla ricerca si comportano allo stesso modo.
-- [x] Richiesta guidata + fan-out lead — `POST /guided-requests` (autenticato) crea la richiesta e i `Lead` per i professionisti compatibili in categoria+città (o il singolo professionista se la richiesta parte dal suo profilo), pagina `/preventivo` e `/le-mie-richieste` funzionanti end-to-end. Se si arriva da un professionista specifico (`?professionista=`), la categoria è già determinata dalla sua specialità: `GuidedRequestForm` mostra un&apos;etichetta bloccata invece della griglia di scelta cliccabile, non ha senso farla ri-scegliere. Upload foto ora implementato: `POST /guided-requests/photos` (JWT, `FileInterceptor`) carica su Cloudinary (stessa trasformazione resize+compressione automatica dell&apos;immagine profilo professionista, cartella `guided-requests`) — nessun nuovo servizio di object storage, riusa la stessa integrazione già approvata in CLAUDE.md §2 per le immagini profilo, che al momento in cui l&apos;upload foto era stato rimandato non esisteva ancora. Fino a 3 foto per richiesta (`guidedRequestSchema.photoUrls`, un upload per foto, stato di caricamento/errore per singolo slot in UI). Suggerimento IA sulla categoria dalla foto (menzionato in §7-8) resta rimandato. Il cliente può modificare (`PATCH /guided-requests/:id`, solo descrizione e città — non la categoria, determina già a chi è stata inoltrata) o eliminare (`DELETE /guided-requests/:id`, cascata su `Lead`/`Quote` via Prisma) una richiesta già inviata, finché non è `CLOSED` (una prenotazione derivata esiste già a quel punto — bloccato sia per business logic sia per un vincolo di chiave esterna reale: `Booking.quoteId` non è in cascade). In `/le-mie-richieste`, "Modifica" apre un form inline (stesso `Autocomplete` città del form di creazione), "Elimina" richiede una seconda conferma prima di procedere. Ogni richiesta mostra ora anche una sezione "Inviata a" con i professionisti che l'hanno effettivamente ricevuta (`GuidedRequestsService.listForClient` include `leads.professionalProfile`, esposto come `sentTo` su `ClientGuidedRequest`: foto/icona categoria via `ProfessionalAvatar`, nome attività, categoria+città, badge "✓ Verificato") — richiesta esplicita dell'utente, prima non era chiaro a chi fosse arrivata la richiesta se non aprendo i preventivi ricevuti uno per uno. Il selettore foto (sia qui che in `/urgente`) usa ora un solo tasto "+ Aggiungi" con un unico `<input type="file" accept="image/*">` senza l'attributo `capture`: su iOS/Android questo fa comparire il menu nativo del sistema ("Scatta foto"/"Libreria foto", stile iPhone) invece di due tasti separati — richiesta esplicita dell'utente dopo che la versione a due tasti (uno con `capture="environment"` per aprire subito la fotocamera) risultava meno familiare del picker nativo a cui gli utenti iOS sono abituati. La selezione categoria (sia qui che in `/urgente`, stesso `GuidedRequestForm`) ha ora anche un `<select>` nativo oltre alla griglia di caselle cliccabili già esistente — scorciatoia più rapida su schermi piccoli, richiesta esplicita dell'utente; entrambi i controlli condividono lo stesso stato `categorySlug`, selezionare da uno aggiorna anche l'altro.
-- [x] Preventivo strutturato in-app — `POST /quotes` (solo se il professionista ha ricevuto il lead), `POST /bookings/from-quote/:id` per l'accettazione cliente → crea `Booking` e chiude la richiesta. Modello a lead a pagamento: il prezzo per lead è calcolato e salvato (`Lead.priceEurCents`, standard vs urgente), ma il gate di pagamento reale al professionista arriva con Stripe (vedi voce sotto) — oggi i lead sono visibili gratis in dashboard. Il preventivo non è più due campi fissi manodopera/materiali: nuovo modello Prisma `QuoteItem` (nome + range di prezzo min/max, stesso pattern di `ProfessionalService`), un professionista può aggiungere quante voci servono (es. "Manodopera", "Materiali", "Trasporto"), ognuna col proprio range — richiesta esplicita dell'utente. `QuotesService.createOrUpdate` sostituisce la lista per intero ad ogni invio/modifica (delete+createMany, stesso pattern delle prestazioni). Form in `/dashboard` (`LeadCard`) parte con una voce "Manodopera" precompilata, rinominabile/rimovibile, con bottone "+ Aggiungi voce"; visualizzazione (in `/le-mie-richieste` e nell'agenda prenotazioni della dashboard professionista) tramite `formatServicePriceRange` già esistente, riusata senza duplicarla.
-- [x] Recensioni vincolate a prenotazione confermata — `POST /reviews` accetta solo `bookingId` con status `COMPLETED`, un cliente non può recensire due volte la stessa prenotazione; il rating mostrato in ricerca è sempre calcolato dalle recensioni reali, mai un valore statico. Foto del lavoro svolto opzionali (`Review.photoUrls`, fino a 3, stesso pattern/limite di `GuidedRequest.photoUrls`): `POST /reviews/photos` carica su Cloudinary (stessa integrazione di profilo/richiesta guidata), form di recensione in `/le-mie-richieste` con upload per singola foto, mostrate come miniature sotto ogni recensione nel profilo pubblico del professionista. Le miniature (recensioni) e la foto profilo nell'header sono ora cliccabili per aprirle a schermo intero — `apps/web/src/components/PhotoLightbox.tsx` (overlay DOM grezzo, stesso pattern di `ImageCropModal`, nessuna libreria aggiunta), frecce prev/next quando una recensione ha più foto, richiesta esplicita dell'utente. Sezione "Recensioni" del profilo pubblico mostra anche la media in stelle in forma grafica — `apps/web/src/components/StarRating.tsx`: due righe di stelle SVG sovrapposte (una grigia, una dorata ritagliata in `overflow:hidden` alla percentuale esatta del voto, es. 4,5/5 → 90%) per rendere correttamente anche i voti frazionari, non solo stelle intere — più il numero di recensioni tra parentesi (es. "(160 recensioni)"), richiesta esplicita dell'utente.
-- [x] Dashboard professionista — `/dashboard/profilo` (creazione/modifica profilo pubblico) e `/dashboard` (richieste ricevute con invio preventivo inline, agenda prenotazioni con stato).
-- [x] Promemoria automatici anti no-show (email) — CEO, tattico: "prima di considerare l'MVP davvero completo". `apps/api/src/email/email.service.ts` (`EmailService`, wrapper Resend, mai crash senza `RESEND_API_KEY`: logga e ritorna `false`, stesso pattern di Stripe/Cloudinary/Google) + `apps/api/src/booking-reminders/booking-reminders.service.ts` (`@Cron(EVERY_30_MINUTES)`, non BullMQ — `@nestjs/schedule` è il pattern già in uso in questo codebase per i job schedulati, es. `GuidedRequestsService.runExpiryCheck`, nonostante BullMQ resti nella tabella §2 come scelta nominale mai davvero collegata). Un'email al cliente e una al professionista quando una `Booking CONFIRMED` è 23-25 ore nel futuro, una sola volta per prenotazione (`Booking.reminderSentAt`, marcato anche se l'invio fallisce — mai un retry infinito sulla stessa riga ogni 30 minuti). Solo email per ora: SMS (Twilio, in tabella §2) rimandato, nessun canale push aggiuntivo necessario finché l'email basta a coprire il caso d'uso.
-- [x] Abbonamenti Stripe (upsell da Free a Pro/Business) — `POST /billing/subscription/checkout` crea una Stripe Checkout Session (mode subscription), webhook `POST /billing/webhook` (firma verificata, body raw) aggiorna `Subscription` su `checkout.session.completed`. Pagina `/per-professionisti` collegata al checkout reale.
-- [x] Pacchetti di visibilità/boost ricerca — `POST /billing/boost/checkout` (Boost locale/Badge reputazione/Storia di successo, 30gg), sezione "Aumenta la tua visibilità" in dashboard. Pagamento lead: `POST /billing/leads/:id/checkout` implementato e testato lato API, non ancora esposto in UI (i lead restano visibili gratis in dashboard, vedi nota sopra).
-  - **Da fare prima del lancio**: il codice Stripe è completo e testato (percorso "non configurato" verificato end-to-end), ma servono le chiavi reali per attivarlo — variabili d'ambiente richieste su `apps/api`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_BASE`, `STRIPE_PRICE_PLUS`, `STRIPE_PRICE_PRO` (un prezzo mensile per livello, docs/CHANGELOG.md §161), più `FRONTEND_URL` per i redirect di successo/annullo. Senza queste variabili gli endpoint rispondono con un errore chiaro invece di andare in crash (stesso pattern già usato per `GOOGLE_CLIENT_ID`).
-- [x] Flusso "richiesta urgente" con instant-match — `/urgente` riusa lo stesso motore di `/preventivo` (componente condiviso `GuidedRequestForm`) con `isUrgent=true`: lead a prezzo maggiorato (€8 vs €5, CLAUDE.md §7.5), fan-out identico, badge "🔴 Urgente" visibile nella dashboard professionista. "Instant-match" oggi significa fan-out immediato via API, non ancora push notification in tempo reale al professionista: quello arriva con l'integrazione notifiche (Resend/Twilio + BullMQ), stessa dipendenza dei promemoria anti no-show.
-- [x] Area account cliente ("Il mio account") — menu a tendina nell'header (`AccountMenu`, click-to-open) con voci diverse per ruolo: cliente → Impostazioni dell'account, Professionisti salvati, Le mie visite; professionista → Dashboard, Profilo pubblico, Impostazioni dell'account. Elenco voci centralizzato in `apps/web/src/lib/accountMenuItems.ts`, condiviso da `AccountMenu` e `AccountSidebar` (niente duplicazione). `PATCH /auth/me` (nome/cognome/data di nascita/email/telefono), `POST /auth/change-password` (password attuale opzionale se l'account è nato con Google Sign-In e non ha ancora una password — `GET/PATCH /auth/me` espone `hasPassword` per distinguere "Impostare la password" da "Aggiorna password" in UI) e `DELETE /auth/me` (cancellazione account, cascade su tutte le entità collegate via Prisma `onDelete: Cascade`, richiede di scrivere "ELIMINA" per conferma) su `/account` — layout a due colonne (sidebar sinistra + campi a destra, righe etichetta/valore) modellato sullo screenshot di miodottore.it fornito dall'utente. Rispetto a quel riferimento, omesse volutamente "Cambia firma" e "Sicurezza dell'account" (2FA): nessuna funzionalità reale dietro in questo dominio, e "Wallet"/"I miei pagamenti": nel nostro modello il cliente non paga sulla piattaforma (paga il professionista, per lead/abbonamento/boost) — da aggiungere solo se il modello di business cambia. `SavedProfessional` (nuovo modello Prisma) + `GET/POST/DELETE /saved-professionals` per il tasto "♡ Salva" sul profilo professionista e la lista `/professionisti-salvati`.
-- [x] Immagine profilo professionista — `ProfessionalProfile.imageUrl` (nuovo campo Prisma), upload via `POST /professionals/me/image` (`FileInterceptor`, JWT-guarded) che carica su **Cloudinary** (scelto con l'utente al posto di Vercel Blob o di salvare il file nel database: gratuito, CDN + resize automatico inclusi, `apps/api/src/cloudinary/`) e salva l'URL sul profilo. UI di caricamento in `/dashboard/profilo` (bottone "Carica immagine" + anteprima circolare, input file nascosto attivato via ref, niente drag&drop). L'immagine è visibile ovunque compare `ProfessionalCard` nei risultati (`/cerca`, `/cerca/[categoria]`, homepage, `/professionisti-salvati`) tramite il nuovo componente `apps/web/src/components/ProfessionalAvatar.tsx`, che mostra l'immagine se presente e altrimenti ricade sull'icona colorata di categoria (`CategoryIconBadge`) già esistente — stesso slot `icon` di `ProfessionalCard`, nessuna modifica a `packages/ui` (l'`<img>` resta web-only in `apps/web`, coerente con la nota già presente su `CategoryIconBadge`).
-  - **Da fare prima del lancio**: come per Stripe, il codice è completo e testato (percorso "non configurato" verificato end-to-end: mostra un errore chiaro sotto al bottone invece di andare in crash), ma servono le credenziali reali — variabili d'ambiente richieste su `apps/api`: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (account Cloudinary gratuito, nessuna carta di pagamento richiesta al piano free).
-  Ritaglio lato client prima dell'upload — `apps/web/src/components/ImageCropModal.tsx` (canvas nativo, nessuna libreria aggiunta): drag per spostare, slider per zoomare, anteprima con maschera circolare identica alla forma dell'avatar mostrato nel resto del sito. Upload lato server ottimizzato con `quality: "auto", fetch_format: "auto"` di Cloudinary (compressione automatica + formato più leggero per il browser richiedente, es. WebP) oltre al resize 800×800 già presente.
-  Bug reale corretto: `clampOffset` calcolava il limite di trascinamento verticale usando `displayedWidth` invece di `displayedHeight` — per una foto "lunga" (verticale), `displayedWidth` coincide esattamente con `STAGE_SIZE` (è la dimensione che "copre" esattamente), azzerando il range consentito sull'asse Y e bloccando del tutto il trascinamento verso il basso (impossibile vedere la parte inferiore della foto). Corretto passando larghezza e altezza separate, un limite per asse.
-  Bug reale corretto: caricare un'immagine PRIMA di aver salvato il profilo base (nessuna riga `ProfessionalProfile` ancora, es. professionista appena registrato) faceva fallire l'update Prisma con un errore non gestito (`P2025`, record da aggiornare non trovato) → generico Internal Server Error invece di un messaggio chiaro. `ProfessionalsService.updateMyImage` ora usa la stessa guardia (`requireMyProfileId`) già in uso per `getMyLeads`/`getMyBookings`.
-- [x] Ricerca sempre aggiornata, mai professionisti eliminati/obsoleti — `/`, `/cerca/[categoria]` e la fetch di ricerca in `packages/api-client` sono passati da ISR (`revalidate = 300`, fino a 5 minuti di dati non aggiornati) a server-rendered ad ogni richiesta (`export const dynamic = "force-dynamic"` sulle pagine + `cache: "no-store"` esplicito sulla fetch stessa — il solo `dynamic` sulla pagina non basta: il Data Cache di Next.js può comunque mantenere in cache la singola fetch). Bug reale trovato dall'utente: un professionista che eliminava l'account restava visibile in ricerca fino alla successiva rigenerazione ISR — inaccettabile per un marketplace (un cliente potrebbe contattare un professionista che non esiste più). Il volume di traffico atteso in fase di lancio (§7: 1 città, poche categorie) non giustifica il rischio pur di risparmiare query al DB.
-- [x] Area admin a sotto-pagine e moderazione reale delle segnalazioni (docs/CHANGELOG.md §144, supera la voce qui sotto per la struttura): `/admin` è una Home con i contatori di cosa c'è da fare, menu sempre visibile (colonna da 1000px, barra scorrevole su telefono), sotto-pagine Segnalazioni, Messaggi (con archivio e risposta via email), Utenti (ricerca, filtri, stato), Rimborsi e contestazioni, Richieste eliminate, Lista d'attesa, Finanza, Statistiche. "Risolvi" applica davvero una misura compatibile col tipo (`MODERATION_ACTIONS_BY_TARGET` in `packages/shared`): nascondere recensione/richiesta (`hiddenAt`), togliere il profilo dalla ricerca (`ProfessionalProfile.suspendedAt`), sospendere l'account (`User.suspendedAt`, letto da `JwtAuthGuard` a ogni richiesta), avvertire o chiedere una correzione; "Annulla misura" per errori e contestazioni. L'autore vede misura e motivazione su `/segnalazioni` e può contestarla (DSA art. 17/20). Ogni nuovo punto pubblico che mostra profili o recensioni deve filtrare `deletedAt`/`suspendedAt`/`hiddenAt`. Ruoli admin separati (docs/CHANGELOG.md §145): `User.adminRoles` lista combinabile di SUPER/MODERATOR/FINANCE (es. Moderatore + Finanza, §146; lista vuota su un ADMIN vale SUPER), ogni rotta admin dichiara la propria area con `@RequireAdminScope` (`apps/api/src/admin/admin.guard.ts`, regole in `packages/shared/src/adminRoles.ts`) — una nuova rotta admin senza decoratore è aperta a qualunque admin, quindi va sempre valutata. Scheda utente `/admin/utenti/[id]` (cronologia, sospensione anche senza segnalazione, ruolo admin), registro azioni `/admin/registro` (tabella `AuditLog`), ricerca ⌘K, esportazione CSV, andamento settimanale in Home, email di moderazione all'utente e di nuova segnalazione agli admin (via Resend, inerti senza chiave).
-- [x] Area professionista e cliente a sezioni (docs/CHANGELOG.md §147): `AccountShell` con menu a gruppi per il professionista (colonna da 1000px, barra su telefono — **ribalta §45 del changelog, approvato dall'utente**) e barra di schede per il cliente; `/dashboard` è la Home "Oggi" (solo cose da fare, scadenze, "N su M altri professionisti hanno già risposto", visite al profilo rispetto alla zona via `ProfileViewDay`), Boost spostato in "Profilo e visibilità". Voci di menu solo in `apps/web/src/lib/accountMenuItems.ts`.
-- [x] Preferenze di notifica (docs/CHANGELOG.md §152): `/account/notifiche`, 6 argomenti × canali sito/email/SMS più popup e suono, in `User.notificationPrefs`; regole e argomenti in `packages/shared/src/notifications.ts`. Ogni nuovo tipo di notifica va aggiunto a un argomento lì; ogni nuovo invio email/SMS deve controllare `notificationChannelEnabled`. "Account e sicurezza" non si spegne (DSA art. 17). SMS salvati ma non ancora inviati (Twilio rimandato).
-- [x] Smistamento delle richieste di preventivo (docs/CHANGELOG.md §154, regole in `apps/api/src/guided-requests/lead-routing.ts`): 3 professionisti per le normali e 5 per le urgenti, scelti per punteggio di qualità (risposta, recensioni, affidabilità, vicinanza, disponibilità, attività, equità) con un posto a un nuovo; 4 ore contate solo tra le 8 e le 21 per le normali; per le urgenti 35 minuti tra le 7 e le 22 e 60 di notte (decisione dell'utente, §160, senza tasto "Me ne occupo io"); richiesta diretta inoltrata ad altri se non risponde (casella, attiva di default). **Il boost a pagamento non entra nello smistamento** (decisione dell'utente): non cambiarlo senza discuterne.
-- [x] Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, decisione dell'utente): il cliente segnala "non si è presentato" (dalla fine dell'appuntamento, entro 7 giorni) o "lavoro non andato bene" (entro 14 giorni), prima provano a risolvere in chat (§165) e, se il cliente lo chiede, un admin decide in `/admin/problemi`. Una mancata presentazione accolta abbassa l'affidabilità nello smistamento; la recensione si lascia dopo la decisione. Regole in `packages/shared/src/jobIssues.ts`.
-- [x] Controversie standard sul modello Amazon A-Z (docs/CHANGELOG.md §167, decisioni dell'utente): 48 ore al professionista in chat, poi 72 ore per la sua versione e 72 per le informazioni chieste (senza risposta la segnalazione è accolta da sola), decisione dell'admin entro 2 giorni, ricorso entro 30 giorni deciso da un admin diverso. Misure sulle segnalazioni accolte in 30 giorni: avvertimento, poi profilo più in basso in ricerca e smistamento per 14 giorni (`demotedUntil`), poi niente nuove richieste per 14 giorni (`requestsBlockedUntil`, da filtrare come `pausedAt` in ogni nuovo punto che mostra professionisti o assegna richieste). Lavoro pagato sul sito con Stripe + segnalazione accolta = rimborso completo al cliente. Regolamento in bozza per l'avvocato: `docs/legale/regolamento-controversie.md`.
-- [x] Pagamento online dei lavori con Stripe (docs/CHANGELOG.md §168): scelta online/diretto all'accettazione del preventivo, acconto 20% + saldo, custodia e accredito (`apps/api/src/job-payments/online-money.service.ts`, regole in `packages/shared/src/onlinePayments.ts`), rimborsi automatici su annullamento e segnalazione accolta, saldi non pagati in `/admin/pagamenti`. Con il pagamento diretto le segnalazioni non arrivano al team (stato `UNRESOLVED`). Termini §5-§6 scritti come attivi, da far verificare all'avvocato. Serve `STRIPE_SECRET_KEY` + Stripe Connect per andare live.
-- [x] Chat leggibili dagli admin e sicurezza in chat (docs/CHANGELOG.md §166): `/admin/chat` (Super admin e Moderatore) mostra tutte le conversazioni in sola lettura, ogni apertura resta nel registro azioni ed è dichiarata in `/privacy`; nella chat un avviso fisso anti-truffa rimanda a `/sicurezza`.
-- [x] Pannello admin minimale — `GET /admin/users` (JWT + `AdminGuard`, verifica il ruolo `ADMIN` rileggendolo dal DB ad ogni richiesta invece di fidarsi del JWT, così una promozione/retrocessione ha effetto immediato) restituisce utenti registrati divisi per ruolo (email, nome, ragione sociale se professionista, data). Pagina `/admin` (nessun link in UI, solo URL diretto) mostra le due liste. Promozione ad ADMIN self-service: `POST /admin/bootstrap` (`AdminBootstrapController`, deliberatamente **senza** `JwtAuthGuard`/`AdminGuard` — quei guard richiedono di essere già ADMIN, impossibile per il primissimo admin) protetto da `ADMIN_BOOTSTRAP_SECRET` (solo variabile d'ambiente su Railway, mai committata; senza quella variabile risponde con un errore chiaro, stesso pattern già usato per Stripe/Cloudinary/Google): email sconosciuta → 404, codice sbagliato → 403, altrimenti promuove e ritorna il nuovo ruolo. Pagina `/admin/promuovi` (form email+codice, nessun link in UI, nessun controllo di login — la protezione è il codice) evita di dover usare la console SQL di Railway per il primo admin.
-- [x] Mappa risultati responsive da mobile — `ResultsListWithMap.tsx` non usa più i props responsive di Tamagui per il layout mappa/lista (niente `order` — non supportato da React Native/Tamagui — né `position:"sticky"` tipizzato): usa classi CSS grezze via styled-jsx (incluso in Next.js, nessuna libreria aggiunta). Da mobile la mappa **non appare più automaticamente** (occupava subito spazio sotto la ricerca): un bottone "🗺️ Mostra mappa" nella barra sopra i risultati la apre/chiude a comando, a tutta larghezza sopra la lista. Sopra la soglia resta sempre visibile a fianco della lista (larghezza fluida 40%, tra 260 e 480px, per non forzare overflow orizzontale), alta e sticky in scroll. Soglia a **700px** (non lo `$gtMd` di Tamagui, 1021px): quella lasciava impilata la mappa anche su una finestra desktop "normale" non a schermo intero (~1000px) — bug reale segnalato dall'utente con screenshot, dove la mappa doveva stare a destra e invece appariva sotto la lista. Cliccando un puntino sulla mappa (`ResultsMap.tsx`) non si naviga più subito al profilo: appare un banner in basso sulla mappa (foto/icona categoria, nome attività, categoria+città, rating, "Verificato") con un tasto "✕" per chiuderlo — solo toccando il banner si apre il profilo completo, la mappa resta aperta nel frattempo.
-- [x] Indirizzo e prestazioni con prezzo nella card — nuovo modello Prisma `ProfessionalService` (nome + prezzo facoltativo in centesimi, cascade su eliminazione profilo) e campo `ProfessionalProfile.address` (facoltativo: molti professionisti a domicilio non hanno un indirizzo fisso da mostrare). Editabili in `/dashboard/profilo` (campo indirizzo + lista prestazioni con bottone "+ Aggiungi prestazione", ogni voce nome+prezzo in euro convertito in centesimi al salvataggio; la lista viene sostituita per intero ad ogni salvataggio, niente editing granulare per singola voce — coerente con la scala attesa). Mostrati in `ProfessionalCard` (packages/ui, sotto categoria/città: 📍 indirizzo, poi fino a 3 prestazioni con prezzo o "Su richiesta" se non indicato) nei risultati di ricerca e nel profilo pubblico — modellato sullo screenshot di miodottore.it fornito dall'utente. Il prezzo di ogni prestazione è un **range** (`priceMinEurCents`/`priceMaxEurCents`, non più un valore fisso): molti lavori (es. "sostituzione caldaia") hanno un costo che varia da caso a caso, un prezzo unico era fuorviante — richiesta esplicita dell'utente. In `/dashboard/profilo` due campi "Da €"/"a €" per prestazione (validazione: il massimo dev'essere ≥ del minimo). Visualizzazione centralizzata in `formatServicePriceRange` (`packages/shared/src/professionals.ts`, usata da `ProfessionalDetailContent`; duplicata localmente in `packages/ui/src/ProfessionalCard.tsx` che non dipende da `@professionisti/shared`): mostra il range se min e max sono entrambi impostati e diversi, un prezzo singolo se solo uno dei due è impostato (o sono uguali), "Su richiesta" se nessuno dei due lo è. Suggerimenti di prestazioni popolari per categoria (`POPULAR_SERVICES`, `packages/shared/src/categories.ts`, 5 voci per ciascuna delle 13 categorie): in `/dashboard/profilo` una riga di chip cliccabili sopra la lista (solo i nomi non ancora aggiunti) aggiunge una prestazione col nome precompilato — il range di prezzo resta comunque da compilare a mano, è solo una scorciatoia sul nome, richiesta esplicita dell'utente.
-- [x] Agenda settimanale del professionista — nuovo modello Prisma `AvailabilitySlot` (fasce orarie ricorrenti: `dayOfWeek` + `startTime`/`endTime`, `dayOfWeek` segue la convenzione `Date.getUTCDay()` — 0=domenica...6=sabato — apposta per confrontare senza conversioni la disponibilità con `Booking.scheduledAt`). Editabile in `/dashboard/agenda` (nuova voce "Agenda" nel menu account professionista, `accountMenuItems.ts`): un editor per giorno della settimana (Lunedì...Domenica) con più fasce orarie aggiungibili/rimovibili, lista sostituita per intero ad ogni salvataggio (stesso pattern delle prestazioni). `GET /professionals/:id/agenda` proietta la disponibilità ricorrente sui prossimi 14 giorni di calendario e barra le fasce che coincidono con una prenotazione reale (`Booking` con status `PENDING`/`CONFIRMED`/`COMPLETED` il cui `scheduledAt` cade dentro quella fascia) — confronto su data/ora UTC dirette, nessuna libreria di timezone introdotta. Mostrata nel profilo pubblico (`ProfessionalDetailContent`, sezione "Agenda" tra Prestazioni e il bottone preventivo, visibile solo se il professionista ha impostato almeno una fascia): elenco giorno per giorno, pillola verde per le fasce libere, grigia con barrato per quelle prenotate. Prenotazione diretta opzionale: `ProfessionalProfile.bookableAgenda` (checkbox in `/dashboard/agenda`, "Permetti ai clienti di prenotare direttamente da questi orari" — default `false`, altrimenti l'agenda resta solo informativa come sopra). Se attiva, le fasce libere nel profilo pubblico diventano cliccabili per un cliente loggato: `POST /professionals/:id/agenda/book` rivalida tutto lato server (mai fidarsi del client) — 403 se `bookableAgenda` è spenta, 404 se la fascia non fa parte della disponibilità ricorrente del professionista, 409 se già prenotata — altrimenti crea direttamente un `Booking` (`PENDING`, nessuna `Quote`) e la fascia si aggiorna subito in UI. **Superata da un giro successivo di correzioni/funzionalità — vedi §11.**
+Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
+`docs/STATO.md`, storia in `docs/CHANGELOG.md`.
+
+- [x] Architettura e decisioni di prodotto approvate
+- [x] Monorepo (Turborepo/pnpm), `apps/api`, `apps/web`, `apps/mobile`, design system `packages/ui`
+- [x] Autenticazione email+password + Google Sign-In, JWT da `apps/api` (in produzione)
+- [x] Ricerca per categoria/città (SSR, ranking boost→rating→recensioni; filtro per città, non ancora raggio PostGIS), comuni ISTAT con coordinate
+- [x] Mappa risultati (Google Maps) responsive, autocomplete categorie/comuni, modalità "A domicilio"/"Online", pagina `/cerca`
+- [x] Ricerca sempre aggiornata: `force-dynamic` + `cache: "no-store"`, niente ISR (un profilo eliminato non deve restare visibile)
+- [x] Richiesta guidata + fan-out lead, richiesta urgente (`/urgente`), foto su Cloudinary
+- [x] Preventivo strutturato a voci (`QuoteItem`) → l'accettazione crea la `Booking`
+- [x] Recensioni solo da prenotazione `COMPLETED`, con foto
+- [x] Dashboard professionista: profilo, immagine, prestazioni con range di prezzo, agenda settimanale con prenotazione diretta opzionale
+- [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ); SMS rimandato
+- [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
+- [x] Area account cliente, professionisti salvati, cancellazione account
+- [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
+- [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin
+- [x] Smistamento delle richieste (`apps/api/src/guided-requests/lead-routing.ts`)
+- [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
+- [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 
 ---
 
@@ -575,8 +414,9 @@ mai qui — segui lo stesso formato già in uso lì (numero di sezione
 progressivo, richiesta esplicita dell'utente, decisione presa, motivo,
 verifica). `CLAUDE.md` si aggiorna solo quando cambia davvero un fatto vivo
 delle sezioni 1-9 sopra: lo stack, l'architettura, una regola di sviluppo
-vincolante, lo stato di una funzionalità (`[x]`/`[ ]` in §9), o la checklist
-pre-lancio sotto. Se una voce del changelog introduce un principio da NON
+vincolante, o lo stato di una funzionalità (`[x]`/`[ ]` in §9, dettaglio in
+`docs/STATO.md`). La checklist pre-lancio si aggiorna nella skill
+`checklist-lancio`. Se una voce del changelog introduce un principio da NON
 invertire senza discuterne esplicitamente con l'utente (es. §5 punto 9, sulla
 visibilità dei contatti cliente — invertita tre volte in passato prima che
 esistesse questa regola), quel principio va comunque riportato in forma
@@ -584,176 +424,9 @@ sintetica in §5 qui sopra, non solo nel changelog.
 
 ### Checklist — da fare prima del lancio
 
-Elenco consolidato (deduplicato) di tutto ciò che risulta ancora aperto,
-raccolto da tutte le sezioni del changelog che lo segnalavano — dettagli e
-motivazione estesa di ogni punto in `docs/CHANGELOG.md` (cerca il testo tra
-virgolette per trovare la sezione di origine).
-
-**Dati legali/societari reali** (oggi segnaposto `[DA COMPILARE]` in
-produzione):
-1. Dati del titolare del trattamento su `/privacy` (ragione sociale, sede
-   legale, P.IVA, email privacy).
-2. Dati del prestatore ai sensi del D.Lgs. 70/2003 art. 7 (ragione sociale,
-   P.IVA, sede legale, PEC) nella riga legale del footer.
-3. Email di contatto reale per il canale di segnalazione accessibilità su
-   `/accessibilita` (può coincidere con l'email privacy del punto 1).
-
-**Credenziali/configurazione**:
-4. **Chiavi Google Maps** (docs/CHANGELOG.md §133) — senza, la mappa mostra
-   "Mappa non disponibile" e gli indirizzi restano al centro del comune.
-   Serve un progetto Google Cloud con fatturazione attiva (carta) e le API
-   *Maps JavaScript API* + *Geocoding API* abilitate:
-   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` su Vercel — chiave limitata ai siti
-     web del progetto (HTTP referrer) e con **Maps JavaScript API** e
-     **Places API (New)** tra le API consentite (senza Maps JavaScript API
-     Google risponde `ApiTargetBlockedMapError`: è successo davvero, §138;
-     senza Places API (New) il campo indirizzo non mostra suggerimenti, §141);
-   - account di fatturazione Google Cloud **attivo** (non "periodo di prova
-     terminato"): senza, Google può bloccare le API;
-   - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` su Vercel — Map ID creato in Google
-     Cloud → Gestione mappe (tipo JavaScript, vettoriale), per i segnaposto
-     avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
-   - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, limitata alla sola
-     Geocoding API;
-   - impostare un budget/avviso di spesa su Google Cloud.
-   Le variabili `NEXT_PUBLIC_*` richiedono un nuovo deploy su Vercel.
-4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto
-   tecnicamente, richiede un piano a pagamento (decisione di budget non
-   presa autonomamente): promemoria operativo ricorrente, non ipotetico,
-   non un rischio ipotetico da monitorare "quando capita". Alla scadenza
-   va creato un nuovo DB free e aggiornato `DATABASE_URL` su Render (le
-   migrazioni si applicano da sole al primo avvio sul DB vuoto, le
-   categorie si ripopolano via `CategoriesSeedService`).
-5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
-   `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
-   `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
-   `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
-   `customer.subscription.created`, `customer.subscription.updated`,
-   `customer.subscription.deleted`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
-   `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
-5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
-   `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i
-   promemoria anti no-show (§9/`EmailService`, già implementati e
-   funzionanti) non vanno in crash ma semplicemente non partono: nessuna
-   email reale finché queste due variabili non sono impostate su Render,
-   stesso pattern già usato per Stripe/Cloudinary/Google.
-   ⚠️ **Senza un dominio proprio le email arrivano solo al titolare
-   dell'account Resend** (richiesta esplicita dell'utente di tenerlo in
-   checklist): finché non si verifica un dominio, Resend consegna solo
-   all'indirizzo con cui è stato creato l'account — va bene per provare,
-   non per i professionisti veri. Per usarlo davvero:
-   1. Comprare un dominio (~€10/anno, es. `manovia.it`): `vercel.app` non
-      è nostro e non si può verificare.
-   2. Resend → Domains → Add Domain, poi copiare i record DNS mostrati nel
-      pannello del registrar del dominio.
-   3. Su Render impostare `RESEND_FROM_EMAIL` =
-      `Manovia <notifiche@tuodominio.it>`.
-   Verificato dall'utente: con il mittente di prova `onboarding@resend.dev`
-   l'email del nuovo lead arriva, ma **in spam**. Il dominio proprio risolve
-   anche questo: oltre ai record SPF/DKIM chiesti da Resend, aggiungere un
-   record DMARC (`_dmarc`, es. `v=DMARC1; p=none;`) e provare l'invio su
-   Gmail/Outlook prima di reclutare i professionisti.
-6. Credenziali Stripe **Connect** reali per i pagamenti MANOVIA (distinte
-   dalle chiavi Stripe Checkout del punto 5 — abilitano i pagamenti
-   professionista↔piattaforma, non solo abbonamenti/boost/lead).
-6bis. **Dati societari reali sull'account Stripe di Manovia** (ragione
-   sociale, P.IVA, sede legale) prima del lancio: `invoice_creation:
-   { enabled: true }` è già attivo su `createLeadCheckout`/
-   `createBoostCheckout` (`apps/api/src/billing/billing.service.ts`,
-   CEO — consiglio esperti, richiesta esplicita dell'utente) e genera già
-   una ricevuta Stripe scaricabile dal professionista, ma finché
-   l'account Stripe stesso porta dati provvisori/di test quella ricevuta
-   non è un documento fiscale valido — è plumbing tecnico pronto, non
-   fatturazione risolta. Da verificare (dashboard Stripe → Impostazioni
-   azienda) prima di andare live, insieme al punto 7 sotto (ruolo fiscale
-   esatto), che resta comunque la decisione a monte: non basta
-   aggiornare l'account Stripe se il ruolo fiscale di Manovia
-   nell'intermediazione non è ancora stato chiarito con un
-   commercialista.
-
-**Fiscale — richiede la firma di un vero commercialista/avvocato
-tributario, non solo lavoro tecnico** (le 5 domande del CFO, dettagliate in
-`docs/CHANGELOG.md` §88/§113):
-7. Ruolo fiscale esatto di Manovia nell'intermediazione del pagamento
-   (mandato con/senza rappresentanza vs. commissione).
-8. Chi emette fattura al cliente finale per il lavoro svolto.
-9. Trattamento IVA corretto della commissione trattenuta da Manovia.
-10. Se la "consideration" DAC7 deve includere anche i pagamenti `DIRECT`
-    fuori piattaforma (`Dac7Rule.includeDirectPayments`, oggi `true` di
-    default, un'ipotesi di lavoro non confermata).
-11. Verifica delle condizioni contrattuali B2B/B2C quando Stripe verrà
-    attivato (diritto di recesso abbonamenti SaaS, fatturazione
-    elettronica) — dipende da come sarà strutturata l'offerta commerciale
-    reale.
-
-**Legale — richiede un avvocato** (richiesta esplicita dell'utente, consiglio
-CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
-11bis. **Aggiornare `/termini`** con: le misure che possiamo prendere su una
-    segnalazione (nascondere un contenuto, togliere un profilo dalla
-    ricerca, sospendere un account), come si contesta una decisione (pagina
-    `/segnalazioni`, reclamo interno DSA art. 20), il punto di contatto
-    unico per utenti e autorità (DSA art. 11-12) e le regole sui contenuti
-    (art. 14). Oggi `/termini` dice solo "possiamo sospendere/rimuovere" e
-    non parla né di reclamo né di segnalazioni. Il testo va scritto o
-    verificato da un avvocato, non solo riformulato nel codice. Aggiungere
-    anche il regolamento delle segnalazioni sui lavori (bozza pronta in
-    `docs/legale/regolamento-controversie.md`, con i punti da verificare,
-    tra cui la clausola "non rispondiamo di danni").
-
-**Fiscale — solo lavoro tecnico**:
-12. Integrazione reale con il tracciato ufficiale DPI23 dell'Agenzia delle
-    Entrate (Desktop Telematico) — l'export DAC7 attuale è una bozza
-    JSON/XML interna, non il formato ufficiale validato.
-13. ~~Percentuale di commissione MANOVIA~~ — decisa dall'utente: 5% sui
-    pagamenti online, a carico del professionista (docs/CHANGELOG.md §168).
-14. Emissione fatture reali (`Invoice`, schema già pronto, nessuna UI di
-    generazione) — dipende dalle risposte del punto 8.
-
-**Claim non veritieri pubblicati dal vivo** (decisione esplicita
-dell'utente, §113: non riformulare il testo nel frattempo — costruire
-davvero la verifica prima):
-15. Claim "Profili verificati" (footer, risultati di ricerca) — nessuna
-    verifica documenti/RC/KYC esiste in nessuna forma,
-    `ProfessionalProfile.verified` non viene mai impostato a `true` da
-    nessun punto del backend.
-16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
-    allineate alle regole reali di pagamento e segnalazioni
-    (docs/CHANGELOG.md §168).
-    Se la verifica KYC reale non fosse pronta per il lancio, il punto 15
-    va comunque corretto/rimosso prima di andare in
-    produzione — non deve mai restare un'affermazione falsa pubblicata dal
-    vivo.
-
-**Giorno del lancio** (richiesta esplicita dell'utente: "ricorda questo
-prima del lancio"):
-0. **Rendere il sito visibile ai motori di ricerca**: impostare
-   `NEXT_PUBLIC_SITE_INDEXABLE=true` su Vercel (Settings → Environment
-   Variables, ambiente Production) e rifare il deploy (Deployments →
-   ultimo deploy → Redeploy). Finché non si fa, il sito resta `noindex` e
-   la sitemap vuota (docs/CHANGELOG.md §132). Subito dopo: inviare
-   `/sitemap.xml` in Google Search Console.
-
-**Prodotto**:
-17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)
-    quando l'offerta reale di professionisti in una città/categoria supera
-    la soglia (`MIN_PROFESSIONALS_TO_SHOWCASE`) e la vetrina vera
-    (`RealShowcase`) prende il suo posto.
-18. ~~Promemoria automatici anti no-show~~ — fatto (email, vedi §9). SMS
-    (Twilio) resta rimandato: nessun caso d'uso ancora non coperto
-    dall'email.
-
-**Infrastruttura/qualità del codice** (CEO, audit tecnico — "zero test
-automatici, zero CI/CD, e soprattutto `prisma db push --accept-data-loss`
-gira ad ogni deploy in produzione — con dati reali di utenti paganti, un
-push che droppa una colonna è perdita dati silenziosa"). CI minima
-(`.github/workflows/ci.yml`, typecheck+build+test su ogni push), prima
-infrastruttura di test reale (Vitest — commissione piattaforma, creazione
-Booking da preventivo, gate contatti cliente) e CORS ristretto a
-`FRONTEND_URL` (`apps/api/src/main.ts`) sono **già fatti**, vedi §9. Restano
-aperti solo:
-19. ~~Passo manuale di baseline sul database Render~~ — non più
-    necessario: fatto in automatico dallo script `start` al primo `P3005`
-    (vedi §2 e `docs/CHANGELOG.md` §128).
-20. Postgres free che scade ogni 30 giorni — vedi punto 4bis più sopra
-    (voce principale di questo problema, in cima alla checklist perché è
-    un rischio operativo ricorrente, non solo tecnico).
+Vive nella skill `checklist-lancio` (`.claude/skills/checklist-lancio/SKILL.md`):
+aggiornala lì. Due punti da non dimenticare anche senza aprirla: il sito resta
+`noindex` finché al lancio non si imposta `NEXT_PUBLIC_SITE_INDEXABLE=true`, e
+il claim "Profili verificati" non corrisponde a nessuna verifica reale —
+decisione dell'utente: non riformulare il testo, costruire davvero la
+verifica prima del lancio (o correggerlo, ma mai lasciarlo falso dal vivo).
