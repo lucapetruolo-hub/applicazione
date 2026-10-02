@@ -76,6 +76,11 @@ services:
         sync: false
       - key: STRIPE_PRICE_PRO
         sync: false
+      # Giorno del lancio ufficiale (AAAA-MM-GG, ora italiana): il mese
+      # gratuito dei professionisti parte da qui e prima non scatta nessuna
+      # pausa (docs/CHANGELOG.md §169). Vuota = mese gratuito dall'iscrizione.
+      - key: LAUNCH_DATE
+        sync: false
       # Chiave server Google Maps (Geocoding API) per posizionare
       # l'indirizzo preciso del professionista sulla mappa
       # (apps/api/src/geocoding/geocoding.service.ts). Distinta dalla chiave

@@ -62,10 +62,11 @@
   portfolio, agenda di disponibilità.
 - **Destinatari esterni**: chiunque visiti il sito (dato per sua natura
   pubblico, essendo un profilo professionale destinato alla ricerca);
-  **Nominatim/OpenStreetMap** riceve l'indirizzo testuale al solo scopo di
-  ottenerne le coordinate (nessuna chiave API, nessun account, richiesta
-  identificata da uno User-Agent con email di contatto — vedi
-  `apps/api/src/geocoding/geocoding.service.ts`); **Cloudinary** ospita le
+  **Google** riceve l'indirizzo testuale al solo scopo di ottenerne le
+  coordinate: Places Autocomplete nel browser (solo dopo il consenso del
+  banner cookie) e Geocoding API lato server al salvataggio del profilo
+  (`apps/api/src/geocoding/geocoding.service.ts`, da docs/CHANGELOG.md
+  §133 al posto di Nominatim/OpenStreetMap); **Cloudinary** ospita le
   immagini/i video caricati (foto profilo, portfolio).
 - **Conservazione**: fino alla cancellazione del profilo/account da parte
   del professionista.
@@ -212,18 +213,22 @@
 
 ## Elenco dei responsabili del trattamento (fornitori terzi, art. 28 GDPR)
 
-| Fornitore | Ruolo | Dati coinvolti | Accordo (DPA) |
-|---|---|---|---|
-| **Cloudinary** | Hosting immagini/video (foto profilo, portfolio, foto richieste/recensioni/lavori) | File multimediali caricati dagli utenti | [DA VERIFICARE: accettazione dei termini/DPA standard di Cloudinary sull'account usato] |
-| **Google** (Identity Services) | Autenticazione "Accedi con Google" | Token OAuth, email/nome associati all'account Google dell'utente | Regolato dai Termini di servizio di Google Cloud/Identity, non un DPA su misura |
-| **Render** | Hosting backend (`apps/api`) e database Postgres | Tutti i dati applicativi (l'intero database) | [DA VERIFICARE: DPA standard di Render] |
-| **Vercel** | Hosting frontend (`apps/web`) | Nessun dato applicativo persistito (solo richieste HTTP in transito/log infrastrutturali standard) | [DA VERIFICARE: DPA standard di Vercel] |
-| **Nominatim / OpenStreetMap** | Geocodifica dell'indirizzo del professionista | Indirizzo testuale inviato per la sola geocodifica, nessun dato salvato lato loro oltre ai log standard del servizio pubblico | Servizio pubblico gratuito, nessun DPA — uso conforme alla loro Usage Policy (User-Agent identificativo, nessuna richiesta in un percorso di ricerca ad alto volume) |
-| **Stripe** | Pagamenti (abbonamenti SaaS, boost, lead) | **Non ancora attivo** — nessuna chiave reale configurata in produzione (CLAUDE.md §9) | Da stipulare/verificare prima dell'attivazione |
-| **Resend / Twilio** | Email/SMS transazionali | **Non ancora integrati** nel codice (CLAUDE.md §9, §14) | Da valutare quando introdotti |
+| Fornitore | Ruolo | Dati coinvolti | Paese / garanzia trasferimento | Accordo (DPA) |
+|---|---|---|---|---|
+| **Render** | Hosting backend (`apps/api`) e database Postgres | Tutti i dati applicativi (l'intero database) | USA (regione predefinita, nessuna `region` in `render.yaml`) — DPF o SCC [DA VERIFICARE] | [DA VERIFICARE: DPA standard di Render] |
+| **Vercel** | Hosting frontend (`apps/web`) e Web Analytics | Richieste HTTP in transito, log infrastrutturali; statistiche di visita aggregate senza cookie né identificativi personali | USA — DPF o SCC [DA VERIFICARE] | [DA VERIFICARE: DPA standard di Vercel] |
+| **Cloudinary** | Hosting immagini/video (foto profilo, portfolio, foto richieste/recensioni/lavori) | File multimediali caricati dagli utenti | USA — DPF o SCC [DA VERIFICARE] | [DA VERIFICARE: accettazione dei termini/DPA standard di Cloudinary sull'account usato] |
+| **Resend** | Email transazionali (promemoria, notifiche, inviti, moderazione) | Email, nome, testo del messaggio | USA — DPF o SCC [DA VERIFICARE] | **Attivo** (`RESEND_API_KEY` su Render) — [DA VERIFICARE: DPA standard di Resend] |
+| **Google** (Identity Services) | Autenticazione "Accedi con Google" | Token OAuth, email/nome associati all'account Google dell'utente | USA — DPF | Regolato dai Termini di servizio di Google Cloud/Identity, non un DPA su misura |
+| **Google** (Maps JavaScript, Places, Geocoding) | Mappa dei risultati, suggerimenti di indirizzo, geocodifica server | Indirizzo testuale; nel browser dati tecnici di navigazione (IP), solo dopo consenso cookie | USA — DPF | [DA VERIFICARE: Google Maps Platform Data Processing Terms accettati sul progetto Google Cloud] |
+| **Sentry** | Error tracking di `apps/api` | Stack trace e contesto tecnico dell'errore; `sendDefaultPii: false` (niente IP, header, cookie) — un messaggio d'errore può comunque contenere un identificativo | USA — DPF o SCC [DA VERIFICARE] | [DA VERIFICARE: DPA standard di Sentry] |
+| **Stripe** | Pagamenti (abbonamenti, boost, pagamenti online dei lavori, Connect) | **Non ancora attivo** — codice pronto, nessuna chiave reale in produzione (CLAUDE.md §9). Una volta attivo: dati di pagamento, nome, email, importi | USA/Irlanda — DPF o SCC [DA VERIFICARE] | Da stipulare/verificare prima dell'attivazione |
+| **Twilio** | SMS transazionali | **Non ancora integrato** nel codice (CLAUDE.md §9) | — | Da valutare quando introdotto |
+
+Nominatim/OpenStreetMap non è più usato (sostituito da Google Geocoding,
+docs/CHANGELOG.md §133).
 
 Nota: questa tabella va aggiornata a ogni cambio di fornitore o
-all'attivazione di uno dei servizi non ancora live (Stripe, Resend,
-Twilio) — è la stessa lista di "Da fare prima del lancio" già tracciata in
+all'attivazione di uno dei servizi non ancora live (Stripe, Twilio) — è la stessa lista di "Da fare prima del lancio" già tracciata in
 CLAUDE.md §9, qui vista dal lato obblighi di trasparenza sui responsabili
 del trattamento invece che dal lato tecnico/di configurazione.
