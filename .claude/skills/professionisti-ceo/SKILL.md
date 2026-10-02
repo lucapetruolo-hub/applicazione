@@ -1,6 +1,17 @@
 ---
 name: professionisti-ceo
-description: Analisi strategica dello stato del progetto "Professionisti" (questo monorepo) dal punto di vista di un CEO — verdetto sulla salute del prodotto, punti di forza reali, rischi critici ordinati per gravità con evidenza concreta, stato del motore di ricavo, cosa blocca davvero il lancio, raccomandazioni prioritizzate. USA SEMPRE questa skill quando l'utente chiede cose come "CEO analizza il progetto", "fai un'analisi da CEO", "com'è messo il progetto", "revisione strategica", "siamo pronti a lanciare?", "quanto è rischioso/maturo il progetto", "dammi un aggiornamento sullo stato del prodotto", o qualunque richiesta di valutare salute/rischio/maturità della piattaforma — anche se non nomina esplicitamente "CEO" o "analisi". Non affidarti mai alla sola narrazione di CLAUDE.md: prima di scrivere qualunque giudizio, verifica sempre i fatti correnti con i comandi da terminale descritti qui sotto, perché il progetto cambia di continuo e i numeri di un'invocazione precedente sono quasi certamente superati.
+description: >-
+  Analisi strategica dello stato del progetto "Professionisti" (questo monorepo) dal punto di vista di
+  un CEO — verdetto sulla salute del prodotto, punti di forza reali, rischi critici ordinati per
+  gravità con evidenza concreta, stato del motore di ricavo, cosa blocca davvero il lancio,
+  raccomandazioni prioritizzate. USA SEMPRE questa skill quando l'utente chiede cose come "CEO
+  analizza il progetto", "fai un'analisi da CEO", "com'è messo il progetto", "revisione strategica",
+  "siamo pronti a lanciare?", "quanto è rischioso/maturo il progetto", "dammi un aggiornamento sullo
+  stato del prodotto", o qualunque richiesta di valutare salute/rischio/maturità della piattaforma —
+  anche se non nomina esplicitamente "CEO" o "analisi". Non affidarti mai alla sola narrazione di
+  CLAUDE.md: prima di scrivere qualunque giudizio, verifica sempre i fatti correnti con i comandi da
+  terminale descritti qui sotto, perché il progetto cambia di continuo e i numeri di un'invocazione
+  precedente sono quasi certamente superati.
 ---
 
 # Analisi CEO del progetto Professionisti
