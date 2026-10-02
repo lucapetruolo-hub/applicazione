@@ -68,11 +68,13 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
-      # Prezzi Stripe dei piani Pro/Business (price_...), letti da
+      # Prezzi Stripe mensili dei livelli Base/Plus/Pro (price_...), letti da
       # apps/api/src/billing/billing.service.ts.
-      - key: STRIPE_PRICE_PRO
+      - key: STRIPE_PRICE_BASE
         sync: false
-      - key: STRIPE_PRICE_BUSINESS
+      - key: STRIPE_PRICE_PLUS
+        sync: false
+      - key: STRIPE_PRICE_PRO
         sync: false
       # Chiave server Google Maps (Geocoding API) per posizionare
       # l'indirizzo preciso del professionista sulla mappa

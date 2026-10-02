@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { SUBSCRIPTION_TIERS, subscriptionTierInfo, tierPriceDifferenceEurCents, type SubscriptionTier } from "@professionisti/shared";
@@ -324,7 +324,14 @@ export class BillingService {
     return { url: session.url };
   }
 
-  /** Verifica la firma Stripe e applica gli effetti dell'evento (idempotente per event.id). */
+  /**
+   * Verifica la firma Stripe e applica gli effetti dell'evento una sola volta
+   * per event.id (docs/CHANGELOG.md §169): l'evento viene prenotato in
+   * `stripe_webhook_events` prima di toccare i dati.
+   * - già elaborato → risposta 200 senza rifare nulla;
+   * - in lavorazione (consegna doppia contemporanea) → 409, Stripe riprova più tardi;
+   * - errore durante l'elaborazione → prenotazione cancellata, così il nuovo tentativo di Stripe la rifà.
+   */
   async handleWebhookEvent(rawBody: Buffer, signature: string) {
     const stripe = this.requireStripe();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -334,6 +341,26 @@ export class BillingService {
 
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
+    try {
+      await this.prisma.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
+    } catch (err) {
+      if ((err as { code?: string }).code !== "P2002") throw err;
+      const existing = await this.prisma.stripeWebhookEvent.findUnique({ where: { id: event.id } });
+      if (existing?.processedAt) return { received: true, duplicate: true };
+      throw new ConflictException("Evento Stripe già in lavorazione.");
+    }
+
+    try {
+      await this.applyWebhookEvent(stripe, event);
+    } catch (err) {
+      await this.prisma.stripeWebhookEvent.delete({ where: { id: event.id } }).catch(() => undefined);
+      throw err;
+    }
+    await this.prisma.stripeWebhookEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
+    return { received: true };
+  }
+
+  private async applyWebhookEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata ?? {};
@@ -488,7 +515,5 @@ export class BillingService {
     ) {
       await this.syncStripeSubscription(event.data.object as Stripe.Subscription);
     }
-
-    return { received: true };
   }
 }

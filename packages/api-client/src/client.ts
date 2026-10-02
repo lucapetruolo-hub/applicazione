@@ -752,6 +752,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
   return {
     health: () => request<{ status: string }>("/health"),
+    /** Funzioni attive sul server (docs/CHANGELOG.md §169): oggi solo il pagamento online dei lavori. */
+    getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
     /**

@@ -22,6 +22,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @Injectable()
@@ -66,6 +67,9 @@ export class BookingsService {
     // accettabile, perché l'unica guardia era "non ha già una booking".
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
+    }
+    if (paymentMethod === "ONLINE" && !onlinePaymentsEnabled()) {
+      throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
     }
 
     const { guidedRequest } = quote;

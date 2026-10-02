@@ -171,7 +171,12 @@ export class OnlineMoneyService {
     const payout = Math.max(0, amount - appFee - stripeFee);
     const destination = jp.booking.professionalProfile.fiscalProfile?.stripeConnectAccountId;
     const transfer =
-      payout > 0 && destination ? await this.requireStripe().transfers.create({ amount: payout, currency: "eur", destination, transfer_group: jp.bookingId }) : null;
+      payout > 0 && destination
+        ? await this.requireStripe().transfers.create(
+            { amount: payout, currency: "eur", destination, transfer_group: jp.bookingId },
+            { idempotencyKey: `job-late-balance-${paymentIntentId}` },
+          )
+        : null;
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
@@ -330,12 +335,20 @@ export class OnlineMoneyService {
     // Update condizionato: due giri concorrenti non trasferiscono due volte.
     const claimed = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, releasedAt: null }, data: { releasedAt: now } });
     if (claimed.count === 0) return false;
+    // Dopo il trasferimento i soldi sono partiti: un errore successivo (scrittura
+    // sul database) non deve più rimettere il pagamento in coda, altrimenti il
+    // giro dopo trasferirebbe una seconda volta (docs/CHANGELOG.md §169).
+    let moneyMoved = false;
     try {
       if (refundToClient > 0) await this.refundAcrossPayments(jp.id, refundToClient, "Differenza tra acconto e importo finale.");
       const transfer =
         payout > 0
-          ? await stripe.transfers.create({ amount: payout, currency: "eur", destination: account.stripeConnectAccountId, transfer_group: booking.id })
+          ? await stripe.transfers.create(
+              { amount: payout, currency: "eur", destination: account.stripeConnectAccountId, transfer_group: booking.id },
+              { idempotencyKey: `job-release-${jp.id}` },
+            )
           : null;
+      moneyMoved = true;
       const appFee = (jp.paidEurCents - jp.refundedEurCents - refundToClient) - payout - jp.stripeFeeEurCents;
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
@@ -368,6 +381,10 @@ export class OnlineMoneyService {
       if (balanceUnpaid) await this.reportUnpaidBalance(booking.id, booking.clientId, booking.quote?.guidedRequestId ?? null);
       return true;
     } catch (err) {
+      if (moneyMoved) {
+        this.logger.error(`Accredito di ${jp.id} eseguito su Stripe ma non registrato del tutto: ${(err as Error).message}`);
+        return true;
+      }
       await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { releasedAt: null } });
       this.logger.error(`Trasferimento non riuscito per ${jp.id}: ${(err as Error).message}`);
       return false;
@@ -416,7 +433,11 @@ export class OnlineMoneyService {
     const amount = amountEurCents === "ALL" ? available : Math.min(amountEurCents, available);
     if (amount <= 0) return 0;
     if (jp.stripeTransferId && jp.netAmountEurCents > 0) {
-      await this.requireStripe().transfers.createReversal(jp.stripeTransferId, { amount: Math.min(amount, jp.netAmountEurCents) });
+      await this.requireStripe().transfers.createReversal(
+        jp.stripeTransferId,
+        { amount: Math.min(amount, jp.netAmountEurCents) },
+        { idempotencyKey: `job-reversal-${jp.stripeTransferId}-${jp.refundedEurCents}` },
+      );
     }
     await this.refundAcrossPayments(jp.id, amount, reason);
     const after = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
@@ -449,7 +470,12 @@ export class OnlineMoneyService {
       const refundable = charge ? charge.amount - charge.amount_refunded : 0;
       const part = Math.min(remaining, refundable);
       if (part <= 0) continue;
-      await stripe.refunds.create({ payment_intent: pi, amount: part, metadata: { jobPaymentId, reason: reason.slice(0, 450) } });
+      // Chiave legata a quanto già rimborsato: un nuovo tentativo dello stesso
+      // rimborso non parte due volte, un rimborso successivo sì.
+      await stripe.refunds.create(
+        { payment_intent: pi, amount: part, metadata: { jobPaymentId, reason: reason.slice(0, 450) } },
+        { idempotencyKey: `job-refund-${pi}-${charge?.amount_refunded ?? 0}-${part}` },
+      );
       remaining -= part;
     }
     const refunded = amountEurCents - remaining;
