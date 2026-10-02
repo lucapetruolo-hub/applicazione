@@ -4,7 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { SUBSCRIPTION_TIERS, subscriptionTierInfo, tierPriceDifferenceEurCents, type SubscriptionTier } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { subscriptionState, tierOfPlan } from "../subscriptions/subscription-rules";
+import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialEndFor } from "../subscriptions/subscription-rules";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
@@ -137,10 +137,14 @@ export class BillingService {
     // modalità `payment`, vedi sotto). Il professionista la riceve già via
     // email Stripe e può scaricarla dal Customer Portal.
     // Chi sceglie un livello durante la prova gratuita non perde i giorni
-    // rimasti: il primo canone parte alla fine della prova.
+    // rimasti: il primo canone parte alla fine della prova. Prima del lancio
+    // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §169).
+    const launch = launchDate();
+    const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
+    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch) : current?.trialEndsAt;
     const trialEnd =
-      state === "TRIAL" && current?.trialEndsAt && current.trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
-        ? Math.floor(current.trialEndsAt.getTime() / 1000)
+      (preLaunchTrial || state === "TRIAL") && trialEndsAt && trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
+        ? Math.floor(trialEndsAt.getTime() / 1000)
         : undefined;
     const difference = trialEnd ? tierPriceDifferenceEurCents("BASE", plan) : 0;
     const session = await stripe.checkout.sessions.create({

@@ -5,7 +5,6 @@ import {
   BONUS_MONTH_DAYS,
   BONUS_MONTH_NOTICE_DAYS,
   RENEWAL_NOTICE_DAYS,
-  TRIAL_DAYS,
   subscriptionTierInfo,
   type MySubscription,
   type PauseReason,
@@ -14,6 +13,8 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
+  hasLaunched,
+  launchDate,
   monthlyLimit,
   pauseReason,
   periodNoticeToSend,
@@ -22,6 +23,7 @@ import {
   romeMonthStart,
   subscriptionState,
   tierOfPlan,
+  trialEndFor,
   usageNoticeToSend,
 } from "./subscription-rules";
 
@@ -30,6 +32,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Pagamenti attivi su questo ambiente: solo allora pausa e avvisi sul limite hanno senso. */
 function paymentsActive(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
+}
+
+/**
+ * Pause attive: servono i pagamenti e il sito lanciato (`LAUNCH_DATE`
+ * passata, docs/CHANGELOG.md §169). Senza data di lancio nessuno va in
+ * pausa, anche con Stripe acceso: i professionisti reclutati prima del
+ * lancio non spariscono dalla ricerca il giorno in cui si mette la chiave.
+ */
+function pausesActive(now: Date): boolean {
+  return paymentsActive() && hasLaunched(now, launchDate());
 }
 
 /**
@@ -50,7 +62,7 @@ export class SubscriptionsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  /** Avvia la prova gratuita alla creazione del profilo (idempotente). */
+  /** Avvia la prova gratuita alla creazione del profilo (idempotente): un mese dal lancio, o da oggi dopo il lancio. */
   async ensureTrial(professionalProfileId: string, now = new Date()): Promise<void> {
     await this.prisma.subscription.upsert({
       where: { professionalProfileId },
@@ -58,7 +70,7 @@ export class SubscriptionsService {
         professionalProfileId,
         plan: "FREE",
         status: "TRIALING",
-        trialEndsAt: new Date(now.getTime() + TRIAL_DAYS * DAY_MS),
+        trialEndsAt: trialEndFor(now, launchDate()),
       },
       update: {},
     });
@@ -88,8 +100,8 @@ export class SubscriptionsService {
       });
       if (!sub) return;
       const used = await this.countAcceptedJobsThisMonth(professionalProfileId, now);
-      // Senza pagamenti attivi non c'è pausa né livello superiore: niente avvisi sul limite.
-      if (!paymentsActive()) return;
+      // Senza pagamenti attivi o prima del lancio non c'è pausa né livello superiore: niente avvisi sul limite.
+      if (!pausesActive(now)) return;
       await this.syncPause(professionalProfileId, now, used);
       const limit = monthlyLimit(sub, now);
       if (limit === null) return;
@@ -122,7 +134,7 @@ export class SubscriptionsService {
     });
     if (!profile || profile.deletedAt) return null;
     const used = acceptedJobsThisMonth ?? (await this.countAcceptedJobsThisMonth(professionalProfileId, now));
-    const reason = profile.isDemo || !paymentsActive() ? null : pauseReason(profile.subscription, used, now);
+    const reason = profile.isDemo || !pausesActive(now) ? null : pauseReason(profile.subscription, used, now);
     if (reason === profile.pausedReason) return reason;
     await this.prisma.professionalProfile.update({
       where: { id: professionalProfileId },
@@ -141,14 +153,19 @@ export class SubscriptionsService {
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
     const used = await this.countAcceptedJobsThisMonth(profile.id, now);
     const pausedReason = await this.syncPause(profile.id, now, used);
-    const state = subscriptionState(sub, now);
+    const launch = launchDate();
+    // Prima del lancio la prova non scorre (docs/CHANGELOG.md §169): finisce
+    // un mese dopo il lancio, o non ha ancora una data se il lancio non è fissato.
+    const waitingLaunch = !hasLaunched(now, launch) && (!sub || sub.status === "TRIALING");
+    const state = waitingLaunch ? "TRIAL" : subscriptionState(sub, now);
+    const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch) : null) : (sub?.trialEndsAt ?? null);
     return {
       state,
       tier: sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null,
       pausedReason,
       currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
-      trialEndsAt: sub?.trialEndsAt?.toISOString() ?? null,
+      trialEndsAt: trialEndsAt?.toISOString() ?? null,
       bonusMonthGranted: Boolean(sub?.bonusMonthGrantedAt),
       usage: {
         acceptedJobsThisMonth: used,
@@ -222,6 +239,7 @@ export class SubscriptionsService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async runPauseSweep(now = new Date()): Promise<void> {
+    await this.alignTrialsToLaunch(now);
     const profiles = await this.prisma.professionalProfile.findMany({
       where: { deletedAt: null, isDemo: false },
       select: { id: true },
@@ -233,6 +251,22 @@ export class SubscriptionsService {
         this.logger.error(`Pausa abbonamento non aggiornata per ${profile.id}`, error as Error);
       }
     }
+  }
+
+  /**
+   * Dal lancio in poi: chi era in prova da prima del lancio la finisce un
+   * mese dopo il lancio (docs/CHANGELOG.md §169). Solo prove non ancora
+   * allungate oltre quella data e senza abbonamento Stripe; idempotente.
+   */
+  async alignTrialsToLaunch(now = new Date()): Promise<number> {
+    const launch = launchDate();
+    if (!hasLaunched(now, launch)) return 0;
+    const launchTrialEnd = trialEndFor(launch!, launch);
+    const result = await this.prisma.subscription.updateMany({
+      where: { status: "TRIALING", stripeSubscriptionId: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
+      data: { trialEndsAt: launchTrialEnd },
+    });
+    return result.count;
   }
 
   /** Ogni giorno: avviso pochi giorni prima del rinnovo automatico, o della fine se annullato. */
@@ -271,6 +305,8 @@ export class SubscriptionsService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async runTrialCheck(now = new Date()): Promise<void> {
+    // Prima del lancio la prova non scorre: nessun regalo né avviso di fine prova.
+    if (!hasLaunched(now, launchDate())) return;
     const endingBefore = new Date(now.getTime() + BONUS_MONTH_NOTICE_DAYS * DAY_MS);
     const subs = await this.prisma.subscription.findMany({
       where: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyLimit, pauseReason, periodNoticeToSend, romeMonthKey, romeMonthStart, subscriptionState, tierOfPlan, usageNoticeToSend } from "./subscription-rules";
+import { hasLaunched, launchDate, monthlyLimit, pauseReason, periodNoticeToSend, romeMonthKey, romeMonthStart, subscriptionState, tierOfPlan, trialEndFor, usageNoticeToSend } from "./subscription-rules";
 
 const NOW = new Date("2026-09-28T10:00:00Z");
 const future = new Date("2026-10-10T00:00:00Z");
@@ -97,5 +97,32 @@ describe("avvisi di utilizzo (80% e 100%)", () => {
   });
   it("senza limite nessun avviso", () => {
     expect(usageNoticeToSend(100, null, null, "2026-09")).toBeNull();
+  });
+});
+
+describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §169)", () => {
+  const launch = launchDate("2026-11-02")!;
+
+  it("legge la data di lancio come mezzanotte italiana", () => {
+    expect(launch.toISOString()).toBe("2026-11-01T23:00:00.000Z");
+    expect(launchDate(undefined)).toBeNull();
+    expect(launchDate("non una data")).toBeNull();
+  });
+
+  it("chi si iscrive prima del lancio ha il mese gratis dal lancio", () => {
+    const end = trialEndFor(new Date("2026-10-02T10:00:00Z"), launch);
+    expect(end.toISOString()).toBe("2026-12-01T23:00:00.000Z");
+  });
+
+  it("chi si iscrive dopo il lancio ha il mese gratis da oggi", () => {
+    const now = new Date("2026-11-20T10:00:00Z");
+    expect(trialEndFor(now, launch).toISOString()).toBe("2026-12-20T10:00:00.000Z");
+    expect(trialEndFor(now, null).toISOString()).toBe("2026-12-20T10:00:00.000Z");
+  });
+
+  it("senza data di lancio il sito non risulta lanciato", () => {
+    expect(hasLaunched(new Date("2030-01-01T00:00:00Z"), null)).toBe(false);
+    expect(hasLaunched(new Date("2026-11-01T22:59:59Z"), launch)).toBe(false);
+    expect(hasLaunched(new Date("2026-11-01T23:00:00Z"), launch)).toBe(true);
   });
 });
