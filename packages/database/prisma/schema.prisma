@@ -121,6 +121,7 @@ model User {
   clientReviews       ClientReview[]
   contentReports      ContentReport[]
   guidedRequestStates GuidedRequestUserState[]
+  profileInvites      ProfileInvite[]
 
   @@map("users")
 }
@@ -239,6 +240,12 @@ model ProfessionalProfile {
   // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
   pausedAt     DateTime?
   pausedReason String?
+  // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §169):
+  // fuori dalla ricerca e dallo smistamento finché il professionista non apre
+  // il link d'invito, imposta la password e salva il profilo accettando la
+  // dichiarazione. Da filtrare come `pausedAt` in ogni nuovo punto che mostra
+  // professionisti o assegna richieste.
+  invitePendingAt DateTime?
   // Misure progressive sulle segnalazioni accolte (docs/CHANGELOG.md §167,
   // decisione dell'utente): alla 2ª segnalazione accolta in 30 giorni il
   // profilo scende nello smistamento e nella ricerca per 14 giorni
@@ -1999,4 +2006,21 @@ model StripeWebhookEvent {
   processedAt DateTime?
 
   @@map("stripe_webhook_events")
+}
+
+// Link d'invito per un profilo creato da un operatore (docs/CHANGELOG.md
+// §169): il professionista lo apre, sceglie la password ed entra. Si salva
+// solo l'impronta SHA-256 del codice, mai il codice stesso.
+model ProfileInvite {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  createdByUserId String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@map("profile_invites")
 }

@@ -179,6 +179,9 @@ export default function DashboardProfiloPage() {
   // prompt per un fetch fallito/non ancora tornato).
   const [isFirstProfileSave, setIsFirstProfileSave] = useState(false);
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
+  // Profilo preparato da un operatore (docs/CHANGELOG.md §169) o dichiarazione
+  // cambiata: il profilo entra in ricerca solo quando il professionista salva.
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   useEffect(() => {
     apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
@@ -190,6 +193,7 @@ export default function DashboardProfiloPage() {
       .getMyProfessionalProfile(token)
       .then((profile) => {
         setIsFirstProfileSave(!profile);
+        setNeedsConfirmation(!!profile && !profile.profileDeclarationAccepted);
         if (profile) {
           setBusinessName(profile.businessName);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
@@ -359,6 +363,7 @@ export default function DashboardProfiloPage() {
         })),
       });
       setSaved(true);
+      setNeedsConfirmation(false);
       setSavedSnapshot(formSnapshot);
       return true;
     } catch (err) {
@@ -511,6 +516,18 @@ export default function DashboardProfiloPage() {
             compari.
           </Text>
         </YStack>
+
+        {needsConfirmation ? (
+          <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
+            <Text fontWeight="700" color={brand.grafite}>
+              Controlla i dati e salva il profilo
+            </Text>
+            <Text color={brand.grafite70}>
+              Il tuo profilo non è ancora visibile ai clienti. Controlla i dati qui sotto, correggi quello che serve e premi
+              &quot;Salva profilo&quot; in fondo alla pagina: da quel momento compari nelle ricerche e ricevi le richieste.
+            </Text>
+          </Surface>
+        ) : null}
 
         {/* Sezione "Identità" — immagine, nome attività, città/indirizzo
             (spostati qui subito sotto il nome, richiesta esplicita

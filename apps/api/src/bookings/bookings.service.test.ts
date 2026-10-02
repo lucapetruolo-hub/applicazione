@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { BookingsService } from "./bookings.service";
 
 /**
@@ -126,6 +126,7 @@ describe("BookingsService.createFromQuote", () => {
 
 describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
   it("con il pagamento online crea il pagamento con acconto sull'importo massimo del preventivo", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
     (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-2" });
@@ -139,5 +140,15 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
       quoteMaxEurCents: 30000,
       clientUserId: "client-1",
     });
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("senza Stripe attivo rifiuta il pagamento online prima di creare la prenotazione (§169)", async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+
+    await expect(service.createFromQuote("client-1", "quote-1", "ONLINE")).rejects.toThrow(BadRequestException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
   });
 });

@@ -109,6 +109,8 @@ export class ProfessionalsService {
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
+        // Creato da un operatore e non ancora confermato dal professionista (§169).
+        invitePendingAt: null,
         // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
         // in pausa, fuori dalla ricerca finché non può ricevere richieste.
         OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
@@ -458,7 +460,7 @@ export class ProfessionalsService {
       },
     });
 
-    if (!profile || profile.deletedAt || profile.suspendedAt) {
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
 
@@ -555,7 +557,13 @@ export class ProfessionalsService {
     };
   }
 
-  async upsertMyProfile(userId: string, input: ProfessionalProfileSelfInput): Promise<MyProfessionalProfile> {
+  /**
+   * `byOperator`: profilo creato da un operatore al telefono
+   * (docs/CHANGELOG.md §169). Niente dichiarazione (la accetta il
+   * professionista al primo salvataggio), profilo fuori dalla ricerca e
+   * dallo smistamento finché non lo fa.
+   */
+  async upsertMyProfile(userId: string, input: ProfessionalProfileSelfInput, options: { byOperator?: boolean } = {}): Promise<MyProfessionalProfile> {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new NotFoundException("Categoria non valida.");
@@ -587,19 +595,24 @@ export class ProfessionalsService {
     // riceverne di nuove ogni volta che salva.
     const existingProfile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, profileDeclarationVersion: true },
+      select: { id: true, profileDeclarationVersion: true, invitePendingAt: true },
     });
     const isFirstTimeCreation = existingProfile === null;
 
     // Dichiarazione di responsabilità (docs/CHANGELOG.md §158): senza la
     // versione attuale già accettata, il salvataggio richiede la casella.
     const declarationAlreadyAccepted = existingProfile?.profileDeclarationVersion === PROFILE_DECLARATION_VERSION;
-    if (!declarationAlreadyAccepted && !input.profileDeclarationAccepted) {
+    if (!options.byOperator && !declarationAlreadyAccepted && !input.profileDeclarationAccepted) {
       throw new BadRequestException("Per salvare il profilo conferma la dichiarazione sui dati inseriti.");
     }
-    const declarationData = input.profileDeclarationAccepted
-      ? { profileDeclarationAcceptedAt: new Date(), profileDeclarationVersion: PROFILE_DECLARATION_VERSION }
-      : {};
+    const declarationData =
+      input.profileDeclarationAccepted && !options.byOperator
+        ? { profileDeclarationAcceptedAt: new Date(), profileDeclarationVersion: PROFILE_DECLARATION_VERSION }
+        : {};
+    // Il professionista invitato salva per la prima volta il profilo creato
+    // dall'operatore: entra in ricerca e riceve le richieste aperte in zona.
+    const activatesInvite = !options.byOperator && !!existingProfile?.invitePendingAt;
+    const inviteData = activatesInvite ? { invitePendingAt: null } : {};
 
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },
@@ -622,6 +635,7 @@ export class ProfessionalsService {
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         ...declarationData,
+        ...inviteData,
       },
       create: {
         userId,
@@ -641,6 +655,7 @@ export class ProfessionalsService {
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
         ...declarationData,
+        ...(options.byOperator ? { invitePendingAt: new Date() } : {}),
       },
       include: { category: true },
     });
@@ -673,6 +688,8 @@ export class ProfessionalsService {
     if (isFirstTimeCreation) {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
+    }
+    if ((isFirstTimeCreation && !options.byOperator) || activatesInvite) {
       await this.guidedRequestsService.matchNewProfileToOpenRequests({
         id: profile.id,
         userId,
@@ -1583,9 +1600,9 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
     });
-    if (!profile || profile.deletedAt || profile.suspendedAt) {
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt) {
       throw new NotFoundException("Professionista non trovato.");
     }
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {

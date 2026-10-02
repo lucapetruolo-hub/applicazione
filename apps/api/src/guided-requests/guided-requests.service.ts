@@ -67,6 +67,7 @@ export class GuidedRequestsService {
       id: string;
       deletedAt: Date | null;
       suspendedAt: Date | null;
+      invitePendingAt: Date | null;
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
@@ -74,12 +75,12 @@ export class GuidedRequestsService {
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true, suspendedAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
+        select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
       // applicato altrove alle query pubbliche su ProfessionalProfile.
-      if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt) {
+      if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt || targetProfile.invitePendingAt) {
         throw new NotFoundException("Professionista non trovato.");
       }
       // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162).
@@ -600,6 +601,8 @@ export class GuidedRequestsService {
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
+        // Profilo creato da un operatore, non ancora confermato (§169).
+        invitePendingAt: null,
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
         OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
         ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
@@ -877,6 +880,7 @@ export class GuidedRequestsService {
             !candidate ||
             candidate.deletedAt ||
             candidate.suspendedAt ||
+            candidate.invitePendingAt ||
             candidate.pausedAt ||
             professionalRestrictions(candidate, new Date()).blocked
           ) {

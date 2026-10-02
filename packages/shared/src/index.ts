@@ -13,3 +13,4 @@ export * from "./notifications";
 export * from "./completion";
 export * from "./jobIssues";
 export * from "./onlinePayments";
+export * from "./profileInvites";

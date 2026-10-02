@@ -32,6 +32,7 @@ import { Dac7Module } from "./dac7/dac7.module";
 import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
+import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 
 @Module({
@@ -92,6 +93,8 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
     SubscriptionsModule,
+    // Profili creati al telefono da un operatore (docs/CHANGELOG.md §169).
+    ProfileInvitesModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

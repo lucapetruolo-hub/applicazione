@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 
 export default function RegistratiPage() {
   return (
@@ -207,30 +208,6 @@ function RoleChoiceScreen({
  * "Offro anche consulenza online", qui in versione più compatta (un solo
  * rigo di testo, non una card intera) perché servono due insieme.
  */
-function ConsentCheckbox({ checked, onToggle, children }: { checked: boolean; onToggle: () => void; children: ReactNode }) {
-  return (
-    <XStack alignItems="flex-start" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked }}>
-      <YStack
-        width={18}
-        height={18}
-        marginTop={2}
-        borderRadius="$1"
-        borderWidth={2}
-        borderColor={checked ? brand.cianografia : brand.filetto}
-        backgroundColor={checked ? brand.cianografia : brand.calce}
-        alignItems="center"
-        justifyContent="center"
-        flexShrink={0}
-      >
-        {checked ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
-      </YStack>
-      <Text fontSize="$2" color={brand.grafite70} lineHeight={18}>
-        {children}
-      </Text>
-    </XStack>
-  );
-}
-
 function RegistratiForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
