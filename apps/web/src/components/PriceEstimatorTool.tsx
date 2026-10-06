@@ -92,7 +92,7 @@ export function PriceEstimatorTool() {
               href="/preventivo"
               style={{
                 display: "inline-block",
-                backgroundColor: brand.cianografiaScuro,
+                backgroundColor: brand.cianografia,
                 color: "#fff",
                 fontWeight: 700,
                 fontSize: 15,

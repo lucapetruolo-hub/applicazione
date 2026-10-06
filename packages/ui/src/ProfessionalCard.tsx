@@ -368,7 +368,7 @@ export function ProfessionalCard({
                   paddingHorizontal="$2"
                   paddingVertical={4}
                   borderRadius="$10"
-                  backgroundColor={activeMode === mode ? brand.cianografiaScuro : brand.gesso}
+                  backgroundColor={activeMode === mode ? brand.cianografia : brand.gesso}
                   cursor="pointer"
                   accessibilityRole="button"
                   accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
@@ -524,7 +524,7 @@ export function ProfessionalCard({
                   paddingHorizontal="$3"
                   paddingVertical={6}
                   borderRadius="$10"
-                  backgroundColor={brand.cianografiaScuro}
+                  backgroundColor={brand.cianografia}
                   cursor="pointer"
                   accessibilityRole="button"
                   accessibilityLabel="Mostra orari disponibili"

@@ -72,7 +72,7 @@ export function HowItWorks() {
                   width={20}
                   height={20}
                   borderRadius={10}
-                  backgroundColor={brand.cianografiaScuro}
+                  backgroundColor={brand.cianografia}
                   borderWidth={2}
                   borderColor={brand.gesso}
                   alignItems="center"

@@ -697,7 +697,7 @@ export function GuidedRequestForm({
               alignSelf="flex-start"
               paddingHorizontal="$3"
               paddingVertical="$2"
-              backgroundColor={brand.cianografiaScuro}
+              backgroundColor={brand.cianografia}
               borderRadius="$2"
             >
               <Icon name={selectedCategory.icon} size={16} color="white" />
@@ -810,7 +810,7 @@ export function GuidedRequestForm({
                   paddingHorizontal="$3"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={active ? brand.cianografiaScuro : "transparent"}
+                  backgroundColor={active ? brand.cianografia : "transparent"}
                   cursor="pointer"
                   onPress={() => {
                     setServiceMode(option.value);

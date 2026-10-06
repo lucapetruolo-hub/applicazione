@@ -16071,7 +16071,7 @@ identici).
   urgenza su fondo rosa chiaro (4,48:1), "Profili verificati" (decisione
   dell'utente: costruire la verifica), landmark `header`/`nav`/`footer`.
 
-## 172. Profilo creato dall'operatore: un clic creava due volte lo stesso profilo
+## 172. Profili da confermare (doppio clic, "Visualizza link", "Elimina") e verde di prima su sfondi e pulsanti
 
 Segnalato dall'utente provando `/admin/professionisti` dopo §170: "continua
 a dire che esiste già anche con quella email di prova".
@@ -16086,7 +16086,25 @@ Correzione: il form non invia più nulla (`onSubmit` fa solo
 `preventDefault`, come in `/registrati`), l'invio passa solo da `onPress`,
 e un `useRef` blocca un secondo invio mentre il primo è in corso.
 
-Gli account di prova già creati restano in "In attesa di conferma" con il
-tasto "Nuovo link": servono quello per la prova, non una nuova creazione.
+**"Visualizza link" ed "Elimina"** al posto di "Nuovo link" (richiesta
+dell'utente). Il codice del link ora si salva anche cifrato (AES-256-GCM,
+chiave derivata da `JWT_SECRET`, colonna `ProfileInvite.tokenCiphertext`,
+migrazione `20261006150000_profile_invite_token_ciphertext`): "Visualizza
+link" mostra lo stesso link già mandato, se vale ancora; se è scaduto o è
+stato creato prima di questa modifica ne crea uno nuovo, senza email.
+"Elimina" (con conferma) cancella account e profilo, solo se il
+professionista non ha mai scelto la password; resta nel registro azioni.
+La colonna "Link valido fino al" mostra "Scaduto" anche per i link scaduti.
 
-Verifica: `tsc` su web.
+**Verde.** All'utente piaceva di più il verde di prima (`#189A63`), scurito
+in §171 per il contrasto. Scelta dell'utente fra tre opzioni ("Compromesso"):
+sfondi, hero, pulsanti, scelte attive e "Accetta" del banner cookie tornano
+a `cianografia`; i testi verdi e i link restano su `cianografiaScuro`
+(5,4:1). Tolto il token `cianografiaProfondo`, non più usato. Limite noto:
+il testo bianco sul verde di prima ha 3,6:1, sufficiente solo per il testo
+grande (3:1), non per il testo piccolo dei pulsanti (4,5:1).
+
+Verifica: 171 test API verdi (3 nuovi: link mostrato uguale e senza email,
+link scaduto rifatto senza email, eliminazione solo dei profili non
+confermati); `tsc` su tutto il monorepo; `prisma migrate diff` senza
+differenze.

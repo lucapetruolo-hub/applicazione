@@ -2016,6 +2016,9 @@ model ProfileInvite {
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash       String    @unique
+  /// Copia cifrata (AES-256-GCM) del codice, per mostrare il link
+  /// all'operatore da "Visualizza link" (docs/CHANGELOG.md §172).
+  tokenCiphertext String?
   createdByUserId String
   expiresAt       DateTime
   usedAt          DateTime?

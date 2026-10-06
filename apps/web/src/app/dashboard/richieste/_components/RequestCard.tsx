@@ -772,7 +772,7 @@ export function RequestCard({
                         </a>
                       ) : null}
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor={brand.cianografiaScuro}>
+                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor={brand.cianografia}>
                           <Text fontSize={11.5} fontWeight="700" color="white">
                             Chiama
                           </Text>

@@ -17,10 +17,10 @@ export const brand = {
   // di input).
   filetto: "#F0DCC0",
   cianografia: "#189A63",
+  // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
+  // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
+  // scelta dell'utente).
   cianografiaScuro: "#0E7A4C",
-  // Hover/press del bottone primario, che parte da cianografiaScuro (testo
-  // bianco su #189A63 ha contrasto 3,6:1, sotto il 4,5:1 di WCAG AA).
-  cianografiaProfondo: "#0A5F3B",
   cianografiaVelo: "#DCF3E7",
   // Verde muto, volutamente distinto dal verde smeraldo (cianografia,
   // usato per i CTA): un badge "Verificato" non deve confondersi con un
