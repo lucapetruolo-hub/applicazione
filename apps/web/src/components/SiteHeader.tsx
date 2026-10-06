@@ -91,11 +91,20 @@ export function SiteHeader() {
                     Come funziona
                   </Text>
                 </Link>
-                <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+                <Link href="/per-professionisti#prezzi" style={{ textDecoration: "none" }}>
                   <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
                     Prezzi
                   </Text>
                 </Link>
+                {/* Ingresso alla presentazione per chi offre un servizio, come
+                    "Diventa un sitter" su Rover (docs/CHANGELOG.md §173). */}
+                {!isLoading && !user?.isProfessional ? (
+                  <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+                    <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                      Sei un professionista?
+                    </Text>
+                  </Link>
+                ) : null}
               </XStack>
             </XStack>
           )}

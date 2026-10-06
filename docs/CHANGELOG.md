@@ -16108,3 +16108,33 @@ Verifica: 171 test API verdi (3 nuovi: link mostrato uguale e senza email,
 link scaduto rifatto senza email, eliminazione solo dei profili non
 confermati); `tsc` su tutto il monorepo; `prisma migrate diff` senza
 differenze.
+
+## 173. Pagina di presentazione e registrazione diretta per chi offre un servizio
+
+**Richiesta dell'utente** (6 ottobre 2026): prendere spunto da Rover
+("Diventa un dog sitter") e MioDottore per specialisti, molto più puliti
+della nostra registrazione. Chiarimento successivo dell'utente: quelle sono
+pagine di presentazione, con una registrazione diretta a parte
+(`miodottore.it/registrazione-medico`); servono entrambe per chi offre un
+servizio.
+
+**Decisione:**
+- `/per-professionisti` diventa la presentazione: titolo grande con "della
+  tua zona" in verde, foto (`/category-photos/imbianchino.webp`, foto
+  fornita dall'utente, la stessa già usata nella griglia categorie),
+  pulsanti "Iscriviti gratis" e "Vedi i prezzi", tre vantaggi, "Come
+  funziona" in 4 passi, prezzi (invariati, ora con ancora `#prezzi`) e
+  invito finale su fondo verde. Niente testimonianze né numeri finché non ce
+  ne sono di veri.
+- `/registrati?ruolo=professionista` a due colonne come MioDottore: a
+  sinistra il modulo su bianco (stessi campi, consensi e Google di prima),
+  a destra su pesca la foto dell'elettricista, tre vantaggi e il link alla
+  presentazione; su telefono il pannello va sotto il modulo. Tolti icona
+  tonda, "Passo 2 di 2" ed etichette di fiducia, che sul desktop finivano
+  sotto il bordo. La registrazione cliente resta com'era.
+- Intestazione e menu mobile: nuovo link "Sei un professionista?" (come
+  "Diventa un sitter"), nascosto a un professionista già autenticato;
+  "Prezzi" porta ora a `/per-professionisti#prezzi`.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1366, 1100 e
+390 px di larghezza senza scorrimento orizzontale.

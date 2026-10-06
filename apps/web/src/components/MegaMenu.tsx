@@ -124,9 +124,14 @@ export function MegaMenu() {
                 <Link href="/#come-funziona" className="mega-navlink" onClick={() => setMobileOpen(false)}>
                   Come funziona
                 </Link>
-                <Link href="/per-professionisti" className="mega-navlink" onClick={() => setMobileOpen(false)}>
+                <Link href="/per-professionisti#prezzi" className="mega-navlink" onClick={() => setMobileOpen(false)}>
                   Prezzi
                 </Link>
+                {!isLoading && !user?.isProfessional ? (
+                  <Link href="/per-professionisti" className="mega-navlink" onClick={() => setMobileOpen(false)}>
+                    Sei un professionista?
+                  </Link>
+                ) : null}
                 {!isLoading && !user ? (
                   <Link href="/accedi" className="mega-navlink mega-navlink-strong" onClick={() => setMobileOpen(false)}>
                     Accedi
