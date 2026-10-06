@@ -7,7 +7,6 @@ import { Check } from "lucide-react";
 import { SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Eyebrow, Icon, Surface, Text, XStack, YStack, brand, radiusDoc, radiusDocLg, type IconName } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { useOnlinePayments } from "@/lib/onlinePayments";
 
 /**
  * Pagina di presentazione per chi offre un servizio (docs/CHANGELOG.md §173,
@@ -29,7 +28,6 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
  */
 export function PerProfessionistiContent() {
   const { user } = useAuth();
-  const onlinePayments = useOnlinePayments();
   const ctaHref = user?.isProfessional ? "/dashboard/abbonamento" : "/registrati?ruolo=professionista";
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
@@ -145,7 +143,7 @@ export function PerProfessionistiContent() {
         </YStack>
       </div>
 
-      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} onlinePayments={onlinePayments} />
+      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
     </YStack>
   );
 }
@@ -292,32 +290,17 @@ function ProSteps() {
 }
 
 /**
- * Invito finale, con sopra due righe sui pagamenti dei lavori e il link alla
- * pagina che li spiega (docs/CHANGELOG.md §174: prima il testo completo stava
- * in fondo ai prezzi, dove si confondeva con l'abbonamento).
+ * Invito finale, con sopra solo il pulsante "Scopri di più" verso la pagina
+ * che spiega i pagamenti dei lavori (docs/CHANGELOG.md §174: prima il testo
+ * stava in fondo ai prezzi; l'utente ha poi chiesto di lasciare solo il
+ * pulsante).
  */
-function ProFinalCta({ ctaHref, ctaLabel, onlinePayments }: { ctaHref: string; ctaLabel: string; onlinePayments: boolean }) {
+function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   return (
     <YStack width="100%" alignItems="center" paddingHorizontal="$4" paddingBottom="$9" gap="$4">
-      <Surface width="100%" maxWidth={1080} borderRadius={radiusDoc} padding="$5" gap="$3" $gtSm={{ flexDirection: "row", alignItems: "center" }}>
-        <XStack flex={1} gap="$3" alignItems="flex-start">
-          <XStack width={44} height={44} flexShrink={0} borderRadius={14} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-            <Icon name="credit-card" size={20} color={brand.cianografiaScuro} strokeWidth={1.75} />
-          </XStack>
-          <YStack flex={1} gap="$1">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
-              {onlinePayments ? "Pagamenti online" : "Pagamenti online, in arrivo"}
-            </Text>
-            <Text color={brand.grafite70} lineHeight={22}>
-              {onlinePayments ? "I clienti possono pagarti" : "I clienti potranno pagarti"} con carta: ti accreditiamo l&apos;importo meno il
-              costo di Stripe e una commissione del 5%. Se ti pagano direttamente, nessuna commissione.
-            </Text>
-          </YStack>
-        </XStack>
-        <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-          <Button variant="secondary">Scopri di più</Button>
-        </Link>
-      </Surface>
+      <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none" }}>
+        <Button variant="secondary">Scopri di più</Button>
+      </Link>
 
       <YStack
         width="100%"

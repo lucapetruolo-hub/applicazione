@@ -16157,7 +16157,9 @@ toglierlo del tutto).
   l'abbonamento) e diventa una card breve sopra "Inizia a ricevere
   richieste": pagamento con carta, accredito meno costo Stripe e 5%,
   pagamento diretto senza commissione. "in arrivo" finché Stripe non è
-  attivo, come prima. Tenuto ma accorciato, non tolto.
+  attivo, come prima. Tenuto ma accorciato, non tolto. Subito dopo
+  l'utente ha chiesto di togliere anche quelle righe: sopra l'invito
+  finale resta solo il pulsante "Scopri di più".
 - Nuova pagina `/per-professionisti/pagamenti` ("Come vieni pagato"):
   acconto 20% del massimo, saldo, custodia fino alla conferma o 7 giorni,
   costo Stripe + 5%, attivazione in Dati fiscali e pagamenti, pagamento
