@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
   acceptProfileInviteSchema,
   operatorProfileInviteSchema,
@@ -29,9 +29,16 @@ export class AdminProfileInvitesController {
   }
 
   @RequireAdminScope("MODERATION")
-  @Post(":userId/link")
-  newLink(@Req() req: AuthenticatedRequest, @Param("userId") userId: string) {
-    return this.profileInvitesService.newLink(req.user.userId, userId);
+  @Get(":userId/link")
+  viewLink(@Req() req: AuthenticatedRequest, @Param("userId") userId: string) {
+    return this.profileInvitesService.viewLink(req.user.userId, userId);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Delete(":userId")
+  async remove(@Req() req: AuthenticatedRequest, @Param("userId") userId: string) {
+    await this.profileInvitesService.deletePending(req.user.userId, userId);
+    return { success: true };
   }
 }
 

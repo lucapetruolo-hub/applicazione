@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -201,6 +202,90 @@ function RoleChoiceScreen({
   );
 }
 
+const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
+  { icon: "map-pin", title: "Richieste dalla tua zona", text: "Clienti vicino a te che cercano proprio il tuo mestiere." },
+  { icon: "calendar", title: "Agenda e promemoria", text: "Appuntamenti in ordine e meno clienti che non si presentano." },
+  { icon: "star", title: "Recensioni vere", text: "Solo da lavori confermati: la tua reputazione conta di più." },
+];
+
+/**
+ * Registrazione del professionista a due colonne, sul modello di MioDottore
+ * (docs/CHANGELOG.md §173): a sinistra il modulo su sfondo bianco, a destra
+ * foto e vantaggi (sotto il modulo, su telefono). La presentazione completa
+ * è in /per-professionisti.
+ */
+function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
+  return (
+    <YStack width="100%" backgroundColor={brand.calce} $gtMd={{ flexDirection: "row" }}>
+      <YStack flex={1} alignItems="center" paddingVertical="$8" paddingHorizontal="$4" $gtMd={{ paddingVertical: "$10" }}>
+        <YStack width="100%" maxWidth={440} gap="$5">
+          <YStack gap="$2">
+            <Text
+              tag="h1"
+              fontFamily="$heading"
+              fontWeight="600"
+              fontSize={32}
+              lineHeight={38}
+              letterSpacing={-0.3}
+              color={brand.grafite}
+            >
+              Iscriviti come professionista
+            </Text>
+            <Text fontSize="$5" lineHeight={24} color={brand.grafite70}>
+              Crea l&apos;account, poi completi il profilo e inizi a ricevere richieste.
+            </Text>
+          </YStack>
+          {children}
+          <Text fontSize="$3" color={brand.grafite70}>
+            Cerchi un professionista?{" "}
+            <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
+              <Text color={brand.cianografiaScuro} fontWeight="600">
+                Registrati come cliente
+              </Text>
+            </Link>
+          </Text>
+        </YStack>
+      </YStack>
+
+      <YStack flex={1} alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" $gtMd={{ paddingVertical: "$10" }}>
+        <YStack width="100%" maxWidth={480} gap="$5">
+          <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
+            <Image
+              src="/category-photos/elettricista.webp"
+              alt="Un elettricista sorride mentre lavora a un quadro elettrico"
+              fill
+              sizes="(max-width: 1024px) 100vw, 480px"
+              style={{ objectFit: "cover" }}
+            />
+          </div>
+          <YStack gap="$4">
+            {SIGNUP_BENEFITS.map((benefit) => (
+              <XStack key={benefit.title} gap="$3" alignItems="flex-start">
+                <XStack width={40} height={40} borderRadius={14} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                  <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
+                </XStack>
+                <YStack flex={1} gap="$1">
+                  <Text fontWeight="700" color={brand.grafite}>
+                    {benefit.title}
+                  </Text>
+                  <Text fontSize="$3" color={brand.grafite70}>
+                    {benefit.text}
+                  </Text>
+                </YStack>
+              </XStack>
+            ))}
+          </YStack>
+          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+            <Text color={brand.cianografiaScuro} fontWeight="600">
+              Scopri come funziona e quanto costa
+            </Text>
+          </Link>
+        </YStack>
+      </YStack>
+    </YStack>
+  );
+}
+
 /**
  * Casella di spunta compatta per le due dichiarazioni obbligatorie in
  * registrazione — stesso pattern visivo (riquadro 22×22, icona `check`
@@ -365,186 +450,193 @@ function RegistratiForm() {
     setGoogleConsentError(null);
   }
 
+  // Google, campi, consensi e pulsante: uguali per cliente e professionista,
+  // cambia solo l'impaginazione intorno (sotto).
+  const formFields = (
+    <>
+      <GoogleSignInButton onCredential={handleGoogleCredential} />
+
+      {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
+        <YStack flexDirection="row" alignItems="center" gap="$3">
+          <YStack flex={1} height={1} backgroundColor={brand.filetto} />
+          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            oppure
+          </Text>
+          <YStack flex={1} height={1} backgroundColor={brand.filetto} />
+        </YStack>
+      ) : null}
+
+      {/*
+       * Bug reale segnalato dall'utente: su iPhone, digitando la password
+       * durante la registrazione, il sistema chiedeva "Vuoi salvare la
+       * password?" ad OGNI carattere invece che una sola volta all'invio.
+       * Due cause concorrenti corrette insieme: (1) il campo Email non
+       * aveva alcun `autoComplete`/`name` (a differenza di /accedi, dove
+       * era già stato corretto — CLAUDE.md §79/§20), quindi Safari non
+       * poteva riconoscere l'intero gruppo come un modulo di creazione
+       * account coerente; (2) i campi non erano mai avvolti in un vero
+       * elemento HTML <form> — nessuno dei componenti Tamagui qui sotto ne
+       * renderizza uno. Senza un <form> reale, l'euristica di Safari per
+       * decidere "quando proporre di salvare" non ha un confine di
+       * "invio" a cui ancorarsi e può rivalutare la password ad ogni
+       * tocco di tasto. Il <form> qui non gestisce l'invio vero (che
+       * resta sull'onPress del bottone "Registrati", invariato): serve
+       * solo a dare a Safari il confine semantico corretto — onSubmit fa
+       * solo preventDefault, per sicurezza nel caso un invio nativo
+       * scattasse comunque (es. tasto Invio su un campo).
+       *
+       * Segnalato di nuovo dall'utente dopo questo fix (specificamente
+       * per la registrazione professionista da mobile): investigato più a
+       * fondo — DOM stabile e fuoco mai perso durante la digitazione
+       * (verificato con Playwright, nessun remount del nodo <input> ad
+       * ogni carattere), ma i tre campi risultavano privi di un
+       * attributo `id`/`name` (`name=""` su tutti e tre): react-native-web
+       * non inoltra affatto `name` al DOM (non è nell'elenco dei prop
+       * forwarded di TextInput, verificato nel sorgente del pacchetto —
+       * non solo un limite dei tipi TypeScript, come ipotizzato in un
+       * giro precedente), ma inoltra `nativeID` come `id` HTML. Due campi
+       * "Password"/"Conferma password" altrimenti indistinguibili nel DOM
+       * se non per l'ordine sono un caso reale e documentato di euristiche
+       * di autofill meno affidabili (alcuni gestori password si affidano
+       * anche a `id`/`name`, non solo ad `autocomplete`, per abbinare
+       * "nuova password" a "conferma"): `nativeID` aggiunto qui come
+       * rinforzo supplementare, a costo zero, allo stesso `autoComplete`
+       * già corretto sopra.
+       */}
+      <form onSubmit={(e) => e.preventDefault()}>
+        <YStack gap="$4">
+          <AuthField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="nome@esempio.it"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="username"
+            nativeID="email"
+            accessibilityLabel="Email"
+          />
+          <AuthField
+            label="Password"
+            hint="Minimo 8 caratteri"
+            rightElement={
+              <Text
+                cursor="pointer"
+                onPress={() => setShowPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
+              >
+                <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
+              </Text>
+            }
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            // "new-password" (non "password"/"current-password"): segnala
+            // al browser/gestore password del telefono che si sta creando
+            // una password nuova, non inserendone una esistente — bug
+            // reale segnalato dall'utente, senza questo hint il sistema
+            // del telefono chiedeva ripetutamente se salvarla.
+            autoComplete="new-password"
+            nativeID="new-password"
+            accessibilityLabel="Password"
+          />
+          <AuthField
+            label="Conferma password"
+            rightElement={
+              <Text
+                cursor="pointer"
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
+              >
+                <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
+              </Text>
+            }
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Ripeti la password"
+            secureTextEntry={!showConfirmPassword}
+            autoComplete="new-password"
+            nativeID="new-password-confirm"
+            accessibilityLabel="Conferma password"
+            onSubmitEditing={handleRegister}
+          />
+
+          {/* Due dichiarazioni obbligatorie richieste esplicitamente
+              dall'utente ("Verbale di Conformità") — valgono anche per il
+              pulsante Google sopra, non solo per questo form. */}
+          <YStack gap="$2">
+            <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
+              Ho letto e accetto la{" "}
+              <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
+                Privacy Policy
+              </Link>{" "}
+              e i{" "}
+              <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
+                Termini di Servizio
+              </Link>
+              .
+            </ConsentCheckbox>
+            <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
+              Dichiaro di avere almeno 18 anni.
+            </ConsentCheckbox>
+          </YStack>
+
+          {error ? (
+            <Text color={brand.urgenza} fontSize="$3">
+              {error}
+            </Text>
+          ) : null}
+
+          <Button
+            variant="primary"
+            onPress={handleRegister}
+            disabled={isSubmitting || !canSubmitConsent}
+            opacity={isSubmitting || !canSubmitConsent ? 0.6 : 1}
+          >
+            {isSubmitting ? "Creazione account..." : "Registrati"}
+          </Button>
+
+          {isProfessional ? null : <TrustChips />}
+        </YStack>
+      </form>
+
+      <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+        Hai già un account?{" "}
+        <Link href="/accedi" style={{ textDecoration: "none" }}>
+          <Text color={brand.cianografiaScuro} fontWeight="600">
+            Accedi
+          </Text>
+        </Link>
+      </Text>
+    </>
+  );
+
   return (
     <>
-    <AuthPageBackground>
-      <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <YStack alignItems="center" gap="$3">
-          <AuthIconBadge icon={isProfessional ? "hard-hat" : "search"} />
-          <YStack alignItems="center" gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-              Passo 2 di 2
-            </Text>
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-              {isProfessional ? "Iscriviti come professionista" : "Crea il tuo account"}
-            </Text>
-            {isProfessional ? (
-              <Text color={brand.grafite70} textAlign="center">
-                Gratis per iniziare: completa il profilo e inizia a ricevere richieste.
+    {isProfessional ? (
+      <ProfessionalSignupLayout>{formFields}</ProfessionalSignupLayout>
+    ) : (
+      <AuthPageBackground>
+        <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+          <YStack alignItems="center" gap="$3">
+            <AuthIconBadge icon="search" />
+            <YStack alignItems="center" gap="$1">
+              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                Passo 2 di 2
               </Text>
-            ) : null}
-          </YStack>
-        </YStack>
-
-        <GoogleSignInButton onCredential={handleGoogleCredential} />
-
-        {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
-          <YStack flexDirection="row" alignItems="center" gap="$3">
-            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-              oppure
-            </Text>
-            <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-          </YStack>
-        ) : null}
-
-        {/*
-         * Bug reale segnalato dall'utente: su iPhone, digitando la password
-         * durante la registrazione, il sistema chiedeva "Vuoi salvare la
-         * password?" ad OGNI carattere invece che una sola volta all'invio.
-         * Due cause concorrenti corrette insieme: (1) il campo Email non
-         * aveva alcun `autoComplete`/`name` (a differenza di /accedi, dove
-         * era già stato corretto — CLAUDE.md §79/§20), quindi Safari non
-         * poteva riconoscere l'intero gruppo come un modulo di creazione
-         * account coerente; (2) i campi non erano mai avvolti in un vero
-         * elemento HTML <form> — nessuno dei componenti Tamagui qui sotto ne
-         * renderizza uno. Senza un <form> reale, l'euristica di Safari per
-         * decidere "quando proporre di salvare" non ha un confine di
-         * "invio" a cui ancorarsi e può rivalutare la password ad ogni
-         * tocco di tasto. Il <form> qui non gestisce l'invio vero (che
-         * resta sull'onPress del bottone "Registrati", invariato): serve
-         * solo a dare a Safari il confine semantico corretto — onSubmit fa
-         * solo preventDefault, per sicurezza nel caso un invio nativo
-         * scattasse comunque (es. tasto Invio su un campo).
-         *
-         * Segnalato di nuovo dall'utente dopo questo fix (specificamente
-         * per la registrazione professionista da mobile): investigato più a
-         * fondo — DOM stabile e fuoco mai perso durante la digitazione
-         * (verificato con Playwright, nessun remount del nodo <input> ad
-         * ogni carattere), ma i tre campi risultavano privi di un
-         * attributo `id`/`name` (`name=""` su tutti e tre): react-native-web
-         * non inoltra affatto `name` al DOM (non è nell'elenco dei prop
-         * forwarded di TextInput, verificato nel sorgente del pacchetto —
-         * non solo un limite dei tipi TypeScript, come ipotizzato in un
-         * giro precedente), ma inoltra `nativeID` come `id` HTML. Due campi
-         * "Password"/"Conferma password" altrimenti indistinguibili nel DOM
-         * se non per l'ordine sono un caso reale e documentato di euristiche
-         * di autofill meno affidabili (alcuni gestori password si affidano
-         * anche a `id`/`name`, non solo ad `autocomplete`, per abbinare
-         * "nuova password" a "conferma"): `nativeID` aggiunto qui come
-         * rinforzo supplementare, a costo zero, allo stesso `autoComplete`
-         * già corretto sopra.
-         */}
-        <form onSubmit={(e) => e.preventDefault()}>
-          <YStack gap="$4">
-            <AuthField
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="nome@esempio.it"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="username"
-              nativeID="email"
-              accessibilityLabel="Email"
-            />
-            <AuthField
-              label="Password"
-              hint="Minimo 8 caratteri"
-              rightElement={
-                <Text
-                  cursor="pointer"
-                  onPress={() => setShowPassword((v) => !v)}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-                >
-                  <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-                </Text>
-              }
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              secureTextEntry={!showPassword}
-              // "new-password" (non "password"/"current-password"): segnala
-              // al browser/gestore password del telefono che si sta creando
-              // una password nuova, non inserendone una esistente — bug
-              // reale segnalato dall'utente, senza questo hint il sistema
-              // del telefono chiedeva ripetutamente se salvarla.
-              autoComplete="new-password"
-              nativeID="new-password"
-              accessibilityLabel="Password"
-            />
-            <AuthField
-              label="Conferma password"
-              rightElement={
-                <Text
-                  cursor="pointer"
-                  onPress={() => setShowConfirmPassword((v) => !v)}
-                  accessibilityRole="button"
-                  accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
-                >
-                  <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-                </Text>
-              }
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Ripeti la password"
-              secureTextEntry={!showConfirmPassword}
-              autoComplete="new-password"
-              nativeID="new-password-confirm"
-              accessibilityLabel="Conferma password"
-              onSubmitEditing={handleRegister}
-            />
-
-            {/* Due dichiarazioni obbligatorie richieste esplicitamente
-                dall'utente ("Verbale di Conformità") — valgono anche per il
-                pulsante Google sopra, non solo per questo form. */}
-            <YStack gap="$2">
-              <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
-                Ho letto e accetto la{" "}
-                <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
-                  Privacy Policy
-                </Link>{" "}
-                e i{" "}
-                <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
-                  Termini di Servizio
-                </Link>
-                .
-              </ConsentCheckbox>
-              <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
-                Dichiaro di avere almeno 18 anni.
-              </ConsentCheckbox>
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+                Crea il tuo account
+              </Text>
             </YStack>
-
-            {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {error}
-              </Text>
-            ) : null}
-
-            <Button
-              variant="primary"
-              onPress={handleRegister}
-              disabled={isSubmitting || !canSubmitConsent}
-              opacity={isSubmitting || !canSubmitConsent ? 0.6 : 1}
-            >
-              {isSubmitting ? "Creazione account..." : "Registrati"}
-            </Button>
-
-            <TrustChips />
           </YStack>
-        </form>
 
-        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
-          Hai già un account?{" "}
-          <Link href="/accedi" style={{ textDecoration: "none" }}>
-            <Text color={brand.cianografiaScuro} fontWeight="600">
-              Accedi
-            </Text>
-          </Link>
-        </Text>
-      </Surface>
-    </AuthPageBackground>
+          {formFields}
+        </Surface>
+      </AuthPageBackground>
+    )}
     {pendingGoogleIdToken ? (
       <GoogleConsentModal
         acceptedLegalTerms={acceptedLegalTerms}

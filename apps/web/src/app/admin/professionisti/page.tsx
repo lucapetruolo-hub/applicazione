@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ALL_ITALIAN_CITY_NAMES,
   PROFESSIONAL_CATEGORIES,
@@ -32,12 +32,18 @@ export default function AdminProfessionistiPage() {
   const { token } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  // Un doppio clic non deve creare due volte lo stesso profilo.
+  const submittingRef = useRef(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [link, setLink] = useState<ProfileInviteLink | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<PendingProfileInvite[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
-  const [renewingId, setRenewingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  // Riga con "Elimina" premuto una volta: serve la conferma.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Link aperto da "Visualizza link" (nessuna email inviata ora).
+  const [linkViewed, setLinkViewed] = useState(false);
 
   const loadPending = useCallback(() => {
     if (!token) return;
@@ -54,7 +60,7 @@ export default function AdminProfessionistiPage() {
   }
 
   async function submit() {
-    if (!token) return;
+    if (!token || submittingRef.current) return;
     const parsed = operatorProfileInviteSchema.safeParse({
       email: form.email.trim(),
       name: form.name.trim(),
@@ -69,34 +75,53 @@ export default function AdminProfessionistiPage() {
       setFormError(parsed.error.issues[0]?.message ?? "Controlla i dati inseriti.");
       return;
     }
+    submittingRef.current = true;
     setSaving(true);
     setFormError(null);
     try {
       const created = await apiClient.adminCreateProfileInvite(token, parsed.data);
       setLink(created);
+      setLinkViewed(false);
       setCopied(false);
       setForm(EMPTY_FORM);
       loadPending();
     } catch (err) {
       setFormError(errorMessage(err));
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   }
 
-  async function renew(userId: string) {
+  async function viewLink(userId: string) {
     if (!token) return;
-    setRenewingId(userId);
+    setBusyId(userId);
     setListError(null);
     try {
-      const created = await apiClient.adminNewProfileInviteLink(token, userId);
-      setLink(created);
+      setLink(await apiClient.adminViewProfileInviteLink(token, userId));
+      setLinkViewed(true);
       setCopied(false);
       loadPending();
     } catch (err) {
       setListError(errorMessage(err));
     } finally {
-      setRenewingId(null);
+      setBusyId(null);
+    }
+  }
+
+  async function remove(userId: string) {
+    if (!token) return;
+    setBusyId(userId);
+    setListError(null);
+    try {
+      await apiClient.adminDeleteProfileInvite(token, userId);
+      setConfirmDeleteId(null);
+      if (link?.userId === userId) setLink(null);
+      loadPending();
+    } catch (err) {
+      setListError(errorMessage(err));
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -124,9 +149,11 @@ export default function AdminProfessionistiPage() {
               Link per {link.businessName}
             </Text>
             <Text fontSize={14} color={brand.grafite70}>
-              {link.emailSent
-                ? `Lo abbiamo mandato anche per email a ${link.email}.`
-                : `L'email non è partita: copia il link e mandalo tu a ${link.email} (per esempio su WhatsApp).`}{" "}
+              {linkViewed
+                ? `Copialo e mandalo a ${link.email} (per esempio su WhatsApp).`
+                : link.emailSent
+                  ? `Lo abbiamo mandato anche per email a ${link.email}.`
+                  : `L'email non è partita: copia il link e mandalo tu a ${link.email} (per esempio su WhatsApp).`}{" "}
               Vale fino al {formatAdminDate(link.expiresAt)} e si usa una volta sola.
             </Text>
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
@@ -140,12 +167,11 @@ export default function AdminProfessionistiPage() {
       ) : null}
 
       <AdminCard>
-        <form
-          onSubmit={(event: FormEvent) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
+        {/* Il Button di Tamagui è un <button> senza type: dentro un <form>
+            un clic fa partire sia onPress sia il submit del form, cioè due
+            creazioni dello stesso profilo (la seconda risponde "Esiste già un
+            account"). L'invio passa solo da onPress, come in /registrati. */}
+        <form onSubmit={(event: FormEvent) => event.preventDefault()}>
           <YStack gap="$3">
             <Text fontWeight="700" color={brand.grafite}>
               Nuovo profilo
@@ -250,11 +276,33 @@ export default function AdminProfessionistiPage() {
                       {row.categoryLabel}, {row.city}
                     </td>
                     <td>{formatAdminDate(row.createdAt)}</td>
-                    <td>{row.lastLinkExpiresAt ? formatAdminDate(row.lastLinkExpiresAt) : "Scaduto"}</td>
                     <td>
-                      <Button variant="secondary" size="$2" disabled={renewingId === row.userId} onPress={() => renew(row.userId)}>
-                        {renewingId === row.userId ? "…" : "Nuovo link"}
-                      </Button>
+                      {row.lastLinkExpiresAt && new Date(row.lastLinkExpiresAt).getTime() > Date.now()
+                        ? formatAdminDate(row.lastLinkExpiresAt)
+                        : "Scaduto"}
+                    </td>
+                    <td>
+                      <XStack gap="$2" flexWrap="wrap">
+                        {confirmDeleteId === row.userId ? (
+                          <>
+                            <Button size="$2" disabled={busyId === row.userId} backgroundColor={brand.urgenza} onPress={() => remove(row.userId)}>
+                              {busyId === row.userId ? "…" : "Conferma eliminazione"}
+                            </Button>
+                            <Button variant="secondary" size="$2" onPress={() => setConfirmDeleteId(null)}>
+                              Annulla
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant="secondary" size="$2" disabled={busyId === row.userId} onPress={() => viewLink(row.userId)}>
+                              {busyId === row.userId ? "…" : "Visualizza link"}
+                            </Button>
+                            <Button variant="secondary" size="$2" onPress={() => setConfirmDeleteId(row.userId)}>
+                              Elimina
+                            </Button>
+                          </>
+                        )}
+                      </XStack>
                     </td>
                   </tr>
                 ))}

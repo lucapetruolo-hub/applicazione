@@ -154,7 +154,7 @@ export default function ContattiContent() {
                     padding: "17px 32px",
                     borderRadius: 999,
                     border: "none",
-                    backgroundColor: brand.cianografiaScuro,
+                    backgroundColor: brand.cianografia,
                     color: "white",
                     fontSize: 17,
                     fontWeight: 700,

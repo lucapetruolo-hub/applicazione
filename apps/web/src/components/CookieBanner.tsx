@@ -98,7 +98,7 @@ export function CookieBanner() {
         <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#0e7a4c", border: "1.5px solid #0e7a4c" }}>
           Rifiuta
         </button>
-        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#0e7a4c", color: "#ffffff", border: "1.5px solid #0e7a4c" }}>
+        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#189a63", color: "#ffffff", border: "1.5px solid #189a63" }}>
           Accetta
         </button>
       </div>

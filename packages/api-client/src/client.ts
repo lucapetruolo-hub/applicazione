@@ -1406,9 +1406,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
-    adminNewProfileInviteLink: (token: string, userId: string) =>
+    adminViewProfileInviteLink: (token: string, userId: string) =>
       request<ProfileInviteLink>(`/admin/professional-invites/${encodeURIComponent(userId)}/link`, {
-        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminDeleteProfileInvite: (token: string, userId: string) =>
+      request<{ success: boolean }>(`/admin/professional-invites/${encodeURIComponent(userId)}`, {
+        method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
     getProfileInvite: (code: string) => request<ProfileInvitePreview>(`/auth/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),

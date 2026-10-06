@@ -734,7 +734,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   paddingHorizontal="$4"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={brand.cianografiaScuro}
+                  backgroundColor={brand.cianografia}
                   cursor="pointer"
                   accessibilityRole="button"
                   onPress={() => {

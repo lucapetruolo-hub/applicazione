@@ -31,7 +31,7 @@ const COLUMNS = [
  */
 export function ProCtaSection() {
   return (
-    <YStack width="100%" backgroundColor="$cianografiaScuro" paddingVertical="$9" paddingHorizontal="$4" alignItems="center">
+    <YStack width="100%" backgroundColor="$cianografia" paddingVertical="$9" paddingHorizontal="$4" alignItems="center">
       <YStack width="100%" maxWidth={1080} gap="$6">
         <YStack gap="$3">
           <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
@@ -51,7 +51,7 @@ export function ProCtaSection() {
                   {column.title}
                 </Text>
                 {column.comingSoon ? (
-                  <XStack backgroundColor="rgba(0,0,0,0.22)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
+                  <XStack backgroundColor="rgba(255,255,255,0.18)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
                     <Text fontSize={11} fontWeight="700" color="white">
                       In arrivo
                     </Text>

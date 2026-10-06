@@ -16070,3 +16070,71 @@ identici).
   semitrasparente nell'hero e riga "Intervento urgente" (4,1-4,3:1), rosso
   urgenza su fondo rosa chiaro (4,48:1), "Profili verificati" (decisione
   dell'utente: costruire la verifica), landmark `header`/`nav`/`footer`.
+
+## 172. Profili da confermare (doppio clic, "Visualizza link", "Elimina") e verde di prima su sfondi e pulsanti
+
+Segnalato dall'utente provando `/admin/professionisti` dopo §170: "continua
+a dire che esiste già anche con quella email di prova".
+
+Causa: il `Button` di Tamagui è un `<button>` senza `type`, quindi dentro un
+`<form>` un clic faceva partire sia `onPress` sia il submit del form. Due
+richieste di creazione: la prima creava account e profilo, la seconda
+rispondeva "Esiste già un account con questa email." e la pagina mostrava
+quell'errore. Riprovando, l'account esisteva davvero.
+
+Correzione: il form non invia più nulla (`onSubmit` fa solo
+`preventDefault`, come in `/registrati`), l'invio passa solo da `onPress`,
+e un `useRef` blocca un secondo invio mentre il primo è in corso.
+
+**"Visualizza link" ed "Elimina"** al posto di "Nuovo link" (richiesta
+dell'utente). Il codice del link ora si salva anche cifrato (AES-256-GCM,
+chiave derivata da `JWT_SECRET`, colonna `ProfileInvite.tokenCiphertext`,
+migrazione `20261006150000_profile_invite_token_ciphertext`): "Visualizza
+link" mostra lo stesso link già mandato, se vale ancora; se è scaduto o è
+stato creato prima di questa modifica ne crea uno nuovo, senza email.
+"Elimina" (con conferma) cancella account e profilo, solo se il
+professionista non ha mai scelto la password; resta nel registro azioni.
+La colonna "Link valido fino al" mostra "Scaduto" anche per i link scaduti.
+
+**Verde.** All'utente piaceva di più il verde di prima (`#189A63`), scurito
+in §171 per il contrasto. Scelta dell'utente fra tre opzioni ("Compromesso"):
+sfondi, hero, pulsanti, scelte attive e "Accetta" del banner cookie tornano
+a `cianografia`; i testi verdi e i link restano su `cianografiaScuro`
+(5,4:1). Tolto il token `cianografiaProfondo`, non più usato. Limite noto:
+il testo bianco sul verde di prima ha 3,6:1, sufficiente solo per il testo
+grande (3:1), non per il testo piccolo dei pulsanti (4,5:1).
+
+Verifica: 171 test API verdi (3 nuovi: link mostrato uguale e senza email,
+link scaduto rifatto senza email, eliminazione solo dei profili non
+confermati); `tsc` su tutto il monorepo; `prisma migrate diff` senza
+differenze.
+
+## 173. Pagina di presentazione e registrazione diretta per chi offre un servizio
+
+**Richiesta dell'utente** (6 ottobre 2026): prendere spunto da Rover
+("Diventa un dog sitter") e MioDottore per specialisti, molto più puliti
+della nostra registrazione. Chiarimento successivo dell'utente: quelle sono
+pagine di presentazione, con una registrazione diretta a parte
+(`miodottore.it/registrazione-medico`); servono entrambe per chi offre un
+servizio.
+
+**Decisione:**
+- `/per-professionisti` diventa la presentazione: titolo grande con "della
+  tua zona" in verde, foto (`/category-photos/imbianchino.webp`, foto
+  fornita dall'utente, la stessa già usata nella griglia categorie),
+  pulsanti "Iscriviti gratis" e "Vedi i prezzi", tre vantaggi, "Come
+  funziona" in 4 passi, prezzi (invariati, ora con ancora `#prezzi`) e
+  invito finale su fondo verde. Niente testimonianze né numeri finché non ce
+  ne sono di veri.
+- `/registrati?ruolo=professionista` a due colonne come MioDottore: a
+  sinistra il modulo su bianco (stessi campi, consensi e Google di prima),
+  a destra su pesca la foto dell'elettricista, tre vantaggi e il link alla
+  presentazione; su telefono il pannello va sotto il modulo. Tolti icona
+  tonda, "Passo 2 di 2" ed etichette di fiducia, che sul desktop finivano
+  sotto il bordo. La registrazione cliente resta com'era.
+- Intestazione e menu mobile: nuovo link "Sei un professionista?" (come
+  "Diventa un sitter"), nascosto a un professionista già autenticato;
+  "Prezzi" porta ora a `/per-professionisti#prezzi`.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1366, 1100 e
+390 px di larghezza senza scorrimento orizzontale.

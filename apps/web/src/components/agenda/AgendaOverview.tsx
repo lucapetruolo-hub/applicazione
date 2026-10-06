@@ -126,7 +126,7 @@ export function NextAppointmentSpotlight({ item }: { item: NextAgendaItem | null
       accessibilityRole="button"
       accessibilityLabel={`Prossimo intervento: ${item.title}, ${item.relativeLabel}`}
     >
-      <XStack width={44} height={44} borderRadius={22} backgroundColor={brand.cianografiaScuro} alignItems="center" justifyContent="center" flexShrink={0}>
+      <XStack width={44} height={44} borderRadius={22} backgroundColor={brand.cianografia} alignItems="center" justifyContent="center" flexShrink={0}>
         <Icon name="clock" size={20} color="white" strokeWidth={2} />
       </XStack>
       <YStack flex={1} minWidth={0} gap={2}>

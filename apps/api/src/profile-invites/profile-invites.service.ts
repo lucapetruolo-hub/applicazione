@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, GoneException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import type { PrismaClient } from "@professionisti/database";
 import {
@@ -23,6 +23,36 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+/**
+ * Il codice del link resta l'unica chiave dell'account finché il
+ * professionista non sceglie la password: nel database c'è l'impronta per
+ * verificarlo e una copia cifrata, leggibile solo dal server, per mostrare
+ * di nuovo il link all'operatore (docs/CHANGELOG.md §172).
+ */
+function tokenKey(): Buffer {
+  return createHash("sha256").update(`profile-invite:${process.env.JWT_SECRET ?? "dev-secret-change-me"}`).digest();
+}
+
+function encryptToken(token: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", tokenKey(), iv);
+  const data = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  return [iv, cipher.getAuthTag(), data].map((part) => part.toString("base64url")).join(".");
+}
+
+function decryptToken(value: string): string | null {
+  try {
+    const [iv, tag, data] = value.split(".").map((part) => Buffer.from(part, "base64url"));
+    if (!iv || !tag || !data) return null;
+    const decipher = createDecipheriv("aes-256-gcm", tokenKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+  } catch {
+    // Chiave cambiata (JWT_SECRET ruotato): si crea un link nuovo.
+    return null;
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -92,24 +122,67 @@ export class ProfileInvitesService {
     return this.issueLink(operatorUserId, user.id);
   }
 
-  /** Nuovo link per un profilo non ancora confermato (il precedente smette di valere). */
-  async newLink(operatorUserId: string, userId: string): Promise<ProfileInviteLink> {
+  private async requirePending(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { professionalProfile: { select: { invitePendingAt: true } } } });
     if (!user?.professionalProfile?.invitePendingAt || user.passwordHash) {
       throw new NotFoundException("Nessun profilo in attesa di conferma per questo utente.");
     }
-    return this.issueLink(operatorUserId, userId);
+    return user;
   }
 
-  private async issueLink(operatorUserId: string, userId: string): Promise<ProfileInviteLink> {
+  /**
+   * "Visualizza link": lo stesso link già mandato, se vale ancora; se è
+   * scaduto (o creato prima che si salvasse la copia cifrata) se ne crea
+   * uno nuovo, senza email, che sostituisce il precedente.
+   */
+  async viewLink(operatorUserId: string, userId: string): Promise<ProfileInviteLink> {
+    const user = await this.requirePending(userId);
+    const invite = await this.prisma.profileInvite.findFirst({
+      where: { userId, usedAt: null, expiresAt: { gt: new Date() }, tokenCiphertext: { not: null } },
+      orderBy: { createdAt: "desc" },
+      include: { user: { include: { professionalProfile: { select: { businessName: true } } } } },
+    });
+    const token = invite?.tokenCiphertext ? decryptToken(invite.tokenCiphertext) : null;
+    if (!invite || !token) return this.issueLink(operatorUserId, user.id, { sendEmail: false });
+    return {
+      userId,
+      email: user.email ?? "",
+      businessName: invite.user.professionalProfile?.businessName ?? "",
+      inviteUrl: this.inviteUrl(token),
+      expiresAt: invite.expiresAt.toISOString(),
+      emailSent: false,
+    };
+  }
+
+  /** "Elimina": solo un profilo mai confermato (nessuna password scelta), con account e link. */
+  async deletePending(operatorUserId: string, userId: string): Promise<void> {
+    const user = await this.requirePending(userId);
+    await this.prisma.user.delete({ where: { id: user.id } });
+    await this.auditLogService.record({
+      entityType: "User",
+      entityId: user.id,
+      fieldName: "profileInvite",
+      oldValue: { email: user.email },
+      changedByUserId: operatorUserId,
+      reason: "Profilo creato da un operatore eliminato prima della conferma.",
+    });
+  }
+
+  private inviteUrl(token: string): string {
+    return `${this.frontendUrl()}/completa-profilo?codice=${token}`;
+  }
+
+  private async issueLink(operatorUserId: string, userId: string, options: { sendEmail?: boolean } = {}): Promise<ProfileInviteLink> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { professionalProfile: { select: { businessName: true } } } });
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + PROFILE_INVITE_DAYS * DAY_MS);
     await this.prisma.profileInvite.updateMany({ where: { userId, usedAt: null }, data: { expiresAt: new Date() } });
-    await this.prisma.profileInvite.create({ data: { userId, tokenHash: hashToken(token), createdByUserId: operatorUserId, expiresAt } });
-    const inviteUrl = `${this.frontendUrl()}/completa-profilo?codice=${token}`;
+    await this.prisma.profileInvite.create({
+      data: { userId, tokenHash: hashToken(token), tokenCiphertext: encryptToken(token), createdByUserId: operatorUserId, expiresAt },
+    });
+    const inviteUrl = this.inviteUrl(token);
     const businessName = user.professionalProfile?.businessName ?? "";
-    const emailSent = user.email
+    const emailSent = user.email && options.sendEmail !== false
       ? await this.emailService.send({
           to: user.email,
           subject: "Il tuo profilo su Manovia è pronto",
