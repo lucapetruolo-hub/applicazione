@@ -51,7 +51,7 @@ const POINTS = [
  */
 export function PlatformGuarantee() {
   // I due punti sul pagamento online sono "In arrivo" finché Stripe non è
-  // attivo (docs/CHANGELOG.md §169).
+  // attivo (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   return (
     <Section eyebrow="Garanzia Piattaforma" title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>

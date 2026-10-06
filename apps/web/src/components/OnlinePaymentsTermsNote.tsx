@@ -3,7 +3,7 @@
 import { useOnlinePayments } from "@/lib/onlinePayments";
 
 /**
- * Riga in testa al punto 5 dei Termini (docs/CHANGELOG.md §169): finché il
+ * Riga in testa al punto 5 dei Termini (docs/CHANGELOG.md §170): finché il
  * pagamento online non è attivo, il punto vale solo per il pagamento diretto.
  * Il resto del testo resta com'è, perché è quello da far verificare
  * all'avvocato e vale dal giorno in cui Stripe viene attivato.

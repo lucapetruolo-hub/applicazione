@@ -601,7 +601,7 @@ export class GuidedRequestsService {
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
-        // Profilo creato da un operatore, non ancora confermato (§169).
+        // Profilo creato da un operatore, non ancora confermato (§170).
         invitePendingAt: null,
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
         OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],

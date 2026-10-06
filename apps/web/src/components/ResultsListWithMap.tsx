@@ -486,7 +486,7 @@ export function ResultsListWithMap({
             </div>
             <div className="sort-info-body">
               {/* Testo allineato all'ordinamento reale di ProfessionalsService.search
-                  (docs/CHANGELOG.md §169): i parametri principali e il peso
+                  (docs/CHANGELOG.md §170): i parametri principali e il peso
                   dei pagamenti vanno dichiarati (Codice del Consumo art. 22,
                   Reg. UE 2019/1150 art. 5). Se cambia l'ordinamento, cambia
                   anche questo testo. */}

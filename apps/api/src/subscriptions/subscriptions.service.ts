@@ -36,7 +36,7 @@ function paymentsActive(): boolean {
 
 /**
  * Pause attive: servono i pagamenti e il sito lanciato (`LAUNCH_DATE`
- * passata, docs/CHANGELOG.md §169). Senza data di lancio nessuno va in
+ * passata, docs/CHANGELOG.md §170). Senza data di lancio nessuno va in
  * pausa, anche con Stripe acceso: i professionisti reclutati prima del
  * lancio non spariscono dalla ricerca il giorno in cui si mette la chiave.
  */
@@ -154,7 +154,7 @@ export class SubscriptionsService {
     const used = await this.countAcceptedJobsThisMonth(profile.id, now);
     const pausedReason = await this.syncPause(profile.id, now, used);
     const launch = launchDate();
-    // Prima del lancio la prova non scorre (docs/CHANGELOG.md §169): finisce
+    // Prima del lancio la prova non scorre (docs/CHANGELOG.md §170): finisce
     // un mese dopo il lancio, o non ha ancora una data se il lancio non è fissato.
     const waitingLaunch = !hasLaunched(now, launch) && (!sub || sub.status === "TRIALING");
     const state = waitingLaunch ? "TRIAL" : subscriptionState(sub, now);
@@ -255,7 +255,7 @@ export class SubscriptionsService {
 
   /**
    * Dal lancio in poi: chi era in prova da prima del lancio la finisce un
-   * mese dopo il lancio (docs/CHANGELOG.md §169). Solo prove non ancora
+   * mese dopo il lancio (docs/CHANGELOG.md §170). Solo prove non ancora
    * allungate oltre quella data e senza abbonamento Stripe; idempotente.
    */
   async alignTrialsToLaunch(now = new Date()): Promise<number> {

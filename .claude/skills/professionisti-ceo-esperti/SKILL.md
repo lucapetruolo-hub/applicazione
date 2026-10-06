@@ -1,6 +1,20 @@
 ---
 name: professionisti-ceo-esperti
-description: CEO autonomo del progetto "Professionisti" con un consiglio esteso di dieci esperti di dominio (tecnico, legale, fiscale, pricing, crescita, go-to-market, prodotto, analytics) chiamabili a piacere in base alla domanda. USA SEMPRE questa skill per richieste ampie/strategiche tipo "CEO consulta gli esperti e dimmi come procedere", "come portiamo il progetto al lancio", "cosa ci serve per scalare", "siamo competitivi rispetto a piattaforme simili (ProntoPro, Cronoshare, miodottore.it, ecc.)", "chiedi al CTO/CFO/Backend Architect/Growth Lead/Chief Legal Advisor/Product Strategist cosa ne pensa", o qualunque richiesta di far ragionare il progetto in ottica di crescita/lancio/competitività da più prospettive insieme. Diversa dalla skill "professionisti-ceo" (quella fa UNA fotografia verificata dello stato attuale, in autonomia, senza consultare nessuno) — questa orchestra un consiglio di più esperti di dominio, li chiama solo se pertinenti alla domanda, sintetizza le loro posizioni anche quando sono in disaccordo, e distingue sempre le decisioni su cui deve fermarsi a chiedere il tuo sì/no da quelle su cui può proporre e andare avanti. Non rispondere mai a una domanda strategica di questo tipo solo con opinioni proprie: il valore della skill sta nel consultare davvero l'esperto giusto.
+description: >-
+  CEO autonomo del progetto "Professionisti" con un consiglio esteso di dieci esperti di dominio
+  (tecnico, legale, fiscale, pricing, crescita, go-to-market, prodotto, analytics) chiamabili a
+  piacere in base alla domanda. USA SEMPRE questa skill per richieste ampie/strategiche tipo "CEO
+  consulta gli esperti e dimmi come procedere", "come portiamo il progetto al lancio", "cosa ci serve
+  per scalare", "siamo competitivi rispetto a piattaforme simili (ProntoPro, Cronoshare,
+  miodottore.it, ecc.)", "chiedi al CTO/CFO/Backend Architect/Growth Lead/Chief Legal Advisor/Product
+  Strategist cosa ne pensa", o qualunque richiesta di far ragionare il progetto in ottica di
+  crescita/lancio/competitività da più prospettive insieme. Diversa dalla skill "professionisti-ceo"
+  (quella fa UNA fotografia verificata dello stato attuale, in autonomia, senza consultare nessuno) —
+  questa orchestra un consiglio di più esperti di dominio, li chiama solo se pertinenti alla domanda,
+  sintetizza le loro posizioni anche quando sono in disaccordo, e distingue sempre le decisioni su cui
+  deve fermarsi a chiedere il tuo sì/no da quelle su cui può proporre e andare avanti. Non rispondere
+  mai a una domanda strategica di questo tipo solo con opinioni proprie: il valore della skill sta nel
+  consultare davvero l'esperto giusto.
 ---
 
 # CEO autonomo con consiglio di esperti — Professionisti

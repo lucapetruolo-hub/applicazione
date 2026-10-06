@@ -3,7 +3,7 @@ import { ConflictException, GoneException, NotFoundException } from "@nestjs/com
 import { ProfileInvitesService } from "./profile-invites.service";
 
 /**
- * Profili creati al telefono (docs/CHANGELOG.md §169): il link d'invito è
+ * Profili creati al telefono (docs/CHANGELOG.md §170): il link d'invito è
  * l'unica chiave dell'account finché il professionista non sceglie la
  * password, quindi deve valere una volta sola e scadere.
  */

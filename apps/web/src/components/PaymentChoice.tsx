@@ -21,7 +21,7 @@ function eur(cents: number): string {
  *
  * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
  * diretto, con una riga che spiega che quello online arriverà
- * (docs/CHANGELOG.md §169).
+ * (docs/CHANGELOG.md §170).
  */
 export function PaymentChoice({
   value,

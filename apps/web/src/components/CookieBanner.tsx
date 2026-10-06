@@ -26,7 +26,7 @@ export function CookieBanner() {
   useEffect(() => {
     if (!hasCookieChoice()) setVisible(true);
     // "Preferenze cookie" nel footer riapre il banner per cambiare idea
-    // (revoca del consenso, docs/CHANGELOG.md §169).
+    // (revoca del consenso, docs/CHANGELOG.md §170).
     const reopen = () => setVisible(true);
     window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
     return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);

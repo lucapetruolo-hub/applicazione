@@ -15910,7 +15910,45 @@ Verifica:
   riquadro online e diretto del cliente, riquadro del professionista,
   admin pagamenti.
 
-## 169. Fase 3 della roadmap di lancio: denaro sicuro, prova dal lancio, profili creati al telefono, cookie, ordine dei risultati, privacy
+## 169. Database Render scaduto: secondo database gratuito e scadenza da ricordare
+
+Il database gratuito di Render (`professionisti-db`) è scaduto: Render ha
+inviato l'avviso di sospensione, con 14 giorni prima della cancellazione.
+Con l'utente si è scelto di non pagare ancora e di creare un nuovo database
+gratuito, perdendo i dati di prova (solo account e richieste di test).
+
+Cosa è stato fatto, a mano su Render dall'utente:
+- creato il nuovo database gratuito e aggiornato `DATABASE_URL` del
+  servizio `professionisti-api`;
+- le migrazioni e le categorie si sono applicate da sole all'avvio, come
+  previsto (CLAUDE.md §2);
+- verificato che l'API risponde (`/health`) e che il sito funziona;
+- l'amministratore è stato ricreato con `/admin/promuovi`;
+- il vecchio database è da eliminare quando non serve più.
+
+Decisioni prese:
+- Questo secondo database è gratuito, quindi scade a sua volta dopo 30
+  giorni, intorno al **5 novembre 2026**.
+- Consigliato dal CEO (restare su Render, non passare a Railway): prima
+  del lancio passare a pagamento il database e il servizio API. Il piano
+  gratuito dell'API va in sleep dopo 15 minuti e in quel caso i job orari
+  non girano. Servono per le scadenze delle segnalazioni, gli accrediti
+  dei pagamenti e i promemoria.
+- Il punto 4bis della checklist pre-lancio (CLAUDE.md §10) ora riporta la
+  data di scadenza.
+- Promemoria programmato per il 29 ottobre 2026, una settimana prima.
+- Il vecchio database non si può cancellare a mano da Render perché è legato
+  al Blueprint (`render.yaml` lo dichiara, e `DATABASE_URL` dell'API punta a
+  lui con `fromDatabase`). Si cancella da solo entro 14 giorni. Rischio: una
+  risincronizzazione del Blueprint potrebbe rimettere `DATABASE_URL` sul
+  database vecchio. Per questo non si modifica `render.yaml` finché non si
+  passa a pagamento: a quel punto lo si riscrive perché descriva i servizi
+  veri.
+- La checklist pre-lancio ora vive in `.claude/skills/checklist-lancio/
+  SKILL.md` (spostata da un altro giro di lavoro, che ha alleggerito
+  `CLAUDE.md`): la nota sulla scadenza è lì.
+
+## 170. Fase 3 della roadmap di lancio: denaro sicuro, prova dal lancio, profili creati al telefono, cookie, ordine dei risultati, privacy
 
 Richiesta esplicita dell'utente: "ok procedi con 3.1 3.2 3.5 3.6 3.7 3.8
 3.9 3.10 3.11 3.12" (punti della Fase 3 della roadmap di lancio, rivista
@@ -15934,8 +15972,13 @@ con il consiglio CEO: CFO, legale, crescita, CTO).
   volta sola, presa in carico concorrente, segnalazione aperta, errore
   dopo/prima del trasferimento, conto Stripe mancante, rimborsi e
   storni con le chiavi giuste).
-- **3.12 `render.yaml` e `.env.example`** allineati ai tre prezzi
-  `STRIPE_PRICE_BASE/PLUS/PRO` (§161) e a `LAUNCH_DATE`.
+- **3.12 Variabili dei prezzi allineate.** `apps/api/.env.example` ha i
+  tre prezzi `STRIPE_PRICE_BASE/PLUS/PRO` (§161) e `LAUNCH_DATE`.
+  `render.yaml` invece non si tocca finché database e API non passano a
+  pagamento (§169: una risincronizzazione del Blueprint potrebbe rimettere
+  `DATABASE_URL` sul database scaduto), quindi `STRIPE_PRICE_BASE/PLUS/PRO`
+  e `LAUNCH_DATE` vanno aggiunte a mano nella dashboard Render e nel
+  `render.yaml` quando lo si riscrive.
 - **3.5 Pagamento online nascosto finché Stripe non è attivo.**
   `GET /health/features` → `{ onlinePayments }` (vero solo con
   `STRIPE_SECRET_KEY`), letto dal sito con `useOnlinePayments()`. Senza

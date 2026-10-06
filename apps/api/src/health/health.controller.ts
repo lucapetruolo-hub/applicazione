@@ -10,7 +10,7 @@ export class HealthController {
 
   /**
    * Funzioni attive su questo ambiente, lette dal sito per non promettere ciò
-   * che non funziona (docs/CHANGELOG.md §169): senza chiave Stripe il
+   * che non funziona (docs/CHANGELOG.md §170): senza chiave Stripe il
    * pagamento online dei lavori non viene offerto.
    */
   @Get("features")

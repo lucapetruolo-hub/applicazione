@@ -2,7 +2,7 @@ import { z } from "zod";
 import { professionalCategorySlugSchema } from "./schemas";
 
 /**
- * Profilo creato da un operatore al telefono (docs/CHANGELOG.md §169,
+ * Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170,
  * CLAUDE.md §7-§8: "in fase di lancio manuale, un operatore crea il profilo
  * al telefono con loro"). L'operatore inserisce i dati essenziali e manda al
  * professionista un link: il professionista sceglie la password, accetta

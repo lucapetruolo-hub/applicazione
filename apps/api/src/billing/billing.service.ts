@@ -138,7 +138,7 @@ export class BillingService {
     // email Stripe e può scaricarla dal Customer Portal.
     // Chi sceglie un livello durante la prova gratuita non perde i giorni
     // rimasti: il primo canone parte alla fine della prova. Prima del lancio
-    // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §169).
+    // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §170).
     const launch = launchDate();
     const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
     const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch) : current?.trialEndsAt;
@@ -330,7 +330,7 @@ export class BillingService {
 
   /**
    * Verifica la firma Stripe e applica gli effetti dell'evento una sola volta
-   * per event.id (docs/CHANGELOG.md §169): l'evento viene prenotato in
+   * per event.id (docs/CHANGELOG.md §170): l'evento viene prenotato in
    * `stripe_webhook_events` prima di toccare i dati.
    * - già elaborato → risposta 200 senza rifare nulla;
    * - in lavorazione (consegna doppia contemporanea) → 409, Stripe riprova più tardi;

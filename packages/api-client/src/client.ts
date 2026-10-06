@@ -757,7 +757,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
   return {
     health: () => request<{ status: string }>("/health"),
-    /** Funzioni attive sul server (docs/CHANGELOG.md §169): oggi solo il pagamento online dei lavori. */
+    /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
@@ -1397,7 +1397,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     adminListWaitlist: (token: string) =>
       request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §169). */
+    /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
     adminListProfileInvites: (token: string) =>
       request<PendingProfileInvite[]>("/admin/professional-invites", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminCreateProfileInvite: (token: string, input: OperatorProfileInviteInput) =>

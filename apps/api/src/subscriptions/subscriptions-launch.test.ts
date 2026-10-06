@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SubscriptionsService } from "./subscriptions.service";
 
 /**
- * Professionisti reclutati prima del lancio (docs/CHANGELOG.md §169): la loro
+ * Professionisti reclutati prima del lancio (docs/CHANGELOG.md §170): la loro
  * prova non deve finire prima del lancio, e accendere Stripe non deve
  * metterli in pausa finché il lancio non è fissato.
  */

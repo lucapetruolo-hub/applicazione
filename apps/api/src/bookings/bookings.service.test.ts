@@ -143,7 +143,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     delete process.env.STRIPE_SECRET_KEY;
   });
 
-  it("senza Stripe attivo rifiuta il pagamento online prima di creare la prenotazione (§169)", async () => {
+  it("senza Stripe attivo rifiuta il pagamento online prima di creare la prenotazione (§170)", async () => {
     delete process.env.STRIPE_SECRET_KEY;
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());

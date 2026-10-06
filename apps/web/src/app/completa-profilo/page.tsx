@@ -20,7 +20,7 @@ export default function CompletaProfiloPage() {
 
 /**
  * Link d'invito per un profilo creato da un operatore al telefono
- * (docs/CHANGELOG.md §169): il professionista sceglie la password, accetta
+ * (docs/CHANGELOG.md §170): il professionista sceglie la password, accetta
  * informative e maggiore età, ed entra. Il profilo entra in ricerca solo
  * quando lo salva da /dashboard/profilo accettando la dichiarazione.
  */

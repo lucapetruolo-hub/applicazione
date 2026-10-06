@@ -44,7 +44,7 @@ export function grantCookieConsent(): void {
 }
 
 /**
- * Rifiuto dei servizi Google (docs/CHANGELOG.md §169: rifiutare deve essere
+ * Rifiuto dei servizi Google (docs/CHANGELOG.md §170: rifiutare deve essere
  * facile quanto accettare). Se prima erano stati accettati, ricarica la
  * pagina: gli script Google già caricati restano in memoria finché la
  * pagina è aperta, ricaricando spariscono davvero.

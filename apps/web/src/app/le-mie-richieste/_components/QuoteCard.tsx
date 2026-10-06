@@ -96,7 +96,7 @@ export function QuoteCard({
   // Scelta del metodo di pagamento prima di accettare (§168).
   const [choosingPayment, setChoosingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("DIRECT");
-  // Senza Stripe attivo si offre solo il pagamento diretto (docs/CHANGELOG.md §169).
+  // Senza Stripe attivo si offre solo il pagamento diretto (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);

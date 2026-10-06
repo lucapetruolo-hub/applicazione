@@ -337,7 +337,7 @@ export class OnlineMoneyService {
     if (claimed.count === 0) return false;
     // Dopo il trasferimento i soldi sono partiti: un errore successivo (scrittura
     // sul database) non deve più rimettere il pagamento in coda, altrimenti il
-    // giro dopo trasferirebbe una seconda volta (docs/CHANGELOG.md §169).
+    // giro dopo trasferirebbe una seconda volta (docs/CHANGELOG.md §170).
     let moneyMoved = false;
     try {
       if (refundToClient > 0) await this.refundAcrossPayments(jp.id, refundToClient, "Differenza tra acconto e importo finale.");

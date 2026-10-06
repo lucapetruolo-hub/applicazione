@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
- * Flusso del denaro dei pagamenti online (docs/CHANGELOG.md §169): accredito
+ * Flusso del denaro dei pagamenti online (docs/CHANGELOG.md §170): accredito
  * al professionista, nuovi tentativi e rimborsi. Un bug qui significa soldi
  * pagati due volte o soldi persi, quindi ogni chiamata a Stripe è finta e
  * controllata: quante volte parte e con quale chiave di idempotenza.

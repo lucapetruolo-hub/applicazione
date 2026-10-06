@@ -109,7 +109,7 @@ export class ProfessionalsService {
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
-        // Creato da un operatore e non ancora confermato dal professionista (§169).
+        // Creato da un operatore e non ancora confermato dal professionista (§170).
         invitePendingAt: null,
         // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
         // in pausa, fuori dalla ricerca finché non può ricevere richieste.
@@ -559,7 +559,7 @@ export class ProfessionalsService {
 
   /**
    * `byOperator`: profilo creato da un operatore al telefono
-   * (docs/CHANGELOG.md §169). Niente dichiarazione (la accetta il
+   * (docs/CHANGELOG.md §170). Niente dichiarazione (la accetta il
    * professionista al primo salvataggio), profilo fuori dalla ricerca e
    * dallo smistamento finché non lo fa.
    */

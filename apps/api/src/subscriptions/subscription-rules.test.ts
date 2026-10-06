@@ -100,7 +100,7 @@ describe("avvisi di utilizzo (80% e 100%)", () => {
   });
 });
 
-describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §169)", () => {
+describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §170)", () => {
   const launch = launchDate("2026-11-02")!;
 
   it("legge la data di lancio come mezzanotte italiana", () => {

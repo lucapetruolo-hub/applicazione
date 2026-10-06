@@ -179,7 +179,7 @@ export default function DashboardProfiloPage() {
   // prompt per un fetch fallito/non ancora tornato).
   const [isFirstProfileSave, setIsFirstProfileSave] = useState(false);
   const [showAgendaPrompt, setShowAgendaPrompt] = useState(false);
-  // Profilo preparato da un operatore (docs/CHANGELOG.md §169) o dichiarazione
+  // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
 

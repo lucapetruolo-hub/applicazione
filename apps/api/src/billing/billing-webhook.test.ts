@@ -3,7 +3,7 @@ import { ConflictException } from "@nestjs/common";
 import { BillingService } from "./billing.service";
 
 /**
- * Webhook Stripe (docs/CHANGELOG.md §169): Stripe ripete un evento quando
+ * Webhook Stripe (docs/CHANGELOG.md §170): Stripe ripete un evento quando
  * non riceve risposta in tempo. Ogni evento deve produrre i suoi effetti
  * una volta sola, e un evento fallito deve poter essere rifatto.
  */

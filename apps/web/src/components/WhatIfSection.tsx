@@ -16,7 +16,7 @@ export const WHAT_IF_ITEMS: { question: string; answer: string; answerWithoutOnl
   {
     question: "Cosa succede se il professionista non si presenta?",
     answer: "Se hai pagato online ti rimborsiamo l'acconto e con un tasto mandi la stessa richiesta ad altri professionisti della zona. Se hai scelto il pagamento diretto, ti mettiamo in contatto con il professionista per trovare un accordo.",
-    // Finché il pagamento online non è attivo (docs/CHANGELOG.md §169).
+    // Finché il pagamento online non è attivo (docs/CHANGELOG.md §170).
     answerWithoutOnline: "Puoi segnalarlo e con un tasto mandi la stessa richiesta ad altri professionisti della zona. Per il pagamento ti mettiamo in contatto con il professionista per trovare un accordo.",
   },
   {

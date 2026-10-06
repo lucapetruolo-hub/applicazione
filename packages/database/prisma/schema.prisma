@@ -240,7 +240,7 @@ model ProfessionalProfile {
   // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
   pausedAt     DateTime?
   pausedReason String?
-  // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §169):
+  // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170):
   // fuori dalla ricerca e dallo smistamento finché il professionista non apre
   // il link d'invito, imposta la password e salva il profilo accettando la
   // dichiarazione. Da filtrare come `pausedAt` in ogni nuovo punto che mostra
@@ -1995,7 +1995,7 @@ model JobIssue {
   @@map("job_issues")
 }
 
-// Eventi Stripe già ricevuti (docs/CHANGELOG.md §169): Stripe ripete un
+// Eventi Stripe già ricevuti (docs/CHANGELOG.md §170): Stripe ripete un
 // webhook quando non riceve risposta in tempo (succede col risveglio lento
 // di Render), e senza questa tabella ogni ripetizione registrava di nuovo
 // pagamenti e boost. `processedAt` nullo = evento in lavorazione.
@@ -2009,7 +2009,7 @@ model StripeWebhookEvent {
 }
 
 // Link d'invito per un profilo creato da un operatore (docs/CHANGELOG.md
-// §169): il professionista lo apre, sceglie la password ed entra. Si salva
+// §170): il professionista lo apre, sceglie la password ed entra. Si salva
 // solo l'impronta SHA-256 del codice, mai il codice stesso.
 model ProfileInvite {
   id              String    @id @default(uuid())

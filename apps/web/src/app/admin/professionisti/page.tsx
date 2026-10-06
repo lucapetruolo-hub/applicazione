@@ -24,7 +24,7 @@ function optional(value: string): string | undefined {
 }
 
 /**
- * Profili creati al telefono da un operatore (docs/CHANGELOG.md §169): il
+ * Profili creati al telefono da un operatore (docs/CHANGELOG.md §170): il
  * profilo resta fuori dalla ricerca finché il professionista non apre il
  * link, sceglie la password e conferma la dichiarazione dal proprio profilo.
  */

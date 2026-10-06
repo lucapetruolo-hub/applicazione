@@ -30,7 +30,7 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Profili creati da un operatore al telefono (docs/CHANGELOG.md §169).
+ * Profili creati da un operatore al telefono (docs/CHANGELOG.md §170).
  * L'operatore crea account e profilo con i dati essenziali, il
  * professionista riceve un link per scegliere la password; il profilo resta
  * fuori dalla ricerca (`invitePendingAt`) finché non lo salva accettando la

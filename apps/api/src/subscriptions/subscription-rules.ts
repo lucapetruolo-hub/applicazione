@@ -138,7 +138,7 @@ const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Data di lancio del sito (variabile `LAUNCH_DATE` su Render, formato
- * AAAA-MM-GG, mezzanotte ora solare italiana), docs/CHANGELOG.md §169: il mese
+ * AAAA-MM-GG, mezzanotte ora solare italiana), docs/CHANGELOG.md §170: il mese
  * gratuito parte da lì, non dall'iscrizione, così chi viene reclutato prima
  * del lancio non arriva al lancio con la prova già finita. Null se non
  * impostata o scritta male.

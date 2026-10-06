@@ -93,7 +93,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
     SubscriptionsModule,
-    // Profili creati al telefono da un operatore (docs/CHANGELOG.md §169).
+    // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
   ],
   controllers: [HealthController],
