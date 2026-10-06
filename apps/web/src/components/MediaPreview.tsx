@@ -88,7 +88,7 @@ export function MediaPreview({
         }}
         onClick={onClick as MouseEventHandler<HTMLDivElement>}
       >
-        <Icon name="file-text" size={20} color={brand.cianografia} />
+        <Icon name="file-text" size={20} color={brand.cianografiaScuro} />
         <span style={{ fontSize: 9, fontWeight: 700, color: brand.grafite70 }}>{documentTypeLabel(url)}</span>
       </div>
     );

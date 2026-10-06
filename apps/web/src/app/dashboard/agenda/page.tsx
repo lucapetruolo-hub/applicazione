@@ -772,7 +772,7 @@ function DashboardAgendaContent() {
                 fontSize={9}
                 fontWeight="700"
                 letterSpacing={0.2}
-                color={allDaySelected ? brand.cianografia : brand.grafite70}
+                color={allDaySelected ? brand.cianografiaScuro : brand.grafite70}
               >
                 {allDaySelected ? "Giorno selezionato" : "Seleziona giorno"}
               </Text>
@@ -860,7 +860,7 @@ function DashboardAgendaContent() {
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi fascia oraria"
               >
-                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografia} />
+                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
               </XStack>
             ) : daySlots.length === 0 ? (
               <Text fontFamily="$mono" fontSize={9} fontWeight="600" letterSpacing={0.2} color={brand.grafite70}>
@@ -901,7 +901,7 @@ function DashboardAgendaContent() {
       return (
         <XStack alignItems="center" gap={4}>
           <SelectionCheckbox checked={allSelected} />
-          <Text fontFamily="$mono" fontSize={9} fontWeight="700" color={allSelected ? brand.cianografia : brand.grafite70}>
+          <Text fontFamily="$mono" fontSize={9} fontWeight="700" color={allSelected ? brand.cianografiaScuro : brand.grafite70}>
             {daySlotsWithIndex.length}
           </Text>
         </XStack>
@@ -1251,7 +1251,7 @@ function DashboardAgendaContent() {
           {/* Elenco di richieste, preventivi e lavori: vive solo in
               "Richieste e lavori" (docs/CHANGELOG.md §147), qui resta il
               calendario. */}
-          <Link href="/dashboard/richieste" style={{ color: brand.cianografia, fontWeight: 600, fontSize: 14 }}>
+          <Link href="/dashboard/richieste" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>
             Richieste, preventivi e lavori in elenco →
           </Link>
         </YStack>
@@ -1300,7 +1300,7 @@ function DashboardAgendaContent() {
             borderColor={brand.cianografia}
             borderRadius="$4"
           >
-            <Icon name="calendar" size={20} color={brand.cianografia} strokeWidth={1.5} />
+            <Icon name="calendar" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
             <YStack flex={1} gap="$2">
               <Text fontWeight="700" color={brand.grafite}>
                 Non hai ancora impostato la tua disponibilità
@@ -1339,7 +1339,7 @@ function DashboardAgendaContent() {
                     fontFamily="$mono"
                     fontSize={12}
                     fontWeight="700"
-                    color={brand.cianografia}
+                    color={brand.cianografiaScuro}
                     cursor="pointer"
                     onPress={toggleMonthSelection}
                     accessibilityRole="button"

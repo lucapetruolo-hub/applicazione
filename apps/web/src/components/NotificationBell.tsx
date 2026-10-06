@@ -154,13 +154,13 @@ function NotificationRow({
             {timeAgo(item.createdAt)}
           </Text>
         </YStack>
-        {isUnread ? <YStack width={7} height={7} borderRadius={999} backgroundColor={brand.cianografia} marginTop={7} /> : null}
+        {isUnread ? <YStack width={7} height={7} borderRadius={999} backgroundColor={brand.cianografiaScuro} marginTop={7} /> : null}
       </XStack>
       {/* Accento a sinistra sulle non lette — sostituisce il solo sfondo
           tinto come unico indizio di "non letta", più riconoscibile a
           colpo d'occhio in una lista scorrevole. */}
       {isUnread ? (
-        <YStack position="absolute" top={0} bottom={0} left={0} width={3} backgroundColor={brand.cianografia} />
+        <YStack position="absolute" top={0} bottom={0} left={0} width={3} backgroundColor={brand.cianografiaScuro} />
       ) : null}
       {/* Pulsante di eliminazione — richiesta esplicita dell'utente: "un
           piccolo pulsante in alto a destra per ogni notifica", oltre allo
@@ -328,7 +328,7 @@ export function NotificationBell() {
           >
             <XStack alignItems="center" gap="$2">
               <YStack width={26} height={26} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo}>
-                <Icon name="bell-ring" size={13} color={brand.cianografia} />
+                <Icon name="bell-ring" size={13} color={brand.cianografiaScuro} />
               </YStack>
               <Text fontFamily="$body" fontWeight="700" fontSize="$3" color={brand.grafite}>
                 Notifiche

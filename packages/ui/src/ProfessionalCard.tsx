@@ -250,8 +250,8 @@ export function ProfessionalCard({
               ) : null}
               {isNewProfile ? (
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                  <Icon name="sparkles" size={13} color={brand.cianografia} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
+                  <Icon name="sparkles" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
                     Nuovo profilo
                   </Text>
                 </XStack>
@@ -275,8 +275,8 @@ export function ProfessionalCard({
               {rating !== undefined ? <Rating value={rating} count={reviewCount} size={15} /> : null}
               {remoteAvailable ? (
                 <XStack gap="$1" alignItems="center">
-                  <Icon name="video" size={13} color={brand.cianografia} strokeWidth={1.5} />
-                  <Text fontFamily="$body" fontSize={11} color={brand.cianografia} fontWeight="700">
+                  <Icon name="video" size={13} color={brand.cianografiaScuro} strokeWidth={1.5} />
+                  <Text fontFamily="$body" fontSize={11} color={brand.cianografiaScuro} fontWeight="700">
                     Offre consulenza online
                   </Text>
                 </XStack>
@@ -318,10 +318,10 @@ export function ProfessionalCard({
                     accessibilityRole="button"
                     accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
                   >
-                    <Text fontSize={13} fontWeight="600" color={brand.cianografia}>
+                    <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
                       {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
                     </Text>
-                    <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografia} strokeWidth={2} />
+                    <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />
                   </XStack>
                 ) : null}
               </YStack>
@@ -368,7 +368,7 @@ export function ProfessionalCard({
                   paddingHorizontal="$2"
                   paddingVertical={4}
                   borderRadius="$10"
-                  backgroundColor={activeMode === mode ? brand.cianografia : brand.gesso}
+                  backgroundColor={activeMode === mode ? brand.cianografiaScuro : brand.gesso}
                   cursor="pointer"
                   accessibilityRole="button"
                   accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
@@ -524,7 +524,7 @@ export function ProfessionalCard({
                   paddingHorizontal="$3"
                   paddingVertical={6}
                   borderRadius="$10"
-                  backgroundColor={brand.cianografia}
+                  backgroundColor={brand.cianografiaScuro}
                   cursor="pointer"
                   accessibilityRole="button"
                   accessibilityLabel="Mostra orari disponibili"

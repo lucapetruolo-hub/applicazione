@@ -13,7 +13,7 @@ export type EyebrowProps = {
  * pattern per tutto il sito: mai testo introduttivo scritto ad-hoc altrove.
  */
 export function Eyebrow({ children, tone = "light" }: EyebrowProps) {
-  const bg = tone === "dark" ? "rgba(255,255,255,0.16)" : brand.cianografiaVelo;
+  const bg = tone === "dark" ? "rgba(0,0,0,0.22)" : brand.cianografiaVelo;
   const textColor = tone === "dark" ? "white" : brand.cianografiaScuro;
 
   return (

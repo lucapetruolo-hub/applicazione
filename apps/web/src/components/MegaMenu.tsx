@@ -254,7 +254,7 @@ export function MegaMenu() {
         .mega-item-icon {
           flex-shrink: 0;
           margin-top: 2px;
-          color: #189a63;
+          color: #0e7a4c;
         }
         .mega-item-text {
           display: flex;
@@ -367,7 +367,7 @@ export function MegaMenu() {
           font-weight: 600;
         }
         :global(.mega-navlink-strong) {
-          color: #189a63;
+          color: #0e7a4c;
         }
         .mega-section-label {
           font-size: 12px;

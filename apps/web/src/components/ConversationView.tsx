@@ -550,12 +550,12 @@ export function ConversationView({
         role="note"
       >
         <YStack flexShrink={0}>
-          <Icon name="shield-check" size={18} color={brand.cianografia} strokeWidth={1.75} />
+          <Icon name="shield-check" size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
         </YStack>
         <Text fontSize="$2" color={brand.grafite} flex={1}>
           Non inquadrare QR code e non condividere numeri di telefono o dati personali. Resta sempre in questa chat e segnala comportamenti
           sospetti.{" "}
-          <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografia, fontWeight: 700 }}>
+          <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scopri di più
           </Link>
         </Text>
@@ -660,7 +660,7 @@ export function ConversationView({
                               onPress={() => openMediaAt(event.mediaUrls, url)}
                               accessibilityRole="button"
                             >
-                              <Icon name="file-text" size={14} color={brand.cianografia} />
+                              <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
                               <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
                                 {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
                               </Text>
@@ -732,7 +732,7 @@ export function ConversationView({
                 onPress={() => openMediaAt(mediaUrls, url)}
                 accessibilityRole="button"
               >
-                <Icon name="file-text" size={14} color={brand.cianografia} />
+                <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
                 <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
                   {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
                 </Text>

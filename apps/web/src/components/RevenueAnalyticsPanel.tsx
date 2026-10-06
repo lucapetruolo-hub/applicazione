@@ -108,7 +108,7 @@ export function RevenueAnalyticsPanel({ data, chartCaption }: { data: RevenueAna
                   key={opt.key}
                   paddingHorizontal="$3"
                   paddingVertical={9}
-                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  backgroundColor={active ? brand.cianografiaScuro : brand.calce}
                   cursor="pointer"
                   onPress={() => setRange(opt.key)}
                   accessibilityRole="button"

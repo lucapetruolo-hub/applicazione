@@ -37,7 +37,7 @@ export function HomeHero() {
       <YStack
         width="100%"
         maxWidth={1160}
-        backgroundColor={brand.cianografia}
+        backgroundColor={brand.cianografiaScuro}
         borderRadius={40}
         paddingVertical="$8"
         paddingHorizontal="$5"

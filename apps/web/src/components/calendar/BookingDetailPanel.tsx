@@ -204,7 +204,7 @@ export function BookingDetailPanel({
               pubblica senza GuidedRequest collegata. */}
           {booking.serviceMode ? (
             <XStack alignItems="center" gap={6} marginTop={2}>
-              <Icon name={booking.serviceMode === "ONLINE" ? "video" : "house"} size={14} color={brand.cianografia} strokeWidth={1.5} />
+              <Icon name={booking.serviceMode === "ONLINE" ? "video" : "house"} size={14} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontFamily="$body" fontSize="$3" fontWeight="600" color={brand.grafite}>
                 {booking.serviceMode === "ONLINE" ? "Consulenza online" : "A domicilio"}
               </Text>
@@ -242,8 +242,8 @@ export function BookingDetailPanel({
                 <XStack alignItems="center" gap="$3" flexWrap="wrap">
                   <a href={`tel:${recipientPhone}`} style={{ textDecoration: "none" }}>
                     <XStack alignItems="center" gap="$2">
-                      <Icon name="phone" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                      <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                      <Icon name="phone" size={14} color={brand.cianografiaScuro} strokeWidth={1.5} />
+                      <Text color={brand.cianografiaScuro} fontSize="$3" fontWeight="600">
                         {recipientPhone}
                       </Text>
                     </XStack>
@@ -263,8 +263,8 @@ export function BookingDetailPanel({
               {booking.clientEmail ? (
                 <a href={`mailto:${booking.clientEmail}`} style={{ textDecoration: "none" }}>
                   <XStack alignItems="center" gap="$2">
-                    <Icon name="mail" size={14} color={brand.cianografia} strokeWidth={1.5} />
-                    <Text color={brand.cianografia} fontSize="$3" fontWeight="600">
+                    <Icon name="mail" size={14} color={brand.cianografiaScuro} strokeWidth={1.5} />
+                    <Text color={brand.cianografiaScuro} fontSize="$3" fontWeight="600">
                       {booking.clientEmail}
                     </Text>
                   </XStack>
@@ -443,8 +443,8 @@ export function BookingDetailPanel({
             {onOpenTimeline ? (
               <Button variant="secondary" size="$3" height={40} onPress={onOpenTimeline}>
                 <XStack alignItems="center" gap={4}>
-                  <Icon name="message-circle" size={15} color={brand.cianografia} strokeWidth={2} />
-                  <Text color={brand.cianografia} fontWeight="700" fontSize="$3">
+                  <Icon name="message-circle" size={15} color={brand.cianografiaScuro} strokeWidth={2} />
+                  <Text color={brand.cianografiaScuro} fontWeight="700" fontSize="$3">
                     Contatta/Cronologia
                   </Text>
                 </XStack>

@@ -363,7 +363,7 @@ function RichiesteContent() {
                   paddingHorizontal="$3"
                   paddingVertical={9}
                   borderRadius={999}
-                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  backgroundColor={active ? brand.cianografiaScuro : brand.calce}
                   borderWidth={1}
                   borderColor={active ? brand.cianografia : brand.filetto}
                   cursor="pointer"
@@ -448,7 +448,7 @@ function RichiesteContent() {
                   gap={6}
                   paddingHorizontal="$3"
                   paddingVertical={12}
-                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  backgroundColor={active ? brand.cianografiaScuro : brand.calce}
                   cursor="pointer"
                   onPress={() => setServiceModeFilter(opt.key)}
                   accessibilityRole="button"
@@ -562,7 +562,7 @@ function RichiesteContent() {
               <XStack gap="$3" flexWrap="wrap">
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
-                    <Icon name="bell-ring" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Icon name="bell-ring" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
                       1. Ricevi la richiesta
                     </Text>
@@ -573,7 +573,7 @@ function RichiesteContent() {
                 </YStack>
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
-                    <Icon name="file-text" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Icon name="file-text" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
                       2. Invii il preventivo
                     </Text>
@@ -584,7 +584,7 @@ function RichiesteContent() {
                 </YStack>
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
-                    <Icon name="calendar" size={16} color={brand.cianografia} strokeWidth={1.5} />
+                    <Icon name="calendar" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
                     <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
                       3. Il lavoro entra in agenda
                     </Text>

@@ -185,6 +185,18 @@ prima del lancio"):
 18. ~~Promemoria automatici anti no-show~~ — fatto (email, vedi §9). SMS
     (Twilio) resta rimandato: nessun caso d'uso ancora non coperto
     dall'email.
+21. **Nome e icona del marchio** (decisione dell'utente, 06/10/2026): per ora
+    il sito si chiama "Professionisti"; il nome definitivo va scelto e
+    cambiato prima del lancio, insieme all'icona (`icon.svg`, `icon-192.png`,
+    `icon-512.png`, `apple-icon.tsx`, `opengraph-image.tsx` in
+    `apps/web/src/app`, e il logo in `packages/ui/src/Logo*.tsx`). Allineare
+    anche i testi dei pagamenti che dicono "Manovia" (`JobPaymentStatus.tsx`,
+    `BookingDetailPanel.tsx`, admin finanza) al nome scelto.
+22. **Promemoria via SMS: ricerca di un'alternativa** (WhatsApp o altro).
+    "Come funziona" (`HowItWorks.tsx`) oggi promette "email e SMS" ma gli SMS
+    non sono attivi: finché la ricerca non è chiusa il testo non è stato
+    toccato (decisione dell'utente, 06/10/2026). Prima del lancio o si attiva
+    un canale reale o si corregge la frase.
 
 **Infrastruttura/qualità del codice** (CEO, audit tecnico — "zero test
 automatici, zero CI/CD, e soprattutto `prisma db push --accept-data-loss`

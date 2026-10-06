@@ -697,7 +697,7 @@ export function GuidedRequestForm({
               alignSelf="flex-start"
               paddingHorizontal="$3"
               paddingVertical="$2"
-              backgroundColor={brand.cianografia}
+              backgroundColor={brand.cianografiaScuro}
               borderRadius="$2"
             >
               <Icon name={selectedCategory.icon} size={16} color="white" />
@@ -766,8 +766,8 @@ export function GuidedRequestForm({
                     onPress={() => setCategorySlug(category.slug)}
                     accessibilityRole="button"
                   >
-                    <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
-                    <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                    <Icon name={category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
+                    <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
                       {category.label}
                     </Text>
                   </XStack>
@@ -810,7 +810,7 @@ export function GuidedRequestForm({
                   paddingHorizontal="$3"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={active ? brand.cianografia : "transparent"}
+                  backgroundColor={active ? brand.cianografiaScuro : "transparent"}
                   cursor="pointer"
                   onPress={() => {
                     setServiceMode(option.value);

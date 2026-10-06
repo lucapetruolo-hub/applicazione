@@ -74,12 +74,12 @@ export default function ProfessionistiSalvatiPage() {
           ) : professionals.length === 0 ? (
             <EmptyState
               icon="heart"
-              illustration={<EmptySavedIllustration size={28} style={{ color: brand.cianografia }} />}
+              illustration={<EmptySavedIllustration size={28} style={{ color: brand.cianografiaScuro }} />}
               title="Nessun professionista salvato"
               description='Apri il profilo di un professionista e tocca "Salva" per ritrovarlo qui.'
               action={
                 <Link href="/" style={{ textDecoration: "none" }}>
-                  <Text color={brand.cianografia} fontWeight="600">
+                  <Text color={brand.cianografiaScuro} fontWeight="600">
                     Cerca professionisti
                   </Text>
                 </Link>

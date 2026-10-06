@@ -75,7 +75,7 @@ export function ClientStagePill({ stage }: { stage: RequestStage }) {
 export function ServiceBadge({ online }: { online: boolean }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
-      <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografia} />
+      <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografiaScuro} />
       <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>

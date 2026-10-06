@@ -68,7 +68,7 @@ export function PlatformGuarantee() {
               flexShrink={0}
               marginTop={2}
             >
-              <Icon name="check" size={15} strokeWidth={2.5} color={brand.cianografia} />
+              <Icon name="check" size={15} strokeWidth={2.5} color={brand.cianografiaScuro} />
             </YStack>
             <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
               <Text fontSize="$4" color={brand.grafite} lineHeight={24}>

@@ -317,7 +317,7 @@ export function CompleteJobModal({
           <Text fontWeight="700" color={brand.grafite}>
             Totale
           </Text>
-          <Text fontWeight="800" fontSize="$5" color={brand.cianografia}>
+          <Text fontWeight="800" fontSize="$5" color={brand.cianografiaScuro}>
             €{(totalEurCents / 100).toFixed(2)}
           </Text>
         </XStack>

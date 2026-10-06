@@ -10,7 +10,7 @@ const VARIANT_STYLE: Record<BadgeVariant, { bg: string; fg: string }> = {
   verificato: { bg: "#E6F4EC", fg: brand.verificato },
   pro: { bg: "#F5EEE0", fg: brand.ottone },
   urgente: { bg: "#FBEAE8", fg: brand.urgenza },
-  nuovo: { bg: brand.cianografiaVelo, fg: brand.cianografia },
+  nuovo: { bg: brand.cianografiaVelo, fg: brand.cianografiaScuro },
 };
 
 export type BadgeProps = {

@@ -16041,3 +16041,32 @@ Verifica:
   lancio, inviti, pagamento online senza Stripe); `tsc` su api e web.
 - `prisma migrate diff` dalle migrazioni allo schema su Postgres 16:
   nessuna differenza.
+
+## 171. Revisione di accessibilità: contrasto del verde, etichette, nome del logo
+
+Richiesta: revisione design e accessibilità (WCAG 2.1 AA) delle pagine
+principali, poi correzione dei problemi. Controllo fatto con axe-core su 9
+pagine a 390px e 1366px (copia locale con dati demo e sito in produzione, esiti
+identici).
+
+- **Contrasto.** Il verde `cianografia` (`#189A63`) su bianco/crema dà 3,2-3,6:1,
+  sotto il 4,5:1 richiesto per i testi piccoli. Il token resta com'è (logo,
+  decorazioni, bordi); i **testi** (`color=` e `color:` in stile) e i
+  **riempimenti con testo bianco** (pulsante primario, scelte attive, hero,
+  `ProCtaSection`) usano ora `cianografiaScuro` (`#0E7A4C`, 5,4:1 su bianco).
+  Hover/press del pulsante primario: nuovo `cianografiaProfondo` (`#0A5F3B`).
+  `Eyebrow tone="dark"` e la pillola "In arrivo" usano un velo scuro invece di
+  uno bianco.
+- **Etichette.** `Autocomplete` passa il segnaposto come `accessibilityLabel`
+  (campi "Cosa cerchi?" e "Città"); aggiunte etichette alla ricerca prezzi e
+  all'email della lista d'attesa.
+- **Logo** sul telefono: il link alla home ha ora `aria-label`.
+- **`/accedi`:** il pulsante "Hai bisogno di aiuto?" usa `aria-expanded` al
+  posto di un'etichetta diversa dal testo visibile.
+- Voci 21 e 22 aggiunte alla checklist di lancio: nome e icona del marchio da
+  cambiare prima del lancio; ricerca di un'alternativa agli SMS (il testo "email
+  e SMS" di `HowItWorks.tsx` resta invariato fino alla fine della ricerca).
+- **Ancora aperti** (non toccati di proposito o rimasti): sottotitolo bianco
+  semitrasparente nell'hero e riga "Intervento urgente" (4,1-4,3:1), rosso
+  urgenza su fondo rosa chiaro (4,48:1), "Profili verificati" (decisione
+  dell'utente: costruire la verifica), landmark `header`/`nav`/`footer`.

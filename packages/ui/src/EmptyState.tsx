@@ -31,7 +31,7 @@ export function EmptyState({ icon, title, description, action, illustration }: E
         alignItems="center"
         justifyContent="center"
       >
-        {illustration ?? <Icon name={icon} size={26} color={brand.cianografia} strokeWidth={1.5} />}
+        {illustration ?? <Icon name={icon} size={26} color={brand.cianografiaScuro} strokeWidth={1.5} />}
       </YStack>
       <Text fontFamily="$heading" fontWeight="700" fontSize="$5" textAlign="center" color={brand.grafite}>
         {title}

@@ -51,7 +51,7 @@ export default function AdminStatistichePage() {
       <YStack width="100%" maxWidth={960} gap="$7">
         <YStack gap="$2">
           <Link href="/admin" style={{ textDecoration: "none" }}>
-            <Text color={brand.cianografia} fontSize={13}>
+            <Text color={brand.cianografiaScuro} fontSize={13}>
               ← Torna ad Amministrazione
             </Text>
           </Link>

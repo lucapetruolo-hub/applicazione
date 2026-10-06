@@ -115,7 +115,7 @@ function RoleChoiceScreen({
         <YStack alignItems="center" gap="$3">
           <AuthIconBadge icon="sparkles" />
           <YStack alignItems="center" gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia} textAlign="center">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
               Passo 1 di 2
             </Text>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
@@ -147,7 +147,7 @@ function RoleChoiceScreen({
             accessibilityRole="button"
           >
             <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-              <Icon name="search" size={20} color={brand.cianografia} strokeWidth={1.5} />
+              <Icon name="search" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
             </XStack>
             <YStack flex={1} gap="$1">
               <Text fontWeight="700" color={brand.grafite}>
@@ -174,7 +174,7 @@ function RoleChoiceScreen({
             accessibilityRole="button"
           >
             <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-              <Icon name="hard-hat" size={20} color={brand.cianografia} strokeWidth={1.5} />
+              <Icon name="hard-hat" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
             </XStack>
             <YStack flex={1} gap="$1">
               <Text fontWeight="700" color={brand.grafite}>
@@ -191,7 +191,7 @@ function RoleChoiceScreen({
         <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
           Hai già un account?{" "}
           <Link href="/accedi" style={{ textDecoration: "none" }}>
-            <Text color={brand.cianografia} fontWeight="600">
+            <Text color={brand.cianografiaScuro} fontWeight="600">
               Accedi
             </Text>
           </Link>
@@ -372,7 +372,7 @@ function RegistratiForm() {
         <YStack alignItems="center" gap="$3">
           <AuthIconBadge icon={isProfessional ? "hard-hat" : "search"} />
           <YStack alignItems="center" gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia} textAlign="center">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
               Passo 2 di 2
             </Text>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
@@ -502,11 +502,11 @@ function RegistratiForm() {
             <YStack gap="$2">
               <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
                 Ho letto e accetto la{" "}
-                <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+                <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                   Privacy Policy
                 </Link>{" "}
                 e i{" "}
-                <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+                <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                   Termini di Servizio
                 </Link>
                 .
@@ -538,7 +538,7 @@ function RegistratiForm() {
         <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
           Hai già un account?{" "}
           <Link href="/accedi" style={{ textDecoration: "none" }}>
-            <Text color={brand.cianografia} fontWeight="600">
+            <Text color={brand.cianografiaScuro} fontWeight="600">
               Accedi
             </Text>
           </Link>

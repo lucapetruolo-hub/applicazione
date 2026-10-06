@@ -606,8 +606,8 @@ export function GuidedRequestCard({
 
           {!request.professionalProfileId && averagePriceEurCents !== null ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
-              <Icon name="coins" size={16} color={brand.cianografia} strokeWidth={1.5} />
-              <Text fontSize="$3" fontWeight="700" color={brand.cianografia}>
+              <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
+              <Text fontSize="$3" fontWeight="700" color={brand.cianografiaScuro}>
                 Prezzo totale medio: {formatEurCents(averagePriceEurCents)}
               </Text>
             </XStack>
@@ -633,7 +633,7 @@ export function GuidedRequestCard({
 
           <XStack>
             <Link href={repeatHref} style={{ textDecoration: "none" }}>
-              <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+              <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
                 Ripeti la richiesta
               </Text>
             </Link>
@@ -692,7 +692,7 @@ export function GuidedRequestCard({
                     </XStack>
                   </Link>
                   <XStack alignItems="center" gap="$1" cursor="pointer" accessibilityRole="button" onPress={() => openTimelineForProfessional(professional.id)}>
-                    <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+                    <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
                       Contatta/Cronologia
                     </Text>
                     <UnreadDot count={effectiveThreadUnread(`${request.id}:${professional.id}`)} />

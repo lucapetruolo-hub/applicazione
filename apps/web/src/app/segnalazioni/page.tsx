@@ -98,7 +98,7 @@ export default function SegnalazioniPage() {
                 <Text fontSize="$3" color={brand.grafite70}>
                   Motivo: {report.reason}
                 </Text>
-                <Text fontSize="$3" fontWeight="700" color={report.status === "RESOLVED" ? brand.cianografia : brand.grafite}>
+                <Text fontSize="$3" fontWeight="700" color={report.status === "RESOLVED" ? brand.cianografiaScuro : brand.grafite}>
                   {report.status === "OPEN"
                     ? "In esame: ti avviseremo quando avremo deciso."
                     : report.status === "RESOLVED"

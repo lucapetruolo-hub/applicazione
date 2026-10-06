@@ -87,7 +87,7 @@ export function CookieBanner() {
         Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
         accesso con Google). Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
         &quot;Preferenze cookie&quot; in fondo alla pagina.{" "}
-        <Link href="/cookie" style={{ color: "#189a63", fontWeight: 600 }}>
+        <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
           Cookie Policy
         </Link>
         .
@@ -95,10 +95,10 @@ export function CookieBanner() {
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         {/* Stesso peso visivo per i due bottoni: rifiutare dev'essere facile
             quanto accettare (Garante privacy, linee guida cookie 2021). */}
-        <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#189a63", border: "1.5px solid #189a63" }}>
+        <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#0e7a4c", border: "1.5px solid #0e7a4c" }}>
           Rifiuta
         </button>
-        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#189a63", color: "#ffffff", border: "1.5px solid #189a63" }}>
+        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#0e7a4c", color: "#ffffff", border: "1.5px solid #0e7a4c" }}>
           Accetta
         </button>
       </div>

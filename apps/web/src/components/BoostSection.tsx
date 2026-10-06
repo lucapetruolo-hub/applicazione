@@ -29,7 +29,7 @@ export function BoostSection() {
                   il bottone "Acquista" fallirebbe sempre, quindi mostriamo
                   uno stato "In arrivo" onesto invece di un errore. */}
               <YStack backgroundColor={brand.cianografiaVelo} borderRadius="$10" paddingHorizontal="$2" paddingVertical={2}>
-                <Text fontSize={11} fontWeight="700" color={brand.cianografia}>
+                <Text fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
                   In arrivo
                 </Text>
               </YStack>

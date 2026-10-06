@@ -94,7 +94,7 @@ export default function DashboardTipoAttivitaPage() {
               accessibilityRole="button"
             >
               <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
-                <Icon name={choice.icon} size={20} color={brand.cianografia} strokeWidth={1.5} />
+                <Icon name={choice.icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
               </XStack>
               <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
                 <Text fontWeight="700" color={brand.grafite}>

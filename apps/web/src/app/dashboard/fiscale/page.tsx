@@ -572,7 +572,7 @@ function DashboardFiscaleContent() {
               {saveError === "Completa prima il tuo profilo professionista." ? (
                 <>
                   {" "}
-                  <Link href="/dashboard/profilo" style={{ color: brand.cianografia, fontWeight: 700, textDecoration: "underline" }}>
+                  <Link href="/dashboard/profilo" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
                     Vai al tuo profilo pubblico →
                   </Link>
                 </>

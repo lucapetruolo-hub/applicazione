@@ -700,10 +700,10 @@ export function RequestCard({
                     accessibilityLabel={`Vedi il profilo di ${clientName}`}
                     onPress={() => setShowClientProfile(true)}
                   >
-                    <Text fontSize={14} fontWeight="700" color={brand.cianografia} textDecorationLine="underline">
+                    <Text fontSize={14} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline">
                       {clientName}
                     </Text>
-                    <Icon name="chevron-right" size={13} color={brand.cianografia} strokeWidth={2} />
+                    <Icon name="chevron-right" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
                   </XStack>
                   {/* Data/ora dell'intervento spostata subito sotto il nome
                       cliccabile (richiesta esplicita dell'utente, con
@@ -743,7 +743,7 @@ export function RequestCard({
                       rel="noreferrer"
                       style={{ textDecoration: "none" }}
                     >
-                      <Text fontSize={12.5} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                      <Text fontSize={12.5} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
                         {revealedAddress}
                       </Text>
                     </a>
@@ -758,7 +758,7 @@ export function RequestCard({
                   {revealedPhone ? (
                     <XStack alignItems="center" gap="$2" flexWrap="wrap">
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <Text fontSize={13} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                        <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
                           {revealedPhone}
                         </Text>
                       </a>
@@ -772,7 +772,7 @@ export function RequestCard({
                         </a>
                       ) : null}
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor={brand.cianografia}>
+                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={8} backgroundColor={brand.cianografiaScuro}>
                           <Text fontSize={11.5} fontWeight="700" color="white">
                             Chiama
                           </Text>
@@ -782,7 +782,7 @@ export function RequestCard({
                   ) : null}
                   {revealedEmail ? (
                     <a href={`mailto:${revealedEmail}`} style={{ textDecoration: "none" }}>
-                      <Text fontSize={13} fontWeight="600" color={brand.cianografia} textDecorationLine="underline">
+                      <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro} textDecorationLine="underline">
                         {revealedEmail}
                       </Text>
                     </a>
@@ -1078,7 +1078,7 @@ export function RequestCard({
                 ) : null}
                 {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
                   <Button variant="ghost" size="$3" onPress={() => setShowClientReviewModal(true)}>
-                    <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
                       Recensisci il cliente
                     </Text>
                   </Button>
@@ -1176,7 +1176,7 @@ export function RequestCard({
                   <Text
                     fontSize={12}
                     fontWeight="600"
-                    color={brand.cianografia}
+                    color={brand.cianografiaScuro}
                     cursor="pointer"
                     accessibilityRole="button"
                     onPress={() => setUseManualDateTime(true)}
@@ -1211,7 +1211,7 @@ export function RequestCard({
                     <Text
                       fontSize={12}
                       fontWeight="600"
-                      color={brand.cianografia}
+                      color={brand.cianografiaScuro}
                       cursor="pointer"
                       accessibilityRole="button"
                       onPress={() => setUseManualDateTime(false)}
@@ -1256,7 +1256,7 @@ export function RequestCard({
                   <Text
                     fontSize={12}
                     fontWeight="600"
-                    color={brand.cianografia}
+                    color={brand.cianografiaScuro}
                     cursor="pointer"
                     accessibilityRole="button"
                     onPress={() => setUseManualCounterDateTime(true)}
@@ -1283,7 +1283,7 @@ export function RequestCard({
                     <Text
                       fontSize={12}
                       fontWeight="600"
-                      color={brand.cianografia}
+                      color={brand.cianografiaScuro}
                       cursor="pointer"
                       accessibilityRole="button"
                       onPress={() => setUseManualCounterDateTime(false)}

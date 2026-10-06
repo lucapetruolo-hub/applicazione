@@ -133,7 +133,7 @@ function WaitlistBlock() {
     <Section eyebrow="Presto disponibile" maxWidth={640}>
       <YStack alignItems="center" gap="$3">
         <YStack width={56} height={56} borderRadius={28} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-          <Icon name="bell-ring" size={26} color={brand.cianografia} strokeWidth={1.5} />
+          <Icon name="bell-ring" size={26} color={brand.cianografiaScuro} strokeWidth={1.5} />
         </YStack>
         <Text fontFamily="$heading" fontWeight="600" fontSize="$7" textAlign="center" color={brand.grafite}>
           Arriviamo presto nella tua zona
@@ -167,6 +167,7 @@ function WaitlistBlock() {
                 if (status === "error") setStatus("idle");
               }}
               placeholder="La tua email"
+              aria-label="La tua email"
               style={{
                 flex: 1,
                 minWidth: 200,
