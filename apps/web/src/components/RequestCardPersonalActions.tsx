@@ -87,8 +87,8 @@ export function RequestStateIndicators({ myState }: { myState: GuidedRequestMySt
     <XStack gap="$3" flexWrap="wrap" alignItems="center">
       {myState.remindAt ? (
         <XStack alignItems="center" gap={4}>
-          <Icon name="clock" size={13} color={brand.cianografia} />
-          <Text fontSize={13} fontWeight="600" color={brand.cianografia}>
+          <Icon name="clock" size={13} color={brand.cianografiaScuro} />
+          <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
             Promemoria {formatReminder(myState.remindAt)}
           </Text>
         </XStack>

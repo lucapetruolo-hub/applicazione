@@ -36,7 +36,7 @@ export function RequestStepper({ stage }: { stage: number }) {
               <Text
                 fontSize={10}
                 fontWeight={done ? "700" : "600"}
-                color={done ? brand.cianografia : brand.grafite70}
+                color={done ? brand.cianografiaScuro : brand.grafite70}
                 textAlign="center"
                 width={72}
               >

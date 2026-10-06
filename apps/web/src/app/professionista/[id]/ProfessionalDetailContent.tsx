@@ -372,8 +372,8 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           ) : null}
           <Button variant="ghost" size="$3" onPress={handleShare}>
             <XStack alignItems="center" gap="$2">
-              <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografia} />
-              <Text color={brand.cianografia} fontWeight="600">
+              <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografiaScuro} />
+              <Text color={brand.cianografiaScuro} fontWeight="600">
                 {shareFeedback ?? "Condividi il profilo"}
               </Text>
             </XStack>
@@ -461,7 +461,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         {professional.services.length > 0 ? (
           <YStack gap="$3">
             <XStack alignItems="center" gap="$2">
-              <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
                 Prestazioni
               </Text>
@@ -493,7 +493,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         {(professional.portfolioUrls ?? []).length > 0 ? (
           <YStack gap="$3">
             <XStack alignItems="center" gap="$2">
-              <Icon name="camera" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Icon name="camera" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
                 Lavori svolti
               </Text>
@@ -535,7 +535,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 (brand.calce) + angoli morbidi, nessuna ombra (CLAUDE.md §19). */}
             <Surface gap="$3">
             <XStack alignItems="center" gap="$2">
-              <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Icon name="calendar" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
                 Agenda
               </Text>
@@ -734,7 +734,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   paddingHorizontal="$4"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={brand.cianografia}
+                  backgroundColor={brand.cianografiaScuro}
                   cursor="pointer"
                   accessibilityRole="button"
                   onPress={() => {
@@ -791,7 +791,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
             <XStack alignItems="center" gap="$2">
-              <Icon name="star" size={18} strokeWidth={1.5} color={brand.cianografia} />
+              <Icon name="star" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
                 Recensioni
               </Text>

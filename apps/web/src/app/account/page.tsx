@@ -629,7 +629,7 @@ export default function AccountPage() {
               </YStack>
             ) : (
               <Text
-                color={brand.cianografia}
+                color={brand.cianografiaScuro}
                 fontWeight="600"
                 cursor="pointer"
                 accessibilityRole="button"

@@ -53,7 +53,7 @@ export function SicurezzaContent() {
           </Text>
           <XStack gap="$3" padding="$4" borderRadius="$4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">
             <YStack flexShrink={0}>
-              <Icon name="shield-check" size={22} color={brand.cianografia} strokeWidth={1.75} />
+              <Icon name="shield-check" size={22} color={brand.cianografiaScuro} strokeWidth={1.75} />
             </YStack>
             <Text fontSize="$3" color={brand.grafite} flex={1} lineHeight={24}>
               Attenzione a chi ti chiede di uscire dalla nostra chat. Qualsiasi scusa per spostarti su WhatsApp, Telegram o altre app (&quot;ti mando
@@ -112,14 +112,14 @@ export function SicurezzaContent() {
           <Point title="Non condividere informazioni sensibili">Mai dati personali o finanziari in risposta a richieste in chat, email o SMS.</Point>
           <Point title="Segnala l'utente">
             Usa &quot;Segnala&quot; sul profilo del professionista o, se sei un professionista, nel menu della richiesta. Oppure scrivici dalla pagina{" "}
-            <Link href="/contatti" style={{ color: brand.cianografia, fontWeight: 700 }}>
+            <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
               Contatti
             </Link>
             .
           </Point>
           <Point title="Se hai già inserito dei dati">
             Cambia subito la password dalle{" "}
-            <Link href="/account" style={{ color: brand.cianografia, fontWeight: 700 }}>
+            <Link href="/account" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
               impostazioni dell&apos;account
             </Link>{" "}
             e, se hai inserito i dati della carta, chiama la tua banca per bloccarla.

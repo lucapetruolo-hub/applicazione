@@ -223,7 +223,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
           <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
             <YStack gap="$1" flex={1}>
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
+              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
                 Un ultimo passo
               </Text>
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -347,7 +347,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
               <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
                 {mode === "login" ? "Non hai ancora un account? " : "Hai già un account? "}
                 <Text
-                  color={brand.cianografia}
+                  color={brand.cianografiaScuro}
                   fontWeight="600"
                   cursor="pointer"
                   onPress={() => {

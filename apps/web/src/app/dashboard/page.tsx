@@ -227,7 +227,7 @@ function TodaySection({ title, subtitle, action, children }: { title: string; su
           ) : null}
         </YStack>
         {action ? (
-          <Link href={action.href} style={{ color: brand.cianografia, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
             {action.label} →
           </Link>
         ) : null}
@@ -308,7 +308,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
   if (!text) return null;
   return (
     <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
-      <Icon name="sparkles" size={20} color={brand.cianografia} />
+      <Icon name="sparkles" size={20} color={brand.cianografiaScuro} />
       <Text flex={1} minWidth={220} color={brand.grafite}>
         {text}
       </Text>

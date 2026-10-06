@@ -70,6 +70,7 @@ export function PriceEstimatorTool() {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Es. sostituzione caldaia, tinteggiatura, trasloco..."
+          aria-label="Cerca un lavoro per conoscere il prezzo medio"
           style={{
             padding: 14,
             borderRadius: 999,
@@ -91,7 +92,7 @@ export function PriceEstimatorTool() {
               href="/preventivo"
               style={{
                 display: "inline-block",
-                backgroundColor: brand.cianografia,
+                backgroundColor: brand.cianografiaScuro,
                 color: "#fff",
                 fontWeight: 700,
                 fontSize: 15,
@@ -143,7 +144,7 @@ export function PriceEstimatorTool() {
                     {entry.professionalCount === 1 ? "1 professionista" : `${entry.professionalCount} professionisti`}
                   </Text>
                 </YStack>
-                <Text fontWeight="700" color={brand.cianografia}>
+                <Text fontWeight="700" color={brand.cianografiaScuro}>
                   {formatServicePriceRange(entry.minEurCents, entry.maxEurCents)}
                 </Text>
               </XStack>

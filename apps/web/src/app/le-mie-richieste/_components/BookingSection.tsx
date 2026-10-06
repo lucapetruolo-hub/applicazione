@@ -141,7 +141,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             dismissUnread();
           }}
         >
-          <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+          <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
             Contatta/Cronologia
           </Text>
           <UnreadDot count={effectiveUnreadCount} />
@@ -151,8 +151,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       {booking.meetingLink ? (
         <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
           <XStack alignItems="center" gap="$2">
-            <Icon name="video" size={14} color={brand.cianografia} strokeWidth={1.5} />
-            <Text fontSize="$3" color={brand.cianografia} fontWeight="600">
+            <Icon name="video" size={14} color={brand.cianografiaScuro} strokeWidth={1.5} />
+            <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
               Partecipa alla videochiamata
             </Text>
           </XStack>
@@ -232,7 +232,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
               Totale
             </Text>
-            <Text fontSize="$2" fontWeight="700" color={brand.cianografia}>
+            <Text fontSize="$2" fontWeight="700" color={brand.cianografiaScuro}>
               €{(booking.finalAmountEurCents / 100).toFixed(2)}
             </Text>
           </XStack>

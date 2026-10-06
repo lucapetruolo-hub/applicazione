@@ -204,7 +204,7 @@ export function QuoteCard({
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2" flexWrap="wrap">
         <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-          <Text fontWeight="600" color={brand.cianografia}>
+          <Text fontWeight="600" color={brand.cianografiaScuro}>
             {quote.businessName}
           </Text>
         </Link>
@@ -227,7 +227,7 @@ export function QuoteCard({
           dismissUnread();
         }}
       >
-        <Text fontSize="$2" fontWeight="600" color={brand.cianografia}>
+        <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
           Contatta/Cronologia
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
@@ -396,7 +396,7 @@ export function QuoteCard({
               Il metodo di pagamento scelto, l&apos;acconto e il saldo sono nella sezione dell&apos;intervento qui sotto.
             </Text>
           ) : (
-            <Text color={brand.cianografia} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowPaymentInfo(true)}>
+            <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowPaymentInfo(true)}>
               Come pago?
             </Text>
           )}

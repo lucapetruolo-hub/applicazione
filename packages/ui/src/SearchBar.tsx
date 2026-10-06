@@ -77,7 +77,7 @@ export function SearchBar({
                 width={28}
                 height={28}
                 borderRadius="$10"
-                backgroundColor={active ? brand.cianografia : "transparent"}
+                backgroundColor={active ? brand.cianografiaScuro : "transparent"}
                 cursor="pointer"
                 alignItems="center"
                 justifyContent="center"
@@ -189,7 +189,7 @@ export function SearchBar({
               paddingHorizontal="$3"
               paddingVertical="$2"
               borderRadius="$10"
-              backgroundColor={active ? brand.cianografia : "transparent"}
+              backgroundColor={active ? brand.cianografiaScuro : "transparent"}
               cursor="pointer"
               alignItems="center"
               gap="$2"

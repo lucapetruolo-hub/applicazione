@@ -268,7 +268,7 @@ function AbbonamentoContent() {
                         <Text fontFamily="$heading" fontSize="$6" color={brand.grafite70} textDecorationLine="line-through">
                           {formatEur(tier.priceEurCents)}
                         </Text>
-                        <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.cianografia}>
+                        <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.cianografiaScuro}>
                           Gratuito
                         </Text>
                       </>
@@ -286,7 +286,7 @@ function AbbonamentoContent() {
                       fino al {formatDate(sub.trialEndsAt)}, poi {formatEur(tier.priceEurCents)}/mese
                     </Text>
                   ) : null}
-                  <Text color={brand.cianografia} fontWeight="700">
+                  <Text color={brand.cianografiaScuro} fontWeight="700">
                     {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
                   </Text>
                   {hint ? (

@@ -65,7 +65,7 @@ export function CookieBanner() {
       <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
         Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
         accesso con Google). Nessun cookie pubblicitario o di profilazione.{" "}
-        <Link href="/cookie" style={{ color: "#189a63", fontWeight: 600 }}>
+        <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
           Cookie Policy
         </Link>
         .
@@ -75,7 +75,7 @@ export function CookieBanner() {
         onClick={accept}
         style={{
           flexShrink: 0,
-          backgroundColor: "#189a63",
+          backgroundColor: "#0e7a4c",
           color: "#ffffff",
           border: "none",
           borderRadius: 999,

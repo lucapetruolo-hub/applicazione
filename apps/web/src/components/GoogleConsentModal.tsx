@@ -97,7 +97,7 @@ export function GoogleConsentModal({
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
           <YStack gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
               Un&apos;ultima cosa
             </Text>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -111,11 +111,11 @@ export function GoogleConsentModal({
           <YStack gap="$3">
             <ConsentCheckbox checked={acceptedLegalTerms} onToggle={onToggleLegalTerms}>
               Ho letto e accetto la{" "}
-              <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+              <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                 Privacy Policy
               </Link>{" "}
               e i{" "}
-              <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
+              <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                 Termini di Servizio
               </Link>
               .

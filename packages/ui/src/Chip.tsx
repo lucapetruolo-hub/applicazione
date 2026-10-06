@@ -24,7 +24,7 @@ export function Chip({ children, selected = false, onPress }: ChipProps) {
       accessibilityState={onPress ? { selected } : undefined}
       pressStyle={onPress ? { backgroundColor: brand.cianografiaVelo } : undefined}
     >
-      <Text fontSize="$3" fontWeight="600" color={selected ? brand.cianografia : brand.grafite}>
+      <Text fontSize="$3" fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>
         {children}
       </Text>
     </XStack>

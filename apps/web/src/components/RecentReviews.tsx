@@ -317,7 +317,7 @@ function ReviewCard({ review, delayMs }: { review: RecentReview; delayMs: number
 
           <YStack gap={4}>
             <Link href={profileHref} style={{ textDecoration: "none" }}>
-              <Text fontFamily="$heading" fontSize={15} fontWeight="700" color={brand.cianografia} numberOfLines={1}>
+              <Text fontFamily="$heading" fontSize={15} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
                 {review.professional.businessName}
               </Text>
             </Link>

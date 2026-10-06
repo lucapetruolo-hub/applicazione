@@ -359,7 +359,7 @@ function LeMieRichiesteContent() {
                       paddingHorizontal="$3"
                       paddingVertical={9}
                       borderRadius={999}
-                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      backgroundColor={active ? brand.cianografiaScuro : brand.calce}
                       borderWidth={1}
                       borderColor={active ? brand.cianografia : brand.filetto}
                       cursor="pointer"
@@ -441,7 +441,7 @@ function LeMieRichiesteContent() {
                       gap={6}
                       paddingHorizontal="$3"
                       paddingVertical={12}
-                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      backgroundColor={active ? brand.cianografiaScuro : brand.calce}
                       cursor="pointer"
                       onPress={() => {
                         setServiceModeFilter(opt.key);
@@ -563,12 +563,12 @@ function LeMieRichiesteContent() {
           ) : requests.length === 0 ? (
             <EmptyState
               icon="file-text"
-              illustration={<EmptyRequestsIllustration size={28} style={{ color: brand.cianografia }} />}
+              illustration={<EmptyRequestsIllustration size={28} style={{ color: brand.cianografiaScuro }} />}
               title="Nessuna richiesta inviata"
               description="Non hai ancora inviato nessuna richiesta di preventivo."
               action={
                 <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                  <Text color={brand.cianografia} fontWeight="600">
+                  <Text color={brand.cianografiaScuro} fontWeight="600">
                     Richiedi il tuo primo preventivo
                   </Text>
                 </Link>

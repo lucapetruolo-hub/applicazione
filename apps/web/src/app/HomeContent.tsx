@@ -69,8 +69,8 @@ export default function HomeContent({
                 accessibilityRole="button"
                 backgroundColor={brand.gesso}
               >
-                <Icon name="sparkles" size={22} color={brand.cianografia} strokeWidth={1.5} />
-                <Text fontWeight="600" color={brand.cianografia} textAlign="center">
+                <Icon name="sparkles" size={22} color={brand.cianografiaScuro} strokeWidth={1.5} />
+                <Text fontWeight="600" color={brand.cianografiaScuro} textAlign="center">
                   Altro servizio →
                 </Text>
               </Surface>

@@ -88,7 +88,7 @@ function AccediForm() {
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={420} gap="$5">
         <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografia}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
             Accedi
           </Text>
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
@@ -168,7 +168,7 @@ function AccediForm() {
           </Button>
 
           <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>
-            <Text fontSize="$3" color={brand.cianografia} textAlign="center" fontWeight="600">
+            <Text fontSize="$3" color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
               Hai dimenticato la password?
             </Text>
           </Link>
@@ -178,7 +178,7 @@ function AccediForm() {
           <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
             Non hai ancora un account?{" "}
             <Link href="/registrati" style={{ textDecoration: "none" }}>
-              <Text color={brand.cianografia} fontWeight="600">
+              <Text color={brand.cianografiaScuro} fontWeight="600">
                 Registrati
               </Text>
             </Link>
@@ -194,7 +194,7 @@ function AccediForm() {
             cursor="pointer"
             onPress={() => setHelpOpen((open) => !open)}
             accessibilityRole="button"
-            accessibilityLabel={helpOpen ? "Chiudi la sezione di aiuto" : "Apri la sezione di aiuto"}
+            aria-expanded={helpOpen}
           >
             Hai bisogno di aiuto? {helpOpen ? "−" : "+"}
           </Text>

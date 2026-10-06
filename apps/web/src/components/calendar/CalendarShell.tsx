@@ -151,7 +151,7 @@ export function CalendarShell({
                 paddingHorizontal="$3"
                 paddingVertical="$2"
                 borderRadius={999}
-                backgroundColor={active ? brand.cianografia : "transparent"}
+                backgroundColor={active ? brand.cianografiaScuro : "transparent"}
                 cursor="pointer"
                 onPress={() => onViewChange(item.value)}
                 accessibilityRole="button"

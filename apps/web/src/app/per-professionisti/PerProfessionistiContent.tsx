@@ -85,7 +85,7 @@ export function PerProfessionistiContent() {
                       <Text fontFamily="$heading" fontSize="$7" color={brand.grafite70} textDecorationLine="line-through">
                         €{(tier.priceEurCents / 100).toFixed(0)}
                       </Text>
-                      <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografia}>
+                      <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
                         Gratuito
                       </Text>
                     </XStack>
@@ -101,7 +101,7 @@ export function PerProfessionistiContent() {
                     <Text color={brand.grafite70}>/mese</Text>
                   </XStack>
                 )}
-                <Text fontWeight="700" color={brand.cianografia}>
+                <Text fontWeight="700" color={brand.cianografiaScuro}>
                   {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
                 </Text>
               </Surface>
@@ -116,7 +116,7 @@ export function PerProfessionistiContent() {
           <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
             {SUBSCRIPTION_FEATURES.map((feature) => (
               <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
-                <Check size={16} strokeWidth={2} color={brand.cianografia} />
+                <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
                 <Text color={brand.grafite70} flex={1}>
                   {feature}
                 </Text>

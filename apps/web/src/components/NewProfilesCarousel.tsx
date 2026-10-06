@@ -177,7 +177,7 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
               </Text>
             </YStack>
           </XStack>
-          <Text fontWeight="600" fontSize={14} color={brand.cianografia}>
+          <Text fontWeight="600" fontSize={14} color={brand.cianografiaScuro}>
             Mostra profilo →
           </Text>
         </YStack>

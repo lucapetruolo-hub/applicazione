@@ -154,7 +154,7 @@ export default function ContattiContent() {
                     padding: "17px 32px",
                     borderRadius: 999,
                     border: "none",
-                    backgroundColor: brand.cianografia,
+                    backgroundColor: brand.cianografiaScuro,
                     color: "white",
                     fontSize: 17,
                     fontWeight: 700,
@@ -206,7 +206,7 @@ export default function ContattiContent() {
             </YStack>
             <Text fontSize={14} color={brand.grafite70} lineHeight={21} paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
               Questi dati verranno completati con le informazioni reali dell&apos;azienda prima del lancio definitivo (vedi anche{" "}
-              <a href="/privacy" style={{ color: brand.cianografia, fontWeight: 600 }}>
+              <a href="/privacy" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
                 Privacy Policy
               </a>
               ).

@@ -68,7 +68,7 @@ export function SiteHeader() {
         justifyContent="space-between"
       >
         <XStack alignItems="center" gap="$6">
-          <Link href="/" style={{ textDecoration: "none" }}>
+          <Link href="/" aria-label="Professionisti, vai alla home" style={{ textDecoration: "none" }}>
             {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark
                 "Professionisti" (~120px) più Accedi+bottone CTA a destra
                 sforavano la larghezza viewport sui telefoni più stretti
@@ -112,7 +112,7 @@ export function SiteHeader() {
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
                   contrasto su bianco a questa dimensione, sotto la soglia
                   4.5:1 richiesta per testo normale (Lighthouse color-contrast). */}
-              <Text fontSize="$3" fontWeight="600" color={brand.cianografia}>
+              <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
                 Accedi
               </Text>
             </Link>

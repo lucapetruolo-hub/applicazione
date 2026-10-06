@@ -664,8 +664,8 @@ export default function DashboardProfiloPage() {
                     onPress={() => setCategorySlug(category.slug)}
                     accessibilityRole="button"
                   >
-                    <Icon name={category.icon} size={15} color={active ? brand.cianografia : brand.grafite} />
-                    <Text color={active ? brand.cianografia : brand.grafite} fontWeight="600">
+                    <Icon name={category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
+                    <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
                       {category.label}
                     </Text>
                   </XStack>
@@ -678,7 +678,7 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Bio</FieldLabel>
             <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
               <XStack alignItems="center" gap="$2">
-                <Icon name="sparkles" size={14} color={brand.cianografia} />
+                <Icon name="sparkles" size={14} color={brand.cianografiaScuro} />
                 <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
                   Consigli per una bio più professionale
                 </Text>
@@ -686,7 +686,7 @@ export default function DashboardProfiloPage() {
               <YStack gap="$1">
                 {BIO_TIPS.map((tip) => (
                   <XStack key={tip} gap="$2" alignItems="flex-start">
-                    <Text fontSize="$2" color={brand.cianografia}>
+                    <Text fontSize="$2" color={brand.cianografiaScuro}>
                       ·
                     </Text>
                     <Text fontSize="$2" color={brand.grafite70} flex={1}>
@@ -699,7 +699,7 @@ export default function DashboardProfiloPage() {
                 <Text
                   fontSize="$2"
                   fontWeight="600"
-                  color={brand.cianografia}
+                  color={brand.cianografiaScuro}
                   alignSelf="flex-start"
                   cursor="pointer"
                   accessibilityRole="button"
@@ -727,7 +727,7 @@ export default function DashboardProfiloPage() {
             del prodotto: autodichiarate, mai confuse con `verified`. */}
         <Surface gap="$4">
           <XStack alignItems="center" gap="$2">
-            <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografia} />
+            <Icon name="shield" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
             <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
               Esperienza e affidabilità
             </Text>
@@ -862,7 +862,7 @@ export default function DashboardProfiloPage() {
                     onPress={() => addSuggestedService(name)}
                     accessibilityRole="button"
                   >
-                    <Text color={brand.cianografia} fontWeight="600" fontSize="$3">
+                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
                       + {name}
                     </Text>
                   </XStack>
@@ -1244,7 +1244,7 @@ export default function DashboardProfiloPage() {
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
               <YStack gap="$2">
                 <XStack alignItems="center" gap="$2">
-                  <Icon name="calendar" size={20} color={brand.cianografia} />
+                  <Icon name="calendar" size={20} color={brand.cianografiaScuro} />
                   <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                     Profilo salvato!
                   </Text>
