@@ -262,9 +262,15 @@ accetta il preventivo, mai i "completati", che segna il professionista).
   ricerca e dallo smistamento, non accetta richieste dirette né prenotazioni
   (resta visibile dal link); banner fisso in Home e in Abbonamento. Ogni
   nuovo punto che mostra professionisti o assegna richieste deve filtrare
-  anche `pausedAt`. **Nessuna pausa finché i pagamenti non sono attivi**
-  (`STRIPE_SECRET_KEY` assente): senza, nessuno potrebbe scegliere un
-  livello e a fine prova la ricerca resterebbe vuota.
+  anche `pausedAt` e `invitePendingAt` (profilo creato da un operatore e
+  non ancora confermato, docs/CHANGELOG.md §170). **Nessuna pausa finché
+  i pagamenti non sono attivi** (`STRIPE_SECRET_KEY` assente) **e prima
+  di `LAUNCH_DATE`**: senza Stripe nessuno potrebbe scegliere un livello e
+  a fine prova la ricerca resterebbe vuota.
+- **Il mese gratuito parte dal lancio** (`LAUNCH_DATE` su Render,
+  AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima ha la prova
+  fino a lancio + 30 giorni. Senza la variabile la prova parte
+  dall'iscrizione.
 - **Al limite:** si continua pagando solo la differenza verso il livello
   superiore (nel mese gratuito la differenza piena verso Base, con un
   abbonamento pagato la differenza per i giorni che mancano al rinnovo),
@@ -382,6 +388,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Smistamento delle richieste (`apps/api/src/guided-requests/lead-routing.ts`)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
+- [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 
 ---
 

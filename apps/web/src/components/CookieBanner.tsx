@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
+import { COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
 /**
  * Banner cookie minimale (post-audit GDPR): il sito usa solo cookie
@@ -11,11 +11,25 @@ import { grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
  * scelta è salvata in localStorage (niente server, niente cookie di
  * terze parti da noi). Nessuna libreria esterna.
  */
+const buttonStyle = {
+  borderRadius: 999,
+  padding: "7px 16px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: "inherit",
+} as const;
+
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (!hasCookieChoice()) setVisible(true);
+    // "Preferenze cookie" nel footer riapre il banner per cambiare idea
+    // (revoca del consenso, docs/CHANGELOG.md §170).
+    const reopen = () => setVisible(true);
+    window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
+    return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
   }, []);
 
   function accept() {
@@ -23,6 +37,13 @@ export function CookieBanner() {
     // GoogleSignInButton e le mappe Google, che aspettano il consenso prima
     // di caricare gli script Google.
     grantCookieConsent();
+    setVisible(false);
+  }
+
+  function deny() {
+    // Prima della chiusura: denyCookieConsent emette lo stesso evento che
+    // riapre il banner.
+    denyCookieConsent();
     setVisible(false);
   }
 
@@ -64,30 +85,23 @@ export function CookieBanner() {
     >
       <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
         Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
-        accesso con Google). Nessun cookie pubblicitario o di profilazione.{" "}
+        accesso con Google). Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
+        &quot;Preferenze cookie&quot; in fondo alla pagina.{" "}
         <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
           Cookie Policy
         </Link>
         .
       </p>
-      <button
-        type="button"
-        onClick={accept}
-        style={{
-          flexShrink: 0,
-          backgroundColor: "#0e7a4c",
-          color: "#ffffff",
-          border: "none",
-          borderRadius: 999,
-          padding: "8px 18px",
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: "pointer",
-          fontFamily: "inherit",
-        }}
-      >
-        Ho capito
-      </button>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+        {/* Stesso peso visivo per i due bottoni: rifiutare dev'essere facile
+            quanto accettare (Garante privacy, linee guida cookie 2021). */}
+        <button type="button" onClick={deny} style={{ ...buttonStyle, backgroundColor: "#ffffff", color: "#0e7a4c", border: "1.5px solid #0e7a4c" }}>
+          Rifiuta
+        </button>
+        <button type="button" onClick={accept} style={{ ...buttonStyle, backgroundColor: "#0e7a4c", color: "#ffffff", border: "1.5px solid #0e7a4c" }}>
+          Accetta
+        </button>
+      </div>
     </div>
   );
 }

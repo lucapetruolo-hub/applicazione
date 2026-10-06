@@ -44,7 +44,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
         title: sub.bonusMonthGranted ? "Mese gratuito in regalo · livello Base" : "Mese gratuito · livello Base",
         detail: sub.trialEndsAt
           ? `${sub.bonusMonthGranted ? "Ti abbiamo regalato un altro mese: usi" : "Usi"} tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli il livello che fa per te.`
-          : "Usi tutte le funzioni del livello Base gratis.",
+          : "Usi tutte le funzioni del livello Base gratis. Il mese gratuito inizia il giorno del lancio del sito: prima non scorre.",
       };
     case "TRIAL_ENDED":
       return { title: "Mese gratuito terminato", detail: "Scegli il livello che fa per te qui sotto." };

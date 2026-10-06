@@ -60,6 +60,11 @@ import type {
   ReportJobIssueInput,
   ResolveJobIssueInput,
   ResolveJobIssueAppealInput,
+  AcceptProfileInviteInput,
+  OperatorProfileInviteInput,
+  PendingProfileInvite,
+  ProfileInviteLink,
+  ProfileInvitePreview,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -752,6 +757,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
   return {
     health: () => request<{ status: string }>("/health"),
+    /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
+    getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
 
     /**
@@ -1389,6 +1396,24 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Email raccolte dal riquadro "Arriviamo presto nella tua zona" in homepage (richiesta esplicita dell'utente). */
     adminListWaitlist: (token: string) =>
       request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
+    adminListProfileInvites: (token: string) =>
+      request<PendingProfileInvite[]>("/admin/professional-invites", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminCreateProfileInvite: (token: string, input: OperatorProfileInviteInput) =>
+      request<ProfileInviteLink>("/admin/professional-invites", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+    adminNewProfileInviteLink: (token: string, userId: string) =>
+      request<ProfileInviteLink>(`/admin/professional-invites/${encodeURIComponent(userId)}/link`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    getProfileInvite: (code: string) => request<ProfileInvitePreview>(`/auth/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),
+    acceptProfileInvite: (input: AcceptProfileInviteInput) =>
+      request<AuthResult>("/auth/invite/accept", { method: "POST", body: JSON.stringify(input) }),
 
     adminBootstrapPromote: (email: string, secret: string) =>
       request<{ email: string; role: string }>("/admin/bootstrap", {
