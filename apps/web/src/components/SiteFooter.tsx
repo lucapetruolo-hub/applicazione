@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { reopenCookieChoice } from "@/lib/cookieConsent";
 
 const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
@@ -125,6 +126,11 @@ export function SiteFooter() {
               Cookie Policy
             </Text>
           </Link>
+          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Preferenze cookie
+            </Text>
+          </button>
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
             <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Accessibilità

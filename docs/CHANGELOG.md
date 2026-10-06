@@ -15947,3 +15947,97 @@ Decisioni prese:
 - La checklist pre-lancio ora vive in `.claude/skills/checklist-lancio/
   SKILL.md` (spostata da un altro giro di lavoro, che ha alleggerito
   `CLAUDE.md`): la nota sulla scadenza è lì.
+
+## 170. Fase 3 della roadmap di lancio: denaro sicuro, prova dal lancio, profili creati al telefono, cookie, ordine dei risultati, privacy
+
+Richiesta esplicita dell'utente: "ok procedi con 3.1 3.2 3.5 3.6 3.7 3.8
+3.9 3.10 3.11 3.12" (punti della Fase 3 della roadmap di lancio, rivista
+con il consiglio CEO: CFO, legale, crescita, CTO).
+
+- **3.9 Webhook Stripe una volta sola.** Nuova tabella
+  `StripeWebhookEvent` (migrazione `20261002120000_stripe_webhook_events`):
+  ogni evento si registra prima di essere applicato. Un evento già
+  elaborato risponde `duplicate: true` senza rifare nulla; uno ancora in
+  lavorazione risponde 409 (Stripe riprova); se l'elaborazione fallisce la
+  riga si cancella, così il nuovo tentativo di Stripe lo rifà.
+- **3.10 Niente doppi accrediti o rimborsi.** Chiavi di idempotenza su
+  ogni chiamata Stripe che muove denaro (`job-release-<id>`,
+  `job-late-balance-<pi>`, `job-refund-<pi>-<già rimborsato>-<importo>`,
+  `job-reversal-<transfer>-<già rimborsato>`). In `releaseIfDue`, se il
+  trasferimento è partito e poi fallisce il database, `releasedAt` non
+  torna a null: prima un errore dopo il trasferimento rimetteva il
+  pagamento in coda e il giro successivo poteva accreditare di nuovo.
+- **3.11 Test sul denaro.** 15 test: webhook (nuovo, doppio, in corso,
+  fallito, pagamento dei lavori) e `OnlineMoneyService` (accredito una
+  volta sola, presa in carico concorrente, segnalazione aperta, errore
+  dopo/prima del trasferimento, conto Stripe mancante, rimborsi e
+  storni con le chiavi giuste).
+- **3.12 Variabili dei prezzi allineate.** `apps/api/.env.example` ha i
+  tre prezzi `STRIPE_PRICE_BASE/PLUS/PRO` (§161) e `LAUNCH_DATE`.
+  `render.yaml` invece non si tocca finché database e API non passano a
+  pagamento (§169: una risincronizzazione del Blueprint potrebbe rimettere
+  `DATABASE_URL` sul database scaduto), quindi `STRIPE_PRICE_BASE/PLUS/PRO`
+  e `LAUNCH_DATE` vanno aggiunte a mano nella dashboard Render e nel
+  `render.yaml` quando lo si riscrive.
+- **3.5 Pagamento online nascosto finché Stripe non è attivo.**
+  `GET /health/features` → `{ onlinePayments }` (vero solo con
+  `STRIPE_SECRET_KEY`), letto dal sito con `useOnlinePayments()`. Senza
+  Stripe: accettando un preventivo c'è solo il pagamento diretto (il
+  server rifiuta comunque `ONLINE`), le promesse sul pagamento protetto
+  in homepage, FAQ, "Cosa succede se..." e `/per-professionisti` dicono
+  "in arrivo", e in cima a §5 dei termini compare una nota.
+- **3.1 Mese gratuito dal giorno del lancio.** Nuova variabile
+  `LAUNCH_DATE` (AAAA-MM-GG, ora italiana). Il mese gratuito parte dal
+  lancio, non dall'iscrizione: chi si iscrive prima ha la prova fino a
+  lancio + 30 giorni (`alignTrialsToLaunch` allunga le prove nate prima,
+  al primo giro dopo il lancio). Prima del lancio nessuna pausa e nessun
+  avviso di fine prova, anche con Stripe attivo. Il checkout di un livello
+  scelto prima del lancio fa partire l'addebito a fine prova. Senza
+  `LAUNCH_DATE` resta il comportamento di prima (prova dall'iscrizione).
+- **3.2 Profilo creato dall'operatore al telefono** (CLAUDE.md §8,
+  "un operatore crea il profilo al telefono con loro"). Da
+  `/admin/professionisti` (Super admin e Moderatore) l'operatore inserisce
+  email, nome, attività, categoria, comune: si creano account e profilo, e
+  parte un link `/completa-profilo?codice=…` (anche via email, se Resend è
+  attivo; altrimenti si copia e si manda a mano). Il link vale 14 giorni e
+  una volta sola; nel database c'è solo l'impronta SHA-256 del codice
+  (`ProfileInvite`, migrazione `20261002130000_profile_invites`). Il
+  professionista sceglie la password e accetta informative e maggiore età,
+  poi in `/dashboard/profilo` un riquadro gli chiede di controllare e
+  salvare: solo salvando accetta la dichiarazione e il profilo esce da
+  `invitePendingAt`. Fino ad allora il profilo non compare in ricerca, nel
+  profilo pubblico, nello smistamento e nelle prenotazioni dirette:
+  **ogni nuovo punto che mostra professionisti o assegna richieste deve
+  filtrare anche `invitePendingAt`**, come `pausedAt`. "Nuovo link" invalida
+  i precedenti. Registro azioni su creazione e nuovo link.
+- **3.6 Cookie: "Rifiuta" e revoca.** Il banner ha "Rifiuta" e "Accetta"
+  con lo stesso peso visivo (linee guida del Garante 2021). Nel footer
+  "Preferenze cookie" riapre il banner; rifiutando dopo aver accettato la
+  pagina si ricarica, così gli script Google già caricati spariscono.
+  Cookie Policy aggiornata.
+- **3.7 Ordine dei risultati spiegato com'è.** Il riquadro "Ordinato per
+  pertinenza" diceva "nessun professionista può comprare una posizione più
+  alta della valutazione": falso, il boost viene prima del voto. Ora dice
+  l'ordine reale (in evidenza a pagamento, con etichetta "In evidenza";
+  poi voto; poi numero di recensioni; abbassamento di 14 giorni per
+  segnalazioni accolte anche con il boost), come chiedono il Codice del
+  Consumo art. 22 e il Reg. UE 2019/1150 art. 5.
+- **3.8 Privacy e registro dei trattamenti.** `/privacy` §4 elenca i
+  fornitori per nome (Render, Vercel e Analytics, Cloudinary, Resend,
+  Google, Sentry, Stripe quando attivo) e dice che i contatti del cliente
+  arrivano al professionista solo dopo l'accettazione del preventivo
+  (CLAUDE.md §5.9); §7 nomina i fornitori negli Stati Uniti e la garanzia
+  (Data Privacy Framework o clausole standard). Nel registro
+  (`docs/registro-trattamenti.md`) tabella dei responsabili con paese e
+  garanzia, Resend attivo, Sentry, Vercel Analytics e Google
+  Maps/Places/Geocoding aggiunti, Nominatim tolto. Le adesioni al DPF e i
+  DPA di ciascun fornitore restano `[DA VERIFICARE]`.
+
+Da fare il giorno del lancio: impostare `LAUNCH_DATE` su Render
+(checklist CLAUDE.md §10).
+
+Verifica:
+- 168 test API verdi (31 nuovi: webhook, flusso del denaro, data di
+  lancio, inviti, pagamento online senza Stripe); `tsc` su api e web.
+- `prisma migrate diff` dalle migrazioni allo schema su Postgres 16:
+  nessuna differenza.

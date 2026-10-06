@@ -485,13 +485,25 @@ export function ResultsListWithMap({
               </button>
             </div>
             <div className="sort-info-body">
-              <p>I risultati sono ordinati per pertinenza, sempre nello stesso modo:</p>
+              {/* Testo allineato all'ordinamento reale di ProfessionalsService.search
+                  (docs/CHANGELOG.md §170): i parametri principali e il peso
+                  dei pagamenti vanno dichiarati (Codice del Consumo art. 22,
+                  Reg. UE 2019/1150 art. 5). Se cambia l'ordinamento, cambia
+                  anche questo testo. */}
+              <p>I risultati sono ordinati sempre nello stesso modo:</p>
               <ol>
-                <li>prima i professionisti con visibilità in evidenza;</li>
-                <li>a parità di posizione, la valutazione media più alta;</li>
+                <li>
+                  prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
+                  &quot;In evidenza&quot;;
+                </li>
+                <li>poi, a parità di posizione, la valutazione media più alta;</li>
                 <li>a parità di valutazione, il numero di recensioni ricevute.</li>
               </ol>
-              <p>Nessun professionista può comprare una posizione più alta della valutazione reale che ha ottenuto.</p>
+              <p>
+                Un professionista con più segnalazioni accolte in 30 giorni scende in fondo all&apos;elenco per 14 giorni,
+                anche se ha pagato per essere in evidenza. Valutazioni e recensioni non si possono comprare: arrivano solo da
+                lavori prenotati sul sito.
+              </p>
             </div>
           </div>
         </div>

@@ -18,17 +18,23 @@ function eur(cents: number): string {
  * lavoro finito, assistenza e rimborso) o direttamente al professionista
  * (problemi da risolvere con lui, nessun rimborso). Le due differenze devono
  * essere chiare prima di scegliere (decisione dell'utente).
+ *
+ * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
+ * diretto, con una riga che spiega che quello online arriverà
+ * (docs/CHANGELOG.md §170).
  */
 export function PaymentChoice({
   value,
   onChange,
   quoteMaxEurCents,
+  onlineAvailable,
 }: {
   value: JobPaymentChoice;
   onChange: (value: JobPaymentChoice) => void;
   quoteMaxEurCents: number;
+  onlineAvailable: boolean;
 }) {
-  const options: JobPaymentChoice[] = ["ONLINE", "DIRECT"];
+  const options: JobPaymentChoice[] = onlineAvailable ? ["ONLINE", "DIRECT"] : ["DIRECT"];
   return (
     <YStack gap="$2" role="radiogroup" aria-label="Come vuoi pagare">
       <Text fontWeight="800" color={brand.grafite}>
@@ -80,6 +86,11 @@ export function PaymentChoice({
           </label>
         );
       })}
+      {!onlineAvailable ? (
+        <Text fontSize="$2" color={brand.grafite70}>
+          Il pagamento online con carta sarà disponibile a breve.
+        </Text>
+      ) : null}
     </YStack>
   );
 }

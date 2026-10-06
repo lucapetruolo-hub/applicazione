@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updatedAt="23 settembre 2026"
+      updatedAt="2 ottobre 2026"
       sections={[
         {
           heading: "1. Titolare del trattamento",
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "4. Con chi condividiamo i dati",
-          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (nome, contatti, dettagli del lavoro); i clienti, se sei un professionista (dati del tuo profilo pubblico); fornitori tecnici che ci aiutano a erogare il servizio (hosting, invio email, archiviazione immagini, mappe e ricerca degli indirizzi con Google Maps) nominati responsabili del trattamento. Le mappe di Google vengono caricate nel tuo browser solo dopo il tuo consenso. Non vendiamo i tuoi dati a terzi.",
+          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (descrizione del lavoro e città; nome, telefono, email e indirizzo solo dopo che hai accettato un preventivo); i clienti, se sei un professionista (dati del tuo profilo pubblico). Ci aiutano a erogare il servizio, come responsabili del trattamento, questi fornitori: Render (server e database), Vercel (sito web e statistiche di visita anonime, senza cookie), Cloudinary (foto e video caricati), Resend (invio delle email), Google (accesso con Google, mappe, suggerimenti e ricerca degli indirizzi), Sentry (segnalazione degli errori tecnici del server, senza indirizzo IP né cookie) e, quando attivi i pagamenti online, Stripe (pagamenti con carta). Le mappe e i servizi Google vengono caricati nel tuo browser solo dopo il tuo consenso. Non vendiamo i tuoi dati a terzi.",
         },
         {
           heading: "5. Conservazione",
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
         },
         {
           heading: "7. Trasferimenti extra-UE",
-          body: "Alcuni fornitori tecnici (es. servizi cloud e di archiviazione immagini) possono trattare dati fuori dall'UE: in tal caso il trasferimento avviene con garanzie adeguate (decisioni di adeguatezza o clausole contrattuali standard).",
+          body: "Alcuni dei fornitori elencati al punto 4 hanno sede o server negli Stati Uniti: Render, Vercel, Cloudinary, Resend, Google, Sentry e Stripe. Il trasferimento avviene con garanzie adeguate: la decisione di adeguatezza UE-USA (Data Privacy Framework) per i fornitori che vi aderiscono, altrimenti le clausole contrattuali standard approvate dalla Commissione europea. Puoi chiederci copia delle garanzie scrivendo all'indirizzo del punto 1.",
         },
       ]}
     />

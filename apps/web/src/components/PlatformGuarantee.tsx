@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { useOnlinePayments } from "@/lib/onlinePayments";
 
 const POINTS = [
   {
@@ -18,10 +19,12 @@ const POINTS = [
   {
     text: "Pagamento online protetto: acconto del 20% e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",
     comingSoon: false,
+    online: true,
   },
   {
     text: "Con il pagamento online, se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo",
     comingSoon: false,
+    online: true,
   },
 ];
 
@@ -47,6 +50,9 @@ const POINTS = [
  * allo stadio di bozza, per una promessa specifica come questa.
  */
 export function PlatformGuarantee() {
+  // I due punti sul pagamento online sono "In arrivo" finché Stripe non è
+  // attivo (docs/CHANGELOG.md §170).
+  const onlinePayments = useOnlinePayments();
   return (
     <Section eyebrow="Garanzia Piattaforma" title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>
       <Surface width="100%" padding="$5" gap="$4">
@@ -68,7 +74,7 @@ export function PlatformGuarantee() {
               <Text fontSize="$4" color={brand.grafite} lineHeight={24}>
                 {point.text}
               </Text>
-              {point.comingSoon ? (
+              {point.comingSoon || ("online" in point && point.online && !onlinePayments) ? (
                 <XStack backgroundColor={brand.ottoneVelo} paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
                   <Text fontSize={11} fontWeight="700" color={brand.ottone}>
                     In arrivo

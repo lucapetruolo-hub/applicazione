@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS } from "@professionisti/shared";
 import { Button, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
+import { useOnlinePayments } from "@/lib/onlinePayments";
 
 /**
  * Pagina prezzi: abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md
@@ -17,6 +18,7 @@ import { useAuth } from "@/lib/AuthContext";
  */
 export function PerProfessionistiContent() {
   const { user } = useAuth();
+  const onlinePayments = useOnlinePayments();
   const ctaHref = user?.isProfessional ? "/dashboard/abbonamento" : "/registrati?ruolo=professionista";
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
 
@@ -131,7 +133,7 @@ export function PerProfessionistiContent() {
             solo la differenza. L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
           </Text>
           <Text color={brand.grafite70} textAlign="center" maxWidth={640}>
-            Pagamenti online: i clienti possono pagarti con carta tramite Stripe, con acconto del 20% e saldo a lavoro finito. Ti
+            {onlinePayments ? "Pagamenti online: i clienti possono pagarti" : "Pagamenti online, in arrivo: i clienti potranno pagarti"} con carta tramite Stripe, con acconto del 20% e saldo a lavoro finito. Ti
             accreditiamo l&apos;importo alla conferma del cliente o dopo 7 giorni, meno il costo di Stripe e una commissione del 5%. Se il
             cliente paga direttamente, nessuna commissione.
           </Text>

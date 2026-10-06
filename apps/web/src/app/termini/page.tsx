@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { OnlinePaymentsTermsNote } from "@/components/OnlinePaymentsTermsNote";
 
 export const metadata: Metadata = {
   title: "Termini di Servizio",
@@ -30,7 +31,12 @@ export default function TerminiPage() {
         },
         {
           heading: "5. Pagamento dei lavori",
-          body: "Accettando un preventivo il cliente sceglie come pagare. PAGAMENTO ONLINE: si paga con carta tramite Stripe, il fornitore dei servizi di pagamento della piattaforma. All'accettazione si versa un acconto pari al 20% dell'importo massimo del preventivo; quando il professionista chiude il lavoro con l'importo finale si paga il saldo, cioè la differenza tra l'importo finale e quanto già versato (se l'acconto supera l'importo finale, la differenza viene restituita). Le somme restano in custodia sulla piattaforma e passano al professionista quando il cliente conferma che il lavoro è terminato, oppure 7 giorni dopo la chiusura del lavoro se il cliente non conferma e non segnala problemi; con una segnalazione aperta restano bloccate fino alla sua chiusura. Al professionista viene accreditato l'importo al netto del costo del servizio di pagamento Stripe e della commissione della piattaforma del 5%, entrambi a suo carico; il cliente non paga costi aggiuntivi. Se il saldo non viene pagato entro 7 giorni dalla chiusura, il professionista riceve quanto già versato e il nostro team contatta il cliente, che resta tenuto al pagamento e può vedere sospeso il proprio account. Se il lavoro viene annullato prima dell'esecuzione, l'acconto viene rimborsato. Con il pagamento online il cliente ha l'assistenza della piattaforma sulle segnalazioni (punto 6) e, se la segnalazione è accolta, il rimborso di quanto pagato. PAGAMENTO DIRETTO: il cliente paga il professionista come si accordano, fuori dalla piattaforma. In questo caso la piattaforma non riceve né custodisce somme, non effettua rimborsi e non decide sulle contestazioni: in caso di problemi mette in contatto cliente e professionista, che devono accordarsi direttamente tra loro; in ogni caso il cliente può lasciare la recensione.",
+          body: (
+            <>
+              <OnlinePaymentsTermsNote />
+              {"Accettando un preventivo il cliente sceglie come pagare. PAGAMENTO ONLINE: si paga con carta tramite Stripe, il fornitore dei servizi di pagamento della piattaforma. All'accettazione si versa un acconto pari al 20% dell'importo massimo del preventivo; quando il professionista chiude il lavoro con l'importo finale si paga il saldo, cioè la differenza tra l'importo finale e quanto già versato (se l'acconto supera l'importo finale, la differenza viene restituita). Le somme restano in custodia sulla piattaforma e passano al professionista quando il cliente conferma che il lavoro è terminato, oppure 7 giorni dopo la chiusura del lavoro se il cliente non conferma e non segnala problemi; con una segnalazione aperta restano bloccate fino alla sua chiusura. Al professionista viene accreditato l'importo al netto del costo del servizio di pagamento Stripe e della commissione della piattaforma del 5%, entrambi a suo carico; il cliente non paga costi aggiuntivi. Se il saldo non viene pagato entro 7 giorni dalla chiusura, il professionista riceve quanto già versato e il nostro team contatta il cliente, che resta tenuto al pagamento e può vedere sospeso il proprio account. Se il lavoro viene annullato prima dell'esecuzione, l'acconto viene rimborsato. Con il pagamento online il cliente ha l'assistenza della piattaforma sulle segnalazioni (punto 6) e, se la segnalazione è accolta, il rimborso di quanto pagato. PAGAMENTO DIRETTO: il cliente paga il professionista come si accordano, fuori dalla piattaforma. In questo caso la piattaforma non riceve né custodisce somme, non effettua rimborsi e non decide sulle contestazioni: in caso di problemi mette in contatto cliente e professionista, che devono accordarsi direttamente tra loro; in ogni caso il cliente può lasciare la recensione."}
+            </>
+          ),
         },
         {
           heading: "6. Segnalazioni sui lavori",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice } from "@/components/PaymentChoice";
+import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -94,7 +95,9 @@ export function QuoteCard({
   const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   // Scelta del metodo di pagamento prima di accettare (§168).
   const [choosingPayment, setChoosingPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("ONLINE");
+  const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("DIRECT");
+  // Senza Stripe attivo si offre solo il pagamento diretto (docs/CHANGELOG.md §170).
+  const onlinePayments = useOnlinePayments();
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
@@ -281,7 +284,15 @@ export function QuoteCard({
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             {!choosingPayment ? (
-              <Button variant="primary" size="$3" height={40} onPress={() => setChoosingPayment(true)}>
+              <Button
+                variant="primary"
+                size="$3"
+                height={40}
+                onPress={() => {
+                  setPaymentMethod(onlinePayments ? "ONLINE" : "DIRECT");
+                  setChoosingPayment(true);
+                }}
+              >
                 Accetta preventivo
               </Button>
             ) : null}
@@ -300,7 +311,12 @@ export function QuoteCard({
           </XStack>
           {choosingPayment ? (
             <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              <PaymentChoice value={paymentMethod} onChange={setPaymentMethod} quoteMaxEurCents={priceTotals.totalMaxEurCents} />
+              <PaymentChoice
+                value={paymentMethod}
+                onChange={setPaymentMethod}
+                quoteMaxEurCents={priceTotals.totalMaxEurCents}
+                onlineAvailable={onlinePayments}
+              />
               <XStack gap="$2" flexWrap="wrap">
                 <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
                   {isAccepting ? "Accettazione..." : paymentMethod === "ONLINE" ? "Accetta e paga l'acconto" : "Accetta preventivo"}

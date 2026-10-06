@@ -171,6 +171,11 @@ prima del lancio"):
    ultimo deploy → Redeploy). Finché non si fa, il sito resta `noindex` e
    la sitemap vuota (docs/CHANGELOG.md §132). Subito dopo: inviare
    `/sitemap.xml` in Google Search Console.
+0bis. **Impostare `LAUNCH_DATE`** su Render (AAAA-MM-GG, il giorno del
+   lancio; meglio qualche giorno prima): da lì parte il mese gratuito dei
+   professionisti e prima non scatta nessuna pausa (docs/CHANGELOG.md
+   §170). Senza, la prova di chi si è iscritto prima del lancio è già
+   scaduta.
 
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)

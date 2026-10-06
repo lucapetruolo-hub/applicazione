@@ -1,10 +1,10 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { SUBSCRIPTION_TIERS, subscriptionTierInfo, tierPriceDifferenceEurCents, type SubscriptionTier } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { subscriptionState, tierOfPlan } from "../subscriptions/subscription-rules";
+import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialEndFor } from "../subscriptions/subscription-rules";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
@@ -137,10 +137,14 @@ export class BillingService {
     // modalità `payment`, vedi sotto). Il professionista la riceve già via
     // email Stripe e può scaricarla dal Customer Portal.
     // Chi sceglie un livello durante la prova gratuita non perde i giorni
-    // rimasti: il primo canone parte alla fine della prova.
+    // rimasti: il primo canone parte alla fine della prova. Prima del lancio
+    // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §170).
+    const launch = launchDate();
+    const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
+    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch) : current?.trialEndsAt;
     const trialEnd =
-      state === "TRIAL" && current?.trialEndsAt && current.trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
-        ? Math.floor(current.trialEndsAt.getTime() / 1000)
+      (preLaunchTrial || state === "TRIAL") && trialEndsAt && trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
+        ? Math.floor(trialEndsAt.getTime() / 1000)
         : undefined;
     const difference = trialEnd ? tierPriceDifferenceEurCents("BASE", plan) : 0;
     const session = await stripe.checkout.sessions.create({
@@ -324,7 +328,14 @@ export class BillingService {
     return { url: session.url };
   }
 
-  /** Verifica la firma Stripe e applica gli effetti dell'evento (idempotente per event.id). */
+  /**
+   * Verifica la firma Stripe e applica gli effetti dell'evento una sola volta
+   * per event.id (docs/CHANGELOG.md §170): l'evento viene prenotato in
+   * `stripe_webhook_events` prima di toccare i dati.
+   * - già elaborato → risposta 200 senza rifare nulla;
+   * - in lavorazione (consegna doppia contemporanea) → 409, Stripe riprova più tardi;
+   * - errore durante l'elaborazione → prenotazione cancellata, così il nuovo tentativo di Stripe la rifà.
+   */
   async handleWebhookEvent(rawBody: Buffer, signature: string) {
     const stripe = this.requireStripe();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -334,6 +345,26 @@ export class BillingService {
 
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
+    try {
+      await this.prisma.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
+    } catch (err) {
+      if ((err as { code?: string }).code !== "P2002") throw err;
+      const existing = await this.prisma.stripeWebhookEvent.findUnique({ where: { id: event.id } });
+      if (existing?.processedAt) return { received: true, duplicate: true };
+      throw new ConflictException("Evento Stripe già in lavorazione.");
+    }
+
+    try {
+      await this.applyWebhookEvent(stripe, event);
+    } catch (err) {
+      await this.prisma.stripeWebhookEvent.delete({ where: { id: event.id } }).catch(() => undefined);
+      throw err;
+    }
+    await this.prisma.stripeWebhookEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
+    return { received: true };
+  }
+
+  private async applyWebhookEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata ?? {};
@@ -488,7 +519,5 @@ export class BillingService {
     ) {
       await this.syncStripeSubscription(event.data.object as Stripe.Subscription);
     }
-
-    return { received: true };
   }
 }

@@ -2,7 +2,7 @@
  * Regole pure dell'abbonamento a livelli (docs/CHANGELOG.md §161), testate
  * in `subscription-rules.test.ts`.
  */
-import { USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type PauseReason, type SubscriptionTier } from "@professionisti/shared";
+import { TRIAL_DAYS, USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type PauseReason, type SubscriptionTier } from "@professionisti/shared";
 
 /** Risposta a chi prova a scrivere o prenotare un professionista in pausa. */
 export const NOT_ACCEPTING_REQUESTS = "Questo professionista al momento non accetta nuove richieste. Cerca altri professionisti nella tua zona.";
@@ -132,4 +132,31 @@ export function usageNoticeToSend(used: number, limit: number | null, lastNotice
     return lastNoticeKey === `${monthKey}:80` || lastNoticeKey === `${monthKey}:100` ? null : "80";
   }
   return null;
+}
+
+const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Data di lancio del sito (variabile `LAUNCH_DATE` su Render, formato
+ * AAAA-MM-GG, mezzanotte ora solare italiana), docs/CHANGELOG.md §170: il mese
+ * gratuito parte da lì, non dall'iscrizione, così chi viene reclutato prima
+ * del lancio non arriva al lancio con la prova già finita. Null se non
+ * impostata o scritta male.
+ */
+export function launchDate(value: string | undefined = process.env.LAUNCH_DATE): Date | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? new Date(`${trimmed}T00:00:00+01:00`) : new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Il sito è lanciato? Senza data di lancio no: niente pause e niente avvisi di fine prova. */
+export function hasLaunched(now: Date, launch: Date | null): boolean {
+  return !!launch && now.getTime() >= launch.getTime();
+}
+
+/** Fine del mese gratuito per chi si iscrive adesso: un mese dal lancio, o da oggi se il lancio è passato. */
+export function trialEndFor(now: Date, launch: Date | null): Date {
+  const start = launch && launch.getTime() > now.getTime() ? launch : now;
+  return new Date(start.getTime() + TRIAL_DAYS * TRIAL_DAY_MS);
 }
