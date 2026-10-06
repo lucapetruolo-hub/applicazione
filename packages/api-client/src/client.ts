@@ -1,4 +1,5 @@
 import type {
+  EmailStatus,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -781,6 +782,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<AuthResult>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult }),
+      }),
+
+    emailStatus: (email: string) =>
+      request<{ status: EmailStatus }>("/auth/email-status", {
+        method: "POST",
+        body: JSON.stringify({ email }),
       }),
 
     login: (email: string, password: string) =>
