@@ -624,6 +624,14 @@ produzione):
    va creato un nuovo DB free e aggiornato `DATABASE_URL` su Render (le
    migrazioni si applicano da sole al primo avvio sul DB vuoto, le
    categorie si ripopolano via `CategoriesSeedService`).
+   **Scadenza in corso (docs/CHANGELOG.md §169):** il DB del 6 ottobre
+   2026 è il secondo ed è anch'esso gratuito, quindi scade intorno al
+   **5 novembre 2026** (data esatta nella dashboard Render). Il primo è
+   scaduto il 3 ottobre; i dati di prova sono andati persi. Prima di
+   quella data: passare a pagamento DB e servizio API (consigliato, tiene i
+   dati e fa girare i job orari), oppure ripetere la procedura con un nuovo
+   DB gratuito. **Prima del lancio il DB deve essere a pagamento**: con
+   pagamenti e recensioni reali una scadenza vorrebbe dire perdere dati.
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
