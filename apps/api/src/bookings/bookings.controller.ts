@@ -25,6 +25,7 @@ import {
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { BookingsService } from "./bookings.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
@@ -71,7 +72,7 @@ export class BookingsController {
     return { imageUrl };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post("from-quote/:quoteId")
   createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput) {
     return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod);

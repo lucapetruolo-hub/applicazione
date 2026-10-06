@@ -131,6 +131,12 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
+/** Link di conferma email (docs/CHANGELOG.md §174). */
+export const verifyEmailSchema = z.object({
+  token: z.string().min(20).max(200),
+});
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
   .object({

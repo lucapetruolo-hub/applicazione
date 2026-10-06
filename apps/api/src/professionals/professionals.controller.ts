@@ -38,6 +38,7 @@ import {
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ProfessionalsService } from "./professionals.service";
 
@@ -95,7 +96,7 @@ export class ProfessionalsController {
     return this.professionalsService.getMyProfile(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Put("me")
   upsertMyProfile(
     @Req() req: AuthenticatedRequest,
@@ -284,7 +285,7 @@ export class ProfessionalsController {
     return this.professionalsService.getPublicAgenda(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post(":id/agenda/book")
   bookAgendaSlot(
     @Req() req: AuthenticatedRequest,

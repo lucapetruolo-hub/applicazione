@@ -550,6 +550,10 @@ export type CurrentUser = {
   postalCode: string | null;
   city: string | null;
   province: string | null;
+  /** Indirizzo email confermato dal link ricevuto (docs/CHANGELOG.md §174). */
+  emailVerified: boolean;
+  /** Vero quando l'API blocca le azioni principali finché l'email non è confermata. */
+  emailVerificationRequired: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -804,6 +808,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
+      }),
+
+    verifyEmail: (token: string) =>
+      request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+
+    resendVerificationEmail: (token: string) =>
+      request<{ alreadyVerified: boolean }>("/auth/verify-email/resend", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),

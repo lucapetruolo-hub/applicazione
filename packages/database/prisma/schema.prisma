@@ -112,6 +112,13 @@ model User {
   // specifica registrazione, non sovrascritta.
   legalConsentAt      DateTime?
   legalConsentVersion String?
+  // Conferma dell'indirizzo email (docs/CHANGELOG.md §174): nullo finché
+  // l'utente non apre il link ricevuto. Gli account Google e quelli creati
+  // da un operatore risultano già confermati. Del link si salva solo
+  // l'impronta SHA-256, come per ProfileInvite.
+  emailVerifiedAt     DateTime?
+  emailTokenHash      String?     @unique
+  emailTokenExpiresAt DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
