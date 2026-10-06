@@ -197,7 +197,7 @@ prima del lancio"):
     non sono attivi: finché la ricerca non è chiusa il testo non è stato
     toccato (decisione dell'utente, 06/10/2026). Prima del lancio o si attiva
     un canale reale o si corregge la frase.
-23. **Conferma email obbligatoria** (docs/CHANGELOG.md §174): già nel
+23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §174, mai per i clienti): già nel
     codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno

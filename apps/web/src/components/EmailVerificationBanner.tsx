@@ -15,7 +15,8 @@ export function EmailVerificationBanner() {
   const { user, token } = useAuth();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  if (!user || !token || user.emailVerified || !user.emailVerificationRequired) return null;
+  // Solo professionisti: al cliente la conferma è facoltativa (ClientEmailVerificationCard in /account).
+  if (!user || !token || !user.isProfessional || user.emailVerified || !user.emailVerificationRequired) return null;
 
   const resend = async () => {
     setState("sending");

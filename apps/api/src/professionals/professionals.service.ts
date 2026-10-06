@@ -1009,6 +1009,7 @@ export class ProfessionalsService {
           // (ClientProfileModal) — stesso campo User.imageUrl già usato
           // per l'avatar dell'account cliente altrove nel sito.
           clientImageUrl: lead.guidedRequest.client.imageUrl,
+          clientEmailVerified: lead.guidedRequest.client.emailVerifiedAt !== null,
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
           // Recensioni ricevute dal cliente, da qualunque professionista
           // (richiesta esplicita dell'utente) — mostrate in

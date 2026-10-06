@@ -62,7 +62,11 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
     });
-    await this.sendVerificationEmail(user.id, email, name ?? null);
+    // Conferma email solo per i professionisti (decisione dell'utente,
+    // docs/CHANGELOG.md §174): il cliente non deve confermare nulla.
+    if (role === "PROFESSIONAL") {
+      await this.sendVerificationEmail(user.id, email, name ?? null);
+    }
 
     return { token: this.issueToken(user.id), isNewUser: true };
   }
@@ -153,8 +157,9 @@ export class AuthService {
     // Accedere con Google sulla stessa email ne dimostra il possesso. Una
     // password scelta prima della conferma potrebbe essere di chi si è
     // iscritto con l'email di un altro: si azzera, il titolare può
-    // sceglierne una nuova da /account.
-    if (existingUser && !existingUser.emailVerifiedAt && existingUser.email === payload.email) {
+    // sceglierne una nuova da /account. Solo per i professionisti, gli unici
+    // a cui si chiede la conferma.
+    if (existingUser && existingUser.role !== "CLIENT" && !existingUser.emailVerifiedAt && existingUser.email === payload.email) {
       await this.prisma.user.update({
         where: { id: existingUser.id },
         data: { emailVerifiedAt: new Date(), emailTokenHash: null, emailTokenExpiresAt: null, passwordHash: null },
@@ -208,7 +213,7 @@ export class AuthService {
         ...(emailChanged ? { emailVerifiedAt: null } : {}),
       },
     });
-    if (emailChanged && updated.email) {
+    if (emailChanged && updated.email && updated.role !== "CLIENT") {
       await this.sendVerificationEmail(updated.id, updated.email, updated.name);
     }
     return updated;

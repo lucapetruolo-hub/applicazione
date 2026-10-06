@@ -35,13 +35,24 @@ describe("conferma email", () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue({ id: "u-1" });
 
-    await service.register("mario@example.it", "password123", "Mario", "CLIENT");
+    await service.register("mario@example.it", "password123", "Mario", "PROFESSIONAL");
 
     expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: "mario@example.it" }));
     const token = tokenFromEmail(emailService);
     const stored = prisma.user.update.mock.calls[0]![0].data;
     expect(stored.emailTokenHash).toBe(createHash("sha256").update(token).digest("hex"));
     expect(stored.emailTokenHash).not.toContain(token);
+  });
+
+  it("non chiede nessuna conferma al cliente", async () => {
+    const { service, prisma, emailService } = buildService();
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue({ id: "u-1" });
+
+    await service.register("anna@example.it", "password123", "Anna", "CLIENT");
+
+    expect(emailService.send).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("conferma l'email e annulla il codice", async () => {

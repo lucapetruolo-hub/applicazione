@@ -285,7 +285,7 @@ export class ProfessionalsController {
     return this.professionalsService.getPublicAgenda(id);
   }
 
-  @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
+  @UseGuards(JwtAuthGuard)
   @Post(":id/agenda/book")
   bookAgendaSlot(
     @Req() req: AuthenticatedRequest,

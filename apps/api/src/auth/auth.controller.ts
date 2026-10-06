@@ -178,7 +178,8 @@ export class AuthController {
       city,
       province,
       // Conferma email (docs/CHANGELOG.md §174): il sito mostra l'avviso solo
-      // quando la conferma è davvero richiesta.
+      // quando la conferma è davvero richiesta (solo professionisti); al
+      // cliente è facoltativa, proposta da un riquadro in /account.
       emailVerified: user.emailVerifiedAt !== null,
       emailVerificationRequired: isEmailVerificationRequired(),
     };
