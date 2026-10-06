@@ -15937,3 +15937,13 @@ Decisioni prese:
 - Il punto 4bis della checklist pre-lancio (CLAUDE.md §10) ora riporta la
   data di scadenza.
 - Promemoria programmato per il 29 ottobre 2026, una settimana prima.
+- Il vecchio database non si può cancellare a mano da Render perché è legato
+  al Blueprint (`render.yaml` lo dichiara, e `DATABASE_URL` dell'API punta a
+  lui con `fromDatabase`). Si cancella da solo entro 14 giorni. Rischio: una
+  risincronizzazione del Blueprint potrebbe rimettere `DATABASE_URL` sul
+  database vecchio. Per questo non si modifica `render.yaml` finché non si
+  passa a pagamento: a quel punto lo si riscrive perché descriva i servizi
+  veri.
+- La checklist pre-lancio ora vive in `.claude/skills/checklist-lancio/
+  SKILL.md` (spostata da un altro giro di lavoro, che ha alleggerito
+  `CLAUDE.md`): la nota sulla scadenza è lì.
