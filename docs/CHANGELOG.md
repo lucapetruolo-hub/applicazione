@@ -15909,3 +15909,41 @@ Verifica:
 - Playwright 390/1280, senza overflow né errori: scelta del pagamento,
   riquadro online e diretto del cliente, riquadro del professionista,
   admin pagamenti.
+
+## 169. Database Render scaduto: secondo database gratuito e scadenza da ricordare
+
+Il database gratuito di Render (`professionisti-db`) è scaduto: Render ha
+inviato l'avviso di sospensione, con 14 giorni prima della cancellazione.
+Con l'utente si è scelto di non pagare ancora e di creare un nuovo database
+gratuito, perdendo i dati di prova (solo account e richieste di test).
+
+Cosa è stato fatto, a mano su Render dall'utente:
+- creato il nuovo database gratuito e aggiornato `DATABASE_URL` del
+  servizio `professionisti-api`;
+- le migrazioni e le categorie si sono applicate da sole all'avvio, come
+  previsto (CLAUDE.md §2);
+- verificato che l'API risponde (`/health`) e che il sito funziona;
+- l'amministratore è stato ricreato con `/admin/promuovi`;
+- il vecchio database è da eliminare quando non serve più.
+
+Decisioni prese:
+- Questo secondo database è gratuito, quindi scade a sua volta dopo 30
+  giorni, intorno al **5 novembre 2026**.
+- Consigliato dal CEO (restare su Render, non passare a Railway): prima
+  del lancio passare a pagamento il database e il servizio API. Il piano
+  gratuito dell'API va in sleep dopo 15 minuti e in quel caso i job orari
+  non girano. Servono per le scadenze delle segnalazioni, gli accrediti
+  dei pagamenti e i promemoria.
+- Il punto 4bis della checklist pre-lancio (CLAUDE.md §10) ora riporta la
+  data di scadenza.
+- Promemoria programmato per il 29 ottobre 2026, una settimana prima.
+- Il vecchio database non si può cancellare a mano da Render perché è legato
+  al Blueprint (`render.yaml` lo dichiara, e `DATABASE_URL` dell'API punta a
+  lui con `fromDatabase`). Si cancella da solo entro 14 giorni. Rischio: una
+  risincronizzazione del Blueprint potrebbe rimettere `DATABASE_URL` sul
+  database vecchio. Per questo non si modifica `render.yaml` finché non si
+  passa a pagamento: a quel punto lo si riscrive perché descriva i servizi
+  veri.
+- La checklist pre-lancio ora vive in `.claude/skills/checklist-lancio/
+  SKILL.md` (spostata da un altro giro di lavoro, che ha alleggerito
+  `CLAUDE.md`): la nota sulla scadenza è lì.
