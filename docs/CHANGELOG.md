@@ -16138,3 +16138,31 @@ servizio.
 
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1366, 1100 e
 390 px di larghezza senza scorrimento orizzontale.
+
+## 174. Prezzi per professionisti: livello scelto davvero e pagamenti spostati con "Scopri di più"
+
+**Richiesta esplicita dell'utente:** su `/per-professionisti#prezzi` il
+livello Plus sembrava sempre selezionato; il riquadro deve seguire quello
+che si sceglie. Il testo "Pagamenti online, in arrivo: ..." va spostato
+vicino a "Inizia a ricevere richieste", con un pulsante "Scopri di più"
+verso una pagina che spiega i pagamenti (l'utente non era sicuro se
+toglierlo del tutto).
+
+**Decisione:**
+- Le tre card dei livelli si toccano: il bordo verde segue il livello
+  scelto, nessuno evidenziato all'apertura (era un bordo fisso su Plus).
+  Solo visivo: il livello vero si sceglie da `/dashboard/abbonamento`.
+  Card a larghezza uguale (`flexBasis: 0` da tablet in su).
+- Il testo lungo sui pagamenti esce dai prezzi (si confondeva con
+  l'abbonamento) e diventa una card breve sopra "Inizia a ricevere
+  richieste": pagamento con carta, accredito meno costo Stripe e 5%,
+  pagamento diretto senza commissione. "in arrivo" finché Stripe non è
+  attivo, come prima. Tenuto ma accorciato, non tolto.
+- Nuova pagina `/per-professionisti/pagamenti` ("Come vieni pagato"):
+  acconto 20% del massimo, saldo, custodia fino alla conferma o 7 giorni,
+  costo Stripe + 5%, attivazione in Dati fiscali e pagamenti, pagamento
+  diretto. Stesse regole dei Termini (punto 5) e di `/dashboard/fiscale`
+  (§168), con rimando ai Termini. Aggiunta alla sitemap.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px:
+clic su Plus e poi su Pro sposta il bordo, "Scopri di più" apre la pagina.

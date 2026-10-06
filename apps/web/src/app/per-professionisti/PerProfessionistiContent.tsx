@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { Check } from "lucide-react";
-import { SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS } from "@professionisti/shared";
+import { SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Eyebrow, Icon, Surface, Text, XStack, YStack, brand, radiusDoc, radiusDocLg, type IconName } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnlinePayments } from "@/lib/onlinePayments";
@@ -23,12 +24,15 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
  * non viene annunciato come tale (decisione dell'utente, §162): il livello
  * Base mostra il prezzo barrato e "Gratuito", come un'offerta di benvenuto,
  * con la sola condizione in piccolo per non far credere che resti gratis.
+ * Il bordo evidenzia il livello che l'utente tocca, non uno fisso
+ * (docs/CHANGELOG.md §174: prima Plus sembrava sempre selezionato).
  */
 export function PerProfessionistiContent() {
   const { user } = useAuth();
   const onlinePayments = useOnlinePayments();
   const ctaHref = user?.isProfessional ? "/dashboard/abbonamento" : "/registrati?ruolo=professionista";
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
@@ -50,17 +54,23 @@ export function PerProfessionistiContent() {
 
           <YStack width="100%" gap="$4" $gtSm={{ flexDirection: "row" }}>
             {SUBSCRIPTION_TIERS.map((tier) => {
-              const highlighted = tier.tier === "PLUS";
+              const selected = selectedTier === tier.tier;
               const welcome = tier.tier === "BASE";
               return (
                 <Surface
                   key={tier.tier}
                   flex={1}
-                  borderWidth={highlighted ? 2 : 0}
-                  borderColor={highlighted ? brand.cianografia : "transparent"}
+                  $gtSm={{ flexBasis: 0 }}
+                  borderWidth={2}
+                  borderColor={selected ? brand.cianografia : "transparent"}
                   borderRadius={radiusDoc}
                   padding="$5"
                   gap="$3"
+                  cursor="pointer"
+                  accessibilityRole="radio"
+                  aria-checked={selected}
+                  hoverStyle={{ borderColor: selected ? brand.cianografia : brand.filetto }}
+                  onPress={() => setSelectedTier(tier.tier)}
                 >
                   <XStack alignItems="center" gap="$2" flexWrap="wrap">
                     <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
@@ -131,16 +141,11 @@ export function PerProfessionistiContent() {
               Se ti avvicini al limite del tuo livello ti avvisiamo prima, e puoi passare al livello superiore pagando
               solo la differenza. L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
             </Text>
-            <Text color={brand.grafite70} textAlign="center" maxWidth={640}>
-              {onlinePayments ? "Pagamenti online: i clienti possono pagarti" : "Pagamenti online, in arrivo: i clienti potranno pagarti"} con carta tramite Stripe, con acconto del 20% e saldo a lavoro finito. Ti
-              accreditiamo l&apos;importo alla conferma del cliente o dopo 7 giorni, meno il costo di Stripe e una commissione del 5%. Se il
-              cliente paga direttamente, nessuna commissione.
-            </Text>
           </YStack>
         </YStack>
       </div>
 
-      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
+      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} onlinePayments={onlinePayments} />
     </YStack>
   );
 }
@@ -286,9 +291,34 @@ function ProSteps() {
   );
 }
 
-function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
+/**
+ * Invito finale, con sopra due righe sui pagamenti dei lavori e il link alla
+ * pagina che li spiega (docs/CHANGELOG.md §174: prima il testo completo stava
+ * in fondo ai prezzi, dove si confondeva con l'abbonamento).
+ */
+function ProFinalCta({ ctaHref, ctaLabel, onlinePayments }: { ctaHref: string; ctaLabel: string; onlinePayments: boolean }) {
   return (
-    <YStack width="100%" alignItems="center" paddingHorizontal="$4" paddingBottom="$9">
+    <YStack width="100%" alignItems="center" paddingHorizontal="$4" paddingBottom="$9" gap="$4">
+      <Surface width="100%" maxWidth={1080} borderRadius={radiusDoc} padding="$5" gap="$3" $gtSm={{ flexDirection: "row", alignItems: "center" }}>
+        <XStack flex={1} gap="$3" alignItems="flex-start">
+          <XStack width={44} height={44} flexShrink={0} borderRadius={14} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
+            <Icon name="credit-card" size={20} color={brand.cianografiaScuro} strokeWidth={1.75} />
+          </XStack>
+          <YStack flex={1} gap="$1">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+              {onlinePayments ? "Pagamenti online" : "Pagamenti online, in arrivo"}
+            </Text>
+            <Text color={brand.grafite70} lineHeight={22}>
+              {onlinePayments ? "I clienti possono pagarti" : "I clienti potranno pagarti"} con carta: ti accreditiamo l&apos;importo meno il
+              costo di Stripe e una commissione del 5%. Se ti pagano direttamente, nessuna commissione.
+            </Text>
+          </YStack>
+        </XStack>
+        <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+          <Button variant="secondary">Scopri di più</Button>
+        </Link>
+      </Surface>
+
       <YStack
         width="100%"
         maxWidth={1080}
