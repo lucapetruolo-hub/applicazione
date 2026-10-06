@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ALL_ITALIAN_CITY_NAMES,
   PROFESSIONAL_CATEGORIES,
@@ -32,6 +32,8 @@ export default function AdminProfessionistiPage() {
   const { token } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  // Un doppio clic non deve creare due volte lo stesso profilo.
+  const submittingRef = useRef(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [link, setLink] = useState<ProfileInviteLink | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,7 +56,7 @@ export default function AdminProfessionistiPage() {
   }
 
   async function submit() {
-    if (!token) return;
+    if (!token || submittingRef.current) return;
     const parsed = operatorProfileInviteSchema.safeParse({
       email: form.email.trim(),
       name: form.name.trim(),
@@ -69,6 +71,7 @@ export default function AdminProfessionistiPage() {
       setFormError(parsed.error.issues[0]?.message ?? "Controlla i dati inseriti.");
       return;
     }
+    submittingRef.current = true;
     setSaving(true);
     setFormError(null);
     try {
@@ -80,6 +83,7 @@ export default function AdminProfessionistiPage() {
     } catch (err) {
       setFormError(errorMessage(err));
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   }
@@ -140,12 +144,11 @@ export default function AdminProfessionistiPage() {
       ) : null}
 
       <AdminCard>
-        <form
-          onSubmit={(event: FormEvent) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
+        {/* Il Button di Tamagui è un <button> senza type: dentro un <form>
+            un clic fa partire sia onPress sia il submit del form, cioè due
+            creazioni dello stesso profilo (la seconda risponde "Esiste già un
+            account"). L'invio passa solo da onPress, come in /registrati. */}
+        <form onSubmit={(event: FormEvent) => event.preventDefault()}>
           <YStack gap="$3">
             <Text fontWeight="700" color={brand.grafite}>
               Nuovo profilo

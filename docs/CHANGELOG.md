@@ -16070,3 +16070,23 @@ identici).
   semitrasparente nell'hero e riga "Intervento urgente" (4,1-4,3:1), rosso
   urgenza su fondo rosa chiaro (4,48:1), "Profili verificati" (decisione
   dell'utente: costruire la verifica), landmark `header`/`nav`/`footer`.
+
+## 172. Profilo creato dall'operatore: un clic creava due volte lo stesso profilo
+
+Segnalato dall'utente provando `/admin/professionisti` dopo §170: "continua
+a dire che esiste già anche con quella email di prova".
+
+Causa: il `Button` di Tamagui è un `<button>` senza `type`, quindi dentro un
+`<form>` un clic faceva partire sia `onPress` sia il submit del form. Due
+richieste di creazione: la prima creava account e profilo, la seconda
+rispondeva "Esiste già un account con questa email." e la pagina mostrava
+quell'errore. Riprovando, l'account esisteva davvero.
+
+Correzione: il form non invia più nulla (`onSubmit` fa solo
+`preventDefault`, come in `/registrati`), l'invio passa solo da `onPress`,
+e un `useRef` blocca un secondo invio mentre il primo è in corso.
+
+Gli account di prova già creati restano in "In attesa di conferma" con il
+tasto "Nuovo link": servono quello per la prova, non una nuova creazione.
+
+Verifica: `tsc` su web.
