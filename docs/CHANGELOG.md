@@ -16199,3 +16199,35 @@ verde e caratteri del sito):
 
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px
 senza scorrimento orizzontale; clic su Plus evidenzia la sua cella.
+
+## 176. Pulsante per iscriversi sotto i livelli, verso il pagamento del livello scelto
+
+**Richiesta esplicita dell'utente:** il pulsante per iscriversi in fondo a
+`/per-professionisti` va appena sotto la scelta dei livelli e, in base al
+livello scelto, deve portare alla pagina del pagamento (oggi disattivato,
+manca la chiave Stripe).
+
+**Decisione:**
+- Sotto le tre celle dei livelli: "Scegli un livello" spento finché non se
+  ne tocca uno, poi "Iscriviti con Plus" (o "Continua con Plus" per un
+  professionista già autenticato), con sotto "Poi confermi il livello e il
+  pagamento". L'invito finale ora ha "Scopri di più" e "Scegli il tuo
+  livello" (torna ai prezzi); "Iscriviti gratis" in cima resta.
+- Il livello viaggia nell'indirizzo: `/registrati?ruolo=professionista&livello=PLUS`
+  → dopo l'iscrizione (anche con Google) si va a
+  `/dashboard/abbonamento?livello=PLUS` (`&nuovo=1` per un account appena
+  creato) invece che a "Come fornirai i tuoi servizi?". Un professionista
+  già autenticato ci va direttamente.
+- In Abbonamento: riquadro "Hai scelto il livello Plus: confermalo qui
+  sotto", card del livello evidenziata, la pagina scorre fino alla scelta;
+  a un account nuovo ricorda di completare il profilo (link a
+  `/dashboard/tipo-attivita`). Il pagamento parte sempre dal pulsante del
+  livello, mai da solo; senza Stripe resta spento con il messaggio già
+  esistente "I pagamenti online non sono ancora attivi".
+- `parseSubscriptionTier` in `packages/shared/src/plans.ts` legge il
+  parametro in entrambe le pagine.
+
+**Verifica:** typecheck di `apps/web`; in locale a 1280 e 390 px il
+pulsante resta spento senza scelta, toccando Plus diventa "Iscriviti con
+Plus" e porta a `/registrati?ruolo=professionista&livello=PLUS`. Il ritorno
+in Abbonamento non è provato dal vivo (serve un account e l'API).

@@ -46,9 +46,9 @@ export function PerProfessionistiContent() {
       <ProPhoto />
       <ProBenefits />
       <ProSteps />
-      <ProPricing />
+      <ProPricing isProfessional={Boolean(user?.isProfessional)} />
       <ProFaq />
-      <ProFinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
+      <ProFinalCta />
     </YStack>
   );
 }
@@ -355,8 +355,19 @@ function ProSteps() {
   );
 }
 
-function ProPricing() {
+/**
+ * Il pulsante sotto i livelli porta al pagamento di quello scelto
+ * (docs/CHANGELOG.md §176): un professionista già iscritto va dritto in
+ * Abbonamento, gli altri si iscrivono e poi ci arrivano (`?livello=`).
+ */
+function ProPricing({ isProfessional }: { isProfessional: boolean }) {
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+  const selectedLabel = selectedTier ? SUBSCRIPTION_TIERS.find((t) => t.tier === selectedTier)?.label : null;
+  const continueHref = selectedTier
+    ? isProfessional
+      ? `/dashboard/abbonamento?livello=${selectedTier}`
+      : `/registrati?ruolo=professionista&livello=${selectedTier}`
+    : null;
   return (
     <Band id="prezzi">
       <SectionTitle lead="I livelli cambiano solo per quanti lavori accettati al mese sono compresi. Un lavoro è accettato quando il cliente accetta il tuo preventivo o prenota dalla tua agenda.">
@@ -431,6 +442,22 @@ function ProPricing() {
           );
         })}
       </Grid>
+      <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$2" alignItems="center" $gtMd={{ padding: "$6" }}>
+        {continueHref ? (
+          <Link href={continueHref} style={{ textDecoration: "none" }}>
+            <Button variant="primary" size="$5">
+              {isProfessional ? `Continua con ${selectedLabel}` : `Iscriviti con ${selectedLabel}`}
+            </Button>
+          </Link>
+        ) : (
+          <Button variant="primary" size="$5" disabled opacity={0.5}>
+            Scegli un livello
+          </Button>
+        )}
+        <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+          {continueHref ? "Poi confermi il livello e il pagamento." : "Tocca uno dei livelli qui sopra per continuare."}
+        </Text>
+      </YStack>
       <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$3" $gtMd={{ padding: "$6" }}>
         <CellTitle>Compreso in ogni livello</CellTitle>
         <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
@@ -566,9 +593,10 @@ function ProFaq() {
 
 /**
  * Invito finale semplice come quello di efferd: titolo a due toni e due
- * pulsanti, "Scopri di più" sui pagamenti (§174) accanto all'iscrizione.
+ * pulsanti, "Scopri di più" sui pagamenti (§174) e il ritorno alla scelta
+ * del livello, dove ora sta il pulsante per iscriversi (§176).
  */
-function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
+function ProFinalCta() {
   return (
     <YStack width="100%" alignItems="center" paddingBottom="$9">
       <Band last>
@@ -587,14 +615,14 @@ function ProFinalCta({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
             <Text color={brand.grafite}>Inizia</Text> a ricevere <Text color={brand.cianografiaScuro}>richieste</Text>
           </Text>
           <Text fontSize="$5" color={brand.grafite70} textAlign="center" maxWidth={520}>
-            Crea l&apos;account in un minuto, poi completi il profilo con calma.
+            Scegli il tuo livello e crea l&apos;account in un minuto, poi completi il profilo con calma.
           </Text>
           <XStack gap="$3" flexWrap="wrap" justifyContent="center">
             <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none" }}>
               <Button variant="secondary">Scopri di più</Button>
             </Link>
-            <Link href={ctaHref} style={{ textDecoration: "none" }}>
-              <Button variant="primary">{ctaLabel}</Button>
+            <Link href="#prezzi" style={{ textDecoration: "none" }}>
+              <Button variant="primary">Scegli il tuo livello</Button>
             </Link>
           </XStack>
         </YStack>

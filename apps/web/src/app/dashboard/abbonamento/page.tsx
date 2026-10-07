@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
+  parseSubscriptionTier,
   subscriptionTierInfo,
   type MySubscription,
   type SubscriptionTier,
@@ -87,6 +88,10 @@ function AbbonamentoContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [renewalPending, setRenewalPending] = useState(false);
+  // Livello toccato su /per-professionisti (docs/CHANGELOG.md §176): la
+  // sua card viene evidenziata e la pagina scorre fino alla scelta.
+  const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
+  const justRegistered = searchParams.get("nuovo") === "1";
 
   const load = useCallback(() => {
     if (!token) return;
@@ -99,6 +104,11 @@ function AbbonamentoContent() {
   useEffect(() => {
     if (user?.isProfessional) load();
   }, [user, load]);
+
+  const subLoaded = sub !== null;
+  useEffect(() => {
+    if (chosenTier && subLoaded) document.getElementById("livelli")?.scrollIntoView({ behavior: "smooth" });
+  }, [chosenTier, subLoaded]);
 
   async function chooseTier(tier: SubscriptionTier) {
     if (!token) return;
@@ -229,6 +239,22 @@ function AbbonamentoContent() {
           <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
             {paidActive ? "Passa a un livello superiore" : "Scegli il tuo livello"}
           </Text>
+          {chosenTier ? (
+            <Surface borderRadius={radiusDoc} padding="$4" gap="$1" backgroundColor={brand.cianografiaVelo}>
+              <Text color={brand.grafite} fontWeight="700">
+                Hai scelto il livello {subscriptionTierInfo(chosenTier).label}: confermalo qui sotto.
+              </Text>
+              {justRegistered ? (
+                <Text color={brand.grafite}>
+                  Poi{" "}
+                  <Link href="/dashboard/tipo-attivita" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                    completa il tuo profilo
+                  </Link>{" "}
+                  per comparire nelle ricerche.
+                </Text>
+              ) : null}
+            </Surface>
+          ) : null}
           {sub && !sub.checkoutAvailable ? (
             <Text color={brand.grafite70}>I pagamenti online non sono ancora attivi su questo ambiente.</Text>
           ) : null}
@@ -256,8 +282,8 @@ function AbbonamentoContent() {
                   borderRadius={radiusDoc}
                   padding="$4"
                   gap="$2"
-                  borderWidth={current ? 2 : 0}
-                  borderColor={current ? brand.cianografia : "transparent"}
+                  borderWidth={current || chosenTier === tier.tier ? 2 : 0}
+                  borderColor={current ? brand.cianografia : chosenTier === tier.tier ? brand.cianografiaScuro : "transparent"}
                 >
                   <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
                     {tier.label}
