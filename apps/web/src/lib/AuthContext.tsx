@@ -207,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (freshOnes.length === 1) {
         // Caso comune: un solo evento in questo giro di poll, stesso
         // messaggio simpatico specifico di sempre.
-        const { icon, message } = notificationCopy(freshOnes[0]!.type);
+        const { icon, message } = notificationCopy(freshOnes[0]!.type, freshOnes[0]!.payload);
         setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type, payload: freshOnes[0]!.payload }]);
       } else if (freshOnes.length > 1) {
         // Più eventi arrivati nello stesso giro (48s): un toast per

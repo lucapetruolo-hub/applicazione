@@ -1,3 +1,5 @@
+import { asScheduleChange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
+
 /**
  * Testo simpatico per il popup "toast" quando arriva una nuova notifica
  * (richiesta esplicita dell'utente: "Fantastico, hai ricevuto un nuovo
@@ -75,6 +77,18 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
 
-export function notificationCopy(type: string): { icon: string; message: string } {
+/**
+ * Il `payload` serve ai cambi di appuntamento: dice se è cambiata la data,
+ * l'orario o entrambi (docs/CHANGELOG.md §180). Le notifiche più vecchie,
+ * senza il campo, restano col testo fisso.
+ */
+export function notificationCopy(type: string, payload?: unknown): { icon: string; message: string } {
+  const change = asScheduleChange(payload && typeof payload === "object" ? (payload as Record<string, unknown>).change : null);
+  if (change && type === "QUOTE_DATE_CHANGED") {
+    return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo.` };
+  }
+  if (change && type === "QUOTE_DATE_PROPOSED") {
+    return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo.` };
+  }
   return NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
 }

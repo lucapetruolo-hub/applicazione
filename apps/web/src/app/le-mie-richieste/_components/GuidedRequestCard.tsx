@@ -725,6 +725,7 @@ export function GuidedRequestCard({
                   token={token}
                   onChanged={onChanged}
                   onAcceptQuote={onAcceptQuote}
+                  requestedDate={request.preferredDate}
                   requestedTimeSlot={request.preferredTimeSlot}
                   guidedRequestId={request.id}
                   serviceMode={request.serviceMode}

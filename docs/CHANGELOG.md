@@ -16401,3 +16401,37 @@ passano da "Recensioni ricevute" a "Recensioni".
 
 **Verifica:** build dei package e di `apps/api`, test dell'API, typecheck di
 `apps/web` e `apps/mobile`.
+
+## 180. Modifica dell'appuntamento: si dice se cambia la data, l'orario o entrambi
+
+**Richiesta dell'utente:** quando il professionista o il cliente modificano
+data/orario, all'altra parte arrivava scritto solo che era cambiato
+l'orario anche se era cambiata anche la data.
+
+**Causa:** i testi erano fissi e non guardavano cosa fosse cambiato davvero.
+L'avviso sul preventivo del cliente (`timeChangedFromRequest`) diceva sempre
+"un orario diverso da quello richiesto" mostrando solo la fascia oraria,
+anche quando il professionista aveva cambiato il giorno; campanella, popup e
+messaggi della chat dicevano sempre "data" anche quando cambiava solo l'ora.
+
+**Decisione:** un solo confronto condiviso, `scheduleChangeBetween`
+(`packages/shared/src/scheduleChange.ts`, convenzione "wall clock UTC"
+dell'agenda: cambia l'ora di inizio o di fine = orario), che restituisce
+`date`, `time` o `both`.
+- `QUOTE_DATE_CHANGED` e `QUOTE_DATE_PROPOSED` portano `change` nel payload;
+  campanella e popup (`notificationCopy`, ora con il payload) dicono "ha
+  modificato la data / l'orario / la data e l'orario" e "ha proposto
+  un'altra data / un altro orario / un'altra data e un altro orario". Le
+  notifiche già salvate senza il campo restano col testo di prima.
+- Stessi testi nei messaggi automatici della chat. La controproposta del
+  professionista si confronta con la proposta del cliente a cui risponde.
+- Il preventivo modificato avvisa il cliente anche quando cambia solo l'ora
+  di fine (prima solo l'inizio).
+- L'avviso sul preventivo diventa `changeFromRequest` e dice "una data
+  diversa da quella richiesta (giorno)", "un orario diverso (fascia)" o
+  "data e orario diversi (giorno, fascia)".
+
+Questi eventi non partono per email: nessun testo email da correggere.
+
+**Verifica:** build di `apps/api`, test dell'API (nuovo
+`schedule-change.test.ts`), typecheck di `apps/web` e `apps/mobile`.
