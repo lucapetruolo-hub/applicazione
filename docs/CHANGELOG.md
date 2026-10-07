@@ -16168,3 +16168,34 @@ toglierlo del tutto).
 
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px:
 clic su Plus e poi su Pro sposta il bordo, "Scopri di più" apre la pagina.
+
+## 175. Nuovo aspetto di /per-professionisti ispirato a efferd.com
+
+**Richiesta esplicita dell'utente:** "prendi spunto da efferd.com per un
+nuovo look della pagina" (`/per-professionisti`).
+
+**Decisione:** preso da efferd lo schema, non i colori (restano gesso,
+verde e caratteri del sito):
+- pagina incorniciata da linee sottili: ogni sezione è una fascia con
+  filetto a tutta larghezza e cornice ai lati del contenuto da tablet in su;
+- titolo centrato a due toni ("Fatti trovare" grigio, "dai clienti" scuro,
+  "della tua zona." verde) con alone verde morbido dietro, pillola "Per i
+  professionisti | Vedi i prezzi" sopra e due pulsanti ("Come funziona",
+  "Iscriviti gratis");
+- foto larga in cornice sotto il titolo;
+- vantaggi e "Come funziona" come celle a mosaico separate da filetti
+  (sfondo della griglia = colore della linea, `gap={1}`), con piccole
+  illustrazioni astratte (mestieri in pillole, barre dell'agenda, stelle)
+  e passi numerati 01-04;
+- prezzi come celle della stessa griglia: quella toccata diventa bianca con
+  barra verde in alto (resta solo visiva, §174);
+- nuove domande frequenti su due colonne (titolo a sinistra, risposte
+  apribili a destra), solo su regole già in vigore: contatti del cliente
+  dopo l'accettazione (CLAUDE.md §5 punto 9), limite di lavori, annullare
+  l'abbonamento, chi recensisce, come si viene pagati (link alla pagina
+  pagamenti). Il mese gratuito non viene nominato (§162);
+- invito finale senza riquadro verde: titolo a due toni e due pulsanti,
+  "Scopri di più" (pagamenti, §174) e "Iscriviti gratis".
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px
+senza scorrimento orizzontale; clic su Plus evidenzia la sua cella.
