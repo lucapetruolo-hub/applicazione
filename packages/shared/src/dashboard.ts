@@ -99,6 +99,20 @@ export type ProfessionalLead = {
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
+    /** Nota facoltativa lasciata dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §186). */
+    rejectionNote: string | null;
+    /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */
+    resentAt: string | null;
+    /**
+     * Fino a quando si può inviare un nuovo preventivo dopo il rifiuto del
+     * cliente (docs/CHANGELOG.md §186): la scadenza della richiesta, contata
+     * dal suo invio, mai dal rifiuto. `null` se il preventivo non è
+     * rifiutato o non si può più inviarne un altro; vedi `canResend` per
+     * le richieste senza scadenza.
+     */
+    resendUntil: string | null;
+    /** Si può inviare un nuovo preventivo (rifiutato, richiesta ancora aperta e non scaduta). */
+    canResend: boolean;
     /**
      * Contenuto del preventivo già inviato (voci + note), per mostrarlo al
      * professionista sulla propria dashboard invece del solo stato —

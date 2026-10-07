@@ -92,6 +92,16 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (change && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo.` };
   }
+  // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §186).
+  const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  if (type === "NEW_QUOTE" && data.resent === true) {
+    return { icon: "📬", message: "Hai ricevuto un nuovo preventivo al posto di quello che avevi rifiutato." };
+  }
+  if (type === "QUOTE_REJECTED" && (data.note || data.canResend === true)) {
+    const note = typeof data.note === "string" && data.note.trim() ? ` Nota: "${data.note.trim()}"` : "";
+    const resend = data.canResend === true ? " Puoi inviargli un nuovo preventivo." : "";
+    return { icon: "😕", message: `Il cliente ha rifiutato il tuo preventivo.${note}${resend}` };
+  }
   if (type === "NEW_REVIEW" && (payload as Record<string, unknown> | undefined)?.published !== true) {
     return { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: recensiscilo anche tu per leggere la sua recensione." };
   }

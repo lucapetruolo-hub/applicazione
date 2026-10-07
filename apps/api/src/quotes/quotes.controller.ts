@@ -3,9 +3,11 @@ import {
   counterProposeQuoteDateSchema,
   proposeQuoteDateSchema,
   quoteSelfSchema,
+  rejectQuoteSchema,
   type CounterProposeQuoteDateInput,
   type ProposeQuoteDateInput,
   type QuoteSelfInput,
+  type RejectQuoteInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
@@ -55,11 +57,15 @@ export class QuotesController {
     return this.quotesService.counterProposeDate(req.user.userId, id, body);
   }
 
-  /** Il cliente rifiuta interamente un preventivo ricevuto. */
+  /** Il cliente rifiuta interamente un preventivo ricevuto, con una nota facoltativa per il professionista. */
   @UseGuards(JwtAuthGuard)
   @Post(":id/reject")
-  reject(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.quotesService.rejectByClient(req.user.userId, id);
+  reject(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(rejectQuoteSchema.optional().transform((v) => v ?? {}))) body: RejectQuoteInput,
+  ) {
+    return this.quotesService.rejectByClient(req.user.userId, id, body);
   }
 
   /** Il professionista ritira un preventivo già inviato. */

@@ -29,6 +29,7 @@ import {
   jobPaidOnline,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { slotAppliesOnDate } from "../common/availability.util";
@@ -964,6 +965,20 @@ export class ProfessionalsService {
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
               clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
               clientProposedNote: quote.clientProposedNote,
+              rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
+              resentAt: quote.resentAt?.toISOString() ?? null,
+              // Nuovo preventivo dopo il rifiuto del cliente, fino alla
+              // scadenza della richiesta contata dal suo invio
+              // (docs/CHANGELOG.md §186).
+              ...(() => {
+                const { canResend, resendUntil } = quoteResendWindow({
+                  quoteStatus: quote.status,
+                  hasBooking: quote.booking !== null,
+                  request: lead.guidedRequest,
+                  clientDeleted: lead.guidedRequest.client.deletedAt !== null,
+                });
+                return { canResend, resendUntil: resendUntil?.toISOString() ?? null };
+              })(),
               // Il preventivo già inviato, per mostrarlo al professionista
               // sulla propria dashboard invece del solo stato — richiesta
               // esplicita dell'utente ("dai la possibilità di vedere il

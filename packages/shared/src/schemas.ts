@@ -399,6 +399,16 @@ export const counterProposeQuoteDateSchema = proposeQuoteDateSchema;
 export type CounterProposeQuoteDateInput = z.infer<typeof counterProposeQuoteDateSchema>;
 
 /**
+ * Il cliente rifiuta un preventivo con una nota facoltativa per il
+ * professionista (docs/CHANGELOG.md §186), es. "il prezzo è troppo alto" o
+ * "mi serve prima di venerdì": gli serve per decidere se inviarne uno nuovo.
+ */
+export const rejectQuoteSchema = z.object({
+  note: z.string().trim().max(1000).optional(),
+});
+export type RejectQuoteInput = z.infer<typeof rejectQuoteSchema>;
+
+/**
  * Voce dell'importo finale di un lavoro completato (richiesta esplicita
  * dell'utente): a differenza di quoteItemSchema qui il prezzo è un valore
  * esatto, non un range — il professionista sta comunicando quanto ha

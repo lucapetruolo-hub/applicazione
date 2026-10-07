@@ -191,6 +191,7 @@ export function RequestCard({
   const revealedAddress = booking ? (formatBookingAddress(booking) ?? (booking.address ? `${booking.address}, ${gr.city}` : null)) : null;
   const whatsAppLink = buildWhatsAppLink(revealedPhone);
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
+  const canResendQuote = lead.quote?.status === "REJECTED" && lead.quote.canResend;
   // "Elimina" su ogni richiesta scaduta o chiusa (docs/CHANGELOG.md §143):
   // la nasconde solo al professionista, resta visibile agli admin.
   const canDelete = stage === "scaduta" || stage === "chiusa";
@@ -465,6 +466,16 @@ export function RequestCard({
       tone: "danger",
       onPress: handleWithdrawQuote,
       confirm: { question: "Ritirare questo preventivo? Il cliente non potrà più accettarlo.", confirmLabel: "Conferma", busyLabel: "Ritiro..." },
+    });
+  }
+  if (canResendQuote) {
+    menuActions.push({
+      icon: "send",
+      text: "Invia un nuovo preventivo",
+      onPress: () => {
+        ensureOpen();
+        startEditingQuote();
+      },
     });
   }
   if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
@@ -1137,6 +1148,21 @@ export function RequestCard({
               <Text fontSize={12.5} color={brand.grafite70}>
                 {stage === "chiusa" ? describeClosedReason(lead) : "Questa richiesta è scaduta: la coda di riserva è stata già inoltrata ad altri professionisti."}
               </Text>
+            ) : null}
+            {/* Nuovo preventivo dopo il rifiuto del cliente (docs/CHANGELOG.md
+                §186): possibile fino alla scadenza della richiesta, contata
+                dal suo invio, mai dal rifiuto. */}
+            {canResendQuote && !showQuoteForm ? (
+              <YStack gap="$2" alignItems="flex-start">
+                <Text fontSize={12.5} color={brand.grafite70}>
+                  {lead.quote?.resendUntil
+                    ? `Puoi inviare un nuovo preventivo fino al ${formatDateTime(lead.quote.resendUntil)}, quando scade la richiesta.`
+                    : "Puoi inviare un nuovo preventivo finché la richiesta è aperta."}
+                </Text>
+                <Button variant="primary" size="$3" onPress={startEditingQuote}>
+                  Invia un nuovo preventivo
+                </Button>
+              </YStack>
             ) : null}
             {canDelete ? (
               !confirmingDelete ? (

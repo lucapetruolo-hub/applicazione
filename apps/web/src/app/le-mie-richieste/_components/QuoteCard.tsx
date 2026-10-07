@@ -80,8 +80,11 @@ export function QuoteCard({
   isNew,
   unreadCount,
   autoOpenTimeline,
+  requestOpen,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
+  /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §186). */
+  requestOpen?: boolean;
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
@@ -118,6 +121,8 @@ export function QuoteCard({
   const onlinePayments = useOnlinePayments();
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  // Nota facoltativa per il professionista al rifiuto (docs/CHANGELOG.md §186).
+  const [rejectNote, setRejectNote] = useState("");
   const [showTimeline, setShowTimeline] = useState(false);
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
   const autoOpenedTimelineRef = useRef(false);
@@ -211,7 +216,8 @@ export function QuoteCard({
     setError(null);
     setIsRejecting(true);
     try {
-      await apiClient.rejectQuote(token, quote.id);
+      await apiClient.rejectQuote(token, quote.id, { note: rejectNote.trim() || undefined });
+      setRejectNote("");
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -239,7 +245,7 @@ export function QuoteCard({
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
       </Text>
       <Text fontSize="$2" color={brand.grafite70}>
-        Inviato il {formatSentAt(quote.sentAt)}
+        {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
       <XStack
         alignItems="center"
@@ -350,17 +356,29 @@ export function QuoteCard({
             </YStack>
           ) : null}
           {!isChoosingDate && confirmingReject ? (
-            <XStack gap="$2" alignItems="center">
+            <YStack gap="$2">
               <Text fontSize="$2" color={brand.urgenza}>
                 Rifiutare questo preventivo?
               </Text>
-              <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
-                {isRejecting ? "Rifiuto..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)}>
-                Annulla
-              </Button>
-            </XStack>
+              {/* Nota facoltativa (docs/CHANGELOG.md §186): il professionista
+                  la legge e può inviarti un nuovo preventivo. */}
+              <textarea
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="Nota per il professionista (facoltativa): es. il prezzo è troppo alto, mi serve prima di venerdì"
+                rows={2}
+                maxLength={1000}
+                style={textareaStyle}
+              />
+              <XStack gap="$2" alignItems="center">
+                <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
+                  {isRejecting ? "Rifiuto..." : "Conferma rifiuto"}
+                </Button>
+                <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)} disabled={isRejecting}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
           ) : null}
           {isChoosingDate ? (
             <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
@@ -440,9 +458,21 @@ export function QuoteCard({
           )}
         </YStack>
       ) : quote.status === "REJECTED" ? (
-        <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
-          Hai rifiutato questo preventivo
-        </Text>
+        <YStack gap="$1">
+          <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+            Hai rifiutato questo preventivo
+          </Text>
+          {quote.rejectionNote ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              La tua nota: &quot;{quote.rejectionNote}&quot;
+            </Text>
+          ) : null}
+          {requestOpen ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Il professionista può ancora inviarti un nuovo preventivo finché la richiesta è aperta.
+            </Text>
+          ) : null}
+        </YStack>
       ) : quote.status === "WITHDRAWN" ? (
         <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
           Il professionista ha ritirato questo preventivo

@@ -1,12 +1,20 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
-import { scheduleChangeAlternative, scheduleChangeBetween, scheduleChangeObject, type ProposeQuoteDateInput, type QuoteSelfInput } from "@professionisti/shared";
+import {
+  scheduleChangeAlternative,
+  scheduleChangeBetween,
+  scheduleChangeObject,
+  type ProposeQuoteDateInput,
+  type QuoteSelfInput,
+  type RejectQuoteInput,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { quoteResendWindow } from "./quote-resend";
 
 @Injectable()
 export class QuotesService {
@@ -57,7 +65,25 @@ export class QuotesService {
     // QuotesService.rejectByClient/withdrawByProfessional,
     // proposeDate/confirmProposedDate/rejectProposedDate), riscriverlo qui
     // sotto lo confonderebbe con l'altra parte.
-    if (existingQuote && existingQuote.status !== "SENT") {
+    //
+    // Eccezione: un preventivo rifiutato dal cliente si può sostituire con
+    // uno nuovo (docs/CHANGELOG.md §186) finché la richiesta è aperta e non
+    // è scaduta — scadenza contata dall'invio della richiesta, mai dal
+    // rifiuto (vedi quoteResendWindow).
+    let isResend = false;
+    if (existingQuote?.status === "REJECTED") {
+      const booking = await this.prisma.booking.findUnique({ where: { quoteId: existingQuote.id }, select: { id: true } });
+      const { canResend } = quoteResendWindow({
+        quoteStatus: existingQuote.status,
+        hasBooking: booking !== null,
+        request: lead.guidedRequest,
+        clientDeleted: false,
+      });
+      if (!canResend) {
+        throw new ForbiddenException("La richiesta è chiusa o scaduta: non puoi più inviare un nuovo preventivo.");
+      }
+      isResend = true;
+    } else if (existingQuote && existingQuote.status !== "SENT") {
       throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
     }
 
@@ -65,6 +91,9 @@ export class QuotesService {
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,
+      // Il nuovo preventivo torna "inviato" e perde la nota del rifiuto
+      // precedente (resta nella cronologia); createdAt resta il primo invio.
+      ...(isResend ? { status: "SENT" as const, rejectionNote: null, resentAt: new Date(), professionalCounterNote: null } : {}),
     };
 
     const quote = existingQuote
@@ -91,7 +120,7 @@ export class QuotesService {
 
     // Cosa cambia di "quando" rispetto al preventivo già inviato: data,
     // orario o entrambi (docs/CHANGELOG.md §180).
-    const scheduleChange = existingQuote
+    const scheduleChange = existingQuote && !isResend
       ? scheduleChangeBetween(
           { start: existingQuote.estimatedStartDate, end: existingQuote.estimatedEndDate },
           { start: data.estimatedStartDate, end: data.estimatedEndDate },
@@ -101,7 +130,24 @@ export class QuotesService {
     // già visto il preventivo la prima volta, una modifica non è "novità"
     // da badge — coerente con la stessa distinzione già fatta altrove nel
     // progetto (es. isNewUser per l'auth Google).
-    if (!existingQuote) {
+    if (isResend) {
+      // Nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §186): per il
+      // cliente è una novità come il primo invio, ma nessuna metrica di
+      // "prima risposta" (il tempo di risposta resta quello del primo invio,
+      // contato dall'arrivo della richiesta).
+      await this.notificationsService.notify(lead.guidedRequest.clientId, "NEW_QUOTE", {
+        guidedRequestId: lead.guidedRequestId,
+        quoteId: quote.id,
+        businessName: professionalProfile.businessName,
+        resent: true,
+      });
+      await this.timelineService.log(
+        lead.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        `Il professionista ha inviato un nuovo preventivo (${input.items.length} ${input.items.length === 1 ? "voce" : "voci"}), data prevista ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
+      );
+    } else if (!existingQuote) {
       await this.notificationsService.notify(lead.guidedRequest.clientId, "NEW_QUOTE", {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
@@ -552,7 +598,7 @@ export class QuotesService {
    * (rejectProposedDate, che riguarda solo il sotto-flusso di modifica
    * data): qui il preventivo stesso non va più bene, non solo la data.
    */
-  async rejectByClient(clientId: string, quoteId: string) {
+  async rejectByClient(clientId: string, quoteId: string, input: RejectQuoteInput = {}) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: { guidedRequest: true, booking: true, professionalProfile: true },
@@ -566,9 +612,18 @@ export class QuotesService {
     if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più modificabile.");
     }
+    const rejectionNote = input.note?.trim() || null;
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
-      data: { status: "REJECTED", clientProposedDate: null, clientProposedNote: null },
+      data: { status: "REJECTED", clientProposedDate: null, clientProposedNote: null, rejectionNote },
+    });
+    // Il professionista può inviare un nuovo preventivo fino alla scadenza
+    // della richiesta, contata dal suo invio (docs/CHANGELOG.md §186).
+    const { canResend, resendUntil } = quoteResendWindow({
+      quoteStatus: "REJECTED",
+      hasBooking: false,
+      request: quote.guidedRequest,
+      clientDeleted: false,
     });
     // Bug reale corretto durante la verifica: notify() richiede lo userId
     // del destinatario, non il professionalProfileId (chiave esterna
@@ -577,8 +632,16 @@ export class QuotesService {
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_REJECTED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
+      note: rejectionNote,
+      canResend,
+      resendUntil: resendUntil?.toISOString() ?? null,
     });
-    await this.timelineService.log(quote.guidedRequestId, quote.professionalProfileId, "CLIENT", "Il cliente ha rifiutato il preventivo.");
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      quote.professionalProfileId,
+      "CLIENT",
+      rejectionNote ? `Il cliente ha rifiutato il preventivo. Nota: «${rejectionNote}»` : "Il cliente ha rifiutato il preventivo.",
+    );
     return { id: updated.id, status: updated.status };
   }
 

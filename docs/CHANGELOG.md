@@ -16566,3 +16566,52 @@ dominio verificato e `RESEND_FROM_EMAIL` per arrivare a tutti.
 `email-templates.test.ts` (ogni modello si compone anche con dati vuoti, ogni
 tipo con email ha un argomento, la recensione non anticipa il voto) e
 `password-reset.test.ts`; anteprima di tutte le 64 email.
+
+## 186. Preventivo rifiutato: nota del cliente e nuovo preventivo
+
+**Richiesta dell'utente** (7 ottobre 2026): "quando il cliente rifiuta un
+preventivo, fagli inserire una nota facoltativa, e dai al professionista la
+possibilità di inviare un nuovo preventivo considerando sempre l'orario di
+invio della richiesta come orario da cui partire per il conteggio".
+
+**Prima:** "Rifiuta" chiedeva solo conferma, senza spazio per spiegare il
+perché. Il preventivo passava a `REJECTED` e da lì non era più modificabile:
+il professionista vedeva la richiesta "Chiusa" e poteva solo eliminarla.
+
+**Decisione:**
+- **Nota facoltativa al rifiuto** (`Quote.rejectionNote`, max 1000 caratteri,
+  `rejectQuoteSchema`; `POST /quotes/:id/reject` accetta `{ note }`, anche
+  senza corpo come prima). Il professionista la legge nella scheda
+  ("Il cliente ha rifiutato... Nota: ..."), nella notifica, nell'email (nel
+  riquadro, non nel testo) e nella cronologia, dove resta anche dopo un nuovo
+  preventivo. Il cliente la rivede sotto "Hai rifiutato questo preventivo".
+- **Nuovo preventivo dopo il rifiuto**: `POST /quotes` sullo stesso
+  preventivo rifiutato lo rimette `SENT` con voci, data e note nuove, azzera
+  la nota del rifiuto e segna `Quote.resentAt`. Al cliente arriva `NEW_QUOTE`
+  con `resent: true` ("ti ha inviato un nuovo preventivo, al posto di quello
+  che avevi rifiutato") e la scheda dice "Nuovo preventivo inviato il...".
+  Il professionista trova "Invia un nuovo preventivo" nella scheda (e nel
+  menu), con il modulo precompilato dal preventivo precedente. Si può
+  ripetere dopo ogni rifiuto.
+- **Conteggio dei tempi dall'invio della richiesta, mai dal rifiuto**
+  (`apps/api/src/quotes/quote-resend.ts`): il nuovo preventivo è possibile
+  fino alla scadenza della richiesta (`GuidedRequest.expiresAt`, fissata al
+  suo invio: 14 giorni, 7 se urgente), finché la richiesta è aperta, non
+  nascosta da un admin e il cliente ha ancora l'account. Nessuna scadenza
+  riparte: `Quote.createdAt` resta il primo invio, e il tempo di risposta del
+  professionista (metriche di affidabilità) resta quello del primo
+  preventivo. Non si usa la scadenza del singolo Lead ("Rispondi entro", 4
+  ore lavorative o pochi minuti se urgente, dall'arrivo della richiesta):
+  quando il cliente rifiuta è quasi sempre già passata e il nuovo preventivo
+  non sarebbe mai possibile.
+- La scheda resta nello stadio "Chiusa" (tab "Scadute") finché non arriva il
+  nuovo preventivo: non entra nel contatore "Richieste da rispondere".
+- Migrazione `20261007170000_quote_rejection_note` (due colonne nullable).
+
+**Verifica:** typecheck di API e web, test API (nuovo `quote-resend.test.ts`);
+prova completa su Postgres locale con l'API avviata: rifiuto con nota →
+il professionista vede nota, `canResend` e la scadenza della richiesta →
+nuovo preventivo `SENT` con `resentAt` → rifiuto senza corpo ancora
+accettato → con la richiesta scaduta `canResend` torna falso; notifiche e
+cronologia con i testi attesi; anteprima delle email `quote_rejected` e
+`new_quote_nuovo_dopo_rifiuto`.
