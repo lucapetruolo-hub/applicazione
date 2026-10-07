@@ -68,7 +68,7 @@ function NotificationRow({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const draggingRef = useRef(false);
 
-  const copy = notificationCopy(item.type);
+  const copy = notificationCopy(item.type, item.payload);
   // Icona e colore per argomento invece dell'emoji (docs/CHANGELOG.md §152).
   const topic = notificationTopicStyle(item.type, isProfessional);
   const isUnread = item.readAt === null;

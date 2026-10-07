@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import { ALL_ITALIAN_CITY_NAMES, averageQuoteTotalEurCents, findComuneByName, formatEurCents, type GuidedRequestStatusSummary } from "@professionisti/shared";
-import { Autocomplete, Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Avatar, Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -521,9 +521,15 @@ export function GuidedRequestCard({
             la riga dei badge va a capo e il pulsante finiva in conflitto con
             loro). */}
         <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
-          <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
-            {headingName}
-          </Text>
+          {/* Foto del professionista accanto al nome quando la richiesta è
+              diventata un lavoro (richiesta esplicita dell'utente),
+              iniziali se manca; prima il titolo è la categoria, nessuna foto. */}
+          <XStack flex={1} minWidth={0} alignItems="center" gap="$2">
+            {booking && !booking.professionalAccountDeleted ? <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} /> : null}
+            <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+              {headingName}
+            </Text>
+          </XStack>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
         <RequestStateIndicators myState={request.myState} />
@@ -725,6 +731,7 @@ export function GuidedRequestCard({
                   token={token}
                   onChanged={onChanged}
                   onAcceptQuote={onAcceptQuote}
+                  requestedDate={request.preferredDate}
                   requestedTimeSlot={request.preferredTimeSlot}
                   guidedRequestId={request.id}
                   serviceMode={request.serviceMode}

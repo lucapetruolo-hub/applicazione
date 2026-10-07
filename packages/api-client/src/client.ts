@@ -1,5 +1,6 @@
 import type {
   EmailStatus,
+  ScheduleChange,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -88,6 +89,8 @@ export type ClientBooking = {
   updatedAt: string;
   status: BookingStatus;
   businessName: string;
+  /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
+  professionalImageUrl: string | null;
   professionalProfileId: string;
   /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
   guidedRequestId: string | null;
@@ -197,6 +200,8 @@ export type ClientGuidedRequest = {
     id: string;
     professionalProfileId: string;
     businessName: string;
+    /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
+    imageUrl: string | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
     sentAt: string;
@@ -208,8 +213,8 @@ export type ClientGuidedRequest = {
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
-    /** True se il professionista ha inviato il preventivo con un orario diverso da quello che il cliente aveva effettivamente richiesto (richiesta esplicita dell'utente, evidenziato in UI). */
-    timeChangedFromRequest: boolean;
+    /** Cosa il professionista ha cambiato (data, orario o entrambi) rispetto a quanto il cliente aveva effettivamente richiesto, null se nulla o se la richiesta non portava un orario (evidenziato in UI). */
+    changeFromRequest: ScheduleChange | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
     professionalCounterNote: string | null;
     notes: string | null;

@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice } from "@professionisti/shared";
+import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice, type ScheduleChange } from "@professionisti/shared";
 import { PaymentChoice } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TimelineModal } from "@/components/TimelineModal";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -53,11 +53,27 @@ export const MANUAL_OPTION_VALUE = "altro";
  * permette al cliente di accettarla o proporne un'altra, scelta tra le
  * fasce libere reali dell'agenda del professionista.
  */
+/**
+ * Avviso al cliente quando il preventivo non rispetta quanto aveva chiesto:
+ * dice se è cambiata la data, l'orario o entrambi, con ciò che aveva chiesto
+ * (docs/CHANGELOG.md §180, prima diceva sempre "orario").
+ */
+function changeFromRequestText(change: ScheduleChange, requestedDate: string | null, requestedTimeSlot: string): string {
+  const slot = requestedTimeSlot.replace("-", "–");
+  const day = requestedDate
+    ? new Date(requestedDate).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
+    : null;
+  if (change === "time") return `Il professionista ha proposto un orario diverso da quello richiesto (${slot}).`;
+  if (change === "date") return `Il professionista ha proposto una data diversa da quella richiesta${day ? ` (${day})` : ""}.`;
+  return `Il professionista ha proposto data e orario diversi da quelli richiesti (${day ? `${day}, ` : ""}${slot}).`;
+}
+
 export function QuoteCard({
   quote,
   token,
   onChanged,
   onAcceptQuote,
+  requestedDate,
   requestedTimeSlot,
   guidedRequestId,
   serviceMode,
@@ -69,6 +85,8 @@ export function QuoteCard({
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
+  /** Giorno che il cliente aveva originariamente richiesto (ISO, mezzanotte UTC), per dire quale data aveva chiesto quando il professionista la cambia. */
+  requestedDate: string | null;
   /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
   requestedTimeSlot: string | null;
   /** Richiesta di origine, per il bottone "Cronologia". */
@@ -207,9 +225,13 @@ export function QuoteCard({
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2" flexWrap="wrap">
         <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-          <Text fontWeight="600" color={brand.cianografiaScuro}>
-            {quote.businessName}
-          </Text>
+          {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
+          <XStack alignItems="center" gap="$2">
+            <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
+            <Text fontWeight="600" color={brand.cianografiaScuro}>
+              {quote.businessName}
+            </Text>
+          </XStack>
         </Link>
         {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
@@ -235,10 +257,10 @@ export function QuoteCard({
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
       </XStack>
-      {quote.timeChangedFromRequest && requestedTimeSlot ? (
+      {quote.changeFromRequest && requestedTimeSlot ? (
         <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
           <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            Il professionista ha proposto un orario diverso da quello richiesto ({requestedTimeSlot.replace("-", "–")}).
+            {changeFromRequestText(quote.changeFromRequest, requestedDate, requestedTimeSlot)}
           </Text>
         </YStack>
       ) : null}

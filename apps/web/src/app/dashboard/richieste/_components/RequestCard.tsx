@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
-import { Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Avatar, Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
@@ -565,9 +565,15 @@ export function RequestCard({
             scadenza vanno a capo e il pulsante finiva in conflitto con
             loro). */}
         <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
-          <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
-            {clientName}
-          </Text>
+          {/* Foto del cliente accanto al nome (richiesta esplicita
+              dell'utente: riconoscere a colpo d'occhio di chi si tratta),
+              iniziali se manca; niente per un account eliminato. */}
+          <XStack flex={1} minWidth={0} alignItems="center" gap="$2">
+            {gr.clientAccountDeleted ? null : <Avatar name={clientName} imageUrl={gr.clientImageUrl} size={40} />}
+            <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
+              {clientName}
+            </Text>
+          </XStack>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
         {gr.clientEmailVerified && !gr.clientAccountDeleted ? (
