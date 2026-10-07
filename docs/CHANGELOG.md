@@ -16435,3 +16435,27 @@ Questi eventi non partono per email: nessun testo email da correggere.
 
 **Verifica:** build di `apps/api`, test dell'API (nuovo
 `schedule-change.test.ts`), typecheck di `apps/web` e `apps/mobile`.
+
+## 183. Foto accanto al nome della controparte nelle richieste
+
+**Richiesta esplicita dell'utente:** "nelle varie richieste sia da parte del
+cliente che del professionista, fai visualizzare anche la foto di fianco al
+nome", per capire a colpo d'occhio di chi si tratta.
+
+**Decisione:** stesso componente ovunque, l'`Avatar` di `packages/ui` (già
+usato in chat): foto tonda se c'è, altrimenti le iniziali. Nessuna foto per un
+account eliminato.
+
+- **Richieste ricevute** (professionista, `RequestCard`): foto del cliente
+  accanto al nome in testa alla scheda (`clientImageUrl`, già esposto).
+- **Le mie richieste** (cliente, `GuidedRequestCard`): foto del professionista
+  accanto al nome quando la richiesta è diventata un lavoro (nuovo
+  `ClientBooking.professionalImageUrl`).
+- **Preventivi ricevuti** (cliente, `QuoteCard`): foto accanto al nome del
+  professionista (nuovo `imageUrl` sui preventivi di `listForClient`).
+- La chat mostrava già la foto; i destinatari della richiesta ("Inviata a")
+  mantengono `ProfessionalAvatar` (icona della categoria se manca la foto).
+- `Avatar` ora ha `flexShrink={0}`, per non schiacciarsi accanto a un nome lungo.
+
+**Verifica:** typecheck di `apps/web` e `apps/api`, test dell'API su
+richieste e prenotazioni.

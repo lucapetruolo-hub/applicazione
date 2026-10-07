@@ -354,6 +354,10 @@ export class GuidedRequestsService {
           id: quote.id,
           professionalProfileId: quote.professionalProfileId,
           businessName: quote.professionalProfile.businessName,
+          // Foto profilo accanto al nome nella scheda del preventivo
+          // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
+          // di chi si tratta). Mai per un profilo eliminato.
+          imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
           items: quote.items.map((item) => ({
             id: item.id,
             name: item.name,
