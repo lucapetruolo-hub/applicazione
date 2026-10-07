@@ -16,6 +16,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalsService } from "../professionals/professionals.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { EmailService } from "../email/email.service";
+import { profileInviteEmail } from "../email/templates/account-emails";
 import type { AuthResult } from "../auth/auth.service";
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -53,10 +54,6 @@ function decryptToken(value: string): string | null {
     // Chiave cambiata (JWT_SECRET ruotato): si crea un link nuovo.
     return null;
   }
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
 /**
@@ -183,11 +180,7 @@ export class ProfileInvitesService {
     const inviteUrl = this.inviteUrl(token);
     const businessName = user.professionalProfile?.businessName ?? "";
     const emailSent = user.email && options.sendEmail !== false
-      ? await this.emailService.send({
-          to: user.email,
-          subject: "Il tuo profilo su Manovia è pronto",
-          html: `<p>Ciao${user.name ? ` ${escapeHtml(user.name)}` : ""},</p><p>abbiamo preparato il profilo di <strong>${escapeHtml(businessName)}</strong> come concordato al telefono. Apri il link, scegli la password e controlla i dati: il profilo comparirà nelle ricerche solo dopo che l'avrai salvato tu.</p><p><a href="${inviteUrl}">Completa il tuo profilo</a></p><p>Il link vale ${PROFILE_INVITE_DAYS} giorni.</p>`,
-        })
+      ? await this.emailService.send({ to: user.email, ...profileInviteEmail(user.name, businessName, inviteUrl, PROFILE_INVITE_DAYS) })
       : false;
     return { userId, email: user.email ?? "", businessName, inviteUrl, expiresAt: expiresAt.toISOString(), emailSent };
   }

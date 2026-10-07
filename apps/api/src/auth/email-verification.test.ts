@@ -44,14 +44,16 @@ describe("conferma email", () => {
     expect(stored.emailTokenHash).not.toContain(token);
   });
 
-  it("non chiede nessuna conferma al cliente", async () => {
+  it("non chiede nessuna conferma al cliente: solo il benvenuto", async () => {
     const { service, prisma, emailService } = buildService();
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue({ id: "u-1" });
 
     await service.register("anna@example.it", "password123", "Anna", "CLIENT");
 
-    expect(emailService.send).not.toHaveBeenCalled();
+    expect(emailService.send).toHaveBeenCalledTimes(1);
+    expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: "anna@example.it", subject: expect.stringContaining("Benvenuto") }));
+    expect(emailService.send.mock.calls[0]![0].html).not.toContain("conferma-email");
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 

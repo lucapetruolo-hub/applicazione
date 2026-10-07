@@ -248,6 +248,15 @@ export class GuidedRequestsService {
       await this.prisma.guidedRequest.update({ where: { id: guidedRequest.id }, data: { expiresAt: requestExpiresAt } });
     }
 
+    // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §183).
+    this.notificationsService.emailRequestSent(clientId, {
+      category: category.label,
+      city: input.city ?? null,
+      isUrgent: input.isUrgent,
+      sentTo: leadRecipients.length,
+      direct: Boolean(input.professionalProfileId),
+    });
+
     return {
       // Professionisti che hanno DAVVERO ricevuto un Lead (dopo la
       // selezione), non solo i candidati compatibili trovati — questo

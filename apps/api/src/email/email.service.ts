@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Resend } from "resend";
+import { EMAIL_BRAND } from "./email-brand";
 
 /**
  * Invio email transazionali (Resend) — CEO, tattico: "promemoria automatici
@@ -21,7 +22,7 @@ export class EmailService {
     this.resend = apiKey ? new Resend(apiKey) : null;
     // Deve essere un dominio verificato su Resend — nessun default reale
     // possibile prima che l'utente configuri il proprio dominio d'invio.
-    this.fromAddress = process.env.RESEND_FROM_EMAIL ?? "Professionisti <onboarding@resend.dev>";
+    this.fromAddress = process.env.RESEND_FROM_EMAIL ?? `${EMAIL_BRAND.name} <onboarding@resend.dev>`;
   }
 
   get isConfigured(): boolean {
@@ -37,13 +38,19 @@ export class EmailService {
    * andare a buon fine anche se l'email non parte. Ritorna `true`/`false`
    * solo per permettere al chiamante di loggare/contare gli invii falliti.
    */
-  async send(params: { to: string; subject: string; html: string }): Promise<boolean> {
+  async send(params: { to: string; subject: string; html: string; text?: string }): Promise<boolean> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY non configurata: email "${params.subject}" a ${params.to} non inviata.`);
       return false;
     }
     try {
-      const result = await this.resend.emails.send({ from: this.fromAddress, to: params.to, subject: params.subject, html: params.html });
+      const result = await this.resend.emails.send({
+        from: this.fromAddress,
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+        ...(params.text ? { text: params.text } : {}),
+      });
       if (result.error) {
         this.logger.error(`Invio email fallito a ${params.to}: ${result.error.message}`);
         return false;

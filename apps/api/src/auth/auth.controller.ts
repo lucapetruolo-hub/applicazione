@@ -7,6 +7,8 @@ import {
   emailStatusSchema,
   googleVerifySchema,
   normalizeAdminRoles,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
   registerSchema,
   updateAccountSchema,
   verifyEmailSchema,
@@ -14,6 +16,8 @@ import {
   type EmailPasswordInput,
   type EmailStatusInput,
   type GoogleVerifyInput,
+  type PasswordResetConfirmInput,
+  type PasswordResetRequestInput,
   type RegisterInput,
   type UpdateAccountInput,
   type VerifyEmailInput,
@@ -70,6 +74,22 @@ export class AuthController {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
     });
+  }
+
+  // Recupero password (docs/CHANGELOG.md §183): stessa risposta che
+  // l'account esista o no; limite stretto contro chi riempie di email una
+  // casella altrui.
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post("password-reset/request")
+  async requestPasswordReset(@Body(new ZodValidationPipe(passwordResetRequestSchema)) body: PasswordResetRequestInput) {
+    await this.authService.requestPasswordReset(body.email);
+    return { success: true };
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("password-reset/confirm")
+  async confirmPasswordReset(@Body(new ZodValidationPipe(passwordResetConfirmSchema)) body: PasswordResetConfirmInput) {
+    return this.authService.confirmPasswordReset(body.token, body.password);
   }
 
   // Conferma email (docs/CHANGELOG.md §178): pubblica, il codice nel link

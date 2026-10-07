@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { clientCanReview, type ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 // Recensioni "doppio cieco" (richiesta esplicita dell'utente): pubbliche
 // solo quando entrambe le parti hanno recensito, a meno che non passino
@@ -19,6 +20,7 @@ export class ReviewsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -121,7 +123,13 @@ export class ReviewsService {
   async create(clientId: string, input: ReviewInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: input.bookingId },
-      include: { review: true, issue: { select: { status: true } } },
+      include: {
+        review: true,
+        issue: { select: { status: true } },
+        clientReview: { select: { id: true } },
+        professionalProfile: { select: { userId: true } },
+        quote: { select: { guidedRequestId: true } },
+      },
     });
     if (!booking) {
       throw new NotFoundException("Prenotazione non trovata.");
@@ -156,6 +164,14 @@ export class ReviewsService {
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 5).
     await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
+
+    // Avviso al professionista (docs/CHANGELOG.md §183). Mai il voto: con il
+    // "doppio cieco" lo vede solo quando ha recensito anche lui il cliente.
+    await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
+      bookingId: booking.id,
+      guidedRequestId: booking.quote?.guidedRequestId ?? null,
+      published: booking.clientReview !== null,
+    });
 
     return { id: review.id };
   }

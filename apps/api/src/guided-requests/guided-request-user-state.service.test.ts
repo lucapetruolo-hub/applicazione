@@ -83,18 +83,12 @@ describe("NotificationsService — email sul nuovo lead", () => {
     const prisma = {
       guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(muted ? { id: "s-1" } : null) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_LEAD", payload: {}, createdAt: new Date() }) },
-      user: {
-        findUnique: vi.fn().mockResolvedValue({ notificationPrefs: null }),
-        findMany: vi.fn().mockResolvedValue([
-          { email: "pro@example.com", name: "Pro", notificationPrefs: null },
-          { email: null, name: "Senza email", notificationPrefs: null },
-          { email: "muto@example.com", name: "Email spenta", notificationPrefs: { topics: { richieste: { inApp: true, email: false, sms: false } } } },
-        ]),
-      },
+      user: { findUnique: vi.fn().mockResolvedValue({ email: "pro@example.com", name: "Pro", deletedAt: null, notificationPrefs: null }) },
+      guidedRequest: { findUnique: vi.fn().mockResolvedValue({ city: "Roma", category: { label: "Idraulico" } }) },
     };
     const email = { send: vi.fn().mockResolvedValue(true) };
     const service = new NotificationsService(prisma as never, { publish: vi.fn() } as never, email as never);
-    return { service, email };
+    return { service, email, prisma };
   }
 
   it("invia l'email al professionista con categoria, città e urgenza", async () => {
@@ -102,8 +96,21 @@ describe("NotificationsService — email sul nuovo lead", () => {
     await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: true });
     await vi.waitFor(() => expect(email.send).toHaveBeenCalledTimes(1));
     expect(email.send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "pro@example.com", subject: "URGENTE — Nuova richiesta: Idraulico a Roma" }),
+      expect.objectContaining({ to: "pro@example.com", subject: "URGENTE — Nuova richiesta: Idraulico a Roma", text: expect.stringContaining("dashboard/richieste") }),
     );
+  });
+
+  it("nessuna email se il professionista l'ha spenta per le nuove richieste", async () => {
+    const { service, email, prisma } = buildLeadNotifications(false);
+    prisma.user.findUnique.mockResolvedValue({
+      email: "muto@example.com",
+      name: "Email spenta",
+      deletedAt: null,
+      notificationPrefs: { topics: { richieste: { inApp: true, email: false, sms: false } } },
+    });
+    await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(email.send).not.toHaveBeenCalled();
   });
 
   it("nessuna email se la richiesta è silenziata", async () => {
@@ -120,10 +127,10 @@ describe("NotificationsService — preferenze di notifica (docs/CHANGELOG.md §1
       guidedRequestUserState: { findFirst: vi.fn().mockResolvedValue(null) },
       notification: { create: vi.fn().mockResolvedValue({ id: "n-1", type: "NEW_QUOTE", payload: {}, createdAt: new Date() }) },
       user: {
-        findUnique: vi.fn().mockResolvedValue({ notificationPrefs: prefs }),
-        findMany: vi.fn().mockResolvedValue([{ email: "pro@example.com", name: "Pro", notificationPrefs: prefs }]),
+        findUnique: vi.fn().mockResolvedValue({ email: "pro@example.com", name: "Pro", deletedAt: null, notificationPrefs: prefs }),
         update: vi.fn().mockResolvedValue({}),
       },
+      guidedRequest: { findUnique: vi.fn().mockResolvedValue({ city: "Roma", category: { label: "Idraulico" } }) },
     };
     const realtime = { publish: vi.fn() };
     const email = { send: vi.fn().mockResolvedValue(true) };

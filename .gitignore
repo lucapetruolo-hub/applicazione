@@ -36,3 +36,6 @@ packages/database/generated/
 # misc
 *.tsbuildinfo
 coverage/
+
+# Anteprima locale delle email (pnpm --filter @professionisti/api email:preview)
+apps/api/email-preview/

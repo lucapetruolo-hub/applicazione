@@ -5,13 +5,19 @@ import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
 import {
   CONTENT_REPORT_TARGET_LABEL,
-  moderationActionOwnerText,
   notificationChannelEnabled,
   resolveNotificationPreferences,
   type ContentReportTargetType,
-  type ModerationAction,
   type NotificationPreferences,
 } from "@professionisti/shared";
+import { renderEmail } from "../email/email-layout";
+import { adminNewReportEmail, requestSentEmail } from "../email/templates/job-emails";
+import {
+  EMPTY_EMAIL_CONTEXT,
+  NOTIFICATION_EMAIL_TYPES,
+  notificationEmail,
+  type NotificationEmailContext,
+} from "../email/templates/notification-emails";
 
 function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -20,90 +26,6 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   }
   return null;
 }
-
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-/** Notifiche di moderazione che partono anche via email (docs/CHANGELOG.md §145). */
-const MODERATION_EMAIL_TYPES = new Set([
-  "CONTENT_REPORT_UPHELD",
-  "CONTENT_REPORT_REVERTED",
-  "CONTENT_REPORT_APPEAL_REJECTED",
-  "ACCOUNT_SUSPENDED",
-  "ACCOUNT_REACTIVATED",
-]);
-
-/** Avvisi dell'abbonamento che partono anche via email (docs/CHANGELOG.md §162): riguardano addebiti e visibilità. */
-const SUBSCRIPTION_EMAIL_TYPES = new Set([
-  "SUBSCRIPTION_TRIAL_ENDING",
-  "SUBSCRIPTION_LIMIT_REACHED",
-  "SUBSCRIPTION_PAUSED",
-  "SUBSCRIPTION_RENEWING",
-  "SUBSCRIPTION_RENEWED",
-  "SUBSCRIPTION_ENDING",
-  "SUBSCRIPTION_PAYMENT_FAILED",
-]);
-
-const DATE_IT = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", day: "numeric", month: "long", year: "numeric" });
-
-function formatDateIt(value: unknown): string {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? DATE_IT.format(new Date(value)) : "";
-}
-
-function formatEur(cents: unknown): string {
-  return typeof cents === "number" ? `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}` : "";
-}
-
-/** Oggetto e testo delle email dell'abbonamento; il link porta sempre alla pagina Abbonamento. */
-export function subscriptionEmail(type: string, payload: Record<string, unknown>): { subject: string; text: string } | null {
-  const tier = typeof payload.tierLabel === "string" ? payload.tierLabel : "";
-  const date = formatDateIt(payload.date);
-  switch (type) {
-    case "SUBSCRIPTION_TRIAL_ENDING":
-      return {
-        subject: "Il tuo mese gratuito sta per finire",
-        text: `Il tuo mese gratuito finisce il ${date}. Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.`,
-      };
-    case "SUBSCRIPTION_LIMIT_REACHED":
-      return {
-        subject: "Hai raggiunto i lavori compresi nel tuo livello",
-        text: "Hai raggiunto i lavori accettati compresi nel tuo livello per questo mese: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Passa al livello superiore pagando solo la differenza, oppure riparti dal primo del mese prossimo.",
-      };
-    case "SUBSCRIPTION_PAUSED":
-      return {
-        subject: "Il tuo account è in pausa",
-        text:
-          payload.reason === "SUBSCRIPTION_ENDED"
-            ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo."
-            : "Il tuo mese gratuito è finito: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.",
-      };
-    case "SUBSCRIPTION_RENEWING":
-      return {
-        subject: `Il tuo abbonamento ${tier} si rinnova il ${date}`,
-        text: `Il tuo abbonamento ${tier} si rinnova automaticamente il ${date} (${formatEur(payload.amountEurCents)} al mese). Se non vuoi rinnovarlo, puoi annullarlo dalla pagina Abbonamento: resta attivo fino a quella data.`,
-      };
-    case "SUBSCRIPTION_RENEWED":
-      return {
-        subject: `Abbonamento ${tier} rinnovato`,
-        text: `Abbiamo rinnovato il tuo abbonamento ${tier}: addebito di ${formatEur(payload.amountEurCents)}. Il prossimo rinnovo è il ${date}.`,
-      };
-    case "SUBSCRIPTION_ENDING":
-      return {
-        subject: `Il tuo abbonamento finisce il ${date}`,
-        text: `Hai annullato l'abbonamento ${tier}: resta attivo fino al ${date}, poi il tuo profilo non comparirà più nelle ricerche. Puoi riattivarlo in qualsiasi momento dalla pagina Abbonamento.`,
-      };
-    case "SUBSCRIPTION_PAYMENT_FAILED":
-      return {
-        subject: "Pagamento dell'abbonamento non riuscito",
-        text: "Non siamo riusciti ad addebitare il rinnovo del tuo abbonamento. Riproveremo nei prossimi giorni: controlla il metodo di pagamento per non andare in pausa.",
-      };
-    default:
-      return null;
-  }
-}
-
-export type NewLeadEmailPayload = { category: string; city: string | null; isUrgent: boolean };
 
 @Injectable()
 export class NotificationsService {
@@ -120,8 +42,9 @@ export class NotificationsService {
    * CLAUDE.md §13) — usato sia dal fan-out lead (NEW_LEAD) sia dagli eventi
    * del ciclo di vita del preventivo (NEW_QUOTE, QUOTE_DATE_PROPOSED,
    * QUOTE_DATE_CONFIRMED, QUOTE_DATE_REJECTED). Canale sempre PUSH: la riga
-   * in tabella alimenta il conteggio non letti; solo NEW_LEAD parte anche
-   * via email (emailNewLead). Expo Push/Twilio restano rimandati.
+   * in tabella alimenta il conteggio non letti; i tipi elencati in
+   * `email/templates/notification-emails.ts` partono anche via email
+   * (docs/CHANGELOG.md §183). Expo Push/Twilio restano rimandati.
    *
    * Pubblica anche un push SSE (CTO — real-time): la riga DB resta l'unica
    * fonte di verità (il push è un acceleratore, mai l'unico modo di sapere
@@ -142,10 +65,14 @@ export class NotificationsService {
     // §152): stesso trattamento di una richiesta silenziata, la notifica
     // resta nella cronologia ma nasce letta.
     const prefs = await this.preferencesOf(userId);
+    // Email (docs/CHANGELOG.md §183): parte se il tipo ne ha una e il canale
+    // email dell'argomento è acceso, anche con il sito spento. Mai per una
+    // richiesta silenziata.
+    if (!muted && NOTIFICATION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
+      this.emailNotification(userId, type, payload);
+    }
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
-      // Sito spento ma email accesa: l'email parte lo stesso. Mai per una richiesta silenziata.
-      if (!muted && type === "NEW_LEAD" && notificationChannelEnabled(prefs, type, "email")) this.emailNewLeadFromPayload(userId, payload);
       return;
     }
 
@@ -153,24 +80,6 @@ export class NotificationsService {
     this.realtimeService.publish(userId, {
       kind: "notification",
       notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
-    });
-    if (MODERATION_EMAIL_TYPES.has(type)) {
-      this.emailModeration(userId, type, payload as Record<string, unknown>);
-    }
-    if (SUBSCRIPTION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
-      this.emailSubscription(userId, type, payload as Record<string, unknown>);
-    }
-    if (type === "NEW_LEAD" && notificationChannelEnabled(prefs, type, "email")) {
-      this.emailNewLeadFromPayload(userId, payload);
-    }
-  }
-
-  private emailNewLeadFromPayload(userId: string, payload: Prisma.InputJsonValue): void {
-    const { category, city, isUrgent } = payload as Record<string, unknown>;
-    this.emailNewLead([userId], {
-      category: typeof category === "string" ? category : "Richiesta",
-      city: typeof city === "string" ? city : null,
-      isUrgent: isUrgent === true,
     });
   }
 
@@ -187,70 +96,95 @@ export class NotificationsService {
   }
 
   /**
-   * Email al professionista per ogni nuovo lead (CEO, tattico — lacuna
-   * competitiva n.1 rispetto a ProntoPro/Cronoshare): la campanella e il
-   * push SSE arrivano solo a chi ha il sito aperto, ma in un mercato locale
-   * vince chi risponde per primo (CLAUDE.md §8). Non attesa dal chiamante:
-   * l'invio a più professionisti non deve rallentare la risposta al
-   * cliente, ed `EmailService.send` non lancia mai (senza RESEND_API_KEY
-   * logga e basta).
+   * Email che accompagna una notifica (docs/CHANGELOG.md §183): testi in
+   * `email/templates/notification-emails.ts`, dati del lavoro caricati qui.
+   * Non attesa dal chiamante (un fan-out a più professionisti non deve
+   * rallentare la risposta) e mai bloccante: `EmailService.send` non lancia,
+   * e senza RESEND_API_KEY logga e basta.
    */
-  /**
-   * Decisioni di moderazione anche via email (docs/CHANGELOG.md §145): la
-   * notifica sul sito non basta — chi non rientra non la vede, e un account
-   * sospeso non può proprio entrare. Stessa motivazione della notifica, con
-   * la misura presa e come contestarla (DSA art. 17).
-   */
-  private emailModeration(userId: string, type: string, payload: Record<string, unknown>): void {
-    void this.sendModerationEmail(userId, type, payload).catch((err: unknown) => {
-      this.logger.error(`Email di moderazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
+  private emailNotification(userId: string, type: string, payload: Prisma.InputJsonValue): void {
+    void (async () => {
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, deletedAt: true } });
+      if (!user?.email || user.deletedAt) return;
+      const data = payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>) : {};
+      const context = { ...(await this.emailContext(data)), name: user.name };
+      const content = notificationEmail(type, data, context);
+      if (!content) return;
+      await this.emailService.send({ to: user.email, ...renderEmail(content) });
+    })().catch((err: unknown) => {
+      this.logger.error(`Email della notifica ${type} non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
   }
 
-  private async sendModerationEmail(userId: string, type: string, payload: Record<string, unknown>): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    if (!user?.email) return;
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-    const note = typeof payload.note === "string" && payload.note ? payload.note : null;
-    const targetType = payload.targetType as ContentReportTargetType | undefined;
-    const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";
-    const reasonHtml = note ? `<p><strong>Motivazione:</strong> ${escapeHtml(note)}</p>` : "";
-    const humanHtml = "<p>La decisione è stata presa da una persona del nostro team, non da un sistema automatico.</p>";
-    let subject: string;
-    let html: string;
-    if (type === "CONTENT_REPORT_UPHELD") {
-      const suspended = payload.action === "SUSPEND_USER";
-      subject = "Decisione su una segnalazione che riguarda un tuo contenuto";
-      html =
-        `<p>Abbiamo esaminato una segnalazione su un tuo contenuto (${escapeHtml(what)}).</p>` +
-        `<p><strong>${escapeHtml(moderationActionOwnerText((payload.action as ModerationAction | null) ?? null, targetType ?? "REVIEW"))}</strong></p>` +
-        reasonHtml +
-        humanHtml +
-        (suspended
-          ? `<p>Se ritieni che sia un errore, rispondi a questa email o scrivici dal <a href="${frontendUrl}/contatti">modulo Contatti</a>.</p>`
-          : `<p>Se ritieni che sia un errore puoi <a href="${frontendUrl}/segnalazioni">contestare la decisione</a>.</p>`) +
-        "<p>Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.</p>";
-    } else if (type === "ACCOUNT_SUSPENDED") {
-      subject = "Il tuo account è stato sospeso";
-      html =
-        "<p>Il tuo account è stato sospeso: non puoi accedere finché la decisione non viene annullata.</p>" +
-        reasonHtml +
-        humanHtml +
-        `<p>Se ritieni che sia un errore, rispondi a questa email o scrivici dal <a href="${frontendUrl}/contatti">modulo Contatti</a>.</p>`;
-    } else if (type === "ACCOUNT_REACTIVATED") {
-      subject = "Il tuo account è di nuovo attivo";
-      html = `<p>La sospensione del tuo account è stata annullata: puoi di nuovo <a href="${frontendUrl}/accedi">accedere</a>.</p>` + reasonHtml;
-    } else if (type === "CONTENT_REPORT_REVERTED") {
-      subject = "La misura su un tuo contenuto è stata annullata";
-      html = `<p>Abbiamo annullato la misura presa su un tuo contenuto (${escapeHtml(what)}): è di nuovo come prima.</p>` + reasonHtml;
-    } else {
-      subject = "Esito della tua contestazione";
-      html =
-        "<p>Abbiamo esaminato la tua contestazione: la decisione resta valida.</p>" +
-        reasonHtml +
-        "<p>Puoi rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all'autorità giudiziaria.</p>";
+  /** Categoria, città, attività e data del lavoro a cui si riferisce il payload. */
+  private async emailContext(payload: Record<string, unknown>): Promise<NotificationEmailContext> {
+    const id = (key: string) => (typeof payload[key] === "string" ? (payload[key] as string) : null);
+    const bookingId = id("bookingId");
+    const quoteId = id("quoteId");
+    const guidedRequestId = id("guidedRequestId");
+    const request = { select: { city: true, category: { select: { label: true } } } } as const;
+    if (bookingId) {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { scheduledAt: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequest: request } } },
+      });
+      if (booking) {
+        return {
+          ...EMPTY_EMAIL_CONTEXT,
+          category: booking.quote?.guidedRequest.category.label ?? null,
+          city: booking.quote?.guidedRequest.city ?? null,
+          businessName: booking.professionalProfile.businessName,
+          when: booking.scheduledAt,
+        };
+      }
     }
-    await this.emailService.send({ to: user.email, subject, html });
+    if (quoteId) {
+      const quote = await this.prisma.quote.findUnique({
+        where: { id: quoteId },
+        select: { estimatedStartDate: true, clientProposedDate: true, professionalProfile: { select: { businessName: true } }, guidedRequest: request },
+      });
+      if (quote) {
+        return {
+          ...EMPTY_EMAIL_CONTEXT,
+          category: quote.guidedRequest.category.label,
+          city: quote.guidedRequest.city,
+          businessName: quote.professionalProfile.businessName,
+          when: quote.estimatedStartDate,
+          proposedWhen: quote.clientProposedDate,
+        };
+      }
+    }
+    if (guidedRequestId) {
+      const guidedRequest = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, ...request });
+      const professionalProfileId = id("professionalProfileId");
+      const professional = professionalProfileId
+        ? await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { businessName: true } })
+        : null;
+      if (guidedRequest) {
+        return {
+          ...EMPTY_EMAIL_CONTEXT,
+          category: guidedRequest.category.label,
+          city: guidedRequest.city,
+          businessName: professional?.businessName ?? null,
+        };
+      }
+    }
+    return EMPTY_EMAIL_CONTEXT;
+  }
+
+  /**
+   * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §183),
+   * nell'argomento "Le tue richieste" delle preferenze.
+   */
+  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean }): void {
+    void (async () => {
+      const user = await this.prisma.user.findUnique({ where: { id: clientId }, select: { email: true, name: true, deletedAt: true } });
+      if (!user?.email || user.deletedAt) return;
+      if (!notificationChannelEnabled(await this.preferencesOf(clientId), "REQUEST_SENT", "email")) return;
+      await this.emailService.send({ to: user.email, ...requestSentEmail({ name: user.name, ...input }) });
+    })().catch((err: unknown) => {
+      this.logger.error(`Email richiesta inviata non spedita: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   /**
@@ -264,56 +198,11 @@ export class NotificationsService {
         where: { role: "ADMIN", suspendedAt: null, OR: [{ adminRoles: { isEmpty: true } }, { adminRoles: { hasSome: ["SUPER", "MODERATOR"] } }] },
         select: { email: true },
       });
-      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-      const subject = `Nuova segnalazione: ${CONTENT_REPORT_TARGET_LABEL[report.targetType]}`;
-      const html =
-        `<p>È arrivata una nuova segnalazione (${escapeHtml(CONTENT_REPORT_TARGET_LABEL[report.targetType].toLowerCase())}).</p>` +
-        `<p><strong>Motivo:</strong> ${escapeHtml(report.reason)}</p>` +
-        `<p><a href="${frontendUrl}/admin/segnalazioni">Apri le segnalazioni da gestire</a>.</p>`;
-      await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, subject, html })] : [])));
+      const email = adminNewReportEmail({ what: CONTENT_REPORT_TARGET_LABEL[report.targetType], reason: report.reason });
+      await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, ...email })] : [])));
     })().catch((err: unknown) => {
       this.logger.error(`Email admin nuova segnalazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
-  }
-
-  private emailSubscription(userId: string, type: string, payload: Record<string, unknown>): void {
-    void (async () => {
-      const content = subscriptionEmail(type, payload);
-      if (!content) return;
-      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-      if (!user?.email) return;
-      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-      const html = `<p>${escapeHtml(content.text)}</p><p><a href="${frontendUrl}/dashboard/abbonamento">Apri la pagina Abbonamento</a></p>`;
-      await this.emailService.send({ to: user.email, subject: content.subject, html });
-    })().catch((err: unknown) => {
-      this.logger.error(`Email abbonamento non inviata: ${err instanceof Error ? err.message : String(err)}`);
-    });
-  }
-
-  emailNewLead(userIds: string[], lead: NewLeadEmailPayload): void {
-    void this.sendNewLeadEmails(userIds, lead).catch((err: unknown) => {
-      this.logger.error(`Email nuovo lead non inviate: ${err instanceof Error ? err.message : String(err)}`);
-    });
-  }
-
-  private async sendNewLeadEmails(userIds: string[], lead: NewLeadEmailPayload): Promise<void> {
-    if (userIds.length === 0) return;
-    const users = (
-      await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { email: true, name: true, notificationPrefs: true } })
-    ).filter((user) => notificationChannelEnabled(resolveNotificationPreferences(user.notificationPrefs ?? null), "NEW_LEAD", "email"));
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-    const where = lead.city ? ` a ${lead.city}` : "";
-    const subject = `${lead.isUrgent ? "URGENTE — " : ""}Nuova richiesta: ${lead.category}${where}`;
-    const intro = lead.isUrgent
-      ? "<p><strong>È una richiesta urgente</strong>: il cliente cerca qualcuno disponibile subito.</p>"
-      : "";
-    const html =
-      `<p>Hai ricevuto una nuova richiesta di preventivo per <strong>${escapeHtml(lead.category)}</strong>${escapeHtml(where)}.</p>` +
-      intro +
-      `<p>Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: <a href="${frontendUrl}/dashboard">apri la richiesta e invia il tuo preventivo</a>.</p>`;
-    await Promise.all(
-      users.flatMap((user) => (user.email ? [this.emailService.send({ to: user.email, subject, html })] : [])),
-    );
   }
 
   async unreadCount(userId: string): Promise<{ count: number }> {

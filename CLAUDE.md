@@ -381,6 +381,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Recensioni solo da prenotazione `COMPLETED`, con foto
 - [x] Dashboard professionista: profilo, immagine, prestazioni con range di prezzo, agenda settimanale con prenotazione diretta opzionale
 - [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ); SMS rimandato
+- [x] Email del sito con modello unico (benvenuto, preventivi, lavori, pagamenti, recupero password): testi in `apps/api/src/email/templates/`, marchio in `email-brand.ts`; partono davvero solo con Resend configurato
 - [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
 - [x] Area account cliente, professionisti salvati, cancellazione account
 - [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
