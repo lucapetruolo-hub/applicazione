@@ -4,6 +4,7 @@ import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
   emailPasswordSchema,
+  emailStatusSchema,
   googleVerifySchema,
   normalizeAdminRoles,
   registerSchema,
@@ -11,6 +12,7 @@ import {
   verifyEmailSchema,
   type ChangePasswordInput,
   type EmailPasswordInput,
+  type EmailStatusInput,
   type GoogleVerifyInput,
   type RegisterInput,
   type UpdateAccountInput,
@@ -47,6 +49,14 @@ export class AuthController {
     return this.authService.register(body.email, body.password, body.name, body.role);
   }
 
+  // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
+  // per rendere lenta la raccolta di email da parte di un bot.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("email-status")
+  async emailStatus(@Body(new ZodValidationPipe(emailStatusSchema)) body: EmailStatusInput) {
+    return { status: await this.authService.emailStatus(body.email) };
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("login")
   async login(@Body(new ZodValidationPipe(emailPasswordSchema)) body: EmailPasswordInput) {
@@ -62,7 +72,7 @@ export class AuthController {
     });
   }
 
-  // Conferma email (docs/CHANGELOG.md §174): pubblica, il codice nel link
+  // Conferma email (docs/CHANGELOG.md §178): pubblica, il codice nel link
   // basta a identificare l'account.
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("verify-email")
@@ -177,7 +187,7 @@ export class AuthController {
       postalCode,
       city,
       province,
-      // Conferma email (docs/CHANGELOG.md §174): il sito mostra l'avviso solo
+      // Conferma email (docs/CHANGELOG.md §178): il sito mostra l'avviso solo
       // quando la conferma è davvero richiesta (solo professionisti); al
       // cliente è facoltativa, proposta da un riquadro in /account.
       emailVerified: user.emailVerifiedAt !== null,

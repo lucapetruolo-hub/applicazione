@@ -238,7 +238,7 @@ export class ProfileInvitesService {
     await this.prisma.user.update({
       where: { id: invite.userId },
       // Profilo verificato al telefono da un operatore: nessun link di
-      // conferma email in più (docs/CHANGELOG.md §174).
+      // conferma email in più (docs/CHANGELOG.md §178).
       data: { passwordHash, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION, emailVerifiedAt: new Date() },
     });
     return { token: this.jwt.sign({ sub: invite.userId }), isNewUser: true };

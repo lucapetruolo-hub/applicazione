@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 /**
  * Avviso sotto l'intestazione finché l'email non è confermata
- * (docs/CHANGELOG.md §174). Compare solo quando l'API richiede davvero la
+ * (docs/CHANGELOG.md §178). Compare solo quando l'API richiede davvero la
  * conferma (`EMAIL_VERIFICATION_REQUIRED=true` su Render): prima che il
  * dominio d'invio sia verificato su Resend, il link non arriverebbe.
  */

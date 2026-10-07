@@ -924,20 +924,15 @@ a.admin-kpi:hover {
 .auth-card-in {
   animation: auth-card-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-/* Le due card di scelta ruolo (RoleChoiceScreen) restano piatte a riposo
-   (coerente con "nessuna ombra di default" del resto del sito, CLAUDE.md
-   §19) e guadagnano un lieve sollevamento solo all'interazione — l'ombra
-   "vera" resta quindi riservata a un elemento davvero in primo piano al
-   passaggio del mouse, non un default sempre presente. */
+/* Card di scelta ruolo: senza ombra (docs/CHANGELOG.md §176, l'utente non
+   vuole ombre), al passaggio del mouse cambiano solo posizione e bordo. */
 .auth-role-card {
   transition:
     transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .auth-role-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(43, 36, 24, 0.09);
   border-color: #189a63;
 }
 

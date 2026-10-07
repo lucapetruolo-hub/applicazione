@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { LEGAL_CONSENT_VERSION } from "@professionisti/shared";
+import { LEGAL_CONSENT_VERSION, type EmailStatus } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -11,7 +11,7 @@ import { EmailService } from "../email/email.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 
 const BCRYPT_SALT_ROUNDS = 10;
-/** Validità del link di conferma email (docs/CHANGELOG.md §174). */
+/** Validità del link di conferma email (docs/CHANGELOG.md §178). */
 const EMAIL_TOKEN_HOURS = 48;
 
 function hashEmailToken(token: string): string {
@@ -47,6 +47,20 @@ export class AuthService {
     }
   }
 
+  /**
+   * Primo passo dell'accesso "prima l'email" (docs/CHANGELOG.md §176): dice
+   * solo se l'email ha già un account e come si entra. Rivela che un'email è
+   * registrata, come MioDottore: scelta accettata dall'utente, con il limite
+   * di richieste sul controller. Stessa ricerca esatta di `register`/`login`,
+   * così la risposta non contraddice mai il passo successivo.
+   */
+  async emailStatus(email: string): Promise<EmailStatus> {
+    const user = await this.prisma.user.findUnique({ where: { email }, select: { passwordHash: true, googleId: true } });
+    if (!user) return "new";
+    if (!user.passwordHash && user.googleId) return "google";
+    return "password";
+  }
+
   async register(email: string, password: string, name?: string, role: "CLIENT" | "PROFESSIONAL" = "CLIENT"): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -63,7 +77,7 @@ export class AuthService {
       data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
     });
     // Conferma email solo per i professionisti (decisione dell'utente,
-    // docs/CHANGELOG.md §174): il cliente non deve confermare nulla.
+    // docs/CHANGELOG.md §178): il cliente non deve confermare nulla.
     if (role === "PROFESSIONAL") {
       await this.sendVerificationEmail(user.id, email, name ?? null);
     }
@@ -209,7 +223,7 @@ export class AuthService {
       data: {
         ...rest,
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
-        // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §174).
+        // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §178).
         ...(emailChanged ? { emailVerifiedAt: null } : {}),
       },
     });
@@ -220,7 +234,7 @@ export class AuthService {
   }
 
   /**
-   * Conferma email (docs/CHANGELOG.md §174): genera un nuovo link (quello
+   * Conferma email (docs/CHANGELOG.md §178): genera un nuovo link (quello
    * precedente smette di valere) e lo invia. Non blocca mai il chiamante se
    * l'email non parte: l'utente può farla rispedire.
    */

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 /**
  * Conferma email facoltativa per il cliente (decisione dell'utente,
- * docs/CHANGELOG.md §174): nessun blocco, solo un invito in /account. Chi
+ * docs/CHANGELOG.md §178): nessun blocco, solo un invito in /account. Chi
  * conferma compare ai professionisti con "Email confermata" sulla
  * richiesta, il motivo per cui il riquadro parla di più affidabilità.
  */

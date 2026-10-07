@@ -7,7 +7,7 @@ export const EMAIL_NOT_VERIFIED_MESSAGE =
   "Conferma prima il tuo indirizzo email: apri il link che ti abbiamo inviato (puoi farlo rispedire dalla barra in alto).";
 
 /**
- * Conferma email obbligatoria (docs/CHANGELOG.md §174) solo con
+ * Conferma email obbligatoria (docs/CHANGELOG.md §178) solo con
  * `EMAIL_VERIFICATION_REQUIRED=true` su Render: senza un dominio verificato
  * su Resend le email arrivano solo al titolare dell'account Resend, e
  * nessun altro potrebbe confermare. Va sempre dopo `JwtAuthGuard`

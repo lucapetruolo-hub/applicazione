@@ -16139,7 +16139,140 @@ servizio.
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1366, 1100 e
 390 px di larghezza senza scorrimento orizzontale.
 
-## 174. Conferma dell'indirizzo email in registrazione
+## 174. Prezzi per professionisti: livello scelto davvero e pagamenti spostati con "Scopri di più"
+
+**Richiesta esplicita dell'utente:** su `/per-professionisti#prezzi` il
+livello Plus sembrava sempre selezionato; il riquadro deve seguire quello
+che si sceglie. Il testo "Pagamenti online, in arrivo: ..." va spostato
+vicino a "Inizia a ricevere richieste", con un pulsante "Scopri di più"
+verso una pagina che spiega i pagamenti (l'utente non era sicuro se
+toglierlo del tutto).
+
+**Decisione:**
+- Le tre card dei livelli si toccano: il bordo verde segue il livello
+  scelto, nessuno evidenziato all'apertura (era un bordo fisso su Plus).
+  Solo visivo: il livello vero si sceglie da `/dashboard/abbonamento`.
+  Card a larghezza uguale (`flexBasis: 0` da tablet in su).
+- Il testo lungo sui pagamenti esce dai prezzi (si confondeva con
+  l'abbonamento) e diventa una card breve sopra "Inizia a ricevere
+  richieste": pagamento con carta, accredito meno costo Stripe e 5%,
+  pagamento diretto senza commissione. "in arrivo" finché Stripe non è
+  attivo, come prima. Tenuto ma accorciato, non tolto. Subito dopo
+  l'utente ha chiesto di togliere anche quelle righe: sopra l'invito
+  finale resta solo il pulsante "Scopri di più".
+- Nuova pagina `/per-professionisti/pagamenti` ("Come vieni pagato"):
+  acconto 20% del massimo, saldo, custodia fino alla conferma o 7 giorni,
+  costo Stripe + 5%, attivazione in Dati fiscali e pagamenti, pagamento
+  diretto. Stesse regole dei Termini (punto 5) e di `/dashboard/fiscale`
+  (§168), con rimando ai Termini. Aggiunta alla sitemap.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px:
+clic su Plus e poi su Pro sposta il bordo, "Scopri di più" apre la pagina.
+
+## 175. Nuovo aspetto di /per-professionisti ispirato a efferd.com
+
+**Richiesta esplicita dell'utente:** "prendi spunto da efferd.com per un
+nuovo look della pagina" (`/per-professionisti`).
+
+**Decisione:** preso da efferd lo schema, non i colori (restano gesso,
+verde e caratteri del sito):
+- pagina incorniciata da linee sottili: ogni sezione è una fascia con
+  filetto a tutta larghezza e cornice ai lati del contenuto da tablet in su;
+- titolo centrato a due toni ("Fatti trovare" grigio, "dai clienti" scuro,
+  "della tua zona." verde) con alone verde morbido dietro, pillola "Per i
+  professionisti | Vedi i prezzi" sopra e due pulsanti ("Come funziona",
+  "Iscriviti gratis");
+- foto larga in cornice sotto il titolo;
+- vantaggi e "Come funziona" come celle a mosaico separate da filetti
+  (sfondo della griglia = colore della linea, `gap={1}`), con piccole
+  illustrazioni astratte (mestieri in pillole, barre dell'agenda, stelle)
+  e passi numerati 01-04;
+- prezzi come celle della stessa griglia: quella toccata diventa bianca con
+  barra verde in alto (resta solo visiva, §174);
+- nuove domande frequenti su due colonne (titolo a sinistra, risposte
+  apribili a destra), solo su regole già in vigore: contatti del cliente
+  dopo l'accettazione (CLAUDE.md §5 punto 9), limite di lavori, annullare
+  l'abbonamento, chi recensisce, come si viene pagati (link alla pagina
+  pagamenti). Il mese gratuito non viene nominato (§162);
+- invito finale senza riquadro verde: titolo a due toni e due pulsanti,
+  "Scopri di più" (pagamenti, §174) e "Iscriviti gratis".
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px
+senza scorrimento orizzontale; clic su Plus evidenzia la sua cella.
+
+## 176. Accesso dei clienti "prima l'email", sul modello di MioDottore
+
+**Richiesta dell'utente** (6 ottobre 2026): prendere spunto dalla pagina che
+MioDottore mostra a chi prenota senza aver fatto l'accesso (solo l'email,
+diciture legali sotto il pulsante, "se è la tua prima prenotazione creeremo
+il tuo account gratuito"). Tra tre opzioni con anteprima l'utente ha scelto
+la A: prima l'email, poi la password. Niente conferma email per i clienti
+(decisione dell'utente nello stesso giorno).
+
+**Decisione:**
+- Nuovo `POST /auth/email-status` (`AuthService.emailStatus`): risponde
+  `new`, `password` o `google` (account creato con Google, senza password).
+  Rivela se un'email è registrata, come MioDottore: accettato, con limite di
+  10 richieste al minuto per IP.
+- Nuovo `ClientEmailFirstAuth` (`apps/web/src/components/`): Google e campo
+  email, "Continua", poi "Scegli una password" (email nuova), "Inserisci la
+  password" (account esistente) o "Accedi con Google". Tolti la conferma
+  password, le due caselle e il popup di consenso dopo Google.
+- Le caselle diventano la dicitura "Continuando accetti i nostri Termini di
+  Servizio, confermi di aver letto e compreso la nostra Privacy Policy e di
+  avere almeno 18 anni" (ripetuta sotto "Crea account"). L'informativa
+  privacy si legge, non si accetta. Il consenso resta registrato come prima
+  (`legalConsentAt`/`legalConsentVersion`): il pulsante invia
+  `acceptedLegalTerms`/`declaredAdult` a `true`.
+- Usato nel popup della richiesta (`InlineAuthGate`) e in
+  `/registrati?ruolo=cliente`. La registrazione del professionista e
+  `/accedi` restano com'erano.
+- Il passaggio dalle caselle alla dicitura va verificato dall'avvocato
+  insieme ai Termini (checklist di lancio).
+
+- Richiesta successiva dell'utente ("non mi piacciono le ombre"; poi, dopo
+  una prova su fondo bianco senza scheda: "era meglio prima, soltanto senza
+  ombra"): in `/registrati` la scheda resta com'era (icona, sfondo pesca con
+  forme sfumate, etichette), senza `floating`; le card di scelta ruolo al
+  passaggio del mouse si alzano e cambiano bordo, senza ombra.
+
+**Verifica:** test di `AuthService.emailStatus` (4 casi); typecheck di
+`apps/api` e `apps/web`; schermate in locale con un'API finta, a 1280 e 390
+px, dei passi email, email nuova, account con password e account Google.
+
+## 177. Pulsante per iscriversi sotto i livelli, verso il pagamento del livello scelto
+
+**Richiesta esplicita dell'utente:** il pulsante per iscriversi in fondo a
+`/per-professionisti` va appena sotto la scelta dei livelli e, in base al
+livello scelto, deve portare alla pagina del pagamento (oggi disattivato,
+manca la chiave Stripe).
+
+**Decisione:**
+- Sotto le tre celle dei livelli: "Scegli un livello" spento finché non se
+  ne tocca uno, poi "Iscriviti con Plus" (o "Continua con Plus" per un
+  professionista già autenticato), con sotto "Poi confermi il livello e il
+  pagamento". L'invito finale ora ha "Scopri di più" e "Scegli il tuo
+  livello" (torna ai prezzi); "Iscriviti gratis" in cima resta.
+- Il livello viaggia nell'indirizzo: `/registrati?ruolo=professionista&livello=PLUS`
+  → dopo l'iscrizione (anche con Google) si va a
+  `/dashboard/abbonamento?livello=PLUS` (`&nuovo=1` per un account appena
+  creato) invece che a "Come fornirai i tuoi servizi?". Un professionista
+  già autenticato ci va direttamente.
+- In Abbonamento: riquadro "Hai scelto il livello Plus: confermalo qui
+  sotto", card del livello evidenziata, la pagina scorre fino alla scelta;
+  a un account nuovo ricorda di completare il profilo (link a
+  `/dashboard/tipo-attivita`). Il pagamento parte sempre dal pulsante del
+  livello, mai da solo; senza Stripe resta spento con il messaggio già
+  esistente "I pagamenti online non sono ancora attivi".
+- `parseSubscriptionTier` in `packages/shared/src/plans.ts` legge il
+  parametro in entrambe le pagine.
+
+**Verifica:** typecheck di `apps/web`; in locale a 1280 e 390 px il
+pulsante resta spento senza scelta, toccando Plus diventa "Iscriviti con
+Plus" e porta a `/registrati?ruolo=professionista&livello=PLUS`. Il ritorno
+in Abbonamento non è provato dal vivo (serve un account e l'API).
+
+## 178. Conferma dell'indirizzo email in registrazione
 
 **Richiesta dell'utente** (6 ottobre 2026): valutare Cloudflare almeno in
 registrazione. Dall'analisi: la registrazione aveva solo il limite di 5
@@ -16180,7 +16313,7 @@ punto 24), nessun proxy/WAF.
 `src/auth/email-verification.test.ts`), typecheck di `apps/web` e
 `apps/mobile`.
 
-## 175. Scheda "Recensioni" per il cliente
+## 179. Scheda "Recensioni" per il cliente
 
 **Richiesta dell'utente** (7 ottobre 2026): far vedere al cliente le
 recensioni che i professionisti gli hanno lasciato. Scelta dell'utente fra

@@ -1,4 +1,5 @@
 import type {
+  EmailStatus,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -550,7 +551,7 @@ export type CurrentUser = {
   postalCode: string | null;
   city: string | null;
   province: string | null;
-  /** Indirizzo email confermato dal link ricevuto (docs/CHANGELOG.md §174). */
+  /** Indirizzo email confermato dal link ricevuto (docs/CHANGELOG.md §178). */
   emailVerified: boolean;
   /** Vero quando l'API blocca le azioni principali finché l'email non è confermata. */
   emailVerificationRequired: boolean;
@@ -796,6 +797,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<AuthResult>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult }),
+      }),
+
+    emailStatus: (email: string) =>
+      request<{ status: EmailStatus }>("/auth/email-status", {
+        method: "POST",
+        body: JSON.stringify({ email }),
       }),
 
     login: (email: string, password: string) =>
@@ -1335,7 +1342,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §175). */
+    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §179). */
     myReceivedClientReviews: (token: string) =>
       request<ReceivedClientReview[]>("/client-reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
 

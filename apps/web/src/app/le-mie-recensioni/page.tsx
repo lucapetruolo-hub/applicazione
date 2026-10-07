@@ -16,7 +16,7 @@ function formatDate(iso: string): string {
 
 /**
  * Scheda "Recensioni" del cliente (decisione dell'utente, docs/CHANGELOG.md
- * §175): le recensioni che i professionisti gli hanno lasciato, le stesse
+ * §179): le recensioni che i professionisti gli hanno lasciato, le stesse
  * che loro vedono nella scheda cliente (ClientProfileModal), con la media in
  * alto. Solo quelle già sbloccate dal "doppio cieco".
  */

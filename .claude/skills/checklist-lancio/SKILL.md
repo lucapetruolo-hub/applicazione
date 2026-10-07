@@ -138,6 +138,10 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     anche il regolamento delle segnalazioni sui lavori (bozza pronta in
     `docs/legale/regolamento-controversie.md`, con i punti da verificare,
     tra cui la clausola "non rispondiamo di danni").
+11ter. **Far verificare la dicitura di registrazione dei clienti** (docs/CHANGELOG.md
+    §176): al posto delle caselle, "Continuando accetti i nostri Termini di
+    Servizio, confermi di aver letto e compreso la nostra Privacy Policy e
+    di avere almeno 18 anni". Il professionista ha ancora le caselle.
 
 **Fiscale — solo lavoro tecnico**:
 12. Integrazione reale con il tracciato ufficiale DPI23 dell'Agenzia delle
@@ -197,7 +201,7 @@ prima del lancio"):
     non sono attivi: finché la ricerca non è chiusa il testo non è stato
     toccato (decisione dell'utente, 06/10/2026). Prima del lancio o si attiva
     un canale reale o si corregge la frase.
-23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §174, mai per i clienti): già nel
+23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
     codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno

@@ -5,7 +5,7 @@ import { AuthService } from "./auth.service";
 import { VerifiedEmailGuard } from "./verified-email.guard";
 
 /**
- * Conferma email in registrazione (docs/CHANGELOG.md §174): il link vale una
+ * Conferma email in registrazione (docs/CHANGELOG.md §178): il link vale una
  * volta sola e scade, e con `EMAIL_VERIFICATION_REQUIRED=true` le azioni
  * principali restano bloccate finché l'email non è confermata.
  */

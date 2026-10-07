@@ -16,7 +16,7 @@ export class ClientReviewsService {
 
   /**
    * Recensioni ricevute dal cliente stesso, per la scheda "Recensioni" del
-   * suo account (decisione dell'utente, docs/CHANGELOG.md §175). Stesso
+   * suo account (decisione dell'utente, docs/CHANGELOG.md §179). Stesso
    * filtro della scheda cliente vista dal professionista
    * (ProfessionalsService): niente recensioni nascoste da un admin, e solo
    * quelle già sbloccate dal "doppio cieco" (il cliente ha recensito a sua

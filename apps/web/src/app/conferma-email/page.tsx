@@ -16,7 +16,7 @@ export default function ConfermaEmailPage() {
 }
 
 /**
- * Link ricevuto via email dopo la registrazione (docs/CHANGELOG.md §174).
+ * Link ricevuto via email dopo la registrazione (docs/CHANGELOG.md §178).
  * Il codice vale una volta sola: il ref evita la seconda chiamata che React
  * fa in sviluppo, che fallirebbe con "link non valido".
  */
