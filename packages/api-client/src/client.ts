@@ -39,6 +39,7 @@ import type {
   ProfessionalProfileSelfInput,
   ProfessionalSearchResult,
   ProposeQuoteDateInput,
+  RejectQuoteInput,
   QuoteSelfInput,
   RequestRefundInput,
   ResolveDisputeInput,
@@ -216,6 +217,10 @@ export type ClientGuidedRequest = {
     previousSchedule: { start: string; end: string | null } | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
     professionalCounterNote: string | null;
+    /** Nota facoltativa scritta dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
+    rejectionNote: string | null;
+    /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
+    resentAt: string | null;
     notes: string | null;
     status: "SENT" | "ACCEPTED" | "REJECTED" | "MODIFICATION_REQUESTED" | "WITHDRAWN";
     /** Stato della prenotazione nata da questo preventivo (solo se accettato) — richiesta esplicita dell'utente, stepper di stato "Richiesta → Preventivo inviato → Preventivo accettato → Completato". `null` finché non accettato. */
@@ -1235,11 +1240,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** Il cliente rifiuta interamente un preventivo ricevuto (oltre ad accettarlo). */
-    rejectQuote: (token: string, quoteId: string) =>
+    /** Il cliente rifiuta interamente un preventivo ricevuto (oltre ad accettarlo), con una nota facoltativa per il professionista. */
+    rejectQuote: (token: string, quoteId: string, input: RejectQuoteInput = {}) =>
       request<{ id: string; status: string }>(`/quotes/${quoteId}/reject`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     /** Il professionista ritira un preventivo già inviato, prima che il cliente lo accetti. */
