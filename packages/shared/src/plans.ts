@@ -54,6 +54,15 @@ export function subscriptionTierInfo(tier: SubscriptionTier) {
 }
 
 /**
+ * Livello scelto passato in un indirizzo (`?livello=PLUS`, da
+ * /per-professionisti a /registrati e /dashboard/abbonamento): `null` se
+ * manca o non è un livello valido.
+ */
+export function parseSubscriptionTier(value: string | null | undefined): SubscriptionTier | null {
+  return SUBSCRIPTION_TIERS.find((t) => t.tier === value)?.tier ?? null;
+}
+
+/**
  * Stato dell'abbonamento visto dal professionista (`GET
  * /professionals/me/subscription`).
  * - `TRIAL`: mese gratuito in corso, con il limite di lavori del livello Base.

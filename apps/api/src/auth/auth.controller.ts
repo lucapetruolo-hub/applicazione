@@ -9,12 +9,14 @@ import {
   normalizeAdminRoles,
   registerSchema,
   updateAccountSchema,
+  verifyEmailSchema,
   type ChangePasswordInput,
   type EmailPasswordInput,
   type EmailStatusInput,
   type GoogleVerifyInput,
   type RegisterInput,
   type UpdateAccountInput,
+  type VerifyEmailInput,
 } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -23,6 +25,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
+import { isEmailVerificationRequired } from "./verified-email.guard";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -67,6 +70,21 @@ export class AuthController {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
     });
+  }
+
+  // Conferma email (docs/CHANGELOG.md §178): pubblica, il codice nel link
+  // basta a identificare l'account.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("verify-email")
+  async verifyEmail(@Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput) {
+    return this.authService.verifyEmail(body.token);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post("verify-email/resend")
+  async resendVerificationEmail(@Req() req: AuthenticatedRequest) {
+    return this.authService.resendVerificationEmail(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -117,6 +135,7 @@ export class AuthController {
     postalCode: string | null;
     city: string | null;
     province: string | null;
+    emailVerifiedAt: Date | null;
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
@@ -168,6 +187,11 @@ export class AuthController {
       postalCode,
       city,
       province,
+      // Conferma email (docs/CHANGELOG.md §178): il sito mostra l'avviso solo
+      // quando la conferma è davvero richiesta (solo professionisti); al
+      // cliente è facoltativa, proposta da un riquadro in /account.
+      emailVerified: user.emailVerifiedAt !== null,
+      emailVerificationRequired: isEmailVerificationRequired(),
     };
   }
 

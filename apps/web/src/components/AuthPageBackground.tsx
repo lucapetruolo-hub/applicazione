@@ -7,7 +7,7 @@ import { Surface, YStack, brand, radiusDocLg } from "@professionisti/ui";
  * Colonna centrata delle pagine a scheda singola (registrazione, accesso,
  * recupero password, completamento profilo). Le forme sfumate dello sfondo
  * ora sono di tutto il sito (`.site-blobs` in layout.tsx, docs/CHANGELOG.md
- * §177): qui il fondo resta trasparente per lasciarle vedere.
+ * §180): qui il fondo resta trasparente per lasciarle vedere.
  */
 export function AuthPageBackground({ children }: { children: ReactNode }) {
   return (

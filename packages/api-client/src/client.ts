@@ -551,6 +551,21 @@ export type CurrentUser = {
   postalCode: string | null;
   city: string | null;
   province: string | null;
+  /** Indirizzo email confermato dal link ricevuto (docs/CHANGELOG.md §178). */
+  emailVerified: boolean;
+  /** Vero quando l'API blocca le azioni principali finché l'email non è confermata. */
+  emailVerificationRequired: boolean;
+};
+
+/** Recensione lasciata da un professionista al cliente, vista dal cliente stesso. */
+export type ReceivedClientReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  mediaUrls: string[];
+  createdAt: string;
+  isAutomatic: boolean;
+  reviewerBusinessName: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -811,6 +826,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
+      }),
+
+    verifyEmail: (token: string) =>
+      request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+
+    resendVerificationEmail: (token: string) =>
+      request<{ alreadyVerified: boolean }>("/auth/verify-email/resend", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     me: (token: string) => request<CurrentUser | null>("/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
@@ -1317,6 +1341,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §179). */
+    myReceivedClientReviews: (token: string) =>
+      request<ReceivedClientReview[]>("/client-reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 

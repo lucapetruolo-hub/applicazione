@@ -13,6 +13,7 @@ export type {
   AdminUsersPage,
   AdminUsersQuery,
   AdminOverview,
+  ReceivedClientReview,
   AdminRefund,
   AdminDispute,
   ModerationActionValue,

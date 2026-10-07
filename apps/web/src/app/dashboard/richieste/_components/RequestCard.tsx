@@ -570,6 +570,14 @@ export function RequestCard({
           </Text>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
+        {gr.clientEmailVerified && !gr.clientAccountDeleted ? (
+          <XStack alignItems="center" gap={4}>
+            <Icon name="check" size={13} color={brand.verificato} strokeWidth={2.5} />
+            <Text fontSize="$2" fontWeight="700" color={brand.verificato}>
+              Email confermata
+            </Text>
+          </XStack>
+        ) : null}
         <RequestStateIndicators myState={lead.myState} />
         {menuError ? (
           <Text color={brand.urgenza} fontSize="$3">

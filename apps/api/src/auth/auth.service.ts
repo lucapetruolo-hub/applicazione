@@ -1,14 +1,22 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import { LEGAL_CONSENT_VERSION, type EmailStatus } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
+import { EmailService } from "../email/email.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 
 const BCRYPT_SALT_ROUNDS = 10;
+/** Validità del link di conferma email (docs/CHANGELOG.md §178). */
+const EMAIL_TOKEN_HOURS = 48;
+
+function hashEmailToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export type AuthResult = { token: string; isNewUser: boolean };
 
@@ -20,6 +28,7 @@ export class AuthService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly jwt: JwtService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
+    private readonly emailService: EmailService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -67,6 +76,11 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
     });
+    // Conferma email solo per i professionisti (decisione dell'utente,
+    // docs/CHANGELOG.md §178): il cliente non deve confermare nulla.
+    if (role === "PROFESSIONAL") {
+      await this.sendVerificationEmail(user.id, email, name ?? null);
+    }
 
     return { token: this.issueToken(user.id), isNewUser: true };
   }
@@ -142,6 +156,8 @@ export class AuthService {
           role: role ?? "CLIENT",
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
+          // Google ha già verificato l'indirizzo: nessun link da confermare.
+          emailVerifiedAt: new Date(),
         },
       }));
 
@@ -151,6 +167,17 @@ export class AuthService {
 
     if (existingUser && !existingUser.googleId) {
       await this.prisma.user.update({ where: { id: existingUser.id }, data: { googleId: payload.sub } });
+    }
+    // Accedere con Google sulla stessa email ne dimostra il possesso. Una
+    // password scelta prima della conferma potrebbe essere di chi si è
+    // iscritto con l'email di un altro: si azzera, il titolare può
+    // sceglierne una nuova da /account. Solo per i professionisti, gli unici
+    // a cui si chiede la conferma.
+    if (existingUser && existingUser.role !== "CLIENT" && !existingUser.emailVerifiedAt && existingUser.email === payload.email) {
+      await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: { emailVerifiedAt: new Date(), emailTokenHash: null, emailTokenExpiresAt: null, passwordHash: null },
+      });
     }
 
     if (existingUser) {
@@ -175,11 +202,13 @@ export class AuthService {
       province?: string;
     },
   ) {
+    let emailChanged = false;
     if (data.email) {
       const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
       if (existing && existing.id !== userId) {
         throw new ConflictException("Esiste già un account con questa email.");
       }
+      emailChanged = existing === null;
     }
     if (data.phone) {
       const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
@@ -189,10 +218,61 @@ export class AuthService {
     }
 
     const { birthDate, ...rest } = data;
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { ...rest, ...(birthDate ? { birthDate: new Date(birthDate) } : {}) },
+      data: {
+        ...rest,
+        ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
+        // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §178).
+        ...(emailChanged ? { emailVerifiedAt: null } : {}),
+      },
     });
+    if (emailChanged && updated.email && updated.role !== "CLIENT") {
+      await this.sendVerificationEmail(updated.id, updated.email, updated.name);
+    }
+    return updated;
+  }
+
+  /**
+   * Conferma email (docs/CHANGELOG.md §178): genera un nuovo link (quello
+   * precedente smette di valere) e lo invia. Non blocca mai il chiamante se
+   * l'email non parte: l'utente può farla rispedire.
+   */
+  private async sendVerificationEmail(userId: string, email: string, name: string | null): Promise<void> {
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailTokenHash: hashEmailToken(token), emailTokenExpiresAt: new Date(Date.now() + EMAIL_TOKEN_HOURS * 60 * 60 * 1000) },
+    });
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const link = `${frontendUrl}/conferma-email?token=${encodeURIComponent(token)}`;
+    await this.emailService.send({
+      to: email,
+      subject: "Conferma il tuo indirizzo email",
+      html: `<p>Ciao${name ? ` ${escapeHtml(name)}` : ""},</p><p>per completare l'iscrizione conferma il tuo indirizzo email aprendo questo link:</p><p><a href="${link}">Conferma la mia email</a></p><p>Il link vale ${EMAIL_TOKEN_HOURS} ore. Se non ti sei iscritto tu, ignora questo messaggio.</p>`,
+    });
+  }
+
+  async resendVerificationEmail(userId: string): Promise<{ alreadyVerified: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.email || user.deletedAt !== null) {
+      throw new NotFoundException("Account non trovato.");
+    }
+    if (user.emailVerifiedAt) return { alreadyVerified: true };
+    await this.sendVerificationEmail(user.id, user.email, user.name);
+    return { alreadyVerified: false };
+  }
+
+  async verifyEmail(token: string): Promise<{ email: string }> {
+    const user = await this.prisma.user.findUnique({ where: { emailTokenHash: hashEmailToken(token) } });
+    if (!user?.email || user.deletedAt !== null || !user.emailTokenExpiresAt || user.emailTokenExpiresAt < new Date()) {
+      throw new BadRequestException("Il link di conferma non è valido o è scaduto. Accedi e chiedi un nuovo link.");
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifiedAt: new Date(), emailTokenHash: null, emailTokenExpiresAt: null },
+    });
+    return { email: user.email };
   }
 
   async changePassword(userId: string, currentPassword: string | undefined, newPassword: string) {
@@ -248,6 +328,7 @@ export class AuthService {
         phone: null,
         googleId: null,
         passwordHash: null,
+        emailTokenHash: null,
         name: null,
         surname: null,
         birthDate: null,
@@ -363,4 +444,8 @@ export class AuthService {
   private issueToken(userId: string): string {
     return this.jwt.sign({ sub: userId });
   }
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }

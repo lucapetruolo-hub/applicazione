@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -381,6 +382,8 @@ export default function AccountPage() {
             * Campo obbligatorio
           </Text>
         </YStack>
+
+        <ClientEmailVerificationCard />
 
         {/* Sezione "Profilo" — immagine (solo cliente), nome/cognome/data di
             nascita: spezzata in blocchi Surface percepibili invece

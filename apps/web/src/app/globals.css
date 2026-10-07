@@ -15,7 +15,7 @@ body {
 
 /* Tamagui inietta `body { background: var(--background) }` (grigio chiaro)
    dopo questo file: prima lo coprivano i contenitori color gesso delle
-   pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §177).
+   pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §180).
    `html body` vince per specificità. */
 html body {
   background: #fdefe1;
@@ -890,7 +890,7 @@ a.admin-kpi:hover {
    questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
    overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
    prima stesura invece di dover essere corretto in un secondo momento. */
-/* Versione di tutto il sito (docs/CHANGELOG.md §177): fissa sullo schermo,
+/* Versione di tutto il sito (docs/CHANGELOG.md §180): fissa sullo schermo,
    dietro a ogni contenuto (z-index -1 sopra il fondo pesca del body). */
 .site-blobs {
   position: fixed;
