@@ -8,6 +8,15 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { EmailService } from "../email/email.service";
+import { frontendUrl } from "../email/email-brand";
+import {
+  accountDeletedEmail,
+  passwordChangedEmail,
+  passwordResetEmail,
+  verifyEmailEmail,
+  welcomeClientEmail,
+  welcomeProfessionalEmail,
+} from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
@@ -15,6 +24,8 @@ import { googleNameFields, googleNameRepair } from "./google-name";
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
 const EMAIL_TOKEN_HOURS = 48;
+/** Validità del link per reimpostare la password (docs/CHANGELOG.md §185). */
+const PASSWORD_RESET_MINUTES = 60;
 
 function hashEmailToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -79,10 +90,12 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
     });
-    // Conferma email solo per i professionisti (decisione dell'utente,
-    // docs/CHANGELOG.md §178): il cliente non deve confermare nulla.
+    // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
+    // il link di conferma email (§178), al cliente no: non deve confermare nulla.
     if (role === "PROFESSIONAL") {
-      await this.sendVerificationEmail(user.id, email, name ?? null);
+      await this.sendVerificationEmail(user.id, email, name ?? null, "welcome");
+    } else {
+      await this.emailService.send({ to: email, ...welcomeClientEmail(name ?? null) });
     }
 
     return { token: this.issueToken(user.id), isNewUser: true };
@@ -198,6 +211,10 @@ export class AuthService {
 
     if (existingUser) {
       await this.touchProfessionalActivity(user.id, user.role);
+    } else if (user.email) {
+      // Benvenuto anche a chi si iscrive con Google (docs/CHANGELOG.md §185): email già verificata, nessun link.
+      const name = user.name ? user.name.split(" ")[0]! : null;
+      await this.emailService.send({ to: user.email, ...(user.role === "PROFESSIONAL" ? welcomeProfessionalEmail(name, null) : welcomeClientEmail(name)) });
     }
     return { token: this.issueToken(user.id), isNewUser: !existingUser };
   }
@@ -244,7 +261,7 @@ export class AuthService {
       },
     });
     if (emailChanged && updated.email && updated.role !== "CLIENT") {
-      await this.sendVerificationEmail(updated.id, updated.email, updated.name);
+      await this.sendVerificationEmail(updated.id, updated.email, updated.name, "verify");
     }
     return updated;
   }
@@ -254,18 +271,16 @@ export class AuthService {
    * precedente smette di valere) e lo invia. Non blocca mai il chiamante se
    * l'email non parte: l'utente può farla rispedire.
    */
-  private async sendVerificationEmail(userId: string, email: string, name: string | null): Promise<void> {
+  private async sendVerificationEmail(userId: string, email: string, name: string | null, mode: "welcome" | "verify"): Promise<void> {
     const token = randomBytes(32).toString("base64url");
     await this.prisma.user.update({
       where: { id: userId },
       data: { emailTokenHash: hashEmailToken(token), emailTokenExpiresAt: new Date(Date.now() + EMAIL_TOKEN_HOURS * 60 * 60 * 1000) },
     });
-    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-    const link = `${frontendUrl}/conferma-email?token=${encodeURIComponent(token)}`;
+    const link = `${frontendUrl()}/conferma-email?token=${encodeURIComponent(token)}`;
     await this.emailService.send({
       to: email,
-      subject: "Conferma il tuo indirizzo email",
-      html: `<p>Ciao${name ? ` ${escapeHtml(name)}` : ""},</p><p>per completare l'iscrizione conferma il tuo indirizzo email aprendo questo link:</p><p><a href="${link}">Conferma la mia email</a></p><p>Il link vale ${EMAIL_TOKEN_HOURS} ore. Se non ti sei iscritto tu, ignora questo messaggio.</p>`,
+      ...(mode === "welcome" ? welcomeProfessionalEmail(name, { link, hours: EMAIL_TOKEN_HOURS }) : verifyEmailEmail(name, link, EMAIL_TOKEN_HOURS)),
     });
   }
 
@@ -275,7 +290,7 @@ export class AuthService {
       throw new NotFoundException("Account non trovato.");
     }
     if (user.emailVerifiedAt) return { alreadyVerified: true };
-    await this.sendVerificationEmail(user.id, user.email, user.name);
+    await this.sendVerificationEmail(user.id, user.email, user.name, "verify");
     return { alreadyVerified: false };
   }
 
@@ -309,6 +324,53 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
+  }
+
+  /**
+   * Recupero password (docs/CHANGELOG.md §185): manda un link valido
+   * PASSWORD_RESET_MINUTES minuti, una volta sola. Risponde sempre allo stesso
+   * modo, che l'account esista o no. Vale anche per chi si è iscritto con
+   * Google: così può aggiungere una password.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user?.email || user.deletedAt !== null) return;
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetTokenHash: hashEmailToken(token), passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000) },
+    });
+    const link = `${frontendUrl()}/reimposta-password?token=${encodeURIComponent(token)}`;
+    await this.emailService.send({ to: user.email, ...passwordResetEmail(user.name, link, PASSWORD_RESET_MINUTES) });
+  }
+
+  /**
+   * Nuova password dal link: annulla il link, conferma l'email (aprire il
+   * link ne dimostra il possesso) ed entra subito nell'account.
+   */
+  async confirmPasswordReset(token: string, password: string): Promise<AuthResult> {
+    const user = await this.prisma.user.findUnique({ where: { passwordResetTokenHash: hashEmailToken(token) } });
+    if (!user?.email || user.deletedAt !== null || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
+      throw new BadRequestException("Il link per reimpostare la password non è valido o è scaduto. Chiedine uno nuovo.");
+    }
+    const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+        emailTokenHash: null,
+        emailTokenExpiresAt: null,
+      },
+    });
+    await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
+    if (user.suspendedAt) {
+      throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
+    }
+    return { token: this.issueToken(user.id), isNewUser: false };
   }
 
   /**
@@ -327,6 +389,7 @@ export class AuthService {
    * `deletedAt: null`), ma Booking/Lead/Quote/Review restano intatti.
    */
   async deleteAccount(userId: string): Promise<void> {
+    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (professionalProfile) {
       await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
@@ -349,8 +412,11 @@ export class AuthService {
         surname: null,
         birthDate: null,
         imageUrl: null,
+        passwordResetTokenHash: null,
       },
     });
+    // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).
+    if (before?.email) await this.emailService.send({ to: before.email, ...accountDeletedEmail(before.name) });
   }
 
   /**
@@ -460,8 +526,4 @@ export class AuthService {
   private issueToken(userId: string): string {
     return this.jwt.sign({ sub: userId });
   }
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }

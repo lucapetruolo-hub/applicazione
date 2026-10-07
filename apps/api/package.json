@@ -8,7 +8,8 @@
     "start": "node ../../packages/database/scripts/migrate-deploy.mjs && node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "email:preview": "tsx scripts/email-preview.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",

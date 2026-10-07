@@ -34,25 +34,25 @@ enum UserRole {
 }
 
 model User {
-  id                  String      @id @default(uuid())
-  role                UserRole    @default(CLIENT)
+  id                     String      @id @default(uuid())
+  role                   UserRole    @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email               String?     @unique
-  passwordHash        String?
-  phone               String?     @unique
-  googleId            String?     @unique
+  email                  String?     @unique
+  passwordHash           String?
+  phone                  String?     @unique
+  googleId               String?     @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
-  name                String?
-  surname             String?
-  birthDate           DateTime?
+  name                   String?
+  surname                String?
+  birthDate              DateTime?
   // Immagine profilo, facoltativa — richiesta esplicita dell'utente: prima
   // solo ProfessionalProfile.imageUrl esisteva, i client non potevano
   // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
   // nessun nuovo servizio di storage.
-  imageUrl            String?
+  imageUrl               String?
   // Indirizzo di default dell'account (richiesta esplicita dell'utente:
   // "possono essere inserite nella finestra impostazioni dell'account, in
   // modo che quando si richiede un preventivo escano automaticamente
@@ -61,14 +61,14 @@ model User {
   // sempre modificabili per singola richiesta (un cliente può avere lavori
   // in indirizzi diversi da una richiesta all'altra, stesso principio già
   // documentato per GuidedRequest.address prima di questo campo).
-  street              String?
-  houseNumber         String?
-  addressExtra        String?
-  postalCode          String?
-  city                String?
-  province            String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  street                 String?
+  houseNumber            String?
+  addressExtra           String?
+  postalCode             String?
+  city                   String?
+  province               String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
   // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
   // prenotazioni/recensioni create da questo utente hanno FK dirette su
@@ -79,27 +79,27 @@ model User {
   // password) al posto della delete: la riga resta solo come ancora per le
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
-  deletedAt           DateTime?
+  deletedAt              DateTime?
   // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
   // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
   // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
   // ("Annulla misura"), a differenza di `deletedAt`.
-  suspendedAt         DateTime?
+  suspendedAt            DateTime?
   // Motivazione dell'ultima sospensione decisa dalla scheda utente (senza
   // segnalazione, docs/CHANGELOG.md §145) — mostrata all'admin; all'utente
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
-  suspensionNote      String?
+  suspensionNote         String?
   // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
   // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
   // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
   // [MODERATOR, FINANCE] vede entrambe. Lista vuota su un ADMIN vale come
   // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
-  adminRoles          AdminRole[] @default([])
+  adminRoles             AdminRole[] @default([])
   // Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152):
   // JSON validato da `notificationPreferencesSchema` (packages/shared),
   // null = valori predefiniti (`resolveNotificationPreferences`).
-  notificationPrefs   Json?
+  notificationPrefs      Json?
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
@@ -110,15 +110,19 @@ model User {
   // in quel momento su /privacy e /termini (LegalPage.updatedAt) — se le
   // informative cambiano, la versione accettata resta tracciata per quella
   // specifica registrazione, non sovrascritta.
-  legalConsentAt      DateTime?
-  legalConsentVersion String?
+  legalConsentAt         DateTime?
+  legalConsentVersion    String?
   // Conferma dell'indirizzo email (docs/CHANGELOG.md §178): nullo finché
   // l'utente non apre il link ricevuto. Gli account Google e quelli creati
   // da un operatore risultano già confermati. Del link si salva solo
   // l'impronta SHA-256, come per ProfileInvite.
-  emailVerifiedAt     DateTime?
-  emailTokenHash      String?     @unique
-  emailTokenExpiresAt DateTime?
+  emailVerifiedAt        DateTime?
+  emailTokenHash         String?     @unique
+  emailTokenExpiresAt    DateTime?
+  // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
+  // mandato via email, valido 60 minuti e una volta sola.
+  passwordResetTokenHash String?     @unique
+  passwordResetExpiresAt DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -156,36 +160,36 @@ model Category {
 // ---------------------------------------------------------------------------
 
 model ProfessionalProfile {
-  id                       String   @id @default(uuid())
-  userId                   String   @unique
-  categoryId               String
-  subTags                  String[]
-  businessName             String
-  city                     String
-  latitude                 Float
-  longitude                Float
-  bio                      String?
+  id                           String    @id @default(uuid())
+  userId                       String    @unique
+  categoryId                   String
+  subTags                      String[]
+  businessName                 String
+  city                         String
+  latitude                     Float
+  longitude                    Float
+  bio                          String?
   // Indirizzo del negozio/laboratorio (facoltativo: molti professionisti a
   // domicilio non ne hanno uno da mostrare pubblicamente), mostrato nella
   // card risultati e nel profilo pubblico come su miodottore.it.
-  address                  String?
-  imageUrl                 String?
+  address                      String?
+  imageUrl                     String?
   // Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
   // profilo pubblico — richiesta esplicita dell'utente: "in modo che gli
   // utenti aprendo l'account del professionista possano avere un'idea dei
   // lavori svolti". Stesso pattern/limite di GuidedRequest.photoUrls,
   // stesso upload Cloudinary già in uso per l'immagine profilo.
-  portfolioUrls            String[] @default([])
-  verified                 Boolean  @default(false)
+  portfolioUrls                String[]  @default([])
+  verified                     Boolean   @default(false)
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
   // escludere questi profili dalle sezioni pubbliche che dichiarano
   // esplicitamente di mostrare dati reali (redesign "Scheda Intervento"
   // §4.6: mai spacciare vetrine finte per vere, CLAUDE.md §10).
-  isDemo                   Boolean  @default(false)
+  isDemo                       Boolean   @default(false)
   // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
   // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
-  remoteAvailable          Boolean  @default(false)
+  remoteAvailable              Boolean   @default(false)
   // Raggio (km, max 25) entro cui il professionista riceve richieste dal
   // fan-out delle richieste guidate — richiesta esplicita dell'utente: due
   // raggi indipendenti, uno per le richieste standard e uno per quelle
@@ -194,14 +198,14 @@ model ProfessionalProfile {
   // viceversa) invece di un unico raggio fisso per tutti. Editabili in
   // /dashboard/profilo (EngagementRadiusMap), usati da
   // GuidedRequestsService per il filtro geografico del fan-out.
-  engagementRadiusKm       Float    @default(25)
-  urgentEngagementRadiusKm Float    @default(25)
+  engagementRadiusKm           Float     @default(25)
+  urgentEngagementRadiusKm     Float     @default(25)
   // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
   // nel pannello filtri di ricerca): pre-compilato con "Italiano" come unica
   // lingua di default alla creazione del profilo, rimovibile/estendibile in
   // /dashboard/profilo. Array libero (non un enum): non c'è un elenco fisso
   // di lingue nel progetto, coerente con `subTags`/`portfolioUrls` sopra.
-  spokenLanguages          String[] @default(["Italiano"])
+  spokenLanguages              String[]  @default(["Italiano"])
   // Segnali di fiducia dichiarati dal professionista (CEO, consiglio
   // esperti — CPO: "anni di esperienza, certificazioni, assicurazione RC
   // come campi strutturati", oggi solo testo libero nella bio, non
@@ -210,19 +214,19 @@ model ProfessionalProfile {
   // professionali nel resto del prodotto (autodichiarate, mai un vero
   // KYC): non va mai confuso con `verified` (quello richiederebbe una
   // verifica reale, oggi inesistente, CLAUDE.md §10 checklist punto 15).
-  yearsOfExperience        Int?
+  yearsOfExperience            Int?
   // Testo libero breve (non un elenco strutturato di documenti caricati:
   // fuori scope finché non esiste un flusso di verifica reale) — es.
   // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
-  certifications           String?
-  hasLiabilityInsurance    Boolean  @default(false)
+  certifications               String?
+  hasLiabilityInsurance        Boolean   @default(false)
   // Dichiarazione di responsabilità accettata salvando il profilo
   // (docs/CHANGELOG.md §158): quando e quale versione del testo
   // (PROFILE_DECLARATION_VERSION in packages/shared).
   profileDeclarationAcceptedAt DateTime?
   profileDeclarationVersion    String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
   // Soft-delete (richiesta esplicita dell'utente, simmetrica a User.deletedAt
   // già in uso per il cliente — CLAUDE.md §16): prima l'eliminazione
@@ -234,25 +238,25 @@ model ProfessionalProfile {
   // pubblico/fan-out (ovunque filtrato esplicitamente), ma Booking/Lead/
   // Quote/Review restano intatti — lo stesso principio "traccia completa"
   // già applicato al soft-delete del cliente.
-  deletedAt   DateTime?
+  deletedAt            DateTime?
   // Profilo tolto da ricerca/profilo pubblico/fan-out da un admin su una
   // segnalazione (docs/CHANGELOG.md §144). Il professionista continua ad
   // accedere alla dashboard (a meno che anche `User.suspendedAt` sia
   // valorizzato). Filtrato ovunque insieme a `deletedAt`.
-  suspendedAt DateTime?
+  suspendedAt          DateTime?
   // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): fuori dalla
   // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
   // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
   // TRIAL_ENDED, SUBSCRIPTION_ENDED o LIMIT_REACHED (`PauseReason` in
   // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
-  pausedAt     DateTime?
-  pausedReason String?
+  pausedAt             DateTime?
+  pausedReason         String?
   // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170):
   // fuori dalla ricerca e dallo smistamento finché il professionista non apre
   // il link d'invito, imposta la password e salva il profilo accettando la
   // dichiarazione. Da filtrare come `pausedAt` in ogni nuovo punto che mostra
   // professionisti o assegna richieste.
-  invitePendingAt DateTime?
+  invitePendingAt      DateTime?
   // Misure progressive sulle segnalazioni accolte (docs/CHANGELOG.md §167,
   // decisione dell'utente): alla 2ª segnalazione accolta in 30 giorni il
   // profilo scende nello smistamento e nella ricerca per 14 giorni
@@ -1615,19 +1619,19 @@ model JobPayment {
   // la chiusura (`releaseDueAt`), meno il costo Stripe e la commissione.
   // Fasi (`onlineStage`, `JobPaymentOnlineStage` in packages/shared):
   // AWAITING_DEPOSIT, DEPOSIT_PAID, AWAITING_BALANCE, PAID, RELEASED, REFUNDED.
-  onlineStage              String?
-  depositEurCents          Int?
-  depositPaidAt            DateTime?
-  balancePaymentIntentId   String?   @unique
-  balancePaidAt            DateTime?
-  paidEurCents             Int       @default(0)
-  stripeFeeEurCents        Int       @default(0)
-  refundedEurCents         Int       @default(0)
-  releaseDueAt             DateTime?
-  releasedAt               DateTime?
+  onlineStage            String?
+  depositEurCents        Int?
+  depositPaidAt          DateTime?
+  balancePaymentIntentId String?   @unique
+  balancePaidAt          DateTime?
+  paidEurCents           Int       @default(0)
+  stripeFeeEurCents      Int       @default(0)
+  refundedEurCents       Int       @default(0)
+  releaseDueAt           DateTime?
+  releasedAt             DateTime?
   // Saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
   // caso arriva al nostro team.
-  balanceUnpaidAt          DateTime?
+  balanceUnpaidAt        DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
@@ -1954,47 +1958,47 @@ enum JobIssueStatus {
 // lavoro non è andato bene; il professionista può rispondere, un admin
 // decide. Una sola segnalazione per lavoro.
 model JobIssue {
-  id                      String         @id @default(uuid())
-  bookingId               String         @unique
-  type                    JobIssueType
-  description             String
-  photoUrls               String[]       @default([])
-  status                  JobIssueStatus @default(OPEN)
-  professionalResponse    String?
-  professionalRespondedAt DateTime?
-  resolutionNote          String?
-  resolvedAt              DateTime?
-  resolvedByUserId        String?
+  id                          String         @id @default(uuid())
+  bookingId                   String         @unique
+  type                        JobIssueType
+  description                 String
+  photoUrls                   String[]       @default([])
+  status                      JobIssueStatus @default(OPEN)
+  professionalResponse        String?
+  professionalRespondedAt     DateTime?
+  resolutionNote              String?
+  resolvedAt                  DateTime?
+  resolvedByUserId            String?
   // Controversie standard sul modello Amazon A-Z (§167): passaggio al
   // nostro team (CLIENT = il cliente dice "non abbiamo risolto",
   // PRO_NO_REPLY = il professionista non ha scritto in chat entro 48 ore).
   // Da `escalatedAt` il professionista ha 72 ore per dare la sua versione.
-  escalatedAt             DateTime?
-  escalationReason        String?
+  escalatedAt                 DateTime?
+  escalationReason            String?
   // Richiesta di informazioni dell'admin: 72 ore per rispondere.
-  infoRequestText         String?
-  infoRequestedAt         DateTime?
-  infoResponse            String?
-  infoRespondedAt         DateTime?
+  infoRequestText             String?
+  infoRequestedAt             DateTime?
+  infoResponse                String?
+  infoRespondedAt             DateTime?
   // Decisione automatica a favore del cliente se il professionista non
   // risponde in tempo: NO_EVIDENCE o NO_INFO (null = decisa da un admin).
-  autoDecision            String?
+  autoDecision                String?
   // Misura applicata al professionista con la decisione "accolta":
   // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
-  sanction                String?
+  sanction                    String?
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
-  appealText              String?
-  appealedAt              DateTime?
-  appealDecision          String?
-  appealNote              String?
-  appealResolvedAt        DateTime?
-  appealResolvedByUserId  String?
+  appealText                  String?
+  appealedAt                  DateTime?
+  appealDecision              String?
+  appealNote                  String?
+  appealResolvedAt            DateTime?
+  appealResolvedByUserId      String?
   // Richiesta nuova inviata ad altri professionisti dopo una mancata
   // presentazione accolta (pulsante del cliente).
   redispatchedGuidedRequestId String?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  createdAt                   DateTime       @default(now())
+  updatedAt                   DateTime       @updatedAt
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

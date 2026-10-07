@@ -10,8 +10,8 @@ import { NotificationsService } from "./notifications.service";
   // SSE oltre a scrivere la riga in tabella (CTO — real-time via SSE),
   // accelerando i badge/toast già esistenti senza sostituirli (restano
   // comunque leggibili via REST, il push è solo un acceleratore).
-  // EmailModule: email al professionista per ogni nuovo lead (vedi
-  // NotificationsService.emailNewLead).
+  // EmailModule: email che accompagnano le notifiche (vedi
+  // NotificationsService.notify).
   imports: [AuthModule, RealtimeModule, EmailModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],

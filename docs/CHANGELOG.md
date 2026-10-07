@@ -16497,3 +16497,72 @@ dell'API People, quindi restano da compilare.
 **Verifica:** test di `google-name.test.ts` (separazione, nomi doppi, account
 senza cognome, registrazione cliente e professionista, correzione all'accesso),
 test e typecheck di `apps/api`, typecheck di `apps/web`.
+
+## 185. Email del sito prima del lancio
+
+**Richiesta dell'utente** (7 ottobre 2026): "prima del lancio dobbiamo creare
+anche le varie email: di benvenuto, di richiesta preventivo, ecc.".
+
+**Prima:** il sito mandava email solo per la conferma dell'indirizzo del
+professionista, il nuovo lead, il promemoria del giorno prima, l'abbonamento,
+le decisioni di moderazione e l'invito per il profilo creato al telefono
+(firmato ancora "Manovia"). Tutte in HTML minimo senza grafica né versione
+testo. Nessuna email per benvenuto, preventivi, lavori, pagamenti; il
+recupero password non esisteva ("presto disponibile").
+
+**Decisione:**
+- **Modello grafico unico** (`apps/api/src/email/email-layout.ts`): testata
+  con logo e nome, titolo, testo, riquadro dei dettagli, un pulsante, firma,
+  piè di pagina; HTML a tabelle con stili in linea più versione solo testo
+  (Resend `text`). I testi sono testo semplice, sempre "escapati", con il solo
+  `**grassetto**`. Piè di pagina diverso per le notifiche (link alle
+  preferenze) e per le email di servizio (arrivano sempre).
+- **Marchio in un punto solo** (`email-brand.ts`): nome provvisorio
+  "Professionisti", firma, email di assistenza, colori "Vicinato"; logo da
+  `EMAIL_LOGO_URL` o `icon-192.png` del sito. Checklist di lancio punto 21.
+- **Testi** in `email/templates/`: `account-emails.ts` (benvenuto cliente,
+  benvenuto professionista con il link di conferma dentro, così ne arriva una
+  sola; conferma email; recupero e cambio password; account eliminato;
+  profilo creato al telefono), `job-emails.ts` (richiesta inviata, promemoria
+  del giorno prima, nuova segnalazione agli admin), `notification-emails.ts`
+  (una voce per ogni notifica che parte anche via email).
+- **Email delle notifiche**: `NotificationsService.notify` manda l'email per
+  ogni tipo presente in `notification-emails.ts` se l'argomento ha l'email
+  accesa (anche con il sito spento, mai per una richiesta silenziata). I dati
+  da mostrare (categoria, città, attività, data) si caricano da
+  `bookingId`/`quoteId`/`guidedRequestId` del payload, quindi nessun punto di
+  invio è cambiato. Nuove email: preventivi e date (tutti), richiesta scaduta
+  o inoltrata, lavoro terminato con invito alla recensione, intervento
+  annullato o riaperto, pagamenti (acconto, saldo, accredito, conti da
+  attivare), segnalazioni sul lavoro con le scadenze di 48/72 ore, avvisi
+  dell'abbonamento mancanti (mese regalato, quasi al limite), esito di una
+  segnalazione per chi l'ha fatta. Restano solo sul sito: chat, "ricordamelo",
+  rifiuto di un singolo professionista (frequenti, riempirebbero la casella).
+  "Preventivi e date" ha ora anche il canale email nelle preferenze.
+- **Richiesta inviata** al cliente (`REQUEST_SENT`, solo email, argomento
+  "Le tue richieste"): a quanti professionisti è andata, o che per ora in zona
+  non c'è nessuno.
+- **Nuova recensione** (`NEW_REVIEW`, argomento "Lavori e appuntamenti",
+  anche campanella): al professionista quando il cliente lo recensisce. Mai il
+  voto, per il "doppio cieco": lo invita a recensire il cliente per leggerla.
+- **Recupero password**: `POST /auth/password-reset/request` (3 al minuto,
+  stessa risposta che l'account esista o no) e `/confirm`; link valido 60
+  minuti e una volta sola, si salva solo l'impronta SHA-256
+  (`User.passwordResetTokenHash`/`passwordResetExpiresAt`, migrazione
+  `20261007100000_password_reset`). Aprire il link conferma anche l'email e fa
+  entrare subito. Pagine `/password-dimenticata` (modulo) e
+  `/reimposta-password`. Vale anche per chi si è iscritto con Google.
+- Al cliente nessun dato di contatto in più (CLAUDE.md §5 punto 9): al
+  professionista, prima dell'accettazione, solo categoria e città. Il "mese
+  gratis" non si annuncia nel benvenuto (§6).
+- **Anteprima**: `pnpm --filter @professionisti/api email:preview [cartella]`
+  scrive tutte le email con dati di esempio, senza mandare nulla.
+
+**Invio reale:** dipende solo da Resend (checklist di lancio, punto 5bis). Con
+il mittente di prova Resend consegna solo al titolare dell'account; serve il
+dominio verificato e `RESEND_FROM_EMAIL` per arrivare a tutti.
+
+**Verifica:** typecheck e test di tutto il monorepo; nuovi
+`email-templates.test.ts` (ogni modello si compone anche con dati vuoti, ogni
+tipo con email ha un argomento, la recensione non anticipa il voto) e
+`password-reset.test.ts`; anteprima di tutte le 64 email.

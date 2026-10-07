@@ -60,12 +60,13 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
     };
     const jwt = { sign: vi.fn().mockReturnValue("jwt") };
     const cloudinary = { uploadImageFromUrl: vi.fn().mockResolvedValue("https://res.cloudinary.com/demo/foto.jpg") };
-    const service = new AuthService(prisma as never, jwt as never, {} as never, {} as never, cloudinary as never);
+    const emailService = { send: vi.fn().mockResolvedValue(true) };
+    const service = new AuthService(prisma as never, jwt as never, {} as never, emailService as never, cloudinary as never);
     const googleClient = (service as unknown as { googleClient: { verifyIdToken: unknown } }).googleClient;
     googleClient.verifyIdToken = vi.fn().mockResolvedValue({
       getPayload: () => ({ sub: "g-1", email: "mario@esempio.it", picture: "https://lh3.googleusercontent.com/a/foto", ...mario }),
     });
-    return { service, prisma, cloudinary };
+    return { service, prisma, cloudinary, emailService };
   }
 
   it.each(["CLIENT", "PROFESSIONAL"] as const)("registrazione %s: nome, cognome, foto ed email confermata", async (role) => {

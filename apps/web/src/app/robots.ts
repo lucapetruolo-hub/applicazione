@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         "/accedi",
         "/registrati",
         "/password-dimenticata",
+        "/reimposta-password",
         "/account",
         "/le-mie-richieste",
         "/professionisti-salvati",

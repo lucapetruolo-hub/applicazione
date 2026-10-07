@@ -29,8 +29,9 @@ export type NotificationTopicInfo = {
 export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopicInfo> = {
   richieste: {
     professional: { label: "Nuove richieste", description: "Quando un cliente ti chiede un preventivo." },
-    client: { label: "Le tue richieste", description: "Se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH"],
+    client: { label: "Le tue richieste", description: "Conferma dell'invio, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
+    // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_SENT"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {
@@ -46,11 +47,11 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
     ],
-    activeChannels: ["inApp"],
+    activeChannels: ["inApp", "email"],
   },
   lavori: {
-    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, prenotazioni riaperte, segnalazioni di assenza." },
-    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, lavoro terminato, intervento annullato." },
+    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni riaperte, segnalazioni." },
+    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
@@ -77,6 +78,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_PAYOUT_ACCOUNT_NEEDED",
       "ADMIN_JOB_BALANCE_UNPAID",
       "BOOKING_REMINDER",
+      // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
+      "NEW_REVIEW",
     ],
     activeChannels: ["inApp", "email"],
   },

@@ -149,6 +149,19 @@ export const verifyEmailSchema = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
+/** Recupero password (docs/CHANGELOG.md §185): richiesta del link. */
+export const passwordResetRequestSchema = z.object({
+  email: z.string().trim().email("Email non valida"),
+});
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
+
+/** Recupero password: nuova password scelta dal link ricevuto. */
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+});
+export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
   .object({

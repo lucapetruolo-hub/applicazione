@@ -850,6 +850,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
       }),
 
+    /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
+    requestPasswordReset: (email: string) =>
+      request<{ success: boolean }>("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) }),
+
+    confirmPasswordReset: (token: string, password: string) =>
+      request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
+
     verifyEmail: (token: string) =>
       request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
 

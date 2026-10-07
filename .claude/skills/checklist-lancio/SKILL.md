@@ -195,7 +195,13 @@ prima del lancio"):
     `icon-512.png`, `apple-icon.tsx`, `opengraph-image.tsx` in
     `apps/web/src/app`, e il logo in `packages/ui/src/Logo*.tsx`). Allineare
     anche i testi dei pagamenti che dicono "Manovia" (`JobPaymentStatus.tsx`,
-    `BookingDetailPanel.tsx`, admin finanza) al nome scelto.
+    `BookingDetailPanel.tsx`, admin finanza) al nome scelto. Per le email
+    basta `apps/api/src/email/email-brand.ts` (nome, firma, email di
+    assistenza; logo da `EMAIL_LOGO_URL` o, di default, `icon-192.png` del
+    sito) più `RESEND_FROM_EMAIL` su Render (docs/CHANGELOG.md §185).
+21bis. **Email di assistenza reale**: le email e alcune pagine indicano
+    `supporto@professionisti.it`, provvisoria come il nome. Crearla col dominio
+    del punto 5bis e aggiornarla in `email-brand.ts` e nelle pagine.
 22. **Promemoria via SMS: ricerca di un'alternativa** (WhatsApp o altro).
     "Come funziona" (`HowItWorks.tsx`) oggi promette "email e SMS" ma gli SMS
     non sono attivi: finché la ricerca non è chiusa il testo non è stato
@@ -217,19 +223,11 @@ prima del lancio"):
     CLAUDE.md. Google Sign-In non ne ha bisogno. Nessun proxy/WAF
     Cloudflare davanti a Vercel: sconsigliato da Vercel e il sito non ha
     ancora un dominio proprio.
-25. **Email transazionali mancanti** (richiesta dell'utente, 07/10/2026:
-    "prima del lancio dobbiamo creare anche le varie email: di benvenuto,
-    di richiesta preventivo, ecc."). Oggi partono solo: conferma
-    dell'indirizzo, nuova richiesta al professionista (`NEW_LEAD`),
-    promemoria del giorno prima, invito del profilo creato dall'operatore,
-    abbonamento e moderazione. Mancano almeno: benvenuto (cliente e
-    professionista), richiesta inviata (al cliente), nuovo preventivo /
-    preventivo modificato (al cliente), preventivo accettato o rifiutato
-    (al professionista), proposte e cambi di data/orario, lavoro
-    completato e invito a recensire, pagamenti dei lavori. Ogni nuovo invio
-    rispetta `notificationChannelEnabled` (CLAUDE.md §5 punto 13) e usa il
-    nome definitivo del marchio. Ha senso solo dopo il dominio su Resend
-    (punto 5bis).
+25. ~~Email transazionali mancanti~~ — fatto (docs/CHANGELOG.md §185):
+    benvenuto, richiesta inviata, preventivi e date, lavori, pagamenti,
+    recensioni, recupero password, con modello unico. Partono a tutti solo
+    dopo il dominio su Resend (punto 5bis); il nome del marchio si cambia in
+    `apps/api/src/email/email-brand.ts` (punto 21).
 
 **Infrastruttura/qualità del codice** (CEO, audit tecnico — "zero test
 automatici, zero CI/CD, e soprattutto `prisma db push --accept-data-loss`
