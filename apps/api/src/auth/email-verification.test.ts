@@ -15,7 +15,7 @@ function buildService() {
   };
   const emailService = { send: vi.fn().mockResolvedValue(true) };
   const jwt = { sign: vi.fn().mockReturnValue("jwt-token") };
-  const service = new AuthService(prisma as never, jwt as never, {} as never, emailService as never);
+  const service = new AuthService(prisma as never, jwt as never, {} as never, emailService as never, {} as never);
   return { service, prisma, emailService };
 }
 

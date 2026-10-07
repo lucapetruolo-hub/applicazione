@@ -59,19 +59,26 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
       professionalProfile: { findUnique: vi.fn().mockResolvedValue(null) },
     };
     const jwt = { sign: vi.fn().mockReturnValue("jwt") };
-    const service = new AuthService(prisma as never, jwt as never, {} as never, {} as never);
+    const cloudinary = { uploadImageFromUrl: vi.fn().mockResolvedValue("https://res.cloudinary.com/demo/foto.jpg") };
+    const service = new AuthService(prisma as never, jwt as never, {} as never, {} as never, cloudinary as never);
     const googleClient = (service as unknown as { googleClient: { verifyIdToken: unknown } }).googleClient;
     googleClient.verifyIdToken = vi.fn().mockResolvedValue({
-      getPayload: () => ({ sub: "g-1", email: "mario@esempio.it", ...mario }),
+      getPayload: () => ({ sub: "g-1", email: "mario@esempio.it", picture: "https://lh3.googleusercontent.com/a/foto", ...mario }),
     });
-    return { service, prisma };
+    return { service, prisma, cloudinary };
   }
 
-  it.each(["CLIENT", "PROFESSIONAL"] as const)("registrazione %s: nome, cognome ed email confermata", async (role) => {
+  it.each(["CLIENT", "PROFESSIONAL"] as const)("registrazione %s: nome, cognome, foto ed email confermata", async (role) => {
     const { service, prisma } = setup(null);
     await service.verifyGoogleToken("token", role, true, { acceptedLegalTerms: true, declaredAdult: true });
     const data = prisma.user.create.mock.calls[0]?.[0].data;
-    expect(data).toMatchObject({ name: "Mario", surname: "De Luca", role, email: "mario@esempio.it" });
+    expect(data).toMatchObject({
+      name: "Mario",
+      surname: "De Luca",
+      role,
+      email: "mario@esempio.it",
+      imageUrl: "https://res.cloudinary.com/demo/foto.jpg",
+    });
     expect(data.emailVerifiedAt).toBeInstanceOf(Date);
   });
 
@@ -86,6 +93,32 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
       surname: null,
     });
     await service.verifyGoogleToken("token", undefined, false);
-    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u-1" }, data: { name: "Mario", surname: "De Luca" } });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "u-1" },
+      data: { name: "Mario", surname: "De Luca", imageUrl: "https://res.cloudinary.com/demo/foto.jpg" },
+    });
+  });
+
+  it("accesso con una foto già scelta: non la sostituisce", async () => {
+    const { service, prisma, cloudinary } = setup({
+      id: "u-1",
+      role: "CLIENT",
+      googleId: "g-1",
+      email: "mario@esempio.it",
+      emailVerifiedAt: new Date(),
+      name: "Mario",
+      surname: "De Luca",
+      imageUrl: "https://res.cloudinary.com/demo/mia.jpg",
+    });
+    await service.verifyGoogleToken("token", undefined, false);
+    expect(cloudinary.uploadImageFromUrl).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("senza Cloudinary la registrazione riesce senza foto", async () => {
+    const { service, prisma, cloudinary } = setup(null);
+    cloudinary.uploadImageFromUrl.mockResolvedValue(null);
+    await service.verifyGoogleToken("token", "CLIENT", true, { acceptedLegalTerms: true, declaredAdult: true });
+    expect(prisma.user.create.mock.calls[0]?.[0].data.imageUrl).toBeNull();
   });
 });

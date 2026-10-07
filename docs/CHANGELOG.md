@@ -16402,7 +16402,7 @@ passano da "Recensioni ricevute" a "Recensioni".
 **Verifica:** build dei package e di `apps/api`, test dell'API, typecheck di
 `apps/web` e `apps/mobile`.
 
-## 183. Registrazione con Google: nome e cognome nei campi giusti
+## 183. Registrazione con Google: nome, cognome e foto nei campi giusti
 
 **Richiesta dell'utente** (7 ottobre 2026): "quando si effettua una nuova
 registrazione tramite google che sia professionista o cliente metti nel campo
@@ -16421,6 +16421,21 @@ seconda finestra di consenso), quindi resta da compilare in `/account`.
 il nome è ancora quello completo di Google, nome e cognome vengono separati
 (`googleNameRepair`); un nome già modificato dall'utente non si tocca.
 
+**Foto profilo** (stessa conversazione: "anche la foto profilo del cliente
+prendendola dal suo account google e anche del professionista la andiamo a
+caricare nel suo account pubblico [...] ha la possibilità di modificarla"): la
+foto dell'account Google (`picture` del token) viene copiata su Cloudinary
+(`CloudinaryService.uploadImageFromUrl`, stesso ridimensionamento 800×800) e
+salvata in `User.imageUrl`, alla registrazione e al primo accesso di un account
+che non ha ancora una foto; mai al posto di una foto già scelta. Senza
+Cloudinary o se la copia fallisce si prosegue senza foto. Il professionista la
+trova già nel modulo di `/dashboard/profilo` e, alla prima creazione del
+profilo senza un'altra immagine, diventa la foto del profilo pubblico
+(`ProfessionalProfile.imageUrl`); si cambia dagli stessi punti di sempre.
+**Altro dal token:** Google Sign-In fornisce solo email, nome, cognome e foto;
+telefono, indirizzo e data di nascita richiederebbero scope sensibili
+dell'API People, quindi restano da compilare.
+
 **Verifica:** test di `google-name.test.ts` (separazione, nomi doppi, account
 senza cognome, registrazione cliente e professionista, correzione all'accesso),
-test e typecheck di `apps/api`.
+test e typecheck di `apps/api`, typecheck di `apps/web`.
