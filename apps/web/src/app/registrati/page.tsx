@@ -13,38 +13,13 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
+import { AuthPageBackground } from "@/components/AuthPageBackground";
 
 export default function RegistratiPage() {
   return (
     <Suspense fallback={null}>
       <RegistratiForm />
     </Suspense>
-  );
-}
-
-/**
- * Sfondo condiviso da RoleChoiceScreen/RegistratiForm — richiesta esplicita
- * dell'utente di rendere la pagina "più innovativa" (stesso principio già
- * seguito per NotificationBell, CLAUDE.md §76): due forme sfumate
- * decorative dietro la card del form invece dello sfondo pesca piatto di
- * prima. Le forme vivono in un proprio contenitore assoluto con
- * `overflow:hidden` dedicato (`.auth-page-blobs`, apps/web/globals.css) —
- * mai sull'intera colonna scrollabile, stesso bug già documentato altrove
- * in questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
- * overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
- * prima stesura.
- */
-function AuthPageBackground({ children }: { children: ReactNode }) {
-  return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4" position="relative">
-      <div className="auth-page-blobs" aria-hidden="true">
-        <div className="auth-page-blob auth-page-blob--one" />
-        <div className="auth-page-blob auth-page-blob--two" />
-      </div>
-      <YStack width="100%" alignItems="center" position="relative" zIndex={1}>
-        {children}
-      </YStack>
-    </YStack>
   );
 }
 

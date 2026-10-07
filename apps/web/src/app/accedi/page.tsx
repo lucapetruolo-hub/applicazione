@@ -9,6 +9,7 @@ import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 
 export default function AccediPage() {
   return (
@@ -85,8 +86,8 @@ function AccediForm() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={420} gap="$5">
+    <AuthPageBackground>
+      <AuthCard>
         <YStack gap="$2">
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
             Accedi
@@ -205,7 +206,7 @@ function AccediForm() {
             </Text>
           ) : null}
         </YStack>
-      </YStack>
-    </YStack>
+      </AuthCard>
+    </AuthPageBackground>
   );
 }

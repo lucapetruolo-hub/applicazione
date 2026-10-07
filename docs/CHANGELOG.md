@@ -16208,3 +16208,19 @@ la A: prima l'email, poi la password. Niente conferma email per i clienti
 **Verifica:** test di `AuthService.emailStatus` (4 casi); typecheck di
 `apps/api` e `apps/web`; schermate in locale con un'API finta, a 1280 e 390
 px, dei passi email, email nuova, account con password e account Google.
+
+## 177. Sfondo sfocato anche su Accedi, recupero password e completamento profilo
+
+**Richiesta dell'utente** (7 ottobre 2026): "bello questo effetto sfocato
+sullo sfondo, dovremmo riproporlo anche per altre finestre", riferito allo
+sfondo di `/registrati` (pesca con due forme sfumate dietro una scheda
+bianca).
+
+**Decisione:** `AuthPageBackground` esce da `/registrati` e diventa
+`apps/web/src/components/AuthPageBackground.tsx`, con `AuthCard` (scheda
+bianca, senza ombra come scelto in §176). Usati su `/accedi` (prima il
+modulo stava direttamente sul fondo pesca), `/password-dimenticata` e
+`/completa-profilo` (che perde anche l'ombra `floating`). Le altre pagine e
+i popup restano com'erano.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px.

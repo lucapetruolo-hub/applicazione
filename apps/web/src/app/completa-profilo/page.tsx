@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { acceptProfileInviteSchema, type ProfileInvitePreview } from "@professionisti/shared";
-import { Button, Icon, Surface, Text, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthField } from "@/components/AuthField";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { apiClient } from "@/lib/apiClient";
@@ -73,8 +74,8 @@ function CompletaProfiloForm() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
-      <Surface floating width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+    <AuthPageBackground>
+      <AuthCard>
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Completa il tuo profilo
@@ -164,7 +165,7 @@ function CompletaProfiloForm() {
         ) : (
           <Text color={brand.grafite70}>Controllo il link...</Text>
         )}
-      </Surface>
-    </YStack>
+      </AuthCard>
+    </AuthPageBackground>
   );
 }
