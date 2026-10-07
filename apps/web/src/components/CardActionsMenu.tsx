@@ -117,6 +117,10 @@ export function CardActionsMenu({
   }
 
   if (actions.length === 0) return null;
+  // Annulla/elimina/rifiuta sempre in fondo (richiesta esplicita
+  // dell'utente, docs/CHANGELOG.md §187), qualunque sia l'ordine di chi
+  // costruisce la lista.
+  const orderedActions = [...actions.filter((a) => a.tone !== "danger"), ...actions.filter((a) => a.tone === "danger")];
 
   function close() {
     setIsOpen(false);
@@ -227,7 +231,7 @@ export function CardActionsMenu({
                     </XStack>
                   </YStack>
                 ) : (
-                  actions.map((action) => {
+                  orderedActions.map((action) => {
                     const color =
                       action.tone === "danger" ? brand.urgenza : brand.grafite;
                     return (

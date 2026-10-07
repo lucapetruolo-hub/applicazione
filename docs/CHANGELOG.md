@@ -16566,3 +16566,60 @@ dominio verificato e `RESEND_FROM_EMAIL` per arrivare a tutti.
 `email-templates.test.ts` (ogni modello si compone anche con dati vuoti, ogni
 tipo con email ha un argomento, la recensione non anticipa il voto) e
 `password-reset.test.ts`; anteprima di tutte le 64 email.
+
+## 186. Cambio di data/orario mostrato al cliente come al professionista
+
+**Richiesta dell'utente:** quando cambia la data o l'orario, il cliente in
+"Le mie richieste" deve vederlo chiaro come lo vede il professionista in
+"Richieste e lavori".
+
+**Prima:** il professionista vedeva un riquadro giallo tratteggiato con la
+data originale barrata → la nuova data richiesta. Il cliente vedeva solo
+"Data proposta" con la data nuova, al massimo una riga "Il professionista ha
+risposto proponendo…" o "…un orario diverso da quello richiesto": la data
+precedente non era più salvata.
+
+**Decisione:**
+- `Quote.previousStartDate`/`previousEndDate` (migrazione
+  `20261007160000_quote_previous_schedule`): l'appuntamento appena
+  sostituito dal professionista, quando modifica il preventivo cambiando
+  data/orario o risponde alla proposta del cliente (in quel caso "prima" è
+  la data proposta dal cliente). Azzerati quando il cliente propone una data.
+- `GET` delle richieste del cliente espone `previousSchedule` al posto di
+  `changeFromRequest`: l'ultima modifica, o l'orario richiesto dal cliente
+  se il preventivo non lo rispetta.
+- Nuovo `apps/web/src/components/ScheduleChangeBox.tsx`, usato da entrambi i
+  lati: il professionista vede "Il cliente ha richiesto una modifica della
+  data / dell'orario / di data e orario", il cliente "Il professionista ha
+  modificato la data / l'orario / la data e l'orario", con data originale
+  barrata → nuova data proposta e la nota del professionista sotto.
+- I preventivi modificati prima di questa versione (senza data precedente)
+  mostrano il riquadro di prima con la nota.
+
+**Verifica:** build di `apps/api`, test dell'API, typecheck di `apps/web` e
+`apps/mobile`, SQL della migrazione confrontato con `prisma migrate diff`.
+
+## 187. Pulsanti "Modifica" e "Contatta" nelle richieste, annulla sempre per ultimo
+
+**Richiesta dell'utente:** in "Le mie richieste" e in "Richieste e lavori"
+"Proponi altra data" diventa "Modifica" ed è un pulsante con lo sfondo;
+"Contatta" deve sembrare un pulsante; nessun "Chat" (tranne il piccolo
+pulsante sotto "Dettagli cliente"); annulla/cancella sempre per ultimo.
+
+**Decisione:**
+- Nuovo `apps/web/src/components/ContactButton.tsx` (pulsante pieno
+  "Contatta/Cronologia" con il pallino dei non letti: l'utente vuole la
+  parola "Cronologia" perché si capisca che dentro c'è la storia di tutto
+  quello che è successo), al posto dei link "Contatta/Cronologia" del
+  cliente (preventivo, professionisti contattati, intervento) e dei
+  pulsanti "Chat"/"Contatta" del professionista. Voce di menu "Chat con il
+  cliente" → "Contatta/Cronologia".
+- "Proponi altra data" del professionista → "Modifica" ottone con testo
+  bianco, come "Modifica preventivo"; "Modifica" del cliente con lo stesso
+  sfondo.
+- "Annulla intervento" spostato dopo "Vedi in agenda" e "Contatta";
+  "Elimina prenotazione" del cliente in fondo alla scheda; nel menu ⋯
+  (`CardActionsMenu`) le voci rosse (annulla, elimina, rifiuta, segnala)
+  vanno sempre in fondo.
+
+**Verifica:** typecheck di `apps/web`.

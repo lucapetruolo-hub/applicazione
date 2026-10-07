@@ -67,8 +67,24 @@ export class QuotesService {
       notes: input.notes,
     };
 
+    // Cosa cambia di "quando" rispetto al preventivo già inviato: data,
+    // orario o entrambi (docs/CHANGELOG.md §180).
+    const scheduleChange = existingQuote
+      ? scheduleChangeBetween(
+          { start: existingQuote.estimatedStartDate, end: existingQuote.estimatedEndDate },
+          { start: data.estimatedStartDate, end: data.estimatedEndDate },
+        )
+      : null;
+
     const quote = existingQuote
-      ? await this.prisma.quote.update({ where: { id: existingQuote.id }, data })
+      ? await this.prisma.quote.update({
+          where: { id: existingQuote.id },
+          // Il cliente vede "prima → ora" come lo vede il professionista
+          // (docs/CHANGELOG.md §186): si ricorda l'appuntamento sostituito.
+          data: scheduleChange
+            ? { ...data, previousStartDate: existingQuote.estimatedStartDate, previousEndDate: existingQuote.estimatedEndDate }
+            : data,
+        })
       : await this.prisma.quote.create({
           data: {
             ...data,
@@ -89,14 +105,6 @@ export class QuotesService {
       })),
     });
 
-    // Cosa cambia di "quando" rispetto al preventivo già inviato: data,
-    // orario o entrambi (docs/CHANGELOG.md §180).
-    const scheduleChange = existingQuote
-      ? scheduleChangeBetween(
-          { start: existingQuote.estimatedStartDate, end: existingQuote.estimatedEndDate },
-          { start: data.estimatedStartDate, end: data.estimatedEndDate },
-        )
-      : null;
     // Solo al primo invio (non ad ogni modifica successiva): il cliente ha
     // già visto il preventivo la prima volta, una modifica non è "novità"
     // da badge — coerente con la stessa distinzione già fatta altrove nel
@@ -241,8 +249,11 @@ export class QuotesService {
         clientProposedNote: input.note?.trim() || null,
         status: "MODIFICATION_REQUESTED",
         // Una nuova trattativa riparte da capo: la nota della modifica
-        // precedente del professionista non è più pertinente.
+        // precedente del professionista non è più pertinente, né il
+        // "prima → ora" della sua ultima modifica.
         professionalCounterNote: null,
+        previousStartDate: null,
+        previousEndDate: null,
       },
     });
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
@@ -511,6 +522,10 @@ export class QuotesService {
       data: {
         estimatedStartDate,
         estimatedEndDate,
+        // Per il cliente "prima" è la data che aveva proposto lui
+        // (docs/CHANGELOG.md §186).
+        previousStartDate: quote.clientProposedDate ?? quote.estimatedStartDate,
+        previousEndDate: quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate,
         status: "SENT",
         clientProposedDate: null,
         clientProposedEndDate: null,
