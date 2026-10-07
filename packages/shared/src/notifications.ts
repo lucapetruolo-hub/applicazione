@@ -77,6 +77,12 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
       "ADMIN_JOB_BALANCE_UNPAID",
+      // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §187).
+      "JOB_CONFIRM_REMINDER",
+      "JOB_AUTO_CONFIRMED",
+      "JOB_CLOSE_REMINDER",
+      "JOB_CLOSE_EXPIRED",
+      "ADMIN_JOB_NOT_CLOSED",
       "BOOKING_REMINDER",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",

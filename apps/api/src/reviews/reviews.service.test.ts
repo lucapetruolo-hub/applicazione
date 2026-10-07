@@ -54,9 +54,10 @@ describe("ReviewsService.runAutoPublishCheck — attesa solo con entrambi i \"La
 
     const clientSide = prisma.review.findMany.mock.calls[0]![0].where.booking;
     expect(clientSide.OR[0]).toMatchObject({ status: "COMPLETED", clientConfirmedCompletedAt: { lt: expect.any(Date) } });
-    expect(clientSide.OR[1]).toEqual({ issue: { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } } });
+    expect(clientSide.OR[1]).toEqual({ completionAutoClosedAt: { not: null } });
+    expect(clientSide.OR[2]).toEqual({ issue: { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } } });
 
     const proSide = prisma.clientReview.findMany.mock.calls[0]![0].where.booking;
-    expect(proSide.AND[0]).toMatchObject({ status: "COMPLETED", clientConfirmedCompletedAt: { lt: expect.any(Date) } });
+    expect(proSide.AND[0].OR[0]).toMatchObject({ status: "COMPLETED", clientConfirmedCompletedAt: { lt: expect.any(Date) } });
   });
 });

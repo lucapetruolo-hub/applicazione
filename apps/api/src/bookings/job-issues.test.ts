@@ -23,6 +23,10 @@ describe("finestre per segnalare un problema (§164)", () => {
     const confirmed = { ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(10 * DAY) };
     expect(jobIssueTypesAllowed(confirmed, at(20 * DAY))).toEqual(["BAD_WORK"]);
   });
+  it("la conferma d'ufficio allo scadere del termine non riapre i 14 giorni (§187)", () => {
+    const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(15 * DAY), completionAutoClosedAt: at(15 * DAY) };
+    expect(jobIssueTypesAllowed(autoClosed, at(16 * DAY))).toEqual([]);
+  });
   it("dopo la conferma del cliente niente mancata presentazione", () => {
     expect(jobIssueTypesAllowed({ ...base, clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual(["BAD_WORK"]);
   });

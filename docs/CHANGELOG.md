@@ -16598,9 +16598,41 @@ giorni.
 - Testi aggiornati nel modulo della recensione e in "Le mie recensioni".
 
 **Conseguenza:** se solo una parte clicca "Lavoro terminato", la sua
-recensione resta nascosta senza limite di tempo (prima, dopo 3 giorni,
-diventava pubblica lo stesso). Come chiudere questo caso è una domanda aperta
-all'utente.
+recensione resterebbe nascosta senza limite di tempo: risolto in §187.
 
 **Verifica:** typecheck di `apps/api` e `apps/web`, test API (nuovo
 `reviews.service.test.ts`, casi aggiunti in `job-issues.test.ts`).
+
+## 187. Quando solo una parte clicca "Lavoro terminato"
+
+**Richiesta dell'utente:** scelta l'opzione "chiusura automatica" tra quelle
+proposte, regolandosi sui termini già fissati per aprire un reclamo o chiedere
+un rimborso.
+
+**Decisione:** il termine è lo stesso entro cui si segnala un lavoro fatto male
+(`BAD_WORK_REPORT_DAYS`, 14 giorni), contato dal clic di chi ha chiuso.
+`CompletionDeadlineService` (cron orario, `apps/api/src/bookings/`):
+- promemoria all'altra parte al 3° e al 10° giorno, con la data di scadenza
+  (`Booking.completionReminderCount`, un promemoria saltato si recupera);
+- **cliente silenzioso** (il professionista ha chiuso): al 14° giorno il lavoro
+  vale come confermato anche dal cliente (`clientConfirmedCompletedAt` +
+  `completionAutoClosedAt`). Il pagamento non cambia: online l'accredito segue
+  già i suoi 7 giorni, il diretto resta da confermare;
+- **professionista silenzioso** (il cliente ha chiuso): al 14° giorno si segna
+  solo `completionAutoClosedAt`. Il lavoro resta `CONFIRMED`, perché l'importo
+  finale lo inserisce solo lui e può ancora farlo; se ci sono soldi online in
+  custodia avvisiamo gli admin FINANCE/SUPER (`ADMIN_JOB_NOT_CLOSED`);
+- con una segnalazione aperta non scatta nulla: decide la segnalazione;
+- dopo la chiusura d'ufficio le recensioni non aspettano altri 3 giorni
+  (`ReviewsService.runAutoPublishCheck`);
+- la conferma d'ufficio non riapre i 14 giorni per segnalare un problema
+  (`jobIssueTypesAllowed` ignora una conferma con `completionAutoClosedAt`).
+
+Nuove notifiche (argomento "Lavori e appuntamenti", sito + email):
+`JOB_CONFIRM_REMINDER`, `JOB_AUTO_CONFIRMED`, `JOB_CLOSE_REMINDER`,
+`JOB_CLOSE_EXPIRED`, `ADMIN_JOB_NOT_CLOSED`. Migrazione
+`20261007170000_completion_auto_close`.
+
+**Verifica:** typecheck `apps/api` e `apps/web`, test API (nuovo
+`completion-deadline.test.ts`, casi aggiunti in `job-issues.test.ts` e
+`reviews.service.test.ts`).

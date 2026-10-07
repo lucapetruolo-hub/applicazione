@@ -216,7 +216,12 @@ export class ReviewsService {
         createdAt: { lt: threshold },
         booking: {
           clientReview: { is: null },
-          OR: [bothCompletedBefore(threshold), { issue: { status: { in: [...DECIDED_ISSUE_STATUSES] } } }],
+          OR: [
+            bothCompletedBefore(threshold),
+            // Chiuso d'ufficio dopo i promemoria (§187): l'altra parte ha già avuto il suo tempo.
+            { completionAutoClosedAt: { not: null } },
+            { issue: { status: { in: [...DECIDED_ISSUE_STATUSES] } } },
+          ],
         },
       },
       include: { booking: true },
@@ -235,7 +240,10 @@ export class ReviewsService {
         createdAt: { lt: threshold },
         booking: {
           review: { is: null },
-          AND: [bothCompletedBefore(threshold), { OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] }],
+          AND: [
+            { OR: [bothCompletedBefore(threshold), { completionAutoClosedAt: { not: null } }] },
+            { OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
+          ],
         },
       },
     });

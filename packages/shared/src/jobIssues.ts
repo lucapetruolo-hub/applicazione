@@ -324,6 +324,8 @@ export type JobIssueWindowInput = {
   scheduledEndAt: Date | null;
   professionalCompletedAt: Date | null;
   clientConfirmedCompletedAt: Date | null;
+  /** Conferma d'ufficio allo scadere del termine (§187): non riapre la finestra. */
+  completionAutoClosedAt?: Date | null;
   hasIssue: boolean;
 };
 
@@ -338,7 +340,8 @@ export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssu
   if (!b.clientConfirmedCompletedAt && t >= end && t <= end + NO_SHOW_REPORT_DAYS * DAY_MS) {
     allowed.push("NO_SHOW");
   }
-  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, b.clientConfirmedCompletedAt?.getTime() ?? 0);
+  const clientConfirmed = b.completionAutoClosedAt ? null : b.clientConfirmedCompletedAt;
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, clientConfirmed?.getTime() ?? 0);
   if (t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
     allowed.push("BAD_WORK");
   }
