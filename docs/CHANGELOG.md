@@ -16363,3 +16363,21 @@ le pillole e i riquadri colorati restano com'erano.
 var(--background) }` (grigio chiaro) dopo `globals.css`; finché le pagine
 avevano il proprio fondo gesso non si vedeva. Il pesca del body ora è
 `html body { background: #fdefe1 }`, che vince per specificità.
+
+## 181. Registrazione del professionista nella stessa scheda della scelta del ruolo
+
+**Richiesta dell'utente** (7 ottobre 2026): "quando un professionista vuole
+registrarsi e quindi clicca su registrati -> sono un professionista, deve
+rimanere lo stesso popup con le stesse dimensioni della schermata
+precedente, magari la foto e la spiegazione sotto, e sotto il popup il
+solito sfondo sfocato".
+
+**Decisione:** `ProfessionalSignupLayout` in `/registrati` non è più la
+pagina a due colonne di §173 (modulo su bianco a sinistra, foto e vantaggi
+su pesca a destra): il modulo sta in una scheda bianca larga 480 px come
+"Come vuoi registrarti?", con icona, "Passo 2 di 2" e titolo centrati, sullo
+sfondo sfocato di tutto il sito (§180). Foto e tre vantaggi restano, sotto
+la scheda, alla stessa larghezza. Campi, consensi e Google invariati.
+
+**Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px
+di scelta del ruolo e modulo.

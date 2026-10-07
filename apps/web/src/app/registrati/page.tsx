@@ -185,34 +185,33 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
 ];
 
 /**
- * Registrazione del professionista a due colonne, sul modello di MioDottore
- * (docs/CHANGELOG.md §173): a sinistra il modulo su sfondo bianco, a destra
- * foto e vantaggi (sotto il modulo, su telefono). La presentazione completa
- * è in /per-professionisti.
+ * Registrazione del professionista nella stessa scheda della scelta del
+ * ruolo (stessa larghezza, stesso sfondo sfocato, docs/CHANGELOG.md §181,
+ * richiesta dell'utente): prima era una pagina a due colonne (§173). Foto e
+ * vantaggi restano, sotto la scheda. La presentazione completa è in
+ * /per-professionisti.
  */
 function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
   return (
-    <YStack width="100%" backgroundColor={brand.calce} $gtMd={{ flexDirection: "row" }}>
-      <YStack flex={1} alignItems="center" paddingVertical="$8" paddingHorizontal="$4" $gtMd={{ paddingVertical: "$10" }}>
-        <YStack width="100%" maxWidth={440} gap="$5">
-          <YStack gap="$2">
-            <Text
-              tag="h1"
-              fontFamily="$heading"
-              fontWeight="600"
-              fontSize={32}
-              lineHeight={38}
-              letterSpacing={-0.3}
-              color={brand.grafite}
-            >
-              Iscriviti come professionista
-            </Text>
-            <Text fontSize="$5" lineHeight={24} color={brand.grafite70}>
-              Crea l&apos;account, poi completi il profilo e inizi a ricevere richieste.
-            </Text>
+    <AuthPageBackground>
+      <YStack width="100%" maxWidth={480} gap="$6">
+        <Surface className="auth-card-in" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
+          <YStack alignItems="center" gap="$3">
+            <AuthIconBadge icon="hard-hat" />
+            <YStack alignItems="center" gap="$1">
+              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                Passo 2 di 2
+              </Text>
+              <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+                Iscriviti come professionista
+              </Text>
+              <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+                Crea l&apos;account, poi completi il profilo e inizi a ricevere richieste.
+              </Text>
+            </YStack>
           </YStack>
           {children}
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
             Cerchi un professionista?{" "}
             <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
               <Text color={brand.cianografiaScuro} fontWeight="600">
@@ -220,17 +219,15 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
               </Text>
             </Link>
           </Text>
-        </YStack>
-      </YStack>
+        </Surface>
 
-      <YStack flex={1} alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" $gtMd={{ paddingVertical: "$10" }}>
-        <YStack width="100%" maxWidth={480} gap="$5">
+        <YStack width="100%" gap="$5">
           <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
             <Image
               src="/category-photos/elettricista.webp"
               alt="Un elettricista sorride mentre lavora a un quadro elettrico"
               fill
-              sizes="(max-width: 1024px) 100vw, 480px"
+              sizes="(max-width: 520px) 100vw, 480px"
               style={{ objectFit: "cover" }}
             />
           </div>
@@ -251,14 +248,14 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
               </XStack>
             ))}
           </YStack>
-          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+          <Link href="/per-professionisti" style={{ textDecoration: "none", alignSelf: "center" }}>
             <Text color={brand.cianografiaScuro} fontWeight="600">
               Scopri come funziona e quanto costa
             </Text>
           </Link>
         </YStack>
       </YStack>
-    </YStack>
+    </AuthPageBackground>
   );
 }
 
