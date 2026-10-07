@@ -16401,3 +16401,26 @@ passano da "Recensioni ricevute" a "Recensioni".
 
 **Verifica:** build dei package e di `apps/api`, test dell'API, typecheck di
 `apps/web` e `apps/mobile`.
+
+## 183. Registrazione con Google: nome e cognome nei campi giusti
+
+**Richiesta dell'utente** (7 ottobre 2026): "quando si effettua una nuova
+registrazione tramite google che sia professionista o cliente metti nel campo
+giusto il nome e il cognome e la data di nascita e l'email gia confermata [...]
+ora invece mette nome e cognome nella stringa del nome, correggi".
+
+**Decisione:** `AuthService.verifyGoogleToken` salvava `payload.name` (il nome
+completo) in `User.name`. Ora usa `given_name` e `family_name` del token Google
+(`apps/api/src/auth/google-name.ts`), senza mai spezzare il nome sugli spazi
+(sbaglierebbe con "Maria Grazia" o "De Luca"). L'email resta confermata
+(`emailVerifiedAt`) come già da §178. **Data di nascita:** il token di Google
+Sign-In non la contiene; leggerla richiederebbe l'API People con lo scope
+sensibile `user.birthday.read` (verifica dell'app da parte di Google e una
+seconda finestra di consenso), quindi resta da compilare in `/account`.
+**Account già creati:** al prossimo accesso con Google, se il cognome è vuoto e
+il nome è ancora quello completo di Google, nome e cognome vengono separati
+(`googleNameRepair`); un nome già modificato dall'utente non si tocca.
+
+**Verifica:** test di `google-name.test.ts` (separazione, nomi doppi, account
+senza cognome, registrazione cliente e professionista, correzione all'accesso),
+test e typecheck di `apps/api`.
