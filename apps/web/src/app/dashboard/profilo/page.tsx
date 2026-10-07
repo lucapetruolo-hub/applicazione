@@ -194,6 +194,9 @@ export default function DashboardProfiloPage() {
       .then((profile) => {
         setIsFirstProfileSave(!profile);
         setNeedsConfirmation(!!profile && !profile.profileDeclarationAccepted);
+        // Primo profilo: parte dalla foto dell'account (quella di Google per
+        // chi si è registrato con Google), modificabile come le altre.
+        if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
         if (profile) {
           setBusinessName(profile.businessName);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);

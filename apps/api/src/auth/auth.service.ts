@@ -8,7 +8,9 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { EmailService } from "../email/email.service";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
+import { googleNameFields, googleNameRepair } from "./google-name";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
@@ -29,6 +31,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly emailService: EmailService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -113,7 +116,7 @@ export class AuthService {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
 
-    let payload: { sub?: string; email?: string; name?: string } | undefined;
+    let payload: { sub?: string; email?: string; name?: string; given_name?: string; family_name?: string; picture?: string } | undefined;
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
@@ -146,13 +149,19 @@ export class AuthService {
       throw new BadRequestException("Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.");
     }
 
+    // Foto dell'account Google come immagine profilo, se l'account non ne
+    // ha già una (l'utente può sempre cambiarla da /account o dal profilo).
+    const imageUrl =
+      payload.picture && !existingUser?.imageUrl ? await this.cloudinaryService.uploadImageFromUrl(payload.picture, "professionisti") : null;
+
     const user =
       existingUser ??
       (await this.prisma.user.create({
         data: {
           googleId: payload.sub,
           email: payload.email,
-          name: payload.name,
+          ...googleNameFields(payload),
+          imageUrl,
           role: role ?? "CLIENT",
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
@@ -167,6 +176,13 @@ export class AuthService {
 
     if (existingUser && !existingUser.googleId) {
       await this.prisma.user.update({ where: { id: existingUser.id }, data: { googleId: payload.sub } });
+    }
+    // Account creati con Google prima della correzione avevano nome e
+    // cognome tutti nel campo nome: al primo accesso si sistemano, solo se
+    // il cognome manca e il nome è ancora quello completo di Google.
+    const nameFix = existingUser ? googleNameRepair(existingUser, payload) : null;
+    if (existingUser && (nameFix || imageUrl)) {
+      await this.prisma.user.update({ where: { id: existingUser.id }, data: { ...nameFix, ...(imageUrl ? { imageUrl } : {}) } });
     }
     // Accedere con Google sulla stessa email ne dimostra il possesso. Una
     // password scelta prima della conferma potrebbe essere di chi si è

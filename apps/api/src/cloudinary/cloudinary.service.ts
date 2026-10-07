@@ -57,6 +57,28 @@ export class CloudinaryService {
   }
 
   /**
+   * Copia su Cloudinary un'immagine già pubblica (la foto dell'account
+   * Google alla registrazione), con lo stesso ridimensionamento di
+   * `uploadImage`: l'indirizzo di Google può cambiare o sparire, la copia
+   * resta. Restituisce null senza Cloudinary o se il caricamento fallisce:
+   * una foto mancante non deve mai bloccare una registrazione.
+   */
+  async uploadImageFromUrl(url: string, folder: string): Promise<string | null> {
+    if (!this.isConfigured) return null;
+    try {
+      const result = await cloudinary.uploader.upload(url, {
+        folder,
+        resource_type: "image",
+        timeout: 5000,
+        transformation: [{ width: 800, height: 800, crop: "limit", quality: "auto", fetch_format: "auto" }],
+      });
+      return result.secure_url;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Foto O video (richiesta esplicita dell'utente: "ovunque c'è la
    * possibilità di caricare le foto... fai in modo da poter caricare anche
    * i video") — usata dalle gallerie a più elementi (richiesta guidata,
