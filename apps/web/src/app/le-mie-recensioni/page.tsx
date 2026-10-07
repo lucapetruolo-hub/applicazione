@@ -48,7 +48,7 @@ function MediaRow({ urls }: { urls: string[] }) {
 
 /**
  * Scheda "Recensioni" del cliente (decisioni dell'utente, docs/CHANGELOG.md
- * §179 e §181), con due sottoschede:
+ * §179 e §182), con due sottoschede:
  * - "Ricevute": le recensioni che i professionisti gli hanno lasciato, le
  *   stesse che loro vedono nella scheda cliente (ClientProfileModal), con la
  *   media in alto. Solo quelle già sbloccate dal "doppio cieco".
