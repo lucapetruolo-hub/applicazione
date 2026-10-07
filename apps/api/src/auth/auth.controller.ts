@@ -4,12 +4,14 @@ import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
   emailPasswordSchema,
+  emailStatusSchema,
   googleVerifySchema,
   normalizeAdminRoles,
   registerSchema,
   updateAccountSchema,
   type ChangePasswordInput,
   type EmailPasswordInput,
+  type EmailStatusInput,
   type GoogleVerifyInput,
   type RegisterInput,
   type UpdateAccountInput,
@@ -42,6 +44,14 @@ export class AuthController {
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
     return this.authService.register(body.email, body.password, body.name, body.role);
+  }
+
+  // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
+  // per rendere lenta la raccolta di email da parte di un bot.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("email-status")
+  async emailStatus(@Body(new ZodValidationPipe(emailStatusSchema)) body: EmailStatusInput) {
+    return { status: await this.authService.emailStatus(body.email) };
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

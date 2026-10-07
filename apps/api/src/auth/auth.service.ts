@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { LEGAL_CONSENT_VERSION } from "@professionisti/shared";
+import { LEGAL_CONSENT_VERSION, type EmailStatus } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -36,6 +36,20 @@ export class AuthService {
     if (profile) {
       await this.professionalMetricsService.touchActivity(profile.id);
     }
+  }
+
+  /**
+   * Primo passo dell'accesso "prima l'email" (docs/CHANGELOG.md §176): dice
+   * solo se l'email ha già un account e come si entra. Rivela che un'email è
+   * registrata, come MioDottore: scelta accettata dall'utente, con il limite
+   * di richieste sul controller. Stessa ricerca esatta di `register`/`login`,
+   * così la risposta non contraddice mai il passo successivo.
+   */
+  async emailStatus(email: string): Promise<EmailStatus> {
+    const user = await this.prisma.user.findUnique({ where: { email }, select: { passwordHash: true, googleId: true } });
+    if (!user) return "new";
+    if (!user.passwordHash && user.googleId) return "google";
+    return "password";
   }
 
   async register(email: string, password: string, name?: string, role: "CLIENT" | "PROFESSIONAL" = "CLIENT"): Promise<AuthResult> {
