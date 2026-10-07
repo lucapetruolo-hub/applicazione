@@ -331,7 +331,7 @@ function DashboardAgendaContent() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi come professionista
@@ -346,7 +346,7 @@ function DashboardAgendaContent() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
@@ -358,7 +358,7 @@ function DashboardAgendaContent() {
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Completa il tuo profilo per iniziare
@@ -1237,7 +1237,7 @@ function DashboardAgendaContent() {
   const agendaStats = computeAgendaStats(bookings, externalJobs, leads);
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>

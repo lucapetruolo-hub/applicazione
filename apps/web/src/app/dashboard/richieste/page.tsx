@@ -286,7 +286,7 @@ function RichiesteContent() {
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={800}>
           <SkeletonRequestList count={3} />
         </YStack>
@@ -296,7 +296,7 @@ function RichiesteContent() {
 
   if (!token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
             Accedi come professionista
@@ -311,7 +311,7 @@ function RichiesteContent() {
 
   if (profileMissing) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
             Crea prima il tuo profilo professionista
@@ -325,7 +325,7 @@ function RichiesteContent() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
         <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
           <YStack gap="$1">

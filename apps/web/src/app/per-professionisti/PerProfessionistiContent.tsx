@@ -41,7 +41,7 @@ export function PerProfessionistiContent() {
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ProPhoto />
       <ProBenefits />

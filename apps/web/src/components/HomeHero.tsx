@@ -33,7 +33,7 @@ export function HomeHero() {
   }
 
   return (
-    <YStack width="100%" backgroundColor={brand.gesso} paddingTop="$6" paddingBottom="$5" paddingHorizontal="$4" alignItems="center">
+    <YStack width="100%" backgroundColor="transparent" paddingTop="$6" paddingBottom="$5" paddingHorizontal="$4" alignItems="center">
       <YStack
         width="100%"
         maxWidth={1160}

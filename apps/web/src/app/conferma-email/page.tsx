@@ -47,7 +47,7 @@ function ConfermaEmail() {
   const nextLabel = user ? "Continua" : "Vai all'accesso";
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
       <Surface floating width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$4">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
           Conferma email

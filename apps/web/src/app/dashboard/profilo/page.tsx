@@ -259,7 +259,7 @@ export default function DashboardProfiloPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi come professionista
@@ -274,7 +274,7 @@ export default function DashboardProfiloPage() {
 
   if (!user.isProfessional) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$3" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Questa sezione è per i professionisti
@@ -505,7 +505,7 @@ export default function DashboardProfiloPage() {
     .slice(0, 10);
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4" gap="$5">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
       <YStack width="100%" maxWidth={760} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>

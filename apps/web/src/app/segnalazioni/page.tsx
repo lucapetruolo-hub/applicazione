@@ -37,7 +37,7 @@ export default function SegnalazioniPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per vedere segnalazioni e decisioni
@@ -51,7 +51,7 @@ export default function SegnalazioniPage() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={760} gap="$6">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>

@@ -41,6 +41,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
+        {/* Sfondo sfocato di tutto il sito (docs/CHANGELOG.md §180): due forme
+            sfumate fisse dietro ai contenuti, visibili dove le pagine hanno
+            fondo trasparente. Solo decorazione, nessun contenuto. */}
+        <div className="site-blobs" aria-hidden="true">
+          <div className="auth-page-blob auth-page-blob--one" />
+          <div className="auth-page-blob auth-page-blob--two" />
+        </div>
         <Providers>
           <ServiceWorkerRegistration />
           {/* Skip link (Fase 6, accessibilità): invisibile finché non riceve il

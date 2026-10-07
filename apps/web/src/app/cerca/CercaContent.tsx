@@ -50,7 +50,7 @@ export function CercaContent({
     );
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap
           professionals={professionals}
