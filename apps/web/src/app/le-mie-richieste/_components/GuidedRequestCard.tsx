@@ -17,9 +17,9 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
+import { ContactButton } from "@/components/ContactButton";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
-import { UnreadDot } from "@/components/UnreadDot";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection } from "./BookingSection";
@@ -697,12 +697,11 @@ export function GuidedRequestCard({
                       </YStack>
                     </XStack>
                   </Link>
-                  <XStack alignItems="center" gap="$1" cursor="pointer" accessibilityRole="button" onPress={() => openTimelineForProfessional(professional.id)}>
-                    <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
-                      Contatta/Cronologia
-                    </Text>
-                    <UnreadDot count={effectiveThreadUnread(`${request.id}:${professional.id}`)} />
-                  </XStack>
+                  <ContactButton
+                    compact
+                    unreadCount={effectiveThreadUnread(`${request.id}:${professional.id}`)}
+                    onPress={() => openTimelineForProfessional(professional.id)}
+                  />
                 </XStack>
               ))}
             </YStack>
@@ -731,8 +730,6 @@ export function GuidedRequestCard({
                   token={token}
                   onChanged={onChanged}
                   onAcceptQuote={onAcceptQuote}
-                  requestedDate={request.preferredDate}
-                  requestedTimeSlot={request.preferredTimeSlot}
                   guidedRequestId={request.id}
                   serviceMode={request.serviceMode}
                   isNew={newQuoteIds?.has(quote.id)}

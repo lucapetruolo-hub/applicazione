@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CompletionDeadlineService, completionDeadlineStep } from "./completion-deadline.service";
 
 /**
- * Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §187):
+ * Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §189):
  * promemoria al 3° e al 10° giorno, chiusura d'ufficio al 14°, lo stesso
  * termine entro cui si può segnalare un lavoro fatto male.
  */

@@ -516,7 +516,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
-  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §187).
+  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §189).
   JOB_CONFIRM_REMINDER: (payload, ctx) => ({
     kind: "notification",
     subject: `Confermi che il lavoro con ${pro(ctx)} è terminato?`,

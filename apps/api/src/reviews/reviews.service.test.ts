@@ -3,7 +3,7 @@ import { ReviewsService } from "./reviews.service";
 
 /**
  * Recensione subito dopo il proprio "Lavoro terminato" (docs/CHANGELOG.md
- * §186): il cliente può recensire prima del professionista, ma la coppia
+ * §188): il cliente può recensire prima del professionista, ma la coppia
  * diventa pubblica solo quando entrambi hanno chiuso il lavoro.
  */
 function buildService(booking: Record<string, unknown>) {

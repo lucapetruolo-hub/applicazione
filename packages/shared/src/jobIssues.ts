@@ -324,7 +324,7 @@ export type JobIssueWindowInput = {
   scheduledEndAt: Date | null;
   professionalCompletedAt: Date | null;
   clientConfirmedCompletedAt: Date | null;
-  /** Conferma d'ufficio allo scadere del termine (§187): non riapre la finestra. */
+  /** Conferma d'ufficio allo scadere del termine (§189): non riapre la finestra. */
   completionAutoClosedAt?: Date | null;
   hasIssue: boolean;
 };
@@ -394,7 +394,7 @@ export type ResolveJobIssueAppealInput = z.infer<typeof resolveJobIssueAppealSch
 
 /**
  * Il cliente può recensire: subito dopo aver cliccato "Lavoro terminato",
- * anche se il professionista non l'ha ancora fatto (docs/CHANGELOG.md §186:
+ * anche se il professionista non l'ha ancora fatto (docs/CHANGELOG.md §188:
  * la recensione resta nascosta finché entrambi non hanno chiuso e
  * recensito); oppure dopo la decisione dell'admin su una sua segnalazione, anche
  * se il lavoro non è mai stato chiuso (es. mancata presentazione), o dopo

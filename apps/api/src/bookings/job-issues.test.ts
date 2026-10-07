@@ -23,7 +23,7 @@ describe("finestre per segnalare un problema (§164)", () => {
     const confirmed = { ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(10 * DAY) };
     expect(jobIssueTypesAllowed(confirmed, at(20 * DAY))).toEqual(["BAD_WORK"]);
   });
-  it("la conferma d'ufficio allo scadere del termine non riapre i 14 giorni (§187)", () => {
+  it("la conferma d'ufficio allo scadere del termine non riapre i 14 giorni (§189)", () => {
     const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(15 * DAY), completionAutoClosedAt: at(15 * DAY) };
     expect(jobIssueTypesAllowed(autoClosed, at(16 * DAY))).toEqual([]);
   });
@@ -40,7 +40,7 @@ describe("quando il cliente può recensire", () => {
   it("lavoro completato e confermato, senza segnalazioni", () => {
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
   });
-  it("subito dopo il proprio \"lavoro terminato\", anche se il professionista non l'ha ancora segnato (§186)", () => {
+  it("subito dopo il proprio \"lavoro terminato\", anche se il professionista non l'ha ancora segnato (§188)", () => {
     expect(clientCanReview({ status: "CONFIRMED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
   });
   it("non prima di aver cliccato \"lavoro terminato\", né su un lavoro annullato", () => {

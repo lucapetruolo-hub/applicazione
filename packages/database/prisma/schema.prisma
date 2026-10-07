@@ -837,6 +837,12 @@ model Quote {
   // cliente propone una nuova data (negoziazione ripartita da capo) o
   // quando il professionista modifica di nuovo (sostituita).
   professionalCounterNote String?
+  // Appuntamento che il professionista ha appena sostituito (modifica del
+  // preventivo o risposta a una proposta del cliente): il cliente vede
+  // "prima → ora" come il professionista vede la proposta del cliente
+  // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
+  previousStartDate       DateTime?
+  previousEndDate         DateTime?
   notes                   String?
   status                  QuoteStatus @default(SENT)
   createdAt               DateTime    @default(now())
@@ -969,7 +975,7 @@ model Booking {
   // di completamento È già la sua conferma.
   clientConfirmedCompletedAt      DateTime?
   // Quando solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md
-  // §187): promemoria inviati all'altra parte, e quando il lavoro è stato
+  // §189): promemoria inviati all'altra parte, e quando il lavoro è stato
   // chiuso d'ufficio allo scadere del termine per segnalare un problema.
   completionReminderCount         Int       @default(0)
   completionAutoClosedAt          DateTime?

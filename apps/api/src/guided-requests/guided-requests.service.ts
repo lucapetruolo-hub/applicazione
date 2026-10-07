@@ -308,6 +308,7 @@ export class GuidedRequestsService {
       // quello richiesto (richiesta esplicita dell'utente: "evidenzialo
       // quando viene restituito al cliente per farglielo notare").
       const requestedStart = this.preferredStartDate(request.preferredDate, request.preferredTimeSlot);
+      const requestedEnd = this.preferredStartDate(request.preferredDate, request.preferredTimeSlot?.split("-")[1] ?? null);
       return {
         id: request.id,
         categorySlug: request.category.slug,
@@ -384,13 +385,17 @@ export class GuidedRequestsService {
           clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
           clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
           clientProposedNote: quote.clientProposedNote,
-          // Cosa ha cambiato il professionista (data, orario o entrambi)
-          // rispetto a ciò che il cliente aveva effettivamente richiesto
-          // (solo quando la richiesta porta un orario preferito, cioè è
-          // nata da una fascia generica dell'agenda pubblica) — richiesta
-          // esplicita dell'utente, per evidenziarlo al cliente; distinguere
-          // data e orario: docs/CHANGELOG.md §180.
-          changeFromRequest: requestedStart ? scheduleChangeBetween({ start: requestedStart }, { start: quote.estimatedStartDate }) : null,
+          // Appuntamento che quello attuale ha sostituito, per il "prima →
+          // ora" del cliente (docs/CHANGELOG.md §186, come lo vede il
+          // professionista): l'ultima modifica del professionista se c'è,
+          // altrimenti l'orario che il cliente aveva chiesto quando la
+          // richiesta è nata da una fascia dell'agenda pubblica e il
+          // preventivo non lo rispetta (docs/CHANGELOG.md §180).
+          previousSchedule: quote.previousStartDate
+            ? { start: quote.previousStartDate.toISOString(), end: quote.previousEndDate?.toISOString() ?? null }
+            : requestedStart && scheduleChangeBetween({ start: requestedStart }, { start: quote.estimatedStartDate })
+              ? { start: requestedStart.toISOString(), end: requestedEnd?.toISOString() ?? null }
+              : null,
           // Nota lasciata dal professionista quando modifica direttamente
           // l'orario proposto dal cliente durante la trattativa (richiesta
           // esplicita dell'utente) — valorizzata solo appena dopo quella

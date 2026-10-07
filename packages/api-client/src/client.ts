@@ -1,6 +1,5 @@
 import type {
   EmailStatus,
-  ScheduleChange,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -213,8 +212,8 @@ export type ClientGuidedRequest = {
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
-    /** Cosa il professionista ha cambiato (data, orario o entrambi) rispetto a quanto il cliente aveva effettivamente richiesto, null se nulla o se la richiesta non portava un orario (evidenziato in UI). */
-    changeFromRequest: ScheduleChange | null;
+    /** Appuntamento sostituito da quello attuale (ultima modifica del professionista, o l'orario richiesto dal cliente se il preventivo non lo rispetta), per il "prima → ora" in UI. null se nulla è cambiato. */
+    previousSchedule: { start: string; end: string | null } | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */
     professionalCounterNote: string | null;
     notes: string | null;
