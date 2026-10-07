@@ -51,7 +51,7 @@ export function RequestCard({
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
-  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta", stesso significato già in uso su /dashboard e /le-mie-richieste. */
+  /** Numero di aggiornamenti non letti per questa richiesta — pallino rosso accanto a "Contatta/Cronologia", stesso significato già in uso su /dashboard e /le-mie-richieste. */
   unreadCount?: number;
   /** True se questa card arriva da una notifica di nuovo messaggio in chat (richiesta esplicita dell'utente: "quando c'è un nuovo messaggio, porta direttamente nella chat aperta") — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenChat?: boolean;
@@ -431,7 +431,7 @@ export function RequestCard({
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
   // click anche a scheda chiusa.
   const menuActions: CardAction[] = [];
-  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Contatta il cliente", onPress: openTimeline });
+  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Contatta/Cronologia", onPress: openTimeline });
   if (!gr.clientAccountDeleted) menuActions.push({ icon: "user-round", text: "Profilo del cliente", onPress: () => setShowClientProfile(true) });
   if (stage === "da_quotare") {
     menuActions.push({

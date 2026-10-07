@@ -16608,10 +16608,12 @@ pulsante sotto "Dettagli cliente"); annulla/cancella sempre per ultimo.
 
 **Decisione:**
 - Nuovo `apps/web/src/components/ContactButton.tsx` (pulsante pieno
-  "Contatta" con il pallino dei non letti), al posto dei link
-  "Contatta/Cronologia" del cliente (preventivo, professionisti contattati,
-  intervento) e dei pulsanti "Chat"/"Contatta" del professionista. Voce di
-  menu "Chat con il cliente" → "Contatta il cliente".
+  "Contatta/Cronologia" con il pallino dei non letti: l'utente vuole la
+  parola "Cronologia" perché si capisca che dentro c'è la storia di tutto
+  quello che è successo), al posto dei link "Contatta/Cronologia" del
+  cliente (preventivo, professionisti contattati, intervento) e dei
+  pulsanti "Chat"/"Contatta" del professionista. Voce di menu "Chat con il
+  cliente" → "Contatta/Cronologia".
 - "Proponi altra data" del professionista → "Modifica" ottone con testo
   bianco, come "Modifica preventivo"; "Modifica" del cliente con lo stesso
   sfondo.

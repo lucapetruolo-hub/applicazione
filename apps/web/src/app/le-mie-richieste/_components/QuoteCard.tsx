@@ -75,7 +75,7 @@ export function QuoteCard({
   serviceMode: "HOME" | "ONLINE" | null;
   /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto. */
   isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta". */
+  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia". */
   unreadCount?: number;
   /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenTimeline?: boolean;

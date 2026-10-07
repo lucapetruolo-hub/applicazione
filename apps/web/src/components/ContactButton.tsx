@@ -4,7 +4,7 @@ import { Button, Text, XStack } from "@professionisti/ui";
 import { UnreadDot } from "@/components/UnreadDot";
 
 /**
- * Pulsante "Contatta" (apre la conversazione) con il pallino dei non letti,
+ * Pulsante "Contatta/Cronologia" (apre la conversazione e la storia della richiesta) con il pallino dei non letti,
  * uguale per cliente e professionista nelle richieste — richiesta esplicita
  * dell'utente di farlo sembrare un pulsante e di non chiamarlo più "Chat"
  * (docs/CHANGELOG.md §187).
@@ -14,7 +14,7 @@ export function ContactButton({ onPress, unreadCount, compact }: { onPress: () =
     <Button variant="primary" size={compact ? "$2" : "$3"} height={compact ? 36 : 40} alignSelf="flex-start" onPress={onPress}>
       <XStack alignItems="center" gap="$1">
         <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"}>
-          Contatta
+          Contatta/Cronologia
         </Text>
         <UnreadDot count={unreadCount} />
       </XStack>

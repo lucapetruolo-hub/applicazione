@@ -57,7 +57,7 @@ export function GuidedRequestCard({
   isNew?: boolean;
   /** ID dei preventivi con un aggiornamento non letto — disambigua QUALE preventivo tra più ricevuti per questa richiesta. */
   newQuoteIds?: Set<string>;
-  /** Conteggio aggiornamenti non letti per thread (chiave `guidedRequestId:professionalProfileId`) — pallino su "Contatta" nella sezione "Inviata a", prima che esista un preventivo. */
+  /** Conteggio aggiornamenti non letti per thread (chiave `guidedRequestId:professionalProfileId`) — pallino su "Contatta/Cronologia" nella sezione "Inviata a", prima che esista un preventivo. */
   threadUnreadCounts?: Map<string, number>;
   /** Conteggio aggiornamenti non letti per singolo preventivo. */
   quoteUnreadCounts?: Map<string, number>;
