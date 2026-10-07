@@ -113,7 +113,7 @@ function RoleChoiceScreen({
 }) {
   return (
     <AuthPageBackground>
-      <Surface floating className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
         <YStack alignItems="center" gap="$3">
           <AuthIconBadge icon="sparkles" />
           <YStack alignItems="center" gap="$1">
@@ -297,7 +297,7 @@ const CLIENT_HEADERS = {
 function ClientSignup({ onAuthenticated }: { onAuthenticated: () => void }) {
   return (
     <AuthPageBackground>
-      <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+      <Surface className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
         <ClientEmailFirstAuth
           intro="Richieste, preventivi e professionisti salvati saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti."
           firstTimeNote="Se è la prima volta, creeremo il tuo account gratuito. Se hai già un account, ti chiediamo la password."

@@ -16199,6 +16199,12 @@ la A: prima l'email, poi la password. Niente conferma email per i clienti
 - Il passaggio dalle caselle alla dicitura va verificato dall'avvocato
   insieme ai Termini (checklist di lancio).
 
+- Richiesta successiva dell'utente ("non mi piacciono le ombre"; poi, dopo
+  una prova su fondo bianco senza scheda: "era meglio prima, soltanto senza
+  ombra"): in `/registrati` la scheda resta com'era (icona, sfondo pesca con
+  forme sfumate, etichette), senza `floating`; le card di scelta ruolo al
+  passaggio del mouse si alzano e cambiano bordo, senza ombra.
+
 **Verifica:** test di `AuthService.emailStatus` (4 casi); typecheck di
 `apps/api` e `apps/web`; schermate in locale con un'API finta, a 1280 e 390
 px, dei passi email, email nuova, account con password e account Google.
