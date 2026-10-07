@@ -403,6 +403,9 @@ export class GuidedRequestsService {
           // preventivo (non azzerata da qui, il ciclo di vita è dello
           // stesso Quote.notes-like campo).
           professionalCounterNote: quote.professionalCounterNote,
+          // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
+          rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
+          resentAt: quote.resentAt?.toISOString() ?? null,
           notes: quote.notes,
           status: quote.status,
           // Stato della prenotazione nata da questo preventivo (solo se

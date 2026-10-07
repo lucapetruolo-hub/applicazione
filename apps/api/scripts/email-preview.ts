@@ -64,8 +64,13 @@ notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
 
 // Preventivi e date
 notification("NEW_QUOTE", "Cliente", "Preventivi e date");
+add("new_quote_nuovo_dopo_rifiuto", "Preventivi e date", "Cliente", renderEmail(notificationEmail("NEW_QUOTE", { resent: true }, forClient)!));
 notification("QUOTE_ACCEPTED", "Professionista", "Preventivi e date");
-notification("QUOTE_REJECTED", "Professionista", "Preventivi e date");
+notification("QUOTE_REJECTED", "Professionista", "Preventivi e date", {
+  note: "Il prezzo è più alto di quanto pensavo, e mi servirebbe prima di venerdì.",
+  canResend: true,
+  resendUntil: new Date(Date.now() + 10 * 86_400_000).toISOString(),
+});
 notification("QUOTE_WITHDRAWN", "Cliente", "Preventivi e date");
 notification("QUOTE_DATE_PROPOSED", "Professionista", "Preventivi e date", { change: "date" });
 notification("QUOTE_DATE_CHANGED", "Cliente", "Preventivi e date", { change: "time" });

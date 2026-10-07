@@ -90,7 +90,8 @@ export function bookingStageStyle(status: ProfessionalBooking["status"]): (typeo
 export function describeClosedReason(lead: ProfessionalLead): string {
   if (lead.status === "DECLINED") return "Hai rifiutato questa richiesta." + (lead.declineNote ? ` Nota: "${lead.declineNote}"` : "");
   if (lead.quote?.status === "WITHDRAWN") return "Hai ritirato il preventivo inviato per questa richiesta.";
-  if (lead.quote?.status === "REJECTED") return "Il cliente ha rifiutato il preventivo che hai inviato.";
+  if (lead.quote?.status === "REJECTED")
+    return "Il cliente ha rifiutato il preventivo che hai inviato." + (lead.quote.rejectionNote ? ` Nota: "${lead.quote.rejectionNote}"` : "");
   return "Questa richiesta non è più azionabile.";
 }
 

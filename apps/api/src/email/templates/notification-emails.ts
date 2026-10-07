@@ -140,18 +140,24 @@ const BUILDERS: Record<string, Builder> = {
   }),
 
   // ── Preventivi e date ──────────────────────────────────────────────────
-  NEW_QUOTE: (_payload, ctx) => ({
-    kind: "notification",
-    subject: `Nuovo preventivo da ${pro(ctx)}`,
-    greeting: ctx.name,
-    title: "Hai ricevuto un preventivo",
-    paragraphs: [
-      `**${pro(ctx)}** ti ha inviato un preventivo per ${ctx.category ? `la tua richiesta di **${job(ctx)}**` : "la tua richiesta"}.`,
-      "Aprilo per vedere le voci, il prezzo e la data proposta. Puoi accettarlo, proporre un'altra data o scrivere al professionista in chat prima di decidere.",
-    ],
-    details: jobDetails(ctx),
-    cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
-  }),
+  NEW_QUOTE: (payload, ctx) => {
+    // Nuovo preventivo dopo un rifiuto (docs/CHANGELOG.md §188).
+    const resent = payload.resent === true;
+    return {
+      kind: "notification",
+      subject: resent ? `${pro(ctx)} ti ha inviato un nuovo preventivo` : `Nuovo preventivo da ${pro(ctx)}`,
+      greeting: ctx.name,
+      title: resent ? "Hai ricevuto un nuovo preventivo" : "Hai ricevuto un preventivo",
+      paragraphs: [
+        resent
+          ? `**${pro(ctx)}** ti ha inviato un nuovo preventivo per ${ctx.category ? `la tua richiesta di **${job(ctx)}**` : "la tua richiesta"}, al posto di quello che avevi rifiutato.`
+          : `**${pro(ctx)}** ti ha inviato un preventivo per ${ctx.category ? `la tua richiesta di **${job(ctx)}**` : "la tua richiesta"}.`,
+        "Aprilo per vedere le voci, il prezzo e la data proposta. Puoi accettarlo, proporre un'altra data o scrivere al professionista in chat prima di decidere.",
+      ],
+      details: jobDetails(ctx),
+      cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
+    };
+  },
   QUOTE_ACCEPTED: (_payload, ctx) => ({
     kind: "notification",
     subject: "Il cliente ha accettato il tuo preventivo",
@@ -164,17 +170,27 @@ const BUILDERS: Record<string, Builder> = {
     details: proJobDetails(ctx),
     cta: proRequests("Apri il lavoro"),
   }),
-  QUOTE_REJECTED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: "Il cliente ha rifiutato il tuo preventivo",
-    greeting: ctx.name,
-    title: "Preventivo non accettato",
-    paragraphs: [
-      `Il cliente ha rifiutato il tuo preventivo per **${job(ctx)}**.`,
-      "Succede. I preventivi con le voci ben separate e una data vicina vengono scelti più spesso: tienilo a mente per le prossime richieste.",
-    ],
-    cta: proRequests(),
-  }),
+  QUOTE_REJECTED: (payload, ctx) => {
+    // Nota del cliente e nuovo preventivo (docs/CHANGELOG.md §188): la nota
+    // va nel riquadro, mai nel testo, così non passa la formattazione.
+    const note = str(payload.note);
+    const canResend = payload.canResend === true;
+    const resendUntil = str(payload.resendUntil);
+    return {
+      kind: "notification",
+      subject: "Il cliente ha rifiutato il tuo preventivo",
+      greeting: ctx.name,
+      title: "Preventivo non accettato",
+      paragraphs: [
+        `Il cliente ha rifiutato il tuo preventivo per **${job(ctx)}**${note ? " e ti ha lasciato una nota" : ""}.`,
+        canResend
+          ? `Se vuoi, puoi inviargli un nuovo preventivo${resendUntil ? ` entro **${formatDeadline(resendUntil)}**, quando scade la richiesta` : ""}: aprilo dalla richiesta e correggi le voci, il prezzo o la data.`
+          : "Succede. I preventivi con le voci ben separate e una data vicina vengono scelti più spesso: tienilo a mente per le prossime richieste.",
+      ],
+      details: note ? [{ label: "Nota del cliente", value: note }] : undefined,
+      cta: proRequests(canResend ? "Invia un nuovo preventivo" : "Apri la richiesta"),
+    };
+  },
   QUOTE_WITHDRAWN: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha ritirato il preventivo`,
@@ -516,7 +532,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
-  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §189).
+  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: (payload, ctx) => ({
     kind: "notification",
     subject: `Confermi che il lavoro con ${pro(ctx)} è terminato?`,

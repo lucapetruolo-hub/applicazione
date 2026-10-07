@@ -8,7 +8,7 @@ import { TimelineService } from "../timeline/timeline.service";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §189,
+// Solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md §190,
 // decisione dell'utente): promemoria all'altra parte e chiusura d'ufficio
 // allo scadere dello stesso termine entro cui si può segnalare un lavoro
 // fatto male, così nessuno perde il diritto al reclamo.

@@ -163,7 +163,7 @@ export class BookingsService {
       data: {
         status,
         ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}),
-        // Fa partire l'attesa delle recensioni automatiche (§188).
+        // Fa partire l'attesa delle recensioni automatiche (§189).
         ...(status === "COMPLETED" ? { professionalCompletedAt: new Date() } : {}),
       },
     });

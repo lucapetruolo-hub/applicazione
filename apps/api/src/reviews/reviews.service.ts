@@ -11,7 +11,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 // questi giorni di attesa — a quel punto la controparte mancante riceve una
 // recensione automatica a 5 stelle (mostrata con l'etichetta "(recensione
 // automatica)"), che sblocca comunque quella già scritta.
-// Da docs/CHANGELOG.md §188 ognuno recensisce subito dopo il proprio
+// Da docs/CHANGELOG.md §189 ognuno recensisce subito dopo il proprio
 // "Lavoro terminato", anche prima dell'altro: l'attesa parte solo quando
 // entrambi hanno segnato il lavoro come terminato (e dalla recensione, se
 // arriva dopo), così la coppia non diventa mai pubblica prima.
@@ -190,7 +190,7 @@ export class ReviewsService {
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       published: booking.clientReview !== null,
       // Il cliente può recensire prima che il professionista segni il lavoro
-      // come terminato (§188): l'email gli ricorda di farlo.
+      // come terminato (§189): l'email gli ricorda di farlo.
       professionalCompleted: booking.status === "COMPLETED",
     });
 
@@ -201,7 +201,7 @@ export class ReviewsService {
    * Sblocco automatico "doppio cieco" (richiesta esplicita dell'utente):
    * se una recensione esiste da più di AUTO_REVIEW_AFTER_DAYS giorni senza
    * la controparte sull'altro lato, e da altrettanti giorni entrambi hanno
-   * segnato il lavoro come terminato (§188), genera quella mancante a 5 stelle
+   * segnato il lavoro come terminato (§189), genera quella mancante a 5 stelle
    * (isAutomatic: true) — così entrambe risultano presenti e la coppia
    * diventa pubblica (vedi il filtro "entrambe esistono" in
    * ProfessionalsService.search/getById).
@@ -218,7 +218,7 @@ export class ReviewsService {
           clientReview: { is: null },
           OR: [
             bothCompletedBefore(threshold),
-            // Chiuso d'ufficio dopo i promemoria (§189): l'altra parte ha già avuto il suo tempo.
+            // Chiuso d'ufficio dopo i promemoria (§190): l'altra parte ha già avuto il suo tempo.
             { completionAutoClosedAt: { not: null } },
             { issue: { status: { in: [...DECIDED_ISSUE_STATUSES] } } },
           ],

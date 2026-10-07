@@ -735,6 +735,7 @@ export function GuidedRequestCard({
                   isNew={newQuoteIds?.has(quote.id)}
                   unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
+                  requestOpen={request.status !== "CLOSED"}
                 />
               ))}
             </YStack>

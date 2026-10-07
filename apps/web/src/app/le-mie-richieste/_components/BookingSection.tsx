@@ -69,7 +69,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     await apiClient.clientConfirmComplete(token, booking.id, { photoUrls, note });
     setShowClientCompleteModal(false);
     // Subito la recensione, anche se il professionista non ha ancora segnato
-    // il lavoro come terminato (§188): resta nascosta finché non l'ha fatto
+    // il lavoro come terminato (§189): resta nascosta finché non l'ha fatto
     // e ha recensito anche lui. Mai con una segnalazione in corso.
     if (!booking.hasReview && booking.issue?.status !== "OPEN" && booking.issue?.status !== "CHAT") {
       setShowReviewModal(true);

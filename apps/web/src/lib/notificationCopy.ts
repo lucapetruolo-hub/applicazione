@@ -62,7 +62,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
-  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §189).
+  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
@@ -97,6 +97,16 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (change && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo.` };
+  }
+  // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
+  const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  if (type === "NEW_QUOTE" && data.resent === true) {
+    return { icon: "📬", message: "Hai ricevuto un nuovo preventivo al posto di quello che avevi rifiutato." };
+  }
+  if (type === "QUOTE_REJECTED" && (data.note || data.canResend === true)) {
+    const note = typeof data.note === "string" && data.note.trim() ? ` Nota: "${data.note.trim()}"` : "";
+    const resend = data.canResend === true ? " Puoi inviargli un nuovo preventivo." : "";
+    return { icon: "😕", message: `Il cliente ha rifiutato il tuo preventivo.${note}${resend}` };
   }
   if (type === "NEW_REVIEW" && (payload as Record<string, unknown> | undefined)?.published !== true) {
     return { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: recensiscilo anche tu per leggere la sua recensione." };
