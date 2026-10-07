@@ -29,6 +29,12 @@ export class ReviewsController {
     return this.reviewsService.getRecentPublic();
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("me")
+  listMine(@Req() req: AuthenticatedRequest) {
+    return this.reviewsService.listMine(req.user.userId);
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post()

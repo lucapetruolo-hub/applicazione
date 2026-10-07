@@ -57,7 +57,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     items: [
       { href: "/le-mie-richieste", label: "Le mie richieste", icon: "briefcase" },
       { href: "/professionisti-salvati", label: "Professionisti salvati", icon: "heart" },
-      { href: "/le-mie-recensioni", label: "Recensioni ricevute", icon: "star" },
+      { href: "/le-mie-recensioni", label: "Recensioni", icon: "star" },
     ],
   },
 ];
@@ -90,7 +90,7 @@ export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[]
         { href: "/le-mie-richieste", label: "Le mie richieste", icon: "file-text" },
         { href: "/chat", label: "Messaggi", icon: "message-circle" },
         { href: "/professionisti-salvati", label: "Professionisti salvati", icon: "heart" },
-        { href: "/le-mie-recensioni", label: "Recensioni ricevute", icon: "star" },
+        { href: "/le-mie-recensioni", label: "Recensioni", icon: "star" },
       ],
     },
     {
