@@ -296,7 +296,7 @@ function SentReviewsList({ reviews, error }: { reviews: SentReview[] | null; err
             </Text>
           ) : !review.isPublic ? (
             <Text fontSize="$2" color={brand.grafite70}>
-              In attesa: diventa visibile sul profilo quando anche il professionista ti recensisce, o dopo 3 giorni.
+              In attesa: diventa visibile sul profilo quando anche il professionista segna il lavoro come terminato e ti recensisce, o 3 giorni dopo.
             </Text>
           ) : null}
         </Surface>

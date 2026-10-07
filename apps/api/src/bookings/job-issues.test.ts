@@ -36,6 +36,13 @@ describe("quando il cliente può recensire", () => {
   it("lavoro completato e confermato, senza segnalazioni", () => {
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
   });
+  it("subito dopo il proprio \"lavoro terminato\", anche se il professionista non l'ha ancora segnato (§186)", () => {
+    expect(clientCanReview({ status: "CONFIRMED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
+  });
+  it("non prima di aver cliccato \"lavoro terminato\", né su un lavoro annullato", () => {
+    expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: null, hasReview: false, issueStatus: null })).toBe(false);
+    expect(clientCanReview({ status: "CANCELED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(false);
+  });
   it("mai con una segnalazione aperta, in chat o in esame", () => {
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: "OPEN" })).toBe(false);
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: "CHAT" })).toBe(false);

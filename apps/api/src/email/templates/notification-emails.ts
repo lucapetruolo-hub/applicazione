@@ -291,11 +291,19 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs:
       payload.published === true
         ? [`Il cliente ha recensito il lavoro per **${job(ctx)}**. Avevi già recensito anche tu il cliente: le due recensioni ora sono visibili, e la sua compare sul tuo profilo.`]
-        : [
-            `Il cliente ha recensito il lavoro per **${job(ctx)}**.`,
-            "Per leggerla lascia anche tu la tua recensione sul cliente: le due diventano visibili insieme. Se non lo fai entro 3 giorni, la sua diventa comunque pubblica sul tuo profilo.",
-          ],
-    cta: payload.published === true ? proRequests("Apri il lavoro") : proRequests("Recensisci il cliente"),
+        : payload.professionalCompleted === false
+          ? [
+              `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito.`,
+              "Per leggere la recensione segna anche tu il lavoro come terminato e recensisci il cliente: le due diventano visibili insieme.",
+            ]
+          : [
+              `Il cliente ha recensito il lavoro per **${job(ctx)}**.`,
+              "Per leggerla lascia anche tu la tua recensione sul cliente: le due diventano visibili insieme. Se non lo fai entro 3 giorni, la sua diventa comunque pubblica sul tuo profilo.",
+            ],
+    cta:
+      payload.published === true
+        ? proRequests("Apri il lavoro")
+        : proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Recensisci il cliente"),
   }),
 
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).

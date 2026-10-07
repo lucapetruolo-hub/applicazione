@@ -68,7 +68,10 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
   async function handleClientConfirmComplete(photoUrls: string[], note: string | undefined) {
     await apiClient.clientConfirmComplete(token, booking.id, { photoUrls, note });
     setShowClientCompleteModal(false);
-    if (booking.status === "COMPLETED" && !booking.hasReview) {
+    // Subito la recensione, anche se il professionista non ha ancora segnato
+    // il lavoro come terminato (§186): resta nascosta finché non l'ha fatto
+    // e ha recensito anche lui. Mai con una segnalazione in corso.
+    if (!booking.hasReview && booking.issue?.status !== "OPEN" && booking.issue?.status !== "CHAT") {
       setShowReviewModal(true);
     } else {
       onChanged();
@@ -322,10 +325,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </Button>
-          ) : booking.status !== "COMPLETED" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Hai confermato il completamento. In attesa che anche il professionista lo segnali per poter lasciare una recensione.
-            </Text>
           ) : null}
         </YStack>
       ) : null}
@@ -348,7 +347,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       {showReviewModal ? (
         <ReviewModal
           title="Recensisci il professionista"
-          subtitle="Com'è andato il lavoro? La tua recensione sarà pubblica non appena anche il professionista avrà lasciato la sua."
+          subtitle="Com'è andato il lavoro? Raccontalo ora, finché è fresco."
           uploadPhoto={(file) => apiClient.uploadReviewPhoto(token, file).then((r) => r.imageUrl)}
           onSubmit={handleSubmitReview}
           onClose={closeReviewModal}

@@ -16566,3 +16566,41 @@ dominio verificato e `RESEND_FROM_EMAIL` per arrivare a tutti.
 `email-templates.test.ts` (ogni modello si compone anche con dati vuoti, ogni
 tipo con email ha un argomento, la recensione non anticipa il voto) e
 `password-reset.test.ts`; anteprima di tutte le 64 email.
+
+## 186. Recensione subito dopo "Lavoro terminato"
+
+**Richiesta dell'utente:** dopo il popup delle note per l'admin, chi clicca
+"Lavoro terminato" deve poter recensire subito, senza aspettare che l'altra
+parte clicchi a sua volta; la recensione diventa pubblica solo quando entrambi
+hanno cliccato "Lavoro terminato" e recensito, mantenendo l'automatismo dei 3
+giorni.
+
+**Decisione:**
+- Il cliente può recensire appena ha confermato il lavoro terminato, anche se
+  il professionista non l'ha ancora segnato (`clientCanReview`: basta
+  `clientConfirmedCompletedAt` su un lavoro `CONFIRMED` o `COMPLETED`). In
+  `/le-mie-richieste` il popup della recensione si apre subito dopo quello delle
+  note (prima solo se il professionista aveva già chiuso); sparisce il
+  messaggio "in attesa che anche il professionista lo segnali". Il
+  professionista poteva già recensire subito dopo il proprio "Lavoro
+  terminato": invariato.
+- Pubblicazione: resta la regola "esistono entrambe le recensioni". Poiché
+  ognuno recensisce solo dopo il proprio clic, una coppia scritta a mano
+  implica già entrambi i clic; nessun filtro pubblico cambiato.
+- Recensione automatica a 5 stelle (`ReviewsService.runAutoPublishCheck`): ora
+  scatta solo se, da almeno 3 giorni, entrambi hanno segnato il lavoro come
+  terminato e la recensione esiste. Resta l'eccezione delle segnalazioni già
+  decise, dove il cliente può recensire anche un lavoro mai chiuso (attesa come
+  prima). `updateStatus(COMPLETED)` del calendario ora salva anche
+  `professionalCompletedAt`, per far partire l'attesa.
+- Email `NEW_REVIEW` al professionista: se non ha ancora chiuso il lavoro lo
+  invita a segnarlo come terminato e a recensire il cliente.
+- Testi aggiornati nel modulo della recensione e in "Le mie recensioni".
+
+**Conseguenza:** se solo una parte clicca "Lavoro terminato", la sua
+recensione resta nascosta senza limite di tempo (prima, dopo 3 giorni,
+diventava pubblica lo stesso). Come chiudere questo caso è una domanda aperta
+all'utente.
+
+**Verifica:** typecheck di `apps/api` e `apps/web`, test API (nuovo
+`reviews.service.test.ts`, casi aggiunti in `job-issues.test.ts`).
