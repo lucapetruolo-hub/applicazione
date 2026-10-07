@@ -556,6 +556,17 @@ export type CurrentUser = {
   emailVerificationRequired: boolean;
 };
 
+/** Recensione lasciata da un professionista al cliente, vista dal cliente stesso. */
+export type ReceivedClientReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  mediaUrls: string[];
+  createdAt: string;
+  isAutomatic: boolean;
+  reviewerBusinessName: string;
+};
+
 // ---------------------------------------------------------------------------
 // MANOVIA — dati fiscali professionista, pagamenti lavoro, commissioni,
 // DAC7, rimborsi, contestazioni (CLAUDE.md §88).
@@ -1323,6 +1334,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §175). */
+    myReceivedClientReviews: (token: string) =>
+      request<ReceivedClientReview[]>("/client-reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 

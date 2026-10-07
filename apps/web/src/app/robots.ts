@@ -23,6 +23,7 @@ export default function robots(): MetadataRoute.Robots {
         "/account",
         "/le-mie-richieste",
         "/professionisti-salvati",
+        "/le-mie-recensioni",
         "/chat",
         "/dashboard",
         "/dashboard/*",

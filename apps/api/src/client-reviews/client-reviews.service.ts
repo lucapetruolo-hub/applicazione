@@ -14,6 +14,31 @@ import { PRISMA } from "../prisma/prisma.module";
 export class ClientReviewsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
+  /**
+   * Recensioni ricevute dal cliente stesso, per la scheda "Recensioni" del
+   * suo account (decisione dell'utente, docs/CHANGELOG.md §175). Stesso
+   * filtro della scheda cliente vista dal professionista
+   * (ProfessionalsService): niente recensioni nascoste da un admin, e solo
+   * quelle già sbloccate dal "doppio cieco" (il cliente ha recensito a sua
+   * volta, o è scattata la recensione automatica).
+   */
+  async listMine(clientId: string) {
+    const reviews = await this.prisma.clientReview.findMany({
+      where: { clientId, hiddenAt: null, booking: { review: { isNot: null } } },
+      include: { booking: { include: { professionalProfile: { select: { businessName: true } } } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      mediaUrls: review.mediaUrls,
+      createdAt: review.createdAt.toISOString(),
+      isAutomatic: review.isAutomatic,
+      reviewerBusinessName: review.booking.professionalProfile.businessName,
+    }));
+  }
+
   async create(professionalUserId: string, input: ClientReviewInput) {
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {

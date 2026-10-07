@@ -16179,3 +16179,23 @@ punto 24), nessun proxy/WAF.
 **Verifica:** build e test di `apps/api` (nuovo
 `src/auth/email-verification.test.ts`), typecheck di `apps/web` e
 `apps/mobile`.
+
+## 175. Scheda "Recensioni" per il cliente
+
+**Richiesta dell'utente** (7 ottobre 2026): far vedere al cliente le
+recensioni che i professionisti gli hanno lasciato. Scelta dell'utente fra
+tre posizioni (nuova scheda, riquadro in Account, sul singolo lavoro):
+nuova scheda.
+
+**Decisione:**
+- Nuova pagina `/le-mie-recensioni` (voce "Recensioni" nelle schede del
+  cliente, "Recensioni ricevute" nella tendina e nel gruppo "Come cliente"
+  del professionista, `accountMenuItems.ts`): media in alto, poi ogni
+  recensione con stelle, attività, data, commento, foto e "Segnala".
+- `GET /client-reviews/me` (`ClientReviewsService.listMine`): stesso filtro
+  della scheda cliente vista dal professionista, quindi niente recensioni
+  nascoste da un admin e solo quelle sbloccate dal "doppio cieco".
+- Pagina esclusa dai motori di ricerca in `robots.ts`, come le altre
+  pagine personali.
+
+**Verifica:** build e test di `apps/api`, typecheck di `apps/web`.

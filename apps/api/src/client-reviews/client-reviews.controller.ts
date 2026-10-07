@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import { clientReviewSchema, type ClientReviewInput } from "@professionisti/shared";
@@ -16,6 +16,12 @@ export class ClientReviewsController {
     private readonly clientReviewsService: ClientReviewsService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get("me")
+  listMine(@Req() req: AuthenticatedRequest) {
+    return this.clientReviewsService.listMine(req.user.userId);
+  }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
