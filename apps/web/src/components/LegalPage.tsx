@@ -15,7 +15,7 @@ type LegalSection = { heading: string; body: ReactNode };
  */
 export function LegalPage({ title, updatedAt, sections }: { title: string; updatedAt: string; sections: LegalSection[] }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={720} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>

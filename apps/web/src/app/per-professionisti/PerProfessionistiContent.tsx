@@ -33,7 +33,7 @@ export function PerProfessionistiContent() {
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ProBenefits />
       <ProSteps />

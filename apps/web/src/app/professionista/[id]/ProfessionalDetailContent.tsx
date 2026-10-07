@@ -260,7 +260,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <YStack width="100%" maxWidth={860} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
             visualizzazione di un profilo pubblico"): prima nome/badge/

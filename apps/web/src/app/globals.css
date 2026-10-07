@@ -10,8 +10,15 @@ body {
 
 body {
   font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #fdefe1;
   color: #2b2420;
+}
+
+/* Tamagui inietta `body { background: var(--background) }` (grigio chiaro)
+   dopo questo file: prima lo coprivano i contenitori color gesso delle
+   pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §177).
+   `html body` vince per specificità. */
+html body {
+  background: #fdefe1;
 }
 
 a {
@@ -883,6 +890,15 @@ a.admin-kpi:hover {
    questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
    overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
    prima stesura invece di dover essere corretto in un secondo momento. */
+/* Versione di tutto il sito (docs/CHANGELOG.md §177): fissa sullo schermo,
+   dietro a ogni contenuto (z-index -1 sopra il fondo pesca del body). */
+.site-blobs {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
 .auth-page-blobs {
   position: absolute;
   inset: 0;

@@ -45,7 +45,7 @@ function Point({ n, title, children }: { n?: number; title: string; children: Re
 
 export function SicurezzaContent() {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={720} gap="$6">
         <YStack gap="$3">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>

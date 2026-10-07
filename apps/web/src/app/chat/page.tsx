@@ -137,7 +137,7 @@ export default function ChatPage() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue conversazioni
@@ -153,7 +153,7 @@ export default function ChatPage() {
   const selectedThread = threads?.find((t) => threadKey(t) === selectedKey) ?? null;
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso}>
+    <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingTop="$5" paddingBottom="$3" flexShrink={0}>
         <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
           Chat

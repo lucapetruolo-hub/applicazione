@@ -32,7 +32,7 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
 export function SiteFooter() {
   return (
-    <YStack width="100%" backgroundColor={brand.gesso} alignItems="center">
+    <YStack width="100%" backgroundColor="transparent" alignItems="center">
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
         <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
           <YStack gap="$3" maxWidth={280}>

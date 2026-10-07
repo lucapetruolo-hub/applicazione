@@ -321,7 +321,7 @@ function LeMieRichiesteContent() {
 
   if (!user || !token) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
             Accedi per vedere le tue richieste
@@ -335,7 +335,7 @@ function LeMieRichiesteContent() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$8" paddingHorizontal="$4">
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
           Le mie richieste

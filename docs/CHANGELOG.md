@@ -16224,3 +16224,18 @@ modulo stava direttamente sul fondo pesca), `/password-dimenticata` e
 i popup restano com'erano.
 
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px.
+
+**Seconda richiesta** (stesso giorno): "dovremmo provare a metterla sotto
+tutte le pagine". Le due forme sfumate escono da `AuthPageBackground` e
+diventano un livello fisso unico in `apps/web/src/app/layout.tsx`
+(`.site-blobs` in `globals.css`, `position: fixed`, `z-index: -1`): restano
+ferme sullo schermo mentre la pagina scorre. I contenitori a tutta larghezza
+che dipingevano il pesca (`backgroundColor={brand.gesso}`: home, ricerca,
+profilo professionista, pagine legali, area account e dashboard, footer)
+diventano trasparenti, così il pesca viene solo dal `body`. Le schede,
+le pillole e i riquadri colorati restano com'erano.
+
+**Bug trovato in verifica:** Tamagui inietta `body { background:
+var(--background) }` (grigio chiaro) dopo `globals.css`; finché le pagine
+avevano il proprio fondo gesso non si vedeva. Il pesca del body ora è
+`html body { background: #fdefe1 }`, che vince per specificità.
