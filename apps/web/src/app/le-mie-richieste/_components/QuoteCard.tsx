@@ -8,9 +8,9 @@ import { PaymentChoice } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { TimelineModal } from "@/components/TimelineModal";
-import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 
@@ -75,7 +75,7 @@ export function QuoteCard({
   serviceMode: "HOME" | "ONLINE" | null;
   /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto. */
   isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia". */
+  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta". */
   unreadCount?: number;
   /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenTimeline?: boolean;
@@ -221,22 +221,14 @@ export function QuoteCard({
       <Text fontSize="$2" color={brand.grafite70}>
         Inviato il {formatSentAt(quote.sentAt)}
       </Text>
-      <XStack
-        alignItems="center"
-        gap="$1"
-        alignSelf="flex-start"
-        cursor="pointer"
-        accessibilityRole="button"
+      <ContactButton
+        compact
+        unreadCount={effectiveUnreadCount}
         onPress={() => {
           setShowTimeline(true);
           dismissUnread();
         }}
-      >
-        <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
-          Contatta/Cronologia
-        </Text>
-        <UnreadDot count={effectiveUnreadCount} />
-      </XStack>
+      />
       {(() => {
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).
@@ -313,8 +305,10 @@ export function QuoteCard({
               </Button>
             ) : null}
             {!isChoosingDate ? (
-              <Button variant="secondary" size="$3" height={40} onPress={startChoosingDate}>
-                Modifica
+              <Button variant="secondary" backgroundColor={brand.ottone} size="$3" height={40} onPress={startChoosingDate}>
+                <Text color="white" fontWeight="700" fontSize="$3">
+                  Modifica
+                </Text>
               </Button>
             ) : null}
             {!isChoosingDate && !confirmingReject ? (

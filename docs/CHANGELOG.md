@@ -16598,3 +16598,26 @@ precedente non era più salvata.
 
 **Verifica:** build di `apps/api`, test dell'API, typecheck di `apps/web` e
 `apps/mobile`, SQL della migrazione confrontato con `prisma migrate diff`.
+
+## 187. Pulsanti "Modifica" e "Contatta" nelle richieste, annulla sempre per ultimo
+
+**Richiesta dell'utente:** in "Le mie richieste" e in "Richieste e lavori"
+"Proponi altra data" diventa "Modifica" ed è un pulsante con lo sfondo;
+"Contatta" deve sembrare un pulsante; nessun "Chat" (tranne il piccolo
+pulsante sotto "Dettagli cliente"); annulla/cancella sempre per ultimo.
+
+**Decisione:**
+- Nuovo `apps/web/src/components/ContactButton.tsx` (pulsante pieno
+  "Contatta" con il pallino dei non letti), al posto dei link
+  "Contatta/Cronologia" del cliente (preventivo, professionisti contattati,
+  intervento) e dei pulsanti "Chat"/"Contatta" del professionista. Voce di
+  menu "Chat con il cliente" → "Contatta il cliente".
+- "Proponi altra data" del professionista → "Modifica" ottone con testo
+  bianco, come "Modifica preventivo"; "Modifica" del cliente con lo stesso
+  sfondo.
+- "Annulla intervento" spostato dopo "Vedi in agenda" e "Contatta";
+  "Elimina prenotazione" del cliente in fondo alla scheda; nel menu ⋯
+  (`CardActionsMenu`) le voci rosse (annulla, elimina, rifiuta, segnala)
+  vanno sempre in fondo.
+
+**Verifica:** typecheck di `apps/web`.

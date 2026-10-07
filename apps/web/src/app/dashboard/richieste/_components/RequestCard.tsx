@@ -22,6 +22,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 
@@ -430,7 +431,7 @@ export function RequestCard({
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
   // click anche a scheda chiusa.
   const menuActions: CardAction[] = [];
-  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Chat con il cliente", onPress: openTimeline });
+  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Contatta il cliente", onPress: openTimeline });
   if (!gr.clientAccountDeleted) menuActions.push({ icon: "user-round", text: "Profilo del cliente", onPress: () => setShowClientProfile(true) });
   if (stage === "da_quotare") {
     menuActions.push({
@@ -928,14 +929,7 @@ export function RequestCard({
                 <Button variant="primary" size="$3" onPress={() => setShowQuoteForm((v) => !v)}>
                   Invia preventivo
                 </Button>
-                <Button variant="ghost" size="$3" onPress={openTimeline}>
-                  <XStack alignItems="center" gap="$1">
-                    <Text fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Chat
-                    </Text>
-                    <UnreadDot count={effectiveUnreadCount} />
-                  </XStack>
-                </Button>
+                <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {!confirmingDecline ? (
                   <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(true)}>
                     <Text color={brand.urgenza} fontWeight="700" fontSize="$3">
@@ -963,14 +957,7 @@ export function RequestCard({
                     Modifica preventivo
                   </Text>
                 </Button>
-                <Button variant="primary" size="$3" onPress={openTimeline}>
-                  <XStack alignItems="center" gap="$1">
-                    <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Contatta
-                    </Text>
-                    <UnreadDot count={effectiveUnreadCount} />
-                  </XStack>
-                </Button>
+                <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {confirmingWithdraw ? (
                   <>
                     <Text fontSize="$2" color={brand.urgenza}>
@@ -1000,8 +987,12 @@ export function RequestCard({
                     {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
                   </Text>
                 </Button>
+                {/* "Modifica" con sfondo, come "Modifica preventivo" e come
+                    il cliente (richiesta esplicita dell'utente, prima
+                    "Proponi altra data" quasi solo testo). */}
                 <Button
-                  variant="ghost"
+                  variant="secondary"
+                  backgroundColor={brand.ottone}
                   size="$3"
                   onPress={() => {
                     const proposedDate = lead.quote?.clientProposedDate?.slice(0, 10);
@@ -1013,16 +1004,11 @@ export function RequestCard({
                     setShowCounterForm((v) => !v);
                   }}
                 >
-                  Proponi altra data
+                  <Text color="white" fontWeight="700" fontSize="$3">
+                    Modifica
+                  </Text>
                 </Button>
-                <Button variant="primary" size="$3" onPress={openTimeline}>
-                  <XStack alignItems="center" gap="$1">
-                    <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Chat
-                    </Text>
-                    <UnreadDot count={effectiveUnreadCount} />
-                  </XStack>
-                </Button>
+                <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 <Button variant="ghost" size="$3" disabled={isRejectingDate} onPress={handleRejectDate}>
                   <Text color={brand.grafite70} fontSize="$3">
                     {isRejectingDate ? "..." : "Rifiuta la proposta"}
@@ -1056,11 +1042,6 @@ export function RequestCard({
                     >
                       Lavoro terminato
                     </Button>
-                    <Button variant="ghost" size="$3" onPress={() => setShowCancelModal(true)}>
-                      <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
-                        Annulla intervento
-                      </Text>
-                    </Button>
                   </>
                 ) : null}
                 {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
@@ -1090,14 +1071,15 @@ export function RequestCard({
                     </Text>
                   </Button>
                 </Link>
-                <Button variant="ghost" size="$3" onPress={openTimeline}>
-                  <XStack alignItems="center" gap="$1">
-                    <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3">
-                      Contatta
+                <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
+                {/* Annulla sempre per ultimo (richiesta esplicita dell'utente). */}
+                {booking?.status === "CONFIRMED" ? (
+                  <Button variant="ghost" size="$3" onPress={() => setShowCancelModal(true)}>
+                    <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
+                      Annulla intervento
                     </Text>
-                    <UnreadDot count={effectiveUnreadCount} />
-                  </XStack>
-                </Button>
+                  </Button>
+                ) : null}
               </XStack>
             ) : null}
             {reopenError ? (
