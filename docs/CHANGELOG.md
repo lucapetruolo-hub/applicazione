@@ -16200,7 +16200,47 @@ verde e caratteri del sito):
 **Verifica:** typecheck di `apps/web`; schermate in locale a 1280 e 390 px
 senza scorrimento orizzontale; clic su Plus evidenzia la sua cella.
 
-## 176. Pulsante per iscriversi sotto i livelli, verso il pagamento del livello scelto
+## 176. Accesso dei clienti "prima l'email", sul modello di MioDottore
+
+**Richiesta dell'utente** (6 ottobre 2026): prendere spunto dalla pagina che
+MioDottore mostra a chi prenota senza aver fatto l'accesso (solo l'email,
+diciture legali sotto il pulsante, "se è la tua prima prenotazione creeremo
+il tuo account gratuito"). Tra tre opzioni con anteprima l'utente ha scelto
+la A: prima l'email, poi la password. Niente conferma email per i clienti
+(decisione dell'utente nello stesso giorno).
+
+**Decisione:**
+- Nuovo `POST /auth/email-status` (`AuthService.emailStatus`): risponde
+  `new`, `password` o `google` (account creato con Google, senza password).
+  Rivela se un'email è registrata, come MioDottore: accettato, con limite di
+  10 richieste al minuto per IP.
+- Nuovo `ClientEmailFirstAuth` (`apps/web/src/components/`): Google e campo
+  email, "Continua", poi "Scegli una password" (email nuova), "Inserisci la
+  password" (account esistente) o "Accedi con Google". Tolti la conferma
+  password, le due caselle e il popup di consenso dopo Google.
+- Le caselle diventano la dicitura "Continuando accetti i nostri Termini di
+  Servizio, confermi di aver letto e compreso la nostra Privacy Policy e di
+  avere almeno 18 anni" (ripetuta sotto "Crea account"). L'informativa
+  privacy si legge, non si accetta. Il consenso resta registrato come prima
+  (`legalConsentAt`/`legalConsentVersion`): il pulsante invia
+  `acceptedLegalTerms`/`declaredAdult` a `true`.
+- Usato nel popup della richiesta (`InlineAuthGate`) e in
+  `/registrati?ruolo=cliente`. La registrazione del professionista e
+  `/accedi` restano com'erano.
+- Il passaggio dalle caselle alla dicitura va verificato dall'avvocato
+  insieme ai Termini (checklist di lancio).
+
+- Richiesta successiva dell'utente ("non mi piacciono le ombre"; poi, dopo
+  una prova su fondo bianco senza scheda: "era meglio prima, soltanto senza
+  ombra"): in `/registrati` la scheda resta com'era (icona, sfondo pesca con
+  forme sfumate, etichette), senza `floating`; le card di scelta ruolo al
+  passaggio del mouse si alzano e cambiano bordo, senza ombra.
+
+**Verifica:** test di `AuthService.emailStatus` (4 casi); typecheck di
+`apps/api` e `apps/web`; schermate in locale con un'API finta, a 1280 e 390
+px, dei passi email, email nuova, account con password e account Google.
+
+## 177. Pulsante per iscriversi sotto i livelli, verso il pagamento del livello scelto
 
 **Richiesta esplicita dell'utente:** il pulsante per iscriversi in fondo a
 `/per-professionisti` va appena sotto la scelta dei livelli e, in base al

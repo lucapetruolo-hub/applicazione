@@ -357,7 +357,7 @@ function ProSteps() {
 
 /**
  * Il pulsante sotto i livelli porta al pagamento di quello scelto
- * (docs/CHANGELOG.md §176): un professionista già iscritto va dritto in
+ * (docs/CHANGELOG.md §177): un professionista già iscritto va dritto in
  * Abbonamento, gli altri si iscrivono e poi ci arrivano (`?livello=`).
  */
 function ProPricing({ isProfessional }: { isProfessional: boolean }) {
@@ -594,7 +594,7 @@ function ProFaq() {
 /**
  * Invito finale semplice come quello di efferd: titolo a due toni e due
  * pulsanti, "Scopri di più" sui pagamenti (§174) e il ritorno alla scelta
- * del livello, dove ora sta il pulsante per iscriversi (§176).
+ * del livello, dove ora sta il pulsante per iscriversi (§177).
  */
 function ProFinalCta() {
   return (

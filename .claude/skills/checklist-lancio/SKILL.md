@@ -138,6 +138,10 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     anche il regolamento delle segnalazioni sui lavori (bozza pronta in
     `docs/legale/regolamento-controversie.md`, con i punti da verificare,
     tra cui la clausola "non rispondiamo di danni").
+11ter. **Far verificare la dicitura di registrazione dei clienti** (docs/CHANGELOG.md
+    §176): al posto delle caselle, "Continuando accetti i nostri Termini di
+    Servizio, confermi di aver letto e compreso la nostra Privacy Policy e
+    di avere almeno 18 anni". Il professionista ha ancora le caselle.
 
 **Fiscale — solo lavoro tecnico**:
 12. Integrazione reale con il tracciato ufficiale DPI23 dell'Agenzia delle

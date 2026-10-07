@@ -75,6 +75,18 @@ export const emailPasswordSchema = z.object({
 export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
 
 /**
+ * Primo passo dell'accesso "prima l'email" dei clienti (sul modello di
+ * MioDottore, docs/CHANGELOG.md §176): solo l'email, per sapere se chiedere
+ * la password, farne scegliere una nuova o rimandare a Google.
+ */
+export const emailStatusSchema = z.object({
+  email: z.string().email("Email non valida"),
+});
+export type EmailStatusInput = z.infer<typeof emailStatusSchema>;
+/** `new`: nessun account; `password`: accesso con password; `google`: account creato con Google, senza password. */
+export type EmailStatus = "new" | "password" | "google";
+
+/**
  * Versione delle informative (Privacy Policy + Termini di Servizio) accettate
  * in registrazione — stessa stringa "Ultimo aggiornamento" mostrata su
  * /privacy e /termini. Richiesta esplicita dell'utente ("Verbale di

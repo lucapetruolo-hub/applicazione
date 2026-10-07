@@ -88,7 +88,7 @@ function AbbonamentoContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [renewalPending, setRenewalPending] = useState(false);
-  // Livello toccato su /per-professionisti (docs/CHANGELOG.md §176): la
+  // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): la
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const justRegistered = searchParams.get("nuovo") === "1";
