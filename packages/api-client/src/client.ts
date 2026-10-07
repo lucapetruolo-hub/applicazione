@@ -557,6 +557,23 @@ export type CurrentUser = {
   emailVerificationRequired: boolean;
 };
 
+/** Recensione scritta dal cliente a un professionista, vista dal cliente stesso. */
+export type SentReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  mediaUrls: string[];
+  createdAt: string;
+  isAutomatic: boolean;
+  /** Già sbloccata dal "doppio cieco" (anche il professionista ha recensito). */
+  isPublic: boolean;
+  /** Nascosta da un admin dopo una segnalazione. */
+  hidden: boolean;
+  /** `null` se il professionista ha eliminato il profilo. */
+  professionalProfileId: string | null;
+  businessName: string;
+};
+
 /** Recensione lasciata da un professionista al cliente, vista dal cliente stesso. */
 export type ReceivedClientReview = {
   id: string;
@@ -1341,6 +1358,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
+    mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
 
     /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §179). */
     myReceivedClientReviews: (token: string) =>

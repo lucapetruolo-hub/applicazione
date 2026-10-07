@@ -22,6 +22,39 @@ export class ReviewsService {
   ) {}
 
   /**
+   * Recensioni scritte dal cliente ai professionisti, per la scheda
+   * "Inviate" di /le-mie-recensioni (docs/CHANGELOG.md §180). Tutte, anche
+   * quelle non ancora pubbliche: sono sue. `isPublic` dice se il "doppio
+   * cieco" le ha già sbloccate, `hidden` se un admin le ha nascoste.
+   */
+  async listMine(clientId: string) {
+    const reviews = await this.prisma.review.findMany({
+      where: { booking: { clientId } },
+      include: {
+        booking: {
+          select: {
+            clientReview: { select: { id: true } },
+            professionalProfile: { select: { id: true, businessName: true, deletedAt: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      mediaUrls: review.photoUrls,
+      createdAt: review.createdAt.toISOString(),
+      isAutomatic: review.isAutomatic,
+      isPublic: review.booking.clientReview !== null,
+      hidden: review.hiddenAt !== null,
+      professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
+      businessName: review.booking.professionalProfile.businessName,
+    }));
+  }
+
+  /**
    * Ultime recensioni pubbliche della piattaforma (sezione riprova sociale
    * in home). Stesso filtro "doppio cieco" del profilo pubblico: visibili
    * solo se esiste anche la ClientReview sullo stesso booking. Demo esclusi

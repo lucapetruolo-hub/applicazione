@@ -16363,3 +16363,23 @@ le pillole e i riquadri colorati restano com'erano.
 var(--background) }` (grigio chiaro) dopo `globals.css`; finché le pagine
 avevano il proprio fondo gesso non si vedeva. Il pesca del body ora è
 `html body { background: #fdefe1 }`, che vince per specificità.
+
+## 181. Recensioni del cliente: sottoschede "Ricevute" e "Inviate"
+
+**Richiesta dell'utente** (7 ottobre 2026): "nella pagina recensioni deve
+esserci un sottomenu per recensioni ricevute e inviate".
+
+**Decisione:** `/le-mie-recensioni` (§179) ha due pillole in alto,
+"Ricevute" e "Inviate", con il numero tra parentesi; la scelta resta
+nell'indirizzo (`?scheda=inviate`). "Ricevute" è la lista di §179 invariata.
+"Inviate" mostra le recensioni che il cliente ha scritto ai professionisti
+(nuovo `GET /reviews/me`, `ReviewsService.listMine`): stelle, nome
+dell'attività con link al profilo (se non eliminato), data, commento e foto.
+Diversamente dalle ricevute compaiono anche quelle ancora coperte dal
+"doppio cieco", con la nota "In attesa: diventa visibile sul profilo quando
+anche il professionista ti recensisce, o dopo 3 giorni"; quelle nascoste da
+una moderazione dicono "Nascosta dopo una segnalazione". Le voci di menu
+passano da "Recensioni ricevute" a "Recensioni".
+
+**Verifica:** build dei package e di `apps/api`, test dell'API, typecheck di
+`apps/web` e `apps/mobile`.
