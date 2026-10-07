@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, professionalRestrictions, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, professionalRestrictions, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -371,12 +371,13 @@ export class GuidedRequestsService {
           clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
           clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
           clientProposedNote: quote.clientProposedNote,
-          // True se il professionista ha inviato il preventivo con un
-          // orario diverso da quello che il cliente aveva effettivamente
-          // richiesto (solo quando la richiesta porta un orario preferito,
-          // cioè è nata da una fascia generica dell'agenda pubblica) —
-          // richiesta esplicita dell'utente, per evidenziarlo al cliente.
-          timeChangedFromRequest: Boolean(requestedStart) && requestedStart!.getTime() !== quote.estimatedStartDate.getTime(),
+          // Cosa ha cambiato il professionista (data, orario o entrambi)
+          // rispetto a ciò che il cliente aveva effettivamente richiesto
+          // (solo quando la richiesta porta un orario preferito, cioè è
+          // nata da una fascia generica dell'agenda pubblica) — richiesta
+          // esplicita dell'utente, per evidenziarlo al cliente; distinguere
+          // data e orario: docs/CHANGELOG.md §180.
+          changeFromRequest: requestedStart ? scheduleChangeBetween({ start: requestedStart }, { start: quote.estimatedStartDate }) : null,
           // Nota lasciata dal professionista quando modifica direttamente
           // l'orario proposto dal cliente durante la trattativa (richiesta
           // esplicita dell'utente) — valorizzata solo appena dopo quella

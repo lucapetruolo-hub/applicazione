@@ -1,7 +1,7 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
-import type { ProposeQuoteDateInput, QuoteSelfInput } from "@professionisti/shared";
+import { scheduleChangeAlternative, scheduleChangeBetween, scheduleChangeObject, type ProposeQuoteDateInput, type QuoteSelfInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -89,6 +89,14 @@ export class QuotesService {
       })),
     });
 
+    // Cosa cambia di "quando" rispetto al preventivo già inviato: data,
+    // orario o entrambi (docs/CHANGELOG.md §180).
+    const scheduleChange = existingQuote
+      ? scheduleChangeBetween(
+          { start: existingQuote.estimatedStartDate, end: existingQuote.estimatedEndDate },
+          { start: data.estimatedStartDate, end: data.estimatedEndDate },
+        )
+      : null;
     // Solo al primo invio (non ad ogni modifica successiva): il cliente ha
     // già visto il preventivo la prima volta, una modifica non è "novità"
     // da badge — coerente con la stessa distinzione già fatta altrove nel
@@ -110,7 +118,7 @@ export class QuotesService {
         "PROFESSIONAL",
         `Il professionista ha inviato un preventivo (${input.items.length} ${input.items.length === 1 ? "voce" : "voci"}), data prevista ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
       );
-    } else if (existingQuote.estimatedStartDate.getTime() !== data.estimatedStartDate.getTime()) {
+    } else if (scheduleChange) {
       // Richiesta esplicita dell'utente: se il professionista modifica un
       // preventivo già inviato cambiando la data/orario, il cliente deve
       // saperlo — a differenza delle altre modifiche (voci, note), che
@@ -121,12 +129,13 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
+        change: scheduleChange,
       });
       await this.timelineService.log(
         lead.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        `Il professionista ha modificato il preventivo: nuova data prevista ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
+        `Il professionista ha modificato ${scheduleChangeObject(scheduleChange)} del preventivo: ora è ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
       );
     } else if (existingQuote) {
       // Modifica che non tocca la data (voci/note): silenziosa lato
@@ -236,15 +245,21 @@ export class QuotesService {
         professionalCounterNote: null,
       },
     });
+    // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
+    // entrambi (docs/CHANGELOG.md §180). Riconfermare la stessa fascia
+    // resta "un'altra data" come prima.
+    const change =
+      scheduleChangeBetween({ start: quote.estimatedStartDate, end: quote.estimatedEndDate }, { start: proposedDate, end: proposedEndDate }) ?? "date";
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
+      change,
     });
     await this.timelineService.log(
       quote.guidedRequestId,
       quote.professionalProfileId,
       "CLIENT",
-      `Il cliente ha proposto un'altra data: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+      `Il cliente ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
     );
     return {
       id: updated.id,
@@ -503,16 +518,24 @@ export class QuotesService {
         professionalCounterNote: input.note?.trim() || null,
       },
     });
+    // Confronto con la proposta del cliente a cui il professionista risponde
+    // (docs/CHANGELOG.md §180): è quella che il cliente ha in mente.
+    const change =
+      scheduleChangeBetween(
+        { start: quote.clientProposedDate ?? quote.estimatedStartDate, end: quote.clientProposedEndDate ?? quote.estimatedEndDate },
+        { start: estimatedStartDate, end: estimatedEndDate },
+      ) ?? "date";
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
+      change,
     });
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
     await this.timelineService.log(
       quote.guidedRequestId,
       professionalProfile.id,
       "PROFESSIONAL",
-      `Il professionista ha proposto un'altra data: ${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+      `Il professionista ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
     );
     return {
       id: updated.id,
