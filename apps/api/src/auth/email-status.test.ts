@@ -3,7 +3,7 @@ import { AuthService } from "./auth.service";
 
 function serviceWith(user: { passwordHash: string | null; googleId: string | null } | null) {
   const prisma = { user: { findUnique: vi.fn().mockResolvedValue(user) } };
-  return new AuthService(prisma as never, {} as never, {} as never);
+  return new AuthService(prisma as never, {} as never, {} as never, {} as never);
 }
 
 describe("AuthService.emailStatus — accesso prima l'email (docs/CHANGELOG.md §176)", () => {

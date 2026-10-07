@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastStack } from "@/components/ToastStack";
 import { CookieBanner } from "@/components/CookieBanner";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </a>
           <ToastStack />
           <SiteHeader />
+          <EmailVerificationBanner />
           <main id="main-content">{children}</main>
           <SiteFooter />
           <CookieBanner />

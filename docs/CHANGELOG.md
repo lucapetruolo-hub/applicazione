@@ -16271,3 +16271,64 @@ manca la chiave Stripe).
 pulsante resta spento senza scelta, toccando Plus diventa "Iscriviti con
 Plus" e porta a `/registrati?ruolo=professionista&livello=PLUS`. Il ritorno
 in Abbonamento non è provato dal vivo (serve un account e l'API).
+
+## 178. Conferma dell'indirizzo email in registrazione
+
+**Richiesta dell'utente** (6 ottobre 2026): valutare Cloudflare almeno in
+registrazione. Dall'analisi: la registrazione aveva solo il limite di 5
+tentativi al minuto per IP e nessuna conferma dell'email, quindi chiunque
+poteva iscriversi con un indirizzo altrui. Decisione dell'utente: conferma
+email subito, Cloudflare Turnstile prima del lancio (checklist di lancio,
+punto 24), nessun proxy/WAF.
+
+**Decisione:**
+- `User.emailVerifiedAt`, `emailTokenHash` (impronta SHA-256, mai il
+  codice), `emailTokenExpiresAt` (48 ore). La migrazione segna come
+  confermati gli account già esistenti.
+- **Solo per i professionisti** (decisione dell'utente: "non voglio nessuna
+  conferma dell'email lato cliente"). Il cliente non riceve link alla
+  registrazione e non ha blocchi; in `/account` un riquadro facoltativo
+  (`ClientEmailVerificationCard`, richiesta dell'utente) lo invita a
+  confermare per essere "più affidabile" e ricevere più preventivi. Per
+  rendere vera la frase, chi conferma compare ai professionisti con
+  "Email confermata" sulla richiesta (`clientEmailVerified`, `RequestCard`).
+  Cambiare email azzera la conferma anche per il cliente.
+- Alla registrazione da professionista con email e password parte un'email con il link
+  `/conferma-email?token=...`; `POST /auth/verify-email` conferma,
+  `POST /auth/verify-email/resend` rispedisce (3 al minuto). Cambiare email
+  da `/account` richiede una nuova conferma (solo professionisti). Google e i profili creati da un
+  operatore (`/completa-profilo`) risultano già confermati. Se si accede
+  con Google su un account mai confermato, la password scelta prima viene
+  azzerata (solo professionisti): poteva averla messa chi si era iscritto
+  con l'email di un altro.
+- `VerifiedEmailGuard` blocca, finché l'email non è confermata, il
+  salvataggio del profilo professionista (`PUT /professionals/me`, quindi
+  niente ricerca né richieste) e l'invio di un preventivo.
+- Il blocco e l'avviso nel sito (`EmailVerificationBanner`, con "Rispedisci
+  il link") valgono solo con `EMAIL_VERIFICATION_REQUIRED=true` su Render:
+  finché il dominio non è verificato su Resend il link arriverebbe solo al
+  titolare dell'account Resend (checklist, punto 23).
+
+**Verifica:** build e test di `apps/api` (nuovo
+`src/auth/email-verification.test.ts`), typecheck di `apps/web` e
+`apps/mobile`.
+
+## 179. Scheda "Recensioni" per il cliente
+
+**Richiesta dell'utente** (7 ottobre 2026): far vedere al cliente le
+recensioni che i professionisti gli hanno lasciato. Scelta dell'utente fra
+tre posizioni (nuova scheda, riquadro in Account, sul singolo lavoro):
+nuova scheda.
+
+**Decisione:**
+- Nuova pagina `/le-mie-recensioni` (voce "Recensioni" nelle schede del
+  cliente, "Recensioni ricevute" nella tendina e nel gruppo "Come cliente"
+  del professionista, `accountMenuItems.ts`): media in alto, poi ogni
+  recensione con stelle, attività, data, commento, foto e "Segnala".
+- `GET /client-reviews/me` (`ClientReviewsService.listMine`): stesso filtro
+  della scheda cliente vista dal professionista, quindi niente recensioni
+  nascoste da un admin e solo quelle sbloccate dal "doppio cieco".
+- Pagina esclusa dai motori di ricerca in `robots.ts`, come le altre
+  pagine personali.
+
+**Verifica:** build e test di `apps/api`, typecheck di `apps/web`.

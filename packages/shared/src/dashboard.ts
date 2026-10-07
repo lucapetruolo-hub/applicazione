@@ -144,6 +144,8 @@ export type ProfessionalLead = {
      */
     /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
     clientImageUrl: string | null;
+    /** Il cliente ha confermato l'email (facoltativo per lui, docs/CHANGELOG.md §178): mostrato come segno di affidabilità. */
+    clientEmailVerified: boolean;
     /**
      * True se il cliente ha eliminato il proprio account (soft-delete,
      * User.deletedAt) — richiesta esplicita dell'utente: la richiesta e il

@@ -201,6 +201,22 @@ prima del lancio"):
     non sono attivi: finché la ricerca non è chiusa il testo non è stato
     toccato (decisione dell'utente, 06/10/2026). Prima del lancio o si attiva
     un canale reale o si corregge la frase.
+23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
+    codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
+    5bis) e provato che il link arriva a un indirizzo qualunque, impostare
+    `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
+    tranne il titolare dell'account Resend riceverebbe il link.
+24. **Cloudflare Turnstile anti-bot sulla registrazione** (decisione
+    dell'utente, 06/10/2026: da integrare prima del lancio). Widget sui
+    moduli email+password (`/registrati` e `InlineAuthGate`), controllo
+    del token in `POST /auth/register` (`apps/api/src/auth/`), chiavi
+    `NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel e `TURNSTILE_SECRET_KEY` su
+    Render, spento senza chiavi come Maps e Stripe. Gratuito, senza cookie
+    di profilazione (niente banner), ma va citato nell'informativa privacy
+    (dati a Cloudflare, USA) e aggiunto alla tabella dello stack in
+    CLAUDE.md. Google Sign-In non ne ha bisogno. Nessun proxy/WAF
+    Cloudflare davanti a Vercel: sconsigliato da Vercel e il sito non ha
+    ancora un dominio proprio.
 
 **Infrastruttura/qualità del codice** (CEO, audit tecnico — "zero test
 automatici, zero CI/CD, e soprattutto `prisma db push --accept-data-loss`
