@@ -62,6 +62,12 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
+  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
+  JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },
+  JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
+  JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
+  JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro confermato dal cliente." },
+  ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora in custodia." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).

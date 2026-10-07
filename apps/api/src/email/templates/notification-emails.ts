@@ -307,11 +307,19 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs:
       payload.published === true
         ? [`Il cliente ha recensito il lavoro per **${job(ctx)}**. Avevi già recensito anche tu il cliente: le due recensioni ora sono visibili, e la sua compare sul tuo profilo.`]
-        : [
-            `Il cliente ha recensito il lavoro per **${job(ctx)}**.`,
-            "Per leggerla lascia anche tu la tua recensione sul cliente: le due diventano visibili insieme. Se non lo fai entro 3 giorni, la sua diventa comunque pubblica sul tuo profilo.",
-          ],
-    cta: payload.published === true ? proRequests("Apri il lavoro") : proRequests("Recensisci il cliente"),
+        : payload.professionalCompleted === false
+          ? [
+              `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito.`,
+              "Per leggere la recensione segna anche tu il lavoro come terminato e recensisci il cliente: le due diventano visibili insieme.",
+            ]
+          : [
+              `Il cliente ha recensito il lavoro per **${job(ctx)}**.`,
+              "Per leggerla lascia anche tu la tua recensione sul cliente: le due diventano visibili insieme. Se non lo fai entro 3 giorni, la sua diventa comunque pubblica sul tuo profilo.",
+            ],
+    cta:
+      payload.published === true
+        ? proRequests("Apri il lavoro")
+        : proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Recensisci il cliente"),
   }),
 
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).
@@ -523,6 +531,60 @@ const BUILDERS: Record<string, Builder> = {
       "Attivali in Dati fiscali e pagamenti: bastano pochi minuti e poi l'accredito parte da solo.",
     ],
     cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
+  // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
+  JOB_CONFIRM_REMINDER: (payload, ctx) => ({
+    kind: "notification",
+    subject: `Confermi che il lavoro con ${pro(ctx)} è terminato?`,
+    greeting: ctx.name,
+    title: "Il lavoro è terminato?",
+    paragraphs: [
+      `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
+      `Confermalo e lascia una recensione, oppure segnala un problema${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}. Dopo quella data il lavoro sarà considerato terminato e non potrai più segnalare problemi.`,
+    ],
+    cta: { label: "Apri il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
+  JOB_AUTO_CONFIRMED: (_payload, ctx) => ({
+    kind: "notification",
+    subject: "Il lavoro è stato considerato terminato",
+    greeting: ctx.name,
+    title: "Lavoro terminato",
+    paragraphs: [
+      `Non ci hai confermato né segnalato problemi sul lavoro per **${job(ctx)}** entro ${BAD_WORK_REPORT_DAYS} giorni: lo consideriamo terminato.`,
+      "Puoi ancora lasciare una recensione al professionista.",
+    ],
+    cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
+  JOB_CLOSE_REMINDER: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Il cliente ha confermato il lavoro terminato",
+    greeting: ctx.name,
+    title: "Segna il lavoro come terminato",
+    paragraphs: [
+      `Il cliente ha confermato che il lavoro per **${job(ctx)}** è terminato.`,
+      `Segnalalo anche tu con l'importo finale${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}: dopo quella data la recensione del cliente diventa visibile anche senza la tua.`,
+    ],
+    cta: proRequests("Segna il lavoro come terminato"),
+  }),
+  JOB_CLOSE_EXPIRED: (_payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Non hai segnato il lavoro come terminato",
+    greeting: ctx.name,
+    title: "Termine scaduto",
+    paragraphs: [
+      `Non hai segnato come terminato il lavoro per **${job(ctx)}** entro ${BAD_WORK_REPORT_DAYS} giorni dalla conferma del cliente.`,
+      "Se il cliente ti ha recensito, la sua recensione diventa visibile sul tuo profilo. Puoi ancora segnare il lavoro come terminato con l'importo finale.",
+    ],
+    cta: proRequests("Apri il lavoro"),
+  }),
+  ADMIN_JOB_NOT_CLOSED: () => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Lavoro pagato online non chiuso dal professionista",
+    title: "Lavoro non chiuso",
+    paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora in custodia.`],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
   }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",

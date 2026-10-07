@@ -160,7 +160,12 @@ export class BookingsService {
       // canceledBy: questo metodo è chiamato solo dal professionista (guardia
       // sopra su professionalProfile) — CANCELED da qui è sempre PROFESSIONAL,
       // stesso valore già usato da cancelByProfessional.
-      data: { status, ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}) },
+      data: {
+        status,
+        ...(status === "CANCELED" ? { canceledBy: "PROFESSIONAL" as const } : {}),
+        // Fa partire l'attesa delle recensioni automatiche (§189).
+        ...(status === "COMPLETED" ? { professionalCompletedAt: new Date() } : {}),
+      },
     });
     if (status === "CANCELED") await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
 

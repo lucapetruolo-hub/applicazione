@@ -23,6 +23,10 @@ describe("finestre per segnalare un problema (§164)", () => {
     const confirmed = { ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(10 * DAY) };
     expect(jobIssueTypesAllowed(confirmed, at(20 * DAY))).toEqual(["BAD_WORK"]);
   });
+  it("la conferma d'ufficio allo scadere del termine non riapre i 14 giorni (§190)", () => {
+    const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(15 * DAY), completionAutoClosedAt: at(15 * DAY) };
+    expect(jobIssueTypesAllowed(autoClosed, at(16 * DAY))).toEqual([]);
+  });
   it("dopo la conferma del cliente niente mancata presentazione", () => {
     expect(jobIssueTypesAllowed({ ...base, clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual(["BAD_WORK"]);
   });
@@ -35,6 +39,13 @@ describe("finestre per segnalare un problema (§164)", () => {
 describe("quando il cliente può recensire", () => {
   it("lavoro completato e confermato, senza segnalazioni", () => {
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
+  });
+  it("subito dopo il proprio \"lavoro terminato\", anche se il professionista non l'ha ancora segnato (§189)", () => {
+    expect(clientCanReview({ status: "CONFIRMED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(true);
+  });
+  it("non prima di aver cliccato \"lavoro terminato\", né su un lavoro annullato", () => {
+    expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: null, hasReview: false, issueStatus: null })).toBe(false);
+    expect(clientCanReview({ status: "CANCELED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: null })).toBe(false);
   });
   it("mai con una segnalazione aperta, in chat o in esame", () => {
     expect(clientCanReview({ status: "COMPLETED", clientConfirmedCompletedAt: at(0), hasReview: false, issueStatus: "OPEN" })).toBe(false);

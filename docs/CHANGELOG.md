@@ -16672,3 +16672,73 @@ nuovo preventivo `SENT` con `resentAt` → rifiuto senza corpo ancora
 accettato → con la richiesta scaduta `canResend` torna falso; notifiche e
 cronologia con i testi attesi; anteprima delle email `quote_rejected` e
 `new_quote_nuovo_dopo_rifiuto`.
+
+## 189. Recensione subito dopo "Lavoro terminato"
+
+**Richiesta dell'utente:** dopo il popup delle note per l'admin, chi clicca
+"Lavoro terminato" deve poter recensire subito, senza aspettare che l'altra
+parte clicchi a sua volta; la recensione diventa pubblica solo quando entrambi
+hanno cliccato "Lavoro terminato" e recensito, mantenendo l'automatismo dei 3
+giorni.
+
+**Decisione:**
+- Il cliente può recensire appena ha confermato il lavoro terminato, anche se
+  il professionista non l'ha ancora segnato (`clientCanReview`: basta
+  `clientConfirmedCompletedAt` su un lavoro `CONFIRMED` o `COMPLETED`). In
+  `/le-mie-richieste` il popup della recensione si apre subito dopo quello delle
+  note (prima solo se il professionista aveva già chiuso); sparisce il
+  messaggio "in attesa che anche il professionista lo segnali". Il
+  professionista poteva già recensire subito dopo il proprio "Lavoro
+  terminato": invariato.
+- Pubblicazione: resta la regola "esistono entrambe le recensioni". Poiché
+  ognuno recensisce solo dopo il proprio clic, una coppia scritta a mano
+  implica già entrambi i clic; nessun filtro pubblico cambiato.
+- Recensione automatica a 5 stelle (`ReviewsService.runAutoPublishCheck`): ora
+  scatta solo se, da almeno 3 giorni, entrambi hanno segnato il lavoro come
+  terminato e la recensione esiste. Resta l'eccezione delle segnalazioni già
+  decise, dove il cliente può recensire anche un lavoro mai chiuso (attesa come
+  prima). `updateStatus(COMPLETED)` del calendario ora salva anche
+  `professionalCompletedAt`, per far partire l'attesa.
+- Email `NEW_REVIEW` al professionista: se non ha ancora chiuso il lavoro lo
+  invita a segnarlo come terminato e a recensire il cliente.
+- Testi aggiornati nel modulo della recensione e in "Le mie recensioni".
+
+**Conseguenza:** se solo una parte clicca "Lavoro terminato", la sua
+recensione resterebbe nascosta senza limite di tempo: risolto in §190.
+
+**Verifica:** typecheck di `apps/api` e `apps/web`, test API (nuovo
+`reviews.service.test.ts`, casi aggiunti in `job-issues.test.ts`).
+
+## 190. Quando solo una parte clicca "Lavoro terminato"
+
+**Richiesta dell'utente:** scelta l'opzione "chiusura automatica" tra quelle
+proposte, regolandosi sui termini già fissati per aprire un reclamo o chiedere
+un rimborso.
+
+**Decisione:** il termine è lo stesso entro cui si segnala un lavoro fatto male
+(`BAD_WORK_REPORT_DAYS`, 14 giorni), contato dal clic di chi ha chiuso.
+`CompletionDeadlineService` (cron orario, `apps/api/src/bookings/`):
+- promemoria all'altra parte al 3° e al 10° giorno, con la data di scadenza
+  (`Booking.completionReminderCount`, un promemoria saltato si recupera);
+- **cliente silenzioso** (il professionista ha chiuso): al 14° giorno il lavoro
+  vale come confermato anche dal cliente (`clientConfirmedCompletedAt` +
+  `completionAutoClosedAt`). Il pagamento non cambia: online l'accredito segue
+  già i suoi 7 giorni, il diretto resta da confermare;
+- **professionista silenzioso** (il cliente ha chiuso): al 14° giorno si segna
+  solo `completionAutoClosedAt`. Il lavoro resta `CONFIRMED`, perché l'importo
+  finale lo inserisce solo lui e può ancora farlo; se ci sono soldi online in
+  custodia avvisiamo gli admin FINANCE/SUPER (`ADMIN_JOB_NOT_CLOSED`);
+- con una segnalazione aperta non scatta nulla: decide la segnalazione;
+- dopo la chiusura d'ufficio le recensioni non aspettano altri 3 giorni
+  (`ReviewsService.runAutoPublishCheck`);
+- la conferma d'ufficio non riapre i 14 giorni per segnalare un problema
+  (`jobIssueTypesAllowed` ignora una conferma con `completionAutoClosedAt`).
+
+Nuove notifiche (argomento "Lavori e appuntamenti", sito + email):
+`JOB_CONFIRM_REMINDER`, `JOB_AUTO_CONFIRMED`, `JOB_CLOSE_REMINDER`,
+`JOB_CLOSE_EXPIRED`, `ADMIN_JOB_NOT_CLOSED`. Migrazione
+`20261007180000_completion_auto_close`.
+
+**Verifica:** typecheck `apps/api` e `apps/web`, test API (nuovo
+`completion-deadline.test.ts`, casi aggiunti in `job-issues.test.ts` e
+`reviews.service.test.ts`).

@@ -983,6 +983,11 @@ model Booking {
   // recensisci" non serve lato professionista perché la sua stessa azione
   // di completamento È già la sua conferma.
   clientConfirmedCompletedAt      DateTime?
+  // Quando solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md
+  // §190): promemoria inviati all'altra parte, e quando il lavoro è stato
+  // chiuso d'ufficio allo scadere del termine per segnalare un problema.
+  completionReminderCount         Int       @default(0)
+  completionAutoClosedAt          DateTime?
 
   // Nota per il cliente quando il professionista annulla un intervento già
   // confermato (richiesta esplicita dell'utente) — facoltativa, distinta

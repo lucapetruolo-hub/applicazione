@@ -324,6 +324,8 @@ export type JobIssueWindowInput = {
   scheduledEndAt: Date | null;
   professionalCompletedAt: Date | null;
   clientConfirmedCompletedAt: Date | null;
+  /** Conferma d'ufficio allo scadere del termine (§190): non riapre la finestra. */
+  completionAutoClosedAt?: Date | null;
   hasIssue: boolean;
 };
 
@@ -338,7 +340,8 @@ export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssu
   if (!b.clientConfirmedCompletedAt && t >= end && t <= end + NO_SHOW_REPORT_DAYS * DAY_MS) {
     allowed.push("NO_SHOW");
   }
-  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, b.clientConfirmedCompletedAt?.getTime() ?? 0);
+  const clientConfirmed = b.completionAutoClosedAt ? null : b.clientConfirmedCompletedAt;
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, clientConfirmed?.getTime() ?? 0);
   if (t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
     allowed.push("BAD_WORK");
   }
@@ -390,8 +393,10 @@ export const resolveJobIssueAppealSchema = z.object({
 export type ResolveJobIssueAppealInput = z.infer<typeof resolveJobIssueAppealSchema>;
 
 /**
- * Il cliente può recensire: dopo aver confermato un lavoro completato, come
- * prima; oppure dopo la decisione dell'admin su una sua segnalazione, anche
+ * Il cliente può recensire: subito dopo aver cliccato "Lavoro terminato",
+ * anche se il professionista non l'ha ancora fatto (docs/CHANGELOG.md §189:
+ * la recensione resta nascosta finché entrambi non hanno chiuso e
+ * recensito); oppure dopo la decisione dell'admin su una sua segnalazione, anche
  * se il lavoro non è mai stato chiuso (es. mancata presentazione), o dopo
  * un accordo in chat. Mai mentre la segnalazione è aperta (in chat o in esame).
  */
@@ -404,7 +409,7 @@ export function clientCanReview(b: {
   if (b.hasReview) return false;
   if (b.issueStatus === "OPEN" || b.issueStatus === "CHAT") return false;
   if (b.issueStatus === "UPHELD" || b.issueStatus === "REJECTED" || b.issueStatus === "RESOLVED" || b.issueStatus === "UNRESOLVED") return true;
-  return b.status === "COMPLETED" && b.clientConfirmedCompletedAt !== null;
+  return (b.status === "COMPLETED" || b.status === "CONFIRMED") && b.clientConfirmedCompletedAt !== null;
 }
 
 type IssueRow = {

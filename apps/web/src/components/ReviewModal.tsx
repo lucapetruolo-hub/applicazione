@@ -150,8 +150,8 @@ export function ReviewModal({
         <XStack gap="$2" alignItems="flex-start" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
           <Icon name="shield" size={15} color={brand.grafite70} strokeWidth={1.5} />
           <Text flex={1} fontSize="$2" color={brand.grafite70}>
-            La tua recensione sarà visibile appena anche l&apos;altra parte avrà lasciato la sua — o comunque entro
-            qualche giorno.
+            La tua recensione sarà visibile quando anche l&apos;altra parte avrà segnato il lavoro come terminato e
+            lasciato la sua, o comunque 3 giorni dopo che entrambi lo avrete segnato come terminato.
           </Text>
         </XStack>
 

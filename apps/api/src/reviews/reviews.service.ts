@@ -11,7 +11,25 @@ import { NotificationsService } from "../notifications/notifications.service";
 // questi giorni di attesa — a quel punto la controparte mancante riceve una
 // recensione automatica a 5 stelle (mostrata con l'etichetta "(recensione
 // automatica)"), che sblocca comunque quella già scritta.
-const AUTO_REVIEW_AFTER_DAYS = 3;
+// Da docs/CHANGELOG.md §189 ognuno recensisce subito dopo il proprio
+// "Lavoro terminato", anche prima dell'altro: l'attesa parte solo quando
+// entrambi hanno segnato il lavoro come terminato (e dalla recensione, se
+// arriva dopo), così la coppia non diventa mai pubblica prima.
+export const AUTO_REVIEW_AFTER_DAYS = 3;
+
+// Segnalazione decisa: il cliente può recensire anche un lavoro mai chiuso
+// (clientCanReview), e l'attesa resta quella di sempre.
+const DECIDED_ISSUE_STATUSES = ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] as const;
+
+/** Entrambi hanno cliccato "Lavoro terminato" da almeno `threshold`. */
+function bothCompletedBefore(threshold: Date) {
+  return {
+    status: "COMPLETED" as const,
+    clientConfirmedCompletedAt: { lt: threshold },
+    // null solo per lavori chiusi dal vecchio cambio di stato del calendario.
+    OR: [{ professionalCompletedAt: null }, { professionalCompletedAt: { lt: threshold } }],
+  };
+}
 
 @Injectable()
 export class ReviewsService {
@@ -154,8 +172,8 @@ export class ReviewsService {
       if (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") {
         throw new ForbiddenException("Potrai recensire quando la tua segnalazione sarà chiusa.");
       }
-      if (booking.status !== "COMPLETED") throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
-      throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
+      if (!booking.clientConfirmedCompletedAt) throw new ForbiddenException("Conferma prima che il lavoro è terminato dal tuo lato.");
+      throw new ForbiddenException("Puoi recensire solo un lavoro completato.");
     }
 
     const review = await this.prisma.review.create({
@@ -171,6 +189,9 @@ export class ReviewsService {
       bookingId: booking.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
       published: booking.clientReview !== null,
+      // Il cliente può recensire prima che il professionista segni il lavoro
+      // come terminato (§189): l'email gli ricorda di farlo.
+      professionalCompleted: booking.status === "COMPLETED",
     });
 
     return { id: review.id };
@@ -179,7 +200,8 @@ export class ReviewsService {
   /**
    * Sblocco automatico "doppio cieco" (richiesta esplicita dell'utente):
    * se una recensione esiste da più di AUTO_REVIEW_AFTER_DAYS giorni senza
-   * la controparte sull'altro lato, genera quella mancante a 5 stelle
+   * la controparte sull'altro lato, e da altrettanti giorni entrambi hanno
+   * segnato il lavoro come terminato (§189), genera quella mancante a 5 stelle
    * (isAutomatic: true) — così entrambe risultano presenti e la coppia
    * diventa pubblica (vedi il filtro "entrambe esistono" in
    * ProfessionalsService.search/getById).
@@ -189,7 +211,19 @@ export class ReviewsService {
     const threshold = new Date(Date.now() - AUTO_REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000);
 
     const staleReviews = await this.prisma.review.findMany({
-      where: { isAutomatic: false, createdAt: { lt: threshold }, booking: { clientReview: { is: null } } },
+      where: {
+        isAutomatic: false,
+        createdAt: { lt: threshold },
+        booking: {
+          clientReview: { is: null },
+          OR: [
+            bothCompletedBefore(threshold),
+            // Chiuso d'ufficio dopo i promemoria (§190): l'altra parte ha già avuto il suo tempo.
+            { completionAutoClosedAt: { not: null } },
+            { issue: { status: { in: [...DECIDED_ISSUE_STATUSES] } } },
+          ],
+        },
+      },
       include: { booking: true },
     });
     for (const review of staleReviews) {
@@ -204,7 +238,13 @@ export class ReviewsService {
       where: {
         isAutomatic: false,
         createdAt: { lt: threshold },
-        booking: { review: { is: null }, OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
+        booking: {
+          review: { is: null },
+          AND: [
+            { OR: [bothCompletedBefore(threshold), { completionAutoClosedAt: { not: null } }] },
+            { OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
+          ],
+        },
       },
     });
     for (const clientReview of staleClientReviews) {
