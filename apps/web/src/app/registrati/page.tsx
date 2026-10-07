@@ -4,7 +4,7 @@ import { Suspense, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { registerSchema } from "@professionisti/shared";
+import { parseSubscriptionTier, registerSchema } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
@@ -345,6 +345,9 @@ function RegistratiForm() {
 
   const roleParam = searchParams.get("ruolo");
   const isProfessional = roleParam === "professionista";
+  // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): dopo
+  // l'iscrizione si va dritti al pagamento di quel livello.
+  const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
@@ -405,6 +408,10 @@ function RegistratiForm() {
     // (/dashboard/tipo-attivita, skippabile) prima del profilo pubblico —
     // un professionista che accede di nuovo (non isNewUser) va invece
     // dritto in Dashboard come già prima.
+    if (chosenTier) {
+      router.push(`/dashboard/abbonamento?livello=${chosenTier}${isNewUser ? "&nuovo=1" : ""}`);
+      return;
+    }
     router.push(isNewUser ? "/dashboard/tipo-attivita" : "/dashboard");
   }
 
