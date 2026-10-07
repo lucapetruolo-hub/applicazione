@@ -17,12 +17,14 @@ import {
   welcomeClientEmail,
   welcomeProfessionalEmail,
 } from "../email/templates/account-emails";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
+import { googleNameFields, googleNameRepair } from "./google-name";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
 const EMAIL_TOKEN_HOURS = 48;
-/** Validità del link per reimpostare la password (docs/CHANGELOG.md §183). */
+/** Validità del link per reimpostare la password (docs/CHANGELOG.md §185). */
 const PASSWORD_RESET_MINUTES = 60;
 
 function hashEmailToken(token: string): string {
@@ -40,6 +42,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly emailService: EmailService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -87,7 +90,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
     });
-    // Benvenuto (docs/CHANGELOG.md §183). Al professionista contiene anche
+    // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
     // il link di conferma email (§178), al cliente no: non deve confermare nulla.
     if (role === "PROFESSIONAL") {
       await this.sendVerificationEmail(user.id, email, name ?? null, "welcome");
@@ -126,7 +129,7 @@ export class AuthService {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
     }
 
-    let payload: { sub?: string; email?: string; name?: string } | undefined;
+    let payload: { sub?: string; email?: string; name?: string; given_name?: string; family_name?: string; picture?: string } | undefined;
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
@@ -159,13 +162,19 @@ export class AuthService {
       throw new BadRequestException("Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.");
     }
 
+    // Foto dell'account Google come immagine profilo, se l'account non ne
+    // ha già una (l'utente può sempre cambiarla da /account o dal profilo).
+    const imageUrl =
+      payload.picture && !existingUser?.imageUrl ? await this.cloudinaryService.uploadImageFromUrl(payload.picture, "professionisti") : null;
+
     const user =
       existingUser ??
       (await this.prisma.user.create({
         data: {
           googleId: payload.sub,
           email: payload.email,
-          name: payload.name,
+          ...googleNameFields(payload),
+          imageUrl,
           role: role ?? "CLIENT",
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
@@ -180,6 +189,13 @@ export class AuthService {
 
     if (existingUser && !existingUser.googleId) {
       await this.prisma.user.update({ where: { id: existingUser.id }, data: { googleId: payload.sub } });
+    }
+    // Account creati con Google prima della correzione avevano nome e
+    // cognome tutti nel campo nome: al primo accesso si sistemano, solo se
+    // il cognome manca e il nome è ancora quello completo di Google.
+    const nameFix = existingUser ? googleNameRepair(existingUser, payload) : null;
+    if (existingUser && (nameFix || imageUrl)) {
+      await this.prisma.user.update({ where: { id: existingUser.id }, data: { ...nameFix, ...(imageUrl ? { imageUrl } : {}) } });
     }
     // Accedere con Google sulla stessa email ne dimostra il possesso. Una
     // password scelta prima della conferma potrebbe essere di chi si è
@@ -196,7 +212,7 @@ export class AuthService {
     if (existingUser) {
       await this.touchProfessionalActivity(user.id, user.role);
     } else if (user.email) {
-      // Benvenuto anche a chi si iscrive con Google (docs/CHANGELOG.md §183): email già verificata, nessun link.
+      // Benvenuto anche a chi si iscrive con Google (docs/CHANGELOG.md §185): email già verificata, nessun link.
       const name = user.name ? user.name.split(" ")[0]! : null;
       await this.emailService.send({ to: user.email, ...(user.role === "PROFESSIONAL" ? welcomeProfessionalEmail(name, null) : welcomeClientEmail(name)) });
     }
@@ -312,7 +328,7 @@ export class AuthService {
   }
 
   /**
-   * Recupero password (docs/CHANGELOG.md §183): manda un link valido
+   * Recupero password (docs/CHANGELOG.md §185): manda un link valido
    * PASSWORD_RESET_MINUTES minuti, una volta sola. Risponde sempre allo stesso
    * modo, che l'account esista o no. Vale anche per chi si è iscritto con
    * Google: così può aggiungere una password.
@@ -399,7 +415,7 @@ export class AuthService {
         passwordResetTokenHash: null,
       },
     });
-    // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §183).
+    // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).
     if (before?.email) await this.emailService.send({ to: before.email, ...accountDeletedEmail(before.name) });
   }
 

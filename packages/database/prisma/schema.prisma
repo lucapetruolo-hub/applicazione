@@ -119,7 +119,7 @@ model User {
   emailVerifiedAt        DateTime?
   emailTokenHash         String?     @unique
   emailTokenExpiresAt    DateTime?
-  // Recupero password (docs/CHANGELOG.md §183): impronta SHA-256 del link
+  // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
   // mandato via email, valido 60 minuti e una volta sola.
   passwordResetTokenHash String?     @unique
   passwordResetExpiresAt DateTime?

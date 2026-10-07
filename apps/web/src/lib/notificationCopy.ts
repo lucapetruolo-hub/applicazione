@@ -29,7 +29,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },
   BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha riaperto una prenotazione annullata." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
-  // Recensione del cliente (docs/CHANGELOG.md §183): mai il voto, per il "doppio cieco".
+  // Recensione del cliente (docs/CHANGELOG.md §185): mai il voto, per il "doppio cieco".
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
   // DSA artt. 16/17 ("Verbale di Conformità", Parte 1 punto 4): esito di una
   // segnalazione contenuti comunicato a chi l'ha presentata, e "statement of

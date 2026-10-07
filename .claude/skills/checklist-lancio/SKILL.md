@@ -198,7 +198,7 @@ prima del lancio"):
     `BookingDetailPanel.tsx`, admin finanza) al nome scelto. Per le email
     basta `apps/api/src/email/email-brand.ts` (nome, firma, email di
     assistenza; logo da `EMAIL_LOGO_URL` o, di default, `icon-192.png` del
-    sito) più `RESEND_FROM_EMAIL` su Render (docs/CHANGELOG.md §183).
+    sito) più `RESEND_FROM_EMAIL` su Render (docs/CHANGELOG.md §185).
 21bis. **Email di assistenza reale**: le email e alcune pagine indicano
     `supporto@professionisti.it`, provvisoria come il nome. Crearla col dominio
     del punto 5bis e aggiornarla in `email-brand.ts` e nelle pagine.
@@ -223,7 +223,7 @@ prima del lancio"):
     CLAUDE.md. Google Sign-In non ne ha bisogno. Nessun proxy/WAF
     Cloudflare davanti a Vercel: sconsigliato da Vercel e il sito non ha
     ancora un dominio proprio.
-25. ~~Email transazionali mancanti~~ — fatto (docs/CHANGELOG.md §183):
+25. ~~Email transazionali mancanti~~ — fatto (docs/CHANGELOG.md §185):
     benvenuto, richiesta inviata, preventivi e date, lavori, pagamenti,
     recensioni, recupero password, con modello unico. Partono a tutti solo
     dopo il dominio su Resend (punto 5bis); il nome del marchio si cambia in

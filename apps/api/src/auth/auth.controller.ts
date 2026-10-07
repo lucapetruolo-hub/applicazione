@@ -76,7 +76,7 @@ export class AuthController {
     });
   }
 
-  // Recupero password (docs/CHANGELOG.md §183): stessa risposta che
+  // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
   // l'account esista o no; limite stretto contro chi riempie di email una
   // casella altrui.
   @Throttle({ default: { limit: 3, ttl: 60_000 } })

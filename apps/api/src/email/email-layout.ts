@@ -1,7 +1,7 @@
 import { EMAIL_BRAND, emailLogoUrl, frontendUrl } from "./email-brand";
 
 /**
- * Modello grafico unico di tutte le email (docs/CHANGELOG.md §183): logo e
+ * Modello grafico unico di tutte le email (docs/CHANGELOG.md §185): logo e
  * nome in testa, titolo, testo, riquadro dei dettagli, un solo pulsante,
  * firma e piè di pagina. HTML a tabelle con stili in linea (l'unico che
  * Gmail, Outlook e Apple Mail mostrano allo stesso modo) più la versione in

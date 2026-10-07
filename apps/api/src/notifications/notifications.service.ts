@@ -44,7 +44,7 @@ export class NotificationsService {
    * QUOTE_DATE_CONFIRMED, QUOTE_DATE_REJECTED). Canale sempre PUSH: la riga
    * in tabella alimenta il conteggio non letti; i tipi elencati in
    * `email/templates/notification-emails.ts` partono anche via email
-   * (docs/CHANGELOG.md §183). Expo Push/Twilio restano rimandati.
+   * (docs/CHANGELOG.md §185). Expo Push/Twilio restano rimandati.
    *
    * Pubblica anche un push SSE (CTO — real-time): la riga DB resta l'unica
    * fonte di verità (il push è un acceleratore, mai l'unico modo di sapere
@@ -65,7 +65,7 @@ export class NotificationsService {
     // §152): stesso trattamento di una richiesta silenziata, la notifica
     // resta nella cronologia ma nasce letta.
     const prefs = await this.preferencesOf(userId);
-    // Email (docs/CHANGELOG.md §183): parte se il tipo ne ha una e il canale
+    // Email (docs/CHANGELOG.md §185): parte se il tipo ne ha una e il canale
     // email dell'argomento è acceso, anche con il sito spento. Mai per una
     // richiesta silenziata.
     if (!muted && NOTIFICATION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
@@ -96,7 +96,7 @@ export class NotificationsService {
   }
 
   /**
-   * Email che accompagna una notifica (docs/CHANGELOG.md §183): testi in
+   * Email che accompagna una notifica (docs/CHANGELOG.md §185): testi in
    * `email/templates/notification-emails.ts`, dati del lavoro caricati qui.
    * Non attesa dal chiamante (un fan-out a più professionisti non deve
    * rallentare la risposta) e mai bloccante: `EmailService.send` non lancia,
@@ -173,7 +173,7 @@ export class NotificationsService {
   }
 
   /**
-   * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §183),
+   * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185),
    * nell'argomento "Le tue richieste" delle preferenze.
    */
   emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean }): void {

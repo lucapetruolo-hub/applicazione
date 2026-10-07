@@ -2,7 +2,7 @@ import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
 
 /**
- * Email legate all'account (docs/CHANGELOG.md §183): benvenuto, conferma
+ * Email legate all'account (docs/CHANGELOG.md §185): benvenuto, conferma
  * dell'indirizzo, recupero password, invito per il profilo creato al
  * telefono, eliminazione. Sono messaggi di servizio: partono sempre, non
  * dipendono dalle preferenze di notifica.

@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { AuthService } from "./auth.service";
 
-/** Recupero password (docs/CHANGELOG.md §183). */
+/** Recupero password (docs/CHANGELOG.md §185). */
 function buildService() {
   const prisma = { user: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}) } };
   const emailService = { send: vi.fn().mockResolvedValue(true) };

@@ -1,6 +1,6 @@
 /**
  * Anteprima di tutte le email del sito con dati di esempio
- * (docs/CHANGELOG.md §183). Uso: `pnpm --filter @professionisti/api email:preview [cartella]`
+ * (docs/CHANGELOG.md §185). Uso: `pnpm --filter @professionisti/api email:preview [cartella]`
  * (default `email-preview/`): un file HTML per email più `index.json` con
  * gruppo, destinatario e oggetto di ciascuna. Non manda nulla.
  */

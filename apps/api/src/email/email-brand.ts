@@ -1,5 +1,5 @@
 /**
- * Nome, logo e colori di tutte le email (docs/CHANGELOG.md §183). Il marchio
+ * Nome, logo e colori di tutte le email (docs/CHANGELOG.md §185). Il marchio
  * "Professionisti" è provvisorio e cambierà prima del lancio: è l'unico punto
  * da toccare per le email (più `RESEND_FROM_EMAIL` su Render per il mittente).
  * I colori sono gli stessi della palette "Vicinato" (`packages/ui/src/tokens.ts`),

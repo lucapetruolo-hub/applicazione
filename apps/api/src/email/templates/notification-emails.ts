@@ -21,7 +21,7 @@ import { formatAppointment, formatDay, formatDeadline, formatEur } from "../emai
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
- * (docs/CHANGELOG.md §183). Una voce per ogni tipo di notifica che parte
+ * (docs/CHANGELOG.md §185). Una voce per ogni tipo di notifica che parte
  * anche via email; i tipi assenti restano solo sul sito (chat, promemoria
  * "ricordamelo", rifiuto di un singolo professionista: arrivano spesso e
  * riempirebbero la casella).

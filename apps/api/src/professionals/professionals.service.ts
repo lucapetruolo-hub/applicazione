@@ -598,6 +598,12 @@ export class ProfessionalsService {
       select: { id: true, profileDeclarationVersion: true, invitePendingAt: true },
     });
     const isFirstTimeCreation = existingProfile === null;
+    // Alla creazione senza un'immagine scelta, il profilo pubblico parte
+    // dalla foto dell'account (quella di Google, se registrato con Google).
+    const accountImageUrl =
+      isFirstTimeCreation && !input.imageUrl
+        ? ((await this.prisma.user.findUnique({ where: { id: userId }, select: { imageUrl: true } }))?.imageUrl ?? undefined)
+        : undefined;
 
     // Dichiarazione di responsabilità (docs/CHANGELOG.md §158): senza la
     // versione attuale già accettata, il salvataggio richiede la casella.
@@ -648,7 +654,7 @@ export class ProfessionalsService {
         longitude,
         bio: input.bio,
         remoteAvailable: input.remoteAvailable,
-        imageUrl: input.imageUrl,
+        imageUrl: input.imageUrl || accountImageUrl,
         portfolioUrls: input.portfolioUrls,
         spokenLanguages: input.spokenLanguages,
         yearsOfExperience: input.yearsOfExperience ?? null,

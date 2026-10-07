@@ -149,7 +149,7 @@ export const verifyEmailSchema = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
-/** Recupero password (docs/CHANGELOG.md §183): richiesta del link. */
+/** Recupero password (docs/CHANGELOG.md §185): richiesta del link. */
 export const passwordResetRequestSchema = z.object({
   email: z.string().trim().email("Email non valida"),
 });

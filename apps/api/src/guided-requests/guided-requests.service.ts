@@ -248,7 +248,7 @@ export class GuidedRequestsService {
       await this.prisma.guidedRequest.update({ where: { id: guidedRequest.id }, data: { expiresAt: requestExpiresAt } });
     }
 
-    // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §183).
+    // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     this.notificationsService.emailRequestSent(clientId, {
       category: category.label,
       city: input.city ?? null,
@@ -363,6 +363,10 @@ export class GuidedRequestsService {
           id: quote.id,
           professionalProfileId: quote.professionalProfileId,
           businessName: quote.professionalProfile.businessName,
+          // Foto profilo accanto al nome nella scheda del preventivo
+          // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
+          // di chi si tratta). Mai per un profilo eliminato.
+          imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
           items: quote.items.map((item) => ({
             id: item.id,
             name: item.name,

@@ -165,7 +165,7 @@ export class ReviewsService {
     // Metriche di affidabilità (CLAUDE.md §15, evento 5).
     await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
 
-    // Avviso al professionista (docs/CHANGELOG.md §183). Mai il voto: con il
+    // Avviso al professionista (docs/CHANGELOG.md §185). Mai il voto: con il
     // "doppio cieco" lo vede solo quando ha recensito anche lui il cliente.
     await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: booking.id,

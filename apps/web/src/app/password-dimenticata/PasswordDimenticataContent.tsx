@@ -9,7 +9,7 @@ import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { apiClient } from "@/lib/apiClient";
 
 /**
- * Recupero password (docs/CHANGELOG.md §183): si chiede il link via email.
+ * Recupero password (docs/CHANGELOG.md §185): si chiede il link via email.
  * La risposta è sempre la stessa, che l'account esista o no.
  */
 export function PasswordDimenticataContent() {

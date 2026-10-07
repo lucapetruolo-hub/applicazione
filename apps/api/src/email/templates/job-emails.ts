@@ -4,7 +4,7 @@ import { formatAppointment } from "../email-format";
 
 /**
  * Email legate a una richiesta o a un appuntamento che non nascono da una
- * notifica del sito (docs/CHANGELOG.md §183).
+ * notifica del sito (docs/CHANGELOG.md §185).
  */
 
 /** Conferma al cliente che la richiesta è partita. */

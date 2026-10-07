@@ -89,6 +89,8 @@ export type ClientBooking = {
   updatedAt: string;
   status: BookingStatus;
   businessName: string;
+  /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
+  professionalImageUrl: string | null;
   professionalProfileId: string;
   /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
   guidedRequestId: string | null;
@@ -198,6 +200,8 @@ export type ClientGuidedRequest = {
     id: string;
     professionalProfileId: string;
     businessName: string;
+    /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
+    imageUrl: string | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
     sentAt: string;
@@ -846,7 +850,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
       }),
 
-    /** Recupero password (docs/CHANGELOG.md §183): risponde sempre `success`, che l'account esista o no. */
+    /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
     requestPasswordReset: (email: string) =>
       request<{ success: boolean }>("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email }) }),
 

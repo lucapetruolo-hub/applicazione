@@ -4,7 +4,7 @@ import { renderEmail } from "./email-layout";
 import { EMAIL_BRAND } from "./email-brand";
 import { NOTIFICATION_EMAIL_TYPES, notificationEmail, type NotificationEmailContext } from "./templates/notification-emails";
 
-/** Modelli email (docs/CHANGELOG.md §183). */
+/** Modelli email (docs/CHANGELOG.md §185). */
 const ctx: NotificationEmailContext = {
   name: "Mario",
   category: "Idraulico",

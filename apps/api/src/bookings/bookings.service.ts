@@ -892,6 +892,9 @@ export class BookingsService {
       updatedAt: booking.updatedAt.toISOString(),
       status: booking.status,
       businessName: booking.professionalProfile.businessName,
+      // Foto profilo accanto al nome nella scheda della richiesta (richiesta
+      // esplicita dell'utente). Mai per un profilo eliminato.
+      professionalImageUrl: booking.professionalProfile.deletedAt ? null : booking.professionalProfile.imageUrl,
       professionalProfileId: booking.professionalProfileId,
       // Richiesta guidata di origine, per il bottone "Vai alla cronologia
       // della richiesta" (richiesta esplicita dell'utente) — null per le

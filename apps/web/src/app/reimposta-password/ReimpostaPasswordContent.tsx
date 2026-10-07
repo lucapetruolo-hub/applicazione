@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 /**
  * Link ricevuto via email per reimpostare la password (docs/CHANGELOG.md
- * §183): si sceglie la nuova password e si entra subito nell'account.
+ * §185): si sceglie la nuova password e si entra subito nell'account.
  */
 export function ReimpostaPasswordContent() {
   const token = useSearchParams().get("token") ?? "";

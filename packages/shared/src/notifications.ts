@@ -30,7 +30,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
   richieste: {
     professional: { label: "Nuove richieste", description: "Quando un cliente ti chiede un preventivo." },
     client: { label: "Le tue richieste", description: "Conferma dell'invio, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
-    // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §183).
+    // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_SENT"],
     activeChannels: ["inApp", "email"],
   },
@@ -78,7 +78,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_PAYOUT_ACCOUNT_NEEDED",
       "ADMIN_JOB_BALANCE_UNPAID",
       "BOOKING_REMINDER",
-      // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §183).
+      // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
     ],
     activeChannels: ["inApp", "email"],
