@@ -16169,6 +16169,14 @@ la A: prima l'email, poi la password. Niente conferma email per i clienti
 - Il passaggio dalle caselle alla dicitura va verificato dall'avvocato
   insieme ai Termini (checklist di lancio).
 
+- Richiesta successiva dell'utente ("non mi piacciono le ombre", "mi piace
+  una cosa più pulita"): `/registrati` (scelta del ruolo e cliente) su fondo
+  bianco e colonna centrata come la registrazione professionista, senza
+  scheda con ombra, forme sfumate, icona tonda, "Passo 1/2 di 2" ed
+  etichette di fiducia; le card di scelta ruolo cambiano solo il bordo al
+  passaggio del mouse, senza ombra. Tolte le classi CSS rimaste inutilizzate
+  (`auth-page-blob*`, `auth-card-in`).
+
 **Verifica:** test di `AuthService.emailStatus` (4 casi); typecheck di
 `apps/api` e `apps/web`; schermate in locale con un'API finta, a 1280 e 390
 px, dei passi email, email nuova, account con password e account Google.
