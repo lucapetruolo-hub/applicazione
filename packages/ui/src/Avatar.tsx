@@ -27,7 +27,7 @@ function initials(name: string): string {
 export function Avatar({ name, imageUrl, size = 40 }: AvatarProps) {
   if (imageUrl) {
     return (
-      <YStack width={size} height={size} borderRadius={size / 2} overflow="hidden">
+      <YStack width={size} height={size} borderRadius={size / 2} overflow="hidden" flexShrink={0}>
         <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} />
       </YStack>
     );
@@ -38,6 +38,7 @@ export function Avatar({ name, imageUrl, size = 40 }: AvatarProps) {
       width={size}
       height={size}
       borderRadius={size / 2}
+      flexShrink={0}
       backgroundColor={brand.cianografiaVelo}
       alignItems="center"
       justifyContent="center"

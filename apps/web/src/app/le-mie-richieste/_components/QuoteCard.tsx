@@ -6,7 +6,7 @@ import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice, type ScheduleChange } from "@professionisti/shared";
 import { PaymentChoice } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TimelineModal } from "@/components/TimelineModal";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -225,9 +225,13 @@ export function QuoteCard({
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2" flexWrap="wrap">
         <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-          <Text fontWeight="600" color={brand.cianografiaScuro}>
-            {quote.businessName}
-          </Text>
+          {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
+          <XStack alignItems="center" gap="$2">
+            <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
+            <Text fontWeight="600" color={brand.cianografiaScuro}>
+              {quote.businessName}
+            </Text>
+          </XStack>
         </Link>
         {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
