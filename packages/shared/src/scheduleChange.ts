@@ -47,3 +47,10 @@ export function scheduleChangeAlternative(change: ScheduleChange): string {
   if (change === "time") return "un altro orario";
   return "un'altra data e un altro orario";
 }
+
+/** "della data", "dell'orario", "di data e orario" — per "una modifica …". */
+export function scheduleChangeOf(change: ScheduleChange): string {
+  if (change === "date") return "della data";
+  if (change === "time") return "dell'orario";
+  return "di data e orario";
+}

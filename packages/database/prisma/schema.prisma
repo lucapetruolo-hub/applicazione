@@ -838,14 +838,20 @@ model Quote {
   // quando il professionista modifica di nuovo (sostituita).
   professionalCounterNote String?
   // Nota facoltativa scritta dal cliente quando rifiuta il preventivo
-  // (docs/CHANGELOG.md §186), mostrata al professionista. Valorizzata solo
+  // (docs/CHANGELOG.md §188), mostrata al professionista. Valorizzata solo
   // in REJECTED: azzerata quando il professionista invia un nuovo
   // preventivo (resta comunque nella cronologia della conversazione).
   rejectionNote           String?
   // Quando il professionista ha inviato l'ultimo nuovo preventivo dopo un
-  // rifiuto del cliente (docs/CHANGELOG.md §186). `createdAt` resta il
+  // rifiuto del cliente (docs/CHANGELOG.md §188). `createdAt` resta il
   // primo invio: i tempi della richiesta si contano sempre dal suo invio.
   resentAt                DateTime?
+  // Appuntamento che il professionista ha appena sostituito (modifica del
+  // preventivo o risposta a una proposta del cliente): il cliente vede
+  // "prima → ora" come il professionista vede la proposta del cliente
+  // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
+  previousStartDate       DateTime?
+  previousEndDate         DateTime?
   notes                   String?
   status                  QuoteStatus @default(SENT)
   createdAt               DateTime    @default(now())

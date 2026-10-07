@@ -141,7 +141,7 @@ const BUILDERS: Record<string, Builder> = {
 
   // ── Preventivi e date ──────────────────────────────────────────────────
   NEW_QUOTE: (payload, ctx) => {
-    // Nuovo preventivo dopo un rifiuto (docs/CHANGELOG.md §186).
+    // Nuovo preventivo dopo un rifiuto (docs/CHANGELOG.md §188).
     const resent = payload.resent === true;
     return {
       kind: "notification",
@@ -171,7 +171,7 @@ const BUILDERS: Record<string, Builder> = {
     cta: proRequests("Apri il lavoro"),
   }),
   QUOTE_REJECTED: (payload, ctx) => {
-    // Nota del cliente e nuovo preventivo (docs/CHANGELOG.md §186): la nota
+    // Nota del cliente e nuovo preventivo (docs/CHANGELOG.md §188): la nota
     // va nel riquadro, mai nel testo, così non passa la formattazione.
     const note = str(payload.note);
     const canResend = payload.canResend === true;

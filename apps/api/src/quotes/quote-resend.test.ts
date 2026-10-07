@@ -4,7 +4,7 @@ import { quoteResendWindow } from "./quote-resend";
 const now = new Date("2026-10-07T12:00:00Z");
 const openRequest = { status: "MATCHED", expiresAt: new Date("2026-10-15T12:00:00Z"), hiddenAt: null };
 
-describe("quoteResendWindow (docs/CHANGELOG.md §186)", () => {
+describe("quoteResendWindow (docs/CHANGELOG.md §188)", () => {
   it("permette un nuovo preventivo fino alla scadenza della richiesta, contata dal suo invio", () => {
     expect(quoteResendWindow({ quoteStatus: "REJECTED", hasBooking: false, request: openRequest, clientDeleted: false }, now)).toEqual({
       canResend: true,

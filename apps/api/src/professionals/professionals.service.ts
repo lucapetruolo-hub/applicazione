@@ -969,7 +969,7 @@ export class ProfessionalsService {
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla
               // scadenza della richiesta contata dal suo invio
-              // (docs/CHANGELOG.md §186).
+              // (docs/CHANGELOG.md §188).
               ...(() => {
                 const { canResend, resendUntil } = quoteResendWindow({
                   quoteStatus: quote.status,

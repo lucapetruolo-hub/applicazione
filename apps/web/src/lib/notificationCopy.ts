@@ -92,7 +92,7 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (change && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo.` };
   }
-  // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §186).
+  // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   if (type === "NEW_QUOTE" && data.resent === true) {
     return { icon: "📬", message: "Hai ricevuto un nuovo preventivo al posto di quello che avevi rifiutato." };

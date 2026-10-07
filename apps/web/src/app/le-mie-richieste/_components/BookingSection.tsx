@@ -11,7 +11,7 @@ import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
-import { UnreadDot } from "@/components/UnreadDot";
+import { ContactButton } from "@/components/ContactButton";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { GuidedRequestCard } from "./GuidedRequestCard";
 
@@ -130,22 +130,14 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       </Text>
 
       {booking.guidedRequestId ? (
-        <XStack
-          alignItems="center"
-          gap="$1"
-          alignSelf="flex-start"
-          cursor="pointer"
-          accessibilityRole="button"
+        <ContactButton
+          compact
+          unreadCount={effectiveUnreadCount}
           onPress={() => {
             setShowTimeline(true);
             dismissUnread();
           }}
-        >
-          <Text fontSize="$2" fontWeight="600" color={brand.cianografiaScuro}>
-            Contatta/Cronologia
-          </Text>
-          <UnreadDot count={effectiveUnreadCount} />
-        </XStack>
+        />
       ) : null}
 
       {booking.meetingLink ? (
@@ -250,33 +242,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </YStack>
       ) : null}
 
-      {booking.professionalAccountDeleted ? (
-        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {confirmingDeleteBooking ? (
-            <>
-              <Text fontSize="$2" color={brand.urgenza}>
-                Eliminare questa prenotazione dalla lista?
-              </Text>
-              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteBooking} disabled={isDeletingBooking} opacity={isDeletingBooking ? 0.6 : 1}>
-                {isDeletingBooking ? "Eliminazione..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
-                Annulla
-              </Button>
-            </>
-          ) : (
-            <Text color={brand.urgenza} fontWeight="600" fontSize="$2" cursor="pointer" accessibilityRole="button" onPress={() => setConfirmingDeleteBooking(true)}>
-              Elimina prenotazione
-            </Text>
-          )}
-        </XStack>
-      ) : null}
-      {deleteError ? (
-        <Text color={brand.urgenza} fontSize="$3">
-          {deleteError}
-        </Text>
-      ) : null}
-
       {showNoShowModal ? (
         <ReportIssueModal
           businessName={booking.businessName}
@@ -329,6 +294,35 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           ) : null}
         </YStack>
       ) : null}
+
+      {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}
+      {booking.professionalAccountDeleted ? (
+        <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
+          {confirmingDeleteBooking ? (
+            <>
+              <Text fontSize="$2" color={brand.urgenza}>
+                Eliminare questa prenotazione dalla lista?
+              </Text>
+              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteBooking} disabled={isDeletingBooking} opacity={isDeletingBooking ? 0.6 : 1}>
+                {isDeletingBooking ? "Eliminazione..." : "Conferma"}
+              </Button>
+              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
+                Annulla
+              </Button>
+            </>
+          ) : (
+            <Text color={brand.urgenza} fontWeight="600" fontSize="$2" cursor="pointer" accessibilityRole="button" onPress={() => setConfirmingDeleteBooking(true)}>
+              Elimina prenotazione
+            </Text>
+          )}
+        </XStack>
+      ) : null}
+      {deleteError ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {deleteError}
+        </Text>
+      ) : null}
+
 
       {showClientCompleteModal ? (
         <ClientCompleteModal

@@ -1,5 +1,5 @@
 /**
- * Nuovo preventivo dopo un rifiuto del cliente (docs/CHANGELOG.md §186,
+ * Nuovo preventivo dopo un rifiuto del cliente (docs/CHANGELOG.md §188,
  * richiesta esplicita dell'utente). Il tempo a disposizione si conta sempre
  * dall'invio della richiesta, mai dal rifiuto: la finestra è la scadenza
  * della richiesta (`GuidedRequest.expiresAt`, fissata al suo invio), non una
