@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatServicePriceRange, quotePriceTotals, type JobPaymentChoice, type ScheduleChange } from "@professionisti/shared";
+import { formatServicePriceRange, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { TimelineModal } from "@/components/TimelineModal";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
@@ -53,28 +54,11 @@ export const MANUAL_OPTION_VALUE = "altro";
  * permette al cliente di accettarla o proporne un'altra, scelta tra le
  * fasce libere reali dell'agenda del professionista.
  */
-/**
- * Avviso al cliente quando il preventivo non rispetta quanto aveva chiesto:
- * dice se è cambiata la data, l'orario o entrambi, con ciò che aveva chiesto
- * (docs/CHANGELOG.md §180, prima diceva sempre "orario").
- */
-function changeFromRequestText(change: ScheduleChange, requestedDate: string | null, requestedTimeSlot: string): string {
-  const slot = requestedTimeSlot.replace("-", "–");
-  const day = requestedDate
-    ? new Date(requestedDate).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
-    : null;
-  if (change === "time") return `Il professionista ha proposto un orario diverso da quello richiesto (${slot}).`;
-  if (change === "date") return `Il professionista ha proposto una data diversa da quella richiesta${day ? ` (${day})` : ""}.`;
-  return `Il professionista ha proposto data e orario diversi da quelli richiesti (${day ? `${day}, ` : ""}${slot}).`;
-}
-
 export function QuoteCard({
   quote,
   token,
   onChanged,
   onAcceptQuote,
-  requestedDate,
-  requestedTimeSlot,
   guidedRequestId,
   serviceMode,
   isNew,
@@ -85,10 +69,6 @@ export function QuoteCard({
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
-  /** Giorno che il cliente aveva originariamente richiesto (ISO, mezzanotte UTC), per dire quale data aveva chiesto quando il professionista la cambia. */
-  requestedDate: string | null;
-  /** Fascia oraria che il cliente aveva originariamente richiesto (solo se la richiesta è nata da una fascia generica dell'agenda), per evidenziare se il professionista l'ha cambiata. */
-  requestedTimeSlot: string | null;
   /** Richiesta di origine, per il bottone "Cronologia". */
   guidedRequestId: string;
   /** Modalità della richiesta originale — filtra le fasce proponibili a quelle che offrono questa modalità. */
@@ -257,23 +237,37 @@ export function QuoteCard({
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
       </XStack>
-      {quote.changeFromRequest && requestedTimeSlot ? (
-        <YStack gap="$1" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$2" padding="$2">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
-            {changeFromRequestText(quote.changeFromRequest, requestedDate, requestedTimeSlot)}
-          </Text>
-        </YStack>
-      ) : null}
-      {quote.status === "SENT" && quote.professionalCounterNote ? (
-        <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
-          <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-            Il professionista ha risposto proponendo: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
-          </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
-            {quote.professionalCounterNote}
-          </Text>
-        </YStack>
-      ) : null}
+      {(() => {
+        // Stesso "prima → ora" che vede il professionista quando il cliente
+        // propone un'altra data (docs/CHANGELOG.md §186).
+        const change =
+          quote.status === "SENT" && quote.previousSchedule
+            ? scheduleChangeBetween(quote.previousSchedule, { start: quote.estimatedStartDate, end: quote.estimatedEndDate })
+            : null;
+        if (change && quote.previousSchedule) {
+          return (
+            <ScheduleChangeBox
+              title={`Il professionista ha modificato ${scheduleChangeObject(change)}`}
+              beforeLabel="Data originale"
+              beforeText={formatQuoteDateRange(quote.previousSchedule.start, quote.previousSchedule.end)}
+              afterLabel="Nuova data proposta"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+              note={quote.professionalCounterNote}
+            />
+          );
+        }
+        // Risposte precedenti a questa versione, senza l'appuntamento sostituito.
+        return quote.status === "SENT" && quote.professionalCounterNote ? (
+          <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
+            <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+              Il professionista ha risposto proponendo: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+            </Text>
+            <Text fontSize="$3" color={brand.grafite70}>
+              {quote.professionalCounterNote}
+            </Text>
+          </YStack>
+        ) : null;
+      })()}
       <YStack gap="$1">
         {quote.items.map((item) => (
           <Text key={item.id} color={brand.grafite70} fontSize="$3">

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
@@ -22,6 +22,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 
 export function RequestCard({
@@ -626,48 +627,20 @@ export function RequestCard({
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
-            <YStack
+            <ScheduleChangeBox
               marginTop="$3"
-              padding="$4"
-              borderRadius={radiusDoc}
-              backgroundColor="#FFF8E1"
-              borderWidth={1.5}
-              borderStyle="dashed"
-              borderColor={brand.ottone}
-              gap="$3"
-            >
-              <Text fontFamily="$body" fontWeight="800" fontSize={14} color="#8a5a00">
-                Il cliente ha richiesto una modifica
-              </Text>
-              <XStack alignItems="center" gap="$2">
-                <YStack flex={1} padding="$3" borderRadius={12} backgroundColor="#F5F5F5">
-                  <Text fontSize={10.5} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
-                    Data originale
-                  </Text>
-                  <Text fontSize={13} color={brand.grafite70} textDecorationLine="line-through">
-                    {formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
-                  </Text>
-                </YStack>
-                <Text fontSize={20} fontWeight="800" color={brand.ottone}>
-                  →
-                </Text>
-                <YStack flex={1} padding="$3" borderRadius={12} backgroundColor={brand.calce} borderWidth={2} borderColor={brand.ottone}>
-                  <Text fontSize={10.5} fontWeight="700" color={brand.ottone} textTransform="uppercase">
-                    Nuova data richiesta
-                  </Text>
-                  <Text fontSize={13} fontWeight="800" color={brand.grafite}>
-                    {formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
-                  </Text>
-                </YStack>
-              </XStack>
-              {lead.quote.clientProposedNote ? (
-                <YStack padding="$3" borderRadius={8} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
-                  <Text fontSize={13} color={brand.grafite}>
-                    {lead.quote.clientProposedNote}
-                  </Text>
-                </YStack>
-              ) : null}
-            </YStack>
+              title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(
+                scheduleChangeBetween(
+                  { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+                  { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
+                ) ?? "date",
+              )}`}
+              beforeLabel="Data originale"
+              beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+              afterLabel="Nuova data richiesta"
+              afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+              note={lead.quote.clientProposedNote}
+            />
           ) : null}
 
           <XStack flexWrap="wrap" gap="$4" paddingTop="$3">
