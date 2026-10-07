@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { registerSchema } from "@professionisti/shared";
-import { Button, Icon, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
+import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,26 +23,72 @@ export default function RegistratiPage() {
 }
 
 /**
- * Pagina di accesso pulita, sul modello di MioDottore (docs/CHANGELOG.md
- * §176, richiesta dell'utente: niente ombre, "una cosa più pulita"): fondo
- * bianco e colonna centrata, senza scheda, forme sfumate, icona tonda né
- * etichette di fiducia.
+ * Sfondo condiviso da RoleChoiceScreen/RegistratiForm — richiesta esplicita
+ * dell'utente di rendere la pagina "più innovativa" (stesso principio già
+ * seguito per NotificationBell, CLAUDE.md §76): due forme sfumate
+ * decorative dietro la card del form invece dello sfondo pesca piatto di
+ * prima. Le forme vivono in un proprio contenitore assoluto con
+ * `overflow:hidden` dedicato (`.auth-page-blobs`, apps/web/globals.css) —
+ * mai sull'intera colonna scrollabile, stesso bug già documentato altrove
+ * in questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
+ * overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
+ * prima stesura.
  */
-function CleanAuthPage({ children }: { children: ReactNode }) {
+function AuthPageBackground({ children }: { children: ReactNode }) {
   return (
-    <YStack width="100%" alignItems="center" backgroundColor={brand.calce} paddingVertical="$9" paddingHorizontal="$4" $gtMd={{ paddingVertical: "$10" }}>
-      <YStack width="100%" maxWidth={440} gap="$5">
+    <YStack width="100%" alignItems="center" backgroundColor={brand.gesso} paddingVertical="$9" paddingHorizontal="$4" position="relative">
+      <div className="auth-page-blobs" aria-hidden="true">
+        <div className="auth-page-blob auth-page-blob--one" />
+        <div className="auth-page-blob auth-page-blob--two" />
+      </div>
+      <YStack width="100%" alignItems="center" position="relative" zIndex={1}>
         {children}
       </YStack>
     </YStack>
   );
 }
 
-function AuthTitle({ children }: { children: ReactNode }) {
+/** Badge circolare con icona su sfondo a gradiente — in cima ad ogni card
+ * di questa pagina, stesso principio "un tocco di profondità in più" già
+ * usato per il pannello della campanella notifiche. */
+function AuthIconBadge({ icon }: { icon: "sparkles" | "search" | "hard-hat" }) {
   return (
-    <Text tag="h1" fontFamily="$heading" fontWeight="600" fontSize={32} lineHeight={38} letterSpacing={-0.3} color={brand.grafite}>
-      {children}
-    </Text>
+    <div
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: 999,
+        background: `linear-gradient(135deg, ${brand.cianografia}, ${brand.cianografiaScuro})`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <Icon name={icon} size={26} color="white" strokeWidth={1.5} />
+    </div>
+  );
+}
+
+/** Due chip di fiducia compatte, stesso principio della striscia già in uso
+ * nella pagina risultati di ricerca (CLAUDE.md §70, F1.4) — qui in versione
+ * ridotta a due voci pertinenti al momento della registrazione. */
+function TrustChips() {
+  return (
+    <XStack flexWrap="wrap" gap="$2" justifyContent="center">
+      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+        <Icon name="shield" size={13} color={brand.grafite70} strokeWidth={1.5} />
+        <Text fontSize={12} color={brand.grafite70}>
+          I tuoi dati sono protetti
+        </Text>
+      </XStack>
+      <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
+        <Icon name="heart-handshake" size={13} color={brand.grafite70} strokeWidth={1.5} />
+        <Text fontSize={12} color={brand.grafite70}>
+          Gratis, nessuna carta richiesta
+        </Text>
+      </XStack>
+    </XStack>
   );
 }
 
@@ -66,8 +112,19 @@ function RoleChoiceScreen({
   noAccountFound?: boolean;
 }) {
   return (
-    <CleanAuthPage>
-        <AuthTitle>Come vuoi registrarti?</AuthTitle>
+    <AuthPageBackground>
+      <Surface floating className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon="sparkles" />
+          <YStack alignItems="center" gap="$1">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+              Passo 1 di 2
+            </Text>
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              Come vuoi registrarti?
+            </Text>
+          </YStack>
+        </YStack>
 
         {noAccountFound ? (
           <YStack padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
@@ -141,7 +198,8 @@ function RoleChoiceScreen({
             </Text>
           </Link>
         </Text>
-    </CleanAuthPage>
+      </Surface>
+    </AuthPageBackground>
   );
 }
 
@@ -238,23 +296,38 @@ const CLIENT_HEADERS = {
 
 function ClientSignup({ onAuthenticated }: { onAuthenticated: () => void }) {
   return (
-    <CleanAuthPage>
-      <ClientEmailFirstAuth
-        intro="Richieste, preventivi e professionisti salvati saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti."
-        firstTimeNote="Se è la prima volta, creeremo il tuo account gratuito. Se hai già un account, ti chiediamo la password."
-        submitSuffix=""
-        onAuthenticated={onAuthenticated}
-        renderHeader={(step) => <AuthTitle>{CLIENT_HEADERS[step]}</AuthTitle>}
-      />
-      <Text fontSize="$3" color={brand.grafite70}>
-        Offri un servizio?{" "}
-        <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-          <Text color={brand.cianografiaScuro} fontWeight="600">
-            Iscriviti come professionista
-          </Text>
-        </Link>
-      </Text>
-    </CleanAuthPage>
+    <AuthPageBackground>
+      <Surface floating className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <ClientEmailFirstAuth
+          intro="Richieste, preventivi e professionisti salvati saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti."
+          firstTimeNote="Se è la prima volta, creeremo il tuo account gratuito. Se hai già un account, ti chiediamo la password."
+          submitSuffix=""
+          onAuthenticated={onAuthenticated}
+          renderHeader={(step) => (
+            <YStack alignItems="center" gap="$3">
+              <AuthIconBadge icon="search" />
+              <YStack alignItems="center" gap="$1">
+                <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                  Passo 2 di 2
+                </Text>
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+                  {CLIENT_HEADERS[step]}
+                </Text>
+              </YStack>
+            </YStack>
+          )}
+        />
+        <TrustChips />
+        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+          Offri un servizio?{" "}
+          <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
+            <Text color={brand.cianografiaScuro} fontWeight="600">
+              Iscriviti come professionista
+            </Text>
+          </Link>
+        </Text>
+      </Surface>
+    </AuthPageBackground>
   );
 }
 

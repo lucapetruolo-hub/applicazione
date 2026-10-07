@@ -21,7 +21,7 @@ const linkStyle = { textDecoration: "underline", color: brand.cianografiaScuro }
  */
 function LegalNotice({ action }: { action: string }) {
   return (
-    <Text fontSize="$2" lineHeight={18} color={brand.grafite70}>
+    <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
       {action} accetti i nostri{" "}
       <Link href="/termini" target="_blank" style={linkStyle}>
         Termini di Servizio
@@ -190,7 +190,7 @@ export function ClientEmailFirstAuth({
           </YStack>
         </form>
         <LegalNotice action="Continuando" />
-        <Text fontSize="$2" lineHeight={18} color={brand.grafite70}>
+        <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
           {firstTimeNote}
         </Text>
       </YStack>
