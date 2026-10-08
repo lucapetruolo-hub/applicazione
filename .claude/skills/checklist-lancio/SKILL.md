@@ -155,10 +155,13 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 **Claim non veritieri pubblicati dal vivo** (decisione esplicita
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
-15. Claim "Profili verificati" (footer, risultati di ricerca) — nessuna
-    verifica documenti/RC/KYC esiste in nessuna forma,
-    `ProfessionalProfile.verified` non viene mai impostato a `true` da
-    nessun punto del backend.
+15. ~~Claim "Profili verificati"~~ — la verifica esiste (docs/CHANGELOG.md
+    §200-§201): l'admin controlla documento e partita IVA e assegna il badge
+    da `/admin/verifiche`, il professionista lo chiede dal profilo. Footer e
+    risultati dicono ora "Badge Verificato: documento e P.IVA controllati".
+    Resta da fare: verificare davvero i primi professionisti prima del
+    lancio. "Professionisti verificati" generico tolto dalle descrizioni
+    (§202).
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).
@@ -191,17 +194,17 @@ prima del lancio"):
     dall'email.
 21. **Nome e icona del marchio** (decisione dell'utente, 06/10/2026): per ora
     il sito si chiama "Professionisti"; il nome definitivo va scelto e
-    cambiato prima del lancio, insieme all'icona (`icon.svg`, `icon-192.png`,
-    `icon-512.png`, `apple-icon.tsx`, `opengraph-image.tsx` in
-    `apps/web/src/app`, e il logo in `packages/ui/src/Logo*.tsx`). Allineare
-    anche i testi dei pagamenti che dicono "Manovia" (`JobPaymentStatus.tsx`,
-    `BookingDetailPanel.tsx`, admin finanza) al nome scelto. Per le email
-    basta `apps/api/src/email/email-brand.ts` (nome, firma, email di
-    assistenza; logo da `EMAIL_LOGO_URL` o, di default, `icon-192.png` del
-    sito) più `RESEND_FROM_EMAIL` su Render (docs/CHANGELOG.md §185).
+    cambiato prima del lancio. Per i testi (sito, app, email) basta
+    `BRAND.name` in `packages/shared/src/brand.ts` (docs/CHANGELOG.md §199).
+    A parte restano l'icona (`icon.svg`, `icon-192.png`, `icon-512.png`,
+    `apple-icon.tsx`, `opengraph-image.tsx` in `apps/web/src/app`, il
+    disegno in `packages/ui/src/Logo*.tsx`), `apps/mobile/app.json` e
+    `RESEND_FROM_EMAIL` su Render; logo delle email da `EMAIL_LOGO_URL` o, di
+    default, `icon-192.png` del sito.
 21bis. **Email di assistenza reale**: le email e alcune pagine indicano
     `supporto@professionisti.it`, provvisoria come il nome. Crearla col dominio
-    del punto 5bis e aggiornarla in `email-brand.ts` e nelle pagine.
+    del punto 5bis e aggiornarla in `BRAND.supportEmail`
+    (`packages/shared/src/brand.ts`): vale per email e pagine.
 22. **Promemoria via SMS: ricerca di un'alternativa** (WhatsApp o altro).
     "Come funziona" (`HowItWorks.tsx`) oggi promette "email e SMS" ma gli SMS
     non sono attivi: finché la ricerca non è chiusa il testo non è stato
@@ -213,7 +216,7 @@ prima del lancio"):
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
 24. **Cloudflare Turnstile anti-bot** (registrazione, recupero password, contatti) — codice fatto
-    (docs/CHANGELOG.md §199), resta spento finché non si mettono le chiavi:
+    (docs/CHANGELOG.md §204), resta spento finché non si mettono le chiavi:
     1. Cloudflare (account gratuito) → Turnstile → Add widget, modalità
        "Managed", dominio del sito (`applicazione-web.vercel.app`, più il
        dominio definitivo quando ci sarà).

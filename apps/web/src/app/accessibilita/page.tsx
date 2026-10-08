@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { BRAND } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Accessibilità",
-  description: "L'impegno di Professionisti per un sito accessibile a tutti, gli standard seguiti e come segnalare un problema.",
+  description: `L'impegno di ${BRAND.name} per un sito accessibile a tutti, gli standard seguiti e come segnalare un problema.`,
 };
 
 /**
@@ -24,7 +25,7 @@ export default function AccessibilitaPage() {
       sections={[
         {
           heading: "1. Il nostro impegno",
-          body: "Professionisti è pensato per essere usabile dal maggior numero di persone possibile, incluse quelle che usano tecnologie assistive (screen reader, navigazione da tastiera) o hanno difficoltà visive, motorie o cognitive. Prendiamo come riferimento le Web Content Accessibility Guidelines (WCAG) 2.1, livello AA, e lo European Accessibility Act (Direttiva (UE) 2019/882, recepita in Italia con il D.Lgs. 82/2022) — la norma applicabile ai servizi digitali rivolti ai consumatori come il nostro, in vigore dal 28 giugno 2025 (la Direttiva (UE) 2016/2102, spesso citata per errore in questo contesto, riguarda solo i siti e le app della pubblica amministrazione).",
+          body: BRAND.name + " è pensato per essere usabile dal maggior numero di persone possibile, incluse quelle che usano tecnologie assistive (screen reader, navigazione da tastiera) o hanno difficoltà visive, motorie o cognitive. Prendiamo come riferimento le Web Content Accessibility Guidelines (WCAG) 2.1, livello AA, e lo European Accessibility Act (Direttiva (UE) 2019/882, recepita in Italia con il D.Lgs. 82/2022) — la norma applicabile ai servizi digitali rivolti ai consumatori come il nostro, in vigore dal 28 giugno 2025 (la Direttiva (UE) 2016/2102, spesso citata per errore in questo contesto, riguarda solo i siti e le app della pubblica amministrazione).",
         },
         {
           heading: "2. Cosa abbiamo già verificato e corretto",

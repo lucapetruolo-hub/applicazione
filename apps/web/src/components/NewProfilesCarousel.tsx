@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Avatar, Icon, Section, Text, XStack, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useRevealOnScroll } from "./useRevealOnScroll";
+import { BRAND } from "@professionisti/shared";
 
 // "Ultimi iscritti" (richiesta esplicita dell'utente): 21 profili, non una
 // vetrina curata — nessuna soglia minima come ProfessionalsShowcase (quella
@@ -65,7 +66,7 @@ export function NewProfilesCarousel({ professionals }: { professionals: Professi
   }
 
   return (
-    <Section eyebrow="Nuovi profili" title="Nuovi profili su Professionisti" maxWidth={1160}>
+    <Section eyebrow="Nuovi profili" title={`Nuovi profili su ${BRAND.name}`} maxWidth={1160}>
       <div className="npc-wrap">
         <div
           className="category-carousel-arrow"

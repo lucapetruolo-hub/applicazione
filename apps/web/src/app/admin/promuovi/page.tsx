@@ -47,7 +47,7 @@ export default function AdminPromuoviPage() {
 
         <YStack gap="$2">
           <Text fontWeight="600">Email</Text>
-          <input
+          <input aria-label="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tuo@esempio.it"
@@ -64,7 +64,7 @@ export default function AdminPromuoviPage() {
 
         <YStack gap="$2">
           <Text fontWeight="600">Codice</Text>
-          <input
+          <input aria-label="Codice"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             placeholder="ADMIN_BOOTSTRAP_SECRET"

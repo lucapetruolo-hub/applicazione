@@ -951,7 +951,7 @@ export function RequestCard({
             <Text fontSize={12} fontWeight="700" color={brand.grafite}>
               Note personali (solo per te)
             </Text>
-            <textarea
+            <textarea aria-label="Note personali"
               ref={(el) => {
                 noteTextareaRef.current = el;
                 autoGrowNote(el);
@@ -1148,9 +1148,9 @@ export function RequestCard({
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {items.map((item, index) => (
                 <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
-                  <input value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Voce" style={{ ...smallInputStyle, flex: 1, minWidth: 140 }} />
-                  <input value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="Da €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
-                  <input value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="A €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
+                  <input aria-label="Voce del preventivo" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Voce" style={{ ...smallInputStyle, flex: 1, minWidth: 140 }} />
+                  <input aria-label="Prezzo minimo in euro" value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="Da €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
+                  <input aria-label="Prezzo massimo in euro" value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="A €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
                   {items.length > 1 ? (
                     <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={8} cursor="pointer" onPress={() => removeItem(index)}>
                       <Icon name="x" size={14} color={brand.urgenza} />
@@ -1164,7 +1164,7 @@ export function RequestCard({
 
               {modeAvailableSlots.length > 0 && !useManualDateTime ? (
                 <YStack gap="$2">
-                  <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
+                  <select aria-label="Orario dall'agenda" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
                     {modeAvailableSlots.map((sl) => (
                       <option key={slotKey(sl)} value={slotKey(sl)}>
                         {slotLabel(sl)}
@@ -1185,9 +1185,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="$2">
                   <XStack gap="$2" flexWrap="wrap">
-                    <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
-                    <input type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
-                    <input
+                    <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <input aria-label="Ora di fine"
                       type="time"
                       value={manualEndTime}
                       onChange={(e) => setManualEndTime(e.target.value)}
@@ -1220,7 +1220,7 @@ export function RequestCard({
                 </YStack>
               )}
 
-              <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
+              <textarea aria-label="Messaggio per il cliente" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
 
               {quoteError ? (
                 <Text color={brand.urgenza} fontSize={13}>
@@ -1242,7 +1242,7 @@ export function RequestCard({
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {modeAvailableSlots.length > 0 && !useManualCounterDateTime ? (
                 <YStack gap="$2">
-                  <select value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
+                  <select aria-label="Orario dall'agenda" value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>
                     {modeAvailableSlots.map((sl) => (
                       <option key={slotKey(sl)} value={slotKey(sl)}>
                         {slotLabel(sl)}
@@ -1263,9 +1263,9 @@ export function RequestCard({
               ) : (
                 <YStack gap="$2">
                   <XStack gap="$2" flexWrap="wrap">
-                    <input type="date" value={manualCounterDate} onChange={(e) => setManualCounterDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
-                    <input type="time" value={manualCounterStartTime} onChange={(e) => setManualCounterStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
-                    <input type="time" value={manualCounterEndTime} onChange={(e) => setManualCounterEndTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <input aria-label="Nuova data" type="date" value={manualCounterDate} onChange={(e) => setManualCounterDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <input aria-label="Ora di inizio" type="time" value={manualCounterStartTime} onChange={(e) => setManualCounterStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
+                    <input aria-label="Ora di fine" type="time" value={manualCounterEndTime} onChange={(e) => setManualCounterEndTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>
                   {/* Richiesta esplicita dell'utente: la nuova data può non
                       far parte delle fasce configurate in agenda — comparirà
@@ -1289,7 +1289,7 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
-              <textarea value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
+              <textarea aria-label="Nota per il cliente" value={counterNote} onChange={(e) => setCounterNote(e.target.value)} placeholder="Nota per il cliente (facoltativa)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
               {counterError ? (
                 <Text color={brand.urgenza} fontSize={13}>
                   {counterError}
@@ -1307,7 +1307,7 @@ export function RequestCard({
           {/* Conferma rifiuto lead */}
           {confirmingDecline ? (
             <YStack gap="$2" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.urgenzaVelo} borderWidth={1} borderColor={brand.urgenza}>
-              <textarea
+              <textarea aria-label="Nota per il cliente"
                 value={declineNoteDraft}
                 onChange={(e) => setDeclineNoteDraft(e.target.value)}
                 placeholder="Nota per il cliente (facoltativa)"

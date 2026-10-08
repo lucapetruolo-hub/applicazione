@@ -50,7 +50,7 @@ function loadScript(onReady: () => void) {
 /**
  * Anti-bot Cloudflare Turnstile su registrazione con email e password,
  * recupero password e contatti (checklist di lancio punto 24,
- * docs/CHANGELOG.md §199). Senza
+ * docs/CHANGELOG.md §204). Senza
  * `NEXT_PUBLIC_TURNSTILE_SITE_KEY` non mostra nulla e non carica nessuno
  * script, come Maps e Google Sign-In senza chiave.
  *

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { BRAND } from "@professionisti/shared";
 
 /**
  * Web App Manifest (installabilità PWA): permette di "aggiungere alla
@@ -15,9 +16,9 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Professionisti — Trova un professionista vicino a te",
-    short_name: "Professionisti",
-    description: "Cerca imbianchini, elettricisti, idraulici e altri professionisti locali verificati vicino a te.",
+    name: `${BRAND.name} — ${BRAND.tagline}`,
+    short_name: BRAND.name,
+    description: "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
     start_url: "/",
     display: "standalone",
     background_color: "#FDEFE1",

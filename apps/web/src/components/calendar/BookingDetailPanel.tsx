@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { BRAND, buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import type { JobPayment } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
@@ -220,7 +220,7 @@ export function BookingDetailPanel({
               Pagamento
             </Text>
             <Text color={brand.grafite} fontSize="$3">
-              {jobPayment.paymentMethod === "MANOVIA" ? "Tramite Manovia" : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
+              {jobPayment.paymentMethod === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
             </Text>
             <Text color={brand.grafite70} fontSize="$3">
               Lordo {euro(jobPayment.grossAmountEurCents)}
@@ -347,7 +347,7 @@ export function BookingDetailPanel({
           </Text>
           <XStack alignItems="center" gap="$2">
             <Icon name="video" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <input
+            <input aria-label="Link videochiamata"
               value={meetingLinkDraft}
               onChange={(e) => setMeetingLinkDraft(e.target.value)}
               placeholder="https://meet.google.com/..."
@@ -376,7 +376,7 @@ export function BookingDetailPanel({
           <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Note personali (solo per te)
           </Text>
-          <textarea
+          <textarea aria-label="Note personali"
             ref={noteTextareaRef}
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}

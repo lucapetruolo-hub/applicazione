@@ -14,6 +14,8 @@ export type MyProfessionalProfile = {
   bio: string | null;
   subTags: string[];
   verified: boolean;
+  /** Quando ha chiesto la verifica (docs/CHANGELOG.md §201); null se non l'ha chiesta o è già verificato. */
+  verificationRequestedAt: string | null;
   remoteAvailable: boolean;
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */

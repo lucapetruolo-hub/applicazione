@@ -33,6 +33,7 @@ import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.mo
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
+import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 
 @Module({
@@ -95,6 +96,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
+    ProfessionalVerificationModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

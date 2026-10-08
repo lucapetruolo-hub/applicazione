@@ -22,6 +22,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/messaggi", label: "Messaggi", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
   { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
   { href: "/admin/professionisti", label: "Profili da confermare", icon: "user-round", scope: "MODERATION" },
+  { href: "/admin/verifiche", label: "Verifica profili", icon: "badge-check", scope: "MODERATION", badge: (o) => o.verificationRequests },
   { href: "/admin/chat", label: "Chat", icon: "message-circle", scope: "MODERATION" },
   { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues + o.jobIssueAppeals },
   { href: "/admin/lavori", label: "Lavori terminati", icon: "badge-check", scope: "ANY" },
