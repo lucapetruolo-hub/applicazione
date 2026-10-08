@@ -16828,3 +16828,24 @@ stato.
 
 **Verifica:** typecheck `apps/api` e `apps/web`, test delle email
 (`email-templates.test.ts`, nuovo caso `noteOnly`).
+
+**Seconda parte (richiesta dell'utente: "procedi con tutte e 3"):**
+- **La nota del cliente non blocca più il preventivo.** Prima, anche con
+  sola nota, il preventivo passava a "modifica richiesta": il cliente non
+  poteva più accettarlo e, alla conferma del professionista, il lavoro
+  veniva prenotato subito. Ora la nota si salva in `Quote.clientNote`
+  (migrazione `20261008100000_quote_client_note`) e il preventivo resta
+  "inviato" e accettabile; se c'era una proposta di data del cliente in
+  sospeso, tornare all'appuntamento del preventivo la ritira. Senza nota e
+  senza cambi la richiesta viene rifiutata con un messaggio chiaro. La nota
+  si azzera quando una delle due parti cambia davvero data o orario. Un
+  preventivo ritirato non si può più "modificare" dal cliente.
+- **Preventivo aggiornato senza cambio di data:** nuovo tipo di notifica
+  `QUOTE_UPDATED` (argomento "Preventivi e date", sezione Richieste del
+  cliente) quando il professionista cambia voci o note; prima la modifica
+  era silenziosa.
+- **La nota nell'email e nella notifica:** il testo della nota viaggia nel
+  payload (`note`) e compare in email e nella campanella.
+
+**Verifica:** typecheck `apps/api`, `apps/web`, `apps/mobile`; tutti i test
+di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.

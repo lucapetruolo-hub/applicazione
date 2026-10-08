@@ -87,4 +87,15 @@ describe("email delle notifiche", () => {
       expect(email.text, type).not.toMatch(/modificato|propone|proposto/);
     }
   });
+
+  it("riporta la nota dell'altra parte e avvisa del preventivo aggiornato (docs/CHANGELOG.md §194)", () => {
+    const proposed = renderEmail(notificationEmail("QUOTE_DATE_PROPOSED", { noteOnly: true, note: "Citofono rotto, chiamatemi" }, ctx)!);
+    expect(proposed.text).toContain('Nota: "Citofono rotto, chiamatemi"');
+    expect(proposed.text).toContain("può ancora accettarlo");
+    const updated = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, notesChanged: true, note: "Materiali inclusi" }, ctx)!);
+    expect(updated.subject).toBe("Idraulica Rossi ha aggiornato il preventivo");
+    expect(updated.text).toContain("le voci e le note");
+    expect(updated.text).toContain('Nota: "Materiali inclusi"');
+  });
 });
+

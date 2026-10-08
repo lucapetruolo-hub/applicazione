@@ -57,6 +57,7 @@ export class QuotesService {
 
     const existingQuote = await this.prisma.quote.findFirst({
       where: { guidedRequestId: input.requestId, professionalProfileId: professionalProfile.id },
+      include: { items: true },
     });
     // Modificabile solo finché il cliente non ha ancora agito (richiesta
     // esplicita dell'utente: "Modifica preventivo" nella dashboard) — un
@@ -106,6 +107,17 @@ export class QuotesService {
           { start: data.estimatedStartDate, end: data.estimatedEndDate },
         )
       : null;
+
+    // Cosa cambia oltre a "quando": voci e note (docs/CHANGELOG.md §194),
+    // per avvisare il cliente anche di un preventivo aggiornato senza cambio
+    // di data.
+    const itemsKey = (items: { name: string; priceMinEurCents?: number | null; priceMaxEurCents?: number | null }[]) =>
+      items
+        .map((item) => JSON.stringify([item.name.trim(), item.priceMinEurCents ?? null, item.priceMaxEurCents ?? null]))
+        .sort()
+        .join("|");
+    const itemsChanged = !!existingQuote && itemsKey(existingQuote.items) !== itemsKey(input.items);
+    const notesChanged = !!existingQuote && (existingQuote.notes ?? "").trim() !== (input.notes ?? "").trim();
 
     const quote = existingQuote
       ? await this.prisma.quote.update({
@@ -194,11 +206,28 @@ export class QuotesService {
         `Il professionista ha modificato ${scheduleChangeObject(scheduleChange)} del preventivo: ora è ${formatSlotForTimeline(data.estimatedStartDate, data.estimatedEndDate)}.`,
       );
     } else if (existingQuote) {
-      // Modifica che non tocca la data (voci/note): silenziosa lato
-      // notifica (nessun cambio di "quando"), ma resta comunque un evento
-      // della cronologia — richiesta esplicita dell'utente di tracciare
-      // ogni aggiornamento, non solo quelli che generano una notifica.
-      await this.timelineService.log(lead.guidedRequestId, professionalProfile.id, "PROFESSIONAL", "Il professionista ha modificato il preventivo.");
+      // Modifica che non tocca la data (voci/note): prima era silenziosa,
+      // ora il cliente viene avvisato se voci o note cambiano davvero
+      // (docs/CHANGELOG.md §194, richiesta dell'utente); resta comunque un
+      // evento della cronologia.
+      const what = itemsChanged && notesChanged ? "le voci e le note" : itemsChanged ? "le voci" : notesChanged ? "le note" : null;
+      if (what) {
+        const notes = input.notes?.trim();
+        await this.notificationsService.notify(lead.guidedRequest.clientId, "QUOTE_UPDATED", {
+          guidedRequestId: lead.guidedRequestId,
+          quoteId: quote.id,
+          businessName: professionalProfile.businessName,
+          itemsChanged,
+          notesChanged,
+          ...(notesChanged && notes ? { note: notes } : {}),
+        });
+      }
+      await this.timelineService.log(
+        lead.guidedRequestId,
+        professionalProfile.id,
+        "PROFESSIONAL",
+        what ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.` : "Il professionista ha modificato il preventivo.",
+      );
     }
     if (existingQuote) {
       // Metriche di affidabilità (CLAUDE.md §15, evento 7): modificare un
@@ -231,7 +260,8 @@ export class QuotesService {
     if (quote.guidedRequest.clientId !== clientId) {
       throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
     }
-    if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED") {
+    // Anche un preventivo ritirato: una nota non deve rimetterlo in gioco.
+    if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più modificabile.");
     }
 
@@ -289,41 +319,76 @@ export class QuotesService {
       proposedEndDate = resolved.scheduledEndAt;
     }
 
+    // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
+    // entrambi (docs/CHANGELOG.md §180).
+    const change = scheduleChangeBetween(
+      { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
+      { start: proposedDate, end: proposedEndDate },
+    );
+    const note = input.note?.trim() || null;
+
+    // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
+    // (docs/CHANGELOG.md §194). Il preventivo resta "inviato", così il
+    // cliente può ancora accettarlo senza aspettare il professionista; se
+    // c'era una sua proposta di data in sospeso, tornare all'appuntamento
+    // del preventivo la ritira.
+    if (!change) {
+      if (!note) {
+        throw new BadRequestException("Non hai cambiato né la data né l'orario: scrivi una nota o scegli un altro appuntamento.");
+      }
+      const updated = await this.prisma.quote.update({
+        where: { id: quote.id },
+        data: { clientNote: note, status: "SENT", clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null },
+      });
+      await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
+        guidedRequestId: quote.guidedRequestId,
+        quoteId: quote.id,
+        noteOnly: true,
+        note,
+      });
+      await this.timelineService.log(
+        quote.guidedRequestId,
+        quote.professionalProfileId,
+        "CLIENT",
+        `Il cliente ha aggiunto una nota, senza cambiare data e orario (${formatSlotForTimeline(proposedDate, proposedEndDate)}). Nota: "${note}"`,
+      );
+      return {
+        id: updated.id,
+        status: updated.status,
+        clientProposedDate: null,
+        clientProposedEndDate: null,
+        clientProposedNote: null,
+      };
+    }
+
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
       data: {
         clientProposedDate: proposedDate,
         clientProposedEndDate: proposedEndDate,
-        clientProposedNote: input.note?.trim() || null,
+        clientProposedNote: note,
         status: "MODIFICATION_REQUESTED",
         // Una nuova trattativa riparte da capo: la nota della modifica
         // precedente del professionista non è più pertinente, né il
-        // "prima → ora" della sua ultima modifica.
+        // "prima → ora" della sua ultima modifica, né una nota del cliente
+        // senza cambio di data (ora la nota viaggia con la proposta).
         professionalCounterNote: null,
         previousStartDate: null,
         previousEndDate: null,
+        clientNote: null,
       },
     });
-    // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
-    // entrambi (docs/CHANGELOG.md §180). Stessa data e stesso orario: il
-    // cliente ha solo aggiunto una nota, e così va detto (docs/CHANGELOG.md §194).
-    const change = scheduleChangeBetween(
-      { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
-      { start: proposedDate, end: proposedEndDate },
-    );
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
-      ...(change ? { change } : { noteOnly: true }),
+      change,
+      ...(note ? { note } : {}),
     });
-    const note = input.note?.trim() ? ` Nota: "${input.note.trim()}"` : "";
     await this.timelineService.log(
       quote.guidedRequestId,
       quote.professionalProfileId,
       "CLIENT",
-      change
-        ? `Il cliente ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${note}`
-        : `Il cliente ha aggiunto una nota, senza cambiare data e orario (${formatSlotForTimeline(proposedDate, proposedEndDate)}).${note}`,
+      `Il cliente ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${note ? ` Nota: "${note}"` : ""}`,
     );
     return {
       id: updated.id,
@@ -584,6 +649,7 @@ export class QuotesService {
         clientProposedEndDate: null,
         clientProposedNote: null,
         professionalCounterNote: input.note?.trim() || null,
+        clientNote: null,
       },
     });
     // Confronto con la proposta del cliente a cui il professionista risponde
@@ -598,6 +664,7 @@ export class QuotesService {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
       ...(change ? { change } : { noteOnly: true }),
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
     });
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
     const note = input.note?.trim() ? ` Nota: "${input.note.trim()}"` : "";

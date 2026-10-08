@@ -965,6 +965,8 @@ export class ProfessionalsService {
               clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
               clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
               clientProposedNote: quote.clientProposedNote,
+              // Nota del cliente senza cambio di data (docs/CHANGELOG.md §194).
+              clientNote: quote.clientNote,
               rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla

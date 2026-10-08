@@ -254,6 +254,18 @@ export function QuoteCard({
             />
           );
         }
+        // Nota scritta dal cliente senza cambiare data e orario: il
+        // preventivo resta accettabile (docs/CHANGELOG.md §194).
+        if (quote.status === "SENT" && quote.clientNote) {
+          return (
+            <ScheduleChangeBox
+              title="Hai aggiunto una nota per il professionista (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+              note={quote.clientNote}
+            />
+          );
+        }
         // Stessa data e stesso orario della proposta del cliente: il
         // professionista ha solo aggiunto una nota, niente "prima → ora"
         // (docs/CHANGELOG.md §194).

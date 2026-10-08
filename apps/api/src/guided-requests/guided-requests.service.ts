@@ -385,6 +385,8 @@ export class GuidedRequestsService {
           clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
           clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
           clientProposedNote: quote.clientProposedNote,
+          // Nota del cliente senza cambio di data (docs/CHANGELOG.md §194).
+          clientNote: quote.clientNote,
           // Appuntamento che quello attuale ha sostituito, per il "prima →
           // ora" del cliente (docs/CHANGELOG.md §186, come lo vede il
           // professionista): l'ultima modifica del professionista se c'è,

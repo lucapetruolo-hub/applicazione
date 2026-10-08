@@ -50,6 +50,11 @@ export type NotificationEmailContext = {
 type Payload = Record<string, unknown>;
 type Builder = (payload: Payload, ctx: NotificationEmailContext) => EmailContent | null;
 
+/** Nota scritta dall'altra parte, riportata nell'email (docs/CHANGELOG.md §194). */
+function quotedNote(payload: Payload): string[] {
+  return typeof payload.note === "string" && payload.note.trim() ? [`Nota: "${payload.note.trim()}"`] : [];
+}
+
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -213,10 +218,11 @@ const BUILDERS: Record<string, Builder> = {
         title: "Il cliente ha aggiunto una nota",
         paragraphs: [
           `Per il tuo preventivo per **${job(ctx)}** il cliente ha aggiunto una nota, senza cambiare data e orario.`,
-          "Leggila nella richiesta: puoi confermare l'appuntamento o rispondere con un'alternativa.",
+          ...quotedNote(payload),
+          "Il preventivo resta valido così com'è: il cliente può ancora accettarlo. Se vuoi rispondere, scrivigli dalla richiesta.",
         ],
-        details: proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Appuntamento", value: formatAppointment(ctx.proposedWhen) }] : []),
-        cta: proRequests("Leggi la nota"),
+        details: proJobDetails(ctx),
+        cta: proRequests("Apri la richiesta"),
       };
     }
     const change = asScheduleChange(payload.change) ?? "both";
@@ -227,6 +233,7 @@ const BUILDERS: Record<string, Builder> = {
       title: `Il cliente propone ${scheduleChangeAlternative(change)}`,
       paragraphs: [
         `Per il tuo preventivo per **${job(ctx)}** il cliente ha proposto ${scheduleChangeAlternative(change)}.`,
+        ...quotedNote(payload),
         "Confermala se ti va bene, oppure rispondi con un'alternativa.",
       ],
       details: proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Proposta del cliente", value: formatAppointment(ctx.proposedWhen) }] : []),
@@ -242,10 +249,9 @@ const BUILDERS: Record<string, Builder> = {
         subject: `${pro(ctx)} ha aggiunto una nota al preventivo`,
         greeting: ctx.name,
         title: "Nuova nota sul preventivo",
-        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario:`],
+        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario.`, ...quotedNote(payload)],
         details: jobDetails(ctx),
         cta: clientRequests(),
-        after: ["La nota la trovi nella tua richiesta."],
       };
     }
     const change = asScheduleChange(payload.change) ?? "both";
@@ -254,10 +260,34 @@ const BUILDERS: Record<string, Builder> = {
       subject: `${pro(ctx)} ha modificato ${scheduleChangeObject(change)} dell'appuntamento`,
       greeting: ctx.name,
       title: `Cambia ${scheduleChangeObject(change)} dell'appuntamento`,
-      paragraphs: [`**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`],
+      paragraphs: [`**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`, ...quotedNote(payload)],
       details: jobDetails(ctx),
       cta: clientRequests(),
       after: ["Se non ti va bene puoi proporre un'altra data o scrivere al professionista in chat."],
+    };
+  },
+  // Preventivo aggiornato (voci o note) senza cambio di data (docs/CHANGELOG.md §194).
+  QUOTE_UPDATED: (payload, ctx) => {
+    const what =
+      payload.itemsChanged === true && payload.notesChanged === true
+        ? "le voci e le note"
+        : payload.itemsChanged === true
+          ? "le voci"
+          : payload.notesChanged === true
+            ? "le note"
+            : "il contenuto";
+    return {
+      kind: "notification",
+      subject: `${pro(ctx)} ha aggiornato il preventivo`,
+      greeting: ctx.name,
+      title: "Preventivo aggiornato",
+      paragraphs: [
+        `**${pro(ctx)}** ha aggiornato ${what} del preventivo per **${job(ctx)}**, senza cambiare data e orario.`,
+        ...quotedNote(payload),
+        "Rileggilo prima di accettarlo.",
+      ],
+      details: jobDetails(ctx),
+      cta: clientRequests(),
     };
   },
   QUOTE_DATE_CONFIRMED: (_payload, ctx) => ({

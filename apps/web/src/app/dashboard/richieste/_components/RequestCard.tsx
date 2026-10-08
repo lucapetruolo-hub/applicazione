@@ -670,6 +670,16 @@ export function RequestCard({
                 note={lead.quote.clientProposedNote}
               />
             )
+          ) : lead.quote?.status === "SENT" && lead.quote.clientNote ? (
+            // Nota del cliente senza cambio di data: il preventivo resta
+            // accettabile, qui la si legge e basta (docs/CHANGELOG.md §194).
+            <ScheduleChangeBox
+              marginTop="$3"
+              title="Il cliente ha aggiunto una nota (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+              note={lead.quote.clientNote}
+            />
           ) : null}
 
           <XStack flexWrap="wrap" gap="$4" paddingTop="$3">

@@ -36,7 +36,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
   },
   preventivi: {
     professional: { label: "Preventivi e date", description: "Preventivo accettato o rifiutato, data proposta dal cliente." },
-    client: { label: "Preventivi e date", description: "Nuovo preventivo, data confermata o cambiata, preventivo ritirato." },
+    client: { label: "Preventivi e date", description: "Nuovo preventivo o aggiornato, data confermata o cambiata, preventivo ritirato." },
     types: [
       "NEW_QUOTE",
       "QUOTE_ACCEPTED",
@@ -44,6 +44,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_WITHDRAWN",
       "QUOTE_DATE_PROPOSED",
       "QUOTE_DATE_CHANGED",
+      // Preventivo aggiornato senza cambio di data (docs/CHANGELOG.md §194).
+      "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
     ],
