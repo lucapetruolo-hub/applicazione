@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <head>
         {/* Stili di Tamagui in un file a parte, tenuto in cache dal browser
-            (docs/CHANGELOG.md §197). `v` cambia a ogni deploy. */}
+            (docs/CHANGELOG.md §199). `v` cambia a ogni deploy. */}
         <link rel="stylesheet" href={`/tamagui.css?v=${TAMAGUI_CSS_VERSION}`} />
       </head>
       <body>

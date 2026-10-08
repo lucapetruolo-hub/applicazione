@@ -1,5 +1,5 @@
 // Scrive public/tamagui.css con gli stili della config Tamagui (temi, token,
-// font) prima di `next dev`/`next build` (docs/CHANGELOG.md §197): il layout
+// font) prima di `next dev`/`next build` (docs/CHANGELOG.md §199): il layout
 // lo collega con un <link> e il browser lo tiene in cache, invece di
 // ricevere gli stessi stili dentro ogni pagina HTML. Gira con tsx e
 // scripts/tsconfig.json, che punta "react-native" su "react-native-web"

@@ -16931,7 +16931,7 @@ di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
   l'aggiornamento di voci/note del professionista riporta nella chat il
   testo della nota e il cambio di totale.
 
-## 197. Agenda nella scheda dei risultati: sempre visibile, due mesi, primo orario libero
+## 199. Agenda nella scheda dei risultati: sempre visibile, due mesi, primo orario libero
 
 **Richiesta (Luca, 08/10/2026):** nella scheda del professionista nei
 risultati di ricerca non compariva più il calendario con le date

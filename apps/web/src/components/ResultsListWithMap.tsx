@@ -650,7 +650,7 @@ export function ResultsListWithMap({
               }
               // Click sull'agenda fuori da un orario libero: profilo aperto
               // sull'agenda, già sul giorno scelto e sulla stessa modalità
-              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §197).
+              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §199).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
                   router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),

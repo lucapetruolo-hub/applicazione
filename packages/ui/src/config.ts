@@ -55,7 +55,7 @@ const customTokens = createTokens({
 // nessun Sheet/Dialog/Tooltip di Tamagui, entrambe le app partono da
 // defaultTheme="light"). Con tutti i 1408 temi di default Tamagui scriveva
 // circa 9 MB di CSS dentro ogni pagina HTML del sito, ora circa 0,6 MB (bug
-// reale misurato sulla pagina dei risultati, docs/CHANGELOG.md §197). I
+// reale misurato sulla pagina dei risultati, docs/CHANGELOG.md §199). I
 // token colore ($blue10, $red10...) restano. Per un tema scuro in futuro
 // basta rimettere qui i temi "dark".
 const COLOR_THEME_SEGMENTS = new Set(["blue", "red", "green", "yellow", "orange", "purple", "pink", "gray"]);

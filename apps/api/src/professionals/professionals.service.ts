@@ -55,7 +55,7 @@ export type ProfessionalSearchParams = {
 // i PUBLIC_AGENDA_DAYS giorni restituiti in un colpo solo: la UI pagina in
 // finestre da 4 colonne con le frecce sui dati già scaricati, e cerca lì
 // stessa il primo orario libero per "Mostra orari disponibili" (richiesta
-// esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §197).
+// esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §199).
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
@@ -351,7 +351,7 @@ export class ProfessionalsService {
 
       // Restituita sempre quando il professionista ha almeno una fascia nei
       // prossimi due mesi, anche se oggi è tutto al completo (bug reale
-      // segnalato dall'utente, docs/CHANGELOG.md §197): prima la griglia
+      // segnalato dall'utente, docs/CHANGELOG.md §199): prima la griglia
       // spariva del tutto se nei primi 30 giorni non c'era nulla di libero,
       // e il cliente non vedeva più nessuna data.
       if (days.length > 0) result.set(profileId, { days });

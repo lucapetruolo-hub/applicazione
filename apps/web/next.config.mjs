@@ -24,7 +24,7 @@ const nextConfig = {
   async headers() {
     // /tamagui.css è richiesto sempre con `?v=<commit>` (layout.tsx): un
     // deploy nuovo cambia l'indirizzo, quindi il browser può tenerlo per
-    // sempre (docs/CHANGELOG.md §197).
+    // sempre (docs/CHANGELOG.md §199).
     const tamaguiCss = {
       source: "/tamagui.css",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
