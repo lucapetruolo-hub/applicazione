@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.1",
   "files": [
-    "tsconfig.*.json",
-    "eslint.base.js"
+    "tsconfig.*.json"
   ]
 }

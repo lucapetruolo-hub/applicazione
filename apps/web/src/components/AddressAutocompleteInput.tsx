@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { GOOGLE_API_PROVIDER_PROPS, HAS_GOOGLE_MAPS_KEY } from "@/components/GoogleMapGate";
 import { useCookieConsent } from "@/lib/cookieConsent";
@@ -66,6 +66,12 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
   // Un "token di sessione" per ogni ricerca: Google conta una sola sessione
   // (tutte le lettere digitate + la scelta finale) invece di ogni richiesta.
   const sessionRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const listboxId = useId();
+
+  // Solo le coordinate, non l'oggetto: un oggetto nuovo a ogni render del
+  // genitore rifarebbe la ricerca a vuoto.
+  const biasLatitude = biasTowards?.latitude;
+  const biasLongitude = biasTowards?.longitude;
 
   useEffect(() => {
     if (!places || !typedRef.current) return;
@@ -85,8 +91,8 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
           // Solo vie e numeri civici, niente negozi o luoghi di interesse.
           includedPrimaryTypes: ["street_address", "route", "premise", "subpremise"],
           language: "it",
-          ...(biasTowards
-            ? { locationBias: { center: { lat: biasTowards.latitude, lng: biasTowards.longitude }, radius: 30_000 } }
+          ...(biasLatitude !== undefined && biasLongitude !== undefined
+            ? { locationBias: { center: { lat: biasLatitude, lng: biasLongitude }, radius: 30_000 } }
             : {}),
         });
         if (cancelled) return;
@@ -115,7 +121,7 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [places, value, biasTowards?.latitude, biasTowards?.longitude]);
+  }, [places, value, biasLatitude, biasLongitude]);
 
   async function choose(suggestion: Suggestion) {
     setOpen(false);
@@ -177,11 +183,12 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
         style={{ ...style, width: "100%", boxSizing: "border-box" }}
         autoComplete="off"
         role="combobox"
+        aria-controls={listboxId}
         aria-expanded={open}
         aria-autocomplete="list"
       />
       {open && suggestions.length > 0 ? (
-        <ul className="address-suggestions" role="listbox">
+        <ul id={listboxId} className="address-suggestions" role="listbox">
           {suggestions.map((s, i) => (
             <li
               key={s.id}

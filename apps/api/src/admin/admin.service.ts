@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -15,9 +15,8 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
 import { Pagination } from "@/components/ListControls";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
-import { classifyClientRequestStage, CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
+import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
-import { QuoteCard } from "./_components/QuoteCard";
 import { clientRequestSearchText, filterInputStyle } from "./_components/clientRequestHelpers";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
@@ -90,7 +89,7 @@ function LeMieRichiesteContent() {
   const [zoneFilter, setZoneFilter] = useState("tutte");
   const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize] = useState(5);
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -131,16 +130,18 @@ function LeMieRichiesteContent() {
     setPage(1);
   }
 
-  function reload() {
+  // useCallback: cambia solo col token, così il poll qui sotto può
+  // dichiararla tra le dipendenze senza ripartire a ogni render.
+  const reload = useCallback(() => {
     if (!token) return;
     apiClient
       .myGuidedRequests(token)
       .then(setRequests)
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste."));
     apiClient.myClientBookings(token).then(setBookings).catch(() => setBookings([]));
-  }
+  }, [token]);
 
-  useEffect(reload, [token]);
+  useEffect(reload, [reload]);
 
   const bookingByRequestId = useMemo(() => {
     const map = new Map<string, ClientBooking>();
@@ -240,7 +241,6 @@ function LeMieRichiesteContent() {
       document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       highlightDeepLinkTarget(elementId);
     }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, activeStageTab, zoneFilter, serviceModeFilter, filteredSortedRequests, pageSize, searchParams]);
 
   // Stesso principio della dashboard professionista: aprire questa pagina
@@ -280,7 +280,7 @@ function LeMieRichiesteContent() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [token, markNotificationsRead]);
+  }, [token, markNotificationsRead, reload]);
 
   // Le liste si aggiornano subito all'arrivo di una notifica (stesso canale
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.

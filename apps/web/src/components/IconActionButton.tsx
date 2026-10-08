@@ -17,7 +17,7 @@ type IconActionButtonProps = {
 /**
  * Pulsante tondo con la sola icona e la descrizione in un fumetto al
  * passaggio del mouse (richiesta esplicita dell'utente per Salva/Condividi/
- * Segnala nella pagina profilo, docs/CHANGELOG.md §204). Fumetto in CSS e non
+ * Segnala nella pagina profilo, docs/CHANGELOG.md §206). Fumetto in CSS e non
  * `title` nativo: quello compare solo dopo circa un secondo.
  */
 export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip }: IconActionButtonProps) {

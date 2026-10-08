@@ -22,7 +22,7 @@ export function weekdayLabel(dayOfWeek: number): string {
  * Quanti giorni di agenda pubblica si possono sfogliare con le frecce, sia
  * nella scheda dei risultati di ricerca sia nella pagina profilo (richiesta
  * esplicita dell'utente: "andare avanti nell'agenda per almeno due mesi",
- * docs/CHANGELOG.md §204). 63 = 9 settimane, sempre oltre due mesi pieni.
+ * docs/CHANGELOG.md §206). 63 = 9 settimane, sempre oltre due mesi pieni.
  */
 export const PUBLIC_AGENDA_DAYS = 63;
 

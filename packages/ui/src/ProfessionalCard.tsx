@@ -133,7 +133,7 @@ export type ProfessionalCardProps = {
    * Click sull'agenda fuori dagli orari liberi (intestazione di un giorno,
    * orario al completo, spazio vuoto): richiesta esplicita dell'utente, porta
    * all'agenda della pagina profilo già posizionata su quel giorno
-   * (docs/CHANGELOG.md §204).
+   * (docs/CHANGELOG.md §206).
    */
   onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
@@ -213,7 +213,7 @@ export function ProfessionalCard({
   // dell'utente: deve portare davvero al primo orario disponibile). Cercato
   // prima dopo i giorni visibili, poi dall'inizio se si è già andati oltre.
   // Prima veniva dal server e poteva cadere oltre i giorni scaricati: il
-  // pulsante allora non faceva nulla (bug reale, docs/CHANGELOG.md §204).
+  // pulsante allora non faceva nulla (bug reale, docs/CHANGELOG.md §206).
   const findFirstFree = (fromIndex: number) => {
     const days = allDays;
     for (let index = fromIndex; index < days.length; index++) {
@@ -352,7 +352,7 @@ export function ProfessionalCard({
             minWidth={AGENDA_COLUMN_WIDTH * visibleDays.length}
             paddingLeft="$4"
             borderLeftWidth={1}
-            // Telefono (bug reale, docs/CHANGELOG.md §204): 4 colonne fisse da
+            // Telefono (bug reale, docs/CHANGELOG.md §206): 4 colonne fisse da
             // 78px più il margine sinistro superavano la larghezza della card
             // e "Dom" usciva dal bordo. Sotto 800px il blocco va a tutta
             // larghezza senza filetto e le colonne si dividono lo spazio.

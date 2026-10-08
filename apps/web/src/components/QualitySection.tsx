@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon, Section, Text, YStack, brand } from "@professionisti/ui";
+import { Icon, Section, Text, YStack } from "@professionisti/ui";
 
 const POINTS = [
   {

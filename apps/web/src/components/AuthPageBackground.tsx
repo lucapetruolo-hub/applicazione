@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Surface, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Surface, YStack, radiusDocLg } from "@professionisti/ui";
 
 /**
  * Colonna centrata delle pagine a scheda singola (registrazione, accesso,

@@ -297,12 +297,13 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "online" ? (
                   <div className="filters-section-content">
-                    <label className="filters-toggle-row">
-                      <span>Mostra tutti i professionisti che offrono consulenza online</span>
+                    <div className="filters-toggle-row">
+                      <span id="filter-online-label">Mostra tutti i professionisti che offrono consulenza online</span>
                       <span
                         className={`filters-switch${filterOnlineOnly ? " on" : ""}`}
                         onClick={() => setFilterOnlineOnly((v) => !v)}
                         role="switch"
+                        aria-labelledby="filter-online-label"
                         aria-checked={filterOnlineOnly}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -314,7 +315,7 @@ export function ResultsListWithMap({
                       >
                         <span className="filters-switch-knob" />
                       </span>
-                    </label>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -333,8 +334,8 @@ export function ResultsListWithMap({
                     {/* Preimpostato dal toggle "Intervento urgente?" della
                         homepage (?urgente=1) — resta regolabile qui, non più
                         un controllo a sé sempre visibile sopra i risultati. */}
-                    <label className="filters-toggle-row">
-                      <span>
+                    <div className="filters-toggle-row">
+                      <span id="filter-urgent-label">
                         <Zap size={14} strokeWidth={1.5} color={brand.urgenza} style={{ verticalAlign: "-2px", marginRight: 6 }} />
                         Intervento urgente: solo disponibili nelle prossime 24h
                       </span>
@@ -342,6 +343,7 @@ export function ResultsListWithMap({
                         className={`filters-switch${filterUrgentOnly ? " on" : ""}`}
                         onClick={() => setFilterUrgentOnly((v) => !v)}
                         role="switch"
+                        aria-labelledby="filter-urgent-label"
                         aria-checked={filterUrgentOnly}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -353,7 +355,7 @@ export function ResultsListWithMap({
                       >
                         <span className="filters-switch-knob" />
                       </span>
-                    </label>
+                    </div>
                     <div className="filters-pill-row">
                       {(
                         [
@@ -383,8 +385,8 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "insurance" ? (
                   <div className="filters-section-content">
-                    <label className="filters-toggle-row">
-                      <span>
+                    <div className="filters-toggle-row">
+                      <span id="filter-insured-label">
                         <ShieldCheck size={14} strokeWidth={1.5} style={{ verticalAlign: "-2px", marginRight: 6 }} />
                         Solo con assicurazione RC professionale
                       </span>
@@ -392,6 +394,7 @@ export function ResultsListWithMap({
                         className={`filters-switch${filterInsuredOnly ? " on" : ""}`}
                         onClick={() => setFilterInsuredOnly((v) => !v)}
                         role="switch"
+                        aria-labelledby="filter-insured-label"
                         aria-checked={filterInsuredOnly}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -403,7 +406,7 @@ export function ResultsListWithMap({
                       >
                         <span className="filters-switch-knob" />
                       </span>
-                    </label>
+                    </div>
                     <span className="filters-empty">Dichiarata dal professionista, non ancora verificata da noi.</span>
                   </div>
                 ) : null}
@@ -650,7 +653,7 @@ export function ResultsListWithMap({
               }
               // Click sull'agenda fuori da un orario libero: profilo aperto
               // sull'agenda, già sul giorno scelto e sulla stessa modalità
-              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §204).
+              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
                   router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),

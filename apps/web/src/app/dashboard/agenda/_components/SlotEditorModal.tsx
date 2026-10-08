@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
 import { SlotDraft, isSlotGeneric } from "./agendaHelpers";
 
 /**

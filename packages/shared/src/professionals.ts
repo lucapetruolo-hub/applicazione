@@ -162,7 +162,7 @@ export type ProfessionalAvailabilityPreviewSlot = {
  * PUBLIC_AGENDA_DAYS giorni da `availabilityFrom`: la card ricostruisce da
  * sola le colonne vuote e le etichette (Oggi/Domani/"Lun", "7 Ago"), così
  * la risposta della ricerca resta leggera anche con due mesi di agenda
- * (docs/CHANGELOG.md §204). La UI pagina in finestre da 4 colonne con le
+ * (docs/CHANGELOG.md §206). La UI pagina in finestre da 4 colonne con le
  * frecce, senza richieste di rete aggiuntive.
  */
 export type ProfessionalAvailabilityPreviewDay = {
