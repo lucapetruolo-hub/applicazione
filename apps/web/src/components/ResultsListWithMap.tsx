@@ -416,7 +416,7 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "language" ? (
                   <div className="filters-section-content">
-                    <input
+                    <input aria-label="Cerca una lingua"
                       type="text"
                       className="filters-text-input"
                       value={languageQuery}

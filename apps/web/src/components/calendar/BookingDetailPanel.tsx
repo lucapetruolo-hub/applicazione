@@ -347,7 +347,7 @@ export function BookingDetailPanel({
           </Text>
           <XStack alignItems="center" gap="$2">
             <Icon name="video" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <input
+            <input aria-label="Link videochiamata"
               value={meetingLinkDraft}
               onChange={(e) => setMeetingLinkDraft(e.target.value)}
               placeholder="https://meet.google.com/..."
@@ -376,7 +376,7 @@ export function BookingDetailPanel({
           <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
             Note personali (solo per te)
           </Text>
-          <textarea
+          <textarea aria-label="Note personali"
             ref={noteTextareaRef}
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}

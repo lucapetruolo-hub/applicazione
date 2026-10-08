@@ -293,7 +293,7 @@ export function GuidedRequestCard({
           <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
             {request.categoryLabel}
           </Text>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
+          <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={setCity} value={city} onChangeText={setCity} placeholder="Città" minChars={3} />
           </YStack>
@@ -324,25 +324,25 @@ export function GuidedRequestCard({
 
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={160}>
-              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={textareaStyle} />
+              <input aria-label="Nome" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={textareaStyle} />
             </YStack>
             <YStack flex={1} minWidth={160}>
-              <input value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={textareaStyle} />
+              <input aria-label="Cognome" value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={textareaStyle} />
             </YStack>
           </XStack>
-          <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="Numero di telefono" style={textareaStyle} />
+          <input aria-label="Numero di telefono" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="Numero di telefono" style={textareaStyle} />
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={120}>
-              <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
+              <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
             </YStack>
             <YStack flex={1} minWidth={120}>
-              <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={textareaStyle} />
+              <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={textareaStyle} />
             </YStack>
             <YStack flex={1} minWidth={120}>
-              <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={textareaStyle} />
+              <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={textareaStyle} />
             </YStack>
           </XStack>
-          <input value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
+          <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
 
           <YStack gap="$1">
             <Text fontSize="$2" color={brand.grafite70}>

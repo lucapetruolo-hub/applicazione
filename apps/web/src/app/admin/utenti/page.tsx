@@ -84,8 +84,8 @@ function UtentiContent() {
         }
       />
       <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
-        <input className="admin-input" style={{ flex: 1, minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca email, nome, attività…" />
-        <select
+        <input aria-label="Cerca utenti" className="admin-input" style={{ flex: 1, minWidth: 220 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca email, nome, attività…" />
+        <select aria-label="Ruolo"
           className="admin-input"
           value={query.role ?? ""}
           onChange={(e) => setQuery((prev) => ({ ...prev, role: (e.target.value || undefined) as AdminUsersQuery["role"], page: 1 }))}
@@ -95,7 +95,7 @@ function UtentiContent() {
           <option value="PROFESSIONAL">Professionisti</option>
           <option value="ADMIN">Admin</option>
         </select>
-        <select
+        <select aria-label="Stato"
           className="admin-input"
           value={query.status ?? ""}
           onChange={(e) => setQuery((prev) => ({ ...prev, status: (e.target.value || undefined) as AdminUsersQuery["status"], page: 1 }))}

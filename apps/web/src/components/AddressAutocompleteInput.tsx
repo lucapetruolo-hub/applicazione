@@ -43,7 +43,7 @@ export function AddressAutocompleteInput(props: Props) {
   const consent = useCookieConsent();
   if (!HAS_GOOGLE_MAPS_KEY || !consent) {
     return (
-      <input value={props.value} onChange={(e) => props.onChange(e.target.value)} placeholder={props.placeholder} style={props.style} />
+      <input aria-label={props.placeholder} value={props.value} onChange={(e) => props.onChange(e.target.value)} placeholder={props.placeholder} style={props.style} />
     );
   }
   return (
@@ -149,7 +149,7 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
 
   return (
     <div className="address-autocomplete">
-      <input
+      <input aria-label={placeholder}
         value={value}
         onChange={(e) => {
           typedRef.current = true;

@@ -17136,3 +17136,26 @@ la verifica invece di riformulare il testo.
   `aria-hidden`, per non essere letto due volte (revisione accessibilità
   del 6/10/2026).
 - **Verifica:** typecheck di tutto il monorepo, build di `apps/web`.
+
+## 203. Etichette dei campi dei moduli per gli screen reader
+
+**Richiesta dell'utente:** procedere con la miglioria n.2 proposta dopo §202
+(revisione accessibilità del 6/10/2026).
+
+- **Problema:** circa 120 campi (`input`, `select`, `textarea`) avevano solo
+  un testo segnaposto o un testo vicino non collegato: uno screen reader li
+  annunciava come "campo di testo" senza dire cosa chiedono. Sulle pagine
+  pubbliche il controllo automatico (axe) trovava tre menu senza nome in
+  `/contatti`, `/preventivo` e `/urgente`.
+- **Correzione:** `aria-label` con il nome del campo su ognuno: area
+  account, pannello admin, contatti, agenda e profilo del professionista,
+  richieste e preventivi, segnalazioni e finestre (annulla, completa,
+  recensione, segnalazione, ritaglio foto). `AddressAutocompleteInput` usa
+  il suo segnaposto come nome. Nessun cambiamento visibile.
+- **Restano senza `aria-label` di proposito:** i campi già dentro un
+  `<label>` o collegati con `id` (es. `AuthField`) e i campi nascosti.
+- **Verifica:** typecheck e build di `apps/web`; axe (regole su nomi di
+  campi, pulsanti e link) a 390 e 1366 px su `/`, `/cerca`,
+  `/cerca/idraulico`, `/preventivo`, `/urgente`, `/contatti`,
+  `/per-professionisti`, `/registrati`, `/accedi`, `/faq`,
+  `/password-dimenticata`: nessun errore.

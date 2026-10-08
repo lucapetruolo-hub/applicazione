@@ -157,7 +157,7 @@ export default function AdminProfessionistiPage() {
               Vale fino al {formatAdminDate(link.expiresAt)} e si usa una volta sola.
             </Text>
             <XStack gap="$2" flexWrap="wrap" alignItems="center">
-              <input className="admin-input" style={{ flex: 1, minWidth: 260 }} readOnly value={link.inviteUrl} onFocus={(e) => e.target.select()} />
+              <input aria-label="Link da mandare al professionista" className="admin-input" style={{ flex: 1, minWidth: 260 }} readOnly value={link.inviteUrl} onFocus={(e) => e.target.select()} />
               <Button size="$3" onPress={copyLink}>
                 {copied ? "Copiato" : "Copia link"}
               </Button>
@@ -177,11 +177,11 @@ export default function AdminProfessionistiPage() {
               Nuovo profilo
             </Text>
             <XStack gap="$2" flexWrap="wrap">
-              <input className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Nome *" value={form.name} onChange={(e) => update("name", e.target.value)} />
-              <input className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Cognome" value={form.surname} onChange={(e) => update("surname", e.target.value)} />
+              <input aria-label="Nome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Nome *" value={form.name} onChange={(e) => update("name", e.target.value)} />
+              <input aria-label="Cognome" className="admin-input" style={{ flex: 1, minWidth: 200 }} placeholder="Cognome" value={form.surname} onChange={(e) => update("surname", e.target.value)} />
             </XStack>
             <XStack gap="$2" flexWrap="wrap">
-              <input
+              <input aria-label="Email"
                 className="admin-input"
                 style={{ flex: 1, minWidth: 200 }}
                 type="email"
@@ -189,7 +189,7 @@ export default function AdminProfessionistiPage() {
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
               />
-              <input
+              <input aria-label="Telefono"
                 className="admin-input"
                 style={{ flex: 1, minWidth: 200 }}
                 type="tel"
@@ -199,14 +199,14 @@ export default function AdminProfessionistiPage() {
               />
             </XStack>
             <XStack gap="$2" flexWrap="wrap">
-              <input
+              <input aria-label="Nome dell'attività"
                 className="admin-input"
                 style={{ flex: 1, minWidth: 200 }}
                 placeholder="Nome dell'attività *"
                 value={form.businessName}
                 onChange={(e) => update("businessName", e.target.value)}
               />
-              <select className="admin-input" style={{ flex: 1, minWidth: 200 }} value={form.categorySlug} onChange={(e) => update("categorySlug", e.target.value)}>
+              <select aria-label="Categoria" className="admin-input" style={{ flex: 1, minWidth: 200 }} value={form.categorySlug} onChange={(e) => update("categorySlug", e.target.value)}>
                 <option value="">Categoria *</option>
                 {PROFESSIONAL_CATEGORIES.map((category) => (
                   <option key={category.slug} value={category.slug}>
@@ -228,7 +228,7 @@ export default function AdminProfessionistiPage() {
                 minChars={3}
               />
             </YStack>
-            <textarea
+            <textarea aria-label="Presentazione"
               className="admin-input"
               rows={3}
               placeholder="Presentazione (facoltativa, il professionista potrà cambiarla)"

@@ -95,7 +95,7 @@ export default function ContattiContent() {
                   <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
-                  <select value={role} onChange={(e) => setRole(e.target.value as ContactMessageInput["role"])} style={fieldStyle}>
+                  <select aria-label="Chi sei?" value={role} onChange={(e) => setRole(e.target.value as ContactMessageInput["role"])} style={fieldStyle}>
                     {ROLE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -119,7 +119,7 @@ export default function ContattiContent() {
                   <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
                     La tua email
                   </Text>
-                  <input
+                  <input aria-label="La tua email"
                     type="email"
                     value={email}
                     onChange={(e) => {
@@ -135,7 +135,7 @@ export default function ContattiContent() {
                   <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
                     Messaggio
                   </Text>
-                  <textarea
+                  <textarea aria-label="Messaggio"
                     value={content}
                     onChange={(e) => {
                       setContent(e.target.value);

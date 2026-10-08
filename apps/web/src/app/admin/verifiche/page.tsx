@@ -131,7 +131,7 @@ export default function AdminVerifichePage() {
                 </label>
               </YStack>
             )}
-            <textarea
+            <textarea aria-label={selected.verified ? "Motivo" : "Nota interna"}
               className="admin-input"
               rows={2}
               placeholder={selected.verified ? "Motivo (lo riceve il professionista) *" : "Nota interna (facoltativa, es. come hai fatto il controllo)"}
@@ -151,7 +151,7 @@ export default function AdminVerifichePage() {
         </AdminCard>
       ) : null}
 
-      <input
+      <input aria-label="Cerca profili"
         className="admin-input"
         placeholder="Cerca per nome attività, comune o email"
         value={query}

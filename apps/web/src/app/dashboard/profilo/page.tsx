@@ -649,7 +649,7 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="$2">
             <FieldLabel>Nome attività</FieldLabel>
-            <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
+            <input aria-label="Nome attività" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
@@ -778,7 +778,7 @@ export default function DashboardProfiloPage() {
                 </Text>
               ) : null}
             </YStack>
-            <textarea
+            <textarea aria-label="Presentazione"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Presenta la tua attività in poche righe."
@@ -809,7 +809,7 @@ export default function DashboardProfiloPage() {
             <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
               Anni di esperienza
             </Text>
-            <input
+            <input aria-label="Anni di esperienza"
               type="number"
               min={0}
               max={80}
@@ -824,7 +824,7 @@ export default function DashboardProfiloPage() {
             <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
               Certificazioni e qualifiche
             </Text>
-            <textarea
+            <textarea aria-label="Certificazioni e qualifiche"
               value={certifications}
               onChange={(e) => setCertifications(e.target.value)}
               placeholder="Es. Patentino gas F-gas, certificazione impianti elettrici CEI 64-8."
@@ -943,7 +943,7 @@ export default function DashboardProfiloPage() {
           <YStack gap="$2">
             {services.map((service, index) => (
               <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
-                <input
+                <input aria-label="Nome della prestazione"
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"
@@ -955,7 +955,7 @@ export default function DashboardProfiloPage() {
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
                 <XStack gap="$2" alignItems="center" flexWrap="nowrap">
-                  <input
+                  <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
                     onChange={(e) => updateService(index, "priceMin", e.target.value)}
                     placeholder="Da €"
@@ -965,7 +965,7 @@ export default function DashboardProfiloPage() {
                   <Text fontSize="$2" color={brand.grafite70}>
                     a
                   </Text>
-                  <input
+                  <input aria-label="Prezzo massimo in euro"
                     value={service.priceMax}
                     onChange={(e) => updateService(index, "priceMax", e.target.value)}
                     placeholder="A €"
@@ -1037,7 +1037,7 @@ export default function DashboardProfiloPage() {
           </XStack>
           <YStack position="relative" gap="$2">
             <XStack gap="$2" alignItems="center">
-              <input
+              <input aria-label="Aggiungi una lingua"
                 value={newLanguage}
                 onChange={(e) => setNewLanguage(e.target.value)}
                 onFocus={() => setIsLanguageFieldFocused(true)}
