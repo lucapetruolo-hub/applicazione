@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { MySubscription, ProfessionalBooking, ProfessionalInsights, ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
@@ -48,6 +49,16 @@ export default function DashboardTodayPage() {
       .then((p) => setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null))
       .catch(() => setRestrictions(null));
   }, [token, user?.isProfessional]);
+
+  // Aggiornamento in background (nuova richiesta, preventivo accettato, ecc.):
+  // solo le liste che cambiano con una notifica, senza scheletri né messaggi
+  // d'errore — se il giro fallisce restano i dati già mostrati.
+  const refreshInBackground = useCallback(() => {
+    if (!token) return;
+    apiClient.myLeads(token).then(setLeads).catch(() => {});
+    apiClient.myProfessionalBookings(token).then(setBookings).catch(() => {});
+  }, [token]);
+  useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional));
 
   // I conti alla rovescia si aggiornano da soli ogni minuto.
   useEffect(() => {

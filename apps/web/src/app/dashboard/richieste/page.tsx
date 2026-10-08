@@ -7,6 +7,7 @@ import { type ProfessionalAvailableSlot, type ProfessionalBooking, type Professi
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { SkeletonRequestList } from "@/components/Skeleton";
 import { classifyLeadStage, type RequestStage } from "@/lib/requestStage";
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
@@ -219,6 +220,10 @@ function RichiesteContent() {
       clearInterval(interval);
     };
   }, [token, markNotificationsRead]);
+
+  // Le liste si aggiornano subito all'arrivo di una notifica (stesso canale
+  // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.
+  useLiveRefresh(reloadLeads, Boolean(token), null);
 
   const bookingByRequestId = useMemo(() => {
     const map = new Map<string, ProfessionalBooking>();
