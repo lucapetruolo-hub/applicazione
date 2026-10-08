@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ConversationEvent } from "@professionisti/shared";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/lib/AuthContext";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { ClientProfileModal, type ClientReviewSummary } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -35,12 +34,6 @@ const ACTOR_LABEL: Record<ConversationEvent["actor"], string> = {
   SYSTEM: "Sistema",
 };
 
-const ACTOR_COLOR: Record<ConversationEvent["actor"], string> = {
-  CLIENT: brand.cianografiaScuro,
-  PROFESSIONAL: brand.verificato,
-  SYSTEM: brand.grafite70,
-};
-
 // Sfondo "nuvoletta" per attore — richiesta esplicita dell'utente ("crea
 // una sorta di nuvoletta colorata, differenziando i colori in base a se è
 // il cliente e professionista"). Due tinte già esistenti nella palette,
@@ -55,10 +48,20 @@ const ACTOR_BUBBLE_BG: Record<ConversationEvent["actor"], string> = {
   SYSTEM: "transparent",
 };
 
-/** Data+ora reale di un evento della cronologia, fuso orario del browser (timestamp vero, non "wall clock UTC" delle fasce agenda). */
-function formatEventDate(iso: string): string {
+/** Solo l'ora sotto ogni messaggio (docs/CHANGELOG.md §198): il giorno lo dice il separatore sopra. Fuso orario del browser. */
+function formatEventTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Etichetta del separatore di giorno: "Oggi", "Ieri", altrimenti "8 ottobre 2026". */
+function formatDayLabel(iso: string): string {
   const date = new Date(iso);
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Oggi";
+  if (date.toDateString() === yesterday.toDateString()) return "Ieri";
+  return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**
@@ -123,16 +126,6 @@ export function ConversationView({
   title?: string;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
-  // Il proprio nome (per le nuvolette del lato "mio") si ricava
-  // dall'account loggato — stesso fallback già in uso in AccountMenu per
-  // un professionista senza ancora businessName. L'altra parte arriva da
-  // `otherPartyName` (prop), il chiamante specifico del thread la conosce
-  // già.
-  const myDisplayName =
-    viewerRole === "PROFESSIONAL"
-      ? user?.businessName ?? user?.name ?? null
-      : [user?.name, user?.surname].filter(Boolean).join(" ") || user?.name || null;
   // Nomi cliccabili da entrambe le parti (docs/CHANGELOG.md §149, richiesta
   // esplicita dell'utente): professionista → profilo pubblico; cliente →
   // la sua scheda (vista dal professionista) o il proprio Account (visto
@@ -163,12 +156,6 @@ export function ConversationView({
   }
   const otherActor: ConversationEvent["actor"] = viewerRole === "PROFESSIONAL" ? "CLIENT" : "PROFESSIONAL";
   const headerOnPress = openProfileOf(otherActor);
-
-  function displayNameFor(actor: ConversationEvent["actor"]): string {
-    if (actor === "SYSTEM") return ACTOR_LABEL.SYSTEM;
-    const name = actor === viewerRole ? myDisplayName : otherPartyName;
-    return name && name.trim() ? name : ACTOR_LABEL[actor];
-  }
 
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -552,8 +539,9 @@ export function ConversationView({
           (docs/CHANGELOG.md §166, richiesta esplicita dell'utente). */}
       <XStack
         gap="$2"
-        alignItems="flex-start"
-        padding="$3"
+        alignItems="center"
+        paddingHorizontal="$3"
+        paddingVertical="$2"
         marginHorizontal={20}
         marginTop="$3"
         marginBottom="$2"
@@ -563,11 +551,11 @@ export function ConversationView({
         role="note"
       >
         <YStack flexShrink={0}>
-          <Icon name="shield-check" size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+          <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
         </YStack>
+        {/* Una riga sola (docs/CHANGELOG.md §198): il dettaglio è in /sicurezza. */}
         <Text fontSize="$2" color={brand.grafite} flex={1}>
-          Non inquadrare QR code e non condividere numeri di telefono o dati personali. Resta sempre in questa chat e segnala comportamenti
-          sospetti.{" "}
+          Resta in questa chat: non condividere numeri, dati personali o QR code.{" "}
           <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scopri di più
           </Link>
@@ -598,102 +586,109 @@ export function ConversationView({
               Nessun aggiornamento ancora.
             </Text>
           ) : (
-            events.map((event) => {
+            events.map((event, index) => {
+              // Separatore di giorno quando la data cambia rispetto al
+              // messaggio prima (docs/CHANGELOG.md §198, come nella chat
+              // d'esempio mandata dall'utente).
+              const dayLabel = formatDayLabel(event.createdAt);
+              const previous = events[index - 1];
+              const daySeparator =
+                !previous || formatDayLabel(previous.createdAt) !== dayLabel ? (
+                  <Text fontSize={11} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="$1">
+                    {dayLabel}
+                  </Text>
+                ) : null;
               if (event.actor === "SYSTEM") {
                 // Eventi automatici (fan-out, scadenze, ecc.): mai un
                 // "lato", restano centrati e discreti — non sono un
                 // messaggio di nessuna delle due parti.
                 return (
-                  <YStack key={event.id} gap="$1" alignItems="center">
-                    <Text fontSize={11} color={brand.grafite70} textAlign="center">
-                      {event.message}
-                    </Text>
-                    <Text fontSize={10} color={brand.grafite70}>
-                      {formatEventDate(event.createdAt)}
-                    </Text>
-                  </YStack>
+                  <Fragment key={event.id}>
+                    {daySeparator}
+                    <YStack gap="$1" alignItems="center">
+                      <Text fontSize={11} color={brand.grafite70} textAlign="center">
+                        {event.message}
+                      </Text>
+                      <Text fontSize={10} color={brand.grafite70}>
+                        {formatEventTime(event.createdAt)}
+                      </Text>
+                    </YStack>
+                  </Fragment>
                 );
               }
               // I messaggi di chi sta guardando vanno a destra (come in
               // qualunque chat), quelli dell'altra parte a sinistra —
               // richiesta esplicita dell'utente.
               const isMine = event.actor === viewerRole;
-              const nameOnPress = openProfileOf(event.actor);
+              // Niente nome dentro la nuvoletta (docs/CHANGELOG.md §198): in
+              // una chat a due il lato dice già chi scrive, il nome
+              // dell'altra parte è nell'intestazione.
               return (
-                <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
-                  <YStack
-                    gap="$1.5"
-                    maxWidth="85%"
-                    backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
-                    borderRadius="$4"
-                    borderTopRightRadius={isMine ? 4 : undefined}
-                    borderTopLeftRadius={isMine ? undefined : 4}
-                    paddingHorizontal="$3"
-                    paddingVertical="$2.5"
-                  >
-                    <Text
-                      fontFamily="$body"
-                      fontWeight="700"
-                      fontSize={11}
-                      color={ACTOR_COLOR[event.actor]}
-                      textDecorationLine={nameOnPress ? "underline" : undefined}
-                      cursor={nameOnPress ? "pointer" : undefined}
-                      onPress={nameOnPress}
-                      accessibilityRole={nameOnPress ? "button" : undefined}
+                <Fragment key={event.id}>
+                  {daySeparator}
+                  <YStack alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
+                    <YStack
+                      gap="$1.5"
+                      maxWidth="85%"
+                      backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
+                      borderRadius="$4"
+                      borderTopRightRadius={isMine ? 4 : undefined}
+                      borderTopLeftRadius={isMine ? undefined : 4}
+                      paddingHorizontal="$3"
+                      paddingVertical="$2.5"
                     >
-                      {displayNameFor(event.actor)}
+                      {event.message ? (
+                        <Text color={brand.grafite} fontSize="$3">
+                          {event.message}
+                        </Text>
+                      ) : null}
+                      {event.mediaUrls.length > 0 ? (
+                        <XStack gap="$2" flexWrap="wrap">
+                          {event.mediaUrls.map((url) =>
+                            // Un documento (PDF/Word/Excel) deve mostrare già
+                            // il proprio nome in chat, non solo un'icona
+                            // generica "PDF" — richiesta esplicita
+                            // dell'utente ("deve essere già visibile il nome
+                            // del file in chat"): chip icona+nome invece
+                            // della tessera quadrata riservata a foto/video.
+                            isDocumentUrl(url) ? (
+                              <XStack
+                                key={url}
+                                alignItems="center"
+                                gap="$1.5"
+                                maxWidth={200}
+                                paddingHorizontal="$2"
+                                paddingVertical="$1.5"
+                                borderRadius="$2"
+                                borderWidth={1}
+                                borderColor={brand.filetto}
+                                backgroundColor={brand.calce}
+                                cursor="pointer"
+                                onPress={() => openMediaAt(event.mediaUrls, url)}
+                                accessibilityRole="button"
+                              >
+                                <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
+                                <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                                  {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+                                </Text>
+                              </XStack>
+                            ) : (
+                              <MediaPreview
+                                key={url}
+                                url={url}
+                                onClick={() => openMediaAt(event.mediaUrls, url)}
+                                style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+                              />
+                            ),
+                          )}
+                        </XStack>
+                      ) : null}
+                    </YStack>
+                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
+                      {formatEventTime(event.createdAt)}
                     </Text>
-                    {event.message ? (
-                      <Text color={brand.grafite} fontSize="$3">
-                        {event.message}
-                      </Text>
-                    ) : null}
-                    {event.mediaUrls.length > 0 ? (
-                      <XStack gap="$2" flexWrap="wrap">
-                        {event.mediaUrls.map((url) =>
-                          // Un documento (PDF/Word/Excel) deve mostrare già
-                          // il proprio nome in chat, non solo un'icona
-                          // generica "PDF" — richiesta esplicita
-                          // dell'utente ("deve essere già visibile il nome
-                          // del file in chat"): chip icona+nome invece
-                          // della tessera quadrata riservata a foto/video.
-                          isDocumentUrl(url) ? (
-                            <XStack
-                              key={url}
-                              alignItems="center"
-                              gap="$1.5"
-                              maxWidth={200}
-                              paddingHorizontal="$2"
-                              paddingVertical="$1.5"
-                              borderRadius="$2"
-                              borderWidth={1}
-                              borderColor={brand.filetto}
-                              backgroundColor={brand.calce}
-                              cursor="pointer"
-                              onPress={() => openMediaAt(event.mediaUrls, url)}
-                              accessibilityRole="button"
-                            >
-                              <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                              <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
-                                {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
-                              </Text>
-                            </XStack>
-                          ) : (
-                            <MediaPreview
-                              key={url}
-                              url={url}
-                              onClick={() => openMediaAt(event.mediaUrls, url)}
-                              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                            />
-                          ),
-                        )}
-                      </XStack>
-                    ) : null}
                   </YStack>
-                  <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
-                    {formatEventDate(event.createdAt)}
-                  </Text>
-                </YStack>
+                </Fragment>
               );
             })
           )}
@@ -815,10 +810,8 @@ export function ConversationView({
                 borderRadius="$3"
                 overflow="hidden"
                 zIndex={1200}
-                shadowColor="rgba(43,32,19,0.16)"
-                shadowRadius={14}
-                shadowOffset={{ width: 0, height: 6 }}
-                shadowOpacity={1}
+                borderWidth={1}
+                borderColor={brand.filetto}
               >
                 {[
                   {
@@ -931,6 +924,13 @@ export function ConversationView({
         }
         .composer-round:disabled {
           cursor: default;
+        }
+        .composer-round:focus {
+          outline: none;
+        }
+        .composer-round:focus-visible {
+          outline: 2px solid ${brand.cianografia};
+          outline-offset: 2px;
         }
         .composer-attach {
           background: ${brand.calce};

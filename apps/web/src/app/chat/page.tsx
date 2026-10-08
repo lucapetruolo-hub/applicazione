@@ -328,14 +328,15 @@ function ChatThreadRow({
     >
       <Avatar name={thread.otherPartyName} imageUrl={thread.otherPartyImageUrl} size={48} />
       <YStack flex={1} minWidth={0} gap={2}>
-        <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
-            {thread.otherPartyName}
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            · {thread.categoryLabel}
-          </Text>
-        </XStack>
+        <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
+          {thread.otherPartyName}
+        </Text>
+        {/* Categoria + inizio della descrizione del lavoro (docs/CHANGELOG.md
+            §198): due chat con la stessa persona non sembrano più uguali. */}
+        <Text fontSize="$2" color={brand.grafite70} numberOfLines={1}>
+          {thread.categoryLabel}
+          {thread.requestDescription?.trim() ? ` · ${thread.requestDescription.trim()}` : ""}
+        </Text>
         <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
           {thread.lastMessageIsMine ? "Tu: " : ""}
           {previewText}

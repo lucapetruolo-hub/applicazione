@@ -17007,3 +17007,16 @@ questione resta tra voi".
 - **Verifica:** typecheck di `apps/web` e `packages/ui`; anteprime con dati
   finti su computer (professionista e cliente), tablet e telefono, con testo
   su più righe e menu allegati aperto.
+- **Secondo giro** (l'utente, guardando le anteprime: "non mi piace l'ombra
+  nera di quando si clicca sul pulsante +, eliminala; procedi con le 4
+  migliorie"): menu del "+" con un bordo sottile invece dell'ombra, anello di
+  focus solo da tastiera (`:focus-visible`). Avviso di sicurezza su una riga
+  ("Resta in questa chat: non condividere numeri, dati personali o QR code.
+  Scopri di più"; su telefono due righe). Sotto i messaggi solo l'ora, con un
+  separatore "Oggi" / "Ieri" / data quando cambia il giorno. Tolto il nome
+  sopra ogni nuvoletta (il lato dice chi scrive, il nome è
+  nell'intestazione). In elenco, sotto il nome, categoria e inizio della
+  descrizione del lavoro: nuovo campo `ChatThreadSummary.requestDescription`
+  da `TimelineService.listThreadsForUser` (la descrizione è già visibile al
+  professionista prima dell'accettazione, CLAUDE.md §5.9; il sito regge
+  un'API non ancora aggiornata). Typecheck di `apps/web` e `apps/api`.

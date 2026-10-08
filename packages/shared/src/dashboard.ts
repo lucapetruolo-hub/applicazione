@@ -417,6 +417,13 @@ export type ChatThreadSummary = {
   otherPartyName: string;
   otherPartyImageUrl: string | null;
   categoryLabel: string;
+  /**
+   * Descrizione del lavoro scritta dal cliente, per distinguere due chat con
+   * la stessa persona (docs/CHANGELOG.md §198). Visibile al professionista
+   * già prima dell'accettazione, come nelle richieste (CLAUDE.md §5.9).
+   * Facoltativa solo per un'API non ancora aggiornata.
+   */
+  requestDescription?: string;
   lastMessage: string | null;
   /** True se l'ultimo evento porta almeno una foto/video allegata (il testo può essere vuoto in quel caso). */
   lastMessageHasMedia: boolean;

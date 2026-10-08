@@ -121,6 +121,7 @@ export class TimelineService {
         otherPartyName,
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
+        requestDescription: event.guidedRequest.description,
         lastMessage: event.message || null,
         lastMessageHasMedia: event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
