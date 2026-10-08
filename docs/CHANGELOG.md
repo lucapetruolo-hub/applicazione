@@ -17036,3 +17036,9 @@ questione resta tra voi".
   messaggio automatico non mostra più "Tu:". Verifica: migrazioni applicate
   su un Postgres locale vuoto senza differenze dallo schema, 237 test API
   verdi, typecheck di `apps/api` e `apps/web`, anteprime computer e telefono.
+- **Quarto giro** ("i messaggi automatici mettili sempre all'interno di un
+  riquadro in modo che sono più visibili, procedi con le migliorie
+  suggerite"): messaggi automatici e di sistema in un riquadro bianco con
+  bordo, testo scuro. Nelle chat a finestra (Richieste, Agenda) la
+  descrizione del lavoro in intestazione arriva dall'elenco chat
+  (`myChatThreads`, una chiamata all'apertura) quando chi apre non la passa.

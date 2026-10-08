@@ -160,6 +160,26 @@ export function ConversationView({
   const otherActor: ConversationEvent["actor"] = viewerRole === "PROFESSIONAL" ? "CLIENT" : "PROFESSIONAL";
   const headerOnPress = openProfileOf(otherActor);
 
+  // Nelle chat a finestra (Richieste, Agenda) chi apre non passa la
+  // descrizione: la si prende dall'elenco chat, una sola chiamata
+  // all'apertura (docs/CHANGELOG.md §198).
+  const [fetchedDescription, setFetchedDescription] = useState<string | null>(null);
+  useEffect(() => {
+    if (requestDescription !== undefined) return;
+    let cancelled = false;
+    apiClient
+      .myChatThreads(token)
+      .then((threads) => {
+        const thread = threads.find((t) => t.guidedRequestId === guidedRequestId && t.professionalProfileId === professionalProfileId);
+        if (!cancelled) setFetchedDescription(thread?.requestDescription ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, guidedRequestId, professionalProfileId, requestDescription]);
+  const headerDescription = requestDescription ?? fetchedDescription;
+
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -569,7 +589,7 @@ export function ConversationView({
                   {otherPartyName}
                 </Text>
                 <Text fontSize="$1" color={brand.grafite70} numberOfLines={1}>
-                  {requestDescription?.trim() || "Cronologia della richiesta"}
+                  {headerDescription?.trim() || "Cronologia della richiesta"}
                 </Text>
               </YStack>
             </>
@@ -658,8 +678,22 @@ export function ConversationView({
                 return (
                   <Fragment key={event.id}>
                     {daySeparator}
-                    <YStack gap="$1" alignItems="center" alignSelf="center" maxWidth="85%">
-                      <Text fontSize={12} color={brand.grafite70} textAlign="center">
+                    {/* In un riquadro per essere più visibili (richiesta
+                        esplicita dell'utente, §198): bianco con bordo,
+                        distinto dalle nuvolette colorate. */}
+                    <YStack
+                      gap="$1"
+                      alignItems="center"
+                      alignSelf="center"
+                      maxWidth="85%"
+                      paddingHorizontal="$3"
+                      paddingVertical="$2"
+                      borderRadius="$3"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      backgroundColor={brand.calce}
+                    >
+                      <Text fontSize={12} color={brand.grafite} textAlign="center">
                         {event.message}
                       </Text>
                       {renderEventMedia(event)}
