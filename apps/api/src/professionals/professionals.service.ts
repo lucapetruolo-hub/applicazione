@@ -688,7 +688,7 @@ export class ProfessionalsService {
     }
     const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
 
-    // Badge "Verificato" (docs/CHANGELOG.md §199): il controllo valeva per il
+    // Badge "Verificato" (docs/CHANGELOG.md §200): il controllo valeva per il
     // nome dell'attività di prima, quindi si toglie se il nome cambia.
     if (existingProfile && existingProfile.businessName.trim() !== profile.businessName.trim()) {
       await this.professionalVerificationService.revokeAfterOwnChange(

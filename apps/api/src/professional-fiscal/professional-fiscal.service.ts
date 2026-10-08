@@ -132,7 +132,7 @@ export class ProfessionalFiscalService {
       });
     }
 
-    // Badge "Verificato" (docs/CHANGELOG.md §199): controllato sui dati
+    // Badge "Verificato" (docs/CHANGELOG.md §200): controllato sui dati
     // fiscali vecchi, si toglie se cambiano partita IVA o codice fiscale.
     const taxIdChanged = (["vatNumber", "fiscalCodiceFiscale"] as const).some(
       (field) => existing && input[field] !== undefined && (existing[field] ?? null) !== (fiscalProfile[field] ?? null),

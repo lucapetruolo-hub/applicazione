@@ -6,7 +6,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §199): un admin
+ * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): un admin
  * controlla documento d'identità e partita IVA (o codice fiscale) fuori dal
  * sito e qui assegna o toglie il badge "Verificato". Ogni cambio finisce nel
  * registro azioni e il professionista riceve un avviso.
@@ -41,7 +41,7 @@ export class ProfessionalVerificationService {
       orderBy:
         filter === "verified"
           ? [{ verifiedAt: "desc" }]
-          : // Prima chi ha chiesto la verifica (docs/CHANGELOG.md §200), poi i più vecchi.
+          : // Prima chi ha chiesto la verifica (docs/CHANGELOG.md §201), poi i più vecchi.
             [{ verificationRequestedAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: 200,
       include: {
@@ -119,7 +119,7 @@ export class ProfessionalVerificationService {
   }
 
   /**
-   * "Richiedi la verifica" da /dashboard/profilo (docs/CHANGELOG.md §200):
+   * "Richiedi la verifica" da /dashboard/profilo (docs/CHANGELOG.md §201):
    * il profilo sale in cima a "Da verificare" e il menu admin lo conta.
    */
   async requestVerification(userId: string) {

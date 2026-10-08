@@ -115,9 +115,9 @@ export default function DashboardProfiloPage() {
   const { user, token, isLoading } = useAuth();
 
   const [businessName, setBusinessName] = useState("");
-  // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §199).
+  // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §200).
   const [verified, setVerified] = useState(false);
-  // "Richiedi la verifica" (docs/CHANGELOG.md §200): data della richiesta già inviata.
+  // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
   const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
   const [requestingVerification, setRequestingVerification] = useState(false);
   const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);

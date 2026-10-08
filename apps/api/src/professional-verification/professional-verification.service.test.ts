@@ -4,7 +4,7 @@ import { verifyProfessionalSchema } from "@professionisti/shared";
 import { ProfessionalVerificationService } from "./professional-verification.service";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §199): il badge
+ * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): il badge
  * "Verificato" lo assegna solo un admin, con i due controlli spuntati, e ogni
  * cambio finisce nel registro azioni e arriva al professionista.
  */

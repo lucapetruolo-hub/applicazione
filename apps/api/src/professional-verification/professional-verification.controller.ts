@@ -10,7 +10,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { ProfessionalVerificationService } from "./professional-verification.service";
 
-/** Area admin: verifica manuale dei professionisti (docs/CHANGELOG.md §199). */
+/** Area admin: verifica manuale dei professionisti (docs/CHANGELOG.md §200). */
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/professional-verifications")
 export class AdminProfessionalVerificationController {
@@ -35,7 +35,7 @@ export class AdminProfessionalVerificationController {
   }
 }
 
-/** Il professionista chiede la verifica dal proprio profilo (docs/CHANGELOG.md §200). */
+/** Il professionista chiede la verifica dal proprio profilo (docs/CHANGELOG.md §201). */
 @UseGuards(JwtAuthGuard)
 @Controller("professionals/me/verification-request")
 export class ProfessionalVerificationRequestController {

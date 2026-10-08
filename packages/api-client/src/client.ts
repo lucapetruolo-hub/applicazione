@@ -347,7 +347,7 @@ export type AdminOverview = {
   paymentsEnabled: boolean;
   /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
   unpaidBalances: number;
-  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §200). */
+  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
   verificationRequests: number;
 };
 
@@ -1500,13 +1500,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §200). */
+    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §201). */
     requestProfessionalVerification: (token: string) =>
       request<{ verificationRequestedAt: string }>("/professionals/me/verification-request", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** Verifica manuale dei professionisti (docs/CHANGELOG.md §199). */
+    /** Verifica manuale dei professionisti (docs/CHANGELOG.md §200). */
     adminListProfessionalVerifications: (token: string, filter: ProfessionalVerificationFilter, q = "") =>
       request<ProfessionalVerificationRow[]>(
         `/admin/professional-verifications?stato=${filter === "verified" ? "verificati" : "da-verificare"}&q=${encodeURIComponent(q)}`,

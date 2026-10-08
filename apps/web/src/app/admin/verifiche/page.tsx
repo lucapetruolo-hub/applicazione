@@ -10,7 +10,7 @@ import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatA
 import { SkeletonTableRows } from "@/components/Skeleton";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §199): l'admin
+ * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): l'admin
  * controlla fuori dal sito un documento d'identità e la partita IVA (o il
  * codice fiscale) e qui assegna il badge "Verificato". Nessun documento
  * viene caricato o conservato sul sito.

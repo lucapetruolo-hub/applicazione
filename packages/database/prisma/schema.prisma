@@ -182,13 +182,13 @@ model ProfessionalProfile {
   portfolioUrls                String[]  @default([])
   verified                     Boolean   @default(false)
   // Verifica manuale fatta da un admin in /admin/verifiche (docs/CHANGELOG.md
-  // §199): documento d'identità e partita IVA (o codice fiscale) controllati.
+  // §200): documento d'identità e partita IVA (o codice fiscale) controllati.
   // Il badge "Verificato" segue `verified`; questi campi dicono chi e quando.
   verifiedAt                   DateTime?
   verifiedByUserId             String?
   verificationNote             String?
   // Il professionista ha premuto "Richiedi la verifica" in /dashboard/profilo
-  // (docs/CHANGELOG.md §200): azzerato quando un admin verifica il profilo.
+  // (docs/CHANGELOG.md §201): azzerato quando un admin verifica il profilo.
   verificationRequestedAt      DateTime?
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
@@ -1283,6 +1283,11 @@ model ConversationEvent {
   // (invio preventivo, accettazione, ecc.), stesso pattern array nativo
   // già in uso per GuidedRequest.photoUrls/Review.photoUrls, fino a 5.
   mediaUrls             String[]               @default([])
+  // Vero per i messaggi scritti dal sistema a nome di una parte
+  // (TimelineService.log: "Il cliente ha accettato il preventivo", ecc.),
+  // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
+  // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
+  automatic             Boolean                @default(false)
   createdAt             DateTime               @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)

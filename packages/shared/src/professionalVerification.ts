@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §199, checklist
+ * Verifica manuale dei professionisti (docs/CHANGELOG.md §200, checklist
  * lancio punto 15): un admin controlla un documento d'identità e la partita
  * IVA (o il codice fiscale, per chi non ha partita IVA) e assegna il badge
  * "Verificato". Niente documenti caricati sul sito: il controllo avviene
@@ -37,7 +37,7 @@ export type ProfessionalVerificationRow = {
   codiceFiscale: string | null;
   hasLiabilityInsurance: boolean;
   verified: boolean;
-  /** Ha premuto "Richiedi la verifica" (docs/CHANGELOG.md §200). */
+  /** Ha premuto "Richiedi la verifica" (docs/CHANGELOG.md §201). */
   verificationRequestedAt: string | null;
   verifiedAt: string | null;
   verifiedByName: string | null;

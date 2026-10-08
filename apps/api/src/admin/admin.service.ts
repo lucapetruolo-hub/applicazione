@@ -44,7 +44,7 @@ export type AdminOverview = {
   suspendedUsers: number;
   hiddenLeads: number;
   waitlist: number;
-  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §200). */
+  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
   verificationRequests: number;
 };
 
@@ -524,7 +524,7 @@ export class AdminService {
         this.prisma.jobIssue.count({ where: { status: "OPEN" } }),
         this.prisma.jobIssue.count({ where: { appealedAt: { not: null }, appealDecision: null } }),
         this.prisma.jobPayment.count({ where: { balanceUnpaidAt: { not: null } } }),
-        // "Richiedi la verifica" in attesa (docs/CHANGELOG.md §200).
+        // "Richiedi la verifica" in attesa (docs/CHANGELOG.md §201).
         this.prisma.professionalProfile.count({
           where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
         }),

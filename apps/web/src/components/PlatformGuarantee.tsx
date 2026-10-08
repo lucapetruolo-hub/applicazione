@@ -13,7 +13,7 @@ const POINTS = [
     comingSoon: false,
   },
   {
-    // Verifica manuale da admin (docs/CHANGELOG.md §199): documento e dati
+    // Verifica manuale da admin (docs/CHANGELOG.md §200): documento e dati
     // fiscali, non l'assicurazione RC (resta "dichiarata" sul profilo).
     text: "Badge Verificato: abbiamo controllato documento d'identità e partita IVA del professionista",
     comingSoon: false,

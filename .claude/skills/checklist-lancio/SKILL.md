@@ -156,12 +156,12 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
 15. ~~Claim "Profili verificati"~~ — la verifica esiste (docs/CHANGELOG.md
-    §199-§200): l'admin controlla documento e partita IVA e assegna il badge
+    §200-§201): l'admin controlla documento e partita IVA e assegna il badge
     da `/admin/verifiche`, il professionista lo chiede dal profilo. Footer e
     risultati dicono ora "Badge Verificato: documento e P.IVA controllati".
     Resta da fare: verificare davvero i primi professionisti prima del
     lancio. "Professionisti verificati" generico tolto dalle descrizioni
-    (§201).
+    (§202).
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).
@@ -195,7 +195,7 @@ prima del lancio"):
 21. **Nome e icona del marchio** (decisione dell'utente, 06/10/2026): per ora
     il sito si chiama "Professionisti"; il nome definitivo va scelto e
     cambiato prima del lancio. Per i testi (sito, app, email) basta
-    `BRAND.name` in `packages/shared/src/brand.ts` (docs/CHANGELOG.md §198).
+    `BRAND.name` in `packages/shared/src/brand.ts` (docs/CHANGELOG.md §199).
     A parte restano l'icona (`icon.svg`, `icon-192.png`, `icon-512.png`,
     `apple-icon.tsx`, `opengraph-image.tsx` in `apps/web/src/app`, il
     disegno in `packages/ui/src/Logo*.tsx`), `apps/mobile/app.json` e
