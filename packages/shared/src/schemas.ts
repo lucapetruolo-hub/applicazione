@@ -53,12 +53,19 @@ export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
  * principio già seguito per `waitlistSignupSchema` sopra.
  */
 export const contactMessageRoleSchema = z.enum(["CLIENT", "PROFESSIONAL", "OTHER"]);
+/**
+ * Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §198):
+ * controllato dal server solo se `TURNSTILE_SECRET_KEY` è impostata.
+ */
+export const turnstileTokenSchema = z.string().max(2048).optional();
+
 export const contactMessageSchema = z.object({
   role: contactMessageRoleSchema,
   email: z.string().email("Email non valida"),
   content: z.string().min(1, "Scrivi un messaggio.").max(4000, "Messaggio troppo lungo."),
   // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
   website: z.string().max(200).optional(),
+  turnstileToken: turnstileTokenSchema,
 });
 export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 
@@ -108,9 +115,7 @@ export const registerSchema = emailPasswordSchema.extend({
   // professionali sono anch'esse autodichiarate, CLAUDE.md §"Verbale").
   acceptedLegalTerms: z.boolean().refine((v) => v === true, "Devi accettare Privacy Policy e Termini di Servizio."),
   declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
-  // Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §198):
-  // controllato dal server solo se `TURNSTILE_SECRET_KEY` è impostata.
-  turnstileToken: z.string().max(2048).optional(),
+  turnstileToken: turnstileTokenSchema,
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -155,6 +160,7 @@ export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 /** Recupero password (docs/CHANGELOG.md §185): richiesta del link. */
 export const passwordResetRequestSchema = z.object({
   email: z.string().trim().email("Email non valida"),
+  turnstileToken: turnstileTokenSchema,
 });
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 

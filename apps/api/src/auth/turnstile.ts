@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { BadRequestException, Logger } from "@nestjs/common";
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const logger = new Logger("Turnstile");
@@ -6,8 +6,9 @@ const logger = new Logger("Turnstile");
 type SiteverifyResponse = { success: boolean; "error-codes"?: string[] };
 
 /**
- * Controllo anti-bot Cloudflare Turnstile sulla registrazione con email e
- * password (checklist di lancio punto 24, docs/CHANGELOG.md §198).
+ * Controllo anti-bot Cloudflare Turnstile sui moduli pubblici: registrazione
+ * con email e password, recupero password e contatti (checklist di lancio
+ * punto 24, docs/CHANGELOG.md §198).
  *
  * - Senza `TURNSTILE_SECRET_KEY` il controllo è spento (true), come Maps e
  *   Stripe senza chiavi: in sviluppo e finché le chiavi non sono su Render
@@ -31,7 +32,7 @@ export async function verifyTurnstileToken(token: string | undefined, remoteIp: 
   try {
     const response = await fetch(SITEVERIFY_URL, { method: "POST", body, signal: controller.signal });
     if (!response.ok) {
-      logger.warn(`Turnstile non disponibile (HTTP ${response.status}): registrazione lasciata passare.`);
+      logger.warn(`Turnstile non disponibile (HTTP ${response.status}): richiesta lasciata passare.`);
       return true;
     }
     const data = (await response.json()) as SiteverifyResponse;
@@ -45,9 +46,16 @@ export async function verifyTurnstileToken(token: string | undefined, remoteIp: 
     }
     return true;
   } catch (error) {
-    logger.warn(`Turnstile non raggiungibile: ${error instanceof Error ? error.message : error}. Registrazione lasciata passare.`);
+    logger.warn(`Turnstile non raggiungibile: ${error instanceof Error ? error.message : error}. Richiesta lasciata passare.`);
     return true;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+/** Come `verifyTurnstileToken`, ma risponde 400 se la verifica non passa. */
+export async function assertTurnstile(token: string | undefined, remoteIp: string | undefined): Promise<void> {
+  if (!(await verifyTurnstileToken(token, remoteIp))) {
+    throw new BadRequestException("Verifica anti-bot non riuscita: riprova.");
   }
 }

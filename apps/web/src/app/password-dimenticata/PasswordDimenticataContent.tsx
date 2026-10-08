@@ -7,6 +7,7 @@ import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { apiClient } from "@/lib/apiClient";
+import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 
 /**
  * Recupero password (docs/CHANGELOG.md §185): si chiede il link via email.
@@ -17,6 +18,8 @@ export function PasswordDimenticataContent() {
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   async function handleSubmit() {
     setError(null);
@@ -25,13 +28,20 @@ export function PasswordDimenticataContent() {
       setError(parsed.error.issues[0]?.message ?? "Email non valida");
       return;
     }
+    if (isTurnstileEnabled() && !turnstileToken) {
+      setError(TURNSTILE_PENDING_MESSAGE);
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await apiClient.requestPasswordReset(parsed.data.email);
+      await apiClient.requestPasswordReset(parsed.data.email, turnstileToken ?? undefined);
       setSentTo(parsed.data.email);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
+      // Il token anti-bot vale una volta sola: nuovo token per il prossimo invio
+      // (anche "prova con un altro indirizzo" dopo un invio riuscito).
+      setTurnstileReset((n) => n + 1);
       setIsSubmitting(false);
     }
   }
@@ -77,6 +87,7 @@ export function PasswordDimenticataContent() {
               accessibilityLabel="Email"
               onSubmitEditing={handleSubmit}
             />
+            <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
             {error ? (
               <Text color={brand.urgenza} fontSize="$3">
                 {error}

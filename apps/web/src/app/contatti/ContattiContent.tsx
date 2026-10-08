@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 
 const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
   { value: "CLIENT", label: "Sono un cliente" },
@@ -52,18 +53,30 @@ export default function ContattiContent() {
   const [content, setContent] = useState("");
   const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("Inserisci un'email valida e un messaggio.");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   async function handleSubmit() {
     if (!email.trim() || !email.includes("@") || !content.trim()) {
+      setErrorMessage("Inserisci un'email valida e un messaggio.");
+      setStatus("error");
+      return;
+    }
+    if (isTurnstileEnabled() && !turnstileToken) {
+      setErrorMessage(TURNSTILE_PENDING_MESSAGE);
       setStatus("error");
       return;
     }
     setStatus("loading");
     try {
-      await apiClient.sendContactMessage({ role, email: email.trim(), content: content.trim(), website });
+      await apiClient.sendContactMessage({ role, email: email.trim(), content: content.trim(), website, turnstileToken: turnstileToken ?? undefined });
       setStatus("done");
-    } catch {
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Invio non riuscito, riprova.");
       setStatus("error");
+      // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
+      setTurnstileReset((n) => n + 1);
     }
   }
 
@@ -147,6 +160,8 @@ export default function ContattiContent() {
                   />
                 </YStack>
 
+                <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
+
                 <button
                   onClick={handleSubmit}
                   disabled={status === "loading"}
@@ -168,7 +183,7 @@ export default function ContattiContent() {
 
                 {status === "error" ? (
                   <Text fontSize={14} color={brand.urgenza}>
-                    Inserisci un&apos;email valida e un messaggio.
+                    {errorMessage}
                   </Text>
                 ) : null}
               </YStack>

@@ -212,7 +212,7 @@ prima del lancio"):
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
-24. **Cloudflare Turnstile anti-bot sulla registrazione** — codice fatto
+24. **Cloudflare Turnstile anti-bot** (registrazione, recupero password, contatti) — codice fatto
     (docs/CHANGELOG.md §198), resta spento finché non si mettono le chiavi:
     1. Cloudflare (account gratuito) → Turnstile → Add widget, modalità
        "Managed", dominio del sito (`applicazione-web.vercel.app`, più il

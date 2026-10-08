@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verifyTurnstileToken } from "./turnstile";
+import { BadRequestException } from "@nestjs/common";
+import { assertTurnstile, verifyTurnstileToken } from "./turnstile";
 
 /**
  * Anti-bot Turnstile sulla registrazione (docs/CHANGELOG.md §198): spento
@@ -59,5 +60,11 @@ describe("verifyTurnstileToken", () => {
     process.env.TURNSTILE_SECRET_KEY = "secret";
     stubFetch(async () => ({ ok: false, status: 503 }));
     await expect(verifyTurnstileToken("tok", undefined)).resolves.toBe(true);
+  });
+
+  it("assertTurnstile risponde 400 se la verifica non passa", async () => {
+    process.env.TURNSTILE_SECRET_KEY = "secret";
+    stubFetch(async () => ({}));
+    await expect(assertTurnstile(undefined, undefined)).rejects.toBeInstanceOf(BadRequestException);
   });
 });

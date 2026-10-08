@@ -31,7 +31,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { isEmailVerificationRequired } from "./verified-email.guard";
-import { verifyTurnstileToken } from "./turnstile";
+import { assertTurnstile } from "./turnstile";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -49,9 +49,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("register")
   async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput, @Req() req: Request) {
-    if (!(await verifyTurnstileToken(body.turnstileToken, req.ip))) {
-      throw new BadRequestException("Verifica anti-bot non riuscita: riprova.");
-    }
+    await assertTurnstile(body.turnstileToken, req.ip);
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
@@ -86,7 +84,8 @@ export class AuthController {
   // casella altrui.
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post("password-reset/request")
-  async requestPasswordReset(@Body(new ZodValidationPipe(passwordResetRequestSchema)) body: PasswordResetRequestInput) {
+  async requestPasswordReset(@Body(new ZodValidationPipe(passwordResetRequestSchema)) body: PasswordResetRequestInput, @Req() req: Request) {
+    await assertTurnstile(body.turnstileToken, req.ip);
     await this.authService.requestPasswordReset(body.email);
     return { success: true };
   }

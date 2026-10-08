@@ -48,8 +48,9 @@ function loadScript(onReady: () => void) {
 }
 
 /**
- * Anti-bot Cloudflare Turnstile sulla registrazione con email e password
- * (checklist di lancio punto 24, docs/CHANGELOG.md §198). Senza
+ * Anti-bot Cloudflare Turnstile su registrazione con email e password,
+ * recupero password e contatti (checklist di lancio punto 24,
+ * docs/CHANGELOG.md §198). Senza
  * `NEXT_PUBLIC_TURNSTILE_SITE_KEY` non mostra nulla e non carica nessuno
  * script, come Maps e Google Sign-In senza chiave.
  *
@@ -102,8 +103,10 @@ export function TurnstileWidget({
   }, [resetSignal]);
 
   if (!siteKey) return null;
-  return <div ref={containerRef} />;
+  // `display: contents`: finché Cloudflare non mostra nulla il contenitore
+  // non conta come elemento dello stack e non aggiunge spazio vuoto.
+  return <div ref={containerRef} style={{ display: "contents" }} />;
 }
 
-/** Messaggio quando si preme "Crea account" prima che la verifica sia pronta. */
+/** Messaggio quando si invia il modulo prima che la verifica sia pronta. */
 export const TURNSTILE_PENDING_MESSAGE = "Un attimo: stiamo verificando che non sei un robot. Riprova tra qualche secondo.";

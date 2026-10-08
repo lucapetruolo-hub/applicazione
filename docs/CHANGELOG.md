@@ -16980,7 +16980,7 @@ questione resta tra voi".
 - **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
   API verdi), typecheck di `apps/api` e `apps/web`.
 
-## 198. Anti-bot Cloudflare Turnstile sulla registrazione
+## 198. Anti-bot Cloudflare Turnstile sulla registrazione, sul recupero password e sui contatti
 
 **Richiesta dell'utente:** integrare Cloudflare Turnstile prima del lancio
 (decisione del 06/10/2026, checklist di lancio punto 24), scelto come
@@ -16989,8 +16989,13 @@ prossima funzionalità da costruire.
 - **Dove:** solo la registrazione con email e password, cioè il modulo
   professionista di `/registrati` e il passo "nuovo account" di
   `ClientEmailFirstAuth` (usato da `/registrati` per i clienti e da
-  `InlineAuthGate`). Google Sign-In non ne ha bisogno; login e recupero
-  password restano coperti dal limite per IP.
+  `InlineAuthGate`). Google Sign-In non ne ha bisogno; il login resta
+  coperto dal limite per IP. **Migliorie approvate dall'utente** nello
+  stesso giro: Turnstile anche su "Password dimenticata" (`POST
+  /auth/password-reset/request`) e sul modulo `/contatti` (`POST /contact`,
+  dopo l'honeypot), con lo stesso `assertTurnstile`; il contenitore del
+  widget è `display: contents`, così da invisibile non aggiunge spazio
+  sopra il pulsante.
 - **Browser:** `TurnstileWidget` carica lo script di Cloudflare solo con
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, in italiano, a tutta larghezza e
   invisibile salvo quando Cloudflare chiede una conferma
@@ -17010,8 +17015,9 @@ prossima funzionalità da costruire.
 - **Privacy:** Cloudflare aggiunto all'elenco dei fornitori e dei
   trasferimenti negli USA su `/privacy`. Nessun consenso cookie: Turnstile
   non usa cookie di profilazione.
-- **Verifica:** sei test nuovi in `turnstile.test.ts`; prova reale contro
+- **Verifica:** sette test nuovi in `turnstile.test.ts`; prova reale contro
   Cloudflare con le chiavi di prova ufficiali (quella che passa sempre e
-  quella che fallisce sempre); widget provato nel browser su `/registrati`
-  con la chiave di prova; typecheck di `apps/api` e `apps/web`, test di
+  quella che fallisce sempre); widget provato nel browser su `/registrati`,
+  `/password-dimenticata` e `/contatti` con la chiave di prova (il token
+  arriva al server); typecheck di `apps/api` e `apps/web`, test di
   tutto il monorepo verdi.
