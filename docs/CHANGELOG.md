@@ -16966,6 +16966,14 @@ questione resta tra voi".
   "Segnala richiesta", nessuna migrazione), scrive il messaggio nella chat col
   cliente e lo avvisa (`TIMELINE_MESSAGE_FROM_PROFESSIONAL`). Non tocca
   pagamenti né lo stato della prenotazione. Al massimo una ogni 24 ore per
-  lavoro. La finestra riusa `ReportContentModal` con motivi propri.
-- **Verifica:** cinque test nuovi in `bookings.service.test.ts` (236 test
+  lavoro. Finestra dedicata `ProfessionalProblemModal` con **foto o video
+  facoltativi** (fino a 5, stesso caricamento delle foto del lavoro
+  terminato): compaiono nel messaggio in chat (`TimelineService.log` accetta
+  ora `mediaUrls`) e come link nei dettagli della segnalazione per il nostro
+  team. Sulla scheda il professionista vede **l'ultima segnalazione inviata
+  e a che punto è** (in verifica, accolta, chiusa senza misure):
+  `ProfessionalBooking.professionalProblemReport`, letto in una sola query
+  per tutte le prenotazioni (motivi riconosciuti dal prefisso
+  `PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX`).
+- **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
   API verdi), typecheck di `apps/api` e `apps/web`.

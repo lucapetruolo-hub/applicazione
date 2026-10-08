@@ -27,6 +27,7 @@ import {
   toJobPaymentSummary,
   professionalRestrictions,
   jobPaidOnline,
+  PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { quoteResendWindow } from "../quotes/quote-resend";
@@ -1242,6 +1243,29 @@ export class ProfessionalsService {
       });
       for (const lead of leads) leadNoteByGuidedRequestId.set(lead.guidedRequestId, lead.professionalNote);
     }
+    // Ultima segnalazione "Qualcosa è andato male" per lavoro (§197), una
+    // sola query per tutte le prenotazioni.
+    const problemReportByGuidedRequestId = new Map<string, { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string }>();
+    if (guidedRequestIds.length > 0) {
+      const reports = await this.prisma.contentReport.findMany({
+        where: {
+          reporterId: userId,
+          targetType: "GUIDED_REQUEST",
+          targetId: { in: guidedRequestIds },
+          reason: { startsWith: PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { targetId: true, reason: true, status: true, createdAt: true },
+      });
+      for (const report of reports) {
+        if (problemReportByGuidedRequestId.has(report.targetId)) continue;
+        problemReportByGuidedRequestId.set(report.targetId, {
+          reason: report.reason.slice(PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX.length),
+          status: report.status,
+          createdAt: report.createdAt.toISOString(),
+        });
+      }
+    }
 
     return bookings.map((booking) => ({
       id: booking.id,
@@ -1294,6 +1318,7 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
       // Categoria e modalità (a domicilio/online) del lavoro — richiesta

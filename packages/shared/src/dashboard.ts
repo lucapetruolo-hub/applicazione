@@ -271,6 +271,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
+  professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**
    * Descrizione del lavoro e foto scritte/caricate dal cliente nella
    * richiesta guidata originale — richiesta esplicita dell'utente

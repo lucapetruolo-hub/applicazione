@@ -45,30 +45,18 @@ const selectStyle = {
  * (CLAUDE.md §35), invece di introdurlo di nuovo in un componente nuovo.
  */
 export function ReportContentModal({
+  targetType,
   targetLabel,
   onClose,
   onSubmit,
-  reasonOptions = REASON_OPTIONS,
-  title,
-  subtitle = "Ci aiuta a mantenere la piattaforma affidabile per tutti.",
-  detailsRequired = false,
-  doneText = "Grazie, la verificheremo il prima possibile.",
 }: {
-  targetType?: ContentReportTargetType;
+  targetType: ContentReportTargetType;
   /** Nome leggibile di cosa si sta segnalando (es. "il profilo di Mario Rossi"), mostrato nel testo. */
   targetLabel: string;
   onClose: () => void;
-  /** `reasonValue` serve a chi ha motivi propri (es. problema sull'intervento, §197). */
-  onSubmit: (reason: string, details: string | undefined, reasonValue: string) => Promise<void>;
-  /** Motivi alternativi a quelli dei contenuti (es. problema sull'intervento del professionista, §197). */
-  reasonOptions?: readonly { value: string; label: string }[];
-  title?: string;
-  subtitle?: string;
-  /** Descrizione obbligatoria (almeno 10 caratteri) invece che facoltativa. */
-  detailsRequired?: boolean;
-  doneText?: string;
+  onSubmit: (reason: string, details: string | undefined) => Promise<void>;
 }) {
-  const [reasonValue, setReasonValue] = useState(reasonOptions[0]!.value);
+  const [reasonValue, setReasonValue] = useState(REASON_OPTIONS[0]!.value);
   const [details, setDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,14 +72,10 @@ export function ReportContentModal({
 
   async function handleSubmit() {
     setError(null);
-    if (detailsRequired && details.trim().length < 10) {
-      setError("Descrivi cosa è successo (almeno 10 caratteri).");
-      return;
-    }
     setIsSubmitting(true);
     try {
-      const reasonLabel = reasonOptions.find((option) => option.value === reasonValue)?.label ?? reasonValue;
-      await onSubmit(reasonLabel, details.trim() || undefined, reasonValue);
+      const reasonLabel = REASON_OPTIONS.find((option) => option.value === reasonValue)?.label ?? reasonValue;
+      await onSubmit(reasonLabel, details.trim() || undefined);
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -139,7 +123,7 @@ export function ReportContentModal({
               Segnalazione inviata
             </Text>
             <Text fontSize="$3" color={brand.grafite70}>
-              {doneText}
+              Grazie, la verificheremo il prima possibile.
             </Text>
             <Button variant="secondary" size="$3" onPress={onClose}>
               Chiudi
@@ -149,10 +133,10 @@ export function ReportContentModal({
           <>
             <YStack gap="$1">
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-                {title ?? `Segnala ${targetLabel}`}
+                Segnala {targetLabel}
               </Text>
               <Text fontSize="$3" color={brand.grafite70}>
-                {subtitle}
+                Ci aiuta a mantenere la piattaforma affidabile per tutti.
               </Text>
             </YStack>
 
@@ -161,7 +145,7 @@ export function ReportContentModal({
                 Motivo
               </Text>
               <select value={reasonValue} onChange={(e) => setReasonValue(e.target.value)} style={selectStyle}>
-                {reasonOptions.map((option) => (
+                {REASON_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -171,12 +155,12 @@ export function ReportContentModal({
 
             <YStack gap="$2">
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-                {detailsRequired ? "Cosa è successo" : "Dettagli (facoltativi)"}
+                Dettagli (facoltativi)
               </Text>
               <textarea
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                placeholder={detailsRequired ? "Racconta in breve cosa è successo." : "Aggiungi altri dettagli utili, se vuoi."}
+                placeholder="Aggiungi altri dettagli utili, se vuoi."
                 rows={3}
                 maxLength={1000}
                 style={textareaStyle}

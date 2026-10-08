@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, PROFESSIONAL_JOB_PROBLEM_REASONS, type CompleteBookingInput, type ProfessionalJobProblemReason, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
@@ -22,6 +22,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
@@ -912,6 +913,17 @@ export function RequestCard({
             </YStack>
           ) : null}
 
+          {/* Segnalazione del professionista sul lavoro (§197): ultima inviata e a che punto è. */}
+          {booking?.professionalProblemReport ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai segnalato un problema ({formatDateTime(booking.professionalProblemReport.createdAt)}): {booking.professionalProblemReport.reason.toLowerCase()}.{" "}
+              {booking.professionalProblemReport.status === "OPEN"
+                ? "Il nostro team la sta verificando."
+                : booking.professionalProblemReport.status === "RESOLVED"
+                  ? "Il nostro team l'ha accolta."
+                  : "Il nostro team l'ha esaminata e chiusa senza misure."}
+            </Text>
+          ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
           {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
@@ -1353,21 +1365,16 @@ export function RequestCard({
         />
       ) : null}
       {showProblemModal && booking ? (
-        <ReportContentModal
-          targetLabel={`il lavoro di ${clientName}`}
-          title="Qualcosa è andato male?"
-          subtitle={`Raccontaci cosa è successo con ${clientName}. Lo scriviamo anche in chat al cliente e lo legge il nostro team.`}
-          reasonOptions={PROFESSIONAL_JOB_PROBLEM_REASONS}
-          detailsRequired
-          doneText="Segnalazione inviata. L'abbiamo scritta in chat al cliente e la verificheremo il prima possibile."
-          onClose={() => setShowProblemModal(false)}
-          onSubmit={async (_label, details, reasonValue) => {
-            await apiClient.reportProfessionalJobProblem(token, booking.id, {
-              reason: reasonValue as ProfessionalJobProblemReason,
-              description: details ?? "",
-            });
+        <ProfessionalProblemModal
+          clientName={clientName}
+          onClose={() => {
+            setShowProblemModal(false);
             onChanged();
           }}
+          onSubmit={async (input) => {
+            await apiClient.reportProfessionalJobProblem(token, booking.id, input);
+          }}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
       {showClientProfile ? (

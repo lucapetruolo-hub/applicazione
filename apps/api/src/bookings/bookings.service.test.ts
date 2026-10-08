@@ -210,7 +210,7 @@ describe("BookingsService.reportProblemByProfessional", () => {
     (built.notificationsService as Record<string, unknown>).emailAdminsNewReport = vi.fn();
     return built;
   }
-  const input = { reason: "CLIENT_ABSENT" as const, description: "Ho suonato più volte, nessuno ha aperto." };
+  const input = { reason: "CLIENT_ABSENT" as const, description: "Ho suonato più volte, nessuno ha aperto.", photoUrls: ["https://res.cloudinary.com/x/porta.jpg"] };
 
   it("rifiuta se il lavoro non è del professionista", async () => {
     const { service, prisma } = build();
@@ -229,7 +229,10 @@ describe("BookingsService.reportProblemByProfessional", () => {
     expect(contentReport.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ targetType: "GUIDED_REQUEST", targetId: "gr-1", reason: "Problema sull'intervento: Il cliente non era presente" }) }),
     );
-    expect(timelineService.log).toHaveBeenCalledWith("gr-1", "pro-1", "PROFESSIONAL", expect.stringContaining("non era presente"));
+    expect(contentReport.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ details: expect.stringContaining("https://res.cloudinary.com/x/porta.jpg") }) }),
+    );
+    expect(timelineService.log).toHaveBeenCalledWith("gr-1", "pro-1", "PROFESSIONAL", expect.stringContaining("non era presente"), input.photoUrls);
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "TIMELINE_MESSAGE_FROM_PROFESSIONAL", expect.anything());
   });
 });

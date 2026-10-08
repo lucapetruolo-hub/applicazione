@@ -17,6 +17,7 @@ import {
   type JobIssueResponseInput,
   type ReportJobIssueInput,
   PROFESSIONAL_JOB_PROBLEM_REASONS,
+  PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -678,7 +679,7 @@ export class BookingsService {
     }
     const guidedRequestId = booking.quote.guidedRequestId;
     const reasonLabel = PROFESSIONAL_JOB_PROBLEM_REASONS.find((r) => r.value === input.reason)?.label ?? input.reason;
-    const reason = `Problema sull'intervento: ${reasonLabel}`;
+    const reason = `${PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX}${reasonLabel}`;
 
     // Stessa finestra anti-doppioni di ContentReportsService.create.
     const recentDuplicate = await this.prisma.contentReport.findFirst({
@@ -690,8 +691,12 @@ export class BookingsService {
     }
 
     const description = input.description.trim();
+    const photoUrls = input.photoUrls ?? [];
+    // Le foto vanno anche nei dettagli: il pannello delle segnalazioni mostra
+    // solo testo, così il nostro team le apre dai link.
+    const details = photoUrls.length > 0 ? `${description}\n\nFoto: ${photoUrls.join(" ")}` : description;
     const created = await this.prisma.contentReport.create({
-      data: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, reason, details: description },
+      data: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, reason, details },
       select: { id: true },
     });
     await this.timelineService.log(
@@ -699,6 +704,7 @@ export class BookingsService {
       booking.professionalProfileId,
       "PROFESSIONAL",
       `Il professionista ha segnalato un problema sull'intervento: ${reasonLabel.toLowerCase()}. «${description}» Scrivetevi qui in chat per chiarire; la segnalazione arriva anche al nostro team.`,
+      photoUrls,
     );
     await this.notificationsService.notify(booking.clientId, "TIMELINE_MESSAGE_FROM_PROFESSIONAL", {
       guidedRequestId,

@@ -506,9 +506,12 @@ export const PROFESSIONAL_JOB_PROBLEM_REASONS = [
   { value: "OTHER", label: "Altro" },
 ] as const;
 export type ProfessionalJobProblemReason = (typeof PROFESSIONAL_JOB_PROBLEM_REASONS)[number]["value"];
+/** Inizio del motivo salvato sulla segnalazione: distingue queste da "Segnala richiesta". */
+export const PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX = "Problema sull'intervento: ";
 
 export const reportProfessionalJobProblemSchema = z.object({
   reason: z.enum(PROFESSIONAL_JOB_PROBLEM_REASONS.map((r) => r.value) as [ProfessionalJobProblemReason, ...ProfessionalJobProblemReason[]]),
   description: z.string().trim().min(10, "Descrivi cosa è successo (almeno 10 caratteri).").max(1000),
+  photoUrls: z.array(z.string().url()).max(5).default([]),
 });
 export type ReportProfessionalJobProblemInput = z.infer<typeof reportProfessionalJobProblemSchema>;
