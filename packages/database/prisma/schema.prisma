@@ -838,13 +838,13 @@ model Quote {
   // quando il professionista modifica di nuovo (sostituita).
   professionalCounterNote String?
   // Nota del cliente scritta con "Modifica" senza cambiare data e orario
-  // (docs/CHANGELOG.md §194): il preventivo resta SENT, quindi il cliente
+  // (docs/CHANGELOG.md §196): il preventivo resta SENT, quindi il cliente
   // può ancora accettarlo. Azzerata quando una delle due parti cambia
   // davvero data o orario.
   clientNote              String?
   // Totale indicativo prima dell'ultima modifica dei prezzi da parte del
   // professionista: il cliente vede il vecchio sbarrato accanto al nuovo e
-  // non accetta un aumento senza accorgersene (docs/CHANGELOG.md §194).
+  // non accetta un aumento senza accorgersene (docs/CHANGELOG.md §196).
   previousPriceMinEurCents Int?
   previousPriceMaxEurCents Int?
   // Nota facoltativa scritta dal cliente quando rifiuta il preventivo

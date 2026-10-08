@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
 import { jobIssueOutcomeText } from "@professionisti/shared";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { CardButton } from "@/components/CardButton";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
 /**
@@ -49,17 +50,17 @@ export function ClientIssueStatus({
         </Text>
         <XStack gap="$2" flexWrap="wrap">
           {onOpenChat ? (
-            <Button variant="primary" size="$2" height={36} onPress={onOpenChat}>
+            <CardButton tone="primary" onPress={onOpenChat}>
               Apri la chat
-            </Button>
+            </CardButton>
           ) : null}
-          <Button variant="secondary" size="$2" height={36} disabled={busy} opacity={busy ? 0.6 : 1} onPress={() => onCloseChat("RESOLVED")}>
+          <CardButton disabled={busy} onPress={() => onCloseChat("RESOLVED")}>
             Abbiamo risolto
-          </Button>
+          </CardButton>
           {issue.canEscalate ? (
-            <Button variant="ghost" size="$2" height={36} disabled={busy} opacity={busy ? 0.6 : 1} onPress={() => onCloseChat("ESCALATE")}>
+            <CardButton disabled={busy} onPress={() => onCloseChat("ESCALATE")}>
               Non abbiamo risolto
-            </Button>
+            </CardButton>
           ) : null}
         </XStack>
         {errorText}
@@ -75,9 +76,9 @@ export function ClientIssueStatus({
           per raccontare com&apos;è andata.
         </Text>
         {issue.canRedispatch ? (
-          <Button variant="primary" size="$2" height={36} alignSelf="flex-start" disabled={busy} opacity={busy ? 0.6 : 1} onPress={onRedispatch}>
+          <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={onRedispatch}>
             Invia la richiesta ad altri professionisti
-          </Button>
+          </CardButton>
         ) : null}
         {errorText}
       </YStack>
@@ -129,20 +130,23 @@ export function ClientIssueStatus({
       ) : null}
       {issue.canRedispatch ? (
         <YStack gap="$1">
-          <Button variant="primary" size="$2" height={36} alignSelf="flex-start" disabled={busy} opacity={busy ? 0.6 : 1} onPress={onRedispatch}>
+          <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={onRedispatch}>
             Invia la richiesta ad altri professionisti
-          </Button>
+          </CardButton>
           <Text fontSize="$1" color={brand.grafite70}>
             La stessa richiesta, con descrizione e foto, arriva ad altri professionisti della zona. {pro} non la riceve.
           </Text>
         </YStack>
       ) : null}
       {issue.redispatchedGuidedRequestId ? (
-        <Link href={`/le-mie-richieste?tab=richieste&open=${issue.redispatchedGuidedRequestId}`} style={{ textDecoration: "none" }}>
-          <Text fontSize="$2" fontWeight="600" color={brand.ottone}>
-            Hai inviato la richiesta ad altri professionisti: vedi i preventivi
+        <YStack gap="$2" alignItems="flex-start">
+          <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+            Hai inviato la richiesta ad altri professionisti.
           </Text>
-        </Link>
+          <Link href={`/le-mie-richieste?tab=richieste&open=${issue.redispatchedGuidedRequestId}`} style={{ textDecoration: "none" }}>
+            <CardButton>Vedi i preventivi</CardButton>
+          </Link>
+        </YStack>
       ) : null}
       {errorText}
     </YStack>

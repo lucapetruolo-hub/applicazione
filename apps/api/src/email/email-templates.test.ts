@@ -79,7 +79,7 @@ describe("email delle notifiche", () => {
     expect(email.text).not.toMatch(/telefono|indirizzo/i);
   });
 
-  it("se data e orario non cambiano dice che è stata aggiunta solo una nota (docs/CHANGELOG.md §194)", () => {
+  it("se data e orario non cambiano dice che è stata aggiunta solo una nota (docs/CHANGELOG.md §196)", () => {
     for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
       const email = renderEmail(notificationEmail(type, { noteOnly: true }, ctx)!);
       expect(email.subject, type).toContain("nota");
@@ -88,7 +88,7 @@ describe("email delle notifiche", () => {
     }
   });
 
-  it("riporta la nota dell'altra parte e avvisa del preventivo aggiornato (docs/CHANGELOG.md §194)", () => {
+  it("riporta la nota dell'altra parte e avvisa del preventivo aggiornato (docs/CHANGELOG.md §196)", () => {
     const proposed = renderEmail(notificationEmail("QUOTE_DATE_PROPOSED", { noteOnly: true, note: "Citofono rotto, chiamatemi" }, ctx)!);
     expect(proposed.text).toContain('Nota: "Citofono rotto, chiamatemi"');
     expect(proposed.text).toContain("può ancora accettarlo");

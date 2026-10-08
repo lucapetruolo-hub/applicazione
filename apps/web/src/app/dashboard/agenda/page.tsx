@@ -1363,7 +1363,7 @@ function DashboardAgendaContent() {
                   <Button variant="urgent" size="$3" height={40} onPress={deleteSelectedSlots}>
                     Conferma eliminazione
                   </Button>
-                  <Button variant="ghost" size="$3" height={40} onPress={() => setConfirmingBulkDelete(false)}>
+                  <Button variant="secondary" size="$3" height={40} onPress={() => setConfirmingBulkDelete(false)}>
                     Annulla
                   </Button>
                 </XStack>

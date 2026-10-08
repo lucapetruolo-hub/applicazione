@@ -93,7 +93,7 @@ const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
  */
 export function notificationCopy(type: string, payload?: unknown): { icon: string; message: string } {
   const change = asScheduleChange(payload && typeof payload === "object" ? (payload as Record<string, unknown>).change : null);
-  // Stessa data e stesso orario: è stata aggiunta solo una nota (docs/CHANGELOG.md §194).
+  // Stessa data e stesso orario: è stata aggiunta solo una nota (docs/CHANGELOG.md §196).
   const noteOnly = payload && typeof payload === "object" && (payload as Record<string, unknown>).noteOnly === true;
   const rawNote = payload && typeof payload === "object" ? (payload as Record<string, unknown>).note : null;
   const quotedNote = typeof rawNote === "string" && rawNote.trim() ? ` Nota: "${rawNote.trim()}"` : "";

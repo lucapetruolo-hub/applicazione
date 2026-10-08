@@ -44,7 +44,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_WITHDRAWN",
       "QUOTE_DATE_PROPOSED",
       "QUOTE_DATE_CHANGED",
-      // Preventivo aggiornato senza cambio di data (docs/CHANGELOG.md §194).
+      // Preventivo aggiornato senza cambio di data (docs/CHANGELOG.md §196).
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",

@@ -385,9 +385,9 @@ export class GuidedRequestsService {
           clientProposedDate: quote.clientProposedDate?.toISOString() ?? null,
           clientProposedEndDate: quote.clientProposedEndDate?.toISOString() ?? null,
           clientProposedNote: quote.clientProposedNote,
-          // Nota del cliente senza cambio di data (docs/CHANGELOG.md §194).
+          // Nota del cliente senza cambio di data (docs/CHANGELOG.md §196).
           clientNote: quote.clientNote,
-          // Totale prima dell'ultima modifica dei prezzi (docs/CHANGELOG.md §194).
+          // Totale prima dell'ultima modifica dei prezzi (docs/CHANGELOG.md §196).
           previousPrice:
             quote.previousPriceMinEurCents !== null || quote.previousPriceMaxEurCents !== null
               ? { minEurCents: quote.previousPriceMinEurCents, maxEurCents: quote.previousPriceMaxEurCents }

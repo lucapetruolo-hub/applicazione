@@ -16805,7 +16805,74 @@ diventa "Hai già un account" (prima "Inserisci la password").
 
 **Verifica:** typecheck `apps/web`, i due passi aperti in locale.
 
-## 194. Modifica con sola nota: niente "data e orario cambiati"
+## 194. Prestazioni a tutta larghezza nella scheda dei risultati
+
+**Richiesta (Luca, 08/10/2026, con screenshot):** nella scheda del
+professionista nei risultati di ricerca, l'elenco delle prestazioni deve
+prendere anche lo spazio vuoto cerchiato sotto la foto.
+
+**Problema:** in `ProfessionalCard` (`packages/ui`) le prestazioni stavano
+dentro la colonna del nome. Con la mini-agenda a destra quella colonna è
+stretta: i nomi andavano a capo ("Riparazione perdita / d'acqua") e restava
+vuoto lo spazio sotto la foto e sotto l'agenda.
+
+**Decisione:** l'elenco prestazioni (con "Mostra tutte") esce dalla riga
+superiore e diventa un blocco a tutta larghezza della card, sotto foto, nome
+e agenda, separato da una linea. Uguale per le card con e senza agenda.
+
+**Verifica:** typecheck `packages/ui`; pagina di prova temporanea in
+`apps/web` fotografata a 1100px e 390px (nomi su una riga, prezzi allineati a
+destra), poi rimossa.
+
+**Aggiunta (stessa giornata):** su richiesta di Luca, una linea molto
+leggera (colore `gesso`) sotto ogni prestazione, lunga fino al prezzo, per
+collegare a colpo d'occhio ogni prestazione al suo prezzo. Niente linea
+sotto l'ultima riga.
+
+## 195. Pulsanti in fondo alle schede delle richieste tutti uguali
+
+Richiesta esplicita dell'utente: nella parte inferiore delle schede di
+"Richieste e lavori" (professionista) e "Le mie richieste" (cliente) i
+pulsanti avevano misure diverse (36, 40 e 48 px) e alcuni sembravano link
+("Ripeti la richiesta", "Segnala un problema", "Elimina richiesta",
+"Rifiuta", "Annulla intervento", "Come pago?"). Misura giusta: quella di
+"Contatta/Cronologia".
+
+Decisione:
+- Nuovo `apps/web/src/components/CardButton.tsx`: altezza 40, testo 15px
+  semibold, sempre con bordo o sfondo. Toni: `primary` (pieno, azione
+  principale), `outline` (bordo grafite, azioni secondarie), `danger`
+  (bordo rosso: Rifiuta, Ritira, Annulla intervento, Elimina, Segnala un
+  problema), `dangerSolid` (conferma di un'azione rossa), `fill` per i
+  colori già scelti dall'utente (ottone per Modifica, verde per Vedi in
+  agenda / Accetta nuova data / Riapri, turchese per Lavoro terminato).
+- `ContactButton` usa `CardButton`; tolta la variante `compact` (36px).
+- Cliente: "Modifica" e "Ripeti la richiesta" sulla stessa riga, entrambi
+  con bordo; "Partecipa alla videochiamata" e "Vedi i preventivi" (dopo un
+  nuovo invio) diventano pulsanti; pulsanti di pagamento e della
+  segnalazione alla stessa misura.
+- Professionista: tutte le azioni di ogni stato, i moduli preventivo e
+  nuova data, la conferma di rifiuto/ritiro/eliminazione e "Salva" delle
+  note alla stessa misura.
+
+- Secondo giro (richiesta dell'utente): pannello della prenotazione in
+  Agenda (Conferma, Segna come completata in turchese come "Lavoro
+  terminato", Contatta/Cronologia uguale alle schede, Vai alla richiesta
+  completa, Annulla per ultimo in rosso, Salva link/nota), il
+  suggerimento della pagina Oggi e "Rifiuta la proposta" in rosso.
+- Nel pannello dell'Agenda i pulsanti sono più piccoli (34px, `compact`),
+  su richiesta dell'utente. Corretto anche l'ordine delle prop in
+  `CardButton`: la variante di Button (altezza 48) veniva applicata dopo
+  l'altezza 40 e la sovrascriveva.
+- Telefono del cliente: l'utente ha confermato di lasciarlo visibile dopo
+  l'accettazione del preventivo (§5 punto 9 di CLAUDE.md invariato).
+
+Verifica: `tsc` su web; Playwright 1280 e 390 sulle schede cliente (in
+attesa, preventivo ricevuto, accettata) e professionista (da quotare, in
+attesa del cliente, accettata) con dati di prova su API e database locali:
+nessun overflow né errore.
+
+## 196. Modifica con sola nota: niente "data e orario cambiati"
 
 **Richiesta dell'utente:** quando cliente o professionista cliccano
 "Modifica" su un preventivo e scrivono solo una nota, senza cambiare data e

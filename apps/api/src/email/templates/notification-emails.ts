@@ -50,7 +50,7 @@ export type NotificationEmailContext = {
 type Payload = Record<string, unknown>;
 type Builder = (payload: Payload, ctx: NotificationEmailContext) => EmailContent | null;
 
-/** Nota scritta dall'altra parte, riportata nell'email (docs/CHANGELOG.md §194). */
+/** Nota scritta dall'altra parte, riportata nell'email (docs/CHANGELOG.md §196). */
 function quotedNote(payload: Payload): string[] {
   return typeof payload.note === "string" && payload.note.trim() ? [`Nota: "${payload.note.trim()}"`] : [];
 }
@@ -209,7 +209,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
   QUOTE_DATE_PROPOSED: (payload, ctx) => {
     // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
-    // (docs/CHANGELOG.md §194).
+    // (docs/CHANGELOG.md §196).
     if (payload.noteOnly === true) {
       return {
         kind: "notification",
@@ -242,7 +242,7 @@ const BUILDERS: Record<string, Builder> = {
   },
   QUOTE_DATE_CHANGED: (payload, ctx) => {
     // Stessa data e stesso orario: il professionista ha solo aggiunto una
-    // nota (docs/CHANGELOG.md §194).
+    // nota (docs/CHANGELOG.md §196).
     if (payload.noteOnly === true) {
       return {
         kind: "notification",
@@ -266,7 +266,7 @@ const BUILDERS: Record<string, Builder> = {
       after: ["Se non ti va bene puoi proporre un'altra data o scrivere al professionista in chat."],
     };
   },
-  // Preventivo aggiornato (voci o note) senza cambio di data (docs/CHANGELOG.md §194).
+  // Preventivo aggiornato (voci o note) senza cambio di data (docs/CHANGELOG.md §196).
   QUOTE_UPDATED: (payload, ctx) => {
     const what =
       payload.itemsChanged === true && payload.notesChanged === true

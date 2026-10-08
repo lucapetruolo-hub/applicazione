@@ -8,7 +8,7 @@ import { Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
  * cliente (modifica del professionista, in Le mie richieste) — richiesta
  * esplicita dell'utente, docs/CHANGELOG.md §186. Senza `beforeText` data e
  * orario non sono cambiati (è stata aggiunta solo una nota): niente "prima"
- * sbarrato né freccia, solo l'appuntamento com'è (docs/CHANGELOG.md §194).
+ * sbarrato né freccia, solo l'appuntamento com'è (docs/CHANGELOG.md §196).
  */
 export function ScheduleChangeBox({
   title,

@@ -10,6 +10,7 @@ import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
+import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
@@ -169,7 +170,7 @@ export default function DashboardTodayPage() {
                     {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
                   </strong>
                   <span className="today-row-sub">
-                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §194). */}
+                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
                     {scheduleChangeBetween(
                       { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
                       { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
@@ -331,9 +332,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
         {text}
       </Text>
       <Link href={href} style={{ textDecoration: "none" }}>
-        <Button variant="secondary" size="$3">
-          {cta}
-        </Button>
+        <CardButton>{cta}</CardButton>
       </Link>
     </XStack>
   );

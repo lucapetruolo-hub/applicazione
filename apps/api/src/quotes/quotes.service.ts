@@ -110,7 +110,7 @@ export class QuotesService {
         )
       : null;
 
-    // Cosa cambia oltre a "quando": voci e note (docs/CHANGELOG.md §194),
+    // Cosa cambia oltre a "quando": voci e note (docs/CHANGELOG.md §196),
     // per avvisare il cliente anche di un preventivo aggiornato senza cambio
     // di data.
     const itemsKey = (items: { name: string; priceMinEurCents?: number | null; priceMaxEurCents?: number | null }[]) =>
@@ -121,7 +121,7 @@ export class QuotesService {
     const itemsChanged = !!existingQuote && itemsKey(existingQuote.items) !== itemsKey(input.items);
     const notesChanged = !!existingQuote && (existingQuote.notes ?? "").trim() !== (input.notes ?? "").trim();
     // Totale prima e dopo: se cambia, il cliente vede il vecchio sbarrato
-    // accanto al nuovo (docs/CHANGELOG.md §194).
+    // accanto al nuovo (docs/CHANGELOG.md §196).
     const totalsBefore = existingQuote ? quotePriceTotals(existingQuote.items) : null;
     const totalsAfter = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
     const priceChanged =
@@ -223,7 +223,7 @@ export class QuotesService {
     } else if (existingQuote) {
       // Modifica che non tocca la data (voci/note): prima era silenziosa,
       // ora il cliente viene avvisato se voci o note cambiano davvero
-      // (docs/CHANGELOG.md §194, richiesta dell'utente); resta comunque un
+      // (docs/CHANGELOG.md §196, richiesta dell'utente); resta comunque un
       // evento della cronologia.
       const what = itemsChanged && notesChanged ? "le voci e le note" : itemsChanged ? "le voci" : notesChanged ? "le note" : null;
       if (what) {
@@ -356,7 +356,7 @@ export class QuotesService {
     const note = input.note?.trim() || null;
 
     // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
-    // (docs/CHANGELOG.md §194). Il preventivo resta "inviato", così il
+    // (docs/CHANGELOG.md §196). Il preventivo resta "inviato", così il
     // cliente può ancora accettarlo senza aspettare il professionista; se
     // c'era una sua proposta di data in sospeso, tornare all'appuntamento
     // del preventivo la ritira.
@@ -683,7 +683,7 @@ export class QuotesService {
     // Confronto con la proposta del cliente a cui il professionista risponde
     // (docs/CHANGELOG.md §180): è quella che il cliente ha in mente. Stessa
     // data e stesso orario: il professionista ha solo aggiunto una nota
-    // (docs/CHANGELOG.md §194).
+    // (docs/CHANGELOG.md §196).
     const change = scheduleChangeBetween(
       { start: quote.clientProposedDate ?? quote.estimatedStartDate, end: quote.clientProposedEndDate ?? quote.estimatedEndDate },
       { start: estimatedStartDate, end: estimatedEndDate },
