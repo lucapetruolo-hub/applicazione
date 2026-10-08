@@ -18,7 +18,9 @@ export type RatingProps = {
  */
 export function Rating({ value, count, size = 16 }: RatingProps) {
   return (
-    <XStack alignItems="center" gap="$2">
+    // flexWrap: su un telefono stretto "(5 recensioni)" va a capo invece di
+    // uscire dal bordo della scheda (docs/CHANGELOG.md §197).
+    <XStack alignItems="center" columnGap="$2" rowGap={2} flexWrap="wrap" maxWidth="100%">
       <XStack gap={2}>
         {[1, 2, 3, 4, 5].map((position) => (
           <Icon

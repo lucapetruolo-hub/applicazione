@@ -17006,3 +17006,26 @@ sull'agenda dal 20 novembre. Controllato a 1440px e 390px.
   ricostruisce colonne vuote ed etichette (Oggi/Domani/"Lun", "7 Ago").
   Sui dati di prova: da 5,9 KB a 1,5 KB e da 8,2 KB a 4,5 KB per
   professionista.
+
+**Altre due migliorie approvate da Luca (stessa giornata):**
+- *Stili di Tamagui in un file a parte:* i ~0,6 MB di CSS di Tamagui erano
+  ancora dentro ogni pagina. Ora `apps/web/scripts/generate-tamagui-css.ts`
+  li scrive in `public/tamagui.css` prima di `dev` e `build` (file
+  generato, ignorato da git, negli `outputs` di turbo), il layout li carica
+  con `<link href="/tamagui.css?v=<commit>">` e `TamaguiProvider` ha
+  `disableInjectCSS`. Il file ha cache di un anno (`immutable` in
+  `next.config.mjs`); `v` cambia a ogni deploy (`VERCEL_GIT_COMMIT_SHA`).
+  Generato a build e non da una route: le route di `app/` girano dove
+  Tamagui non funziona (`createContext`), e una cartella `pages/` cambiava
+  i tipi di `useSearchParams` rompendo la build. Lo script usa `tsx` con
+  `react-native` → `react-native-web` (`scripts/tsconfig.json`). Pagina
+  dei risultati in locale: da ~700 KB a ~115 KB di HTML (in dev).
+- *Bollini e recensioni sul telefono a 360px:* nome, bollini e voto
+  uscivano dal bordo. Il blocco dati della card ha `minWidth={260}` e va a
+  capo sotto l'immagine invece di stringersi; `Rating` va a capo
+  ("(5 recensioni)" sotto le stelle) invece di allargarsi.
+
+**Verifica:** build di produzione di `apps/web` riuscita; in locale home,
+accesso e risultati collegano `/tamagui.css` (cache di un anno), restano
+solo i piccoli stili per pagina; aspetto invariato a 1440px e 360px,
+nessuno scorrimento orizzontale.

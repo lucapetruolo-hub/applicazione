@@ -262,7 +262,10 @@ export function ProfessionalCard({
             Idraulica Test") faceva andare a capo l'intera mini-agenda sotto
             invece che a fianco, pur restando spazio a sufficienza una volta
             che il testo si spezza correttamente su più righe. */}
-        <XStack gap="$4" flex={1} flexBasis={0} minWidth={260} alignItems="flex-start">
+        {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
+            colonna del nome restava di circa 170px e i bollini (Verificato,
+            Nuovo profilo...) e le recensioni toccavano il bordo. */}
+        <XStack gap="$4" $xs={{ gap: "$3" }} flex={1} flexBasis={0} minWidth={260} alignItems="flex-start">
           {icon}
           <YStack gap="$2" flex={1} minWidth={0}>
             <XStack alignItems="center" gap="$2" flexWrap="wrap">

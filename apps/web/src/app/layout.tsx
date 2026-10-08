@@ -13,6 +13,8 @@ import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
 
+const TAMAGUI_CSS_VERSION = (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13);
+
 // Necessario per l'installabilità PWA (manifest.ts) e per una barra di stato
 // mobile coerente col brand invece del bianco/nero di default del browser.
 export const viewport: Viewport = {
@@ -40,6 +42,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+      <head>
+        {/* Stili di Tamagui in un file a parte, tenuto in cache dal browser
+            (docs/CHANGELOG.md §197). `v` cambia a ogni deploy. */}
+        <link rel="stylesheet" href={`/tamagui.css?v=${TAMAGUI_CSS_VERSION}`} />
+      </head>
       <body>
         {/* Sfondo sfocato di tutto il sito (docs/CHANGELOG.md §180): due forme
             sfumate fisse dietro ai contenuti, visibili dove le pagine hanno

@@ -3,8 +3,9 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "pnpm css:tamagui && next dev",
+    "build": "pnpm css:tamagui && next build",
+    "css:tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/generate-tamagui-css.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
