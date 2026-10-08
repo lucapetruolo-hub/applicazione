@@ -17058,3 +17058,18 @@ la verifica invece di riformulare il testo.
 - **Verifica:** 4 test nuovi (245 test API verdi), typecheck di tutto il
   monorepo, build di `apps/web` e `apps/api`, dipendenze Nest risolte
   all'avvio, migrazione confrontata con `prisma migrate diff`.
+
+## 201. Niente più "professionisti verificati" generico; logo da telefono leggibile dagli screen reader
+
+**Richiesta dell'utente:** procedere con le migliorie proposte dopo §200.
+
+- **"Verificati" tolto** dove valeva per tutti i professionisti: frase della
+  home (`HomeHero.tsx`), testo del footer, descrizione del sito
+  (`layout.tsx`, `manifest.ts`), descrizioni delle pagine `/cerca` e
+  `/cerca/[categoria]`. "Verificato" resta solo sul badge di chi è stato
+  controllato davvero (§199).
+- **Logo da telefono** (`Logo.web.tsx`, variante "mark"): il quadrato ha
+  `role="img"` e il nome del marchio; accanto al nome scritto è
+  `aria-hidden`, per non essere letto due volte (revisione accessibilità
+  del 6/10/2026).
+- **Verifica:** typecheck di tutto il monorepo, build di `apps/web`.

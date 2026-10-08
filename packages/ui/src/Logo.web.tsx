@@ -17,9 +17,13 @@ export type LogoProps = {
  * (Logo.tsx), nessuna dipendenza in comune. Vedi icons.tsx/icons.web.tsx
  * per lo stesso pattern di split già usato per le icone Lucide.
  */
-function Mark({ size }: { size: number }) {
+function Mark({ size, label }: { size: number; label?: string }) {
+  // Da solo (variant "mark", telefoni) il quadrato è l'unico segno del
+  // marchio: gli screen reader lo leggono col nome. Accanto al nome scritto
+  // è decorativo e viene saltato, per non leggerlo due volte.
+  const a11y = label ? { role: "img", "aria-label": label } : { "aria-hidden": true };
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28">
+    <svg width={size} height={size} viewBox="0 0 28 28" {...a11y}>
       <rect width={28} height={28} rx={9} fill={brand.cianografia} />
       <line x1={9} y1={7} x2={9} y2={21} stroke="white" strokeWidth={2.2} strokeLinecap="round" />
       <line x1={9} y1={21} x2={21} y2={21} stroke="white" strokeWidth={2.2} strokeLinecap="round" />
@@ -29,7 +33,7 @@ function Mark({ size }: { size: number }) {
 
 export function Logo({ name, variant = "full", size = 28 }: LogoProps) {
   if (variant === "mark") {
-    return <Mark size={size} />;
+    return <Mark size={size} label={name} />;
   }
 
   return (

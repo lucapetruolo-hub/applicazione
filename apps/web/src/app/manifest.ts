@@ -18,7 +18,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${BRAND.name} — ${BRAND.tagline}`,
     short_name: BRAND.name,
-    description: "Cerca imbianchini, elettricisti, idraulici e altri professionisti locali verificati vicino a te.",
+    description: "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
     start_url: "/",
     display: "standalone",
     background_color: "#FDEFE1",

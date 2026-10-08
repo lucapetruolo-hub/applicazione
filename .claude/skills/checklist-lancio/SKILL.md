@@ -160,9 +160,8 @@ davvero la verifica prima):
     da `/admin/verifiche`, il professionista lo chiede dal profilo. Footer e
     risultati dicono ora "Badge Verificato: documento e P.IVA controllati".
     Resta da fare: verificare davvero i primi professionisti prima del
-    lancio. Ancora da allineare (non toccate, proposta da fare all'utente):
-    le descrizioni con "professionisti verificati" (titolo/descrizione del
-    sito, manifest, `HomeHero.tsx`, testo del footer, pagine `/cerca`).
+    lancio. "Professionisti verificati" generico tolto dalle descrizioni
+    (§201).
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).

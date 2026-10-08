@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: `%s | ${BRAND.name}`,
   },
   description:
-    "Cerca imbianchini, elettricisti, idraulici e altri professionisti locali verificati vicino a te.",
+    "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
   // Sito non ancora ufficiale: fuori dai motori di ricerca finché
   // NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi lib/siteIndexing.ts).
   ...(SITE_INDEXABLE ? {} : { robots: { index: false, follow: false } }),

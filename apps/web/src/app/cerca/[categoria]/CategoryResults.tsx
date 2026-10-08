@@ -33,7 +33,7 @@ export function categoryMetadata(category: Category, city?: string): Metadata {
   }
   return {
     title: `${category.label} vicino a te`,
-    description: `Trova e contatta ${category.label.toLowerCase()} verificati nella tua zona.`,
+    description: `Trova e contatta ${category.label.toLowerCase()} nella tua zona.`,
     alternates: { canonical: `/cerca/${category.slug}` },
   };
 }
