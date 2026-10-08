@@ -271,6 +271,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
+  professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**
    * Descrizione del lavoro e foto scritte/caricate dal cliente nella
    * richiesta guidata originale — richiesta esplicita dell'utente
@@ -394,6 +396,8 @@ export type ConversationEvent = {
   message: string;
   /** Foto/video allegati a un aggiornamento scritto a mano (vuoto per gli eventi automatici del ciclo di vita). */
   mediaUrls: string[];
+  /** Scritto dal sistema a nome di una parte (es. "Il cliente ha accettato il preventivo"), non a mano: mostrato centrato e in grigio. Facoltativo solo per un'API non ancora aggiornata. */
+  automatic?: boolean;
   createdAt: string;
 };
 
@@ -415,6 +419,13 @@ export type ChatThreadSummary = {
   otherPartyName: string;
   otherPartyImageUrl: string | null;
   categoryLabel: string;
+  /**
+   * Descrizione del lavoro scritta dal cliente, per distinguere due chat con
+   * la stessa persona (docs/CHANGELOG.md §198). Visibile al professionista
+   * già prima dell'accettazione, come nelle richieste (CLAUDE.md §5.9).
+   * Facoltativa solo per un'API non ancora aggiornata.
+   */
+  requestDescription?: string;
   lastMessage: string | null;
   /** True se l'ultimo evento porta almeno una foto/video allegata (il testo può essere vuoto in quel caso). */
   lastMessageHasMedia: boolean;

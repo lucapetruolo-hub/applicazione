@@ -8,6 +8,7 @@ import {
   jobIssueChatOutcomeSchema,
   jobIssueResponseSchema,
   reportJobIssueSchema,
+  reportProfessionalJobProblemSchema,
   acceptQuoteSchema,
   type AcceptQuoteInput,
   appealJobIssueSchema,
@@ -19,6 +20,7 @@ import {
   type CompleteBookingInput,
   type JobIssueResponseInput,
   type ReportJobIssueInput,
+  type ReportProfessionalJobProblemInput,
   type UpdateBookingMeetingLinkInput,
   type UpdateBookingNoteInput,
 } from "@professionisti/shared";
@@ -167,6 +169,17 @@ export class BookingsController {
   @Post(":id/issue")
   reportIssue(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportJobIssueSchema)) body: ReportJobIssueInput) {
     return this.bookingsService.reportIssue(req.user.userId, id, body);
+  }
+
+  /** Il professionista segnala un problema sull'intervento (cliente assente, mancato pagamento, ecc., §197). */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/professional-problem")
+  reportProfessionalProblem(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(reportProfessionalJobProblemSchema)) body: ReportProfessionalJobProblemInput,
+  ) {
+    return this.bookingsService.reportProblemByProfessional(req.user.userId, id, body);
   }
 
   /** Il cliente chiude la fase in chat: "abbiamo risolto" o "fai decidere al vostro team" (§165). */

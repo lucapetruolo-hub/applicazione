@@ -154,18 +154,16 @@ export default function ChatPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingTop="$5" paddingBottom="$3" flexShrink={0}>
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-          Chat
+      {/* Niente titolo "Chat" sopra (docs/CHANGELOG.md §198, richiesta
+          esplicita dell'utente): la voce attiva nel menu dice già dove si
+          è, lo spazio va alle conversazioni. */}
+      {error ? (
+        <Text color={brand.urgenza} paddingHorizontal="$4" paddingTop="$3" width="100%" maxWidth={1200}>
+          {error}
         </Text>
-        {error ? (
-          <Text color={brand.urgenza} paddingTop="$2">
-            {error}
-          </Text>
-        ) : null}
-      </YStack>
+      ) : null}
 
-      <div className={`chat-shell${selectedThread ? " has-selection" : ""}`}>
+      <div className={`chat-shell${user.isProfessional ? " is-pro" : ""}${selectedThread ? " has-selection" : ""}`}>
         <div className="chat-list-pane">
           {threads === null ? (
             <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden" margin="$4">
@@ -204,6 +202,7 @@ export default function ChatPage() {
               viewerRole={selectedThread.viewerRole}
               otherPartyName={selectedThread.otherPartyName}
               otherPartyImageUrl={selectedThread.otherPartyImageUrl}
+              requestDescription={selectedThread.requestDescription}
               onBack={() => {
                 setSelectedKey(null);
                 reload();
@@ -230,7 +229,12 @@ export default function ChatPage() {
           flex-direction: column;
           width: 100%;
           max-width: 1200px;
-          height: calc(100vh - 190px);
+          /* Tutta l'altezza sotto header e barra del menu (docs/CHANGELOG.md
+             §198): la chat arriva in fondo allo schermo, solo lei scorre.
+             100dvh segue la barra degli indirizzi del telefono; 100vh resta
+             per i browser che non lo conoscono. */
+          height: calc(100vh - 126px);
+          height: calc(100dvh - 126px);
           min-height: 420px;
         }
         .chat-list-pane {
@@ -268,6 +272,14 @@ export default function ChatPage() {
             display: flex !important;
             flex-direction: column;
             flex: 1;
+          }
+        }
+        /* Professionista da computer: menu a colonna a sinistra, sopra
+           restano solo l'header e il margine dell'area account. */
+        @media (min-width: 1000px) {
+          .chat-shell.is-pro {
+            height: calc(100vh - 104px);
+            height: calc(100dvh - 104px);
           }
         }
       `}</style>
@@ -317,14 +329,15 @@ function ChatThreadRow({
     >
       <Avatar name={thread.otherPartyName} imageUrl={thread.otherPartyImageUrl} size={48} />
       <YStack flex={1} minWidth={0} gap={2}>
-        <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
-            {thread.otherPartyName}
-          </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
-            · {thread.categoryLabel}
-          </Text>
-        </XStack>
+        <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
+          {thread.otherPartyName}
+        </Text>
+        {/* Categoria + inizio della descrizione del lavoro (docs/CHANGELOG.md
+            §198): due chat con la stessa persona non sembrano più uguali. */}
+        <Text fontSize="$2" color={brand.grafite70} numberOfLines={1}>
+          {thread.categoryLabel}
+          {thread.requestDescription?.trim() ? ` · ${thread.requestDescription.trim()}` : ""}
+        </Text>
         <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
           {thread.lastMessageIsMine ? "Tu: " : ""}
           {previewText}

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ConversationEvent } from "@professionisti/shared";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/lib/AuthContext";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import { ClientProfileModal, type ClientReviewSummary } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -35,12 +34,6 @@ const ACTOR_LABEL: Record<ConversationEvent["actor"], string> = {
   SYSTEM: "Sistema",
 };
 
-const ACTOR_COLOR: Record<ConversationEvent["actor"], string> = {
-  CLIENT: brand.cianografiaScuro,
-  PROFESSIONAL: brand.verificato,
-  SYSTEM: brand.grafite70,
-};
-
 // Sfondo "nuvoletta" per attore — richiesta esplicita dell'utente ("crea
 // una sorta di nuvoletta colorata, differenziando i colori in base a se è
 // il cliente e professionista"). Due tinte già esistenti nella palette,
@@ -55,10 +48,20 @@ const ACTOR_BUBBLE_BG: Record<ConversationEvent["actor"], string> = {
   SYSTEM: "transparent",
 };
 
-/** Data+ora reale di un evento della cronologia, fuso orario del browser (timestamp vero, non "wall clock UTC" delle fasce agenda). */
-function formatEventDate(iso: string): string {
+/** Solo l'ora sotto ogni messaggio (docs/CHANGELOG.md §198): il giorno lo dice il separatore sopra. Fuso orario del browser. */
+function formatEventTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Etichetta del separatore di giorno: "Oggi", "Ieri", altrimenti "8 ottobre 2026". */
+function formatDayLabel(iso: string): string {
   const date = new Date(iso);
-  return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Oggi";
+  if (date.toDateString() === yesterday.toDateString()) return "Ieri";
+  return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /**
@@ -84,6 +87,7 @@ export function ConversationView({
   backIcon = "x",
   escapeToBack = false,
   title = "Cronologia della richiesta",
+  requestDescription,
 }: {
   token: string;
   guidedRequestId: string;
@@ -121,18 +125,10 @@ export function ConversationView({
   /** Solo per l'uso a popup (TimelineModal): Escape chiude. Il pannello inline della pagina /chat non lo attiva — Escape mentre si scrive un messaggio non deve far perdere la bozza uscendo dalla conversazione. */
   escapeToBack?: boolean;
   title?: string;
+  /** Descrizione del lavoro sotto il nome in intestazione (docs/CHANGELOG.md §198); senza, resta "Cronologia della richiesta". */
+  requestDescription?: string | null;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
-  // Il proprio nome (per le nuvolette del lato "mio") si ricava
-  // dall'account loggato — stesso fallback già in uso in AccountMenu per
-  // un professionista senza ancora businessName. L'altra parte arriva da
-  // `otherPartyName` (prop), il chiamante specifico del thread la conosce
-  // già.
-  const myDisplayName =
-    viewerRole === "PROFESSIONAL"
-      ? user?.businessName ?? user?.name ?? null
-      : [user?.name, user?.surname].filter(Boolean).join(" ") || user?.name || null;
   // Nomi cliccabili da entrambe le parti (docs/CHANGELOG.md §149, richiesta
   // esplicita dell'utente): professionista → profilo pubblico; cliente →
   // la sua scheda (vista dal professionista) o il proprio Account (visto
@@ -164,11 +160,25 @@ export function ConversationView({
   const otherActor: ConversationEvent["actor"] = viewerRole === "PROFESSIONAL" ? "CLIENT" : "PROFESSIONAL";
   const headerOnPress = openProfileOf(otherActor);
 
-  function displayNameFor(actor: ConversationEvent["actor"]): string {
-    if (actor === "SYSTEM") return ACTOR_LABEL.SYSTEM;
-    const name = actor === viewerRole ? myDisplayName : otherPartyName;
-    return name && name.trim() ? name : ACTOR_LABEL[actor];
-  }
+  // Nelle chat a finestra (Richieste, Agenda) chi apre non passa la
+  // descrizione: la si prende dall'elenco chat, una sola chiamata
+  // all'apertura (docs/CHANGELOG.md §198).
+  const [fetchedDescription, setFetchedDescription] = useState<string | null>(null);
+  useEffect(() => {
+    if (requestDescription !== undefined) return;
+    let cancelled = false;
+    apiClient
+      .myChatThreads(token)
+      .then((threads) => {
+        const thread = threads.find((t) => t.guidedRequestId === guidedRequestId && t.professionalProfileId === professionalProfileId);
+        if (!cancelled) setFetchedDescription(thread?.requestDescription ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, guidedRequestId, professionalProfileId, requestDescription]);
+  const headerDescription = requestDescription ?? fetchedDescription;
 
   const [events, setEvents] = useState<ConversationEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -421,7 +431,20 @@ export function ConversationView({
     setOpenPhoto({ photos: viewable, index: index === -1 ? 0 : index });
   }
 
+  const canSend = (message.trim().length > 0 || mediaUrls.length > 0) && !isSubmitting && !isUploadingMedia;
+
+  // Il campo cresce col testo fino a ~6 righe, poi scorre (max-height nel
+  // CSS del riquadro); torna a una riga dopo l'invio.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [message]);
+
   async function handleSubmit() {
+    if (isSubmitting || isUploadingMedia) return;
     if (!message.trim() && mediaUrls.length === 0) {
       setSubmitError("Scrivi un messaggio o allega almeno una foto/video.");
       return;
@@ -447,6 +470,54 @@ export function ConversationView({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Foto/video e documenti di un messaggio, sia nelle nuvolette sia nei
+  // messaggi automatici (che possono averne, es. la segnalazione del
+  // professionista, §197).
+  function renderEventMedia(event: ConversationEvent) {
+    if (event.mediaUrls.length === 0) return null;
+    return (
+      <XStack gap="$2" flexWrap="wrap">
+        {event.mediaUrls.map((url) =>
+          // Un documento (PDF/Word/Excel) deve mostrare già
+          // il proprio nome in chat, non solo un'icona
+          // generica "PDF" — richiesta esplicita
+          // dell'utente ("deve essere già visibile il nome
+          // del file in chat"): chip icona+nome invece
+          // della tessera quadrata riservata a foto/video.
+          isDocumentUrl(url) ? (
+            <XStack
+              key={url}
+              alignItems="center"
+              gap="$1.5"
+              maxWidth={200}
+              paddingHorizontal="$2"
+              paddingVertical="$1.5"
+              borderRadius="$2"
+              borderWidth={1}
+              borderColor={brand.filetto}
+              backgroundColor={brand.calce}
+              cursor="pointer"
+              onPress={() => openMediaAt(event.mediaUrls, url)}
+              accessibilityRole="button"
+            >
+              <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
+              <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+              </Text>
+            </XStack>
+          ) : (
+            <MediaPreview
+              key={url}
+              url={url}
+              onClick={() => openMediaAt(event.mediaUrls, url)}
+              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+            />
+          ),
+        )}
+      </XStack>
+    );
   }
 
   return (
@@ -517,8 +588,8 @@ export function ConversationView({
                 >
                   {otherPartyName}
                 </Text>
-                <Text fontSize="$1" color={brand.grafite70}>
-                  Cronologia della richiesta
+                <Text fontSize="$1" color={brand.grafite70} numberOfLines={1}>
+                  {headerDescription?.trim() || "Cronologia della richiesta"}
                 </Text>
               </YStack>
             </>
@@ -539,8 +610,9 @@ export function ConversationView({
           (docs/CHANGELOG.md §166, richiesta esplicita dell'utente). */}
       <XStack
         gap="$2"
-        alignItems="flex-start"
-        padding="$3"
+        alignItems="center"
+        paddingHorizontal="$3"
+        paddingVertical="$2"
         marginHorizontal={20}
         marginTop="$3"
         marginBottom="$2"
@@ -550,11 +622,11 @@ export function ConversationView({
         role="note"
       >
         <YStack flexShrink={0}>
-          <Icon name="shield-check" size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+          <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
         </YStack>
+        {/* Una riga sola (docs/CHANGELOG.md §198): il dettaglio è in /sicurezza. */}
         <Text fontSize="$2" color={brand.grafite} flex={1}>
-          Non inquadrare QR code e non condividere numeri di telefono o dati personali. Resta sempre in questa chat e segnala comportamenti
-          sospetti.{" "}
+          Resta in questa chat: non condividere numeri, dati personali o QR code.{" "}
           <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scopri di più
           </Link>
@@ -585,102 +657,86 @@ export function ConversationView({
               Nessun aggiornamento ancora.
             </Text>
           ) : (
-            events.map((event) => {
-              if (event.actor === "SYSTEM") {
-                // Eventi automatici (fan-out, scadenze, ecc.): mai un
-                // "lato", restano centrati e discreti — non sono un
-                // messaggio di nessuna delle due parti.
+            events.map((event, index) => {
+              // Separatore di giorno quando la data cambia rispetto al
+              // messaggio prima (docs/CHANGELOG.md §198, come nella chat
+              // d'esempio mandata dall'utente).
+              const dayLabel = formatDayLabel(event.createdAt);
+              const previous = events[index - 1];
+              const daySeparator =
+                !previous || formatDayLabel(previous.createdAt) !== dayLabel ? (
+                  <Text fontSize={11} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="$1">
+                    {dayLabel}
+                  </Text>
+                ) : null;
+              if (event.actor === "SYSTEM" || event.automatic) {
+                // Eventi automatici (fan-out, scadenze, e da §198 anche
+                // quelli scritti dal sistema a nome di una parte, "Il
+                // cliente ha accettato il preventivo"): mai un "lato",
+                // restano centrati e discreti — non sono un messaggio
+                // scritto a mano.
                 return (
-                  <YStack key={event.id} gap="$1" alignItems="center">
-                    <Text fontSize={11} color={brand.grafite70} textAlign="center">
-                      {event.message}
-                    </Text>
-                    <Text fontSize={10} color={brand.grafite70}>
-                      {formatEventDate(event.createdAt)}
-                    </Text>
-                  </YStack>
+                  <Fragment key={event.id}>
+                    {daySeparator}
+                    {/* In un riquadro per essere più visibili (richiesta
+                        esplicita dell'utente, §198): bianco con bordo,
+                        distinto dalle nuvolette colorate. */}
+                    <YStack
+                      gap="$1"
+                      alignItems="center"
+                      alignSelf="center"
+                      maxWidth="85%"
+                      paddingHorizontal="$3"
+                      paddingVertical="$2"
+                      borderRadius="$3"
+                      borderWidth={1}
+                      borderColor={brand.filetto}
+                      backgroundColor={brand.calce}
+                    >
+                      <Text fontSize={12} color={brand.grafite} textAlign="center">
+                        {event.message}
+                      </Text>
+                      {renderEventMedia(event)}
+                      <Text fontSize={10} color={brand.grafite70}>
+                        {formatEventTime(event.createdAt)}
+                      </Text>
+                    </YStack>
+                  </Fragment>
                 );
               }
               // I messaggi di chi sta guardando vanno a destra (come in
               // qualunque chat), quelli dell'altra parte a sinistra —
               // richiesta esplicita dell'utente.
               const isMine = event.actor === viewerRole;
-              const nameOnPress = openProfileOf(event.actor);
+              // Niente nome dentro la nuvoletta (docs/CHANGELOG.md §198): in
+              // una chat a due il lato dice già chi scrive, il nome
+              // dell'altra parte è nell'intestazione.
               return (
-                <YStack key={event.id} alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
-                  <YStack
-                    gap="$1.5"
-                    maxWidth="85%"
-                    backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
-                    borderRadius="$4"
-                    borderTopRightRadius={isMine ? 4 : undefined}
-                    borderTopLeftRadius={isMine ? undefined : 4}
-                    paddingHorizontal="$3"
-                    paddingVertical="$2.5"
-                  >
-                    <Text
-                      fontFamily="$body"
-                      fontWeight="700"
-                      fontSize={11}
-                      color={ACTOR_COLOR[event.actor]}
-                      textDecorationLine={nameOnPress ? "underline" : undefined}
-                      cursor={nameOnPress ? "pointer" : undefined}
-                      onPress={nameOnPress}
-                      accessibilityRole={nameOnPress ? "button" : undefined}
+                <Fragment key={event.id}>
+                  {daySeparator}
+                  <YStack alignItems={isMine ? "flex-end" : "flex-start"} gap={2}>
+                    <YStack
+                      gap="$1.5"
+                      maxWidth="85%"
+                      backgroundColor={ACTOR_BUBBLE_BG[event.actor]}
+                      borderRadius="$4"
+                      borderTopRightRadius={isMine ? 4 : undefined}
+                      borderTopLeftRadius={isMine ? undefined : 4}
+                      paddingHorizontal="$3"
+                      paddingVertical="$2.5"
                     >
-                      {displayNameFor(event.actor)}
+                      {event.message ? (
+                        <Text color={brand.grafite} fontSize="$3">
+                          {event.message}
+                        </Text>
+                      ) : null}
+                      {renderEventMedia(event)}
+                    </YStack>
+                    <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
+                      {formatEventTime(event.createdAt)}
                     </Text>
-                    {event.message ? (
-                      <Text color={brand.grafite} fontSize="$3">
-                        {event.message}
-                      </Text>
-                    ) : null}
-                    {event.mediaUrls.length > 0 ? (
-                      <XStack gap="$2" flexWrap="wrap">
-                        {event.mediaUrls.map((url) =>
-                          // Un documento (PDF/Word/Excel) deve mostrare già
-                          // il proprio nome in chat, non solo un'icona
-                          // generica "PDF" — richiesta esplicita
-                          // dell'utente ("deve essere già visibile il nome
-                          // del file in chat"): chip icona+nome invece
-                          // della tessera quadrata riservata a foto/video.
-                          isDocumentUrl(url) ? (
-                            <XStack
-                              key={url}
-                              alignItems="center"
-                              gap="$1.5"
-                              maxWidth={200}
-                              paddingHorizontal="$2"
-                              paddingVertical="$1.5"
-                              borderRadius="$2"
-                              borderWidth={1}
-                              borderColor={brand.filetto}
-                              backgroundColor={brand.calce}
-                              cursor="pointer"
-                              onPress={() => openMediaAt(event.mediaUrls, url)}
-                              accessibilityRole="button"
-                            >
-                              <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                              <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
-                                {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
-                              </Text>
-                            </XStack>
-                          ) : (
-                            <MediaPreview
-                              key={url}
-                              url={url}
-                              onClick={() => openMediaAt(event.mediaUrls, url)}
-                              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                            />
-                          ),
-                        )}
-                      </XStack>
-                    ) : null}
                   </YStack>
-                  <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
-                    {formatEventDate(event.createdAt)}
-                  </Text>
-                </YStack>
+                </Fragment>
               );
             })
           )}
@@ -688,184 +744,192 @@ export function ConversationView({
         </YStack>
       </div>
 
-      <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$5" paddingTop="$3" paddingBottom="$5" flexShrink={0}>
-        <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-          Scrivi un aggiornamento
-        </Text>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Es. ho ordinato il pezzo di ricambio, arriverà lunedì..."
-          rows={3}
-          maxLength={2000}
-          style={{
-            width: "100%",
-            padding: 10,
-            borderRadius: 4,
-            border: `1px solid ${brand.filetto}`,
-            fontSize: 14,
-            fontFamily: "inherit",
-            color: brand.grafite,
-            resize: "vertical",
-          }}
-        />
-        <XStack gap="$2" flexWrap="wrap">
-          {mediaUrls.map((url) =>
-            // Un documento non ancora inviato mostra già il proprio nome
-            // reale (richiesta esplicita dell'utente, stesso principio
-            // applicato sopra ai messaggi già inviati) — chip icona+nome
-            // con un tasto "x" in coda invece della tessera quadrata con
-            // l'overlay circolare usato per foto/video.
-            isDocumentUrl(url) ? (
-              <XStack
-                key={url}
-                alignItems="center"
-                gap="$1.5"
-                maxWidth={220}
-                paddingHorizontal="$2"
-                paddingVertical="$1.5"
-                borderRadius="$2"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                backgroundColor={brand.gesso}
-                cursor="pointer"
-                onPress={() => openMediaAt(mediaUrls, url)}
-                accessibilityRole="button"
-              >
-                <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
-                  {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
-                </Text>
-                <YStack
-                  width={16}
-                  height={16}
-                  borderRadius={8}
+      {/* Riquadro di scrittura (docs/CHANGELOG.md §198, richiesta esplicita
+          dell'utente con una chat di esempio): campo a pillola che cresce
+          col testo, invio rotondo con freccia dentro il campo a destra,
+          tasto rotondo "+" a sinistra per allegare. Stessa logica di invio e
+          allegati di prima, cambia solo l'aspetto. */}
+      <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$4" paddingTop="$3" paddingBottom="$4" flexShrink={0}>
+        {mediaUrls.length > 0 ? (
+          <XStack gap="$2" flexWrap="wrap" paddingLeft={52}>
+            {mediaUrls.map((url) =>
+              // Un documento non ancora inviato mostra già il proprio nome
+              // reale (richiesta esplicita dell'utente, stesso principio
+              // applicato sopra ai messaggi già inviati) — chip icona+nome
+              // con un tasto "x" in coda invece della tessera quadrata con
+              // l'overlay circolare usato per foto/video.
+              isDocumentUrl(url) ? (
+                <XStack
+                  key={url}
                   alignItems="center"
-                  justifyContent="center"
+                  gap="$1.5"
+                  maxWidth={220}
+                  paddingHorizontal="$2"
+                  paddingVertical="$1.5"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  backgroundColor={brand.gesso}
                   cursor="pointer"
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    removeMedia(url);
-                  }}
+                  onPress={() => openMediaAt(mediaUrls, url)}
                   accessibilityRole="button"
-                  accessibilityLabel="Rimuovi allegato"
                 >
-                  <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
+                  <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
+                  <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                    {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+                  </Text>
+                  <YStack
+                    width={16}
+                    height={16}
+                    borderRadius={8}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      removeMedia(url);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi allegato"
+                  >
+                    <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
+                  </YStack>
+                </XStack>
+              ) : (
+                <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
+                  <YStack
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    width={18}
+                    height={18}
+                    borderRadius={9}
+                    backgroundColor="rgba(20,24,30,0.7)"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => removeMedia(url)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi foto"
+                  >
+                    <Icon name="x" size={11} color="white" strokeWidth={2} />
+                  </YStack>
                 </YStack>
-              </XStack>
-            ) : (
-              <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
-                <YStack
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  width={18}
-                  height={18}
-                  borderRadius={9}
-                  backgroundColor="rgba(20,24,30,0.7)"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  onPress={() => removeMedia(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
-                >
-                  <Icon name="x" size={11} color="white" strokeWidth={2} />
-                </YStack>
-              </YStack>
-            ),
-          )}
-          {mediaUrls.length < MAX_UPDATE_MEDIA ? (
-            // Graffetta + menu (richiesta esplicita dell'utente: "al posto
-            // del file più, metti il simbolo di una graffetta per
-            // allegare, e fai selezionare: fotocamera, foto/video, File.
-            // in modo che puo essere caricata anche la fattura o
-            // ricevuta") — sostituisce il vecchio tasto "+" con un unico
-            // input nascosto. Menu aperto verso l'alto (`bottom="100%"`):
-            // il tasto vive in fondo al pannello, un menu verso il basso
-            // rischierebbe di finire tagliato dal bordo.
-            <YStack ref={attachMenuContainerRef} position="relative">
-              <YStack
-                width={56}
-                height={56}
-                borderRadius="$2"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                cursor="pointer"
-                opacity={isUploadingMedia ? 0.6 : 1}
-                onPress={() => !isUploadingMedia && setIsAttachMenuOpen((open) => !open)}
-                accessibilityRole="button"
-                accessibilityLabel="Allega foto, video o documento"
-              >
-                {isUploadingMedia ? <UploadingDots dotSize={5} /> : <Icon name="paperclip" size={20} color={brand.grafite70} />}
-              </YStack>
+              ),
+            )}
+          </XStack>
+        ) : null}
+        {mediaError ? (
+          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+            {mediaError}
+          </Text>
+        ) : null}
+        {submitError ? (
+          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+            {submitError}
+          </Text>
+        ) : null}
+        <XStack alignItems="flex-end" gap="$2">
+          {/* "+" rotondo con menu (Fotocamera, Foto o video, File) aperto
+              verso l'alto: il tasto vive in fondo al pannello, un menu
+              verso il basso finirebbe tagliato dal bordo. */}
+          <YStack ref={attachMenuContainerRef} position="relative" flexShrink={0}>
+            <button
+              type="button"
+              className="composer-round composer-attach"
+              disabled={isUploadingMedia || mediaUrls.length >= MAX_UPDATE_MEDIA}
+              onClick={() => setIsAttachMenuOpen((open) => !open)}
+              aria-label="Allega foto, video o documento"
+              aria-expanded={isAttachMenuOpen}
+              title={mediaUrls.length >= MAX_UPDATE_MEDIA ? `Massimo ${MAX_UPDATE_MEDIA} allegati` : "Allega"}
+            >
+              {isUploadingMedia ? <UploadingDots dotSize={4} /> : <Icon name="plus" size={22} color={brand.grafite} strokeWidth={1.75} />}
+            </button>
 
-              {isAttachMenuOpen ? (
-                <YStack
-                  position="absolute"
-                  bottom="100%"
-                  left={0}
-                  marginBottom="$2"
-                  minWidth={190}
-                  backgroundColor={brand.calce}
-                  borderRadius="$3"
-                  overflow="hidden"
-                  zIndex={1200}
-                  shadowColor="rgba(43,32,19,0.16)"
-                  shadowRadius={14}
-                  shadowOffset={{ width: 0, height: 6 }}
-                  shadowOpacity={1}
-                >
-                  {[
-                    {
-                      icon: "camera" as const,
-                      label: "Fotocamera",
-                      onPress: () => {
-                        void handleCameraOption();
-                      },
+            {isAttachMenuOpen ? (
+              <YStack
+                position="absolute"
+                bottom="100%"
+                left={0}
+                marginBottom="$2"
+                minWidth={190}
+                backgroundColor={brand.calce}
+                borderRadius="$3"
+                overflow="hidden"
+                zIndex={1200}
+                borderWidth={1}
+                borderColor={brand.filetto}
+              >
+                {[
+                  {
+                    icon: "camera" as const,
+                    label: "Fotocamera",
+                    onPress: () => {
+                      void handleCameraOption();
                     },
-                    {
-                      icon: "video" as const,
-                      label: "Foto o video",
-                      onPress: () => {
-                        setIsAttachMenuOpen(false);
-                        galleryInputRef.current?.click();
-                      },
+                  },
+                  {
+                    icon: "video" as const,
+                    label: "Foto o video",
+                    onPress: () => {
+                      setIsAttachMenuOpen(false);
+                      galleryInputRef.current?.click();
                     },
-                    {
-                      icon: "file-text" as const,
-                      label: "File",
-                      onPress: () => {
-                        setIsAttachMenuOpen(false);
-                        documentInputRef.current?.click();
-                      },
+                  },
+                  {
+                    icon: "file-text" as const,
+                    label: "File",
+                    onPress: () => {
+                      setIsAttachMenuOpen(false);
+                      documentInputRef.current?.click();
                     },
-                  ].map((item) => (
-                    <XStack
-                      key={item.label}
-                      paddingHorizontal="$4"
-                      paddingVertical="$3"
-                      alignItems="center"
-                      gap="$2"
-                      cursor="pointer"
-                      hoverStyle={{ backgroundColor: brand.gesso }}
-                      onPress={item.onPress}
-                      accessibilityRole="button"
-                    >
-                      <Icon name={item.icon} size={16} color={brand.grafite} />
-                      <Text fontSize="$3" color={brand.grafite} fontWeight="600">
-                        {item.label}
-                      </Text>
-                    </XStack>
-                  ))}
-                </YStack>
-              ) : null}
-            </YStack>
-          ) : null}
+                  },
+                ].map((item) => (
+                  <XStack
+                    key={item.label}
+                    paddingHorizontal="$4"
+                    paddingVertical="$3"
+                    alignItems="center"
+                    gap="$2"
+                    cursor="pointer"
+                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    onPress={item.onPress}
+                    accessibilityRole="button"
+                  >
+                    <Icon name={item.icon} size={16} color={brand.grafite} />
+                    <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                      {item.label}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+            ) : null}
+          </YStack>
+
+          <div className="composer-pill">
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                // Invio manda, Maiusc+Invio va a capo. Su telefono (puntatore
+                // "grossolano") Invio va sempre a capo: lì si manda col tasto
+                // freccia, come nelle app di messaggi.
+                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return;
+                e.preventDefault();
+                if (canSend) void handleSubmit();
+              }}
+              placeholder="Scrivi un messaggio"
+              aria-label="Scrivi un messaggio"
+              rows={1}
+              maxLength={2000}
+            />
+            <button type="button" className="composer-round composer-send" disabled={!canSend} onClick={() => void handleSubmit()} aria-label="Invia">
+              {isSubmitting ? <UploadingDots dotSize={4} color="#ffffff" /> : <Icon name="arrow-right" size={20} color="#ffffff" strokeWidth={2.25} />}
+            </button>
+          </div>
         </XStack>
         <input
           ref={cameraInputRef}
@@ -892,28 +956,90 @@ export function ConversationView({
           disabled={isUploadingMedia}
           style={{ display: "none" }}
         />
-        {mediaError ? (
-          <Text color={brand.urgenza} fontSize="$2">
-            {mediaError}
-          </Text>
-        ) : null}
-        {submitError ? (
-          <Text color={brand.urgenza} fontSize="$2">
-            {submitError}
-          </Text>
-        ) : null}
-        <Button
-          variant="primary"
-          size="$3"
-          height={40}
-          alignSelf="flex-start"
-          disabled={isSubmitting || isUploadingMedia}
-          opacity={isSubmitting || isUploadingMedia ? 0.6 : 1}
-          onPress={handleSubmit}
-        >
-          {isSubmitting ? "Invio..." : "Invia aggiornamento"}
-        </Button>
       </YStack>
+      <style jsx>{`
+        .composer-round {
+          width: 44px;
+          height: 44px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: background-color 0.15s ease, opacity 0.15s ease;
+        }
+        .composer-round:disabled {
+          cursor: default;
+        }
+        .composer-round:focus {
+          outline: none;
+        }
+        .composer-round:focus-visible {
+          outline: 2px solid ${brand.cianografia};
+          outline-offset: 2px;
+        }
+        .composer-attach {
+          background: ${brand.calce};
+          border: 1px solid ${brand.filetto};
+        }
+        .composer-attach:not(:disabled):hover {
+          background: ${brand.gesso};
+        }
+        .composer-attach:disabled {
+          opacity: 0.5;
+        }
+        .composer-pill {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+          min-height: 44px;
+          box-sizing: border-box;
+          padding: 4px 4px 4px 18px;
+          border: 1px solid ${brand.filetto};
+          border-radius: 24px;
+          background: ${brand.calce};
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .composer-pill:focus-within {
+          border-color: ${brand.cianografia};
+          box-shadow: 0 0 0 3px ${brand.cianografiaVelo};
+        }
+        .composer-pill textarea {
+          flex: 1;
+          min-width: 0;
+          border: none;
+          outline: none;
+          background: transparent;
+          resize: none;
+          padding: 8px 0;
+          margin: 0;
+          font-size: 15px;
+          line-height: 20px;
+          font-family: inherit;
+          color: ${brand.grafite};
+          max-height: 140px;
+          overflow-y: auto;
+        }
+        .composer-pill textarea::placeholder {
+          color: ${brand.grafite70};
+        }
+        .composer-send {
+          width: 36px;
+          height: 36px;
+          border: none;
+          background: ${brand.cianografia};
+        }
+        .composer-send:not(:disabled):hover {
+          background: ${brand.cianografiaScuro};
+        }
+        .composer-send:disabled {
+          opacity: 0.4;
+        }
+      `}</style>
 
       {openPhoto ? <PhotoLightbox photos={openPhoto.photos} initialIndex={openPhoto.index} onClose={() => setOpenPhoto(null)} /> : null}
       {clientCard ? (

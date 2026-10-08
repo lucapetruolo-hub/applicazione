@@ -23,15 +23,16 @@ export class TimelineService {
    * (include eventuali dettagli/note dell'evento), non un `type` da
    * tradurre lato client: a differenza delle notifiche, qui la
    * formulazione varia con i dati reali dell'evento (data proposta, nota
-   * scritta, importo finale...). Mai `mediaUrls` qui: quelli esistono solo
-   * per gli aggiornamenti scritti a mano (vedi addUpdate).
+   * scritta, importo finale...). `mediaUrls` solo per gli aggiornamenti
+   * scritti a mano (vedi addUpdate) e per le foto della segnalazione del
+   * professionista (§197).
    *
    * Pubblica anche un push SSE "chat_message" a entrambe le parti del
    * thread (CTO — real-time): una conversazione già aperta vede comparire
    * l'evento subito, senza aspettare il poll di riserva.
    */
-  async log(guidedRequestId: string, professionalProfileId: string, actor: TimelineActor, message: string): Promise<void> {
-    const row = await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message } });
+  async log(guidedRequestId: string, professionalProfileId: string, actor: TimelineActor, message: string, mediaUrls: string[] = []): Promise<void> {
+    const row = await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message, mediaUrls, automatic: true } });
     const participants = await this.resolveParticipantIds(guidedRequestId, professionalProfileId);
     if (participants) this.publishChatMessage(guidedRequestId, professionalProfileId, row, participants);
   }
@@ -120,10 +121,13 @@ export class TimelineService {
         otherPartyName,
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
+        requestDescription: event.guidedRequest.description,
         lastMessage: event.message || null,
         lastMessageHasMedia: event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
-        lastMessageIsMine: event.actor !== "SYSTEM" && event.actor === viewerRole,
+        // Un messaggio automatico non è "tuo" anche se porta il tuo ruolo
+        // ("Tu: Il professionista ha annullato…" non si legge bene).
+        lastMessageIsMine: !event.automatic && event.actor !== "SYSTEM" && event.actor === viewerRole,
       });
     }
     return threads;
@@ -153,6 +157,7 @@ export class TimelineService {
       actor: event.actor,
       message: event.message,
       mediaUrls: event.mediaUrls,
+      automatic: event.automatic,
       createdAt: event.createdAt.toISOString(),
     };
   }
