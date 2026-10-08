@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BRAND } from "@professionisti/shared";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -40,7 +41,7 @@ export default function OpengraphImage() {
             </svg>
           </div>
           <div style={{ display: "flex", color: "white", fontSize: 56, fontWeight: 700, letterSpacing: -1 }}>
-            Professionisti
+            {BRAND.name}
           </div>
         </div>
         <div style={{ display: "flex", color: "#FDEFE1", fontSize: 30 }}>Descrivi il lavoro. Ricevi un preventivo vero.</div>

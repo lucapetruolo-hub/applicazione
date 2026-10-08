@@ -48,7 +48,7 @@ export default function AdminRegistroPage() {
     <YStack>
       <AdminPageHeader title="Registro azioni" description="Chi ha fatto cosa e quando nel pannello." />
       <XStack marginBottom="$3">
-        <select
+        <select aria-label="Tipo di elemento"
           className="admin-input"
           value={entityType}
           onChange={(e) => {

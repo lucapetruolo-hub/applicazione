@@ -8,6 +8,7 @@ import {
   InterTight_600SemiBold,
 } from "@expo-google-fonts/inter-tight";
 import { useFonts as useIbmPlexMono, IBMPlexMono_500Medium } from "@expo-google-fonts/ibm-plex-mono";
+import { BRAND } from "@professionisti/shared";
 
 // Stessi ruoli tipografici del web (Archivo/Inter Tight/IBM Plex Mono, vedi
 // packages/ui/src/config.ts): su native ogni peso è una famiglia caricata a
@@ -26,7 +27,7 @@ export default function RootLayout() {
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <Stack>
-        <Stack.Screen name="index" options={{ title: "Professionisti" }} />
+        <Stack.Screen name="index" options={{ title: BRAND.name }} />
         <Stack.Screen name="cerca/[categoria]" options={{ title: "Ricerca" }} />
       </Stack>
     </TamaguiProvider>

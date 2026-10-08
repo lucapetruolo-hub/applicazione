@@ -391,7 +391,7 @@ export function QuoteCard({
               </Text>
               {/* Nota facoltativa (docs/CHANGELOG.md §188): il professionista
                   la legge e può inviarti un nuovo preventivo. */}
-              <textarea
+              <textarea aria-label="Nota per il professionista"
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
                 placeholder="Nota per il professionista (facoltativa): es. il prezzo è troppo alto, mi serve prima di venerdì"
@@ -421,7 +421,7 @@ export function QuoteCard({
                 </Text>
               ) : (
                 <>
-                  <select value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
+                  <select aria-label="Orario proposto" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
                     {freeSlots.map((slot) => {
                       const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
                       const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
@@ -436,16 +436,16 @@ export function QuoteCard({
                   {selectedSlotKey === MANUAL_OPTION_VALUE ? (
                     <YStack gap="$2">
                       <XStack gap="$2" flexWrap="wrap">
-                        <input type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
-                        <input type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
-                        <input type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                        <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
+                        <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                        <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
                       </XStack>
                       <Text fontSize={11} color={brand.grafite70}>
                         Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
                       </Text>
                     </YStack>
                   ) : null}
-                  <textarea value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
+                  <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
                   <XStack gap="$2" flexWrap="wrap">
                     <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
                       {isProposing ? "Invio..." : "Invia proposta"}

@@ -216,7 +216,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
       </Text>
       {open ? (
         <YStack gap="$2">
-          <textarea
+          <textarea aria-label="Motivo"
             className="admin-input admin-textarea"
             value={note}
             onChange={(e) => setNote(e.target.value)}

@@ -86,7 +86,7 @@ export function HomeHero() {
             Trova un professionista vicino a te
           </Text>
           <Text fontSize="$5" color="rgba(255,255,255,0.88)" textAlign="center" maxWidth={520}>
-            Idraulici, elettricisti, imbianchini e altri professionisti verificati. Cerca per zona o scegli una
+            Idraulici, elettricisti, imbianchini e altri professionisti della tua zona. Cerca per zona o scegli una
             consulenza online.
           </Text>
 

@@ -43,7 +43,7 @@ function PasswordField({
 }) {
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      <input
+      <input aria-label={placeholder}
         type={visible ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -461,30 +461,30 @@ export default function AccountPage() {
           ) : null}
 
           <FieldRow label="Nome" required>
-            <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+            <input aria-label="Nome" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Cognome">
-            <input value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
+            <input aria-label="Cognome" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Data di nascita">
             <XStack gap="$2">
-              <input
+              <input aria-label="Giorno di nascita"
                 value={birthDay}
                 onChange={(e) => setBirthDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
                 placeholder="DD"
                 inputMode="numeric"
                 style={smallInputStyle}
               />
-              <input
+              <input aria-label="Mese di nascita"
                 value={birthMonth}
                 onChange={(e) => setBirthMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
                 placeholder="MM"
                 inputMode="numeric"
                 style={smallInputStyle}
               />
-              <input
+              <input aria-label="Anno di nascita"
                 value={birthYear}
                 onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 placeholder="YYYY"
@@ -499,11 +499,11 @@ export default function AccountPage() {
           <SectionTitle>Contatti</SectionTitle>
 
           <FieldRow label="Email" required>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+            <input aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Telefono">
-            <input
+            <input aria-label="Telefono"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Es. +39 333 1234567"
@@ -537,11 +537,11 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="Numero civico">
-            <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={{ ...inputStyle, maxWidth: 140 }} />
+            <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={{ ...inputStyle, maxWidth: 140 }} />
           </FieldRow>
 
           <FieldRow label="Scala, piano, interno">
-            <input
+            <input aria-label="Scala, piano, interno"
               value={addressExtra}
               onChange={(e) => setAddressExtra(e.target.value)}
               placeholder="Es. Scala B, piano 3, interno 12"
@@ -550,15 +550,15 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="CAP">
-            <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
+            <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
           </FieldRow>
 
           <FieldRow label="Città">
-            <input value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
+            <input aria-label="Città" value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Provincia">
-            <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
+            <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Es. Milano" style={{ ...inputStyle, maxWidth: 200 }} />
           </FieldRow>
         </Surface>
 
@@ -721,7 +721,7 @@ export default function AccountPage() {
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
               </Text>
-              <input
+              <input aria-label="Scrivi ELIMINA per confermare"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder="ELIMINA"

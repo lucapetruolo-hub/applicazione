@@ -12,6 +12,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
+import { BRAND } from "@professionisti/shared";
 
 // Necessario per l'installabilità PWA (manifest.ts) e per una barra di stato
 // mobile coerente col brand invece del bianco/nero di default del browser.
@@ -27,11 +28,11 @@ export const metadata: Metadata = {
   // fallback "http://localhost:3000" usato altrimenti in produzione.
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Trova un professionista vicino a te",
-    template: "%s | Professionisti",
+    default: BRAND.tagline,
+    template: `%s | ${BRAND.name}`,
   },
   description:
-    "Cerca imbianchini, elettricisti, idraulici e altri professionisti locali verificati vicino a te.",
+    "Cerca imbianchini, elettricisti, idraulici e altri professionisti vicino a te.",
   // Sito non ancora ufficiale: fuori dai motori di ricerca finché
   // NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi lib/siteIndexing.ts).
   ...(SITE_INDEXABLE ? {} : { robots: { index: false, follow: false } }),

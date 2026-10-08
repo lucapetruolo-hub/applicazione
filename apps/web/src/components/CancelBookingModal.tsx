@@ -119,7 +119,7 @@ export function CancelBookingModal({
             <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
               Nota (facoltativa)
             </Text>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
+            <textarea aria-label="Nota" value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
           </YStack>
         ) : null}
 

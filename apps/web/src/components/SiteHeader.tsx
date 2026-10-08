@@ -9,6 +9,7 @@ import { AccountMenu } from "./AccountMenu";
 import { HeaderSearchBar } from "./HeaderSearchBar";
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
+import { BRAND } from "@professionisti/shared";
 
 /**
  * Header sticky (brief "Vicinato", CLAUDE.md §19): niente più hairline —
@@ -68,7 +69,7 @@ export function SiteHeader() {
         justifyContent="space-between"
       >
         <XStack alignItems="center" gap="$6">
-          <Link href="/" aria-label="Professionisti, vai alla home" style={{ textDecoration: "none" }}>
+          <Link href="/" aria-label={`${BRAND.name}, vai alla home`} style={{ textDecoration: "none" }}>
             {/* Solo marchio sotto $xs (≤660px, telefoni): il wordmark
                 "Professionisti" (~120px) più Accedi+bottone CTA a destra
                 sforavano la larghezza viewport sui telefoni più stretti
@@ -76,10 +77,10 @@ export function SiteHeader() {
                 homepage) — `variant="mark"` esiste già in Logo.web.tsx
                 proprio per questo caso ("per spazi stretti"). */}
             <XStack display="none" $gtXs={{ display: "flex" }}>
-              <Logo size={26} />
+              <Logo name={BRAND.name} size={26} />
             </XStack>
             <XStack $gtXs={{ display: "none" }}>
-              <Logo size={26} variant="mark" />
+              <Logo name={BRAND.name} size={26} variant="mark" />
             </XStack>
           </Link>
           {isSearchResultsPage ? null : (
