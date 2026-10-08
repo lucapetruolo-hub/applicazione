@@ -65,7 +65,7 @@ export type ClientEmailFirstAuthTitles = Record<Step, { eyebrow: string; title: 
  * chiede la password, ne fa scegliere una nuova o rimanda a Google. Niente
  * caselle: vale la dicitura sotto il pulsante, anche per Google, quindi
  * niente popup di consenso dopo Google. Un account nuovo chiede la password
- * due volte (docs/CHANGELOG.md §192, richiesta dell'utente).
+ * due volte (docs/CHANGELOG.md §193, richiesta dell'utente).
  * Usato dal popup della richiesta (InlineAuthGate) e da /registrati?ruolo=cliente.
  */
 export function ClientEmailFirstAuth({

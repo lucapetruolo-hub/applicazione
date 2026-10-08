@@ -16762,7 +16762,30 @@ filtro del raggio).
 
 **Verifica:** typecheck `packages/shared`, `apps/api`, `apps/web`.
 
-## 192. Conferma password nella registrazione del cliente
+## 192. La pagina "Oggi" si aggiorna da sola all'arrivo di una richiesta
+
+**Richiesta dell'utente:** il professionista resta sulla Home "Oggi" in
+attesa; arrivava una nuova richiesta, comparivano popup e notifica, ma la
+lista "Da rispondere" restava ferma finché non si ricaricava la pagina.
+
+**Causa:** il popup arriva dal canale SSE (`AuthContext` → `realtimeBus`,
+§115), ma `/dashboard` caricava richieste e lavori una sola volta
+all'apertura e non ascoltava quel canale.
+
+**Decisione:** nuovo hook `apps/web/src/lib/useLiveRefresh.ts`: a ogni
+evento `notification` dello stesso canale del popup, la pagina ricarica in
+background richieste e lavori (nessuno scheletro, nessun messaggio
+d'errore, ciò che si sta guardando resta com'è). Reti di sicurezza: al
+ritorno sulla scheda, al ritorno della connessione e ogni 2 minuti con la
+scheda visibile (per le notifiche con il canale "sito" spento, che non
+passano dall'SSE). Lo stesso aggancio, senza il giro di riserva, anche su
+`/dashboard/richieste` e `/le-mie-richieste`, che prima aspettavano il loro
+poll da 15s; i pallini dei non letti restano al poll (segnare come lette
+nello stesso istante del popup rischierebbe di farlo sparire).
+
+**Verifica:** `tsc --noEmit` di `apps/web` pulito.
+
+## 193. Conferma password nella registrazione del cliente
 
 **Richiesta dell'utente:** registrandosi, il cliente deve scrivere la
 password due volte. Resta il flusso "prima l'email" di §176 (provata e
