@@ -16969,8 +16969,10 @@ questione resta tra voi".
   lavoro. Finestra dedicata `ProfessionalProblemModal` con **foto o video
   facoltativi** (fino a 5, stesso caricamento delle foto del lavoro
   terminato): compaiono nel messaggio in chat (`TimelineService.log` accetta
-  ora `mediaUrls`) e come link nei dettagli della segnalazione per il nostro
-  team. Sulla scheda il professionista vede **l'ultima segnalazione inviata
+  ora `mediaUrls`) e nel pannello `/admin/segnalazioni` come anteprime che
+  si aprono in grande (`PhotoLightbox`), salvate nella nuova colonna
+  `ContentReport.photoUrls` (migrazione `20261008110000_content_report_photos`,
+  approvata dall'utente). Sulla scheda il professionista vede **l'ultima segnalazione inviata
   e a che punto è** (in verifica, accolta, chiusa senza misure):
   `ProfessionalBooking.professionalProblemReport`, letto in una sola query
   per tutte le prenotazioni (motivi riconosciuti dal prefisso

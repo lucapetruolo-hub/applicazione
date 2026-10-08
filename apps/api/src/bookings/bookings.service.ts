@@ -692,11 +692,8 @@ export class BookingsService {
 
     const description = input.description.trim();
     const photoUrls = input.photoUrls ?? [];
-    // Le foto vanno anche nei dettagli: il pannello delle segnalazioni mostra
-    // solo testo, così il nostro team le apre dai link.
-    const details = photoUrls.length > 0 ? `${description}\n\nFoto: ${photoUrls.join(" ")}` : description;
     const created = await this.prisma.contentReport.create({
-      data: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, reason, details },
+      data: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, reason, details: description, photoUrls },
       select: { id: true },
     });
     await this.timelineService.log(

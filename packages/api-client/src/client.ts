@@ -410,6 +410,8 @@ export type AdminContentReport = {
   linkedProfessionalProfileId: string | null;
   reason: string;
   details: string | null;
+  /** Foto/video allegati alla segnalazione (solo "Qualcosa è andato male" del professionista, §197). */
+  photoUrls: string[];
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   createdAt: string;
   resolvedAt: string | null;

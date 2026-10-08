@@ -230,7 +230,7 @@ describe("BookingsService.reportProblemByProfessional", () => {
       expect.objectContaining({ data: expect.objectContaining({ targetType: "GUIDED_REQUEST", targetId: "gr-1", reason: "Problema sull'intervento: Il cliente non era presente" }) }),
     );
     expect(contentReport.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ details: expect.stringContaining("https://res.cloudinary.com/x/porta.jpg") }) }),
+      expect.objectContaining({ data: expect.objectContaining({ photoUrls: input.photoUrls }) }),
     );
     expect(timelineService.log).toHaveBeenCalledWith("gr-1", "pro-1", "PROFESSIONAL", expect.stringContaining("non era presente"), input.photoUrls);
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "TIMELINE_MESSAGE_FROM_PROFESSIONAL", expect.anything());

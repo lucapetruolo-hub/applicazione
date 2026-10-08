@@ -16,6 +16,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
+import { MediaPreview } from "@/components/MediaPreview";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 type View = "da-gestire" | "ricorsi" | "archivio";
 
@@ -122,6 +124,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<AdminReportTarget | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   const href = reportTargetHref(report);
 
   // Contenuto completo anche se già nascosto o sospeso (docs/CHANGELOG.md
@@ -197,6 +200,19 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         {report.reason}
         {report.details ? ` — ${report.details}` : ""}
       </Text>
+      {/* Foto della segnalazione del professionista (§197): anteprime che si aprono in grande. */}
+      {report.photoUrls.length > 0 ? (
+        <XStack flexWrap="wrap" gap="$2">
+          {report.photoUrls.map((url, index) => (
+            <YStack key={url} width={72} height={72} borderRadius="$3" overflow="hidden" borderWidth={1} borderColor={brand.filetto} cursor="pointer">
+              <MediaPreview url={url} alt={`Foto ${index + 1} della segnalazione`} onClick={() => setOpenPhotoIndex(index)} />
+            </YStack>
+          ))}
+        </XStack>
+      ) : null}
+      {openPhotoIndex !== null ? (
+        <PhotoLightbox photos={report.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} />
+      ) : null}
       <Text fontSize="$2" color={brand.grafite70}>
         Da {report.reporterName ?? "utente"} {report.reporterEmail ? `(${report.reporterEmail})` : ""}
       </Text>
