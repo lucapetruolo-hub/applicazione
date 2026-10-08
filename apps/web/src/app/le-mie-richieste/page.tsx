@@ -8,6 +8,7 @@ import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-cli
 import { Button, EmptyState, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { SkeletonRequestList } from "@/components/Skeleton";
 import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
@@ -280,6 +281,10 @@ function LeMieRichiesteContent() {
       clearInterval(interval);
     };
   }, [token, markNotificationsRead]);
+
+  // Le liste si aggiornano subito all'arrivo di una notifica (stesso canale
+  // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.
+  useLiveRefresh(reload, Boolean(token), null);
 
   // "Nuovo" su una card raggiunta solo tramite la propria Booking (un
   // aggiornamento sul lavoro, non sulla richiesta in sé) — tradotto nella
