@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
@@ -33,16 +33,19 @@ export type ProfessionalCardAvailabilitySlot = {
   onlineAvailable: boolean;
 };
 
-/** Un giorno della mini-agenda ("Oggi"/"Domani"/...): ogni fascia configurata, libera o al completo. */
+/** Un giorno della mini-agenda con almeno una fascia configurata, libera o al completo. */
 export type ProfessionalCardAvailabilityDay = {
   date: string;
-  label: string;
-  dateLabel: string;
   times: ProfessionalCardAvailabilitySlot[];
 };
 
 const AGENDA_COLUMN_WIDTH = 78;
 const AGENDA_VISIBLE_DAYS = 4;
+// Stesso valore di PUBLIC_AGENDA_DAYS in packages/shared (qui duplicato:
+// packages/ui non dipende dal resto del monorepo, vedi formatServicePrice).
+const DEFAULT_AGENDA_DAYS = 63;
+const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
 // Duplicata (non importata da @professionisti/shared): packages/ui non
 // dipende dal resto del monorepo, resta un design system consumabile da solo
@@ -103,6 +106,14 @@ export type ProfessionalCardProps = {
    */
   availabilityPreview?: ProfessionalCardAvailabilityDay[];
   /**
+   * Primo giorno dell'agenda (AAAA-MM-GG, colonna "Oggi"): da qui la card
+   * ricostruisce le colonne consecutive, anche quelle senza fasce, che il
+   * server non manda per tenere leggera la risposta della ricerca.
+   */
+  availabilityFrom?: string;
+  /** Quanti giorni si possono sfogliare da `availabilityFrom` (default 63). */
+  availabilityDays?: number;
+  /**
    * Tab di default (richiesta esplicita dell'utente: prescelto in base al
    * tipo di ricerca fatto dalla homepage — "a domicilio" se cercato a
    * domicilio, "online" se cercato online). Default "HOME" se assente.
@@ -144,6 +155,8 @@ export function ProfessionalCard({
   remoteAvailable,
   services,
   availabilityPreview,
+  availabilityFrom,
+  availabilityDays = DEFAULT_AGENDA_DAYS,
   defaultMode,
   onPress,
   onSlotPress,
@@ -167,12 +180,30 @@ export function ProfessionalCard({
   // — richiesta esplicita dell'utente di poter navigare anche ai giorni
   // successivi senza una richiesta di rete per pagina.
   const [windowOffset, setWindowOffset] = useState(0);
-  const totalDays = availabilityPreview?.length ?? 0;
+  // Colonne giorno consecutive da `availabilityFrom`, con "-" dove il
+  // professionista non ha fasce (riferimento miodottore.it).
+  const allDays = useMemo(() => {
+    if (!availabilityPreview || availabilityPreview.length === 0) return [];
+    const timesByDate = new Map(availabilityPreview.map((day) => [day.date, day.times]));
+    const start = new Date(`${availabilityFrom ?? availabilityPreview[0]!.date}T00:00:00Z`);
+    return Array.from({ length: availabilityDays }, (_, index) => {
+      const date = new Date(start);
+      date.setUTCDate(date.getUTCDate() + index);
+      const iso = date.toISOString().slice(0, 10);
+      return {
+        date: iso,
+        label: index === 0 ? "Oggi" : index === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[date.getUTCDay()]!,
+        dateLabel: `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`,
+        times: timesByDate.get(iso) ?? [],
+      };
+    });
+  }, [availabilityPreview, availabilityFrom, availabilityDays]);
+  const totalDays = allDays.length;
   const maxOffset = Math.max(0, totalDays - AGENDA_VISIBLE_DAYS);
   const offset = Math.min(windowOffset, maxOffset);
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
-  const visibleDaysRaw = (availabilityPreview ?? []).slice(offset, offset + AGENDA_VISIBLE_DAYS);
+  const visibleDaysRaw = allDays.slice(offset, offset + AGENDA_VISIBLE_DAYS);
   // Filtrate alla sola modalità attiva: un giorno mostra solo le fasce che
   // offrono quel tipo di intervento, le altre restano "-" come se non
   // esistessero per questo tab.
@@ -184,7 +215,7 @@ export function ProfessionalCard({
   // Prima veniva dal server e poteva cadere oltre i giorni scaricati: il
   // pulsante allora non faceva nulla (bug reale, docs/CHANGELOG.md §197).
   const findFirstFree = (fromIndex: number) => {
-    const days = availabilityPreview ?? [];
+    const days = allDays;
     for (let index = fromIndex; index < days.length; index++) {
       const slot = days[index]!.times.find((s) => s[availableKey]);
       if (slot) return { index, day: days[index]!, slot };
@@ -312,12 +343,17 @@ export function ProfessionalCard({
           </YStack>
         </XStack>
 
-        {availabilityPreview && availabilityPreview.length > 0 ? (
+        {totalDays > 0 ? (
           <YStack
             gap="$2"
             minWidth={AGENDA_COLUMN_WIDTH * visibleDays.length}
             paddingLeft="$4"
             borderLeftWidth={1}
+            // Telefono (bug reale, docs/CHANGELOG.md §197): 4 colonne fisse da
+            // 78px più il margine sinistro superavano la larghezza della card
+            // e "Dom" usciva dal bordo. Sotto 800px il blocco va a tutta
+            // larghezza senza filetto e le colonne si dividono lo spazio.
+            $sm={{ minWidth: 0, width: "100%", paddingLeft: 0, borderLeftWidth: 0 }}
             borderLeftColor={brand.filetto}
             // Su una riga stretta il blocco cade sotto (flexWrap sul contenitore):
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
@@ -427,7 +463,8 @@ export function ProfessionalCard({
               {visibleDays.map((day) => (
                 <YStack
                   key={day.date}
-                  width={AGENDA_COLUMN_WIDTH}
+                  flex={1}
+                  minWidth={0}
                   alignItems="center"
                   gap={2}
                   cursor={openAgendaAt ? "pointer" : undefined}
@@ -452,7 +489,7 @@ export function ProfessionalCard({
                       const slot = day.times.find((s) => s.time === time);
                       if (!slot) {
                         return (
-                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text fontSize={12} color={brand.filetto}>
                               -
                             </Text>
@@ -462,7 +499,7 @@ export function ProfessionalCard({
                       const range = `${slot.time}–${slot.endTime}`;
                       if (!slot[availableKey]) {
                         return (
-                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text
                               fontFamily="$mono"
                               fontSize={10}
@@ -478,7 +515,8 @@ export function ProfessionalCard({
                       return (
                         <XStack
                           key={day.date}
-                          width={AGENDA_COLUMN_WIDTH}
+                          flex={1}
+                          minWidth={0}
                           alignItems="center"
                           justifyContent="center"
                           paddingVertical={3}
@@ -494,7 +532,7 @@ export function ProfessionalCard({
                               : undefined
                           }
                         >
-                          <XStack paddingHorizontal="$1.5" paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                          <XStack paddingHorizontal={5} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                             <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                               {range}
                             </Text>

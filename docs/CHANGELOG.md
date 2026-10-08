@@ -16984,3 +16984,25 @@ prenotata per 6 settimane: griglia con orario barrato e riquadro "19 Nov";
 "Mostra orari disponibili" porta la finestra al 19 novembre; la freccia
 avanti scorre senza aprire il profilo; clic su "20 Nov" apre il profilo
 sull'agenda dal 20 novembre. Controllato a 1440px e 390px.
+
+**Migliorie approvate da Luca (stessa giornata):**
+- *Agenda della scheda sul telefono:* le 4 colonne fisse da 78px più il
+  margine sinistro superavano la card e "Dom" usciva dal bordo (succedeva
+  già prima). Sotto 800px (`$sm`) il blocco agenda va a tutta larghezza
+  senza filetto e le colonne si dividono lo spazio (`flex={1}`). Pillola
+  orario con padding ridotto. Provato a 390px e 360px: nessuno scorrimento
+  orizzontale.
+- *Pagina dei risultati da 9 MB:* il peso era tutto in un `<style>` inline
+  di Tamagui con il CSS di tutti i 1408 temi di `@tamagui/config` (light,
+  dark e varianti a colori per ogni componente), ripetuto in ogni pagina
+  del sito. `packages/ui/src/config.ts` tiene solo il tema `light` e i suoi
+  sotto-temi di componente (88): il sito non usa mai `<Theme>`, la prop
+  `theme`, il tema scuro, né Sheet/Dialog/Tooltip di Tamagui. Risultati,
+  profilo e home passano da ~9 MB a ~0,7 MB in locale; home e accesso
+  confrontate con il sito vero, aspetto invariato. I token colore
+  (`$blue10`...) restano.
+- *Anteprima agenda più leggera:* l'API manda solo i giorni con almeno una
+  fascia, senza etichette, più `availabilityFrom` (oggi). La card
+  ricostruisce colonne vuote ed etichette (Oggi/Domani/"Lun", "7 Ago").
+  Sui dati di prova: da 5,9 KB a 1,5 KB e da 8,2 KB a 4,5 KB per
+  professionista.

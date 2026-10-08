@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
+import { findComuneByName, PUBLIC_AGENDA_DAYS, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -611,6 +611,8 @@ export function ResultsListWithMap({
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}
+              availabilityFrom={pro.availabilityFrom}
+              availabilityDays={PUBLIC_AGENDA_DAYS}
               defaultMode={defaultMode}
               // Se la ricerca è in modalità "Online", il profilo si apre già
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —

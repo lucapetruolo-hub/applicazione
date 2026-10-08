@@ -158,20 +158,17 @@ export type ProfessionalAvailabilityPreviewSlot = {
  * professionista ha impostato la capienza per quella fascia 1 o più di 1".
  * Calcolata lato server in un'unica query batch per l'intera pagina di
  * risultati (mai una query per professionista, vedi ProfessionalsService.search).
- * PUBLIC_AGENDA_DAYS giorni totali (stesso orizzonte di `getPublicAgenda`), non solo i 4
- * mostrati di default: la UI pagina in finestre da 4 colonne con frecce
- * avanti/indietro, richiesta esplicita dell'utente ("dare la possibilità
- * di navigare anche ai giorni successivi") — nessuna richiesta di rete
- * aggiuntiva per scorrere in avanti.
+ * Solo i giorni con almeno una fascia (al completo comprese) nei
+ * PUBLIC_AGENDA_DAYS giorni da `availabilityFrom`: la card ricostruisce da
+ * sola le colonne vuote e le etichette (Oggi/Domani/"Lun", "7 Ago"), così
+ * la risposta della ricerca resta leggera anche con due mesi di agenda
+ * (docs/CHANGELOG.md §197). La UI pagina in finestre da 4 colonne con le
+ * frecce, senza richieste di rete aggiuntive.
  */
 export type ProfessionalAvailabilityPreviewDay = {
   /** Data ISO (yyyy-mm-dd). */
   date: string;
-  /** Etichetta già pronta per la UI: "Oggi", "Domani" o il giorno della settimana abbreviato. */
-  label: string;
-  /** Es. "7 Ago", per la seconda riga dell'intestazione colonna. */
-  dateLabel: string;
-  /** Ogni orario configurato quel giorno, ordinato — vuoto se il professionista non ha nulla quel giorno. */
+  /** Ogni orario configurato quel giorno, ordinato. */
   times: ProfessionalAvailabilityPreviewSlot[];
 };
 
@@ -203,6 +200,8 @@ export type ProfessionalSearchResult = {
    * professionista non ha alcuna fascia configurata in quel periodo.
    */
   availabilityPreview: ProfessionalAvailabilityPreviewDay[];
+  /** Primo giorno dell'agenda (oggi, AAAA-MM-GG in UTC): la colonna "Oggi" della card. */
+  availabilityFrom: string;
   /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"

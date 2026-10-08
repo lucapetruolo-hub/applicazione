@@ -50,15 +50,6 @@ export type ProfessionalSearchParams = {
   excludeDemo?: boolean;
 };
 
-// date.getUTCDay(): 0=domenica...6=sabato — stessa convenzione già usata in
-// tutto il modulo agenda (vedi CLAUDE.md §11).
-const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-
-function formatDateLabel(date: Date): string {
-  return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
-}
-
 // Giorni della griglia mostrata in card: colonne giorno consecutive (un
 // giorno vuoto resta in griglia con "-", riferimento miodottore.it), tutti
 // i PUBLIC_AGENDA_DAYS giorni restituiti in un colpo solo: la UI pagina in
@@ -156,6 +147,7 @@ export class ProfessionalsService {
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
         availabilityPreview: preview?.days ?? [],
+        availabilityFrom: new Date().toISOString().slice(0, 10),
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
@@ -329,19 +321,14 @@ export class ProfessionalsService {
       const profileBookings = bookingsByProfile.get(profileId) ?? [];
       const exceptionDates = exceptionDatesByProfile.get(profileId);
 
+      // Solo i giorni con almeno una fascia: la card ricostruisce da sola le
+      // colonne vuote a partire da `availabilityFrom` (risposta più leggera).
       const days: ProfessionalAvailabilityPreviewDay[] = [];
       for (let offset = 0; offset < PUBLIC_AGENDA_DAYS; offset++) {
         const date = new Date(startOfToday);
         date.setUTCDate(date.getUTCDate() + offset);
         const dateStr = date.toISOString().slice(0, 10);
-        const dayOfWeek = date.getUTCDay();
-        const label = offset === 0 ? "Oggi" : offset === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[dayOfWeek]!;
-        const dateLabel = formatDateLabel(date);
-
-        if (exceptionDates?.has(dateStr)) {
-          days.push({ date: dateStr, label, dateLabel, times: [] });
-          continue;
-        }
+        if (exceptionDates?.has(dateStr)) continue;
 
         const times = profileSlots
           .filter((slot) => slotAppliesOnDate(slot, date))
@@ -359,7 +346,7 @@ export class ProfessionalsService {
               countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1);
             return { time: slot.startTime, endTime: slot.endTime, allowsHome: slot.allowsHome, allowsOnline: slot.allowsOnline, homeAvailable, onlineAvailable };
           });
-        days.push({ date: dateStr, label, dateLabel, times });
+        if (times.length > 0) days.push({ date: dateStr, times });
       }
 
       // Restituita sempre quando il professionista ha almeno una fascia nei
@@ -367,7 +354,7 @@ export class ProfessionalsService {
       // segnalato dall'utente, docs/CHANGELOG.md §197): prima la griglia
       // spariva del tutto se nei primi 30 giorni non c'era nulla di libero,
       // e il cliente non vedeva più nessuna data.
-      if (days.some((day) => day.times.length > 0)) result.set(profileId, { days });
+      if (days.length > 0) result.set(profileId, { days });
     }
 
     return result;
@@ -423,6 +410,7 @@ export class ProfessionalsService {
       // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
+      availabilityFrom: new Date().toISOString().slice(0, 10),
       createdAt: profile.createdAt.toISOString(),
       completedThisMonth: countCompletedThisMonth(profile.bookings),
       isNewProfile: computeIsNewProfile(profile.createdAt),
