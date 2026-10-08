@@ -17141,3 +17141,12 @@ sull'agenda dal 20 novembre. Controllato a 1440px e 390px.
 accesso e risultati collegano `/tamagui.css` (cache di un anno), restano
 solo i piccoli stili per pagina; aspetto invariato a 1440px e 360px,
 nessuno scorrimento orizzontale.
+
+**Banner dei cookie sul telefono (miglioria approvata da Luca):** sotto
+600px il testo lungo andava su 5 righe, il banner arrivava al limite di
+`maxHeight: 15vh` e a 360px tagliava a metà i bottoni Rifiuta/Accetta,
+coprendo intanto metà della prima scheda dei risultati. Ora sotto 600px
+compare un testo breve con le stesse informazioni (solo cookie tecnici,
+servizi Google su consenso, niente pubblicità, revoca in fondo alla
+pagina, link alla Cookie Policy) e bottoni più bassi: banner alto 105px a
+360px e 390px, bottoni interi; su computer invariato (56px).
