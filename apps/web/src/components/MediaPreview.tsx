@@ -96,7 +96,6 @@ export function MediaPreview({
 
   if (forceVideo || isVideoUrl(url)) {
     return (
-      // eslint-disable-next-line jsx-a11y/media-has-caption
       <video src={url} muted playsInline onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />
     );
   }

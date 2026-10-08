@@ -17159,3 +17159,44 @@ la verifica invece di riformulare il testo.
   `/cerca/idraulico`, `/preventivo`, `/urgente`, `/contatti`,
   `/per-professionisti`, `/registrati`, `/accedi`, `/faq`,
   `/password-dimenticata`: nessun errore.
+
+## 205. Lint funzionante e nei controlli automatici
+
+**Richiesta dell'utente:** sistemare il comando lint, che non funzionava
+(miglioria proposta durante il lavoro sull'anti-bot, §204, approvata).
+
+- **Prima:** `pnpm lint` falliva sempre. ESLint non era installato nel
+  monorepo, `apps/api` cercava una config che non esisteva e `next lint` in
+  `apps/web` chiedeva di configurarlo. `packages/config/eslint.base.js` non
+  era collegato a niente (rimosso).
+- **Ora:** un solo `eslint.config.mjs` alla radice (ESLint 9, formato flat):
+  `eslint:recommended` + `typescript-eslint` con le stesse regole della
+  vecchia base (niente `any` esplicito, variabili inutilizzate vietate salvo
+  `_`), più gli hooks di React e le regole di Next.js per `apps/web`
+  (`@next/eslint-plugin-next` 15: la versione 14 non funziona con ESLint 9;
+  sono solo regole di lint, non cambiano la versione di Next). Script `lint`
+  di `apps/api` e `apps/web` = `eslint src`. Nuovo passo **Lint** nella CI.
+- **Pulizia del codice** (nessun cambio di comportamento): tolti import e
+  costanti inutilizzati, commenti `eslint-disable` che non servivano più o
+  che citavano un plugin non installato (`jsx-a11y`).
+- **I 4 avvisi `react-hooks/exhaustive-deps`, controllati uno per uno**
+  (miglioria approvata dall'utente): in `/dashboard/richieste` e
+  `/le-mie-richieste` la funzione che ricarica le liste è ora un
+  `useCallback` legato al token, dichiarato tra le dipendenze del poll
+  (stesso comportamento); in `AddressAutocompleteInput` le coordinate di
+  riferimento sono lette fuori dall'effetto (stesso comportamento). In
+  `/dashboard/profilo` la dipendenza resta fuori apposta, con il motivo
+  scritto: rimetterla ricaricherebbe il profilo al cambio della foto
+  dell'account e cancellerebbe le modifiche non salvate.
+- **Regole di accessibilità** (`eslint-plugin-jsx-a11y`, set consigliato,
+  miglioria approvata dall'utente) su `apps/web`. Corretti: i tre filtri
+  della ricerca (consulenza online, urgente, assicurazione RC) avevano un
+  `<label>` attorno a un interruttore non nativo, ora l'interruttore è
+  collegato al suo testo con `aria-labelledby`; il campo indirizzo con
+  suggerimenti dichiara l'elenco che controlla (`aria-controls`). Lasciati
+  con il motivo scritto: il video nella galleria (caricato dagli utenti,
+  nessun sottotitolo esiste) e il fuoco automatico della ricerca admin.
+  **Restano 74 avvisi** (non bloccano): elementi cliccabili fatti con
+  `div`/`span` che non si usano da tastiera, da sistemare uno per uno.
+- **Verifica:** `pnpm turbo run lint` (0 errori), typecheck e test di tutto
+  il monorepo, `next build` di `apps/web`.

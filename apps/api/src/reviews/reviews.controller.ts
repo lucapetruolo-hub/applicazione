@@ -8,7 +8,6 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ReviewsService } from "./reviews.service";
 
-const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
 // dell'utente: "dai la possibilità di caricare anche i video").

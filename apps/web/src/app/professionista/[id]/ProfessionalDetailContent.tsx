@@ -163,7 +163,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       }
     }
     return { allDays, initialHasAvailable, nextAvailableSlot };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agenda, agendaMode]);
 
   const [agendaWindowOffset, setAgendaWindowOffset] = useState(0);

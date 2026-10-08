@@ -14,7 +14,6 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
-import { GuidedRequestCard } from "./GuidedRequestCard";
 
 /**
  * Dettagli/azioni propri della prenotazione (nata dal preventivo accettato)
