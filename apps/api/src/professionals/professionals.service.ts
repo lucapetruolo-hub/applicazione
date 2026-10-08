@@ -754,7 +754,7 @@ export class ProfessionalsService {
    * Aggiorna i due raggi di ingaggio (standard/urgente) del professionista
    * autenticato — editabili separatamente dal resto del profilo
    * (EngagementRadiusMap in /dashboard/profilo ha un proprio bottone
-   * "Salva"). Il range 1-25 km è già validato da updateEngagementRadiusSchema
+   * "Salva"). Il range (1-35 km standard, 1-25 urgente) è già validato da updateEngagementRadiusSchema
    * (ZodValidationPipe, stessa fonte di verità usata da ogni altro endpoint
    * di questo modulo) prima che l'input arrivi qui — nessuna doppia
    * validazione nel service.
