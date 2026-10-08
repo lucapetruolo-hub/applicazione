@@ -826,10 +826,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       role: "CLIENT" | "PROFESSIONAL" | undefined,
       acceptedLegalTerms: boolean,
       declaredAdult: boolean,
+      turnstileToken?: string,
     ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken }),
       }),
 
     emailStatus: (email: string) =>

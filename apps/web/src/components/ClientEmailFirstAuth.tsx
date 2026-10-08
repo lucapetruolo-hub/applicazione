@@ -6,6 +6,7 @@ import { emailStatusSchema, type EmailStatus } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -92,12 +93,15 @@ export function ClientEmailFirstAuth({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   function editEmail() {
     setStep("email");
     setPassword("");
     setConfirmPassword("");
     setError(null);
+    setTurnstileToken(null);
   }
 
   async function run(action: () => Promise<void>) {
@@ -134,13 +138,23 @@ export function ClientEmailFirstAuth({
       setError("Le due password non coincidono");
       return;
     }
+    if (step === "new" && isTurnstileEnabled() && !turnstileToken) {
+      setError(TURNSTILE_PENDING_MESSAGE);
+      return;
+    }
     void run(async () => {
-      const { token, isNewUser } =
-        step === "new"
-          ? await apiClient.register(email, password, undefined, "CLIENT", true, true)
-          : await apiClient.login(email, password);
-      await login(token);
-      onAuthenticated(isNewUser);
+      try {
+        const { token, isNewUser } =
+          step === "new"
+            ? await apiClient.register(email, password, undefined, "CLIENT", true, true, turnstileToken ?? undefined)
+            : await apiClient.login(email, password);
+        await login(token);
+        onAuthenticated(isNewUser);
+      } catch (err) {
+        // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
+        if (step === "new") setTurnstileReset((n) => n + 1);
+        throw err;
+      }
     });
   }
 
@@ -261,6 +275,7 @@ export function ClientEmailFirstAuth({
               onSubmitEditing={handlePassword}
             />
           ) : null}
+          {isNew ? <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} /> : null}
           {errorText}
           <Button variant="primary" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Un momento..." : `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}

@@ -108,6 +108,9 @@ export const registerSchema = emailPasswordSchema.extend({
   // professionali sono anch'esse autodichiarate, CLAUDE.md §"Verbale").
   acceptedLegalTerms: z.boolean().refine((v) => v === true, "Devi accettare Privacy Policy e Termini di Servizio."),
   declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
+  // Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §198):
+  // controllato dal server solo se `TURNSTILE_SECRET_KEY` è impostata.
+  turnstileToken: z.string().max(2048).optional(),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

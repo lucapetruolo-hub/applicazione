@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Inject, Patch, Post, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import type { Request } from "express";
 import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
@@ -30,6 +31,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { isEmailVerificationRequired } from "./verified-email.guard";
+import { verifyTurnstileToken } from "./turnstile";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -46,7 +48,10 @@ export class AuthController {
   // prova decine di combinazioni al minuto non è un utente reale.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post("register")
-  async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput) {
+  async register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput, @Req() req: Request) {
+    if (!(await verifyTurnstileToken(body.turnstileToken, req.ip))) {
+      throw new BadRequestException("Verifica anti-bot non riuscita: riprova.");
+    }
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
