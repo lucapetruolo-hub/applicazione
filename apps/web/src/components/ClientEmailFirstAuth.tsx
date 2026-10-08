@@ -63,8 +63,9 @@ export type ClientEmailFirstAuthTitles = Record<Step, { eyebrow: string; title: 
  * §176, scelta dell'utente sul modello di MioDottore): si scrive solo
  * l'email, il sito capisce se l'account esiste (`/auth/email-status`) e
  * chiede la password, ne fa scegliere una nuova o rimanda a Google. Niente
- * conferma password né caselle: vale la dicitura sotto il pulsante, anche
- * per Google, quindi niente popup di consenso dopo Google.
+ * caselle: vale la dicitura sotto il pulsante, anche per Google, quindi
+ * niente popup di consenso dopo Google. Un account nuovo chiede la password
+ * due volte (docs/CHANGELOG.md §192, richiesta dell'utente).
  * Usato dal popup della richiesta (InlineAuthGate) e da /registrati?ruolo=cliente.
  */
 export function ClientEmailFirstAuth({
@@ -87,12 +88,15 @@ export function ClientEmailFirstAuth({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function editEmail() {
     setStep("email");
     setPassword("");
+    setConfirmPassword("");
     setError(null);
   }
 
@@ -124,6 +128,10 @@ export function ClientEmailFirstAuth({
   function handlePassword() {
     if (password.length < 8) {
       setError("La password deve avere almeno 8 caratteri");
+      return;
+    }
+    if (step === "new" && password !== confirmPassword) {
+      setError("Le due password non coincidono");
       return;
     }
     void run(async () => {
@@ -234,6 +242,20 @@ export function ClientEmailFirstAuth({
             accessibilityLabel="Password"
             onSubmitEditing={handlePassword}
           />
+          {isNew ? (
+            <AuthField
+              label="Conferma password"
+              rightElement={<PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Ripeti la password"
+              secureTextEntry={!showConfirmPassword}
+              autoComplete="new-password"
+              nativeID="confirm-password"
+              accessibilityLabel="Conferma password"
+              onSubmitEditing={handlePassword}
+            />
+          ) : null}
           {errorText}
           <Button variant="primary" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Un momento..." : `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}

@@ -16761,3 +16761,18 @@ la ricerca e le richieste dirette dal profilo non hanno limiti di distanza
 filtro del raggio).
 
 **Verifica:** typecheck `packages/shared`, `apps/api`, `apps/web`.
+
+## 192. Conferma password nella registrazione del cliente
+
+**Richiesta dell'utente:** registrandosi, il cliente deve scrivere la
+password due volte, non una sola.
+
+**Decisione:** in `ClientEmailFirstAuth` (popup della richiesta e
+`/registrati?ruolo=cliente`), al passo "account nuovo" compare il campo
+"Conferma password" sotto "Scegli una password", con lo stesso occhio
+mostra/nascondi; se le due non coincidono il pulsante mostra "Le due password
+non coincidono" e non invia nulla. Stesso comportamento del modulo del
+professionista in `/registrati`, che la conferma l'aveva già. L'accesso con
+account esistente resta con una sola password.
+
+**Verifica:** typecheck `apps/web`.
