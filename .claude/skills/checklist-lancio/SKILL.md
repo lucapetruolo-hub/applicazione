@@ -215,17 +215,15 @@ prima del lancio"):
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
-24. **Cloudflare Turnstile anti-bot sulla registrazione** (decisione
-    dell'utente, 06/10/2026: da integrare prima del lancio). Widget sui
-    moduli email+password (`/registrati` e `InlineAuthGate`), controllo
-    del token in `POST /auth/register` (`apps/api/src/auth/`), chiavi
-    `NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel e `TURNSTILE_SECRET_KEY` su
-    Render, spento senza chiavi come Maps e Stripe. Gratuito, senza cookie
-    di profilazione (niente banner), ma va citato nell'informativa privacy
-    (dati a Cloudflare, USA) e aggiunto alla tabella dello stack in
-    CLAUDE.md. Google Sign-In non ne ha bisogno. Nessun proxy/WAF
-    Cloudflare davanti a Vercel: sconsigliato da Vercel e il sito non ha
-    ancora un dominio proprio.
+24. **Cloudflare Turnstile anti-bot** (registrazione, recupero password, contatti) — codice fatto
+    (docs/CHANGELOG.md §204), resta spento finché non si mettono le chiavi:
+    1. Cloudflare (account gratuito) → Turnstile → Add widget, modalità
+       "Managed", dominio del sito (`applicazione-web.vercel.app`, più il
+       dominio definitivo quando ci sarà).
+    2. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (site key) su Vercel + nuovo deploy.
+    3. `TURNSTILE_SECRET_KEY` (secret key) su Render.
+    Mettere prima la chiave su Vercel e poi quella su Render: al contrario,
+    per qualche minuto le registrazioni con email verrebbero rifiutate.
 25. ~~Email transazionali mancanti~~ — fatto (docs/CHANGELOG.md §185):
     benvenuto, richiesta inviata, preventivi e date, lavori, pagamenti,
     recensioni, recupero password, con modello unico. Partono a tutti solo

@@ -14,6 +14,7 @@ import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
+import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 
 export default function RegistratiPage() {
   return (
@@ -334,6 +335,8 @@ function RegistratiForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
   // Due dichiarazioni obbligatorie richieste esplicitamente dall'utente
   // ("Verbale di Conformità"): prima nessun atto tracciato confermava che
   // l'utente avesse letto le informative, né esisteva una dichiarazione di
@@ -404,6 +407,10 @@ function RegistratiForm() {
       setError(result.error.issues[0]?.message ?? "Dati non validi.");
       return;
     }
+    if (isTurnstileEnabled() && !turnstileToken) {
+      setError(TURNSTILE_PENDING_MESSAGE);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -414,11 +421,14 @@ function RegistratiForm() {
         result.data.role,
         result.data.acceptedLegalTerms,
         result.data.declaredAdult,
+        turnstileToken ?? undefined,
       );
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
+      setTurnstileReset((n) => n + 1);
     } finally {
       setIsSubmitting(false);
     }
@@ -609,6 +619,8 @@ function RegistratiForm() {
               Dichiaro di avere almeno 18 anni.
             </ConsentCheckbox>
           </YStack>
+
+          <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 
           {error ? (
             <Text color={brand.urgenza} fontSize="$3">

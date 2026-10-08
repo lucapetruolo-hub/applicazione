@@ -17160,6 +17160,48 @@ la verifica invece di riformulare il testo.
   `/per-professionisti`, `/registrati`, `/accedi`, `/faq`,
   `/password-dimenticata`: nessun errore.
 
+## 204. Anti-bot Cloudflare Turnstile sulla registrazione, sul recupero password e sui contatti
+
+**Richiesta dell'utente:** integrare Cloudflare Turnstile prima del lancio
+(decisione del 06/10/2026, checklist di lancio punto 24), scelto come
+prossima funzionalità da costruire.
+
+- **Dove:** solo la registrazione con email e password, cioè il modulo
+  professionista di `/registrati` e il passo "nuovo account" di
+  `ClientEmailFirstAuth` (usato da `/registrati` per i clienti e da
+  `InlineAuthGate`). Google Sign-In non ne ha bisogno; il login resta
+  coperto dal limite per IP. **Migliorie approvate dall'utente** nello
+  stesso giro: Turnstile anche su "Password dimenticata" (`POST
+  /auth/password-reset/request`) e sul modulo `/contatti` (`POST /contact`,
+  dopo l'honeypot), con lo stesso `assertTurnstile`; il contenitore del
+  widget è `display: contents`, così da invisibile non aggiunge spazio
+  sopra il pulsante.
+- **Browser:** `TurnstileWidget` carica lo script di Cloudflare solo con
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, in italiano, a tutta larghezza e
+  invisibile salvo quando Cloudflare chiede una conferma
+  ("interaction-only"). Se si preme "Crea account"/"Registrati" prima che il
+  token sia pronto compare "Un attimo: stiamo verificando che non sei un
+  robot". Il token vale una volta: dopo un invio fallito il widget si
+  rigenera.
+- **Server:** `registerSchema` accetta `turnstileToken`; `POST
+  /auth/register` lo verifica con `verifyTurnstileToken`
+  (`apps/api/src/auth/turnstile.ts`) prima di creare l'account e risponde
+  400 "Verifica anti-bot non riuscita: riprova." se manca o Cloudflare lo
+  rifiuta. Senza `TURNSTILE_SECRET_KEY` il controllo è spento. Se Cloudflare
+  non risponde entro 5 secondi o dà un errore del server la registrazione
+  passa con un avviso nei log (un bot non può provocare un guasto di
+  Cloudflare; il limite di 5 registrazioni al minuto per IP resta). Una
+  chiave segreta sbagliata finisce nei log come errore.
+- **Privacy:** Cloudflare aggiunto all'elenco dei fornitori e dei
+  trasferimenti negli USA su `/privacy`. Nessun consenso cookie: Turnstile
+  non usa cookie di profilazione.
+- **Verifica:** sette test nuovi in `turnstile.test.ts`; prova reale contro
+  Cloudflare con le chiavi di prova ufficiali (quella che passa sempre e
+  quella che fallisce sempre); widget provato nel browser su `/registrati`,
+  `/password-dimenticata` e `/contatti` con la chiave di prova (il token
+  arriva al server); typecheck di `apps/api` e `apps/web`, test di
+  tutto il monorepo verdi.
+
 ## 205. Lint funzionante e nei controlli automatici
 
 **Richiesta dell'utente:** sistemare il comando lint, che non funzionava
