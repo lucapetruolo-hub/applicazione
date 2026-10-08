@@ -16780,3 +16780,8 @@ e agenda, separato da una linea. Uguale per le card con e senza agenda.
 **Verifica:** typecheck `packages/ui`; pagina di prova temporanea in
 `apps/web` fotografata a 1100px e 390px (nomi su una riga, prezzi allineati a
 destra), poi rimossa.
+
+**Aggiunta (stessa giornata):** su richiesta di Luca, una linea molto
+leggera (colore `gesso`) sotto ogni prestazione, lunga fino al prezzo, per
+collegare a colpo d'occhio ogni prestazione al suo prezzo. Niente linea
+sotto l'ultima riga.

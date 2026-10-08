@@ -534,8 +534,18 @@ export function ProfessionalCard({
           lasciavano vuoto lo spazio sotto la foto e sotto l'agenda. */}
       {services && services.length > 0 ? (
         <YStack gap="$1" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$4">
-          {(showAllServices ? services : services.slice(0, 3)).map((service) => (
-            <XStack key={service.id} justifyContent="space-between" gap="$2">
+          {(showAllServices ? services : services.slice(0, 3)).map((service, index, shown) => (
+            // Linea molto leggera sotto ogni riga, fino al prezzo (richiesta
+            // esplicita dell'utente): aiuta a collegare a colpo d'occhio
+            // ogni prestazione al suo prezzo. Niente linea sotto l'ultima.
+            <XStack
+              key={service.id}
+              justifyContent="space-between"
+              gap="$2"
+              paddingVertical={3}
+              borderBottomWidth={index < shown.length - 1 ? 1 : 0}
+              borderBottomColor={brand.gesso}
+            >
               <Text fontSize={14} color={brand.grafite70} flex={1}>
                 {service.name}
               </Text>
