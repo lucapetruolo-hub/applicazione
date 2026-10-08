@@ -212,6 +212,11 @@ export default function AdminVerifichePage() {
                     ) : (
                       <>
                         {formatAdminDate(row.createdAt)}
+                        {row.verificationRequestedAt ? (
+                          <div>
+                            <AdminPill tone="ok">Ha chiesto la verifica il {formatAdminDate(row.verificationRequestedAt)}</AdminPill>
+                          </div>
+                        ) : null}
                         {row.verificationNote ? <div style={{ color: brand.grafite70, fontSize: 13 }}>Verifica tolta: {row.verificationNote}</div> : null}
                       </>
                     )}

@@ -347,6 +347,8 @@ export type AdminOverview = {
   paymentsEnabled: boolean;
   /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
   unpaidBalances: number;
+  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §200). */
+  verificationRequests: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1496,6 +1498,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     adminDeleteProfileInvite: (token: string, userId: string) =>
       request<{ success: boolean }>(`/admin/professional-invites/${encodeURIComponent(userId)}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §200). */
+    requestProfessionalVerification: (token: string) =>
+      request<{ verificationRequestedAt: string }>("/professionals/me/verification-request", {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Verifica manuale dei professionisti (docs/CHANGELOG.md §199). */

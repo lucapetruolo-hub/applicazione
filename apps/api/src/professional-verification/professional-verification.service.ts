@@ -38,7 +38,11 @@ export class ProfessionalVerificationService {
     };
     const profiles = await this.prisma.professionalProfile.findMany({
       where,
-      orderBy: filter === "verified" ? { verifiedAt: "desc" } : { createdAt: "asc" },
+      orderBy:
+        filter === "verified"
+          ? [{ verifiedAt: "desc" }]
+          : // Prima chi ha chiesto la verifica (docs/CHANGELOG.md §200), poi i più vecchi.
+            [{ verificationRequestedAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: 200,
       include: {
         category: { select: { label: true } },
@@ -66,6 +70,7 @@ export class ProfessionalVerificationService {
       codiceFiscale: profile.fiscalProfile?.fiscalCodiceFiscale ?? null,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       verified: profile.verified,
+      verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       verifiedAt: profile.verifiedAt?.toISOString() ?? null,
       verifiedByName: profile.verifiedByUserId ? (verifierName.get(profile.verifiedByUserId) ?? null) : null,
       verificationNote: profile.verificationNote,
@@ -78,7 +83,7 @@ export class ProfessionalVerificationService {
     const now = new Date();
     await this.prisma.professionalProfile.update({
       where: { id: profile.id },
-      data: { verified: true, verifiedAt: now, verifiedByUserId: adminUserId, verificationNote: note || null },
+      data: { verified: true, verifiedAt: now, verifiedByUserId: adminUserId, verificationNote: note || null, verificationRequestedAt: null },
     });
     await this.auditLogService.record({
       entityType: "ProfessionalProfile",
@@ -111,6 +116,58 @@ export class ProfessionalVerificationService {
     });
     await this.notificationsService.notify(profile.userId, "PROFILE_VERIFICATION_REMOVED", { note });
     return { professionalProfileId: profile.id, verified: false, verifiedAt: null };
+  }
+
+  /**
+   * "Richiedi la verifica" da /dashboard/profilo (docs/CHANGELOG.md §200):
+   * il profilo sale in cima a "Da verificare" e il menu admin lo conta.
+   */
+  async requestVerification(userId: string) {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { id: true, verified: true, verificationRequestedAt: true, deletedAt: true, invitePendingAt: true },
+    });
+    if (!profile || profile.deletedAt) throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    if (profile.invitePendingAt) throw new BadRequestException("Conferma prima il tuo profilo.");
+    if (profile.verified) throw new BadRequestException("Il tuo profilo è già verificato.");
+    if (profile.verificationRequestedAt) return { verificationRequestedAt: profile.verificationRequestedAt.toISOString() };
+    const now = new Date();
+    await this.prisma.professionalProfile.update({ where: { id: profile.id }, data: { verificationRequestedAt: now } });
+    return { verificationRequestedAt: now.toISOString() };
+  }
+
+  /** Richieste di verifica in attesa, per il numero nel menu admin. */
+  countPendingRequests(): Promise<number> {
+    return this.prisma.professionalProfile.count({
+      where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
+    });
+  }
+
+  /**
+   * Il professionista ha cambiato un dato controllato (partita IVA, codice
+   * fiscale, nome dell'attività): la verifica valeva per il dato vecchio,
+   * quindi il badge si toglie da solo e il profilo torna "Da verificare".
+   */
+  async revokeAfterOwnChange(professionalProfileId: string, changedByUserId: string, reason: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { id: true, userId: true, verified: true },
+    });
+    if (!profile?.verified) return;
+    await this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: reason },
+    });
+    await this.auditLogService.record({
+      entityType: "ProfessionalProfile",
+      entityId: profile.id,
+      fieldName: "verified",
+      oldValue: true,
+      newValue: false,
+      changedByUserId,
+      reason,
+    });
+    await this.notificationsService.notify(profile.userId, "PROFILE_VERIFICATION_REMOVED", { note: reason });
   }
 
   private async findActive(professionalProfileId: string) {

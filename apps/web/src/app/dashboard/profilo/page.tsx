@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
-import {BRAND, 
+import {
+  BRAND,
   PROFESSIONAL_CATEGORIES,
   POPULAR_SERVICES,
   ALL_ITALIAN_CITY_NAMES,
@@ -116,6 +117,10 @@ export default function DashboardProfiloPage() {
   const [businessName, setBusinessName] = useState("");
   // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §199).
   const [verified, setVerified] = useState(false);
+  // "Richiedi la verifica" (docs/CHANGELOG.md §200): data della richiesta già inviata.
+  const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
+  const [requestingVerification, setRequestingVerification] = useState(false);
+  const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
@@ -202,6 +207,7 @@ export default function DashboardProfiloPage() {
         if (profile) {
           setBusinessName(profile.businessName);
           setVerified(profile.verified);
+          setVerificationRequestedAt(profile.verificationRequestedAt);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
           setCity(profile.city);
           setAddress(profile.address ?? "");
@@ -510,6 +516,20 @@ export default function DashboardProfiloPage() {
     })
     .slice(0, 10);
 
+  async function requestVerification() {
+    if (!token) return;
+    setRequestingVerification(true);
+    setVerificationRequestError(null);
+    try {
+      const result = await apiClient.requestProfessionalVerification(token);
+      setVerificationRequestedAt(result.verificationRequestedAt);
+    } catch (err) {
+      setVerificationRequestError(err instanceof Error ? err.message : "Non siamo riusciti a inviare la richiesta. Riprova.");
+    } finally {
+      setRequestingVerification(false);
+    }
+  }
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
       <YStack width="100%" maxWidth={760} gap="$5">
@@ -534,8 +554,18 @@ export default function DashboardProfiloPage() {
             <Text color={brand.grafite70}>
               {verified
                 ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
-                : `Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Per richiederlo scrivici a ${BRAND.supportEmail}: ti ricontattiamo per il controllo.`}
+                : verificationRequestedAt
+                  ? `Richiesta inviata il ${new Date(verificationRequestedAt).toLocaleDateString("it-IT")}: ti ricontattiamo per controllare un tuo documento d'identità e la partita IVA (o il codice fiscale).`
+                  : "Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Chiedilo qui sotto: ti ricontattiamo per il controllo."}
             </Text>
+            {verified || verificationRequestedAt ? null : (
+              <XStack>
+                <Button size="$3" disabled={requestingVerification} onPress={() => void requestVerification()}>
+                  {requestingVerification ? "Invio…" : "Richiedi la verifica"}
+                </Button>
+              </XStack>
+            )}
+            {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
           </Surface>
         )}
 

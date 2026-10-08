@@ -37,6 +37,8 @@ export type ProfessionalVerificationRow = {
   codiceFiscale: string | null;
   hasLiabilityInsurance: boolean;
   verified: boolean;
+  /** Ha premuto "Richiedi la verifica" (docs/CHANGELOG.md §200). */
+  verificationRequestedAt: string | null;
   verifiedAt: string | null;
   verifiedByName: string | null;
   verificationNote: string | null;

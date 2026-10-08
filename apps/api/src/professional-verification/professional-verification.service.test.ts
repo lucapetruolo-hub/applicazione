@@ -10,7 +10,7 @@ import { ProfessionalVerificationService } from "./professional-verification.ser
  */
 function buildService() {
   const prisma = {
-    professionalProfile: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}) },
+    professionalProfile: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}), count: vi.fn() },
   };
   const auditLogService = { record: vi.fn() };
   const notificationsService = { notify: vi.fn() };
@@ -62,5 +62,51 @@ describe("ProfessionalVerificationService", () => {
     expect(verifyProfessionalSchema.safeParse({ identityChecked: true, taxIdChecked: false }).success).toBe(false);
     expect(verifyProfessionalSchema.safeParse({ identityChecked: true }).success).toBe(false);
     expect(verifyProfessionalSchema.safeParse({ identityChecked: true, taxIdChecked: true }).success).toBe(true);
+  });
+});
+
+describe("ProfessionalVerificationService.revokeAfterOwnChange", () => {
+  it("toglie il badge se il professionista cambia un dato controllato", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "p-1", userId: "u-1", verified: true });
+
+    await service.revokeAfterOwnChange("p-1", "u-1", "Partita IVA cambiata");
+
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
+      where: { id: "p-1" },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cambiata" },
+    });
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Partita IVA cambiata" });
+  });
+
+  it("non fa nulla su un profilo non verificato", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "p-1", userId: "u-1", verified: false });
+
+    await service.revokeAfterOwnChange("p-1", "u-1", "Partita IVA cambiata");
+
+    expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
+    expect(notificationsService.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("ProfessionalVerificationService.requestVerification", () => {
+  it("segna la richiesta una volta sola", async () => {
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verificationRequestedAt: null });
+    await service.requestVerification("u-1");
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: { verificationRequestedAt: expect.any(Date) } });
+
+    prisma.professionalProfile.update.mockClear();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verificationRequestedAt: new Date("2026-10-08") });
+    const again = await service.requestVerification("u-1");
+    expect(again.verificationRequestedAt).toBe("2026-10-08T00:00:00.000Z");
+    expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un profilo già verificato", async () => {
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true, verificationRequestedAt: null });
+    await expect(service.requestVerification("u-1")).rejects.toBeInstanceOf(BadRequestException);
   });
 });

@@ -44,6 +44,8 @@ export type AdminOverview = {
   suspendedUsers: number;
   hiddenLeads: number;
   waitlist: number;
+  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §200). */
+  verificationRequests: number;
 };
 
 @Injectable()
@@ -506,7 +508,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -522,6 +524,10 @@ export class AdminService {
         this.prisma.jobIssue.count({ where: { status: "OPEN" } }),
         this.prisma.jobIssue.count({ where: { appealedAt: { not: null }, appealDecision: null } }),
         this.prisma.jobPayment.count({ where: { balanceUnpaidAt: { not: null } } }),
+        // "Richiedi la verifica" in attesa (docs/CHANGELOG.md §200).
+        this.prisma.professionalProfile.count({
+          where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
+        }),
       ]);
     return {
       openReports,
@@ -539,6 +545,7 @@ export class AdminService {
       jobIssueAppeals,
       paymentsEnabled: !!process.env.STRIPE_SECRET_KEY,
       unpaidBalances,
+      verificationRequests,
     };
   }
 

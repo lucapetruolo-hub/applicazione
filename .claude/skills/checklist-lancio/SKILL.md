@@ -155,12 +155,14 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 **Claim non veritieri pubblicati dal vivo** (decisione esplicita
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
-15. Claim "Profili verificati" (footer, risultati di ricerca) — la verifica
-    ora esiste (docs/CHANGELOG.md §199): un admin controlla documento e
-    partita IVA e assegna il badge da `/admin/verifiche`. Resta da fare:
-    verificare davvero i professionisti prima del lancio, e decidere se
-    "Profili verificati" nel footer e sopra i risultati va tenuto così
-    (oggi riguarda solo chi ha il badge, non tutti i profili mostrati).
+15. ~~Claim "Profili verificati"~~ — la verifica esiste (docs/CHANGELOG.md
+    §199-§200): l'admin controlla documento e partita IVA e assegna il badge
+    da `/admin/verifiche`, il professionista lo chiede dal profilo. Footer e
+    risultati dicono ora "Badge Verificato: documento e P.IVA controllati".
+    Resta da fare: verificare davvero i primi professionisti prima del
+    lancio. Ancora da allineare (non toccate, proposta da fare all'utente):
+    le descrizioni con "professionisti verificati" (titolo/descrizione del
+    sito, manifest, `HomeHero.tsx`, testo del footer, pagine `/cerca`).
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).

@@ -41,6 +41,7 @@ import { GuidedRequestsService } from "../guided-requests/guided-requests.servic
 import { toMyState } from "../guided-requests/guided-request-user-state.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -99,6 +100,7 @@ export class ProfessionalsService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly professionalVerificationService: ProfessionalVerificationService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -543,6 +545,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
@@ -597,7 +600,7 @@ export class ProfessionalsService {
     // riceverne di nuove ogni volta che salva.
     const existingProfile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, profileDeclarationVersion: true, invitePendingAt: true },
+      select: { id: true, businessName: true, profileDeclarationVersion: true, invitePendingAt: true },
     });
     const isFirstTimeCreation = existingProfile === null;
     // Alla creazione senza un'immagine scelta, il profilo pubblico parte
@@ -685,6 +688,16 @@ export class ProfessionalsService {
     }
     const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
 
+    // Badge "Verificato" (docs/CHANGELOG.md §199): il controllo valeva per il
+    // nome dell'attività di prima, quindi si toglie se il nome cambia.
+    if (existingProfile && existingProfile.businessName.trim() !== profile.businessName.trim()) {
+      await this.professionalVerificationService.revokeAfterOwnChange(
+        profile.id,
+        userId,
+        "Hai cambiato il nome dell'attività: dobbiamo ricontrollare i tuoi dati.",
+      );
+    }
+
     // Coinvolgimento nei confronti delle richieste guidate già aperte in
     // zona (CLAUDE.md §14, STEP 4) — solo alla primissima creazione del
     // profilo: non esiste in questo progetto un vero flusso di verifica
@@ -721,6 +734,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,

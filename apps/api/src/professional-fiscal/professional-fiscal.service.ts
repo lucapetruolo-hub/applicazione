@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { BRAND, FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 
 const FISCAL_FIELDS = [
   "entityType",
@@ -47,6 +48,7 @@ export class ProfessionalFiscalService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
+    private readonly professionalVerificationService: ProfessionalVerificationService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -128,6 +130,19 @@ export class ProfessionalFiscalService {
         newValue,
         changedByUserId: userId,
       });
+    }
+
+    // Badge "Verificato" (docs/CHANGELOG.md §199): controllato sui dati
+    // fiscali vecchi, si toglie se cambiano partita IVA o codice fiscale.
+    const taxIdChanged = (["vatNumber", "fiscalCodiceFiscale"] as const).some(
+      (field) => existing && input[field] !== undefined && (existing[field] ?? null) !== (fiscalProfile[field] ?? null),
+    );
+    if (taxIdChanged) {
+      await this.professionalVerificationService.revokeAfterOwnChange(
+        professionalProfileId,
+        userId,
+        "Hai cambiato partita IVA o codice fiscale: dobbiamo ricontrollarli.",
+      );
     }
 
     if (input.fiscalDeclarationAccepted) {

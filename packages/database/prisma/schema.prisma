@@ -187,6 +187,9 @@ model ProfessionalProfile {
   verifiedAt                   DateTime?
   verifiedByUserId             String?
   verificationNote             String?
+  // Il professionista ha premuto "Richiedi la verifica" in /dashboard/profilo
+  // (docs/CHANGELOG.md §200): azzerato quando un admin verifica il profilo.
+  verificationRequestedAt      DateTime?
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
   // escludere questi profili dalle sezioni pubbliche che dichiarano

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {BRAND, 
+import {
+  BRAND,
   JOB_PAYMENT_STAGE_LABEL,
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,

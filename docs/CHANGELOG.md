@@ -17035,3 +17035,26 @@ la verifica invece di riformulare il testo.
 - **Verifica:** 4 test nuovi in `professional-verification.service.test.ts`
   (241 test API verdi), typecheck di tutto il monorepo, build di `apps/web`
   e `apps/api`, migrazione confrontata con `prisma migrate diff`.
+
+## 200. Verifica profili: scritte giuste, badge tolto se cambiano i dati, "Richiedi la verifica"
+
+**Richiesta dell'utente:** procedere con le migliorie proposte dopo §199.
+
+- **Scritte:** "Profili verificati dalla piattaforma" (footer) e "Profili
+  verificati" (sopra i risultati) diventano "Badge Verificato: documento e
+  P.IVA controllati": non fanno più pensare che tutti i profili lo siano.
+- **Badge tolto da solo** (`ProfessionalVerificationService.revokeAfterOwnChange`)
+  quando il professionista cambia partita IVA o codice fiscale
+  (`ProfessionalFiscalService.upsertMine`) o il nome dell'attività
+  (`ProfessionalsService.upsertMyProfile`): la verifica valeva per i dati
+  vecchi. Registro azioni e avviso `PROFILE_VERIFICATION_REMOVED` con il
+  motivo; il profilo torna in "Da verificare".
+- **"Richiedi la verifica"** in `/dashboard/profilo` al posto dell'email:
+  `POST /professionals/me/verification-request` salva
+  `ProfessionalProfile.verificationRequestedAt` (migrazione
+  `20261008150000_verification_request`), azzerato quando un admin verifica.
+  In `/admin/verifiche` chi l'ha chiesta sta in cima con la data; il menu
+  admin mostra quante richieste aspettano (`AdminOverview.verificationRequests`).
+- **Verifica:** 4 test nuovi (245 test API verdi), typecheck di tutto il
+  monorepo, build di `apps/web` e `apps/api`, dipendenze Nest risolte
+  all'avvio, migrazione confrontata con `prisma migrate diff`.
