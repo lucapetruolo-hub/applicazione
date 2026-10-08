@@ -21,12 +21,15 @@ type Tone = "primary" | "outline" | "danger" | "dangerSolid";
 type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | "height" | "children"> & {
   tone?: Tone;
   fill?: string;
+  /** Versione più piccola, per i pannelli stretti come la prenotazione in Agenda (richiesta dell'utente). */
+  compact?: boolean;
   children: ReactNode;
 };
 
 export const CARD_BUTTON_HEIGHT = 40;
+const CARD_BUTTON_HEIGHT_COMPACT = 34;
 
-export function CardButton({ tone = "outline", fill, children, disabled, ...rest }: CardButtonProps) {
+export function CardButton({ tone = "outline", fill, compact, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;
   const toneProps: ComponentProps<typeof Button> = fill
     ? { variant: "secondary", backgroundColor: fill, borderColor: fill, hoverStyle: { backgroundColor: fill, opacity: 0.88 }, pressStyle: { backgroundColor: fill, opacity: 0.8 } }
@@ -39,9 +42,19 @@ export function CardButton({ tone = "outline", fill, children, disabled, ...rest
           : { variant: "secondary" };
 
   return (
-    <Button size="$3" height={CARD_BUTTON_HEIGHT} {...toneProps} disabled={disabled} opacity={disabled ? 0.6 : 1} {...rest}>
+    // `toneProps` prima di misura e altezza: in Tamagui vince la prop scritta
+    // per ultima, e le varianti di Button impostano altezza 48.
+    <Button
+      {...toneProps}
+      size={compact ? "$2" : "$3"}
+      height={compact ? CARD_BUTTON_HEIGHT_COMPACT : CARD_BUTTON_HEIGHT}
+      paddingHorizontal={compact ? 14 : 24}
+      disabled={disabled}
+      opacity={disabled ? 0.6 : 1}
+      {...rest}
+    >
       {typeof children === "string" ? (
-        <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize="$3">
+        <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"}>
           {children}
         </Text>
       ) : (

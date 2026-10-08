@@ -16860,6 +16860,12 @@ Decisione:
   terminato", Contatta/Cronologia uguale alle schede, Vai alla richiesta
   completa, Annulla per ultimo in rosso, Salva link/nota), il
   suggerimento della pagina Oggi e "Rifiuta la proposta" in rosso.
+- Nel pannello dell'Agenda i pulsanti sono più piccoli (34px, `compact`),
+  su richiesta dell'utente. Corretto anche l'ordine delle prop in
+  `CardButton`: la variante di Button (altezza 48) veniva applicata dopo
+  l'altezza 40 e la sovrascriveva.
+- Telefono del cliente: l'utente ha confermato di lasciarlo visibile dopo
+  l'accettazione del preventivo (§5 punto 9 di CLAUDE.md invariato).
 
 Verifica: `tsc` su web; Playwright 1280 e 390 sulle schede cliente (in
 attesa, preventivo ricevuto, accettata) e professionista (da quotare, in

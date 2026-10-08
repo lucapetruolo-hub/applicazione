@@ -363,7 +363,7 @@ export function BookingDetailPanel({
             />
           </XStack>
           {meetingLinkChanged ? (
-            <CardButton alignSelf="flex-start" disabled={isSavingMeetingLink} onPress={() => onSaveMeetingLink(meetingLinkDraft)}>
+            <CardButton compact alignSelf="flex-start" disabled={isSavingMeetingLink} onPress={() => onSaveMeetingLink(meetingLinkDraft)}>
               {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
             </CardButton>
           ) : null}
@@ -396,7 +396,7 @@ export function BookingDetailPanel({
             }}
           />
           {noteChanged ? (
-            <CardButton alignSelf="flex-start" disabled={isSavingNote} onPress={() => onSaveNote(noteDraft)}>
+            <CardButton compact alignSelf="flex-start" disabled={isSavingNote} onPress={() => onSaveNote(noteDraft)}>
               {isSavingNote ? "Salvataggio..." : "Salva nota"}
             </CardButton>
           ) : null}
@@ -408,20 +408,20 @@ export function BookingDetailPanel({
             esplicita dell'utente; Annulla sempre per ultimo. */}
         <XStack gap="$2" flexWrap="wrap">
           {booking.status === "PENDING" ? (
-            <CardButton tone="primary" disabled={isActionPending} onPress={() => onAction("CONFIRMED")}>
+            <CardButton compact tone="primary" disabled={isActionPending} onPress={() => onAction("CONFIRMED")}>
               Conferma
             </CardButton>
           ) : null}
           {booking.status === "CONFIRMED" ? (
-            <CardButton fill="#20B2AA" disabled={isActionPending} onPress={() => onAction("COMPLETED")}>
+            <CardButton compact fill="#20B2AA" disabled={isActionPending} onPress={() => onAction("COMPLETED")}>
               Segna come completata
             </CardButton>
           ) : null}
-          {onOpenTimeline ? <ContactButton onPress={onOpenTimeline} /> : null}
+          {onOpenTimeline ? <ContactButton compact onPress={onOpenTimeline} /> : null}
           {onOpenFullRequest ? (
-            <CardButton onPress={onOpenFullRequest}>
+            <CardButton compact onPress={onOpenFullRequest}>
               <XStack alignItems="center" gap={4}>
-                <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3">
+                <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$2">
                   Vai alla richiesta completa
                 </Text>
                 <Icon name="chevron-right" size={15} color={brand.grafite} strokeWidth={2} />
@@ -429,7 +429,7 @@ export function BookingDetailPanel({
             </CardButton>
           ) : null}
           {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
-            <CardButton tone="danger" disabled={isActionPending} onPress={() => onAction("CANCELED")}>
+            <CardButton compact tone="danger" disabled={isActionPending} onPress={() => onAction("CANCELED")}>
               Annulla
             </CardButton>
           ) : null}
