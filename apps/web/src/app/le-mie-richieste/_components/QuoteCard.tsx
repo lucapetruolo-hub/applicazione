@@ -114,6 +114,13 @@ export function QuoteCard({
     }
   }, [autoOpenTimeline]);
   const priceTotals = useMemo(() => quotePriceTotals(quote.items), [quote.items]);
+  // Totale prima dell'ultima modifica dei prezzi, se diverso da quello di
+  // ora (docs/CHANGELOG.md §196).
+  const previousPriceText = useMemo(() => {
+    if (quote.status !== "SENT" || !quote.previousPrice) return null;
+    const before = formatServicePriceRange(quote.previousPrice.minEurCents, quote.previousPrice.maxEurCents);
+    return before !== formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents) ? before : null;
+  }, [quote.status, quote.previousPrice, priceTotals]);
 
   async function handleAccept() {
     setError(null);
@@ -254,6 +261,31 @@ export function QuoteCard({
             />
           );
         }
+        // Nota scritta dal cliente senza cambiare data e orario: il
+        // preventivo resta accettabile (docs/CHANGELOG.md §196).
+        if (quote.status === "SENT" && quote.clientNote) {
+          return (
+            <ScheduleChangeBox
+              title="Hai aggiunto una nota per il professionista (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+              note={quote.clientNote}
+            />
+          );
+        }
+        // Stessa data e stesso orario della proposta del cliente: il
+        // professionista ha solo aggiunto una nota, niente "prima → ora"
+        // (docs/CHANGELOG.md §196).
+        if (quote.status === "SENT" && quote.previousSchedule && quote.professionalCounterNote) {
+          return (
+            <ScheduleChangeBox
+              title="Il professionista ha aggiunto una nota (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+              note={quote.professionalCounterNote}
+            />
+          );
+        }
         // Risposte precedenti a questa versione, senza l'appuntamento sostituito.
         return quote.status === "SENT" && quote.professionalCounterNote ? (
           <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
@@ -278,9 +310,24 @@ export function QuoteCard({
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
             Totale indicativo
           </Text>
-          <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
-            {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
-          </Text>
+          <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+            {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
+                al nuovo, per non accettare un aumento senza accorgersene
+                (docs/CHANGELOG.md §196). */}
+            {previousPriceText ? (
+              <Text fontSize="$4" color={brand.grafite70} textDecorationLine="line-through">
+                {previousPriceText}
+              </Text>
+            ) : null}
+            <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
+              {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+            </Text>
+          </XStack>
+          {previousPriceText ? (
+            <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+              Il professionista ha cambiato il prezzo
+            </Text>
+          ) : null}
         </YStack>
       ) : null}
       {quote.notes ? (
@@ -415,7 +462,14 @@ export function QuoteCard({
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.ottone} fontWeight="600">
-            In attesa di conferma del professionista per il{" "}
+            {/* Stessa data e stesso orario: hai solo aggiunto una nota (docs/CHANGELOG.md §196). */}
+            {quote.clientProposedDate &&
+            !scheduleChangeBetween(
+              { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
+              { start: quote.clientProposedDate, end: quote.clientProposedEndDate },
+            )
+              ? "Hai aggiunto una nota, data e orario invariati: in attesa di conferma del professionista per il "
+              : "In attesa di conferma del professionista per il "}
             {quote.clientProposedDate ? formatQuoteDateRange(quote.clientProposedDate, quote.clientProposedEndDate) : ""}
           </Text>
           {quote.clientProposedNote ? (

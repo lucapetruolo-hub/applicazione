@@ -13,6 +13,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_ACCEPTED: { icon: "🥳", message: "Wow, hanno accettato un tuo preventivo!" },
   QUOTE_DATE_PROPOSED: { icon: "🗓️", message: "Il cliente ha proposto un'altra data per il preventivo." },
   QUOTE_DATE_CHANGED: { icon: "🗓️", message: "Il professionista ha modificato la data del tuo preventivo." },
+  QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo, senza cambiare data e orario." },
   QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto!" },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
@@ -92,6 +93,16 @@ const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
  */
 export function notificationCopy(type: string, payload?: unknown): { icon: string; message: string } {
   const change = asScheduleChange(payload && typeof payload === "object" ? (payload as Record<string, unknown>).change : null);
+  // Stessa data e stesso orario: è stata aggiunta solo una nota (docs/CHANGELOG.md §196).
+  const noteOnly = payload && typeof payload === "object" && (payload as Record<string, unknown>).noteOnly === true;
+  const rawNote = payload && typeof payload === "object" ? (payload as Record<string, unknown>).note : null;
+  const quotedNote = typeof rawNote === "string" && rawNote.trim() ? ` Nota: "${rawNote.trim()}"` : "";
+  if (noteOnly && type === "QUOTE_DATE_CHANGED") {
+    return { icon: "📝", message: `Il professionista ha aggiunto una nota al tuo preventivo, senza cambiare data e orario.${quotedNote}` };
+  }
+  if (noteOnly && type === "QUOTE_DATE_PROPOSED") {
+    return { icon: "📝", message: `Il cliente ha aggiunto una nota al preventivo, senza cambiare data e orario.${quotedNote}` };
+  }
   if (change && type === "QUOTE_DATE_CHANGED") {
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo.` };
   }

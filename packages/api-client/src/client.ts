@@ -213,6 +213,10 @@ export type ClientGuidedRequest = {
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
+    /** Nota scritta dal cliente con "Modifica" senza cambiare data e orario: il preventivo resta accettabile (docs/CHANGELOG.md §196). */
+    clientNote: string | null;
+    /** Totale indicativo prima dell'ultima modifica dei prezzi del professionista, null se mai cambiato (docs/CHANGELOG.md §196). */
+    previousPrice: { minEurCents: number | null; maxEurCents: number | null } | null;
     /** Appuntamento sostituito da quello attuale (ultima modifica del professionista, o l'orario richiesto dal cliente se il preventivo non lo rispetta), per il "prima → ora" in UI. null se nulla è cambiato. */
     previousSchedule: { start: string; end: string | null } | null;
     /** Nota lasciata dal professionista quando modifica direttamente l'orario proposto dal cliente durante la trattativa ("Modifica"), invece di limitarsi a confermarlo/rifiutarlo. */

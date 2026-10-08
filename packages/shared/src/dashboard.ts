@@ -99,6 +99,8 @@ export type ProfessionalLead = {
     clientProposedEndDate: string | null;
     /** Dettagli facoltativi scritti dal cliente insieme alla data proposta. */
     clientProposedNote: string | null;
+    /** Nota scritta dal cliente con "Modifica" senza cambiare data e orario: il preventivo resta accettabile (docs/CHANGELOG.md §196). */
+    clientNote: string | null;
     /** Nota facoltativa lasciata dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { MySubscription, ProfessionalBooking, ProfessionalInsights, ProfessionalLead } from "@professionisti/shared";
+import { scheduleChangeBetween, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -170,7 +170,14 @@ export default function DashboardTodayPage() {
                     {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
                   </strong>
                   <span className="today-row-sub">
-                    Nuova data proposta: {formatDateTime(lead.quote!.clientProposedDate!)}
+                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
+                    {scheduleChangeBetween(
+                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
+                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
+                    )
+                      ? "Nuova data proposta"
+                      : "Nota aggiunta, stessa data"}
+                    : {formatDateTime(lead.quote!.clientProposedDate!)}
                   </span>
                 </span>
                 <span className="today-row-cta">Rispondi</span>

@@ -78,4 +78,26 @@ describe("email delle notifiche", () => {
     expect(email.subject).toBe("Nuova richiesta: Idraulico a Roma");
     expect(email.text).not.toMatch(/telefono|indirizzo/i);
   });
+
+  it("se data e orario non cambiano dice che è stata aggiunta solo una nota (docs/CHANGELOG.md §196)", () => {
+    for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
+      const email = renderEmail(notificationEmail(type, { noteOnly: true }, ctx)!);
+      expect(email.subject, type).toContain("nota");
+      expect(email.text, type).toContain("senza cambiare data e orario");
+      expect(email.text, type).not.toMatch(/modificato|propone|proposto/);
+    }
+  });
+
+  it("riporta la nota dell'altra parte e avvisa del preventivo aggiornato (docs/CHANGELOG.md §196)", () => {
+    const proposed = renderEmail(notificationEmail("QUOTE_DATE_PROPOSED", { noteOnly: true, note: "Citofono rotto, chiamatemi" }, ctx)!);
+    expect(proposed.text).toContain('Nota: "Citofono rotto, chiamatemi"');
+    expect(proposed.text).toContain("può ancora accettarlo");
+    const updated = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, notesChanged: true, note: "Materiali inclusi" }, ctx)!);
+    expect(updated.subject).toBe("Idraulica Rossi ha aggiornato il preventivo");
+    expect(updated.text).toContain("le voci e le note");
+    expect(updated.text).toContain('Nota: "Materiali inclusi"');
+    const repriced = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, priceBefore: "100.00 €", priceAfter: "150.00 €" }, ctx)!);
+    expect(repriced.text).toContain("passa da 100.00 € a 150.00 €");
+  });
 });
+

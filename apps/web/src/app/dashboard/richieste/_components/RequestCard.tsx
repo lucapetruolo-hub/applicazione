@@ -429,6 +429,16 @@ export function RequestCard({
     if (!isOpen) onToggle();
   }
 
+  // Cosa cambia la proposta del cliente rispetto al preventivo: `null` se
+  // data e orario restano uguali e ha solo aggiunto una nota
+  // (docs/CHANGELOG.md §196).
+  const proposalChange = lead.quote?.clientProposedDate
+    ? scheduleChangeBetween(
+        { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+        { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
+      )
+    : null;
+
   // Azioni del menu hamburger, filtrate per stadio: le stesse già
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
   // click anche a scheda chiusa.
@@ -482,7 +492,7 @@ export function RequestCard({
     });
   }
   if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
-    menuActions.push({ icon: "check", text: "Accetta nuova data", onPress: handleConfirmDate });
+    menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
   if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
@@ -640,19 +650,36 @@ export function RequestCard({
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
+            proposalChange ? (
+              <ScheduleChangeBox
+                marginTop="$3"
+                title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
+                beforeLabel="Data originale"
+                beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                afterLabel="Nuova data richiesta"
+                afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+                note={lead.quote.clientProposedNote}
+              />
+            ) : (
+              // Stessa data e stesso orario: il cliente ha solo aggiunto una
+              // nota, niente "prima → ora" (docs/CHANGELOG.md §196).
+              <ScheduleChangeBox
+                marginTop="$3"
+                title="Il cliente ha aggiunto una nota (data e orario invariati)"
+                afterLabel="Appuntamento"
+                afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+                note={lead.quote.clientProposedNote}
+              />
+            )
+          ) : lead.quote?.status === "SENT" && lead.quote.clientNote ? (
+            // Nota del cliente senza cambio di data: il preventivo resta
+            // accettabile, qui la si legge e basta (docs/CHANGELOG.md §196).
             <ScheduleChangeBox
               marginTop="$3"
-              title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(
-                scheduleChangeBetween(
-                  { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
-                  { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
-                ) ?? "date",
-              )}`}
-              beforeLabel="Data originale"
-              beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
-              afterLabel="Nuova data richiesta"
-              afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
-              note={lead.quote.clientProposedNote}
+              title="Il cliente ha aggiunto una nota (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+              note={lead.quote.clientNote}
             />
           ) : null}
 
@@ -982,7 +1009,7 @@ export function RequestCard({
             {stage === "modifica_richiesta" ? (
               <XStack gap="$2" flexWrap="wrap">
                 <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                  {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Conferma appuntamento"}
                 </CardButton>
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come
                     il cliente (richiesta esplicita dell'utente, prima

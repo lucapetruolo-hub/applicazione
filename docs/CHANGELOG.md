@@ -16871,3 +16871,62 @@ Verifica: `tsc` su web; Playwright 1280 e 390 sulle schede cliente (in
 attesa, preventivo ricevuto, accettata) e professionista (da quotare, in
 attesa del cliente, accettata) con dati di prova su API e database locali:
 nessun overflow né errore.
+
+## 196. Modifica con sola nota: niente "data e orario cambiati"
+
+**Richiesta dell'utente:** quando cliente o professionista cliccano
+"Modifica" su un preventivo e scrivono solo una nota, senza cambiare data e
+orario, all'altra parte arrivava scritto che data e orario erano cambiati, e
+nella scheda comparivano data e orario vecchi sbarrati accanto ai nuovi,
+identici. Se data e orario restano gli stessi va scritto che è stata
+aggiunta solo una nota.
+
+**Decisione:** `proposeDate` (cliente) e `counterProposeDate`
+(professionista) confrontano data e orario nuovi con quelli precedenti
+(`scheduleChangeBetween`, prima con il ripiego fisso "date"). Se sono
+uguali la notifica porta `noteOnly: true` invece di `change`, e notifica nel
+sito, email e cronologia dicono "ha aggiunto una nota, senza cambiare data e
+orario". Nelle schede (Richieste e lavori, Le mie richieste, Oggi)
+`ScheduleChangeBox` senza `beforeText` mostra solo l'appuntamento com'è,
+senza "prima" sbarrato né freccia; per il professionista il pulsante diventa
+"Conferma appuntamento" invece di "Accetta nuova data". Il confronto si fa
+sulle date salvate, quindi si correggono anche i preventivi già in quello
+stato.
+
+**Verifica:** typecheck `apps/api` e `apps/web`, test delle email
+(`email-templates.test.ts`, nuovo caso `noteOnly`).
+
+**Seconda parte (richiesta dell'utente: "procedi con tutte e 3"):**
+- **La nota del cliente non blocca più il preventivo.** Prima, anche con
+  sola nota, il preventivo passava a "modifica richiesta": il cliente non
+  poteva più accettarlo e, alla conferma del professionista, il lavoro
+  veniva prenotato subito. Ora la nota si salva in `Quote.clientNote`
+  (migrazione `20261008100000_quote_client_note`) e il preventivo resta
+  "inviato" e accettabile; se c'era una proposta di data del cliente in
+  sospeso, tornare all'appuntamento del preventivo la ritira. Senza nota e
+  senza cambi la richiesta viene rifiutata con un messaggio chiaro. La nota
+  si azzera quando una delle due parti cambia davvero data o orario. Un
+  preventivo ritirato non si può più "modificare" dal cliente.
+- **Preventivo aggiornato senza cambio di data:** nuovo tipo di notifica
+  `QUOTE_UPDATED` (argomento "Preventivi e date", sezione Richieste del
+  cliente) quando il professionista cambia voci o note; prima la modifica
+  era silenziosa.
+- **La nota nell'email e nella notifica:** il testo della nota viaggia nel
+  payload (`note`) e compare in email e nella campanella.
+
+**Verifica:** typecheck `apps/api`, `apps/web`, `apps/mobile`; tutti i test
+di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
+
+**Terza parte (richiesta dell'utente: "effettua le migliorie"):**
+- **Prezzo "prima → ora":** quando il professionista cambia i prezzi di un
+  preventivo già inviato, il totale precedente si salva in
+  `Quote.previousPriceMinEurCents`/`previousPriceMaxEurCents` (stessa
+  migrazione `20261008100000_quote_client_note`, non ancora in produzione).
+  In Le mie richieste il cliente vede il vecchio totale sbarrato accanto al
+  nuovo con "Il professionista ha cambiato il prezzo"; l'email "Preventivo
+  aggiornato" dice "Il totale indicativo passa da X a Y". Un nuovo
+  preventivo dopo un rifiuto azzera il confronto.
+- **La nota nella chat:** la cronologia (`ConversationEvent`) è la chat
+  stessa, e le note di cliente e professionista c'erano già; ora anche
+  l'aggiornamento di voci/note del professionista riporta nella chat il
+  testo della nota e il cambio di totale.
