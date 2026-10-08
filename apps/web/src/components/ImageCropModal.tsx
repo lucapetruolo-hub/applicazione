@@ -219,7 +219,7 @@ export function ImageCropModal({
 
         <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
           <ZoomIn size={18} strokeWidth={1.5} color="#4A525E" />
-          <input
+          <input aria-label="Zoom"
             type="range"
             min={MIN_ZOOM}
             max={MAX_ZOOM}

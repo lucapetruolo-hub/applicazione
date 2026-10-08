@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { BRAND } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Come trattiamo i tuoi dati personali su Professionisti.",
+  description: `Come trattiamo i tuoi dati personali su ${BRAND.name}.`,
 };
 
 export default function PrivacyPage() {

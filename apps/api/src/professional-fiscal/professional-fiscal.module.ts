@@ -1,3 +1,4 @@
+import { ProfessionalVerificationModule } from "../professional-verification/professional-verification.module";
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { AuditLogModule } from "../audit-log/audit-log.module";
@@ -6,7 +7,7 @@ import { ProfessionalFiscalController, AdminProfessionalFiscalController } from 
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
 
 @Module({
-  imports: [AuthModule, AuditLogModule, AdminModule],
+  imports: [AuthModule, AuditLogModule, AdminModule, ProfessionalVerificationModule],
   controllers: [ProfessionalFiscalController, AdminProfessionalFiscalController],
   providers: [ProfessionalFiscalService],
   exports: [ProfessionalFiscalService],

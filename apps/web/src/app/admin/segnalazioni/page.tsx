@@ -371,7 +371,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   : "Respingere la contestazione? La misura resta e l'autore riceve la motivazione."}
             </Text>
           )}
-          <textarea
+          <textarea aria-label="Motivazione"
             className="admin-input admin-textarea"
             value={note}
             onChange={(e) => setNote(e.target.value)}

@@ -144,7 +144,7 @@ export function ProfessionalProblemModal({
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
-              <select value={reason} onChange={(e) => setReason(e.target.value as ProfessionalJobProblemReason)} style={fieldStyle}>
+              <select aria-label="Motivo" value={reason} onChange={(e) => setReason(e.target.value as ProfessionalJobProblemReason)} style={fieldStyle}>
                 {PROFESSIONAL_JOB_PROBLEM_REASONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -157,7 +157,7 @@ export function ProfessionalProblemModal({
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                 Cosa è successo
               </Text>
-              <textarea
+              <textarea aria-label="Cosa è successo"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Racconta in breve cosa è successo."

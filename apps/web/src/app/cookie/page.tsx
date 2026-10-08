@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { BRAND } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
-  description: "Quali cookie e strumenti simili usa Professionisti.",
+  description: `Quali cookie e strumenti simili usa ${BRAND.name}.`,
 };
 
 export default function CookiePage() {

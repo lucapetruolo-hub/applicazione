@@ -13,8 +13,10 @@ const POINTS = [
     comingSoon: false,
   },
   {
-    text: "Professionista verificato: controllo documenti e assicurazione RC",
-    comingSoon: true,
+    // Verifica manuale da admin (docs/CHANGELOG.md §200): documento e dati
+    // fiscali, non l'assicurazione RC (resta "dichiarata" sul profilo).
+    text: "Badge Verificato: abbiamo controllato documento d'identità e partita IVA del professionista",
+    comingSoon: false,
   },
   {
     text: "Pagamento online protetto: acconto del 20% e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",

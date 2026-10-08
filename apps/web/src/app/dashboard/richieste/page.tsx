@@ -410,7 +410,7 @@ function RichiesteContent() {
             stesso pattern overlay già in uso altrove nel prodotto —
             role="dialog", chiusura su Escape/click sul backdrop). Il toggle
             "A domicilio/Online" resta anch'esso fuori, sempre visibile. */}
-        <input
+        <input aria-label="Cerca nelle richieste"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cerca in ogni campo della richiesta..."
@@ -512,12 +512,12 @@ function RichiesteContent() {
               </XStack>
 
               <YStack gap="$3">
-                <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
+                <select aria-label="Ordina per" value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="recenti">Data di ricezione più recente</option>
                   <option value="vecchie">Data di ricezione più vecchie</option>
                   <option value="aggiornamento">Ultimo aggiornamento</option>
                 </select>
-                <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                <select aria-label="Zona" value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
                   <option value="tutte">Tutte le zone</option>
                   {zones.map((z) => (
                     <option key={z} value={z}>

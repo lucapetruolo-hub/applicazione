@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -158,7 +158,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
   // Arrivo dalla scheda nei risultati di ricerca con un clic sull'agenda
   // (`?data=AAAA-MM-GG`, richiesta esplicita dell'utente, docs/CHANGELOG.md
-  // §199): la griglia parte da quel giorno e la pagina scorre fino
+  // §204): la griglia parte da quel giorno e la pagina scorre fino
   // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = searchParams.get("data");
@@ -233,7 +233,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
     const url = window.location.href;
     const shareData = {
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
-      text: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city} su Professionisti.`,
+      text: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city} su ${BRAND.name}.`,
       url,
     };
     try {
@@ -367,7 +367,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             sulla copia del link dove l'API non esiste (desktop senza
             navigator.share). */}
         {/* Solo icone, con la descrizione al passaggio del mouse (richiesta
-            esplicita dell'utente, docs/CHANGELOG.md §199). */}
+            esplicita dell'utente, docs/CHANGELOG.md §204). */}
         <XStack gap="$2" alignItems="center">
           {user?.role === "CLIENT" ? (
             <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave}>
@@ -444,7 +444,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </XStack>
             ) : null}
             <Text fontSize={10.5} color={brand.grafite70} fontStyle="italic">
-              Dati dichiarati dal professionista, non verificati da Professionisti.
+              Dati dichiarati dal professionista, non verificati da {BRAND.name}.
             </Text>
           </YStack>
         ) : null}

@@ -108,7 +108,7 @@ export function CookieBanner() {
           Accetta
         </button>
       </div>
-      {/* Telefono (docs/CHANGELOG.md §199): il testo lungo andava su 5 righe e
+      {/* Telefono (docs/CHANGELOG.md §204): il testo lungo andava su 5 righe e
           il banner copriva metà della prima scheda dei risultati. Sotto 600px
           testo breve con le stesse informazioni e bottoni più bassi. */}
       <style jsx>{`

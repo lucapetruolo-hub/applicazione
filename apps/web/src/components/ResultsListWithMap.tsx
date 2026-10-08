@@ -416,7 +416,7 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "language" ? (
                   <div className="filters-section-content">
-                    <input
+                    <input aria-label="Cerca una lingua"
                       type="text"
                       className="filters-text-input"
                       value={languageQuery}
@@ -547,7 +547,7 @@ export function ResultsListWithMap({
             <XStack alignItems="center" gap="$2">
               <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
-                Profili verificati
+                Badge Verificato: documento e P.IVA controllati
               </Text>
             </XStack>
             <XStack alignItems="center" gap="$2">
@@ -650,7 +650,7 @@ export function ResultsListWithMap({
               }
               // Click sull'agenda fuori da un orario libero: profilo aperto
               // sull'agenda, già sul giorno scelto e sulla stessa modalità
-              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §199).
+              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §204).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
                   router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),

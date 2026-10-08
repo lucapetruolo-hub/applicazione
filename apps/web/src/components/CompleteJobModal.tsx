@@ -249,7 +249,7 @@ export function CompleteJobModal({
                   <Text fontSize="$2" color={brand.grafite70}>
                     Importo finale (€) *
                   </Text>
-                  <input
+                  <input aria-label="Importo finale in euro"
                     value={row.price}
                     onChange={(e) => updateQuotedPrice(index, e.target.value)}
                     placeholder="0"
@@ -268,13 +268,13 @@ export function CompleteJobModal({
               </Text>
               {extraRows.map((row, index) => (
                 <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
-                  <input
+                  <input aria-label="Descrizione della voce"
                     value={row.name}
                     onChange={(e) => updateExtraRow(index, "name", e.target.value)}
                     placeholder="Es. Materiale extra"
                     style={{ ...smallInputStyle, flex: 1, minWidth: 140 }}
                   />
-                  <input
+                  <input aria-label="Importo in euro"
                     value={row.price}
                     onChange={(e) => updateExtraRow(index, "price", e.target.value)}
                     placeholder="€"

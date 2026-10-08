@@ -207,7 +207,7 @@ function DisputeCard({ dispute, token, onChanged }: { dispute: AdminDispute; tok
           </XStack>
           {choice ? (
             <>
-              <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (facoltativa)" />
+              <textarea aria-label="Nota sull'esito" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota sull'esito (facoltativa)" />
               <XStack gap="$2">
                 <Button variant="primary" size="$3" disabled={busy} onPress={resolve}>
                   {busy ? "…" : "Conferma esito"}
@@ -263,7 +263,7 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
       </Text>
       {open ? (
         <YStack gap="$2">
-          <textarea className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
+          <textarea aria-label="Come si è chiuso" className="admin-input admin-textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Come si è chiuso (es. pagato al professionista, rinuncia)" />
           {error ? <Text color={brand.urgenza}>{error}</Text> : null}
           <XStack gap="$2">
             <Button variant="primary" size="$3" disabled={busy} onPress={close}>

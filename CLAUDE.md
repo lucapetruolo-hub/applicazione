@@ -390,6 +390,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
+- [x] Verifica manuale dei professionisti: badge "Verificato" assegnato da `/admin/verifiche` (documento + partita IVA)
 
 ---
 

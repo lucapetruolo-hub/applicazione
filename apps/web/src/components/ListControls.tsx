@@ -94,7 +94,7 @@ export function ListControls<S extends string>({
     <XStack flexWrap="wrap" gap="$4" alignItems="flex-end">
       <YStack gap="$1">
         <ControlLabel>Filtra</ControlLabel>
-        <select value={statusValue} onChange={(e) => onStatusChange(e.target.value as S)} style={selectStyle}>
+        <select aria-label="Filtra" value={statusValue} onChange={(e) => onStatusChange(e.target.value as S)} style={selectStyle}>
           {statusOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -105,7 +105,7 @@ export function ListControls<S extends string>({
 
       <YStack gap="$1">
         <ControlLabel>Ordina per</ControlLabel>
-        <select value={sortValue} onChange={(e) => onSortChange(e.target.value as ListSortKey)} style={selectStyle}>
+        <select aria-label="Ordina per" value={sortValue} onChange={(e) => onSortChange(e.target.value as ListSortKey)} style={selectStyle}>
           {sortOptions.map((key) => (
             <option key={key} value={key}>
               {SORT_LABELS[key]}
@@ -116,7 +116,7 @@ export function ListControls<S extends string>({
 
       <YStack gap="$1">
         <ControlLabel>Mostra</ControlLabel>
-        <select value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))} style={selectStyle}>
+        <select aria-label="Mostra" value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))} style={selectStyle}>
           {PAGE_SIZE_OPTIONS.map((size) => (
             <option key={size} value={size}>
               {size}

@@ -41,6 +41,7 @@ import { GuidedRequestsService } from "../guided-requests/guided-requests.servic
 import { toMyState } from "../guided-requests/guided-request-user-state.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -56,7 +57,7 @@ export type ProfessionalSearchParams = {
 // i PUBLIC_AGENDA_DAYS giorni restituiti in un colpo solo: la UI pagina in
 // finestre da 4 colonne con le frecce sui dati già scaricati, e cerca lì
 // stessa il primo orario libero per "Mostra orari disponibili" (richiesta
-// esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §199).
+// esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §204).
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
@@ -80,6 +81,7 @@ export class ProfessionalsService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly professionalVerificationService: ProfessionalVerificationService,
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
@@ -352,7 +354,7 @@ export class ProfessionalsService {
 
       // Restituita sempre quando il professionista ha almeno una fascia nei
       // prossimi due mesi, anche se oggi è tutto al completo (bug reale
-      // segnalato dall'utente, docs/CHANGELOG.md §199): prima la griglia
+      // segnalato dall'utente, docs/CHANGELOG.md §204): prima la griglia
       // spariva del tutto se nei primi 30 giorni non c'era nulla di libero,
       // e il cliente non vedeva più nessuna data.
       if (days.length > 0) result.set(profileId, { days });
@@ -453,6 +455,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
@@ -507,7 +510,7 @@ export class ProfessionalsService {
     // riceverne di nuove ogni volta che salva.
     const existingProfile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, profileDeclarationVersion: true, invitePendingAt: true },
+      select: { id: true, businessName: true, profileDeclarationVersion: true, invitePendingAt: true },
     });
     const isFirstTimeCreation = existingProfile === null;
     // Alla creazione senza un'immagine scelta, il profilo pubblico parte
@@ -595,6 +598,16 @@ export class ProfessionalsService {
     }
     const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
 
+    // Badge "Verificato" (docs/CHANGELOG.md §200): il controllo valeva per il
+    // nome dell'attività di prima, quindi si toglie se il nome cambia.
+    if (existingProfile && existingProfile.businessName.trim() !== profile.businessName.trim()) {
+      await this.professionalVerificationService.revokeAfterOwnChange(
+        profile.id,
+        userId,
+        "Hai cambiato il nome dell'attività: dobbiamo ricontrollare i tuoi dati.",
+      );
+    }
+
     // Coinvolgimento nei confronti delle richieste guidate già aperte in
     // zona (CLAUDE.md §14, STEP 4) — solo alla primissima creazione del
     // profilo: non esiste in questo progetto un vero flusso di verifica
@@ -631,6 +644,7 @@ export class ProfessionalsService {
       bio: profile.bio,
       subTags: profile.subTags,
       verified: profile.verified,
+      verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,

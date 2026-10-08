@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import ContattiContent from "./ContattiContent";
+import { BRAND } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Contatti",
-  description: "Scrivici per qualsiasi domanda su Professionisti: ti rispondiamo il prima possibile.",
+  description: `Scrivici per qualsiasi domanda su ${BRAND.name}: ti rispondiamo il prima possibile.`,
 };
 
 /**
