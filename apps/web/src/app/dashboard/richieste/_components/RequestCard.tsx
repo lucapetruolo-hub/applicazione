@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
-import { Avatar, Badge, Button, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
@@ -22,6 +22,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
@@ -917,9 +918,9 @@ export function RequestCard({
               style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
             />
             {noteChanged ? (
-              <Button variant="secondary" size="$2" height={32} alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>
+              <CardButton alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>
                 {isSavingNote ? "Salvataggio..." : "Salva"}
-              </Button>
+              </CardButton>
             ) : null}
           </YStack>
 
@@ -937,16 +938,14 @@ export function RequestCard({
           <YStack gap="$3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
             {stage === "da_quotare" ? (
               <XStack gap="$2" flexWrap="wrap">
-                <Button variant="primary" size="$3" onPress={() => setShowQuoteForm((v) => !v)}>
+                <CardButton tone="primary" onPress={() => setShowQuoteForm((v) => !v)}>
                   Invia preventivo
-                </Button>
+                </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {!confirmingDecline ? (
-                  <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(true)}>
-                    <Text color={brand.urgenza} fontWeight="700" fontSize="$3">
-                      Rifiuta
-                    </Text>
-                  </Button>
+                  <CardButton tone="danger" onPress={() => setConfirmingDecline(true)}>
+                    Rifiuta
+                  </CardButton>
                 ) : null}
               </XStack>
             ) : null}
@@ -958,53 +957,38 @@ export function RequestCard({
                     ottone/giallo, stesso token semantico già in uso per lo
                     stadio "modifica_richiesta"/"in attesa di modifica" in
                     tutto il resto di questa pagina. */}
-                <Button
-                  variant="secondary"
-                  backgroundColor={brand.ottone}
-                  size="$3"
-                  onPress={startEditingQuote}
-                >
-                  <Text color="white" fontWeight="700" fontSize="$3">
-                    Modifica preventivo
-                  </Text>
-                </Button>
+                <CardButton fill={brand.ottone} onPress={startEditingQuote}>
+                  Modifica preventivo
+                </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {confirmingWithdraw ? (
                   <>
                     <Text fontSize="$2" color={brand.urgenza}>
                       Ritirare questo preventivo?
                     </Text>
-                    <Button variant="urgent" size="$3" disabled={isWithdrawing} opacity={isWithdrawing ? 0.6 : 1} onPress={handleWithdrawQuote}>
+                    <CardButton tone="dangerSolid" disabled={isWithdrawing} onPress={handleWithdrawQuote}>
                       {isWithdrawing ? "Ritiro..." : "Conferma"}
-                    </Button>
-                    <Button variant="ghost" size="$3" onPress={() => setConfirmingWithdraw(false)}>
-                      Annulla
-                    </Button>
+                    </CardButton>
+                    <CardButton onPress={() => setConfirmingWithdraw(false)}>Annulla</CardButton>
                   </>
                 ) : (
-                  <Button variant="ghost" size="$3" onPress={() => setConfirmingWithdraw(true)}>
-                    <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
-                      Ritira preventivo
-                    </Text>
-                  </Button>
+                  <CardButton tone="danger" onPress={() => setConfirmingWithdraw(true)}>
+                    Ritira preventivo
+                  </CardButton>
                 )}
               </XStack>
             ) : null}
 
             {stage === "modifica_richiesta" ? (
               <XStack gap="$2" flexWrap="wrap">
-                <Button variant="secondary" size="$3" backgroundColor={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
-                  <Text color="white" fontWeight="700" fontSize="$3">
-                    {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
-                  </Text>
-                </Button>
+                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                </CardButton>
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come
                     il cliente (richiesta esplicita dell'utente, prima
                     "Proponi altra data" quasi solo testo). */}
-                <Button
-                  variant="secondary"
-                  backgroundColor={brand.ottone}
-                  size="$3"
+                <CardButton
+                  fill={brand.ottone}
                   onPress={() => {
                     const proposedDate = lead.quote?.clientProposedDate?.slice(0, 10);
                     const proposedTime = lead.quote?.clientProposedDate?.slice(11, 16);
@@ -1015,16 +999,12 @@ export function RequestCard({
                     setShowCounterForm((v) => !v);
                   }}
                 >
-                  <Text color="white" fontWeight="700" fontSize="$3">
-                    Modifica
-                  </Text>
-                </Button>
+                  Modifica
+                </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
-                <Button variant="ghost" size="$3" disabled={isRejectingDate} onPress={handleRejectDate}>
-                  <Text color={brand.grafite70} fontSize="$3">
-                    {isRejectingDate ? "..." : "Rifiuta la proposta"}
-                  </Text>
-                </Button>
+                <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
+                  {isRejectingDate ? "..." : "Rifiuta la proposta"}
+                </CardButton>
               </XStack>
             ) : null}
 
@@ -1041,33 +1021,18 @@ export function RequestCard({
                         già in uso per lo stato "Completata" in STAGE_STYLE
                         sopra, coerenza cromatica tra il bottone che porta a
                         quello stato e lo stato stesso. */}
-                    <Button
-                      variant="secondary"
-                      size="$3"
-                      backgroundColor="#20B2AA"
-                      borderColor="#20B2AA"
-                      color="white"
-                      hoverStyle={{ backgroundColor: "#1A8F89", borderColor: "#1A8F89" }}
-                      pressStyle={{ backgroundColor: "#178077", borderColor: "#178077" }}
-                      onPress={() => setShowCompleteModal(true)}
-                    >
+                    <CardButton fill="#20B2AA" onPress={() => setShowCompleteModal(true)}>
                       Lavoro terminato
-                    </Button>
+                    </CardButton>
                   </>
                 ) : null}
                 {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
-                  <Button variant="ghost" size="$3" onPress={() => setShowClientReviewModal(true)}>
-                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
-                      Recensisci il cliente
-                    </Text>
-                  </Button>
+                  <CardButton onPress={() => setShowClientReviewModal(true)}>Recensisci il cliente</CardButton>
                 ) : null}
                 {booking?.status === "CANCELED" ? (
-                  <Button variant="secondary" backgroundColor={brand.verificato} size="$3" onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
-                    <Text color="white" fontWeight="700" fontSize="$3">
-                      {isReopening ? "Riapertura..." : "Riapri intervento"}
-                    </Text>
-                  </Button>
+                  <CardButton fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
+                    {isReopening ? "Riapertura..." : "Riapri intervento"}
+                  </CardButton>
                 ) : null}
                 {/* Bug reale corretto: il link portava sempre alla data odierna
                     del calendario "Prenotazioni" invece che alla data vera
@@ -1075,21 +1040,15 @@ export function RequestCard({
                     facendola sembrare assente dall'agenda. Il parametro
                     `?booking=` (letto da /dashboard/agenda) naviga alla data
                     esatta e apre subito il pannello di dettaglio. */}
-                <Link href={booking ? `/dashboard/agenda?booking=${booking.id}` : "/dashboard/agenda"}>
-                  <Button variant="secondary" backgroundColor={brand.verificato} size="$3">
-                    <Text color="white" fontWeight="700" fontSize="$3">
-                      Vedi in agenda
-                    </Text>
-                  </Button>
+                <Link href={booking ? `/dashboard/agenda?booking=${booking.id}` : "/dashboard/agenda"} style={{ textDecoration: "none" }}>
+                  <CardButton fill={brand.verificato}>Vedi in agenda</CardButton>
                 </Link>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {/* Annulla sempre per ultimo (richiesta esplicita dell'utente). */}
                 {booking?.status === "CONFIRMED" ? (
-                  <Button variant="ghost" size="$3" onPress={() => setShowCancelModal(true)}>
-                    <Text color={brand.urgenza} fontWeight="600" fontSize="$3">
-                      Annulla intervento
-                    </Text>
-                  </Button>
+                  <CardButton tone="danger" onPress={() => setShowCancelModal(true)}>
+                    Annulla intervento
+                  </CardButton>
                 ) : null}
               </XStack>
             ) : null}
@@ -1114,27 +1073,25 @@ export function RequestCard({
                     ? `Puoi inviare un nuovo preventivo fino al ${formatDateTime(lead.quote.resendUntil)}, quando scade la richiesta.`
                     : "Puoi inviare un nuovo preventivo finché la richiesta è aperta."}
                 </Text>
-                <Button variant="primary" size="$3" onPress={startEditingQuote}>
+                <CardButton tone="primary" onPress={startEditingQuote}>
                   Invia un nuovo preventivo
-                </Button>
+                </CardButton>
               </YStack>
             ) : null}
             {canDelete ? (
               !confirmingDelete ? (
-                <Text fontSize={12.5} fontWeight="700" color={brand.urgenza} cursor="pointer" onPress={() => setConfirmingDelete(true)}>
+                <CardButton tone="danger" alignSelf="flex-start" onPress={() => setConfirmingDelete(true)}>
                   {quoteWithdrawn ? "Elimina preventivo ritirato" : "Elimina richiesta"}
-                </Text>
+                </CardButton>
               ) : (
-                <XStack gap="$2" alignItems="center">
+                <XStack gap="$2" alignItems="center" flexWrap="wrap">
                   <Text fontSize={12.5} color={brand.grafite70}>
                     Confermi l&apos;eliminazione?
                   </Text>
-                  <Text fontSize={12.5} fontWeight="700" color={brand.urgenza} cursor="pointer" onPress={handleDelete}>
+                  <CardButton tone="dangerSolid" disabled={isDeleting} onPress={handleDelete}>
                     {isDeleting ? "..." : "Sì, elimina"}
-                  </Text>
-                  <Text fontSize={12.5} color={brand.grafite70} cursor="pointer" onPress={() => setConfirmingDelete(false)}>
-                    Annulla
-                  </Text>
+                  </CardButton>
+                  <CardButton onPress={() => setConfirmingDelete(false)}>Annulla</CardButton>
                 </XStack>
               )
             ) : null}
@@ -1155,9 +1112,9 @@ export function RequestCard({
                   ) : null}
                 </XStack>
               ))}
-              <Button variant="ghost" size="$2" alignSelf="flex-start" onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
+              <CardButton alignSelf="flex-start" onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
                 + Aggiungi voce
-              </Button>
+              </CardButton>
 
               {modeAvailableSlots.length > 0 && !useManualDateTime ? (
                 <YStack gap="$2">
@@ -1225,13 +1182,11 @@ export function RequestCard({
                 </Text>
               ) : null}
 
-              <XStack gap="$2">
-                <Button variant="primary" size="$3" disabled={isSubmittingQuote} onPress={handleSendQuote}>
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton tone="primary" disabled={isSubmittingQuote} onPress={handleSendQuote}>
                   {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
-                </Button>
-                <Button variant="ghost" size="$3" onPress={() => setShowQuoteForm(false)}>
-                  Annulla
-                </Button>
+                </CardButton>
+                <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>
               </XStack>
             </YStack>
           ) : null}
@@ -1294,13 +1249,11 @@ export function RequestCard({
                   {counterError}
                 </Text>
               ) : null}
-              <XStack gap="$2">
-                <Button variant="primary" size="$3" disabled={isCountering} onPress={handleCounterPropose}>
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton tone="primary" disabled={isCountering} onPress={handleCounterPropose}>
                   {isCountering ? "Invio..." : "Invia nuova proposta"}
-                </Button>
-                <Button variant="ghost" size="$3" onPress={() => setShowCounterForm(false)}>
-                  Annulla
-                </Button>
+                </CardButton>
+                <CardButton onPress={() => setShowCounterForm(false)}>Annulla</CardButton>
               </XStack>
             </YStack>
           ) : null}
@@ -1315,13 +1268,11 @@ export function RequestCard({
                 rows={2}
                 style={{ ...smallInputStyle, resize: "vertical", backgroundColor: brand.calce }}
               />
-              <XStack gap="$2">
-                <Button variant="urgent" size="$3" disabled={isDeclining} onPress={handleDecline}>
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton tone="dangerSolid" disabled={isDeclining} onPress={handleDecline}>
                   {isDeclining ? "..." : "Conferma rifiuto"}
-                </Button>
-                <Button variant="ghost" size="$3" onPress={() => setConfirmingDecline(false)}>
-                  Annulla
-                </Button>
+                </CardButton>
+                <CardButton onPress={() => setConfirmingDecline(false)}>Annulla</CardButton>
               </XStack>
             </YStack>
           ) : null}

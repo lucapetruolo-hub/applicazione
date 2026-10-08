@@ -6,7 +6,8 @@ import {
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,
 } from "@professionisti/shared";
-import { Button, Text, YStack, brand } from "@professionisti/ui";
+import { Text, YStack, brand } from "@professionisti/ui";
+import { CardButton } from "@/components/CardButton";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
 function eur(cents: number): string {
@@ -148,13 +149,10 @@ export function JobPaymentStatus({
       {audience === "client" &&
       onPay &&
       (stage === "AWAITING_DEPOSIT" || payment.balanceDueEurCents > 0) ? (
-        <Button
-          variant="primary"
-          size="$2"
-          height={36}
+        <CardButton
+          tone="primary"
           alignSelf="flex-start"
           disabled={busy}
-          opacity={busy ? 0.6 : 1}
           onPress={() =>
             pay(stage === "AWAITING_DEPOSIT" ? "deposit" : "balance")
           }
@@ -164,7 +162,7 @@ export function JobPaymentStatus({
             : stage === "AWAITING_DEPOSIT"
               ? `Paga l'acconto (${eur(payment.depositEurCents ?? 0)})`
               : `Paga il saldo (${eur(payment.balanceDueEurCents)})`}
-        </Button>
+        </CardButton>
       ) : null}
       {error ? (
         <Text fontSize="$2" color={brand.urgenza}>

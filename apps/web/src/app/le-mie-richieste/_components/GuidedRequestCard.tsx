@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import { ALL_ITALIAN_CITY_NAMES, averageQuoteTotalEurCents, findComuneByName, formatEurCents, type GuidedRequestStatusSummary } from "@professionisti/shared";
-import { Autocomplete, Avatar, Badge, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -17,6 +17,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
+import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
@@ -410,12 +411,12 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
           <XStack gap="$2">
-            <Button variant="primary" size="$3" height={40} onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto} opacity={isSaving ? 0.6 : 1}>
+            <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto}>
               {isSaving ? "Salvataggio..." : "Salva modifiche"}
-            </Button>
-            <Button variant="secondary" size="$3" height={40} onPress={() => setIsEditing(false)} disabled={isSaving}>
+            </CardButton>
+            <CardButton onPress={() => setIsEditing(false)} disabled={isSaving}>
               Annulla
-            </Button>
+            </CardButton>
           </XStack>
         </YStack>
       </Surface>
@@ -577,9 +578,9 @@ export function GuidedRequestCard({
           compie l'azione. Nascosto a scheda aperta: l'azione è lì sotto. */}
       {nextAction && !isOpen ? (
         <XStack paddingHorizontal="$4" paddingBottom="$4" marginTop="$-2">
-          <Button variant="primary" size="$3" height={40} onPress={onToggle}>
+          <CardButton tone="primary" onPress={onToggle}>
             {nextAction}
-          </Button>
+          </CardButton>
         </XStack>
       ) : null}
 
@@ -637,26 +638,19 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          <XStack>
+          {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
+              come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
+              prima il primo era solo testo e il secondo più piccolo). */}
+          <XStack gap="$2" flexWrap="wrap" alignItems="center">
+            {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
             <Link href={repeatHref} style={{ textDecoration: "none" }}>
-              <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
-                Ripeti la richiesta
-              </Text>
+              <CardButton>Ripeti la richiesta</CardButton>
             </Link>
           </XStack>
-
-          {canDelete ? (
-            <XStack gap="$2" flexWrap="wrap" alignItems="center">
-              {canEditDetails ? (
-                <Button variant="secondary" size="$2" height={36} onPress={startEditing}>
-                  Modifica
-                </Button>
-              ) : (
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Non modificabile: hai già ricevuto un preventivo.
-                </Text>
-              )}
-            </XStack>
+          {canDelete && !canEditDetails ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Non modificabile: hai già ricevuto un preventivo.
+            </Text>
           ) : null}
           {error ? (
             <Text color={brand.urgenza} fontSize="$3">
@@ -698,7 +692,6 @@ export function GuidedRequestCard({
                     </XStack>
                   </Link>
                   <ContactButton
-                    compact
                     unreadCount={effectiveThreadUnread(`${request.id}:${professional.id}`)}
                     onPress={() => openTimelineForProfessional(professional.id)}
                   />

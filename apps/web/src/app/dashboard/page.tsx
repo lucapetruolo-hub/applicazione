@@ -10,6 +10,7 @@ import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
+import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
@@ -324,9 +325,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
         {text}
       </Text>
       <Link href={href} style={{ textDecoration: "none" }}>
-        <Button variant="secondary" size="$3">
-          {cta}
-        </Button>
+        <CardButton>{cta}</CardButton>
       </Link>
     </XStack>
   );
