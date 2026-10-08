@@ -16762,22 +16762,17 @@ filtro del raggio).
 
 **Verifica:** typecheck `packages/shared`, `apps/api`, `apps/web`.
 
-## 192. Registrazione del cliente uguale a quella del professionista
+## 192. Conferma password nella registrazione del cliente
 
 **Richiesta dell'utente:** registrandosi, il cliente deve scrivere la
-password due volte; poi, meglio ancora, la schermata del cliente deve essere
-la stessa di "Sono un professionista": Google, oppure email, password e
-conferma password.
+password due volte, non una sola.
 
-**Decisione:** `/registrati?ruolo=cliente` usa ora lo stesso modulo del
-professionista (Google, email, password, conferma password, le due caselle
-di consenso, pulsante "Registrati"), dentro una scheda con intestazione da
-cliente (`ClientSignupLayout`: "Crea il tuo account gratuito", stesse
-etichette di fiducia e link "Iscriviti come professionista"). Dopo la
-registrazione il cliente va alla Home. Il flusso "prima l'email" di §176
-resta solo nel popup della richiesta (`InlineAuthGate`), dove al passo
-"account nuovo" compare anch'esso "Conferma password" con l'occhio
-mostra/nascondi; se le due non coincidono non parte nulla.
+**Decisione:** in `ClientEmailFirstAuth` (popup della richiesta e
+`/registrati?ruolo=cliente`), al passo "account nuovo" compare il campo
+"Conferma password" sotto "Scegli una password", con lo stesso occhio
+mostra/nascondi; se le due non coincidono il pulsante mostra "Le due password
+non coincidono" e non invia nulla. Stesso comportamento del modulo del
+professionista in `/registrati`, che la conferma l'aveva già. L'accesso con
+account esistente resta con una sola password.
 
-**Verifica:** typecheck `apps/web`, schermata `/registrati?ruolo=cliente`
-aperta in locale su telefono e desktop.
+**Verifica:** typecheck `apps/web`.
