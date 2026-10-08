@@ -87,6 +87,7 @@ export function ConversationView({
   backIcon = "x",
   escapeToBack = false,
   title = "Cronologia della richiesta",
+  requestDescription,
 }: {
   token: string;
   guidedRequestId: string;
@@ -124,6 +125,8 @@ export function ConversationView({
   /** Solo per l'uso a popup (TimelineModal): Escape chiude. Il pannello inline della pagina /chat non lo attiva — Escape mentre si scrive un messaggio non deve far perdere la bozza uscendo dalla conversazione. */
   escapeToBack?: boolean;
   title?: string;
+  /** Descrizione del lavoro sotto il nome in intestazione (docs/CHANGELOG.md §198); senza, resta "Cronologia della richiesta". */
+  requestDescription?: string | null;
 }) {
   const router = useRouter();
   // Nomi cliccabili da entrambe le parti (docs/CHANGELOG.md §149, richiesta
@@ -449,6 +452,54 @@ export function ConversationView({
     }
   }
 
+  // Foto/video e documenti di un messaggio, sia nelle nuvolette sia nei
+  // messaggi automatici (che possono averne, es. la segnalazione del
+  // professionista, §197).
+  function renderEventMedia(event: ConversationEvent) {
+    if (event.mediaUrls.length === 0) return null;
+    return (
+      <XStack gap="$2" flexWrap="wrap">
+        {event.mediaUrls.map((url) =>
+          // Un documento (PDF/Word/Excel) deve mostrare già
+          // il proprio nome in chat, non solo un'icona
+          // generica "PDF" — richiesta esplicita
+          // dell'utente ("deve essere già visibile il nome
+          // del file in chat"): chip icona+nome invece
+          // della tessera quadrata riservata a foto/video.
+          isDocumentUrl(url) ? (
+            <XStack
+              key={url}
+              alignItems="center"
+              gap="$1.5"
+              maxWidth={200}
+              paddingHorizontal="$2"
+              paddingVertical="$1.5"
+              borderRadius="$2"
+              borderWidth={1}
+              borderColor={brand.filetto}
+              backgroundColor={brand.calce}
+              cursor="pointer"
+              onPress={() => openMediaAt(event.mediaUrls, url)}
+              accessibilityRole="button"
+            >
+              <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
+              <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+              </Text>
+            </XStack>
+          ) : (
+            <MediaPreview
+              key={url}
+              url={url}
+              onClick={() => openMediaAt(event.mediaUrls, url)}
+              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+            />
+          ),
+        )}
+      </XStack>
+    );
+  }
+
   return (
     // `flex={1}` + `minHeight={0}`, non `height="100%"` (bug reale
     // segnalato dall'utente: "le chat che sono rimaste popup... non
@@ -517,8 +568,8 @@ export function ConversationView({
                 >
                   {otherPartyName}
                 </Text>
-                <Text fontSize="$1" color={brand.grafite70}>
-                  Cronologia della richiesta
+                <Text fontSize="$1" color={brand.grafite70} numberOfLines={1}>
+                  {requestDescription?.trim() || "Cronologia della richiesta"}
                 </Text>
               </YStack>
             </>
@@ -598,17 +649,20 @@ export function ConversationView({
                     {dayLabel}
                   </Text>
                 ) : null;
-              if (event.actor === "SYSTEM") {
-                // Eventi automatici (fan-out, scadenze, ecc.): mai un
-                // "lato", restano centrati e discreti — non sono un
-                // messaggio di nessuna delle due parti.
+              if (event.actor === "SYSTEM" || event.automatic) {
+                // Eventi automatici (fan-out, scadenze, e da §198 anche
+                // quelli scritti dal sistema a nome di una parte, "Il
+                // cliente ha accettato il preventivo"): mai un "lato",
+                // restano centrati e discreti — non sono un messaggio
+                // scritto a mano.
                 return (
                   <Fragment key={event.id}>
                     {daySeparator}
-                    <YStack gap="$1" alignItems="center">
-                      <Text fontSize={11} color={brand.grafite70} textAlign="center">
+                    <YStack gap="$1" alignItems="center" alignSelf="center" maxWidth="85%">
+                      <Text fontSize={12} color={brand.grafite70} textAlign="center">
                         {event.message}
                       </Text>
+                      {renderEventMedia(event)}
                       <Text fontSize={10} color={brand.grafite70}>
                         {formatEventTime(event.createdAt)}
                       </Text>
@@ -642,47 +696,7 @@ export function ConversationView({
                           {event.message}
                         </Text>
                       ) : null}
-                      {event.mediaUrls.length > 0 ? (
-                        <XStack gap="$2" flexWrap="wrap">
-                          {event.mediaUrls.map((url) =>
-                            // Un documento (PDF/Word/Excel) deve mostrare già
-                            // il proprio nome in chat, non solo un'icona
-                            // generica "PDF" — richiesta esplicita
-                            // dell'utente ("deve essere già visibile il nome
-                            // del file in chat"): chip icona+nome invece
-                            // della tessera quadrata riservata a foto/video.
-                            isDocumentUrl(url) ? (
-                              <XStack
-                                key={url}
-                                alignItems="center"
-                                gap="$1.5"
-                                maxWidth={200}
-                                paddingHorizontal="$2"
-                                paddingVertical="$1.5"
-                                borderRadius="$2"
-                                borderWidth={1}
-                                borderColor={brand.filetto}
-                                backgroundColor={brand.calce}
-                                cursor="pointer"
-                                onPress={() => openMediaAt(event.mediaUrls, url)}
-                                accessibilityRole="button"
-                              >
-                                <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                                <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
-                                  {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
-                                </Text>
-                              </XStack>
-                            ) : (
-                              <MediaPreview
-                                key={url}
-                                url={url}
-                                onClick={() => openMediaAt(event.mediaUrls, url)}
-                                style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
-                              />
-                            ),
-                          )}
-                        </XStack>
-                      ) : null}
+                      {renderEventMedia(event)}
                     </YStack>
                     <Text fontSize={10} color={brand.grafite70} paddingHorizontal="$1">
                       {formatEventTime(event.createdAt)}

@@ -1274,6 +1274,11 @@ model ConversationEvent {
   // (invio preventivo, accettazione, ecc.), stesso pattern array nativo
   // già in uso per GuidedRequest.photoUrls/Review.photoUrls, fino a 5.
   mediaUrls             String[]               @default([])
+  // Vero per i messaggi scritti dal sistema a nome di una parte
+  // (TimelineService.log: "Il cliente ha accettato il preventivo", ecc.),
+  // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
+  // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
+  automatic             Boolean                @default(false)
   createdAt             DateTime               @default(now())
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)

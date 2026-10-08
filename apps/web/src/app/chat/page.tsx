@@ -202,6 +202,7 @@ export default function ChatPage() {
               viewerRole={selectedThread.viewerRole}
               otherPartyName={selectedThread.otherPartyName}
               otherPartyImageUrl={selectedThread.otherPartyImageUrl}
+              requestDescription={selectedThread.requestDescription}
               onBack={() => {
                 setSelectedKey(null);
                 reload();

@@ -396,6 +396,8 @@ export type ConversationEvent = {
   message: string;
   /** Foto/video allegati a un aggiornamento scritto a mano (vuoto per gli eventi automatici del ciclo di vita). */
   mediaUrls: string[];
+  /** Scritto dal sistema a nome di una parte (es. "Il cliente ha accettato il preventivo"), non a mano: mostrato centrato e in grigio. Facoltativo solo per un'API non ancora aggiornata. */
+  automatic?: boolean;
   createdAt: string;
 };
 

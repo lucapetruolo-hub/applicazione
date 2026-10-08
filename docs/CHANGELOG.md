@@ -17020,3 +17020,19 @@ questione resta tra voi".
   da `TimelineService.listThreadsForUser` (la descrizione è già visibile al
   professionista prima dell'accettazione, CLAUDE.md §5.9; il sito regge
   un'API non ancora aggiornata). Typecheck di `apps/web` e `apps/api`.
+- **Terzo giro** ("procedi con le 2 migliorie"): sotto il nome in
+  intestazione la descrizione del lavoro invece di "Cronologia della
+  richiesta" (solo in `/chat`, nei popup resta la scritta di prima, prop
+  `requestDescription` di `ConversationView`). I messaggi scritti dal sistema
+  a nome di una parte ("Il cliente ha accettato il preventivo", "Il
+  professionista ha inviato un preventivo…") sono ora centrati e in grigio
+  come quelli di sistema, con eventuali foto: nuova colonna
+  `ConversationEvent.automatic`, messa a `true` da `TimelineService.log`
+  (mai da `addUpdate`, i messaggi scritti a mano). Migrazione
+  `20261008140000_conversation_event_automatic`: aggiunge la colonna e segna
+  come automatici i messaggi già salvati che iniziano con le frasi usate solo
+  dal sistema ("Il cliente …", "Il professionista …", "La richiesta …",
+  "Richiesta inoltrata a te…", "Nessun professionista…"). In elenco, un
+  messaggio automatico non mostra più "Tu:". Verifica: migrazioni applicate
+  su un Postgres locale vuoto senza differenze dallo schema, 237 test API
+  verdi, typecheck di `apps/api` e `apps/web`, anteprime computer e telefono.
