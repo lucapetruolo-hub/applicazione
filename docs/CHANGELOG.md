@@ -16742,3 +16742,22 @@ Nuove notifiche (argomento "Lavori e appuntamenti", sito + email):
 **Verifica:** typecheck `apps/api` e `apps/web`, test API (nuovo
 `completion-deadline.test.ts`, casi aggiunti in `job-issues.test.ts` e
 `reviews.service.test.ts`).
+
+## 191. Raggio di ingaggio standard fino a 35 km
+
+**Richiesta dell'utente:** in "Profilo e visibilità" il professionista può
+allargare il raggio delle richieste standard fino a 35 km (di partenza resta
+25), e va spiegato meglio che il raggio non lo limita: riceve comunque
+richieste da tutti ed è visibile a tutti nella ricerca.
+
+**Decisione:** `updateEngagementRadiusSchema` accetta 1-35 km per le standard
+(`MAX_ENGAGEMENT_RADIUS_KM` in `packages/shared/src/schemas.ts`, usato anche
+dallo slider), le urgenti restano 1-25 (`MAX_URGENT_ENGAGEMENT_RADIUS_KM`).
+Default nel DB invariato (25), nessuna migrazione. Lo zoom 9 della mappa
+contiene già un cerchio da 35 km. Il testo di `EngagementRadiusSection`
+spiega che il raggio decide solo le richieste mandate in automatico, mentre
+la ricerca e le richieste dirette dal profilo non hanno limiti di distanza
+(vero oggi: `search()` filtra per città, le richieste dirette non passano dal
+filtro del raggio).
+
+**Verifica:** typecheck `packages/shared`, `apps/api`, `apps/web`.

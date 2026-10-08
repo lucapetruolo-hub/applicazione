@@ -555,14 +555,24 @@ export type ExternalJobStatusInput = z.infer<typeof externalJobStatusSchema>;
  * Raggio di ingaggio del professionista (km, indipendenti tra standard e
  * urgente — richiesta esplicita dell'utente): usati da
  * GuidedRequestsService per il filtro geografico del fan-out invece di una
- * costante fissa uguale per tutti. Range 1-25 km validato qui (unica fonte
- * di verità, stessa pipe ZodValidationPipe già in uso per ogni altro
- * endpoint di questo modulo) — mai un raggio a 0 (nessuna copertura) né
- * oltre i 25 km concordati.
+ * costante fissa uguale per tutti. Range validato qui (unica fonte di
+ * verità, stessa pipe ZodValidationPipe già in uso per ogni altro endpoint
+ * di questo modulo): 1-35 km per le standard (fino a 35 su richiesta
+ * dell'utente, il valore iniziale resta 25), 1-25 km per le urgenti — mai
+ * un raggio a 0 (nessuna copertura).
  */
+export const MAX_ENGAGEMENT_RADIUS_KM = 35;
+export const MAX_URGENT_ENGAGEMENT_RADIUS_KM = 25;
+
 export const updateEngagementRadiusSchema = z.object({
-  engagementRadiusKm: z.number().min(1, "Il raggio deve essere almeno 1 km.").max(25, "Il raggio non può superare 25 km."),
-  urgentEngagementRadiusKm: z.number().min(1, "Il raggio urgente deve essere almeno 1 km.").max(25, "Il raggio urgente non può superare 25 km."),
+  engagementRadiusKm: z
+    .number()
+    .min(1, "Il raggio deve essere almeno 1 km.")
+    .max(MAX_ENGAGEMENT_RADIUS_KM, `Il raggio non può superare ${MAX_ENGAGEMENT_RADIUS_KM} km.`),
+  urgentEngagementRadiusKm: z
+    .number()
+    .min(1, "Il raggio urgente deve essere almeno 1 km.")
+    .max(MAX_URGENT_ENGAGEMENT_RADIUS_KM, `Il raggio urgente non può superare ${MAX_URGENT_ENGAGEMENT_RADIUS_KM} km.`),
 });
 export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusSchema>;
 

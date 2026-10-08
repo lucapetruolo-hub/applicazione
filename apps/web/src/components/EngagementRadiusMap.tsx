@@ -34,8 +34,8 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
       <GoogleMapGate>
         <GoogleMap
           defaultCenter={center}
-          // Zoom 9 ≈ 25 km di raggio (il massimo consentito) visibili in 360 px
-          // di altezza: il cerchio più grande resta sempre nell'inquadratura,
+          // Zoom 9 ≈ 40 km di raggio visibili in 360 px di altezza (il massimo
+          // consentito è 35 km): il cerchio più grande resta sempre nell'inquadratura,
           // senza ricalcolare lo zoom da codice (docs/CHANGELOG.md §136).
           defaultZoom={9}
           style={{ width: "100%", height: "100%" }}

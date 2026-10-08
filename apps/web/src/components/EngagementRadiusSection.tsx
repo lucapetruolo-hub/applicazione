@@ -11,6 +11,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { MAX_ENGAGEMENT_RADIUS_KM, MAX_URGENT_ENGAGEMENT_RADIUS_KM } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 
 const EngagementRadiusMap = dynamic(() => import("./EngagementRadiusMap").then((mod) => mod.EngagementRadiusMap), {
@@ -23,7 +24,6 @@ const EngagementRadiusMap = dynamic(() => import("./EngagementRadiusMap").then((
 });
 
 const MIN_RADIUS_KM = 1;
-const MAX_RADIUS_KM = 25;
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -95,8 +95,13 @@ export function EngagementRadiusSection({
           Raggio di ingaggio
         </Text>
         <Text fontSize="$2" color={brand.grafite70}>
-          Distanza massima entro cui ricevi le richieste di preventivo — puoi impostare un raggio diverso per le
-          richieste urgenti.
+          Scegli fino a quanti chilometri da te ti mandiamo in automatico le richieste di preventivo dei clienti della
+          zona: di partenza sono 25 km, per le richieste standard puoi arrivare fino a {MAX_ENGAGEMENT_RADIUS_KM} km.
+          Per le richieste urgenti puoi scegliere un raggio diverso.
+        </Text>
+        <Text fontSize="$2" color={brand.grafite70}>
+          Il raggio non ti limita: nella ricerca del sito resti visibile a tutti i clienti, e chiunque, anche da più
+          lontano, può aprire il tuo profilo e mandarti una richiesta direttamente.
         </Text>
       </YStack>
 
@@ -120,7 +125,7 @@ export function EngagementRadiusSection({
         <input
           type="range"
           min={MIN_RADIUS_KM}
-          max={MAX_RADIUS_KM}
+          max={MAX_ENGAGEMENT_RADIUS_KM}
           step={1}
           value={engagementRadiusKm}
           onChange={(e) => setEngagementRadiusKm(Number(e.target.value))}
@@ -147,7 +152,7 @@ export function EngagementRadiusSection({
         <input
           type="range"
           min={MIN_RADIUS_KM}
-          max={MAX_RADIUS_KM}
+          max={MAX_URGENT_ENGAGEMENT_RADIUS_KM}
           step={1}
           value={urgentEngagementRadiusKm}
           onChange={(e) => setUrgentEngagementRadiusKm(Number(e.target.value))}
