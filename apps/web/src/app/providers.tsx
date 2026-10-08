@@ -6,7 +6,10 @@ import { AuthProvider } from "@/lib/AuthContext";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
+    // disableInjectCSS: gli stili della config arrivano da /tamagui.css
+    // (scripts/generate-tamagui-css.ts e il <link> in layout.tsx), non più
+    // ripetuti dentro ogni pagina.
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light" disableInjectCSS>
       <AuthProvider>{children}</AuthProvider>
     </TamaguiProvider>
   );

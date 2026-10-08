@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
@@ -33,23 +33,19 @@ export type ProfessionalCardAvailabilitySlot = {
   onlineAvailable: boolean;
 };
 
-/** Un giorno della mini-agenda ("Oggi"/"Domani"/...): ogni fascia configurata, libera o al completo. */
+/** Un giorno della mini-agenda con almeno una fascia configurata, libera o al completo. */
 export type ProfessionalCardAvailabilityDay = {
   date: string;
-  label: string;
-  dateLabel: string;
   times: ProfessionalCardAvailabilitySlot[];
-};
-
-/** Mostrato al posto della griglia quando nessun giorno della finestra ha orari liberi. */
-export type ProfessionalCardNextAvailableSlot = {
-  date: string;
-  dateLabel: string;
-  time: string;
 };
 
 const AGENDA_COLUMN_WIDTH = 78;
 const AGENDA_VISIBLE_DAYS = 4;
+// Stesso valore di PUBLIC_AGENDA_DAYS in packages/shared (qui duplicato:
+// packages/ui non dipende dal resto del monorepo, vedi formatServicePrice).
+const DEFAULT_AGENDA_DAYS = 63;
+const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
 // Duplicata (non importata da @professionisti/shared): packages/ui non
 // dipende dal resto del monorepo, resta un design system consumabile da solo
@@ -102,15 +98,21 @@ export type ProfessionalCardProps = {
   remoteAvailable?: boolean;
   /** Prestazioni offerte con prezzo facoltativo, mostrate sotto categoria/città. */
   services?: ProfessionalCardService[];
-  /** Griglia agenda (Oggi + 3 giorni), ogni fascia configurata a prescindere dalla capienza — vuoto/assente nasconde la mini-agenda. */
+  /**
+   * Giorni dell'agenda (circa due mesi), ogni fascia configurata a
+   * prescindere dalla capienza: la griglia ne mostra 4 alla volta con le
+   * frecce, e qui si cerca il primo orario libero per "Mostra orari
+   * disponibili". Vuoto/assente nasconde la mini-agenda.
+   */
   availabilityPreview?: ProfessionalCardAvailabilityDay[];
   /**
-   * Presenti solo quando availabilityPreview non ha nessun orario libero per
-   * quella specifica modalità — due campi distinti (non uno solo) perché
-   * "prossimo libero" dipende dal tab attivo (A domicilio/Online).
+   * Primo giorno dell'agenda (AAAA-MM-GG, colonna "Oggi"): da qui la card
+   * ricostruisce le colonne consecutive, anche quelle senza fasce, che il
+   * server non manda per tenere leggera la risposta della ricerca.
    */
-  nextAvailableSlotHome?: ProfessionalCardNextAvailableSlot | null;
-  nextAvailableSlotOnline?: ProfessionalCardNextAvailableSlot | null;
+  availabilityFrom?: string;
+  /** Quanti giorni si possono sfogliare da `availabilityFrom` (default 63). */
+  availabilityDays?: number;
   /**
    * Tab di default (richiesta esplicita dell'utente: prescelto in base al
    * tipo di ricerca fatto dalla homepage — "a domicilio" se cercato a
@@ -127,6 +129,13 @@ export type ProfessionalCardProps = {
    * prenotazione diretta da qui.
    */
   onSlotPress?: (date: string, time: string, endTime: string, mode: "HOME" | "ONLINE") => void;
+  /**
+   * Click sull'agenda fuori dagli orari liberi (intestazione di un giorno,
+   * orario al completo, spazio vuoto): richiesta esplicita dell'utente, porta
+   * all'agenda della pagina profilo già posizionata su quel giorno
+   * (docs/CHANGELOG.md §206).
+   */
+  onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
 };
@@ -146,11 +155,12 @@ export function ProfessionalCard({
   remoteAvailable,
   services,
   availabilityPreview,
-  nextAvailableSlotHome,
-  nextAvailableSlotOnline,
+  availabilityFrom,
+  availabilityDays = DEFAULT_AGENDA_DAYS,
   defaultMode,
   onPress,
   onSlotPress,
+  onAgendaPress,
   icon,
 }: ProfessionalCardProps) {
   const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
@@ -166,28 +176,65 @@ export function ProfessionalCard({
   const [activeMode, setActiveMode] = useState<"HOME" | "ONLINE">(defaultMode ?? "HOME");
 
   // Finestra di AGENDA_VISIBLE_DAYS colonne che scorre sui giorni già
-  // scaricati (fino a 14, vedi ProfessionalsService.buildAvailabilityPreviews)
+  // scaricati (circa due mesi, vedi ProfessionalsService.buildAvailabilityPreviews)
   // — richiesta esplicita dell'utente di poter navigare anche ai giorni
   // successivi senza una richiesta di rete per pagina.
   const [windowOffset, setWindowOffset] = useState(0);
-  const totalDays = availabilityPreview?.length ?? 0;
+  // Colonne giorno consecutive da `availabilityFrom`, con "-" dove il
+  // professionista non ha fasce (riferimento miodottore.it).
+  const allDays = useMemo(() => {
+    if (!availabilityPreview || availabilityPreview.length === 0) return [];
+    const timesByDate = new Map(availabilityPreview.map((day) => [day.date, day.times]));
+    const start = new Date(`${availabilityFrom ?? availabilityPreview[0]!.date}T00:00:00Z`);
+    return Array.from({ length: availabilityDays }, (_, index) => {
+      const date = new Date(start);
+      date.setUTCDate(date.getUTCDate() + index);
+      const iso = date.toISOString().slice(0, 10);
+      return {
+        date: iso,
+        label: index === 0 ? "Oggi" : index === 1 ? "Domani" : WEEKDAY_SHORT_LABELS[date.getUTCDay()]!,
+        dateLabel: `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`,
+        times: timesByDate.get(iso) ?? [],
+      };
+    });
+  }, [availabilityPreview, availabilityFrom, availabilityDays]);
+  const totalDays = allDays.length;
   const maxOffset = Math.max(0, totalDays - AGENDA_VISIBLE_DAYS);
   const offset = Math.min(windowOffset, maxOffset);
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
-  const visibleDaysRaw = (availabilityPreview ?? []).slice(offset, offset + AGENDA_VISIBLE_DAYS);
+  const visibleDaysRaw = allDays.slice(offset, offset + AGENDA_VISIBLE_DAYS);
   // Filtrate alla sola modalità attiva: un giorno mostra solo le fasce che
   // offrono quel tipo di intervento, le altre restano "-" come se non
   // esistessero per questo tab.
   const visibleDays = visibleDaysRaw.map((day) => ({ ...day, times: day.times.filter((slot) => slot[allowsKey]) }));
   const hasAvailableInWindow = visibleDays.some((day) => day.times.some((slot) => slot[availableKey]));
-  const nextAvailableSlot = activeMode === "HOME" ? nextAvailableSlotHome : nextAvailableSlotOnline;
+  // Primo orario libero per "Mostra orari disponibili" (richiesta esplicita
+  // dell'utente: deve portare davvero al primo orario disponibile). Cercato
+  // prima dopo i giorni visibili, poi dall'inizio se si è già andati oltre.
+  // Prima veniva dal server e poteva cadere oltre i giorni scaricati: il
+  // pulsante allora non faceva nulla (bug reale, docs/CHANGELOG.md §206).
+  const findFirstFree = (fromIndex: number) => {
+    const days = allDays;
+    for (let index = fromIndex; index < days.length; index++) {
+      const slot = days[index]!.times.find((s) => s[availableKey]);
+      if (slot) return { index, day: days[index]!, slot };
+    }
+    return null;
+  };
+  const firstFree = hasAvailableInWindow ? null : (findFirstFree(offset + AGENDA_VISIBLE_DAYS) ?? findFirstFree(0));
   // Unione di tutti gli orari configurati su almeno un giorno della finestra
   // visibile, ordinata: righe della griglia. Un giorno senza quell'orario
-  // mostra "-".
-  const timeRows = hasAvailableInWindow
-    ? Array.from(new Set(visibleDays.flatMap((day) => day.times.map((slot) => slot.time)))).sort()
-    : [];
+  // mostra "-". Sempre visibile, anche quando è tutto al completo (orari
+  // barrati): prima in quel caso la griglia spariva e restavano solo le
+  // intestazioni dei giorni (bug reale segnalato dall'utente).
+  const timeRows = Array.from(new Set(visibleDays.flatMap((day) => day.times.map((slot) => slot.time)))).sort();
+  const openAgendaAt = onAgendaPress
+    ? (date: string) => (e: unknown) => {
+        (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+        onAgendaPress(date, activeMode);
+      }
+    : undefined;
   const canGoBack = offset > 0;
   const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
 
@@ -215,7 +262,10 @@ export function ProfessionalCard({
             Idraulica Test") faceva andare a capo l'intera mini-agenda sotto
             invece che a fianco, pur restando spazio a sufficienza una volta
             che il testo si spezza correttamente su più righe. */}
-        <XStack gap="$4" flex={1} flexBasis={0} minWidth={260} alignItems="flex-start">
+        {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
+            colonna del nome restava di circa 170px e i bollini (Verificato,
+            Nuovo profilo...) e le recensioni toccavano il bordo. */}
+        <XStack gap="$4" $xs={{ gap: "$3" }} flex={1} flexBasis={0} minWidth={260} alignItems="flex-start">
           {icon}
           <YStack gap="$2" flex={1} minWidth={0}>
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
@@ -296,12 +346,17 @@ export function ProfessionalCard({
           </YStack>
         </XStack>
 
-        {availabilityPreview && availabilityPreview.length > 0 ? (
+        {totalDays > 0 ? (
           <YStack
             gap="$2"
             minWidth={AGENDA_COLUMN_WIDTH * visibleDays.length}
             paddingLeft="$4"
             borderLeftWidth={1}
+            // Telefono (bug reale, docs/CHANGELOG.md §206): 4 colonne fisse da
+            // 78px più il margine sinistro superavano la larghezza della card
+            // e "Dom" usciva dal bordo. Sotto 800px il blocco va a tutta
+            // larghezza senza filetto e le colonne si dividono lo spazio.
+            $sm={{ minWidth: 0, width: "100%", paddingLeft: 0, borderLeftWidth: 0 }}
             borderLeftColor={brand.filetto}
             // Su una riga stretta il blocco cade sotto (flexWrap sul contenitore):
             // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
@@ -319,7 +374,10 @@ export function ProfessionalCard({
             // (tab, frecce, pillole orario) hanno già ciascuno il proprio
             // stopPropagation più sotto — restano invariati e continuano a
             // funzionare, qui si aggiunge solo una rete di sicurezza per il
-            // resto dell'area.
+            // resto dell'area. Il clic che porta all'agenda del profilo
+            // (`onAgendaPress`) sta solo sulle intestazioni dei giorni e
+            // sulle celle senza orario libero, non sull'intero blocco: un
+            // onPress qui scatterebbe anche cliccando frecce e pulsanti.
             onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
           >
             {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente,
@@ -358,11 +416,12 @@ export function ProfessionalCard({
               {totalDays > AGENDA_VISIBLE_DAYS ? (
                 <XStack gap="$1" alignItems="center">
                   <XStack
-                    width={20}
-                    height={20}
+                    width={28}
+                    height={28}
                     borderRadius="$10"
                     alignItems="center"
                     justifyContent="center"
+                    backgroundColor={brand.gesso}
                     opacity={canGoBack ? 1 : 0.3}
                     cursor={canGoBack ? "pointer" : undefined}
                     accessibilityRole={canGoBack ? "button" : undefined}
@@ -376,14 +435,15 @@ export function ProfessionalCard({
                         : undefined
                     }
                   >
-                    <Icon name="chevron-left" size={14} color={brand.grafite70} />
+                    <Icon name="chevron-left" size={16} color={brand.grafite} />
                   </XStack>
                   <XStack
-                    width={20}
-                    height={20}
+                    width={28}
+                    height={28}
                     borderRadius="$10"
                     alignItems="center"
                     justifyContent="center"
+                    backgroundColor={brand.gesso}
                     opacity={canGoForward ? 1 : 0.3}
                     cursor={canGoForward ? "pointer" : undefined}
                     accessibilityRole={canGoForward ? "button" : undefined}
@@ -397,14 +457,23 @@ export function ProfessionalCard({
                         : undefined
                     }
                   >
-                    <Icon name="chevron-right" size={14} color={brand.grafite70} />
+                    <Icon name="chevron-right" size={16} color={brand.grafite} />
                   </XStack>
                 </XStack>
               ) : null}
             </XStack>
             <XStack>
               {visibleDays.map((day) => (
-                <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
+                <YStack
+                  key={day.date}
+                  flex={1}
+                  minWidth={0}
+                  alignItems="center"
+                  gap={2}
+                  cursor={openAgendaAt ? "pointer" : undefined}
+                  accessibilityRole={openAgendaAt ? "button" : undefined}
+                  onPress={openAgendaAt?.(day.date)}
+                >
                   <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
                     {day.label}
                   </Text>
@@ -415,7 +484,7 @@ export function ProfessionalCard({
               ))}
             </XStack>
 
-            {hasAvailableInWindow ? (
+            {timeRows.length > 0 ? (
               <YStack gap="$1">
                 {timeRows.map((time) => (
                   <XStack key={time}>
@@ -423,7 +492,7 @@ export function ProfessionalCard({
                       const slot = day.times.find((s) => s.time === time);
                       if (!slot) {
                         return (
-                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
+                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text fontSize={12} color={brand.filetto}>
                               -
                             </Text>
@@ -433,7 +502,7 @@ export function ProfessionalCard({
                       const range = `${slot.time}–${slot.endTime}`;
                       if (!slot[availableKey]) {
                         return (
-                          <XStack key={day.date} width={AGENDA_COLUMN_WIDTH} alignItems="center" justifyContent="center" paddingVertical={4}>
+                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text
                               fontFamily="$mono"
                               fontSize={10}
@@ -449,7 +518,8 @@ export function ProfessionalCard({
                       return (
                         <XStack
                           key={day.date}
-                          width={AGENDA_COLUMN_WIDTH}
+                          flex={1}
+                          minWidth={0}
                           alignItems="center"
                           justifyContent="center"
                           paddingVertical={3}
@@ -465,7 +535,7 @@ export function ProfessionalCard({
                               : undefined
                           }
                         >
-                          <XStack paddingHorizontal="$1.5" paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                          <XStack paddingHorizontal={5} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
                             <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                               {range}
                             </Text>
@@ -476,14 +546,17 @@ export function ProfessionalCard({
                   </XStack>
                 ))}
               </YStack>
-            ) : offset === 0 && nextAvailableSlot ? (
+            ) : null}
+
+            {hasAvailableInWindow ? null : firstFree ? (
               <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
                 <YStack gap={2}>
                   <Text fontSize={11.5} color={brand.grafite70}>
-                    Prossimo giorno disponibile:
+                    Nessun orario libero in questi giorni. Primo orario libero:
                   </Text>
                   <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                    {nextAvailableSlot.dateLabel}, {nextAvailableSlot.time}
+                    {firstFree.day.label === "Oggi" || firstFree.day.label === "Domani" ? `${firstFree.day.label}, ` : ""}
+                    {firstFree.day.dateLabel}, {firstFree.slot.time}–{firstFree.slot.endTime}
                   </Text>
                 </YStack>
                 <XStack
@@ -495,20 +568,12 @@ export function ProfessionalCard({
                   cursor="pointer"
                   accessibilityRole="button"
                   accessibilityLabel="Mostra orari disponibili"
-                  // Fa quello che dice (richiesta esplicita dell'utente,
-                  // segnalata come bug: prima chiamava onSlotPress con la
-                  // fascia del prossimo giorno libero, navigando via subito
-                  // invece di "mostrare" qualcosa) — porta avanti la finestra
-                  // locale della mini-agenda fino al giorno del prossimo
-                  // orario libero, stesso identico comportamento già in uso
-                  // nell'agenda della pagina profilo pubblica
-                  // (ProfessionalDetailContent.tsx). La fascia diventa così
-                  // una cella normale della griglia, cliccabile come ogni
-                  // altra per aprire la richiesta di preventivo precompilata.
+                  // Porta la finestra della mini-agenda sul giorno del primo
+                  // orario libero, che resta cliccabile come ogni altra fascia
+                  // per aprire la richiesta di preventivo precompilata.
                   onPress={(e: unknown) => {
                     (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                    const targetIndex = (availabilityPreview ?? []).findIndex((d) => d.date === nextAvailableSlot.date);
-                    if (targetIndex >= 0) setWindowOffset(targetIndex);
+                    setWindowOffset(firstFree.index);
                   }}
                 >
                   <Text fontFamily="$body" fontSize={12} fontWeight="700" color="#FFFFFF">
@@ -517,12 +582,8 @@ export function ProfessionalCard({
                 </XStack>
               </YStack>
             ) : (
-              // Pagina raggiunta navigando in avanti/indietro, senza nulla di
-              // libero: le frecce restano sopra per continuare a scorrere,
-              // niente CTA "prossimo disponibile" qui (quella riguarda solo
-              // la finestra iniziale).
               <Text fontSize={12} color={brand.grafite70} paddingVertical="$2">
-                Nessun orario libero in questi giorni.
+                Nessun orario libero nei prossimi due mesi.
               </Text>
             )}
           </YStack>

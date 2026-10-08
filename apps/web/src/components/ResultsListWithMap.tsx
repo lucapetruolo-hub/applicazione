@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, type ProfessionalSearchResult } from "@professionisti/shared";
+import { findComuneByName, PUBLIC_AGENDA_DAYS, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -614,8 +614,8 @@ export function ResultsListWithMap({
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}
-              nextAvailableSlotHome={pro.nextAvailableSlotHome}
-              nextAvailableSlotOnline={pro.nextAvailableSlotOnline}
+              availabilityFrom={pro.availabilityFrom}
+              availabilityDays={PUBLIC_AGENDA_DAYS}
               defaultMode={defaultMode}
               // Se la ricerca è in modalità "Online", il profilo si apre già
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
@@ -649,6 +649,14 @@ export function ResultsListWithMap({
                     // "Ripeti la richiesta", stesso form).
                     `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
                   ),
+                )
+              }
+              // Click sull'agenda fuori da un orario libero: profilo aperto
+              // sull'agenda, già sul giorno scelto e sulla stessa modalità
+              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
+              onAgendaPress={(date, mode) =>
+                navigateWithTransition(() =>
+                  router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
                 )
               }
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}

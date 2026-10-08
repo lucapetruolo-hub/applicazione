@@ -74,8 +74,7 @@ export class SavedProfessionalsService {
         // La mini-agenda esiste solo nei risultati di ricerca (CLAUDE.md §12):
         // non vale la query batch aggiuntiva per una lista personale corta.
         availabilityPreview: [],
-        nextAvailableSlotHome: null,
-        nextAvailableSlotOnline: null,
+        availabilityFrom: new Date().toISOString().slice(0, 10),
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),

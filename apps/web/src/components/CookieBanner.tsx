@@ -84,9 +84,15 @@ export function CookieBanner() {
       }}
     >
       <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
-        Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
-        accesso con Google). Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
-        &quot;Preferenze cookie&quot; in fondo alla pagina.{" "}
+        <span className="cookie-text-long">
+          Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
+          accesso con Google). Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
+          &quot;Preferenze cookie&quot; in fondo alla pagina.
+        </span>
+        <span className="cookie-text-short">
+          Solo cookie tecnici e, se accetti, servizi Google (mappe e accesso). Niente pubblicità. Puoi cambiare idea
+          in fondo alla pagina.
+        </span>{" "}
         <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>
           Cookie Policy
         </Link>
@@ -102,6 +108,32 @@ export function CookieBanner() {
           Accetta
         </button>
       </div>
+      {/* Telefono (docs/CHANGELOG.md §206): il testo lungo andava su 5 righe e
+          il banner copriva metà della prima scheda dei risultati. Sotto 600px
+          testo breve con le stesse informazioni e bottoni più bassi. */}
+      <style jsx>{`
+        .cookie-text-short {
+          display: none;
+        }
+        @media (max-width: 600px) {
+          .cookie-text-long {
+            display: none;
+          }
+          .cookie-text-short {
+            display: inline;
+          }
+          [role="dialog"] {
+            padding-top: 8px !important;
+            gap: 8px !important;
+          }
+          [role="dialog"] p {
+            font-size: 12px !important;
+          }
+          [role="dialog"] button {
+            padding: 5px 14px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

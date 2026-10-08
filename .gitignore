@@ -39,3 +39,6 @@ coverage/
 
 # Anteprima locale delle email (pnpm --filter @professionisti/api email:preview)
 apps/api/email-preview/
+
+# Generato da apps/web/scripts/generate-tamagui-css.ts prima di dev/build
+apps/web/public/tamagui.css

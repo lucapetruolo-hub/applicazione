@@ -17242,3 +17242,111 @@ prossima funzionalità da costruire.
   `div`/`span` che non si usano da tastiera, da sistemare uno per uno.
 - **Verifica:** `pnpm turbo run lint` (0 errori), typecheck e test di tutto
   il monorepo, `next build` di `apps/web`.
+
+## 206. Agenda nella scheda dei risultati: sempre visibile, due mesi, primo orario libero
+
+**Richiesta (Luca, 08/10/2026):** nella scheda del professionista nei
+risultati di ricerca non compariva più il calendario con le date
+disponibili. Poi: freccette per andare avanti nell'agenda per almeno due
+mesi; "Mostra orari disponibili" deve portare al primo orario libero quando
+nella schermata non ce ne sono; un clic sull'agenda deve aprire l'agenda
+della pagina successiva. Nello stesso thread: nella pagina profilo, "Salva",
+"Condividi il profilo" e "Segnala" diventano solo icone, con la descrizione
+al passaggio del mouse.
+
+**Causa:** nessuna regressione di codice (la PR #44 sulle prestazioni non
+tocca l'agenda). Su Rossi S.r.l. Illuminazioni la fascia di oggi a domicilio
+era stata prenotata: con nulla di libero nei primi 4 giorni la card
+nascondeva tutta la griglia e lasciava solo le intestazioni dei giorni. Il
+"prossimo libero" calcolato dal server (22 ottobre) cadeva oltre i 14 giorni
+scaricati, quindi "Mostra orari disponibili" non faceva nulla. Un
+professionista con fasce ma niente di libero nei primi 30 giorni perdeva
+del tutto la mini-agenda.
+
+**Decisione:**
+- `PUBLIC_AGENDA_DAYS = 63` in `packages/shared/src/availability.ts`: 9
+  settimane sia per l'anteprima della ricerca
+  (`ProfessionalsService.buildAvailabilityPreviews`) sia per l'agenda
+  pubblica del profilo (`getPublicAgenda`). Le frecce scorrono su tutti.
+- Griglia sempre visibile (orari barrati compresi), nella card e nel
+  profilo. Sotto, se nella finestra non c'è nulla di libero, il riquadro
+  "Nessun orario libero in questi giorni. Primo orario libero: …" con
+  "Mostra orari disponibili", che sposta la finestra su quel giorno. Il
+  primo orario libero si cerca nei giorni già scaricati (prima dopo la
+  finestra, poi dall'inizio): tolti dal server e dai tipi
+  `nextAvailableSlotHome`/`nextAvailableSlotOnline`. Senza nulla di libero
+  in due mesi: "Nessun orario libero nei prossimi due mesi."
+- L'anteprima esce sempre se il professionista ha almeno una fascia nei
+  prossimi 63 giorni, anche se tutto al completo.
+- Clic sull'intestazione di un giorno o su una cella senza orario libero
+  della card: apre `/professionista/<id>?data=AAAA-MM-GG(&modalita=ONLINE)#agenda`.
+  Il profilo legge `?data=`, parte da quel giorno e scorre fino all'agenda
+  (l'agenda arriva dopo il caricamento, quindi il solo `#agenda` non
+  bastava). Non c'è un onPress sull'intero blocco agenda: con Tamagui
+  scattava anche cliccando frecce e "Mostra orari disponibili".
+- Frecce della card più grandi (28px, sfondo `gesso`) per il tocco su
+  telefono.
+- Nuovo `apps/web/src/components/IconActionButton.tsx`: pulsante tondo con
+  sola icona e fumetto CSS al passaggio del mouse (o al focus da tastiera);
+  dopo "Condividi" il fumetto mostra "Link copiato" anche su telefono.
+
+**Verifica:** typecheck di `packages/ui`, `apps/api`, `apps/web`. In locale
+(Postgres + API + web) con un professionista con fascia del giovedì
+prenotata per 6 settimane: griglia con orario barrato e riquadro "19 Nov";
+"Mostra orari disponibili" porta la finestra al 19 novembre; la freccia
+avanti scorre senza aprire il profilo; clic su "20 Nov" apre il profilo
+sull'agenda dal 20 novembre. Controllato a 1440px e 390px.
+
+**Migliorie approvate da Luca (stessa giornata):**
+- *Agenda della scheda sul telefono:* le 4 colonne fisse da 78px più il
+  margine sinistro superavano la card e "Dom" usciva dal bordo (succedeva
+  già prima). Sotto 800px (`$sm`) il blocco agenda va a tutta larghezza
+  senza filetto e le colonne si dividono lo spazio (`flex={1}`). Pillola
+  orario con padding ridotto. Provato a 390px e 360px: nessuno scorrimento
+  orizzontale.
+- *Pagina dei risultati da 9 MB:* il peso era tutto in un `<style>` inline
+  di Tamagui con il CSS di tutti i 1408 temi di `@tamagui/config` (light,
+  dark e varianti a colori per ogni componente), ripetuto in ogni pagina
+  del sito. `packages/ui/src/config.ts` tiene solo il tema `light` e i suoi
+  sotto-temi di componente (88): il sito non usa mai `<Theme>`, la prop
+  `theme`, il tema scuro, né Sheet/Dialog/Tooltip di Tamagui. Risultati,
+  profilo e home passano da ~9 MB a ~0,7 MB in locale; home e accesso
+  confrontate con il sito vero, aspetto invariato. I token colore
+  (`$blue10`...) restano.
+- *Anteprima agenda più leggera:* l'API manda solo i giorni con almeno una
+  fascia, senza etichette, più `availabilityFrom` (oggi). La card
+  ricostruisce colonne vuote ed etichette (Oggi/Domani/"Lun", "7 Ago").
+  Sui dati di prova: da 5,9 KB a 1,5 KB e da 8,2 KB a 4,5 KB per
+  professionista.
+
+**Altre due migliorie approvate da Luca (stessa giornata):**
+- *Stili di Tamagui in un file a parte:* i ~0,6 MB di CSS di Tamagui erano
+  ancora dentro ogni pagina. Ora `apps/web/scripts/generate-tamagui-css.ts`
+  li scrive in `public/tamagui.css` prima di `dev` e `build` (file
+  generato, ignorato da git, negli `outputs` di turbo), il layout li carica
+  con `<link href="/tamagui.css?v=<commit>">` e `TamaguiProvider` ha
+  `disableInjectCSS`. Il file ha cache di un anno (`immutable` in
+  `next.config.mjs`); `v` cambia a ogni deploy (`VERCEL_GIT_COMMIT_SHA`).
+  Generato a build e non da una route: le route di `app/` girano dove
+  Tamagui non funziona (`createContext`), e una cartella `pages/` cambiava
+  i tipi di `useSearchParams` rompendo la build. Lo script usa `tsx` con
+  `react-native` → `react-native-web` (`scripts/tsconfig.json`). Pagina
+  dei risultati in locale: da ~700 KB a ~115 KB di HTML (in dev).
+- *Bollini e recensioni sul telefono a 360px:* nome, bollini e voto
+  uscivano dal bordo. Il blocco dati della card ha `minWidth={260}` e va a
+  capo sotto l'immagine invece di stringersi; `Rating` va a capo
+  ("(5 recensioni)" sotto le stelle) invece di allargarsi.
+
+**Verifica:** build di produzione di `apps/web` riuscita; in locale home,
+accesso e risultati collegano `/tamagui.css` (cache di un anno), restano
+solo i piccoli stili per pagina; aspetto invariato a 1440px e 360px,
+nessuno scorrimento orizzontale.
+
+**Banner dei cookie sul telefono (miglioria approvata da Luca):** sotto
+600px il testo lungo andava su 5 righe, il banner arrivava al limite di
+`maxHeight: 15vh` e a 360px tagliava a metà i bottoni Rifiuta/Accetta,
+coprendo intanto metà della prima scheda dei risultati. Ora sotto 600px
+compare un testo breve con le stesse informazioni (solo cookie tecnici,
+servizi Google su consenso, niente pubblicità, revoca in fondo alla
+pagina, link alla Cookie Policy) e bottoni più bassi: banner alto 105px a
+360px e 390px, bottoni interi; su computer invariato (56px).

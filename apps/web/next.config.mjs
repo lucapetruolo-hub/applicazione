@@ -22,8 +22,15 @@ const nextConfig = {
   // src/lib/siteIndexing.ts): l'header copre anche le pagine client e le
   // risorse non HTML, dove il meta robots del layout non arriva.
   async headers() {
-    if (process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true") return [];
-    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    // /tamagui.css è richiesto sempre con `?v=<commit>` (layout.tsx): un
+    // deploy nuovo cambia l'indirizzo, quindi il browser può tenerlo per
+    // sempre (docs/CHANGELOG.md §206).
+    const tamaguiCss = {
+      source: "/tamagui.css",
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    };
+    if (process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true") return [tamaguiCss];
+    return [tamaguiCss, { source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
   },
   transpilePackages: ["@professionisti/ui", "@professionisti/shared"],
   // packages/ui/src/config.ts importa `Platform` da "react-native" per

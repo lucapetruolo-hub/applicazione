@@ -158,34 +158,18 @@ export type ProfessionalAvailabilityPreviewSlot = {
  * professionista ha impostato la capienza per quella fascia 1 o più di 1".
  * Calcolata lato server in un'unica query batch per l'intera pagina di
  * risultati (mai una query per professionista, vedi ProfessionalsService.search).
- * 14 giorni totali (stesso orizzonte di `getPublicAgenda`), non solo i 4
- * mostrati di default: la UI pagina in finestre da 4 colonne con frecce
- * avanti/indietro, richiesta esplicita dell'utente ("dare la possibilità
- * di navigare anche ai giorni successivi") — nessuna richiesta di rete
- * aggiuntiva per scorrere in avanti.
+ * Solo i giorni con almeno una fascia (al completo comprese) nei
+ * PUBLIC_AGENDA_DAYS giorni da `availabilityFrom`: la card ricostruisce da
+ * sola le colonne vuote e le etichette (Oggi/Domani/"Lun", "7 Ago"), così
+ * la risposta della ricerca resta leggera anche con due mesi di agenda
+ * (docs/CHANGELOG.md §206). La UI pagina in finestre da 4 colonne con le
+ * frecce, senza richieste di rete aggiuntive.
  */
 export type ProfessionalAvailabilityPreviewDay = {
   /** Data ISO (yyyy-mm-dd). */
   date: string;
-  /** Etichetta già pronta per la UI: "Oggi", "Domani" o il giorno della settimana abbreviato. */
-  label: string;
-  /** Es. "7 Ago", per la seconda riga dell'intestazione colonna. */
-  dateLabel: string;
-  /** Ogni orario configurato quel giorno, ordinato — vuoto se il professionista non ha nulla quel giorno. */
+  /** Ogni orario configurato quel giorno, ordinato. */
   times: ProfessionalAvailabilityPreviewSlot[];
-};
-
-/**
- * Mostrato al posto della griglia quando i giorni in `availabilityPreview`
- * non hanno alcun orario libero (tutto "-"/al completo): il primo
- * orario libero oltre la finestra visibile, cercato più avanti nel tempo.
- * `null` se il professionista non ha alcuna disponibilità futura da
- * mostrare (nessuna fascia configurata, o tutte già esaurite per sempre).
- */
-export type ProfessionalNextAvailableSlot = {
-  date: string;
-  dateLabel: string;
-  time: string;
 };
 
 /** Risultato reale restituito da GET /professionals/search su apps/api. */
@@ -210,17 +194,14 @@ export type ProfessionalSearchResult = {
   spokenLanguages: string[];
   /** Assicurazione RC professionale dichiarata dal professionista (non verificata): badge nella card e filtro di ricerca, docs/CHANGELOG.md §157. */
   hasLiabilityInsurance: boolean;
-  /** Vuota se il professionista non ha alcuna fascia configurata nei prossimi giorni. */
-  availabilityPreview: ProfessionalAvailabilityPreviewDay[];
   /**
-   * Presenti solo quando availabilityPreview non ha nessun orario libero
-   * per quella specifica modalità — due campi distinti (non uno solo)
-   * perché "prossimo libero" dipende dal tab attivo (A domicilio/Online):
-   * un professionista può avere il prossimo orario libero a domicilio
-   * oggi ma online solo tra una settimana.
+   * Tutti i giorni dell'agenda pubblica (PUBLIC_AGENDA_DAYS), anche quelli al
+   * completo: la card cerca qui il primo orario libero. Vuota se il
+   * professionista non ha alcuna fascia configurata in quel periodo.
    */
-  nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
-  nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
+  availabilityPreview: ProfessionalAvailabilityPreviewDay[];
+  /** Primo giorno dell'agenda (oggi, AAAA-MM-GG in UTC): la colonna "Oggi" della card. */
+  availabilityFrom: string;
   /**
    * Data di creazione del profilo — usata dalla vetrina "Sulla piattaforma"
    * in homepage per ordinare per più recenti e mostrare un badge "Nuovo"
