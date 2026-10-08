@@ -32,7 +32,7 @@ export class TimelineService {
    * l'evento subito, senza aspettare il poll di riserva.
    */
   async log(guidedRequestId: string, professionalProfileId: string, actor: TimelineActor, message: string, mediaUrls: string[] = []): Promise<void> {
-    const row = await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message, mediaUrls } });
+    const row = await this.prisma.conversationEvent.create({ data: { guidedRequestId, professionalProfileId, actor, message, mediaUrls, automatic: true } });
     const participants = await this.resolveParticipantIds(guidedRequestId, professionalProfileId);
     if (participants) this.publishChatMessage(guidedRequestId, professionalProfileId, row, participants);
   }
@@ -121,10 +121,13 @@ export class TimelineService {
         otherPartyName,
         otherPartyImageUrl,
         categoryLabel: event.guidedRequest.category.label,
+        requestDescription: event.guidedRequest.description,
         lastMessage: event.message || null,
         lastMessageHasMedia: event.mediaUrls.length > 0,
         lastMessageAt: event.createdAt.toISOString(),
-        lastMessageIsMine: event.actor !== "SYSTEM" && event.actor === viewerRole,
+        // Un messaggio automatico non è "tuo" anche se porta il tuo ruolo
+        // ("Tu: Il professionista ha annullato…" non si legge bene).
+        lastMessageIsMine: !event.automatic && event.actor !== "SYSTEM" && event.actor === viewerRole,
       });
     }
     return threads;
@@ -154,6 +157,7 @@ export class TimelineService {
       actor: event.actor,
       message: event.message,
       mediaUrls: event.mediaUrls,
+      automatic: event.automatic,
       createdAt: event.createdAt.toISOString(),
     };
   }

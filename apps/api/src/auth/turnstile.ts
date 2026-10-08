@@ -8,7 +8,7 @@ type SiteverifyResponse = { success: boolean; "error-codes"?: string[] };
 /**
  * Controllo anti-bot Cloudflare Turnstile sui moduli pubblici: registrazione
  * con email e password, recupero password e contatti (checklist di lancio
- * punto 24, docs/CHANGELOG.md §198).
+ * punto 24, docs/CHANGELOG.md §199).
  *
  * - Senza `TURNSTILE_SECRET_KEY` il controllo è spento (true), come Maps e
  *   Stripe senza chiavi: in sviluppo e finché le chiavi non sono su Render

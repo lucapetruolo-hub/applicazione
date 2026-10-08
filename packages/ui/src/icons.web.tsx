@@ -64,6 +64,7 @@ import {
   UserRound,
   Briefcase,
   Building2,
+  ArrowRight,
 } from "lucide-react";
 
 export const ICONS = {
@@ -126,6 +127,7 @@ export const ICONS = {
   "trending-up": TrendingUp,
   "user-round": UserRound,
   briefcase: Briefcase,
+  "arrow-right": ArrowRight,
   "building-2": Building2,
 } as const;
 

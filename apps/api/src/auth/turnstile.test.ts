@@ -3,7 +3,7 @@ import { BadRequestException } from "@nestjs/common";
 import { assertTurnstile, verifyTurnstileToken } from "./turnstile";
 
 /**
- * Anti-bot Turnstile sulla registrazione (docs/CHANGELOG.md §198): spento
+ * Anti-bot Turnstile sulla registrazione (docs/CHANGELOG.md §199): spento
  * senza chiave, blocca token mancanti o rifiutati, non blocca le iscrizioni
  * se Cloudflare non risponde.
  */

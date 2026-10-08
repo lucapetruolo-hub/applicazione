@@ -54,7 +54,7 @@ export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
  */
 export const contactMessageRoleSchema = z.enum(["CLIENT", "PROFESSIONAL", "OTHER"]);
 /**
- * Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §198):
+ * Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §199):
  * controllato dal server solo se `TURNSTILE_SECRET_KEY` è impostata.
  */
 export const turnstileTokenSchema = z.string().max(2048).optional();
