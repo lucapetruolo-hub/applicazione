@@ -1002,7 +1002,7 @@ export function RequestCard({
                   Modifica
                 </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
-                <CardButton disabled={isRejectingDate} onPress={handleRejectDate}>
+                <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
                   {isRejectingDate ? "..." : "Rifiuta la proposta"}
                 </CardButton>
               </XStack>

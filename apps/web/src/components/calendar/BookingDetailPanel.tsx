@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import type { JobPayment } from "@professionisti/api-client";
-import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { CardButton } from "@/components/CardButton";
+import { ContactButton } from "@/components/ContactButton";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
@@ -361,17 +363,9 @@ export function BookingDetailPanel({
             />
           </XStack>
           {meetingLinkChanged ? (
-            <Button
-              variant="secondary"
-              size="$3"
-              height={36}
-              alignSelf="flex-start"
-              disabled={isSavingMeetingLink}
-              opacity={isSavingMeetingLink ? 0.6 : 1}
-              onPress={() => onSaveMeetingLink(meetingLinkDraft)}
-            >
+            <CardButton alignSelf="flex-start" disabled={isSavingMeetingLink} onPress={() => onSaveMeetingLink(meetingLinkDraft)}>
               {isSavingMeetingLink ? "Salvataggio..." : "Salva link"}
-            </Button>
+            </CardButton>
           ) : null}
         </YStack>
 
@@ -402,66 +396,44 @@ export function BookingDetailPanel({
             }}
           />
           {noteChanged ? (
-            <Button
-              variant="secondary"
-              size="$3"
-              height={36}
-              alignSelf="flex-start"
-              disabled={isSavingNote}
-              opacity={isSavingNote ? 0.6 : 1}
-              onPress={() => onSaveNote(noteDraft)}
-            >
+            <CardButton alignSelf="flex-start" disabled={isSavingNote} onPress={() => onSaveNote(noteDraft)}>
               {isSavingNote ? "Salvataggio..." : "Salva nota"}
-            </Button>
+            </CardButton>
           ) : null}
         </YStack>
 
+        {/* Tutte le azioni su una riga che va a capo, stessa misura delle
+            schede delle richieste (docs/CHANGELOG.md §195). "Contatta" e
+            "Vai alla richiesta completa" resi veri pulsanti su richiesta
+            esplicita dell'utente; Annulla sempre per ultimo. */}
         <XStack gap="$2" flexWrap="wrap">
           {booking.status === "PENDING" ? (
-            <Button variant="secondary" size="$3" height={40} disabled={isActionPending} opacity={isActionPending ? 0.6 : 1} onPress={() => onAction("CONFIRMED")}>
+            <CardButton tone="primary" disabled={isActionPending} onPress={() => onAction("CONFIRMED")}>
               Conferma
-            </Button>
+            </CardButton>
           ) : null}
           {booking.status === "CONFIRMED" ? (
-            <Button variant="secondary" size="$3" height={40} disabled={isActionPending} opacity={isActionPending ? 0.6 : 1} onPress={() => onAction("COMPLETED")}>
+            <CardButton fill="#20B2AA" disabled={isActionPending} onPress={() => onAction("COMPLETED")}>
               Segna come completata
-            </Button>
+            </CardButton>
+          ) : null}
+          {onOpenTimeline ? <ContactButton onPress={onOpenTimeline} /> : null}
+          {onOpenFullRequest ? (
+            <CardButton onPress={onOpenFullRequest}>
+              <XStack alignItems="center" gap={4}>
+                <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize="$3">
+                  Vai alla richiesta completa
+                </Text>
+                <Icon name="chevron-right" size={15} color={brand.grafite} strokeWidth={2} />
+              </XStack>
+            </CardButton>
           ) : null}
           {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
-            <Button variant="ghost" size="$3" height={40} disabled={isActionPending} opacity={isActionPending ? 0.6 : 1} onPress={() => onAction("CANCELED")}>
+            <CardButton tone="danger" disabled={isActionPending} onPress={() => onAction("CANCELED")}>
               Annulla
-            </Button>
+            </CardButton>
           ) : null}
         </XStack>
-
-        {/* Richiesta esplicita dell'utente: resi come veri pulsanti (non più
-            "ghost"/testo sottolineato) e spostati in fondo alla scheda,
-            insieme alle altre azioni — prima stavano subito sotto data/ora,
-            in cima. */}
-        {onOpenTimeline || onOpenFullRequest ? (
-          <XStack gap="$2" flexWrap="wrap">
-            {onOpenTimeline ? (
-              <Button variant="secondary" size="$3" height={40} onPress={onOpenTimeline}>
-                <XStack alignItems="center" gap={4}>
-                  <Icon name="message-circle" size={15} color={brand.cianografiaScuro} strokeWidth={2} />
-                  <Text color={brand.cianografiaScuro} fontWeight="700" fontSize="$3">
-                    Contatta/Cronologia
-                  </Text>
-                </XStack>
-              </Button>
-            ) : null}
-            {onOpenFullRequest ? (
-              <Button variant="secondary" size="$3" height={40} onPress={onOpenFullRequest}>
-                <XStack alignItems="center" gap={4}>
-                  <Text color={brand.grafite} fontWeight="700" fontSize="$3">
-                    Vai alla richiesta completa
-                  </Text>
-                  <Icon name="chevron-right" size={15} color={brand.grafite} strokeWidth={2} />
-                </XStack>
-              </Button>
-            ) : null}
-          </XStack>
-        ) : null}
       </YStack>
 
       {openPhotoIndex !== null ? (

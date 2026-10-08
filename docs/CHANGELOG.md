@@ -16855,6 +16855,12 @@ Decisione:
   nuova data, la conferma di rifiuto/ritiro/eliminazione e "Salva" delle
   note alla stessa misura.
 
+- Secondo giro (richiesta dell'utente): pannello della prenotazione in
+  Agenda (Conferma, Segna come completata in turchese come "Lavoro
+  terminato", Contatta/Cronologia uguale alle schede, Vai alla richiesta
+  completa, Annulla per ultimo in rosso, Salva link/nota), il
+  suggerimento della pagina Oggi e "Rifiuta la proposta" in rosso.
+
 Verifica: `tsc` su web; Playwright 1280 e 390 sulle schede cliente (in
 attesa, preventivo ricevuto, accettata) e professionista (da quotare, in
 attesa del cliente, accettata) con dati di prova su API e database locali:
