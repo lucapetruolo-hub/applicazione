@@ -101,7 +101,6 @@ export type GuidedRequestFormProps = {
 
 export function GuidedRequestForm({
   isUrgent: isUrgentInitial,
-  basePath,
   title,
   subtitle,
   submitLabel,
@@ -190,7 +189,6 @@ export function GuidedRequestForm({
     // valorizzato dall'URL (se presente); ai cambi successivi di modalità
     // ci pensa già il tasto A domicilio/Online stesso (vedi onPress sotto),
     // un reset anche qui cancellerebbe il prefill dell'URL al primo render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalProfileId, serviceMode]);
 
   // Prefill dai dati dell'account (richiesta esplicita dell'utente), una

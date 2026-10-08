@@ -15,9 +15,8 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
 import { Pagination } from "@/components/ListControls";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
-import { classifyClientRequestStage, CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
+import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
-import { QuoteCard } from "./_components/QuoteCard";
 import { clientRequestSearchText, filterInputStyle } from "./_components/clientRequestHelpers";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
@@ -90,7 +89,7 @@ function LeMieRichiesteContent() {
   const [zoneFilter, setZoneFilter] = useState("tutte");
   const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize] = useState(5);
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -240,7 +239,6 @@ function LeMieRichiesteContent() {
       document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       highlightDeepLinkTarget(elementId);
     }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, activeStageTab, zoneFilter, serviceModeFilter, filteredSortedRequests, pageSize, searchParams]);
 
   // Stesso principio della dashboard professionista: aprire questa pagina

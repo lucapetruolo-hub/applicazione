@@ -38,6 +38,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run typecheck
 
+      - name: Lint
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run lint
+
       - name: Build
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci

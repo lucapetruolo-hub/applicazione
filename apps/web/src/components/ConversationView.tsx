@@ -299,7 +299,6 @@ export function ConversationView({
         return [...(prev ?? []), realtimeEvent.event];
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guidedRequestId, professionalProfileId]);
 
   // Poll di riserva (vedi TIMELINE_POLL_MS sopra): confronta solo l'id
@@ -320,7 +319,6 @@ export function ConversationView({
         .catch(() => {});
     }, TIMELINE_POLL_MS);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, guidedRequestId, professionalProfileId]);
 
   useEffect(() => {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalStats, ProfessionalStatsBucket, ProfessionalStatsTotals } from "@professionisti/shared";
-import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";

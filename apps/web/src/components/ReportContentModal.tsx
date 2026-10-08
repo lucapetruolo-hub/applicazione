@@ -45,7 +45,6 @@ const selectStyle = {
  * (CLAUDE.md §35), invece di introdurlo di nuovo in un componente nuovo.
  */
 export function ReportContentModal({
-  targetType,
   targetLabel,
   onClose,
   onSubmit,

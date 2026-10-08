@@ -14,7 +14,7 @@ import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSectio
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RequestCard } from "./_components/RequestCard";
-import { ServiceBadge, filterInputStyle, leadSearchText } from "./_components/requestHelpers";
+import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -156,7 +156,6 @@ function RichiesteContent() {
       // sola dopo qualche secondo).
       highlightDeepLinkTarget(elementId);
     }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, searchParams]);
 
   // Bug reale corretto: ricaricava solo i Lead, mai le Booking — dopo
