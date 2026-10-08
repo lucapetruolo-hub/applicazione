@@ -9,7 +9,7 @@ import { UnreadDot } from "@/components/UnreadDot";
  * uguale per cliente e professionista nelle richieste — richiesta esplicita
  * dell'utente di farlo sembrare un pulsante e di non chiamarlo più "Chat"
  * (docs/CHANGELOG.md §187). La sua misura è quella di tutti i pulsanti in
- * fondo alle schede (`CardButton`, docs/CHANGELOG.md §193).
+ * fondo alle schede (`CardButton`, docs/CHANGELOG.md §195).
  */
 export function ContactButton({ onPress, unreadCount }: { onPress: () => void; unreadCount?: number }) {
   return (

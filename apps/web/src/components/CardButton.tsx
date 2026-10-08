@@ -8,7 +8,7 @@ import { Button, Text, brand } from "@professionisti/ui";
  * lavori" del professionista, "Le mie richieste" del cliente): stessa
  * altezza e testo di "Contatta/Cronologia" per tutti, e sempre un bordo o
  * uno sfondo, mai solo testo (richiesta esplicita dell'utente,
- * docs/CHANGELOG.md §193).
+ * docs/CHANGELOG.md §195).
  *
  * - `primary`: pieno blu, l'azione principale della scheda
  * - `outline`: bordo grafite, le azioni secondarie (Modifica, Ripeti, Annulla...)

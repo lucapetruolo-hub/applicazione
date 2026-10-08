@@ -639,7 +639,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
-              come gli altri pulsanti della scheda (docs/CHANGELOG.md §193:
+              come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
               prima il primo era solo testo e il secondo più piccolo). */}
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}

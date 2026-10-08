@@ -293,39 +293,6 @@ export function ProfessionalCard({
                 Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
               </Text>
             ) : null}
-            {services && services.length > 0 ? (
-              <YStack gap="$1" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$1">
-                {(showAllServices ? services : services.slice(0, 3)).map((service) => (
-                  <XStack key={service.id} justifyContent="space-between" gap="$2">
-                    <Text fontSize={14} color={brand.grafite70} flex={1}>
-                      {service.name}
-                    </Text>
-                    <Text fontSize={14} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
-                      {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
-                    </Text>
-                  </XStack>
-                ))}
-                {services.length > 3 ? (
-                  <XStack
-                    alignItems="center"
-                    gap="$1"
-                    paddingTop="$1"
-                    cursor="pointer"
-                    onPress={(e: { stopPropagation: () => void }) => {
-                      e.stopPropagation();
-                      setShowAllServices((prev) => !prev);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
-                  >
-                    <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
-                      {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
-                    </Text>
-                    <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />
-                  </XStack>
-                ) : null}
-              </YStack>
-            ) : null}
           </YStack>
         </XStack>
 
@@ -561,6 +528,53 @@ export function ProfessionalCard({
           </YStack>
         ) : null}
       </XStack>
+      {/* Prestazioni a tutta larghezza sotto la riga profilo + agenda
+          (richiesta esplicita dell'utente): dentro la colonna del nome,
+          stretta quando c'è la mini-agenda, i nomi andavano a capo e
+          lasciavano vuoto lo spazio sotto la foto e sotto l'agenda. */}
+      {services && services.length > 0 ? (
+        <YStack gap="$1" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$4">
+          {(showAllServices ? services : services.slice(0, 3)).map((service, index, shown) => (
+            // Linea molto leggera sotto ogni riga, fino al prezzo (richiesta
+            // esplicita dell'utente): aiuta a collegare a colpo d'occhio
+            // ogni prestazione al suo prezzo. Niente linea sotto l'ultima.
+            <XStack
+              key={service.id}
+              justifyContent="space-between"
+              gap="$2"
+              paddingVertical={3}
+              borderBottomWidth={index < shown.length - 1 ? 1 : 0}
+              borderBottomColor={brand.gesso}
+            >
+              <Text fontSize={14} color={brand.grafite70} flex={1}>
+                {service.name}
+              </Text>
+              <Text fontSize={14} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
+                {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
+              </Text>
+            </XStack>
+          ))}
+          {services.length > 3 ? (
+            <XStack
+              alignItems="center"
+              gap="$1"
+              paddingTop="$1"
+              cursor="pointer"
+              onPress={(e: { stopPropagation: () => void }) => {
+                e.stopPropagation();
+                setShowAllServices((prev) => !prev);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
+            >
+              <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
+                {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
+              </Text>
+              <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />
+            </XStack>
+          ) : null}
+        </YStack>
+      ) : null}
     </Surface>
   );
 }
