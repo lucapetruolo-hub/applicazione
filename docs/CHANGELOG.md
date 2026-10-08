@@ -16980,10 +16980,73 @@ questione resta tra voi".
 - **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
   API verdi), typecheck di `apps/api` e `apps/web`.
 
-## 199. Lint funzionante e nei controlli automatici
+## 198. Pagina Messaggi a tutta altezza e campo di scrittura a pillola
+
+- **Richiesta dell'utente** (con due screenshot: la pagina attuale col titolo
+  "Chat" cerchiato e la chat di un altro sito col campo di scrittura
+  cerchiato): "prendi più schermo, prendendo quella parte dove c'è scritto
+  chat in alto, e poi migliora la sezione scrivi un messaggio, facendo il
+  riquadro tondeggiante e non rettangolare", cambiando il pulsante "Invia
+  aggiornamento" e "quel brutto pulsante della graffetta".
+- **Pagina `/chat`**: tolto il titolo "Chat" (la voce "Messaggi" attiva nel
+  menu dice già dove si è; un eventuale errore di caricamento resta, piccolo,
+  sopra la chat). Il riquadro lista+conversazione occupa tutta l'altezza sotto
+  header e menu: `100dvh - 104px` per il professionista da computer (menu a
+  colonna), `100dvh - 126px` altrove (barra del menu in alto), con `100vh`
+  come ripiego.
+- **Campo di scrittura (`ConversationView`, vale anche nei popup della
+  chat)**: tolta l'etichetta "Scrivi un aggiornamento"; campo a pillola che
+  cresce col testo fino a ~6 righe e poi scorre; pulsante rotondo verde con
+  freccia dentro il campo a destra (spento finché non c'è testo o un
+  allegato, pallini mentre invia); tasto rotondo "+" a sinistra che apre lo
+  stesso menu Fotocamera / Foto o video / File (pallini durante il
+  caricamento, spento a 5 allegati). Anteprime degli allegati ed errori sopra
+  il campo. Invio con Invio, a capo con Maiusc+Invio; su telefono Invio va a
+  capo e si manda con la freccia. Nuova icona `arrow-right` in `packages/ui`.
+  Logica di invio e allegati invariata.
+- **Verifica:** typecheck di `apps/web` e `packages/ui`; anteprime con dati
+  finti su computer (professionista e cliente), tablet e telefono, con testo
+  su più righe e menu allegati aperto.
+- **Secondo giro** (l'utente, guardando le anteprime: "non mi piace l'ombra
+  nera di quando si clicca sul pulsante +, eliminala; procedi con le 4
+  migliorie"): menu del "+" con un bordo sottile invece dell'ombra, anello di
+  focus solo da tastiera (`:focus-visible`). Avviso di sicurezza su una riga
+  ("Resta in questa chat: non condividere numeri, dati personali o QR code.
+  Scopri di più"; su telefono due righe). Sotto i messaggi solo l'ora, con un
+  separatore "Oggi" / "Ieri" / data quando cambia il giorno. Tolto il nome
+  sopra ogni nuvoletta (il lato dice chi scrive, il nome è
+  nell'intestazione). In elenco, sotto il nome, categoria e inizio della
+  descrizione del lavoro: nuovo campo `ChatThreadSummary.requestDescription`
+  da `TimelineService.listThreadsForUser` (la descrizione è già visibile al
+  professionista prima dell'accettazione, CLAUDE.md §5.9; il sito regge
+  un'API non ancora aggiornata). Typecheck di `apps/web` e `apps/api`.
+- **Terzo giro** ("procedi con le 2 migliorie"): sotto il nome in
+  intestazione la descrizione del lavoro invece di "Cronologia della
+  richiesta" (solo in `/chat`, nei popup resta la scritta di prima, prop
+  `requestDescription` di `ConversationView`). I messaggi scritti dal sistema
+  a nome di una parte ("Il cliente ha accettato il preventivo", "Il
+  professionista ha inviato un preventivo…") sono ora centrati e in grigio
+  come quelli di sistema, con eventuali foto: nuova colonna
+  `ConversationEvent.automatic`, messa a `true` da `TimelineService.log`
+  (mai da `addUpdate`, i messaggi scritti a mano). Migrazione
+  `20261008140000_conversation_event_automatic`: aggiunge la colonna e segna
+  come automatici i messaggi già salvati che iniziano con le frasi usate solo
+  dal sistema ("Il cliente …", "Il professionista …", "La richiesta …",
+  "Richiesta inoltrata a te…", "Nessun professionista…"). In elenco, un
+  messaggio automatico non mostra più "Tu:". Verifica: migrazioni applicate
+  su un Postgres locale vuoto senza differenze dallo schema, 237 test API
+  verdi, typecheck di `apps/api` e `apps/web`, anteprime computer e telefono.
+- **Quarto giro** ("i messaggi automatici mettili sempre all'interno di un
+  riquadro in modo che sono più visibili, procedi con le migliorie
+  suggerite"): messaggi automatici e di sistema in un riquadro bianco con
+  bordo, testo scuro. Nelle chat a finestra (Richieste, Agenda) la
+  descrizione del lavoro in intestazione arriva dall'elenco chat
+  (`myChatThreads`, una chiamata all'apertura) quando chi apre non la passa.
+
+## 200. Lint funzionante e nei controlli automatici
 
 **Richiesta dell'utente:** sistemare il comando lint, che non funzionava
-(miglioria proposta durante il lavoro sull'anti-bot, §198, approvata).
+(miglioria proposta durante il lavoro sull'anti-bot, §199, approvata).
 
 - **Prima:** `pnpm lint` falliva sempre. ESLint non era installato nel
   monorepo, `apps/api` cercava una config che non esisteva e `next lint` in
