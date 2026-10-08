@@ -93,6 +93,8 @@ export function AdminCommandPalette({
       <div className="admin-palette" role="dialog" aria-modal="true" aria-label="Cerca nel pannello" onMouseDown={(e) => e.stopPropagation()}>
         <input aria-label="Cerca nel pannello"
           ref={inputRef}
+          // La palette si apre apposta per scrivere: il fuoco va subito al campo.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           className="admin-palette-input"
           value={q}

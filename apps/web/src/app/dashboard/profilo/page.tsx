@@ -237,6 +237,10 @@ export default function DashboardProfiloPage() {
         }
       })
       .finally(() => setIsLoadingProfile(false));
+    // Solo al cambio di token: con user?.imageUrl tra le dipendenze, cambiare
+    // la foto dell'account ricaricherebbe il profilo e cancellerebbe le
+    // modifiche non ancora salvate nel modulo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md

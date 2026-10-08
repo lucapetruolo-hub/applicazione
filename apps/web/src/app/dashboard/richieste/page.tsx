@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
@@ -14,7 +14,7 @@ import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSectio
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RequestCard } from "./_components/RequestCard";
-import { ServiceBadge, filterInputStyle, leadSearchText } from "./_components/requestHelpers";
+import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -156,7 +156,6 @@ function RichiesteContent() {
       // sola dopo qualche secondo).
       highlightDeepLinkTarget(elementId);
     }, 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, searchParams]);
 
   // Bug reale corretto: ricaricava solo i Lead, mai le Booking — dopo
@@ -166,13 +165,15 @@ function RichiesteContent() {
   // stato segnato completato, permettendo un secondo click. Entrambe le
   // liste alimentano la stessa card (booking risolto da bookingByRequestId
   // sopra), quindi vanno ricaricate insieme ad ogni azione.
-  function reloadLeads() {
+  // useCallback: cambia solo col token, così il poll qui sotto può
+  // dichiararla tra le dipendenze senza ripartire a ogni render.
+  const reloadLeads = useCallback(() => {
     if (!token) return;
     Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token)]).then(([l, b]) => {
       setLeads(l);
       setBookings(b);
     });
-  }
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -219,7 +220,7 @@ function RichiesteContent() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [token, markNotificationsRead]);
+  }, [token, markNotificationsRead, reloadLeads]);
 
   // Le liste si aggiornano subito all'arrivo di una notifica (stesso canale
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.

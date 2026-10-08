@@ -6,7 +6,7 @@
     "build": "pnpm --filter @professionisti/database build && pnpm --filter @professionisti/shared build && nest build",
     "dev": "nest start --watch",
     "start": "node ../../packages/database/scripts/migrate-deploy.mjs && node dist/main.js",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "email:preview": "tsx scripts/email-preview.ts"

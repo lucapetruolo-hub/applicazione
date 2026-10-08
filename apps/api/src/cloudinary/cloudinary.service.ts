@@ -277,7 +277,6 @@ export class CloudinaryService {
       // volta che questo fallisce, il log dice davvero perché invece di
       // dover indovinare una sesta volta.
       const bodyText = await response.text().catch(() => "");
-      // eslint-disable-next-line no-console
       console.error(`[CloudinaryService] download fallito (${response.status}): ${bodyText.slice(0, 500)}`);
       throw new BadRequestException("File non trovato o non più disponibile.");
     }

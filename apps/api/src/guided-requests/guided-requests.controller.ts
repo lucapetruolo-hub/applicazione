@@ -37,7 +37,6 @@ import { TimelineService } from "../timeline/timeline.service";
 import { GuidedRequestsService } from "./guided-requests.service";
 import { GuidedRequestUserStateService } from "./guided-request-user-state.service";
 
-const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
 // più permissivo solo per questo endpoint (richiesta esplicita
 // dell'utente: "dai la possibilità di caricare anche i video").

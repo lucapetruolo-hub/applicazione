@@ -1,7 +1,7 @@
 "use client";
 
 import { formatBookingAddress, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
-import { Badge, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
 export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
