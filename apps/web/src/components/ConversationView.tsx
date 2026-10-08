@@ -421,7 +421,20 @@ export function ConversationView({
     setOpenPhoto({ photos: viewable, index: index === -1 ? 0 : index });
   }
 
+  const canSend = (message.trim().length > 0 || mediaUrls.length > 0) && !isSubmitting && !isUploadingMedia;
+
+  // Il campo cresce col testo fino a ~6 righe, poi scorre (max-height nel
+  // CSS del riquadro); torna a una riga dopo l'invio.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [message]);
+
   async function handleSubmit() {
+    if (isSubmitting || isUploadingMedia) return;
     if (!message.trim() && mediaUrls.length === 0) {
       setSubmitError("Scrivi un messaggio o allega almeno una foto/video.");
       return;
@@ -688,184 +701,194 @@ export function ConversationView({
         </YStack>
       </div>
 
-      <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$5" paddingTop="$3" paddingBottom="$5" flexShrink={0}>
-        <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-          Scrivi un aggiornamento
-        </Text>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Es. ho ordinato il pezzo di ricambio, arriverà lunedì..."
-          rows={3}
-          maxLength={2000}
-          style={{
-            width: "100%",
-            padding: 10,
-            borderRadius: 4,
-            border: `1px solid ${brand.filetto}`,
-            fontSize: 14,
-            fontFamily: "inherit",
-            color: brand.grafite,
-            resize: "vertical",
-          }}
-        />
-        <XStack gap="$2" flexWrap="wrap">
-          {mediaUrls.map((url) =>
-            // Un documento non ancora inviato mostra già il proprio nome
-            // reale (richiesta esplicita dell'utente, stesso principio
-            // applicato sopra ai messaggi già inviati) — chip icona+nome
-            // con un tasto "x" in coda invece della tessera quadrata con
-            // l'overlay circolare usato per foto/video.
-            isDocumentUrl(url) ? (
-              <XStack
-                key={url}
-                alignItems="center"
-                gap="$1.5"
-                maxWidth={220}
-                paddingHorizontal="$2"
-                paddingVertical="$1.5"
-                borderRadius="$2"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                backgroundColor={brand.gesso}
-                cursor="pointer"
-                onPress={() => openMediaAt(mediaUrls, url)}
-                accessibilityRole="button"
-              >
-                <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
-                  {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
-                </Text>
-                <YStack
-                  width={16}
-                  height={16}
-                  borderRadius={8}
+      {/* Riquadro di scrittura (docs/CHANGELOG.md §198, richiesta esplicita
+          dell'utente con una chat di esempio): campo a pillola che cresce
+          col testo, invio rotondo con freccia dentro il campo a destra,
+          tasto rotondo "+" a sinistra per allegare. Stessa logica di invio e
+          allegati di prima, cambia solo l'aspetto. */}
+      <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$4" paddingTop="$3" paddingBottom="$4" flexShrink={0}>
+        {mediaUrls.length > 0 ? (
+          <XStack gap="$2" flexWrap="wrap" paddingLeft={52}>
+            {mediaUrls.map((url) =>
+              // Un documento non ancora inviato mostra già il proprio nome
+              // reale (richiesta esplicita dell'utente, stesso principio
+              // applicato sopra ai messaggi già inviati) — chip icona+nome
+              // con un tasto "x" in coda invece della tessera quadrata con
+              // l'overlay circolare usato per foto/video.
+              isDocumentUrl(url) ? (
+                <XStack
+                  key={url}
                   alignItems="center"
-                  justifyContent="center"
+                  gap="$1.5"
+                  maxWidth={220}
+                  paddingHorizontal="$2"
+                  paddingVertical="$1.5"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  backgroundColor={brand.gesso}
                   cursor="pointer"
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    removeMedia(url);
-                  }}
+                  onPress={() => openMediaAt(mediaUrls, url)}
                   accessibilityRole="button"
-                  accessibilityLabel="Rimuovi allegato"
                 >
-                  <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
+                  <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
+                  <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                    {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
+                  </Text>
+                  <YStack
+                    width={16}
+                    height={16}
+                    borderRadius={8}
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      removeMedia(url);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi allegato"
+                  >
+                    <Icon name="x" size={11} color={brand.grafite70} strokeWidth={2} />
+                  </YStack>
+                </XStack>
+              ) : (
+                <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
+                  <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
+                  <YStack
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    width={18}
+                    height={18}
+                    borderRadius={9}
+                    backgroundColor="rgba(20,24,30,0.7)"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    onPress={() => removeMedia(url)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rimuovi foto"
+                  >
+                    <Icon name="x" size={11} color="white" strokeWidth={2} />
+                  </YStack>
                 </YStack>
-              </XStack>
-            ) : (
-              <YStack key={url} width={56} height={56} borderRadius="$2" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                <MediaPreview url={url} onClick={() => openMediaAt(mediaUrls, url)} style={{ cursor: "pointer" }} />
-                <YStack
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  width={18}
-                  height={18}
-                  borderRadius={9}
-                  backgroundColor="rgba(20,24,30,0.7)"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  onPress={() => removeMedia(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
-                >
-                  <Icon name="x" size={11} color="white" strokeWidth={2} />
-                </YStack>
-              </YStack>
-            ),
-          )}
-          {mediaUrls.length < MAX_UPDATE_MEDIA ? (
-            // Graffetta + menu (richiesta esplicita dell'utente: "al posto
-            // del file più, metti il simbolo di una graffetta per
-            // allegare, e fai selezionare: fotocamera, foto/video, File.
-            // in modo che puo essere caricata anche la fattura o
-            // ricevuta") — sostituisce il vecchio tasto "+" con un unico
-            // input nascosto. Menu aperto verso l'alto (`bottom="100%"`):
-            // il tasto vive in fondo al pannello, un menu verso il basso
-            // rischierebbe di finire tagliato dal bordo.
-            <YStack ref={attachMenuContainerRef} position="relative">
-              <YStack
-                width={56}
-                height={56}
-                borderRadius="$2"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                cursor="pointer"
-                opacity={isUploadingMedia ? 0.6 : 1}
-                onPress={() => !isUploadingMedia && setIsAttachMenuOpen((open) => !open)}
-                accessibilityRole="button"
-                accessibilityLabel="Allega foto, video o documento"
-              >
-                {isUploadingMedia ? <UploadingDots dotSize={5} /> : <Icon name="paperclip" size={20} color={brand.grafite70} />}
-              </YStack>
+              ),
+            )}
+          </XStack>
+        ) : null}
+        {mediaError ? (
+          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+            {mediaError}
+          </Text>
+        ) : null}
+        {submitError ? (
+          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+            {submitError}
+          </Text>
+        ) : null}
+        <XStack alignItems="flex-end" gap="$2">
+          {/* "+" rotondo con menu (Fotocamera, Foto o video, File) aperto
+              verso l'alto: il tasto vive in fondo al pannello, un menu
+              verso il basso finirebbe tagliato dal bordo. */}
+          <YStack ref={attachMenuContainerRef} position="relative" flexShrink={0}>
+            <button
+              type="button"
+              className="composer-round composer-attach"
+              disabled={isUploadingMedia || mediaUrls.length >= MAX_UPDATE_MEDIA}
+              onClick={() => setIsAttachMenuOpen((open) => !open)}
+              aria-label="Allega foto, video o documento"
+              aria-expanded={isAttachMenuOpen}
+              title={mediaUrls.length >= MAX_UPDATE_MEDIA ? `Massimo ${MAX_UPDATE_MEDIA} allegati` : "Allega"}
+            >
+              {isUploadingMedia ? <UploadingDots dotSize={4} /> : <Icon name="plus" size={22} color={brand.grafite} strokeWidth={1.75} />}
+            </button>
 
-              {isAttachMenuOpen ? (
-                <YStack
-                  position="absolute"
-                  bottom="100%"
-                  left={0}
-                  marginBottom="$2"
-                  minWidth={190}
-                  backgroundColor={brand.calce}
-                  borderRadius="$3"
-                  overflow="hidden"
-                  zIndex={1200}
-                  shadowColor="rgba(43,32,19,0.16)"
-                  shadowRadius={14}
-                  shadowOffset={{ width: 0, height: 6 }}
-                  shadowOpacity={1}
-                >
-                  {[
-                    {
-                      icon: "camera" as const,
-                      label: "Fotocamera",
-                      onPress: () => {
-                        void handleCameraOption();
-                      },
+            {isAttachMenuOpen ? (
+              <YStack
+                position="absolute"
+                bottom="100%"
+                left={0}
+                marginBottom="$2"
+                minWidth={190}
+                backgroundColor={brand.calce}
+                borderRadius="$3"
+                overflow="hidden"
+                zIndex={1200}
+                shadowColor="rgba(43,32,19,0.16)"
+                shadowRadius={14}
+                shadowOffset={{ width: 0, height: 6 }}
+                shadowOpacity={1}
+              >
+                {[
+                  {
+                    icon: "camera" as const,
+                    label: "Fotocamera",
+                    onPress: () => {
+                      void handleCameraOption();
                     },
-                    {
-                      icon: "video" as const,
-                      label: "Foto o video",
-                      onPress: () => {
-                        setIsAttachMenuOpen(false);
-                        galleryInputRef.current?.click();
-                      },
+                  },
+                  {
+                    icon: "video" as const,
+                    label: "Foto o video",
+                    onPress: () => {
+                      setIsAttachMenuOpen(false);
+                      galleryInputRef.current?.click();
                     },
-                    {
-                      icon: "file-text" as const,
-                      label: "File",
-                      onPress: () => {
-                        setIsAttachMenuOpen(false);
-                        documentInputRef.current?.click();
-                      },
+                  },
+                  {
+                    icon: "file-text" as const,
+                    label: "File",
+                    onPress: () => {
+                      setIsAttachMenuOpen(false);
+                      documentInputRef.current?.click();
                     },
-                  ].map((item) => (
-                    <XStack
-                      key={item.label}
-                      paddingHorizontal="$4"
-                      paddingVertical="$3"
-                      alignItems="center"
-                      gap="$2"
-                      cursor="pointer"
-                      hoverStyle={{ backgroundColor: brand.gesso }}
-                      onPress={item.onPress}
-                      accessibilityRole="button"
-                    >
-                      <Icon name={item.icon} size={16} color={brand.grafite} />
-                      <Text fontSize="$3" color={brand.grafite} fontWeight="600">
-                        {item.label}
-                      </Text>
-                    </XStack>
-                  ))}
-                </YStack>
-              ) : null}
-            </YStack>
-          ) : null}
+                  },
+                ].map((item) => (
+                  <XStack
+                    key={item.label}
+                    paddingHorizontal="$4"
+                    paddingVertical="$3"
+                    alignItems="center"
+                    gap="$2"
+                    cursor="pointer"
+                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    onPress={item.onPress}
+                    accessibilityRole="button"
+                  >
+                    <Icon name={item.icon} size={16} color={brand.grafite} />
+                    <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                      {item.label}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+            ) : null}
+          </YStack>
+
+          <div className="composer-pill">
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                // Invio manda, Maiusc+Invio va a capo. Su telefono (puntatore
+                // "grossolano") Invio va sempre a capo: lì si manda col tasto
+                // freccia, come nelle app di messaggi.
+                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return;
+                e.preventDefault();
+                if (canSend) void handleSubmit();
+              }}
+              placeholder="Scrivi un messaggio"
+              aria-label="Scrivi un messaggio"
+              rows={1}
+              maxLength={2000}
+            />
+            <button type="button" className="composer-round composer-send" disabled={!canSend} onClick={() => void handleSubmit()} aria-label="Invia">
+              {isSubmitting ? <UploadingDots dotSize={4} color="#ffffff" /> : <Icon name="arrow-right" size={20} color="#ffffff" strokeWidth={2.25} />}
+            </button>
+          </div>
         </XStack>
         <input
           ref={cameraInputRef}
@@ -892,28 +915,83 @@ export function ConversationView({
           disabled={isUploadingMedia}
           style={{ display: "none" }}
         />
-        {mediaError ? (
-          <Text color={brand.urgenza} fontSize="$2">
-            {mediaError}
-          </Text>
-        ) : null}
-        {submitError ? (
-          <Text color={brand.urgenza} fontSize="$2">
-            {submitError}
-          </Text>
-        ) : null}
-        <Button
-          variant="primary"
-          size="$3"
-          height={40}
-          alignSelf="flex-start"
-          disabled={isSubmitting || isUploadingMedia}
-          opacity={isSubmitting || isUploadingMedia ? 0.6 : 1}
-          onPress={handleSubmit}
-        >
-          {isSubmitting ? "Invio..." : "Invia aggiornamento"}
-        </Button>
       </YStack>
+      <style jsx>{`
+        .composer-round {
+          width: 44px;
+          height: 44px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: background-color 0.15s ease, opacity 0.15s ease;
+        }
+        .composer-round:disabled {
+          cursor: default;
+        }
+        .composer-attach {
+          background: ${brand.calce};
+          border: 1px solid ${brand.filetto};
+        }
+        .composer-attach:not(:disabled):hover {
+          background: ${brand.gesso};
+        }
+        .composer-attach:disabled {
+          opacity: 0.5;
+        }
+        .composer-pill {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+          min-height: 44px;
+          box-sizing: border-box;
+          padding: 4px 4px 4px 18px;
+          border: 1px solid ${brand.filetto};
+          border-radius: 24px;
+          background: ${brand.calce};
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .composer-pill:focus-within {
+          border-color: ${brand.cianografia};
+          box-shadow: 0 0 0 3px ${brand.cianografiaVelo};
+        }
+        .composer-pill textarea {
+          flex: 1;
+          min-width: 0;
+          border: none;
+          outline: none;
+          background: transparent;
+          resize: none;
+          padding: 8px 0;
+          margin: 0;
+          font-size: 15px;
+          line-height: 20px;
+          font-family: inherit;
+          color: ${brand.grafite};
+          max-height: 140px;
+          overflow-y: auto;
+        }
+        .composer-pill textarea::placeholder {
+          color: ${brand.grafite70};
+        }
+        .composer-send {
+          width: 36px;
+          height: 36px;
+          border: none;
+          background: ${brand.cianografia};
+        }
+        .composer-send:not(:disabled):hover {
+          background: ${brand.cianografiaScuro};
+        }
+        .composer-send:disabled {
+          opacity: 0.4;
+        }
+      `}</style>
 
       {openPhoto ? <PhotoLightbox photos={openPhoto.photos} initialIndex={openPhoto.index} onClose={() => setOpenPhoto(null)} /> : null}
       {clientCard ? (

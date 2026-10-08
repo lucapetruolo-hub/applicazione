@@ -16979,3 +16979,31 @@ questione resta tra voi".
   `PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX`).
 - **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
   API verdi), typecheck di `apps/api` e `apps/web`.
+
+## 198. Pagina Messaggi a tutta altezza e campo di scrittura a pillola
+
+- **Richiesta dell'utente** (con due screenshot: la pagina attuale col titolo
+  "Chat" cerchiato e la chat di un altro sito col campo di scrittura
+  cerchiato): "prendi più schermo, prendendo quella parte dove c'è scritto
+  chat in alto, e poi migliora la sezione scrivi un messaggio, facendo il
+  riquadro tondeggiante e non rettangolare", cambiando il pulsante "Invia
+  aggiornamento" e "quel brutto pulsante della graffetta".
+- **Pagina `/chat`**: tolto il titolo "Chat" (la voce "Messaggi" attiva nel
+  menu dice già dove si è; un eventuale errore di caricamento resta, piccolo,
+  sopra la chat). Il riquadro lista+conversazione occupa tutta l'altezza sotto
+  header e menu: `100dvh - 104px` per il professionista da computer (menu a
+  colonna), `100dvh - 126px` altrove (barra del menu in alto), con `100vh`
+  come ripiego.
+- **Campo di scrittura (`ConversationView`, vale anche nei popup della
+  chat)**: tolta l'etichetta "Scrivi un aggiornamento"; campo a pillola che
+  cresce col testo fino a ~6 righe e poi scorre; pulsante rotondo verde con
+  freccia dentro il campo a destra (spento finché non c'è testo o un
+  allegato, pallini mentre invia); tasto rotondo "+" a sinistra che apre lo
+  stesso menu Fotocamera / Foto o video / File (pallini durante il
+  caricamento, spento a 5 allegati). Anteprime degli allegati ed errori sopra
+  il campo. Invio con Invio, a capo con Maiusc+Invio; su telefono Invio va a
+  capo e si manda con la freccia. Nuova icona `arrow-right` in `packages/ui`.
+  Logica di invio e allegati invariata.
+- **Verifica:** typecheck di `apps/web` e `packages/ui`; anteprime con dati
+  finti su computer (professionista e cliente), tablet e telefono, con testo
+  su più righe e menu allegati aperto.
