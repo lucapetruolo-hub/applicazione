@@ -139,7 +139,7 @@ export function ReviewModal({
           ))}
         </YStack>
 
-        <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
+        <textarea aria-label="Com'è andata?" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
 
         {/* Spiegazione del meccanismo "doppio cieco" nel modulo stesso
             (richiesta esplicita dell'utente, "Verbale Cognitivo" F6.1): un

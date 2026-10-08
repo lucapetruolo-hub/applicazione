@@ -216,28 +216,28 @@ export function ExternalJobModal({
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Nome cliente *
             </Text>
-            <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Es. Mario Rossi" style={inputStyle} />
+            <input aria-label="Nome cliente" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Es. Mario Rossi" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Telefono
             </Text>
-            <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Es. 333 1234567" style={inputStyle} />
+            <input aria-label="Telefono" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Es. 333 1234567" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Indirizzo
             </Text>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dove si svolge l'intervento" style={inputStyle} />
+            <input aria-label="Indirizzo" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dove si svolge l'intervento" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Descrizione del lavoro
             </Text>
-            <textarea
+            <textarea aria-label="Descrizione del lavoro"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Cosa c'è da fare"
@@ -251,19 +251,19 @@ export function ExternalJobModal({
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Data *
               </Text>
-              <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} style={inputStyle} />
+              <input aria-label="Data" type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} style={inputStyle} />
             </YStack>
             <YStack gap="$1" flex={1} minWidth={100}>
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora inizio *
               </Text>
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
+              <input aria-label="Ora di inizio" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
             </YStack>
             <YStack gap="$1" flex={1} minWidth={100}>
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora fine
               </Text>
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
+              <input aria-label="Ora di fine" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
             </YStack>
           </XStack>
 
@@ -271,14 +271,14 @@ export function ExternalJobModal({
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Prezzo concordato (€)
             </Text>
-            <input value={priceEuro} onChange={(e) => setPriceEuro(e.target.value)} placeholder="Facoltativo" style={inputStyle} />
+            <input aria-label="Prezzo concordato in euro" value={priceEuro} onChange={(e) => setPriceEuro(e.target.value)} placeholder="Facoltativo" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
             <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
               Note private
             </Text>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical" }} />
+            <textarea aria-label="Note private" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical" }} />
           </YStack>
         </YStack>
 

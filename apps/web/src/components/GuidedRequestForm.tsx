@@ -714,7 +714,7 @@ export function GuidedRequestForm({
                 sopra una soglia di larghezza dove la griglia intera è già
                 comoda, mostrato solo sotto come scorciatoia mobile. */}
             <div className="guided-category-select">
-              <select
+              <select aria-label="Categoria"
                 value={categorySlug}
                 onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
                 style={{
@@ -850,7 +850,7 @@ export function GuidedRequestForm({
                 : "Scegli un orario tra quelli liberi nell'agenda del professionista, oppure lascia senza preferenza."}{" "}
               La richiesta non prenota subito l&apos;orario: il professionista ti risponderà con un preventivo.
             </Text>
-            <select
+            <select aria-label="Data e orario dell'intervento"
               value={selectedSlotValue}
               onChange={(e) => setSelectedSlotValue(e.target.value)}
               style={{
@@ -875,7 +875,7 @@ export function GuidedRequestForm({
 
         <YStack gap="$2">
           <FieldLabel>Descrivi il lavoro</FieldLabel>
-          <textarea
+          <textarea aria-label="Descrivi il lavoro"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={resolvedDescriptionPlaceholder}
@@ -1023,10 +1023,10 @@ export function GuidedRequestForm({
 
             <XStack gap="$2" flexWrap="wrap">
               <YStack flex={1} minWidth={160}>
-                <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
+                <input aria-label="Nome" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
               </YStack>
               <YStack flex={1} minWidth={160}>
-                <input
+                <input aria-label="Cognome"
                   value={recipientSurname}
                   onChange={(e) => setRecipientSurname(e.target.value)}
                   placeholder="Cognome"
@@ -1035,7 +1035,7 @@ export function GuidedRequestForm({
               </YStack>
             </XStack>
 
-            <input
+            <input aria-label="Numero di telefono"
               value={recipientPhone}
               onChange={(e) => setRecipientPhone(e.target.value)}
               placeholder="Numero di telefono"
@@ -1066,11 +1066,11 @@ export function GuidedRequestForm({
                 />
               </YStack>
               <YStack flex={1} minWidth={120}>
-                <input value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
+                <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
               </YStack>
             </XStack>
 
-            <input
+            <input aria-label="Scala, piano, interno"
               value={addressExtra}
               onChange={(e) => setAddressExtra(e.target.value)}
               placeholder="Scala, piano, interno (facoltativo)"
@@ -1079,10 +1079,10 @@ export function GuidedRequestForm({
 
             <XStack gap="$2" flexWrap="wrap">
               <YStack flex={1} minWidth={100}>
-                <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
+                <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
               </YStack>
               <YStack flex={1} minWidth={140}>
-                <input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
+                <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
               </YStack>
             </XStack>
           </YStack>

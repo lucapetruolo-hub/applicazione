@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
-import { checkFiscalId, professionalFiscalProfileSchema } from "@professionisti/shared";
+import { BRAND, checkFiscalId, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -312,7 +312,7 @@ function DashboardFiscaleContent() {
       <YStack gap="$5">
         <Text fontSize={14} color={brand.grafite70}>
           Questi dati non sono mai visibili pubblicamente — servono solo per la rendicontazione fiscale (DAC7) e, se scegli di attivarli, per i
-          pagamenti tramite Manovia. Non è mai obbligatorio compilarli per usare la piattaforma: puoi continuare a farti pagare direttamente dai
+          pagamenti tramite {BRAND.name}. Non è mai obbligatorio compilarli per usare la piattaforma: puoi continuare a farti pagare direttamente dai
           tuoi clienti.
         </Text>
 
@@ -471,7 +471,7 @@ function DashboardFiscaleContent() {
                 accessibilityLabel="Codice LEI"
                 value={fields.leiCode ?? ""}
                 onChangeText={(v) => setField("leiCode", v)}
-                hint="Solo se l'entità ne possiede già uno — non obbligatorio per operare su Manovia."
+                hint={`Solo se l'entità ne possiede già uno — non obbligatorio per operare su ${BRAND.name}.`}
               />
               <Field
                 label="Stati membri UE aggiuntivi con stabile organizzazione (opzionale)"
@@ -584,12 +584,12 @@ function DashboardFiscaleContent() {
         <Surface padding="$4">
           <YStack gap="$3">
             <Text fontSize={15} fontWeight="700">
-              Pagamenti tramite Manovia
+              Pagamenti tramite {BRAND.name}
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
               I clienti che scelgono il pagamento online versano un acconto del 20% e il saldo a lavoro finito. Teniamo noi i soldi e te li
               accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
-              la commissione Manovia del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
+              la commissione {BRAND.name} del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
               I clienti che scelgono il pagamento diretto ti pagano come vi accordate.
             </Text>
             {profile?.stripeChargesEnabled ? (
@@ -597,7 +597,7 @@ function DashboardFiscaleContent() {
             ) : (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">
                 <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>
-                  {stripeLoading ? "Attendere..." : "Attiva pagamenti tramite Manovia"}
+                  {stripeLoading ? "Attendere..." : `Attiva pagamenti tramite ${BRAND.name}`}
                 </Button>
                 {stripeError && (
                   <Text fontSize={13} color={brand.urgenza}>

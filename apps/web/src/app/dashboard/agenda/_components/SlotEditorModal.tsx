@@ -220,11 +220,11 @@ export function SlotEditorModal({
             Orario
           </Text>
           <XStack gap="$2" alignItems="center" flexWrap="wrap">
-            <input type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={modalTimeInputStyle} />
+            <input aria-label="Ora di inizio" type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={modalTimeInputStyle} />
             <Text fontSize="$3" color={brand.grafite70}>
               –
             </Text>
-            <input type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={modalTimeInputStyle} />
+            <input aria-label="Ora di fine" type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={modalTimeInputStyle} />
           </XStack>
         </YStack>
 
@@ -266,7 +266,7 @@ export function SlotEditorModal({
                 A domicilio
               </Text>
               {allowsHome ? (
-                <input
+                <input aria-label="Posti a domicilio"
                   type="number"
                   min={1}
                   max={20}
@@ -306,7 +306,7 @@ export function SlotEditorModal({
                 Online
               </Text>
               {allowsOnline ? (
-                <input
+                <input aria-label="Posti online"
                   type="number"
                   min={1}
                   max={20}

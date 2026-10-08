@@ -20,10 +20,10 @@ export function generateMetadata({ searchParams }: { searchParams: PageSearchPar
   if (searchParams.citta) {
     return {
       title: `Professionisti a ${searchParams.citta}`,
-      description: `Trova professionisti verificati a ${searchParams.citta}.`,
+      description: `Trova professionisti a ${searchParams.citta}.`,
     };
   }
-  return { title: "Tutti i professionisti", description: "Trova professionisti verificati vicino a te." };
+  return { title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
 }
 
 export default async function CercaPage({ searchParams }: { searchParams: PageSearchParams }) {

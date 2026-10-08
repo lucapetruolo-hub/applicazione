@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
 import {
+  BRAND,
   PROFESSIONAL_CATEGORIES,
   POPULAR_SERVICES,
   ALL_ITALIAN_CITY_NAMES,
@@ -114,6 +115,12 @@ export default function DashboardProfiloPage() {
   const { user, token, isLoading } = useAuth();
 
   const [businessName, setBusinessName] = useState("");
+  // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §200).
+  const [verified, setVerified] = useState(false);
+  // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
+  const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
+  const [requestingVerification, setRequestingVerification] = useState(false);
+  const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
@@ -199,6 +206,8 @@ export default function DashboardProfiloPage() {
         if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
         if (profile) {
           setBusinessName(profile.businessName);
+          setVerified(profile.verified);
+          setVerificationRequestedAt(profile.verificationRequestedAt);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
           setCity(profile.city);
           setAddress(profile.address ?? "");
@@ -507,6 +516,20 @@ export default function DashboardProfiloPage() {
     })
     .slice(0, 10);
 
+  async function requestVerification() {
+    if (!token) return;
+    setRequestingVerification(true);
+    setVerificationRequestError(null);
+    try {
+      const result = await apiClient.requestProfessionalVerification(token);
+      setVerificationRequestedAt(result.verificationRequestedAt);
+    } catch (err) {
+      setVerificationRequestError(err instanceof Error ? err.message : "Non siamo riusciti a inviare la richiesta. Riprova.");
+    } finally {
+      setRequestingVerification(false);
+    }
+  }
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
       <YStack width="100%" maxWidth={760} gap="$5">
@@ -515,10 +538,36 @@ export default function DashboardProfiloPage() {
             Profilo e visibilità
           </Text>
           <Text color={brand.grafite70}>
-            Queste informazioni sono visibili pubblicamente su Professionisti e determinano in quali ricerche
+            Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche
             compari.
           </Text>
         </YStack>
+
+        {isFirstProfileSave ? null : (
+          <Surface gap="$2">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="badge-check" size={18} color={verified ? brand.verificato : brand.grafite70} strokeWidth={2} />
+              <Text fontWeight="700" color={brand.grafite}>
+                {verified ? "Il tuo profilo è verificato" : "Badge Verificato"}
+              </Text>
+            </XStack>
+            <Text color={brand.grafite70}>
+              {verified
+                ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
+                : verificationRequestedAt
+                  ? `Richiesta inviata il ${new Date(verificationRequestedAt).toLocaleDateString("it-IT")}: ti ricontattiamo per controllare un tuo documento d'identità e la partita IVA (o il codice fiscale).`
+                  : "Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Chiedilo qui sotto: ti ricontattiamo per il controllo."}
+            </Text>
+            {verified || verificationRequestedAt ? null : (
+              <XStack>
+                <Button size="$3" disabled={requestingVerification} onPress={() => void requestVerification()}>
+                  {requestingVerification ? "Invio…" : "Richiedi la verifica"}
+                </Button>
+              </XStack>
+            )}
+            {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
+          </Surface>
+        )}
 
         {needsConfirmation ? (
           <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
@@ -600,7 +649,7 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="$2">
             <FieldLabel>Nome attività</FieldLabel>
-            <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
+            <input aria-label="Nome attività" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Es. Rossi Impianti" style={inputStyle} />
           </YStack>
 
           <YStack gap="$1">
@@ -729,7 +778,7 @@ export default function DashboardProfiloPage() {
                 </Text>
               ) : null}
             </YStack>
-            <textarea
+            <textarea aria-label="Presentazione"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Presenta la tua attività in poche righe."
@@ -760,7 +809,7 @@ export default function DashboardProfiloPage() {
             <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
               Anni di esperienza
             </Text>
-            <input
+            <input aria-label="Anni di esperienza"
               type="number"
               min={0}
               max={80}
@@ -775,7 +824,7 @@ export default function DashboardProfiloPage() {
             <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
               Certificazioni e qualifiche
             </Text>
-            <textarea
+            <textarea aria-label="Certificazioni e qualifiche"
               value={certifications}
               onChange={(e) => setCertifications(e.target.value)}
               placeholder="Es. Patentino gas F-gas, certificazione impianti elettrici CEI 64-8."
@@ -894,7 +943,7 @@ export default function DashboardProfiloPage() {
           <YStack gap="$2">
             {services.map((service, index) => (
               <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
-                <input
+                <input aria-label="Nome della prestazione"
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"
@@ -906,7 +955,7 @@ export default function DashboardProfiloPage() {
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
                 <XStack gap="$2" alignItems="center" flexWrap="nowrap">
-                  <input
+                  <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
                     onChange={(e) => updateService(index, "priceMin", e.target.value)}
                     placeholder="Da €"
@@ -916,7 +965,7 @@ export default function DashboardProfiloPage() {
                   <Text fontSize="$2" color={brand.grafite70}>
                     a
                   </Text>
-                  <input
+                  <input aria-label="Prezzo massimo in euro"
                     value={service.priceMax}
                     onChange={(e) => updateService(index, "priceMax", e.target.value)}
                     placeholder="A €"
@@ -988,7 +1037,7 @@ export default function DashboardProfiloPage() {
           </XStack>
           <YStack position="relative" gap="$2">
             <XStack gap="$2" alignItems="center">
-              <input
+              <input aria-label="Aggiungi una lingua"
                 value={newLanguage}
                 onChange={(e) => setNewLanguage(e.target.value)}
                 onFocus={() => setIsLanguageFieldFocused(true)}

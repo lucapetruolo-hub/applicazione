@@ -736,6 +736,31 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Accedi", url: `${frontendUrl()}/accedi` },
     };
   },
+  PROFILE_VERIFIED: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Il tuo profilo è verificato",
+    greeting: ctx.name,
+    title: "Profilo verificato",
+    paragraphs: [
+      "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
+    ],
+    cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },
+  }),
+  PROFILE_VERIFICATION_REMOVED: (payload, ctx) => {
+    const note = str(payload.note);
+    return {
+      kind: "account",
+      subject: "Badge Verificato tolto dal tuo profilo",
+      greeting: ctx.name,
+      title: "Badge Verificato tolto",
+      paragraphs: [
+        "Il tuo profilo non mostra più il badge Verificato.",
+        ...(note ? [`**Motivazione:** ${note}`] : []),
+        "Se pensi che sia un errore, scrivici dal modulo Contatti.",
+      ],
+      cta: { label: "Scrivici dal modulo Contatti", url: `${frontendUrl()}/contatti` },
+    };
+  },
   CONTENT_REPORT_REVERTED: (payload, ctx) => {
     const targetType = payload.targetType as ContentReportTargetType | undefined;
     const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";

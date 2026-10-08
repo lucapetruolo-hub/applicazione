@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  BRAND,
   JOB_PAYMENT_STAGE_LABEL,
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,
@@ -116,7 +117,7 @@ export function JobPaymentStatus({
   } else {
     const payout =
       payment.payoutEurCents !== undefined
-        ? ` Riceverai ${eur(payment.payoutEurCents)} (commissione Manovia ${ONLINE_APP_FEE_PERCENT}%: ${eur(payment.appFeeEurCents ?? 0)}, costo Stripe: ${eur(payment.stripeFeeEurCents ?? 0)}).`
+        ? ` Riceverai ${eur(payment.payoutEurCents)} (commissione ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}%: ${eur(payment.appFeeEurCents ?? 0)}, costo Stripe: ${eur(payment.stripeFeeEurCents ?? 0)}).`
         : "";
     note =
       stage === "AWAITING_DEPOSIT"

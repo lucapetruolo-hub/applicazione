@@ -1467,7 +1467,7 @@ function DashboardAgendaContent() {
                 borderColor={brand.filetto}
               >
                 <Icon name="search" size={15} color={brand.grafite70} />
-                <input
+                <input aria-label="Cerca nell'agenda"
                   type="text"
                   value={agendaSearchQuery}
                   onChange={(e) => setAgendaSearchQuery(e.target.value)}

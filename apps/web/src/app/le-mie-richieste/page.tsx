@@ -398,7 +398,7 @@ function LeMieRichiesteContent() {
               })}
             </CategoryCarousel>
 
-            <input
+            <input aria-label="Cerca nelle richieste"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -503,7 +503,7 @@ function LeMieRichiesteContent() {
                   </XStack>
 
                   <YStack gap="$3">
-                    <select
+                    <select aria-label="Ordina per"
                       value={sortMode}
                       onChange={(e) => {
                         setSortMode(e.target.value as SortMode);
@@ -515,7 +515,7 @@ function LeMieRichiesteContent() {
                       <option value="vecchie">Data di invio più vecchia</option>
                       <option value="aggiornamento">Ultimo aggiornamento</option>
                     </select>
-                    <select
+                    <select aria-label="Zona"
                       value={zoneFilter}
                       onChange={(e) => {
                         setZoneFilter(e.target.value);

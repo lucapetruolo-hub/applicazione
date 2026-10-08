@@ -91,7 +91,7 @@ export function AdminCommandPalette({
   return (
     <div className="admin-palette-backdrop" onMouseDown={onClose}>
       <div className="admin-palette" role="dialog" aria-modal="true" aria-label="Cerca nel pannello" onMouseDown={(e) => e.stopPropagation()}>
-        <input
+        <input aria-label="Cerca nel pannello"
           ref={inputRef}
           autoFocus
           className="admin-palette-input"

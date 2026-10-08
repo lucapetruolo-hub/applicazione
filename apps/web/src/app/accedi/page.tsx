@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { emailPasswordSchema } from "@professionisti/shared";
+import { BRAND, emailPasswordSchema } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
@@ -202,7 +202,7 @@ function AccediForm() {
           {helpOpen ? (
             <Text color={brand.grafite70} fontSize="$3">
               Se non riesci ad accedere, verifica di aver inserito correttamente email e password. Per problemi
-              persistenti scrivi a supporto@professionisti.it.
+              persistenti scrivi a {BRAND.supportEmail}.
             </Text>
           ) : null}
         </YStack>

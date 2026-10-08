@@ -416,7 +416,7 @@ export function ResultsListWithMap({
                 </button>
                 {expandedSection === "language" ? (
                   <div className="filters-section-content">
-                    <input
+                    <input aria-label="Cerca una lingua"
                       type="text"
                       className="filters-text-input"
                       value={languageQuery}
@@ -547,7 +547,7 @@ export function ResultsListWithMap({
             <XStack alignItems="center" gap="$2">
               <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
-                Profili verificati
+                Badge Verificato: documento e P.IVA controllati
               </Text>
             </XStack>
             <XStack alignItems="center" gap="$2">

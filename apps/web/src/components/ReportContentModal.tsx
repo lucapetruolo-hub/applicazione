@@ -143,7 +143,7 @@ export function ReportContentModal({
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
-              <select value={reasonValue} onChange={(e) => setReasonValue(e.target.value)} style={selectStyle}>
+              <select aria-label="Motivo" value={reasonValue} onChange={(e) => setReasonValue(e.target.value)} style={selectStyle}>
                 {REASON_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -156,7 +156,7 @@ export function ReportContentModal({
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                 Dettagli (facoltativi)
               </Text>
-              <textarea
+              <textarea aria-label="Dettagli"
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder="Aggiungi altri dettagli utili, se vuoi."

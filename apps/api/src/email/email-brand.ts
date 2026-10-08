@@ -1,15 +1,18 @@
+import { BRAND } from "@professionisti/shared";
+
 /**
- * Nome, logo e colori di tutte le email (docs/CHANGELOG.md §185). Il marchio
- * "Professionisti" è provvisorio e cambierà prima del lancio: è l'unico punto
- * da toccare per le email (più `RESEND_FROM_EMAIL` su Render per il mittente).
+ * Nome, logo e colori di tutte le email (docs/CHANGELOG.md §185). Nome ed
+ * email di assistenza arrivano da `BRAND` (`packages/shared/src/brand.ts`,
+ * unico punto da toccare per cambiare marchio; per il mittente anche
+ * `RESEND_FROM_EMAIL` su Render).
  * I colori sono gli stessi della palette "Vicinato" (`packages/ui/src/tokens.ts`),
  * scritti qui a mano perché l'API non dipende dal pacchetto UI.
  */
 export const EMAIL_BRAND = {
-  name: "Professionisti",
+  name: BRAND.name,
   /** Firma in fondo a ogni email. */
-  signature: "Il team di Professionisti",
-  supportEmail: "supporto@professionisti.it",
+  signature: `Il team di ${BRAND.name}`,
+  supportEmail: BRAND.supportEmail,
   colors: {
     background: "#FDEFE1",
     card: "#FFFFFF",

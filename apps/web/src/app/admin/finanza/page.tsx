@@ -7,6 +7,7 @@ import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
+import { BRAND } from "@professionisti/shared";
 
 function euro(cents: number): string {
   return `${(cents / 100).toFixed(2)} €`;
@@ -178,7 +179,7 @@ export default function AdminFinanzaPage() {
           ) : (
             <YStack gap="$4">
               <YStack gap="$2">
-                <Text fontWeight="700">Ricavo Manovia per fonte</Text>
+                <Text fontWeight="700">Ricavo {BRAND.name} per fonte</Text>
                 {finance.revenueBySource.length === 0 ? (
                   <Text color={brand.grafite70}>Nessun ricavo registrato finora.</Text>
                 ) : (
@@ -195,7 +196,7 @@ export default function AdminFinanzaPage() {
                 {finance.jobPaymentsByMethod.map((m) => (
                   <XStack key={m.method} justifyContent="space-between" maxWidth={400}>
                     <Text>
-                      {m.method === "MANOVIA" ? "Tramite Manovia" : "Diretti"} ({m.count})
+                      {m.method === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretti"} ({m.count})
                     </Text>
                     <Text fontFamily="$mono">{euro(m.totalGrossEurCents)}</Text>
                   </XStack>
@@ -271,7 +272,7 @@ export default function AdminFinanzaPage() {
             </Text>
           )}
           <YStack gap="$3" maxWidth={460}>
-            <Field label="P.IVA / identificativo fiscale di Manovia (es. IT01234567890)" value={settingsFields.sendingEntityIn} onChangeText={(v) => setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))} />
+            <Field label={`P.IVA / identificativo fiscale di ${BRAND.name} (es. IT01234567890)`} value={settingsFields.sendingEntityIn} onChangeText={(v) => setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))} />
             <Field label="Nome piattaforma" value={settingsFields.platformName} onChangeText={(v) => setSettingsFields((p) => ({ ...p, platformName: v }))} />
             <Field
               label="Numero di registrazione della piattaforma (PlatformID)"

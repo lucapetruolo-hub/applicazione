@@ -17043,10 +17043,127 @@ questione resta tra voi".
   descrizione del lavoro in intestazione arriva dall'elenco chat
   (`myChatThreads`, una chiamata all'apertura) quando chi apre non la passa.
 
-## 200. Lint funzionante e nei controlli automatici
+## 199. Nome del marchio in un solo punto
+
+**Richiesta dell'utente:** tenere nome e logo del marchio provvisorio in un
+unico punto configurabile, così al cambio del nome si tocca un file solo.
+
+- **`BRAND`** (`packages/shared/src/brand.ts`): nome, email di assistenza e
+  frase del titolo. Lo usano header e footer, titolo e descrizioni delle
+  pagine (privacy, termini, cookie, FAQ, contatti, accessibilità), manifest,
+  immagine di anteprima dei link, profilo pubblico, dashboard, admin finanza,
+  app mobile e le email (`EMAIL_BRAND` legge nome ed email da qui).
+- **Testi con "Manovia"** visibili all'utente (commissione, "Tramite
+  Manovia", pagina fiscale, admin finanza, errore Stripe Connect) ora usano
+  `BRAND.name`. Restano "MANOVIA" solo come valore interno di
+  `paymentMethod` nel database e nel codice: non si vede e non va rinominato.
+- **`Logo`** (`packages/ui`) riceve il nome come proprietà `name`: il
+  pacchetto UI non dipende da `shared`.
+- **Fuori da `BRAND`** (elencati nel commento del file): le immagini del
+  logo, `apps/mobile/app.json` e `RESEND_FROM_EMAIL` su Render.
+- **Verifica:** typecheck di tutto il monorepo, build di `apps/web` e
+  `apps/api`, test API verdi.
+
+## 200. Verifica manuale dei professionisti (badge "Verificato" vero)
+
+**Richiesta dell'utente:** il claim "Profili verificati" era pubblicato ma
+nessun profilo veniva mai verificato (checklist lancio punto 15). Costruire
+la verifica invece di riformulare il testo.
+
+- **Pagina admin `/admin/verifiche`** ("Verifica profili", ruolo
+  Moderatore): schede "Da verificare" e "Verificati", ricerca per nome,
+  comune o email, dati fiscali inseriti dal professionista (partita IVA,
+  codice fiscale) e RC dichiarata. "Segna come verificato" chiede due spunte
+  obbligatorie (documento d'identità controllato; partita IVA o codice
+  fiscale controllati) e una nota interna facoltativa. "Togli verifica"
+  chiede il motivo, che arriva al professionista.
+- **Nessun documento caricato o conservato sul sito**: il controllo si fa
+  in videochiamata o per email, nel database resta solo l'esito.
+- **API** `admin/professional-verifications` (`GET`, `POST :id/verify`,
+  `POST :id/unverify`), modulo `apps/api/src/professional-verification/`.
+  Esclusi profili eliminati, demo e non ancora confermati. Ogni cambio va nel
+  registro azioni.
+- **Database:** `ProfessionalProfile.verifiedAt`, `verifiedByUserId`,
+  `verificationNote` (migrazione `20261008140000_professional_verification`,
+  solo colonne nuove facoltative). Il badge segue `verified`, già mostrato
+  in ricerca, mappa, profilo e richieste.
+- **Avvisi al professionista:** `PROFILE_VERIFIED` e
+  `PROFILE_VERIFICATION_REMOVED` (argomento "Account e sicurezza", sito +
+  email).
+- **Testi:** in `/dashboard/profilo` un riquadro spiega come ottenere il
+  badge (scrivere all'email di assistenza) o conferma che il profilo è
+  verificato. "Garanzia Piattaforma" non dice più "In arrivo" e promette
+  solo ciò che si controlla davvero (documento e partita IVA, non l'RC). La
+  descrizione del profilo pubblico dice "Profilo verificato" solo se lo è.
+- **Verifica:** 4 test nuovi in `professional-verification.service.test.ts`
+  (241 test API verdi), typecheck di tutto il monorepo, build di `apps/web`
+  e `apps/api`, migrazione confrontata con `prisma migrate diff`.
+
+## 201. Verifica profili: scritte giuste, badge tolto se cambiano i dati, "Richiedi la verifica"
+
+**Richiesta dell'utente:** procedere con le migliorie proposte dopo §200.
+
+- **Scritte:** "Profili verificati dalla piattaforma" (footer) e "Profili
+  verificati" (sopra i risultati) diventano "Badge Verificato: documento e
+  P.IVA controllati": non fanno più pensare che tutti i profili lo siano.
+- **Badge tolto da solo** (`ProfessionalVerificationService.revokeAfterOwnChange`)
+  quando il professionista cambia partita IVA o codice fiscale
+  (`ProfessionalFiscalService.upsertMine`) o il nome dell'attività
+  (`ProfessionalsService.upsertMyProfile`): la verifica valeva per i dati
+  vecchi. Registro azioni e avviso `PROFILE_VERIFICATION_REMOVED` con il
+  motivo; il profilo torna in "Da verificare".
+- **"Richiedi la verifica"** in `/dashboard/profilo` al posto dell'email:
+  `POST /professionals/me/verification-request` salva
+  `ProfessionalProfile.verificationRequestedAt` (migrazione
+  `20261008150000_verification_request`), azzerato quando un admin verifica.
+  In `/admin/verifiche` chi l'ha chiesta sta in cima con la data; il menu
+  admin mostra quante richieste aspettano (`AdminOverview.verificationRequests`).
+- **Verifica:** 4 test nuovi (245 test API verdi), typecheck di tutto il
+  monorepo, build di `apps/web` e `apps/api`, dipendenze Nest risolte
+  all'avvio, migrazione confrontata con `prisma migrate diff`.
+
+## 202. Niente più "professionisti verificati" generico; logo da telefono leggibile dagli screen reader
+
+**Richiesta dell'utente:** procedere con le migliorie proposte dopo §201.
+
+- **"Verificati" tolto** dove valeva per tutti i professionisti: frase della
+  home (`HomeHero.tsx`), testo del footer, descrizione del sito
+  (`layout.tsx`, `manifest.ts`), descrizioni delle pagine `/cerca` e
+  `/cerca/[categoria]`. "Verificato" resta solo sul badge di chi è stato
+  controllato davvero (§200).
+- **Logo da telefono** (`Logo.web.tsx`, variante "mark"): il quadrato ha
+  `role="img"` e il nome del marchio; accanto al nome scritto è
+  `aria-hidden`, per non essere letto due volte (revisione accessibilità
+  del 6/10/2026).
+- **Verifica:** typecheck di tutto il monorepo, build di `apps/web`.
+
+## 203. Etichette dei campi dei moduli per gli screen reader
+
+**Richiesta dell'utente:** procedere con la miglioria n.2 proposta dopo §202
+(revisione accessibilità del 6/10/2026).
+
+- **Problema:** circa 120 campi (`input`, `select`, `textarea`) avevano solo
+  un testo segnaposto o un testo vicino non collegato: uno screen reader li
+  annunciava come "campo di testo" senza dire cosa chiedono. Sulle pagine
+  pubbliche il controllo automatico (axe) trovava tre menu senza nome in
+  `/contatti`, `/preventivo` e `/urgente`.
+- **Correzione:** `aria-label` con il nome del campo su ognuno: area
+  account, pannello admin, contatti, agenda e profilo del professionista,
+  richieste e preventivi, segnalazioni e finestre (annulla, completa,
+  recensione, segnalazione, ritaglio foto). `AddressAutocompleteInput` usa
+  il suo segnaposto come nome. Nessun cambiamento visibile.
+- **Restano senza `aria-label` di proposito:** i campi già dentro un
+  `<label>` o collegati con `id` (es. `AuthField`) e i campi nascosti.
+- **Verifica:** typecheck e build di `apps/web`; axe (regole su nomi di
+  campi, pulsanti e link) a 390 e 1366 px su `/`, `/cerca`,
+  `/cerca/idraulico`, `/preventivo`, `/urgente`, `/contatti`,
+  `/per-professionisti`, `/registrati`, `/accedi`, `/faq`,
+  `/password-dimenticata`: nessun errore.
+
+## 205. Lint funzionante e nei controlli automatici
 
 **Richiesta dell'utente:** sistemare il comando lint, che non funzionava
-(miglioria proposta durante il lavoro sull'anti-bot, §199, approvata).
+(miglioria proposta durante il lavoro sull'anti-bot, §204, approvata).
 
 - **Prima:** `pnpm lint` falliva sempre. ESLint non era installato nel
   monorepo, `apps/api` cercava una config che non esisteva e `next lint` in

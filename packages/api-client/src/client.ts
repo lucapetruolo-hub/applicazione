@@ -66,6 +66,9 @@ import type {
   AcceptProfileInviteInput,
   OperatorProfileInviteInput,
   PendingProfileInvite,
+  ProfessionalVerificationFilter,
+  ProfessionalVerificationRow,
+  VerifyProfessionalInput,
   ProfileInviteLink,
   ProfileInvitePreview,
 } from "@professionisti/shared";
@@ -344,6 +347,8 @@ export type AdminOverview = {
   paymentsEnabled: boolean;
   /** Saldi dei pagamenti online non pagati entro 7 giorni (§168). */
   unpaidBalances: number;
+  /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
+  verificationRequests: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1495,6 +1500,28 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §201). */
+    requestProfessionalVerification: (token: string) =>
+      request<{ verificationRequestedAt: string }>("/professionals/me/verification-request", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    /** Verifica manuale dei professionisti (docs/CHANGELOG.md §200). */
+    adminListProfessionalVerifications: (token: string, filter: ProfessionalVerificationFilter, q = "") =>
+      request<ProfessionalVerificationRow[]>(
+        `/admin/professional-verifications?stato=${filter === "verified" ? "verificati" : "da-verificare"}&q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+      ),
+    adminVerifyProfessional: (token: string, professionalProfileId: string, input: VerifyProfessionalInput) =>
+      request<{ professionalProfileId: string; verified: boolean }>(
+        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
+      ),
+    adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>
+      request<{ professionalProfileId: string; verified: boolean }>(
+        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/unverify`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) },
+      ),
     getProfileInvite: (code: string) => request<ProfileInvitePreview>(`/auth/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),
     acceptProfileInvite: (input: AcceptProfileInviteInput) =>
       request<AuthResult>("/auth/invite/accept", { method: "POST", body: JSON.stringify(input) }),

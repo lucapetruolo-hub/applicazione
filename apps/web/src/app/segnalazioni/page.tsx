@@ -194,7 +194,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
       {!decision.appealedAt && !decision.revertedAt ? (
         appealing ? (
           <YStack gap="$2">
-            <textarea
+            <textarea aria-label="Motivo della contestazione"
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={4}
