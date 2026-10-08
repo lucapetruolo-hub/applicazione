@@ -16930,3 +16930,52 @@ di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
   stessa, e le note di cliente e professionista c'erano già; ora anche
   l'aggiornamento di voci/note del professionista riporta nella chat il
   testo della nota e il cambio di totale.
+
+## 197. Intervento annullato dal professionista: il cliente non lo riapre; testi delle segnalazioni senza "accordo o no"; segnalazione del professionista
+
+**Richiesta dell'utente:** quando il professionista annulla un intervento il
+cliente non deve poterlo riaprire; quando il cliente segnala che qualcosa è
+andato male, nei messaggi non devono comparire "accordo o no" né "la
+questione resta tra voi".
+
+- **Riapertura:** il cliente riapre solo una prenotazione annullata da lui
+  (`canceledBy === "CLIENT"`). Il pulsante "Riapri prenotazione" sparisce
+  dalla scheda e dal menu delle sue richieste negli altri casi, e
+  `BookingsService.reopenBooking` rifiuta la richiesta anche lato server
+  (anche per le righe vecchie senza autore). Al suo posto il cliente legge
+  che l'intervento non si può riaprire e che con "Ripeti la richiesta" (che
+  apre un modulo nuovo, non rimette in vita la vecchia) può inviarla ad altri
+  professionisti. **Regola simmetrica**, decisa dall'utente: anche il
+  professionista riapre solo ciò che ha annullato lui (`canceledBy ===
+  "PROFESSIONAL"`), sul server e nella scheda di `/dashboard/richieste`.
+- **Altri testi ammorbiditi** (approvati dall'utente): "vi accordate tra voi"
+  e "si risolvono direttamente tra voi" tolti da `WhatIfSection`,
+  `JobPaymentStatus` e `/per-professionisti/pagamenti`.
+- **Testi della segnalazione con pagamento diretto**, riscritti senza le due
+  frasi: popup di conferma al cliente, stato della segnalazione (cliente e
+  professionista), messaggio automatico in chat, cronologia ed email al
+  professionista.
+- **Il professionista segnala un problema sull'intervento** (richiesta
+  successiva dell'utente: "anche il professionista deve avere la possibilità
+  di segnalare qualcosa dell'intervento"). Voce "Qualcosa è andato male" nel
+  menu della scheda in `/dashboard/richieste`, su ogni lavoro accettato.
+  Motivi (`PROFESSIONAL_JOB_PROBLEM_REASONS`): cliente non presente, non ha
+  pagato, lavoro diverso dal descritto, comportamento scorretto, altro;
+  descrizione obbligatoria. `POST /bookings/:id/professional-problem` crea una
+  segnalazione `GUIDED_REQUEST` (stesso pannello admin e stesse misure di
+  "Segnala richiesta", nessuna migrazione), scrive il messaggio nella chat col
+  cliente e lo avvisa (`TIMELINE_MESSAGE_FROM_PROFESSIONAL`). Non tocca
+  pagamenti né lo stato della prenotazione. Al massimo una ogni 24 ore per
+  lavoro. Finestra dedicata `ProfessionalProblemModal` con **foto o video
+  facoltativi** (fino a 5, stesso caricamento delle foto del lavoro
+  terminato): compaiono nel messaggio in chat (`TimelineService.log` accetta
+  ora `mediaUrls`) e nel pannello `/admin/segnalazioni` come anteprime che
+  si aprono in grande (`PhotoLightbox`), salvate nella nuova colonna
+  `ContentReport.photoUrls` (migrazione `20261008110000_content_report_photos`,
+  approvata dall'utente). Sulla scheda il professionista vede **l'ultima segnalazione inviata
+  e a che punto è** (in verifica, accolta, chiusa senza misure):
+  `ProfessionalBooking.professionalProblemReport`, letto in una sola query
+  per tutte le prenotazioni (motivi riconosciuti dal prefisso
+  `PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX`).
+- **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
+  API verdi), typecheck di `apps/api` e `apps/web`.

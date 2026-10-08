@@ -156,12 +156,18 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </a>
       ) : null}
 
-      {booking.status === "CANCELED" ? (
+      {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
+      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <CardButton onPress={handleReopenBooking} disabled={isReopening}>
             {isReopening ? "Riapertura..." : "Riapri prenotazione"}
           </CardButton>
         </XStack>
+      ) : booking.status === "CANCELED" ? (
+        <Text fontSize="$3" color={brand.grafite70}>
+          Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
+          ad altri professionisti della zona.
+        </Text>
       ) : null}
       {reopenError ? (
         <Text color={brand.urgenza} fontSize="$3">

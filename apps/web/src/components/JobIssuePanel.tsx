@@ -58,7 +58,7 @@ export function JobIssuePanel({
         <YStack gap="$2">
           <Text fontSize="$2" color={brand.grafite70}>
             {!issue.assisted
-              ? "Il cliente ha pagato direttamente: il problema si risolve tra voi, qui in chat, senza il nostro team. Accordo o no, il cliente potrà lasciare la recensione."
+              ? "Il cliente ha pagato direttamente: rispondigli qui in chat per trovare insieme una soluzione. Il cliente potrà comunque lasciare la recensione."
               : issue.proRepliedInChat
               ? "Hai risposto al cliente in chat. Se non vi accordate, il cliente può chiedere al nostro team di decidere: in quel caso avrai 72 ore per inviare la tua versione."
               : `Rispondi al cliente in chat entro ${formatIssueDeadline(issue.chatReplyDueAt)} e proponi una soluzione. Se non rispondi, la segnalazione passa da sola al nostro team.`}
@@ -71,7 +71,7 @@ export function JobIssuePanel({
         </YStack>
       ) : issue.status === "UNRESOLVED" ? (
         <Text fontSize="$2" color={brand.grafite}>
-          Il cliente ha indicato che non avete trovato un accordo. Con il pagamento diretto la questione resta tra voi.
+          Il cliente ha indicato che non avete trovato un accordo.
         </Text>
       ) : issue.status === "RESOLVED" ? (
         <Text fontSize="$2" color={brand.grafite}>

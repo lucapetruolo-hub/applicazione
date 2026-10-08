@@ -22,7 +22,7 @@ export const WHAT_IF_ITEMS: { question: string; answer: string; answerWithoutOnl
   {
     question: "Cosa succede se il lavoro non è fatto bene?",
     answer: "Hai 14 giorni per segnalarlo, con una foto. Il professionista ha 48 ore per proporti una soluzione; se hai pagato online e non vi accordate decide il nostro team e, se la segnalazione è accolta, ti rimborsiamo.",
-    answerWithoutOnline: "Hai 14 giorni per segnalarlo, con una foto. Il professionista ha 48 ore per proporti una soluzione in chat, e potete accordarvi direttamente tra voi.",
+    answerWithoutOnline: "Hai 14 giorni per segnalarlo, con una foto. Il professionista ha 48 ore per proporti una soluzione in chat.",
   },
   {
     question: "Cosa succede se il preventivo finale è più alto di quello concordato?",

@@ -74,7 +74,7 @@ export function JobPaymentStatus({
         <Text fontSize="$2" color={brand.grafite70}>
           {audience === "client"
             ? `Paghi ${businessName ?? "il professionista"} come vi accordate. Eventuali problemi vanno risolti direttamente con lui: possiamo mettervi in contatto, ma non rimborsiamo e non decidiamo sulle contestazioni.`
-            : "Il cliente ti paga come vi accordate. Eventuali problemi si risolvono direttamente tra voi, senza il nostro team."}
+            : "Il cliente ti paga come vi accordate. Se nasce un problema, ne parlate in chat per trovare una soluzione."}
         </Text>
       </>,
     );

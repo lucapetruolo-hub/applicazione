@@ -640,6 +640,7 @@ export class AdminService {
       linkedProfessionalProfileId: targetInfo[index]?.linkedProfessionalProfileId ?? null,
       reason: report.reason,
       details: report.details,
+      photoUrls: report.photoUrls,
       status: report.status,
       createdAt: report.createdAt.toISOString(),
       resolvedAt: report.resolvedAt?.toISOString() ?? null,

@@ -1404,6 +1404,9 @@ model ContentReport {
   appealedAt            DateTime?
   appealRejectedAt      DateTime?
   appealRejectNote      String?
+  // Foto/video allegati dal professionista a "Qualcosa è andato male"
+  // (docs/CHANGELOG.md §197), mostrati come anteprime nel pannello admin.
+  photoUrls             String[]                @default([])
 
   reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 

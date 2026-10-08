@@ -22,6 +22,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
+import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
@@ -129,6 +130,7 @@ export function RequestCard({
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showProblemModal, setShowProblemModal] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
   // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
@@ -501,8 +503,14 @@ export function RequestCard({
   if (booking?.status === "COMPLETED" && !booking.hasClientReview) {
     menuActions.push({ icon: "star", text: "Recensisci il cliente", onPress: () => setShowClientReviewModal(true) });
   }
-  if (booking?.status === "CANCELED") {
+  // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
+  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
     menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  }
+  // Il professionista segnala un problema sull'intervento (§197): cliente
+  // assente, mancato pagamento, ecc. Arriva al nostro team e in chat.
+  if (booking && booking.status !== "PENDING") {
+    menuActions.push({ icon: "flag", text: "Qualcosa è andato male", tone: "danger", onPress: () => setShowProblemModal(true) });
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
@@ -905,6 +913,17 @@ export function RequestCard({
             </YStack>
           ) : null}
 
+          {/* Segnalazione del professionista sul lavoro (§197): ultima inviata e a che punto è. */}
+          {booking?.professionalProblemReport ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Hai segnalato un problema ({formatDateTime(booking.professionalProblemReport.createdAt)}): {booking.professionalProblemReport.reason.toLowerCase()}.{" "}
+              {booking.professionalProblemReport.status === "OPEN"
+                ? "Il nostro team la sta verificando."
+                : booking.professionalProblemReport.status === "RESOLVED"
+                  ? "Il nostro team l'ha accolta."
+                  : "Il nostro team l'ha esaminata e chiusa senza misure."}
+            </Text>
+          ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
           {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
@@ -1056,7 +1075,7 @@ export function RequestCard({
                 {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
                   <CardButton onPress={() => setShowClientReviewModal(true)}>Recensisci il cliente</CardButton>
                 ) : null}
-                {booking?.status === "CANCELED" ? (
+                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
                   <CardButton fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
                     {isReopening ? "Riapertura..." : "Riapri intervento"}
                   </CardButton>
@@ -1343,6 +1362,19 @@ export function RequestCard({
           onSubmit={async (reason, details) => {
             await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
           }}
+        />
+      ) : null}
+      {showProblemModal && booking ? (
+        <ProfessionalProblemModal
+          clientName={clientName}
+          onClose={() => {
+            setShowProblemModal(false);
+            onChanged();
+          }}
+          onSubmit={async (input) => {
+            await apiClient.reportProfessionalJobProblem(token, booking.id, input);
+          }}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
       {showClientProfile ? (

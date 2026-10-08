@@ -399,7 +399,7 @@ const BUILDERS: Record<string, Builder> = {
         `Il cliente ha segnalato un problema sul lavoro per **${job(ctx)}**${type ? `: "${JOB_ISSUE_LABEL[type].toLowerCase()}"` : ""}.`,
         assisted
           ? `Rispondigli in chat **entro ${JOB_ISSUE_PRO_REPLY_HOURS} ore** per trovare insieme una soluzione. Se non rispondi, la segnalazione passa al nostro team.`
-          : "Rispondigli in chat per trovare insieme una soluzione: il lavoro era pagato direttamente, quindi la questione resta tra voi due.",
+          : "Rispondigli in chat per trovare insieme una soluzione.",
       ],
       cta: proRequests("Rispondi in chat"),
     };
