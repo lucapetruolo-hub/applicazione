@@ -16804,3 +16804,27 @@ accedere.". Su `/registrati` il titolo del passo per un account esistente
 diventa "Hai già un account" (prima "Inserisci la password").
 
 **Verifica:** typecheck `apps/web`, i due passi aperti in locale.
+
+## 194. Prestazioni a tutta larghezza nella scheda dei risultati
+
+**Richiesta (Luca, 08/10/2026, con screenshot):** nella scheda del
+professionista nei risultati di ricerca, l'elenco delle prestazioni deve
+prendere anche lo spazio vuoto cerchiato sotto la foto.
+
+**Problema:** in `ProfessionalCard` (`packages/ui`) le prestazioni stavano
+dentro la colonna del nome. Con la mini-agenda a destra quella colonna è
+stretta: i nomi andavano a capo ("Riparazione perdita / d'acqua") e restava
+vuoto lo spazio sotto la foto e sotto l'agenda.
+
+**Decisione:** l'elenco prestazioni (con "Mostra tutte") esce dalla riga
+superiore e diventa un blocco a tutta larghezza della card, sotto foto, nome
+e agenda, separato da una linea. Uguale per le card con e senza agenda.
+
+**Verifica:** typecheck `packages/ui`; pagina di prova temporanea in
+`apps/web` fotografata a 1100px e 390px (nomi su una riga, prezzi allineati a
+destra), poi rimossa.
+
+**Aggiunta (stessa giornata):** su richiesta di Luca, una linea molto
+leggera (colore `gesso`) sotto ogni prestazione, lunga fino al prezzo, per
+collegare a colpo d'occhio ogni prestazione al suo prezzo. Niente linea
+sotto l'ultima riga.
