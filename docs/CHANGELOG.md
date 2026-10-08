@@ -16765,14 +16765,19 @@ filtro del raggio).
 ## 192. Conferma password nella registrazione del cliente
 
 **Richiesta dell'utente:** registrandosi, il cliente deve scrivere la
-password due volte, non una sola.
+password due volte. Resta il flusso "prima l'email" di §176 (provata e
+scartata, su richiesta dell'utente, la schermata uguale a quella del
+professionista): il cliente scrive solo l'email o usa Google; con un'email
+nuova sceglie la password due volte, con un'email già registrata gli si dice
+chiaramente che ha già un account e scrive la password una volta.
 
 **Decisione:** in `ClientEmailFirstAuth` (popup della richiesta e
-`/registrati?ruolo=cliente`), al passo "account nuovo" compare il campo
-"Conferma password" sotto "Scegli una password", con lo stesso occhio
-mostra/nascondi; se le due non coincidono il pulsante mostra "Le due password
-non coincidono" e non invia nulla. Stesso comportamento del modulo del
-professionista in `/registrati`, che la conferma l'aveva già. L'accesso con
-account esistente resta con una sola password.
+`/registrati?ruolo=cliente`), al passo "account nuovo" compare "Conferma
+password" con lo stesso occhio mostra/nascondi; se le due non coincidono
+compare "Le due password non coincidono" e non parte nulla. Sotto l'email
+una frase spiega il caso: "Non c'è ancora un account con questa email..."
+oppure "Con questa email hai già un account: inserisci la tua password per
+accedere.". Su `/registrati` il titolo del passo per un account esistente
+diventa "Hai già un account" (prima "Inserisci la password").
 
-**Verifica:** typecheck `apps/web`.
+**Verifica:** typecheck `apps/web`, i due passi aperti in locale.

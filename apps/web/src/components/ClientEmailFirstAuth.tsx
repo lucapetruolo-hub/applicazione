@@ -224,6 +224,11 @@ export function ClientEmailFirstAuth({
     <YStack gap="$4">
       {renderHeader(step)}
       <EmailPill email={email} onEdit={editEmail} />
+      <Text fontSize="$3" color={brand.grafite70}>
+        {isNew
+          ? "Non c'è ancora un account con questa email: scegli una password e scrivila due volte."
+          : "Con questa email hai già un account: inserisci la tua password per accedere."}
+      </Text>
       <form onSubmit={(e) => e.preventDefault()}>
         <YStack gap="$4">
           {/* Email nascosta accanto alla password: i gestori di password la
