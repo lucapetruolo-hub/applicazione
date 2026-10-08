@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
-import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
@@ -11,6 +11,7 @@ import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
+import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { GuidedRequestCard } from "./GuidedRequestCard";
@@ -134,7 +135,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
       {booking.guidedRequestId ? (
         <ContactButton
-          compact
           unreadCount={effectiveUnreadCount}
           onPress={() => {
             setShowTimeline(true);
@@ -144,21 +144,23 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       ) : null}
 
       {booking.meetingLink ? (
-        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-          <XStack alignItems="center" gap="$2">
-            <Icon name="video" size={14} color={brand.cianografiaScuro} strokeWidth={1.5} />
-            <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
-              Partecipa alla videochiamata
-            </Text>
-          </XStack>
+        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+          <CardButton>
+            <XStack alignItems="center" gap="$2">
+              <Icon name="video" size={16} color={brand.grafite} strokeWidth={1.5} />
+              <Text fontFamily="$body" fontSize="$3" color={brand.grafite} fontWeight="600">
+                Partecipa alla videochiamata
+              </Text>
+            </XStack>
+          </CardButton>
         </a>
       ) : null}
 
       {booking.status === "CANCELED" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <Button variant="secondary" size="$2" height={36} onPress={handleReopenBooking} disabled={isReopening} opacity={isReopening ? 0.6 : 1}>
+          <CardButton onPress={handleReopenBooking} disabled={isReopening}>
             {isReopening ? "Riapertura..." : "Riapri prenotazione"}
-          </Button>
+          </CardButton>
         </XStack>
       ) : null}
       {reopenError ? (
@@ -181,9 +183,9 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       ) : null}
 
       {canReportIssue ? (
-        <Text color={brand.urgenza} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowNoShowModal(true)}>
+        <CardButton tone="danger" alignSelf="flex-start" onPress={() => setShowNoShowModal(true)}>
           Segnala un problema
-        </Text>
+        </CardButton>
       ) : null}
 
       {booking.issue ? (
@@ -279,17 +281,17 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               Recensione inviata
             </Text>
           ) : booking.canReview ? (
-            <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
+            <CardButton alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
               Lascia una recensione
-            </Button>
+            </CardButton>
           ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? (
             <Text fontSize="$2" color={brand.grafite70}>
               Potrai lasciare la recensione quando la segnalazione sarà chiusa.
             </Text>
           ) : !booking.clientConfirmedCompletedAt ? (
-            <Button variant="primary" size="$3" height={40} alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
+            <CardButton tone="primary" alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
-            </Button>
+            </CardButton>
           ) : null}
         </YStack>
       ) : null}
@@ -302,17 +304,15 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               <Text fontSize="$2" color={brand.urgenza}>
                 Eliminare questa prenotazione dalla lista?
               </Text>
-              <Button variant="urgent" size="$2" height={36} onPress={handleDeleteBooking} disabled={isDeletingBooking} opacity={isDeletingBooking ? 0.6 : 1}>
+              <CardButton tone="dangerSolid" onPress={handleDeleteBooking} disabled={isDeletingBooking}>
                 {isDeletingBooking ? "Eliminazione..." : "Conferma"}
-              </Button>
-              <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingDeleteBooking(false)}>
-                Annulla
-              </Button>
+              </CardButton>
+              <CardButton onPress={() => setConfirmingDeleteBooking(false)}>Annulla</CardButton>
             </>
           ) : (
-            <Text color={brand.urgenza} fontWeight="600" fontSize="$2" cursor="pointer" accessibilityRole="button" onPress={() => setConfirmingDeleteBooking(true)}>
+            <CardButton tone="danger" onPress={() => setConfirmingDeleteBooking(true)}>
               Elimina prenotazione
-            </Text>
+            </CardButton>
           )}
         </XStack>
       ) : null}

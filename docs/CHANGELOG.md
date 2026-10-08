@@ -16784,3 +16784,34 @@ poll da 15s; i pallini dei non letti restano al poll (segnare come lette
 nello stesso istante del popup rischierebbe di farlo sparire).
 
 **Verifica:** `tsc --noEmit` di `apps/web` pulito.
+
+## 193. Pulsanti in fondo alle schede delle richieste tutti uguali
+
+Richiesta esplicita dell'utente: nella parte inferiore delle schede di
+"Richieste e lavori" (professionista) e "Le mie richieste" (cliente) i
+pulsanti avevano misure diverse (36, 40 e 48 px) e alcuni sembravano link
+("Ripeti la richiesta", "Segnala un problema", "Elimina richiesta",
+"Rifiuta", "Annulla intervento", "Come pago?"). Misura giusta: quella di
+"Contatta/Cronologia".
+
+Decisione:
+- Nuovo `apps/web/src/components/CardButton.tsx`: altezza 40, testo 15px
+  semibold, sempre con bordo o sfondo. Toni: `primary` (pieno, azione
+  principale), `outline` (bordo grafite, azioni secondarie), `danger`
+  (bordo rosso: Rifiuta, Ritira, Annulla intervento, Elimina, Segnala un
+  problema), `dangerSolid` (conferma di un'azione rossa), `fill` per i
+  colori già scelti dall'utente (ottone per Modifica, verde per Vedi in
+  agenda / Accetta nuova data / Riapri, turchese per Lavoro terminato).
+- `ContactButton` usa `CardButton`; tolta la variante `compact` (36px).
+- Cliente: "Modifica" e "Ripeti la richiesta" sulla stessa riga, entrambi
+  con bordo; "Partecipa alla videochiamata" e "Vedi i preventivi" (dopo un
+  nuovo invio) diventano pulsanti; pulsanti di pagamento e della
+  segnalazione alla stessa misura.
+- Professionista: tutte le azioni di ogni stato, i moduli preventivo e
+  nuova data, la conferma di rifiuto/ritiro/eliminazione e "Salva" delle
+  note alla stessa misura.
+
+Verifica: `tsc` su web; Playwright 1280 e 390 sulle schede cliente (in
+attesa, preventivo ricevuto, accettata) e professionista (da quotare, in
+attesa del cliente, accettata) con dati di prova su API e database locali:
+nessun overflow né errore.

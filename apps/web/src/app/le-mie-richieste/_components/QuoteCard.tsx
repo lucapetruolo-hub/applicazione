@@ -6,8 +6,9 @@ import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatServicePriceRange, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Avatar, Badge, Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -228,7 +229,6 @@ export function QuoteCard({
         {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
       <ContactButton
-        compact
         unreadCount={effectiveUnreadCount}
         onPress={() => {
           setShowTimeline(true);
@@ -298,31 +298,25 @@ export function QuoteCard({
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
             {!choosingPayment ? (
-              <Button
-                variant="primary"
-                size="$3"
-                height={40}
+              <CardButton
+                tone="primary"
                 onPress={() => {
                   setPaymentMethod(onlinePayments ? "ONLINE" : "DIRECT");
                   setChoosingPayment(true);
                 }}
               >
                 Accetta preventivo
-              </Button>
+              </CardButton>
             ) : null}
             {!isChoosingDate ? (
-              <Button variant="secondary" backgroundColor={brand.ottone} size="$3" height={40} onPress={startChoosingDate}>
-                <Text color="white" fontWeight="700" fontSize="$3">
-                  Modifica
-                </Text>
-              </Button>
+              <CardButton fill={brand.ottone} onPress={startChoosingDate}>
+                Modifica
+              </CardButton>
             ) : null}
             {!isChoosingDate && !confirmingReject ? (
-              <Button variant="ghost" size="$3" height={40} onPress={() => setConfirmingReject(true)}>
-                <Text color={brand.urgenza} fontWeight="700" fontSize="$3">
-                  Rifiuta
-                </Text>
-              </Button>
+              <CardButton tone="danger" onPress={() => setConfirmingReject(true)}>
+                Rifiuta
+              </CardButton>
             ) : null}
           </XStack>
           {choosingPayment ? (
@@ -334,12 +328,12 @@ export function QuoteCard({
                 onlineAvailable={onlinePayments}
               />
               <XStack gap="$2" flexWrap="wrap">
-                <Button variant="primary" size="$3" height={40} onPress={handleAccept} disabled={isAccepting} opacity={isAccepting ? 0.6 : 1}>
+                <CardButton tone="primary" onPress={handleAccept} disabled={isAccepting}>
                   {isAccepting ? "Accettazione..." : paymentMethod === "ONLINE" ? "Accetta e paga l'acconto" : "Accetta preventivo"}
-                </Button>
-                <Button variant="ghost" size="$3" height={40} onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
+                </CardButton>
+                <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
                   Annulla
-                </Button>
+                </CardButton>
               </XStack>
             </YStack>
           ) : null}
@@ -358,13 +352,13 @@ export function QuoteCard({
                 maxLength={1000}
                 style={textareaStyle}
               />
-              <XStack gap="$2" alignItems="center">
-                <Button variant="urgent" size="$2" height={36} onPress={handleRejectQuote} disabled={isRejecting} opacity={isRejecting ? 0.6 : 1}>
+              <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                <CardButton tone="dangerSolid" onPress={handleRejectQuote} disabled={isRejecting}>
                   {isRejecting ? "Rifiuto..." : "Conferma rifiuto"}
-                </Button>
-                <Button variant="ghost" size="$2" height={36} onPress={() => setConfirmingReject(false)} disabled={isRejecting}>
+                </CardButton>
+                <CardButton onPress={() => setConfirmingReject(false)} disabled={isRejecting}>
                   Annulla
-                </Button>
+                </CardButton>
               </XStack>
             </YStack>
           ) : null}
@@ -405,13 +399,13 @@ export function QuoteCard({
                     </YStack>
                   ) : null}
                   <textarea value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
-                  <XStack gap="$2">
-                    <Button variant="primary" size="$3" height={40} onPress={handleProposeDate} disabled={isProposing} opacity={isProposing ? 0.6 : 1}>
+                  <XStack gap="$2" flexWrap="wrap">
+                    <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
                       {isProposing ? "Invio..." : "Invia proposta"}
-                    </Button>
-                    <Button variant="ghost" size="$3" height={40} onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
+                    </CardButton>
+                    <CardButton onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
                       Annulla
-                    </Button>
+                    </CardButton>
                   </XStack>
                 </>
               )}
@@ -440,9 +434,9 @@ export function QuoteCard({
               Il metodo di pagamento scelto, l&apos;acconto e il saldo sono nella sezione dell&apos;intervento qui sotto.
             </Text>
           ) : (
-            <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3" cursor="pointer" accessibilityRole="button" onPress={() => setShowPaymentInfo(true)}>
+            <CardButton alignSelf="flex-start" onPress={() => setShowPaymentInfo(true)}>
               Come pago?
-            </Text>
+            </CardButton>
           )}
         </YStack>
       ) : quote.status === "REJECTED" ? (
