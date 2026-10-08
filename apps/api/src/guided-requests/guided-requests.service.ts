@@ -387,6 +387,11 @@ export class GuidedRequestsService {
           clientProposedNote: quote.clientProposedNote,
           // Nota del cliente senza cambio di data (docs/CHANGELOG.md §194).
           clientNote: quote.clientNote,
+          // Totale prima dell'ultima modifica dei prezzi (docs/CHANGELOG.md §194).
+          previousPrice:
+            quote.previousPriceMinEurCents !== null || quote.previousPriceMaxEurCents !== null
+              ? { minEurCents: quote.previousPriceMinEurCents, maxEurCents: quote.previousPriceMaxEurCents }
+              : null,
           // Appuntamento che quello attuale ha sostituito, per il "prima →
           // ora" del cliente (docs/CHANGELOG.md §186, come lo vede il
           // professionista): l'ultima modifica del professionista se c'è,

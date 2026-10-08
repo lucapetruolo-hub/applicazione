@@ -283,6 +283,9 @@ const BUILDERS: Record<string, Builder> = {
       title: "Preventivo aggiornato",
       paragraphs: [
         `**${pro(ctx)}** ha aggiornato ${what} del preventivo per **${job(ctx)}**, senza cambiare data e orario.`,
+        ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
+          ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
+          : []),
         ...quotedNote(payload),
         "Rileggilo prima di accettarlo.",
       ],

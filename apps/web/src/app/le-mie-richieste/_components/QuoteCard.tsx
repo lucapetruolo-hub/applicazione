@@ -113,6 +113,13 @@ export function QuoteCard({
     }
   }, [autoOpenTimeline]);
   const priceTotals = useMemo(() => quotePriceTotals(quote.items), [quote.items]);
+  // Totale prima dell'ultima modifica dei prezzi, se diverso da quello di
+  // ora (docs/CHANGELOG.md §194).
+  const previousPriceText = useMemo(() => {
+    if (quote.status !== "SENT" || !quote.previousPrice) return null;
+    const before = formatServicePriceRange(quote.previousPrice.minEurCents, quote.previousPrice.maxEurCents);
+    return before !== formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents) ? before : null;
+  }, [quote.status, quote.previousPrice, priceTotals]);
 
   async function handleAccept() {
     setError(null);
@@ -303,9 +310,24 @@ export function QuoteCard({
           <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
             Totale indicativo
           </Text>
-          <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
-            {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
-          </Text>
+          <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+            {/* Prezzo cambiato dal professionista: il vecchio sbarrato accanto
+                al nuovo, per non accettare un aumento senza accorgersene
+                (docs/CHANGELOG.md §194). */}
+            {previousPriceText ? (
+              <Text fontSize="$4" color={brand.grafite70} textDecorationLine="line-through">
+                {previousPriceText}
+              </Text>
+            ) : null}
+            <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
+              {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
+            </Text>
+          </XStack>
+          {previousPriceText ? (
+            <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+              Il professionista ha cambiato il prezzo
+            </Text>
+          ) : null}
         </YStack>
       ) : null}
       {quote.notes ? (

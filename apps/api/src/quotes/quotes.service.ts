@@ -2,6 +2,8 @@ import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
+  formatServicePriceRange,
+  quotePriceTotals,
   scheduleChangeAlternative,
   scheduleChangeBetween,
   scheduleChangeObject,
@@ -118,6 +120,19 @@ export class QuotesService {
         .join("|");
     const itemsChanged = !!existingQuote && itemsKey(existingQuote.items) !== itemsKey(input.items);
     const notesChanged = !!existingQuote && (existingQuote.notes ?? "").trim() !== (input.notes ?? "").trim();
+    // Totale prima e dopo: se cambia, il cliente vede il vecchio sbarrato
+    // accanto al nuovo (docs/CHANGELOG.md §194).
+    const totalsBefore = existingQuote ? quotePriceTotals(existingQuote.items) : null;
+    const totalsAfter = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+    const priceChanged =
+      !!totalsBefore &&
+      !isResend &&
+      (totalsBefore.totalMinEurCents !== totalsAfter.totalMinEurCents || totalsBefore.totalMaxEurCents !== totalsAfter.totalMaxEurCents);
+    const priceData = isResend
+      ? { previousPriceMinEurCents: null, previousPriceMaxEurCents: null }
+      : priceChanged && totalsBefore
+        ? { previousPriceMinEurCents: totalsBefore.totalMinEurCents, previousPriceMaxEurCents: totalsBefore.totalMaxEurCents }
+        : {};
 
     const quote = existingQuote
       ? await this.prisma.quote.update({
@@ -125,8 +140,8 @@ export class QuotesService {
           // Il cliente vede "prima → ora" come lo vede il professionista
           // (docs/CHANGELOG.md §186): si ricorda l'appuntamento sostituito.
           data: scheduleChange
-            ? { ...data, previousStartDate: existingQuote.estimatedStartDate, previousEndDate: existingQuote.estimatedEndDate }
-            : data,
+            ? { ...data, ...priceData, previousStartDate: existingQuote.estimatedStartDate, previousEndDate: existingQuote.estimatedEndDate }
+            : { ...data, ...priceData },
         })
       : await this.prisma.quote.create({
           data: {
@@ -220,13 +235,26 @@ export class QuotesService {
           itemsChanged,
           notesChanged,
           ...(notesChanged && notes ? { note: notes } : {}),
+          ...(priceChanged && totalsBefore
+            ? {
+                priceBefore: formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents),
+                priceAfter: formatServicePriceRange(totalsAfter.totalMinEurCents, totalsAfter.totalMaxEurCents),
+              }
+            : {}),
         });
       }
+      const priceText =
+        priceChanged && totalsBefore
+          ? ` Totale: da ${formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents)} a ${formatServicePriceRange(totalsAfter.totalMinEurCents, totalsAfter.totalMaxEurCents)}.`
+          : "";
+      const noteText = notesChanged && input.notes?.trim() ? ` Nota: "${input.notes.trim()}"` : "";
       await this.timelineService.log(
         lead.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        what ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.` : "Il professionista ha modificato il preventivo.",
+        what
+          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${noteText}`
+          : "Il professionista ha modificato il preventivo.",
       );
     }
     if (existingQuote) {

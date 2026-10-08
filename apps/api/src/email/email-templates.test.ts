@@ -96,6 +96,8 @@ describe("email delle notifiche", () => {
     expect(updated.subject).toBe("Idraulica Rossi ha aggiornato il preventivo");
     expect(updated.text).toContain("le voci e le note");
     expect(updated.text).toContain('Nota: "Materiali inclusi"');
+    const repriced = renderEmail(notificationEmail("QUOTE_UPDATED", { itemsChanged: true, priceBefore: "100.00 €", priceAfter: "150.00 €" }, ctx)!);
+    expect(repriced.text).toContain("passa da 100.00 € a 150.00 €");
   });
 });
 

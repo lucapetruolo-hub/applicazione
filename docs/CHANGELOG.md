@@ -16849,3 +16849,17 @@ stato.
 
 **Verifica:** typecheck `apps/api`, `apps/web`, `apps/mobile`; tutti i test
 di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
+
+**Terza parte (richiesta dell'utente: "effettua le migliorie"):**
+- **Prezzo "prima → ora":** quando il professionista cambia i prezzi di un
+  preventivo già inviato, il totale precedente si salva in
+  `Quote.previousPriceMinEurCents`/`previousPriceMaxEurCents` (stessa
+  migrazione `20261008100000_quote_client_note`, non ancora in produzione).
+  In Le mie richieste il cliente vede il vecchio totale sbarrato accanto al
+  nuovo con "Il professionista ha cambiato il prezzo"; l'email "Preventivo
+  aggiornato" dice "Il totale indicativo passa da X a Y". Un nuovo
+  preventivo dopo un rifiuto azzera il confronto.
+- **La nota nella chat:** la cronologia (`ConversationEvent`) è la chat
+  stessa, e le note di cliente e professionista c'erano già; ora anche
+  l'aggiornamento di voci/note del professionista riporta nella chat il
+  testo della nota e il cambio di totale.
