@@ -203,6 +203,22 @@ const BUILDERS: Record<string, Builder> = {
     cta: clientRequests(),
   }),
   QUOTE_DATE_PROPOSED: (payload, ctx) => {
+    // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
+    // (docs/CHANGELOG.md §194).
+    if (payload.noteOnly === true) {
+      return {
+        kind: "notification",
+        subject: "Il cliente ha aggiunto una nota al preventivo",
+        greeting: ctx.name,
+        title: "Il cliente ha aggiunto una nota",
+        paragraphs: [
+          `Per il tuo preventivo per **${job(ctx)}** il cliente ha aggiunto una nota, senza cambiare data e orario.`,
+          "Leggila nella richiesta: puoi confermare l'appuntamento o rispondere con un'alternativa.",
+        ],
+        details: proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Appuntamento", value: formatAppointment(ctx.proposedWhen) }] : []),
+        cta: proRequests("Leggi la nota"),
+      };
+    }
     const change = asScheduleChange(payload.change) ?? "both";
     return {
       kind: "notification",
@@ -218,6 +234,20 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   QUOTE_DATE_CHANGED: (payload, ctx) => {
+    // Stessa data e stesso orario: il professionista ha solo aggiunto una
+    // nota (docs/CHANGELOG.md §194).
+    if (payload.noteOnly === true) {
+      return {
+        kind: "notification",
+        subject: `${pro(ctx)} ha aggiunto una nota al preventivo`,
+        greeting: ctx.name,
+        title: "Nuova nota sul preventivo",
+        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario:`],
+        details: jobDetails(ctx),
+        cta: clientRequests(),
+        after: ["La nota la trovi nella tua richiesta."],
+      };
+    }
     const change = asScheduleChange(payload.change) ?? "both";
     return {
       kind: "notification",

@@ -254,6 +254,19 @@ export function QuoteCard({
             />
           );
         }
+        // Stessa data e stesso orario della proposta del cliente: il
+        // professionista ha solo aggiunto una nota, niente "prima → ora"
+        // (docs/CHANGELOG.md §194).
+        if (quote.status === "SENT" && quote.previousSchedule && quote.professionalCounterNote) {
+          return (
+            <ScheduleChangeBox
+              title="Il professionista ha aggiunto una nota (data e orario invariati)"
+              afterLabel="Appuntamento"
+              afterText={formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
+              note={quote.professionalCounterNote}
+            />
+          );
+        }
         // Risposte precedenti a questa versione, senza l'appuntamento sostituito.
         return quote.status === "SENT" && quote.professionalCounterNote ? (
           <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
@@ -421,7 +434,14 @@ export function QuoteCard({
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.ottone} fontWeight="600">
-            In attesa di conferma del professionista per il{" "}
+            {/* Stessa data e stesso orario: hai solo aggiunto una nota (docs/CHANGELOG.md §194). */}
+            {quote.clientProposedDate &&
+            !scheduleChangeBetween(
+              { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
+              { start: quote.clientProposedDate, end: quote.clientProposedEndDate },
+            )
+              ? "Hai aggiunto una nota, data e orario invariati: in attesa di conferma del professionista per il "
+              : "In attesa di conferma del professionista per il "}
             {quote.clientProposedDate ? formatQuoteDateRange(quote.clientProposedDate, quote.clientProposedEndDate) : ""}
           </Text>
           {quote.clientProposedNote ? (

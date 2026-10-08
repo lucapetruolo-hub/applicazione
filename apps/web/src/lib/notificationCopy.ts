@@ -92,6 +92,14 @@ const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
  */
 export function notificationCopy(type: string, payload?: unknown): { icon: string; message: string } {
   const change = asScheduleChange(payload && typeof payload === "object" ? (payload as Record<string, unknown>).change : null);
+  // Stessa data e stesso orario: è stata aggiunta solo una nota (docs/CHANGELOG.md §194).
+  const noteOnly = payload && typeof payload === "object" && (payload as Record<string, unknown>).noteOnly === true;
+  if (noteOnly && type === "QUOTE_DATE_CHANGED") {
+    return { icon: "📝", message: "Il professionista ha aggiunto una nota al tuo preventivo, senza cambiare data e orario." };
+  }
+  if (noteOnly && type === "QUOTE_DATE_PROPOSED") {
+    return { icon: "📝", message: "Il cliente ha aggiunto una nota al preventivo, senza cambiare data e orario." };
+  }
   if (change && type === "QUOTE_DATE_CHANGED") {
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo.` };
   }

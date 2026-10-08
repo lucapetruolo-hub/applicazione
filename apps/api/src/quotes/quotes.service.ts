@@ -305,20 +305,25 @@ export class QuotesService {
       },
     });
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
-    // entrambi (docs/CHANGELOG.md §180). Riconfermare la stessa fascia
-    // resta "un'altra data" come prima.
-    const change =
-      scheduleChangeBetween({ start: quote.estimatedStartDate, end: quote.estimatedEndDate }, { start: proposedDate, end: proposedEndDate }) ?? "date";
+    // entrambi (docs/CHANGELOG.md §180). Stessa data e stesso orario: il
+    // cliente ha solo aggiunto una nota, e così va detto (docs/CHANGELOG.md §194).
+    const change = scheduleChangeBetween(
+      { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
+      { start: proposedDate, end: proposedEndDate },
+    );
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
-      change,
+      ...(change ? { change } : { noteOnly: true }),
     });
+    const note = input.note?.trim() ? ` Nota: "${input.note.trim()}"` : "";
     await this.timelineService.log(
       quote.guidedRequestId,
       quote.professionalProfileId,
       "CLIENT",
-      `Il cliente ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+      change
+        ? `Il cliente ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${note}`
+        : `Il cliente ha aggiunto una nota, senza cambiare data e orario (${formatSlotForTimeline(proposedDate, proposedEndDate)}).${note}`,
     );
     return {
       id: updated.id,
@@ -582,23 +587,27 @@ export class QuotesService {
       },
     });
     // Confronto con la proposta del cliente a cui il professionista risponde
-    // (docs/CHANGELOG.md §180): è quella che il cliente ha in mente.
-    const change =
-      scheduleChangeBetween(
-        { start: quote.clientProposedDate ?? quote.estimatedStartDate, end: quote.clientProposedEndDate ?? quote.estimatedEndDate },
-        { start: estimatedStartDate, end: estimatedEndDate },
-      ) ?? "date";
+    // (docs/CHANGELOG.md §180): è quella che il cliente ha in mente. Stessa
+    // data e stesso orario: il professionista ha solo aggiunto una nota
+    // (docs/CHANGELOG.md §194).
+    const change = scheduleChangeBetween(
+      { start: quote.clientProposedDate ?? quote.estimatedStartDate, end: quote.clientProposedEndDate ?? quote.estimatedEndDate },
+      { start: estimatedStartDate, end: estimatedEndDate },
+    );
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
-      change,
+      ...(change ? { change } : { noteOnly: true }),
     });
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    const note = input.note?.trim() ? ` Nota: "${input.note.trim()}"` : "";
     await this.timelineService.log(
       quote.guidedRequestId,
       professionalProfile.id,
       "PROFESSIONAL",
-      `Il professionista ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}.${input.note?.trim() ? ` Nota: "${input.note.trim()}"` : ""}`,
+      change
+        ? `Il professionista ha proposto ${scheduleChangeAlternative(change)}: ${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}.${note}`
+        : `Il professionista ha aggiunto una nota, senza cambiare data e orario (${formatSlotForTimeline(estimatedStartDate, estimatedEndDate)}).${note}`,
     );
     return {
       id: updated.id,

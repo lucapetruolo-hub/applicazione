@@ -428,6 +428,16 @@ export function RequestCard({
     if (!isOpen) onToggle();
   }
 
+  // Cosa cambia la proposta del cliente rispetto al preventivo: `null` se
+  // data e orario restano uguali e ha solo aggiunto una nota
+  // (docs/CHANGELOG.md §194).
+  const proposalChange = lead.quote?.clientProposedDate
+    ? scheduleChangeBetween(
+        { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+        { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
+      )
+    : null;
+
   // Azioni del menu hamburger, filtrate per stadio: le stesse già
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
   // click anche a scheda chiusa.
@@ -481,7 +491,7 @@ export function RequestCard({
     });
   }
   if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
-    menuActions.push({ icon: "check", text: "Accetta nuova data", onPress: handleConfirmDate });
+    menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
   if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
@@ -639,20 +649,27 @@ export function RequestCard({
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
-            <ScheduleChangeBox
-              marginTop="$3"
-              title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(
-                scheduleChangeBetween(
-                  { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
-                  { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
-                ) ?? "date",
-              )}`}
-              beforeLabel="Data originale"
-              beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
-              afterLabel="Nuova data richiesta"
-              afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
-              note={lead.quote.clientProposedNote}
-            />
+            proposalChange ? (
+              <ScheduleChangeBox
+                marginTop="$3"
+                title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
+                beforeLabel="Data originale"
+                beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                afterLabel="Nuova data richiesta"
+                afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+                note={lead.quote.clientProposedNote}
+              />
+            ) : (
+              // Stessa data e stesso orario: il cliente ha solo aggiunto una
+              // nota, niente "prima → ora" (docs/CHANGELOG.md §194).
+              <ScheduleChangeBox
+                marginTop="$3"
+                title="Il cliente ha aggiunto una nota (data e orario invariati)"
+                afterLabel="Appuntamento"
+                afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
+                note={lead.quote.clientProposedNote}
+              />
+            )
           ) : null}
 
           <XStack flexWrap="wrap" gap="$4" paddingTop="$3">
@@ -995,7 +1012,7 @@ export function RequestCard({
               <XStack gap="$2" flexWrap="wrap">
                 <Button variant="secondary" size="$3" backgroundColor={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
                   <Text color="white" fontWeight="700" fontSize="$3">
-                    {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                    {isConfirmingDate ? "Conferma..." : proposalChange ? "Accetta nuova data" : "Conferma appuntamento"}
                   </Text>
                 </Button>
                 {/* "Modifica" con sfondo, come "Modifica preventivo" e come

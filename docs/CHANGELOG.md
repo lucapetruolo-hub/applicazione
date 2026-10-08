@@ -16804,3 +16804,27 @@ accedere.". Su `/registrati` il titolo del passo per un account esistente
 diventa "Hai già un account" (prima "Inserisci la password").
 
 **Verifica:** typecheck `apps/web`, i due passi aperti in locale.
+
+## 194. Modifica con sola nota: niente "data e orario cambiati"
+
+**Richiesta dell'utente:** quando cliente o professionista cliccano
+"Modifica" su un preventivo e scrivono solo una nota, senza cambiare data e
+orario, all'altra parte arrivava scritto che data e orario erano cambiati, e
+nella scheda comparivano data e orario vecchi sbarrati accanto ai nuovi,
+identici. Se data e orario restano gli stessi va scritto che è stata
+aggiunta solo una nota.
+
+**Decisione:** `proposeDate` (cliente) e `counterProposeDate`
+(professionista) confrontano data e orario nuovi con quelli precedenti
+(`scheduleChangeBetween`, prima con il ripiego fisso "date"). Se sono
+uguali la notifica porta `noteOnly: true` invece di `change`, e notifica nel
+sito, email e cronologia dicono "ha aggiunto una nota, senza cambiare data e
+orario". Nelle schede (Richieste e lavori, Le mie richieste, Oggi)
+`ScheduleChangeBox` senza `beforeText` mostra solo l'appuntamento com'è,
+senza "prima" sbarrato né freccia; per il professionista il pulsante diventa
+"Conferma appuntamento" invece di "Accetta nuova data". Il confronto si fa
+sulle date salvate, quindi si correggono anche i preventivi già in quello
+stato.
+
+**Verifica:** typecheck `apps/api` e `apps/web`, test delle email
+(`email-templates.test.ts`, nuovo caso `noteOnly`).

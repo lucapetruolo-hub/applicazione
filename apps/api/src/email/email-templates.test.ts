@@ -78,4 +78,13 @@ describe("email delle notifiche", () => {
     expect(email.subject).toBe("Nuova richiesta: Idraulico a Roma");
     expect(email.text).not.toMatch(/telefono|indirizzo/i);
   });
+
+  it("se data e orario non cambiano dice che è stata aggiunta solo una nota (docs/CHANGELOG.md §194)", () => {
+    for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
+      const email = renderEmail(notificationEmail(type, { noteOnly: true }, ctx)!);
+      expect(email.subject, type).toContain("nota");
+      expect(email.text, type).toContain("senza cambiare data e orario");
+      expect(email.text, type).not.toMatch(/modificato|propone|proposto/);
+    }
+  });
 });
