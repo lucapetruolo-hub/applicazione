@@ -4,6 +4,7 @@ import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
+  PUBLIC_AGENDA_DAYS,
   type AvailabilitySlotInput,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
@@ -12,7 +13,6 @@ import {
   type ProfessionalAgenda,
   type ProfessionalAgendaDay,
   type ProfessionalAvailabilityPreviewDay,
-  type ProfessionalNextAvailableSlot,
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalDetail,
@@ -59,22 +59,12 @@ function formatDateLabel(date: Date): string {
   return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
 }
 
-// Colonne della griglia mostrata in card (Oggi + 3 giorni di default) —
-// richiesta esplicita dell'utente, riferimento miodottore.it: "una
-// visualizzazione agenda" con colonne giorno consecutive, non i soli giorni
-// con qualcosa da mostrare (a differenza del comportamento precedente, che
-// saltava i giorni vuoti: qui un giorno vuoto resta in griglia con "-" su
-// ogni riga, esattamente come nel riferimento). Se la finestra iniziale non
-// ha alcun orario libero si cerca il prossimo disponibile fino a
-// PREVIEW_SEARCH_DAYS più avanti. PREVIEW_TOTAL_DAYS è quanti giorni vengono
-// effettivamente restituiti al client (stesso orizzonte di getPublicAgenda,
-// 14 giorni): la UI pagina in finestre da PREVIEW_MAX_DAYS colonne con
-// frecce avanti/indietro sui dati già scaricati, senza una richiesta di rete
-// per ogni pagina — richiesta esplicita dell'utente ("dare la possibilità
-// di navigare anche ai giorni successivi").
-const PREVIEW_MAX_DAYS = 4;
-const PREVIEW_TOTAL_DAYS = 14;
-const PREVIEW_SEARCH_DAYS = 30;
+// Giorni della griglia mostrata in card: colonne giorno consecutive (un
+// giorno vuoto resta in griglia con "-", riferimento miodottore.it), tutti
+// i PUBLIC_AGENDA_DAYS giorni restituiti in un colpo solo: la UI pagina in
+// finestre da 4 colonne con le frecce sui dati già scaricati, e cerca lì
+// stessa il primo orario libero per "Mostra orari disponibili" (richiesta
+// esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §197).
 
 function mapServices(
   services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
@@ -166,8 +156,6 @@ export class ProfessionalsService {
         spokenLanguages: profile.spokenLanguages,
         hasLiabilityInsurance: profile.hasLiabilityInsurance,
         availabilityPreview: preview?.days ?? [],
-        nextAvailableSlotHome: preview?.nextAvailableSlotHome ?? null,
-        nextAvailableSlotOnline: preview?.nextAvailableSlotOnline ?? null,
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
@@ -279,35 +267,19 @@ export class ProfessionalsService {
    * Anteprima "prossimi orari liberi" per la mini-agenda della card di
    * ricerca (richiesta esplicita dell'utente, riferimento miodottore.it).
    * Un'unica query batch per l'intera pagina di risultati invece di una per
-   * professionista: a differenza di getPublicAgenda (14 giorni, un solo
+   * professionista: a differenza di getPublicAgenda (stessi giorni, un solo
    * profilo, chiamata dalla pagina profilo) qui il numero di profili può
    * essere alto e questa funzione gira dentro l'endpoint di ricerca, dove un
    * N+1 sarebbe un problema di scala reale, non solo teorico.
    */
-  private async buildAvailabilityPreviews(profileIds: string[]): Promise<
-    Map<
-      string,
-      {
-        days: ProfessionalAvailabilityPreviewDay[];
-        nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
-        nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
-      }
-    >
-  > {
-    const result = new Map<
-      string,
-      {
-        days: ProfessionalAvailabilityPreviewDay[];
-        nextAvailableSlotHome: ProfessionalNextAvailableSlot | null;
-        nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null;
-      }
-    >();
+  private async buildAvailabilityPreviews(profileIds: string[]): Promise<Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>> {
+    const result = new Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>();
     if (profileIds.length === 0) return result;
 
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
     const searchEnd = new Date(startOfToday);
-    searchEnd.setUTCDate(searchEnd.getUTCDate() + PREVIEW_SEARCH_DAYS);
+    searchEnd.setUTCDate(searchEnd.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
     const [slots, bookings, exceptions] = await Promise.all([
       // Ogni fascia, a prescindere dalla capienza (richiesta esplicita
@@ -357,18 +329,8 @@ export class ProfessionalsService {
       const profileBookings = bookingsByProfile.get(profileId) ?? [];
       const exceptionDates = exceptionDatesByProfile.get(profileId);
 
-      // PREVIEW_TOTAL_DAYS colonne totali (14, stesso orizzonte di
-      // getPublicAgenda) restituite al client, non solo le PREVIEW_MAX_DAYS
-      // (4) mostrate di default: la UI pagina in avanti sui dati già
-      // scaricati (richiesta esplicita dell'utente). Ogni giorno resta in
-      // griglia con "-" dove il professionista non ha nulla, non viene
-      // saltato — a differenza del comportamento pre-esistente che elencava
-      // solo i primi giorni con qualcosa di libero. `hasAvailableInWindow`
-      // guarda però solo alla finestra iniziale (i primi PREVIEW_MAX_DAYS):
-      // decide se mostrare subito la griglia o il fallback "prossimo giorno
-      // disponibile", il resto dei giorni serve solo alla navigazione.
       const days: ProfessionalAvailabilityPreviewDay[] = [];
-      for (let offset = 0; offset < PREVIEW_TOTAL_DAYS; offset++) {
+      for (let offset = 0; offset < PUBLIC_AGENDA_DAYS; offset++) {
         const date = new Date(startOfToday);
         date.setUTCDate(date.getUTCDate() + offset);
         const dateStr = date.toISOString().slice(0, 10);
@@ -400,50 +362,12 @@ export class ProfessionalsService {
         days.push({ date: dateStr, label, dateLabel, times });
       }
 
-      const hasAvailableInWindow = days
-        .slice(0, PREVIEW_MAX_DAYS)
-        .some((day) => day.times.some((slot) => slot.homeAvailable || slot.onlineAvailable));
-
-      // "Prossimo giorno disponibile" è per modalità (richiesta esplicita
-      // dell'utente): un professionista può avere il prossimo libero a
-      // domicilio oggi ma online solo tra una settimana — calcolato solo
-      // se quella specifica modalità non ha nulla nella finestra iniziale.
-      const hasHomeInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.homeAvailable));
-      const hasOnlineInWindow = days.slice(0, PREVIEW_MAX_DAYS).some((day) => day.times.some((slot) => slot.onlineAvailable));
-
-      let nextAvailableSlotHome: ProfessionalNextAvailableSlot | null = null;
-      let nextAvailableSlotOnline: ProfessionalNextAvailableSlot | null = null;
-      if (!hasHomeInWindow || !hasOnlineInWindow) {
-        for (
-          let offset = PREVIEW_MAX_DAYS;
-          offset < PREVIEW_SEARCH_DAYS && (!nextAvailableSlotHome || !nextAvailableSlotOnline);
-          offset++
-        ) {
-          const date = new Date(startOfToday);
-          date.setUTCDate(date.getUTCDate() + offset);
-          const dateStr = date.toISOString().slice(0, 10);
-          if (exceptionDates?.has(dateStr)) continue;
-
-          const candidateSlots = profileSlots.filter((slot) => slotAppliesOnDate(slot, date)).sort((a, b) => a.startTime.localeCompare(b.startTime));
-          if (!hasHomeInWindow && !nextAvailableSlotHome) {
-            const freeSlot = candidateSlots.find(
-              (slot) => slot.allowsHome && countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "HOME") < (slot.homeMaxBookings ?? 1),
-            );
-            if (freeSlot) nextAvailableSlotHome = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
-          }
-          if (!hasOnlineInWindow && !nextAvailableSlotOnline) {
-            const freeSlot = candidateSlots.find(
-              (slot) =>
-                slot.allowsOnline && countBookingsInSlot(profileBookings, dateStr, slot.startTime, slot.endTime, "ONLINE") < (slot.onlineMaxBookings ?? 1),
-            );
-            if (freeSlot) nextAvailableSlotOnline = { date: dateStr, dateLabel: formatDateLabel(date), time: freeSlot.startTime };
-          }
-        }
-      }
-
-      if (hasAvailableInWindow || nextAvailableSlotHome || nextAvailableSlotOnline) {
-        result.set(profileId, { days, nextAvailableSlotHome, nextAvailableSlotOnline });
-      }
+      // Restituita sempre quando il professionista ha almeno una fascia nei
+      // prossimi due mesi, anche se oggi è tutto al completo (bug reale
+      // segnalato dall'utente, docs/CHANGELOG.md §197): prima la griglia
+      // spariva del tutto se nei primi 30 giorni non c'era nulla di libero,
+      // e il cliente non vedeva più nessuna data.
+      if (days.some((day) => day.times.length > 0)) result.set(profileId, { days });
     }
 
     return result;
@@ -499,8 +423,6 @@ export class ProfessionalsService {
       // La pagina profilo mostra già l'agenda completa (getPublicAgenda):
       // l'anteprima compatta esiste solo per la card nei risultati di ricerca.
       availabilityPreview: [],
-      nextAvailableSlotHome: null,
-      nextAvailableSlotOnline: null,
       createdAt: profile.createdAt.toISOString(),
       completedThisMonth: countCompletedThisMonth(profile.bookings),
       isNewProfile: computeIsNewProfile(profile.createdAt),
@@ -1348,7 +1270,7 @@ export class ProfessionalsService {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
     const endWindow = new Date(startOfToday);
-    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+    endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
     const [slots, bookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
@@ -1368,7 +1290,7 @@ export class ProfessionalsService {
     const exceptionDates = new Set(exceptions.map((exception) => exception.date.toISOString().slice(0, 10)));
 
     const result: ProfessionalAvailableSlot[] = [];
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < PUBLIC_AGENDA_DAYS; i++) {
       const date = new Date(startOfToday);
       date.setUTCDate(date.getUTCDate() + i);
       const dateStr = date.toISOString().slice(0, 10);
@@ -1391,14 +1313,14 @@ export class ProfessionalsService {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
     const endWindow = new Date(startOfToday);
-    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+    endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
     const [slots, upcomingBookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId },
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       }),
-      // Stessa finestra di getPublicAgenda (14 giorni): serve solo a segnalare
+      // Finestra di 14 giorni: serve solo a segnalare
       // in UI "questa fascia ha già una prenotazione futura", non a bloccare
       // nulla lato server — un professionista resta libero di modificare la
       // propria agenda, viene solo avvisato prima di farlo.
@@ -1534,7 +1456,7 @@ export class ProfessionalsService {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
     const endWindow = new Date(startOfToday);
-    endWindow.setUTCDate(endWindow.getUTCDate() + 14);
+    endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
     const [slots, bookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
@@ -1554,7 +1476,7 @@ export class ProfessionalsService {
     const exceptionDates = new Set(exceptions.map((exception) => exception.date.toISOString().slice(0, 10)));
 
     const days: ProfessionalAgendaDay[] = [];
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < PUBLIC_AGENDA_DAYS; i++) {
       const date = new Date(startOfToday);
       date.setUTCDate(date.getUTCDate() + i);
       const dayOfWeek = date.getUTCDay();

@@ -16930,3 +16930,57 @@ di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
   stessa, e le note di cliente e professionista c'erano già; ora anche
   l'aggiornamento di voci/note del professionista riporta nella chat il
   testo della nota e il cambio di totale.
+
+## 197. Agenda nella scheda dei risultati: sempre visibile, due mesi, primo orario libero
+
+**Richiesta (Luca, 08/10/2026):** nella scheda del professionista nei
+risultati di ricerca non compariva più il calendario con le date
+disponibili. Poi: freccette per andare avanti nell'agenda per almeno due
+mesi; "Mostra orari disponibili" deve portare al primo orario libero quando
+nella schermata non ce ne sono; un clic sull'agenda deve aprire l'agenda
+della pagina successiva. Nello stesso thread: nella pagina profilo, "Salva",
+"Condividi il profilo" e "Segnala" diventano solo icone, con la descrizione
+al passaggio del mouse.
+
+**Causa:** nessuna regressione di codice (la PR #44 sulle prestazioni non
+tocca l'agenda). Su Rossi S.r.l. Illuminazioni la fascia di oggi a domicilio
+era stata prenotata: con nulla di libero nei primi 4 giorni la card
+nascondeva tutta la griglia e lasciava solo le intestazioni dei giorni. Il
+"prossimo libero" calcolato dal server (22 ottobre) cadeva oltre i 14 giorni
+scaricati, quindi "Mostra orari disponibili" non faceva nulla. Un
+professionista con fasce ma niente di libero nei primi 30 giorni perdeva
+del tutto la mini-agenda.
+
+**Decisione:**
+- `PUBLIC_AGENDA_DAYS = 63` in `packages/shared/src/availability.ts`: 9
+  settimane sia per l'anteprima della ricerca
+  (`ProfessionalsService.buildAvailabilityPreviews`) sia per l'agenda
+  pubblica del profilo (`getPublicAgenda`). Le frecce scorrono su tutti.
+- Griglia sempre visibile (orari barrati compresi), nella card e nel
+  profilo. Sotto, se nella finestra non c'è nulla di libero, il riquadro
+  "Nessun orario libero in questi giorni. Primo orario libero: …" con
+  "Mostra orari disponibili", che sposta la finestra su quel giorno. Il
+  primo orario libero si cerca nei giorni già scaricati (prima dopo la
+  finestra, poi dall'inizio): tolti dal server e dai tipi
+  `nextAvailableSlotHome`/`nextAvailableSlotOnline`. Senza nulla di libero
+  in due mesi: "Nessun orario libero nei prossimi due mesi."
+- L'anteprima esce sempre se il professionista ha almeno una fascia nei
+  prossimi 63 giorni, anche se tutto al completo.
+- Clic sull'intestazione di un giorno o su una cella senza orario libero
+  della card: apre `/professionista/<id>?data=AAAA-MM-GG(&modalita=ONLINE)#agenda`.
+  Il profilo legge `?data=`, parte da quel giorno e scorre fino all'agenda
+  (l'agenda arriva dopo il caricamento, quindi il solo `#agenda` non
+  bastava). Non c'è un onPress sull'intero blocco agenda: con Tamagui
+  scattava anche cliccando frecce e "Mostra orari disponibili".
+- Frecce della card più grandi (28px, sfondo `gesso`) per il tocco su
+  telefono.
+- Nuovo `apps/web/src/components/IconActionButton.tsx`: pulsante tondo con
+  sola icona e fumetto CSS al passaggio del mouse (o al focus da tastiera);
+  dopo "Condividi" il fumetto mostra "Link copiato" anche su telefono.
+
+**Verifica:** typecheck di `packages/ui`, `apps/api`, `apps/web`. In locale
+(Postgres + API + web) con un professionista con fascia del giovedì
+prenotata per 6 settimane: griglia con orario barrato e riquadro "19 Nov";
+"Mostra orari disponibili" porta la finestra al 19 novembre; la freccia
+avanti scorre senza aprire il profilo; clic su "20 Nov" apre il profilo
+sull'agenda dal 20 novembre. Controllato a 1440px e 390px.

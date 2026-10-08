@@ -18,6 +18,14 @@ export function weekdayLabel(dayOfWeek: number): string {
   return WEEKDAYS.find((d) => d.value === dayOfWeek)?.label ?? "";
 }
 
+/**
+ * Quanti giorni di agenda pubblica si possono sfogliare con le frecce, sia
+ * nella scheda dei risultati di ricerca sia nella pagina profilo (richiesta
+ * esplicita dell'utente: "andare avanti nell'agenda per almeno due mesi",
+ * docs/CHANGELOG.md §197). 63 = 9 settimane, sempre oltre due mesi pieni.
+ */
+export const PUBLIC_AGENDA_DAYS = 63;
+
 /** Fascia oraria impostata dal professionista in /dashboard/agenda. */
 export type AvailabilitySlotItem = {
   id: string;
@@ -48,7 +56,7 @@ export type AvailabilitySlotItem = {
   homeMaxBookings: number | null;
   onlineMaxBookings: number | null;
   /**
-   * True se nei prossimi 14 giorni (stessa finestra di getPublicAgenda)
+   * True se nei prossimi 14 giorni (finestra della dashboard)
    * esiste già almeno una prenotazione reale o una richiesta di preventivo
    * (di uno qualunque dei due tipi) che cade in questa fascia ricorrente.
    * Usato in /dashboard/agenda per avvisare prima di rimuovere/ridurre un

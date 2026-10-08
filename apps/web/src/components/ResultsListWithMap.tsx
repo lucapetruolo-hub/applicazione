@@ -611,8 +611,6 @@ export function ResultsListWithMap({
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
               availabilityPreview={pro.availabilityPreview}
-              nextAvailableSlotHome={pro.nextAvailableSlotHome}
-              nextAvailableSlotOnline={pro.nextAvailableSlotOnline}
               defaultMode={defaultMode}
               // Se la ricerca è in modalità "Online", il profilo si apre già
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
@@ -646,6 +644,14 @@ export function ResultsListWithMap({
                     // "Ripeti la richiesta", stesso form).
                     `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
                   ),
+                )
+              }
+              // Click sull'agenda fuori da un orario libero: profilo aperto
+              // sull'agenda, già sul giorno scelto e sulla stessa modalità
+              // (richiesta esplicita dell'utente, docs/CHANGELOG.md §197).
+              onAgendaPress={(date, mode) =>
+                navigateWithTransition(() =>
+                  router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
                 )
               }
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}

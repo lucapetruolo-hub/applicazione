@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -14,10 +15,10 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
-// vedi ProfessionalCard in packages/ui) — qui costruita a partire dai 14
-// giorni già disponibili in agenda.days, senza bisogno di una ricerca
-// aggiuntiva se non c'è disponibilità nella finestra: il "prossimo orario
-// libero" è cercato nello stesso payload già scaricato.
+// vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
+// già disponibili in agenda.days (circa due mesi, PUBLIC_AGENDA_DAYS), senza
+// bisogno di una ricerca aggiuntiva se non c'è disponibilità nella finestra:
+// il primo orario libero è cercato nello stesso payload già scaricato.
 const AGENDA_PREVIEW_DAYS = 4;
 // Bug reale corretto: a 90px per colonna, 4 colonne (360px) superavano lo
 // spazio realmente disponibile su molti schermi da cellulare (padding
@@ -119,12 +120,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // Ogni fascia (esatta o generica) apre sempre la richiesta di preventivo
   // precompilata — richiesta esplicita dell'utente: nessuna prenotazione
   // istantanea da qui, a prescindere dalla capienza impostata dal
-  // professionista. `allDays` sono tutti i giorni già scaricati (14,
-  // getPublicAgenda): la griglia ne mostra AGENDA_PREVIEW_DAYS alla volta,
-  // con frecce avanti/indietro per scorrere senza una richiesta di rete
-  // aggiuntiva (richiesta esplicita dell'utente). `nextAvailableSlot` è
-  // cercato una sola volta sull'intera finestra di 14 giorni, usato solo
-  // come scorciatoia quando la primissima finestra (offset 0) è vuota.
+  // professionista. `allDays` sono tutti i giorni già scaricati (circa due
+  // mesi, getPublicAgenda): la griglia ne mostra AGENDA_PREVIEW_DAYS alla
+  // volta, con frecce avanti/indietro per scorrere senza una richiesta di
+  // rete aggiuntiva (richiesta esplicita dell'utente).
   // Tab "A domicilio"/"Online" (richiesta esplicita dell'utente, stesso
   // pattern della mini-agenda di ricerca): filtrano gli orari mostrati sotto
   // in base alla modalità offerta su ogni fascia (slot.home/slot.online,
@@ -144,29 +143,34 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       date: day.date,
       label: agendaDayLabel(offset, day.dayOfWeek),
       dateLabel: agendaDateLabel(day.date),
-      slots: day.slots,
+      slots: [...day.slots].sort((a, b) => a.startTime.localeCompare(b.startTime)),
     }));
-    const isAvailable = (slot: (typeof allDays)[number]["slots"][number]) => {
-      const mode = agendaMode === "HOME" ? slot.home : slot.online;
-      return mode !== null && mode.bookedCount < mode.maxBookings;
-    };
-    const initialHasAvailable = allDays.slice(0, AGENDA_PREVIEW_DAYS).some((day) => day.slots.some(isAvailable));
-    let nextAvailableSlot: { date: string; dateLabel: string; startTime: string; endTime: string } | null = null;
-    if (!initialHasAvailable) {
-      outer: for (const day of allDays) {
-        for (const slot of [...day.slots].sort((a, b) => a.startTime.localeCompare(b.startTime))) {
-          if (isAvailable(slot)) {
-            nextAvailableSlot = { date: day.date, dateLabel: day.dateLabel, startTime: slot.startTime, endTime: slot.endTime };
-            break outer;
-          }
-        }
-      }
-    }
-    return { allDays, initialHasAvailable, nextAvailableSlot };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agenda, agendaMode]);
+    const hasAnySlot = allDays.some((day) => day.slots.length > 0);
+    return { allDays, hasAnySlot };
+  }, [agenda]);
+
+  const isSlotAvailable = (slot: ProfessionalAgenda["days"][number]["slots"][number]) => {
+    const mode = agendaMode === "HOME" ? slot.home : slot.online;
+    return mode !== null && mode.bookedCount < mode.maxBookings;
+  };
 
   const [agendaWindowOffset, setAgendaWindowOffset] = useState(0);
+
+  // Arrivo dalla scheda nei risultati di ricerca con un clic sull'agenda
+  // (`?data=AAAA-MM-GG`, richiesta esplicita dell'utente, docs/CHANGELOG.md
+  // §197): la griglia parte da quel giorno e la pagina scorre fino
+  // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
+  // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
+  const requestedAgendaDate = searchParams.get("data");
+  const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
+  useEffect(() => {
+    if (!agendaPreview || !requestedAgendaDate || appliedAgendaDate === requestedAgendaDate) return;
+    setAppliedAgendaDate(requestedAgendaDate);
+    const index = agendaPreview.allDays.findIndex((day) => day.date === requestedAgendaDate);
+    if (index >= 0) setAgendaWindowOffset(index);
+    window.requestAnimationFrame(() => document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [agendaPreview, requestedAgendaDate, appliedAgendaDate]);
+
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
   const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
   const agendaOffset = Math.min(agendaWindowOffset, maxAgendaOffset);
@@ -177,15 +181,24 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
     ...day,
     slots: day.slots.filter((slot) => (agendaMode === "HOME" ? slot.home : slot.online) !== null),
   }));
-  const agendaHasAvailableInWindow = agendaWindowDays.some((day) =>
-    day.slots.some((slot) => {
-      const mode = agendaMode === "HOME" ? slot.home : slot.online;
-      return mode !== null && mode.bookedCount < mode.maxBookings;
-    }),
-  );
-  const agendaTimeRows = agendaHasAvailableInWindow
-    ? Array.from(new Set(agendaWindowDays.flatMap((day) => day.slots.map((slot) => slot.startTime)))).sort()
-    : [];
+  const agendaHasAvailableInWindow = agendaWindowDays.some((day) => day.slots.some(isSlotAvailable));
+  // Righe sempre visibili, anche quando è tutto al completo (orari barrati):
+  // prima la griglia spariva e restavano le sole intestazioni dei giorni.
+  const agendaTimeRows = Array.from(new Set(agendaWindowDays.flatMap((day) => day.slots.map((slot) => slot.startTime)))).sort();
+  // Primo orario libero per "Mostra orari disponibili": prima dopo i giorni
+  // visibili, poi dall'inizio se si è già andati oltre (richiesta esplicita
+  // dell'utente: deve portare al primo orario disponibile).
+  const findFirstFreeAgendaSlot = (fromIndex: number) => {
+    const days = agendaPreview?.allDays ?? [];
+    for (let index = fromIndex; index < days.length; index++) {
+      const slot = days[index]!.slots.find(isSlotAvailable);
+      if (slot) return { index, day: days[index]!, slot };
+    }
+    return null;
+  };
+  const agendaFirstFree = agendaHasAvailableInWindow
+    ? null
+    : (findFirstFreeAgendaSlot(agendaOffset + AGENDA_PREVIEW_DAYS) ?? findFirstFreeAgendaSlot(0));
   const agendaCanGoBack = agendaOffset > 0;
   const agendaCanGoForward = agendaOffset + AGENDA_PREVIEW_DAYS < totalAgendaDays;
 
@@ -353,46 +366,25 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             dispositivo (che su mobile include WhatsApp/contatti) e ripiega
             sulla copia del link dove l'API non esiste (desktop senza
             navigator.share). */}
-        <XStack gap="$3" flexWrap="wrap" alignItems="center">
+        {/* Solo icone, con la descrizione al passaggio del mouse (richiesta
+            esplicita dell'utente, docs/CHANGELOG.md §197). */}
+        <XStack gap="$2" alignItems="center">
           {user?.role === "CLIENT" ? (
-            <Button
-              variant={isSaved ? "primary" : "secondary"}
-              size="$3"
-              onPress={handleToggleSave}
-              disabled={isSaving}
-              opacity={isSaving ? 0.6 : 1}
-            >
-              <XStack alignItems="center" gap="$2">
-                <Icon name="heart" size={15} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
-                <Text color={isSaved ? "white" : brand.grafite} fontWeight="600">
-                  {isSaved ? "Salvato" : "Salva"}
-                </Text>
-              </XStack>
-            </Button>
+            <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave}>
+              <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
+            </IconActionButton>
           ) : null}
-          <Button variant="ghost" size="$3" onPress={handleShare}>
-            <XStack alignItems="center" gap="$2">
-              <Icon name="share-2" size={15} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text color={brand.cianografiaScuro} fontWeight="600">
-                {shareFeedback ?? "Condividi il profilo"}
-              </Text>
-            </XStack>
-          </Button>
+          <IconActionButton label={shareFeedback ?? "Condividi il profilo"} forceTooltip={shareFeedback !== null} onPress={handleShare}>
+            <Icon name="share-2" size={17} strokeWidth={1.5} color={brand.cianografiaScuro} />
+          </IconActionButton>
           {user ? (
-            <Button
-              variant="ghost"
-              size="$3"
+            <IconActionButton
+              label={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
               disabled={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`)}
-              opacity={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? 0.5 : 1}
               onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
             >
-              <XStack alignItems="center" gap="$2">
-                <Icon name="flag" size={15} strokeWidth={1.5} color={brand.grafite70} />
-                <Text color={brand.grafite70} fontWeight="600">
-                  {reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
-                </Text>
-              </XStack>
-            </Button>
+              <Icon name="flag" size={17} strokeWidth={1.5} color={brand.grafite70} />
+            </IconActionButton>
           ) : null}
         </XStack>
 
@@ -520,7 +512,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
 
-        {professional.acceptingRequests && agendaPreview && (agendaPreview.initialHasAvailable || agendaPreview.nextAvailableSlot) ? (
+        {professional.acceptingRequests && agendaPreview?.hasAnySlot ? (
           <YStack gap="$3">
             {/* Ancora per il click sulle pillole della mini-agenda nei risultati di ricerca
                 (ProfessionalCard): scrollMarginTop compensa l'header sticky. */}
@@ -640,7 +632,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </XStack>
             </YStack>
 
-            {agendaHasAvailableInWindow ? (
+            {agendaTimeRows.length > 0 ? (
               <YStack gap="$1.5">
                 {agendaTimeRows.map((time) => (
                   <XStack key={time}>
@@ -718,15 +710,16 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   </XStack>
                 ))}
               </YStack>
-            ) : agendaOffset === 0 && agendaPreview.nextAvailableSlot ? (
+            ) : null}
+
+            {agendaHasAvailableInWindow ? null : agendaFirstFree ? (
               <YStack gap="$2" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
                 <YStack gap={2}>
                   <Text fontSize={12} color={brand.grafite70}>
-                    Prossimo giorno disponibile:
+                    Nessun orario libero in questi giorni. Primo orario libero:
                   </Text>
                   <Text fontSize={14} fontWeight="700" color={brand.grafite}>
-                    {agendaPreview.nextAvailableSlot.dateLabel}, {agendaPreview.nextAvailableSlot.startTime}–
-                    {agendaPreview.nextAvailableSlot.endTime}
+                    {agendaFirstFree.day.dateLabel}, {agendaFirstFree.slot.startTime}–{agendaFirstFree.slot.endTime}
                   </Text>
                 </YStack>
                 <XStack
@@ -737,21 +730,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   backgroundColor={brand.cianografia}
                   cursor="pointer"
                   accessibilityRole="button"
-                  onPress={() => {
-                    // Porta avanti la griglia fino al giorno del prossimo
-                    // orario libero (richiesta esplicita dell'utente: prima
-                    // saltava direttamente alla creazione di un nuovo
-                    // preventivo invece di far vedere il calendario) — stessa
-                    // modalità A domicilio/Online correntemente selezionata,
-                    // già rispettata da nextAvailableSlot (calcolato con
-                    // agendaMode nella dipendenza dello useMemo sopra). Il
-                    // giorno target diventa la prima colonna della finestra
-                    // successiva; la fascia resta cliccabile lì per aprire
-                    // /preventivo, stesso comportamento di ogni altra fascia
-                    // in griglia — nessuna navigazione diretta da qui.
-                    const targetIndex = agendaPreview.allDays.findIndex((d) => d.date === agendaPreview.nextAvailableSlot!.date);
-                    if (targetIndex >= 0) setAgendaWindowOffset(targetIndex);
-                  }}
+                  // Porta la griglia sul giorno del primo orario libero, che
+                  // resta cliccabile lì per aprire /preventivo come ogni altra
+                  // fascia — nessuna navigazione diretta da qui.
+                  onPress={() => setAgendaWindowOffset(agendaFirstFree.index)}
                 >
                   <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
                     Mostra orari disponibili →
@@ -760,7 +742,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               </YStack>
             ) : (
               <Text fontSize="$2" color={brand.grafite70}>
-                Nessun orario libero in questi giorni.
+                Nessun orario libero nei prossimi due mesi.
               </Text>
             )}
             </Surface>
