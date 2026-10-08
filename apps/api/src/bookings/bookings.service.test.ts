@@ -183,3 +183,45 @@ describe("BookingsService.reopenBooking", () => {
     await expect(service.reopenBooking("client-1", "booking-1")).rejects.toThrow(ForbiddenException);
   });
 });
+
+describe("BookingsService.reportProblemByProfessional", () => {
+  function proBooking(overrides: Record<string, unknown> = {}) {
+    return {
+      status: "CONFIRMED",
+      clientId: "client-1",
+      professionalProfileId: "pro-1",
+      professionalProfile: { userId: "pro-user-1" },
+      quote: { guidedRequestId: "gr-1" },
+      ...overrides,
+    };
+  }
+  function build() {
+    const built = buildService({
+      contentReport: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: "report-1" }) },
+    });
+    (built.notificationsService as Record<string, unknown>).emailAdminsNewReport = vi.fn();
+    return built;
+  }
+  const input = { reason: "CLIENT_ABSENT" as const, description: "Ho suonato più volte, nessuno ha aperto." };
+
+  it("rifiuta se il lavoro non è del professionista", async () => {
+    const { service, prisma } = build();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(proBooking({ professionalProfile: { userId: "altro" } }));
+
+    await expect(service.reportProblemByProfessional("pro-user-1", "booking-1", input)).rejects.toThrow(ForbiddenException);
+  });
+
+  it("crea la segnalazione per il nostro team e scrive in chat al cliente", async () => {
+    const { service, prisma, timelineService, notificationsService } = build();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(proBooking());
+
+    await service.reportProblemByProfessional("pro-user-1", "booking-1", input);
+
+    const contentReport = (prisma as unknown as { contentReport: { create: ReturnType<typeof vi.fn> } }).contentReport;
+    expect(contentReport.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ targetType: "GUIDED_REQUEST", targetId: "gr-1", reason: "Problema sull'intervento: Il cliente non era presente" }) }),
+    );
+    expect(timelineService.log).toHaveBeenCalledWith("gr-1", "pro-1", "PROFESSIONAL", expect.stringContaining("non era presente"));
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "TIMELINE_MESSAGE_FROM_PROFESSIONAL", expect.anything());
+  });
+});

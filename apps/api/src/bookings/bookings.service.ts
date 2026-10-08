@@ -16,6 +16,8 @@ import {
   jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
   type ReportJobIssueInput,
+  PROFESSIONAL_JOB_PROBLEM_REASONS,
+  type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -640,6 +642,69 @@ export class BookingsService {
    * lavoro non andato bene (entro 14 giorni). Finestre ricalcolate qui, mai
    * fidarsi del client. Una sola segnalazione per lavoro; la decide un admin.
    */
+  /**
+   * Il professionista segnala un problema sull'intervento (richiesta esplicita
+   * dell'utente, docs/CHANGELOG.md §197): cliente assente, mancato pagamento,
+   * lavoro diverso dal descritto, comportamento scorretto. Va nelle
+   * segnalazioni del nostro team come segnalazione della richiesta (stesso
+   * pannello e stesse misure di "Segnala richiesta") e nella chat col cliente,
+   * che riceve l'avviso. Non tocca pagamenti né stato della prenotazione.
+   */
+  async reportProblemByProfessional(userId: string, bookingId: string, input: ReportProfessionalJobProblemInput) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        status: true,
+        clientId: true,
+        professionalProfileId: true,
+        professionalProfile: { select: { userId: true } },
+        quote: { select: { guidedRequestId: true } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException("Prenotazione non trovata.");
+    }
+    if (booking.professionalProfile.userId !== userId) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (!booking.quote) {
+      throw new BadRequestException("Puoi segnalare un problema solo su un lavoro nato da una richiesta.");
+    }
+    if (booking.status === "PENDING") {
+      throw new BadRequestException("Puoi segnalare un problema solo su un intervento confermato.");
+    }
+    const guidedRequestId = booking.quote.guidedRequestId;
+    const reasonLabel = PROFESSIONAL_JOB_PROBLEM_REASONS.find((r) => r.value === input.reason)?.label ?? input.reason;
+    const reason = `Problema sull'intervento: ${reasonLabel}`;
+
+    // Stessa finestra anti-doppioni di ContentReportsService.create.
+    const recentDuplicate = await this.prisma.contentReport.findFirst({
+      where: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      select: { id: true },
+    });
+    if (recentDuplicate) {
+      throw new ConflictException("Hai già inviato una segnalazione su questo lavoro nelle ultime 24 ore.");
+    }
+
+    const description = input.description.trim();
+    const created = await this.prisma.contentReport.create({
+      data: { reporterId: userId, targetType: "GUIDED_REQUEST", targetId: guidedRequestId, reason, details: description },
+      select: { id: true },
+    });
+    await this.timelineService.log(
+      guidedRequestId,
+      booking.professionalProfileId,
+      "PROFESSIONAL",
+      `Il professionista ha segnalato un problema sull'intervento: ${reasonLabel.toLowerCase()}. «${description}» Scrivetevi qui in chat per chiarire; la segnalazione arriva anche al nostro team.`,
+    );
+    await this.notificationsService.notify(booking.clientId, "TIMELINE_MESSAGE_FROM_PROFESSIONAL", {
+      guidedRequestId,
+      professionalProfileId: booking.professionalProfileId,
+    });
+    this.notificationsService.emailAdminsNewReport({ targetType: "GUIDED_REQUEST", reason });
+    return created;
+  }
+
   async reportIssue(clientId: string, bookingId: string, input: ReportJobIssueInput) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },

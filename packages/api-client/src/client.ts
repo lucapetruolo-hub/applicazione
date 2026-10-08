@@ -15,6 +15,7 @@ import type {
   ConversationEvent,
   CreateFeeRuleInput,
   CreateContentReportInput,
+  ReportProfessionalJobProblemInput,
   DecideRefundInput,
   ExternalJob,
   ExternalJobInput,
@@ -1633,6 +1634,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     reportJobIssue: (token: string, bookingId: string, input: ReportJobIssueInput) =>
       request<{ id: string; status: string }>(`/bookings/${bookingId}/issue`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Il professionista segnala un problema sull'intervento (§197). */
+    reportProfessionalJobProblem: (token: string, bookingId: string, input: ReportProfessionalJobProblemInput) =>
+      request<{ id: string }>(`/bookings/${bookingId}/professional-problem`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

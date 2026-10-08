@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, PROFESSIONAL_JOB_PROBLEM_REASONS, type CompleteBookingInput, type ProfessionalJobProblemReason, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
@@ -129,6 +129,7 @@ export function RequestCard({
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showProblemModal, setShowProblemModal] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
   // segnata a mano "da leggere" dal menu (docs/CHANGELOG.md §130).
@@ -503,6 +504,11 @@ export function RequestCard({
   }
   if (booking?.status === "CANCELED") {
     menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  }
+  // Il professionista segnala un problema sull'intervento (§197): cliente
+  // assente, mancato pagamento, ecc. Arriva al nostro team e in chat.
+  if (booking && booking.status !== "PENDING") {
+    menuActions.push({ icon: "flag", text: "Qualcosa è andato male", tone: "danger", onPress: () => setShowProblemModal(true) });
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
@@ -1342,6 +1348,24 @@ export function RequestCard({
           onClose={() => setShowReportModal(false)}
           onSubmit={async (reason, details) => {
             await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          }}
+        />
+      ) : null}
+      {showProblemModal && booking ? (
+        <ReportContentModal
+          targetLabel={`il lavoro di ${clientName}`}
+          title="Qualcosa è andato male?"
+          subtitle={`Raccontaci cosa è successo con ${clientName}. Lo scriviamo anche in chat al cliente e lo legge il nostro team.`}
+          reasonOptions={PROFESSIONAL_JOB_PROBLEM_REASONS}
+          detailsRequired
+          doneText="Segnalazione inviata. L'abbiamo scritta in chat al cliente e la verificheremo il prima possibile."
+          onClose={() => setShowProblemModal(false)}
+          onSubmit={async (_label, details, reasonValue) => {
+            await apiClient.reportProfessionalJobProblem(token, booking.id, {
+              reason: reasonValue as ProfessionalJobProblemReason,
+              description: details ?? "",
+            });
+            onChanged();
           }}
         />
       ) : null}

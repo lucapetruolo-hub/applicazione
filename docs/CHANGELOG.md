@@ -16931,7 +16931,7 @@ di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
   l'aggiornamento di voci/note del professionista riporta nella chat il
   testo della nota e il cambio di totale.
 
-## 197. Intervento annullato dal professionista: il cliente non lo riapre; testi delle segnalazioni senza "accordo o no"
+## 197. Intervento annullato dal professionista: il cliente non lo riapre; testi delle segnalazioni senza "accordo o no"; segnalazione del professionista
 
 **Richiesta dell'utente:** quando il professionista annulla un intervento il
 cliente non deve poterlo riaprire; quando il cliente segnala che qualcosa è
@@ -16949,5 +16949,17 @@ questione resta tra voi".
   frasi: popup di conferma al cliente, stato della segnalazione (cliente e
   professionista), messaggio automatico in chat, cronologia ed email al
   professionista.
-- **Verifica:** due test nuovi in `bookings.service.test.ts`, typecheck di
-  `apps/api` e `apps/web`.
+- **Il professionista segnala un problema sull'intervento** (richiesta
+  successiva dell'utente: "anche il professionista deve avere la possibilità
+  di segnalare qualcosa dell'intervento"). Voce "Qualcosa è andato male" nel
+  menu della scheda in `/dashboard/richieste`, su ogni lavoro accettato.
+  Motivi (`PROFESSIONAL_JOB_PROBLEM_REASONS`): cliente non presente, non ha
+  pagato, lavoro diverso dal descritto, comportamento scorretto, altro;
+  descrizione obbligatoria. `POST /bookings/:id/professional-problem` crea una
+  segnalazione `GUIDED_REQUEST` (stesso pannello admin e stesse misure di
+  "Segnala richiesta", nessuna migrazione), scrive il messaggio nella chat col
+  cliente e lo avvisa (`TIMELINE_MESSAGE_FROM_PROFESSIONAL`). Non tocca
+  pagamenti né lo stato della prenotazione. Al massimo una ogni 24 ore per
+  lavoro. La finestra riusa `ReportContentModal` con motivi propri.
+- **Verifica:** quattro test nuovi in `bookings.service.test.ts` (236 test
+  API verdi), typecheck di `apps/api` e `apps/web`.
