@@ -262,7 +262,7 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
 const CLIENT_HEADERS = {
   email: "Continua con l'email",
   new: "Crea il tuo account gratuito",
-  password: "Inserisci la password",
+  password: "Hai già un account",
   google: "Accedi con Google",
 } as const;
 
