@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -130,16 +130,18 @@ function LeMieRichiesteContent() {
     setPage(1);
   }
 
-  function reload() {
+  // useCallback: cambia solo col token, così il poll qui sotto può
+  // dichiararla tra le dipendenze senza ripartire a ogni render.
+  const reload = useCallback(() => {
     if (!token) return;
     apiClient
       .myGuidedRequests(token)
       .then(setRequests)
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste."));
     apiClient.myClientBookings(token).then(setBookings).catch(() => setBookings([]));
-  }
+  }, [token]);
 
-  useEffect(reload, [token]);
+  useEffect(reload, [reload]);
 
   const bookingByRequestId = useMemo(() => {
     const map = new Map<string, ClientBooking>();
@@ -278,7 +280,7 @@ function LeMieRichiesteContent() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [token, markNotificationsRead]);
+  }, [token, markNotificationsRead, reload]);
 
   // Le liste si aggiornano subito all'arrivo di una notifica (stesso canale
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.

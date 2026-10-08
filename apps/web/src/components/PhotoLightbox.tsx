@@ -137,6 +137,8 @@ export function PhotoLightbox({
       ) : null}
 
       {isVideoUrl(photos[index] ?? "") ? (
+        // Video caricati dagli utenti: non esistono sottotitoli da collegare.
+        // eslint-disable-next-line jsx-a11y/media-has-caption
         <video
           key={photos[index]}
           src={photos[index]}
