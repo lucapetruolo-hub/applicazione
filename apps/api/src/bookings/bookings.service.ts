@@ -530,12 +530,15 @@ export class BookingsService {
     if (booking.status !== "CANCELED") {
       throw new ForbiddenException("Questa prenotazione non è annullata.");
     }
-    // Il cliente riapre solo ciò che ha annullato lui: un intervento annullato
-    // dal professionista (o senza autore, righe precedenti a canceledBy) non si
-    // riapre dal lato cliente (richiesta esplicita dell'utente). Può sempre
+    // Regola simmetrica (richiesta esplicita dell'utente, §197): ognuno riapre
+    // solo ciò che ha annullato lui. Le righe senza autore (precedenti a
+    // canceledBy) non si riaprono da nessun lato. Il cliente può sempre
     // inviare una richiesta nuova.
     if (isClient && booking.canceledBy !== "CLIENT") {
       throw new ForbiddenException("Il professionista ha annullato questo intervento: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
+    }
+    if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
+      throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
 
     const scheduledAt = booking.scheduledAt;

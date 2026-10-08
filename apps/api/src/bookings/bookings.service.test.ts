@@ -176,6 +176,14 @@ describe("BookingsService.reopenBooking", () => {
     expect(prisma.booking.update).not.toHaveBeenCalled();
   });
 
+  it("il professionista non può riaprire un intervento annullato dal cliente", async () => {
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(canceledBooking("CLIENT"));
+
+    await expect(service.reopenBooking("pro-user-1", "booking-1")).rejects.toThrow(ForbiddenException);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
   it("il cliente non può riaprire un annullamento senza autore (righe vecchie)", async () => {
     const { service, prisma } = buildService();
     (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(canceledBooking(null));

@@ -16942,9 +16942,15 @@ questione resta tra voi".
   (`canceledBy === "CLIENT"`). Il pulsante "Riapri prenotazione" sparisce
   dalla scheda e dal menu delle sue richieste negli altri casi, e
   `BookingsService.reopenBooking` rifiuta la richiesta anche lato server
-  (anche per le righe vecchie senza autore). Il professionista può ancora
-  riaprire; il cliente può sempre inviare una richiesta nuova ("Ripeti la
-  richiesta" apre un modulo nuovo, non rimette in vita la vecchia).
+  (anche per le righe vecchie senza autore). Al suo posto il cliente legge
+  che l'intervento non si può riaprire e che con "Ripeti la richiesta" (che
+  apre un modulo nuovo, non rimette in vita la vecchia) può inviarla ad altri
+  professionisti. **Regola simmetrica**, decisa dall'utente: anche il
+  professionista riapre solo ciò che ha annullato lui (`canceledBy ===
+  "PROFESSIONAL"`), sul server e nella scheda di `/dashboard/richieste`.
+- **Altri testi ammorbiditi** (approvati dall'utente): "vi accordate tra voi"
+  e "si risolvono direttamente tra voi" tolti da `WhatIfSection`,
+  `JobPaymentStatus` e `/per-professionisti/pagamenti`.
 - **Testi della segnalazione con pagamento diretto**, riscritti senza le due
   frasi: popup di conferma al cliente, stato della segnalazione (cliente e
   professionista), messaggio automatico in chat, cronologia ed email al
@@ -16961,5 +16967,5 @@ questione resta tra voi".
   cliente e lo avvisa (`TIMELINE_MESSAGE_FROM_PROFESSIONAL`). Non tocca
   pagamenti né lo stato della prenotazione. Al massimo una ogni 24 ore per
   lavoro. La finestra riusa `ReportContentModal` con motivi propri.
-- **Verifica:** quattro test nuovi in `bookings.service.test.ts` (236 test
+- **Verifica:** cinque test nuovi in `bookings.service.test.ts` (236 test
   API verdi), typecheck di `apps/api` e `apps/web`.

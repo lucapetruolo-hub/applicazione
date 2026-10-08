@@ -163,6 +163,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
             {isReopening ? "Riapertura..." : "Riapri prenotazione"}
           </CardButton>
         </XStack>
+      ) : booking.status === "CANCELED" ? (
+        <Text fontSize="$3" color={brand.grafite70}>
+          Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
+          ad altri professionisti della zona.
+        </Text>
       ) : null}
       {reopenError ? (
         <Text color={brand.urgenza} fontSize="$3">

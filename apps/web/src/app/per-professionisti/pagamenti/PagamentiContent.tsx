@@ -96,7 +96,7 @@ export function PagamentiContent() {
         <Block title="Pagamento diretto">
           <P>
             Il cliente ti paga come vi accordate, fuori dalla piattaforma. Nessuna commissione. In questo caso non custodiamo i soldi e
-            non decidiamo sulle contestazioni: se nasce un problema vi mettiamo in contatto e vi accordate tra voi. Il cliente può
+            non decidiamo sulle contestazioni: se nasce un problema vi mettiamo in contatto per trovare una soluzione. Il cliente può
             comunque lasciarti una recensione.
           </P>
         </Block>

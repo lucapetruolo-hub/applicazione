@@ -502,7 +502,8 @@ export function RequestCard({
   if (booking?.status === "COMPLETED" && !booking.hasClientReview) {
     menuActions.push({ icon: "star", text: "Recensisci il cliente", onPress: () => setShowClientReviewModal(true) });
   }
-  if (booking?.status === "CANCELED") {
+  // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
+  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
     menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
   }
   // Il professionista segnala un problema sull'intervento (§197): cliente
@@ -1062,7 +1063,7 @@ export function RequestCard({
                 {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
                   <CardButton onPress={() => setShowClientReviewModal(true)}>Recensisci il cliente</CardButton>
                 ) : null}
-                {booking?.status === "CANCELED" ? (
+                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
                   <CardButton fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
                     {isReopening ? "Riapertura..." : "Riapri intervento"}
                   </CardButton>
