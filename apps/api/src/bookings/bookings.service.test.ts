@@ -152,3 +152,34 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     expect(prisma.booking.create).not.toHaveBeenCalled();
   });
 });
+
+describe("BookingsService.reopenBooking", () => {
+  function canceledBooking(canceledBy: "CLIENT" | "PROFESSIONAL" | null) {
+    return {
+      id: "booking-1",
+      clientId: "client-1",
+      status: "CANCELED",
+      canceledBy,
+      scheduledAt: new Date("2026-10-20T10:00:00Z"),
+      serviceMode: "HOME",
+      professionalProfileId: "pro-1",
+      professionalProfile: { userId: "pro-user-1" },
+      quote: null,
+    };
+  }
+
+  it("il cliente non può riaprire un intervento annullato dal professionista", async () => {
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(canceledBooking("PROFESSIONAL"));
+
+    await expect(service.reopenBooking("client-1", "booking-1")).rejects.toThrow(ForbiddenException);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("il cliente non può riaprire un annullamento senza autore (righe vecchie)", async () => {
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(canceledBooking(null));
+
+    await expect(service.reopenBooking("client-1", "booking-1")).rejects.toThrow(ForbiddenException);
+  });
+});

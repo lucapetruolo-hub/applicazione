@@ -16930,3 +16930,24 @@ di `apps/api` (232), con i nuovi casi per nota ed email `QUOTE_UPDATED`.
   stessa, e le note di cliente e professionista c'erano già; ora anche
   l'aggiornamento di voci/note del professionista riporta nella chat il
   testo della nota e il cambio di totale.
+
+## 197. Intervento annullato dal professionista: il cliente non lo riapre; testi delle segnalazioni senza "accordo o no"
+
+**Richiesta dell'utente:** quando il professionista annulla un intervento il
+cliente non deve poterlo riaprire; quando il cliente segnala che qualcosa è
+andato male, nei messaggi non devono comparire "accordo o no" né "la
+questione resta tra voi".
+
+- **Riapertura:** il cliente riapre solo una prenotazione annullata da lui
+  (`canceledBy === "CLIENT"`). Il pulsante "Riapri prenotazione" sparisce
+  dalla scheda e dal menu delle sue richieste negli altri casi, e
+  `BookingsService.reopenBooking` rifiuta la richiesta anche lato server
+  (anche per le righe vecchie senza autore). Il professionista può ancora
+  riaprire; il cliente può sempre inviare una richiesta nuova ("Ripeti la
+  richiesta" apre un modulo nuovo, non rimette in vita la vecchia).
+- **Testi della segnalazione con pagamento diretto**, riscritti senza le due
+  frasi: popup di conferma al cliente, stato della segnalazione (cliente e
+  professionista), messaggio automatico in chat, cronologia ed email al
+  professionista.
+- **Verifica:** due test nuovi in `bookings.service.test.ts`, typecheck di
+  `apps/api` e `apps/web`.

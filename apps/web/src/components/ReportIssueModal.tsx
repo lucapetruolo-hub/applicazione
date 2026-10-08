@@ -144,8 +144,8 @@ export function ReportIssueModal({
             {!assisted ? (
               <>
                 <Text color={brand.grafite70}>
-                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Avendo scelto il pagamento diretto, il
-                  problema va risolto tra voi: accordo o no, dalla scheda del lavoro potrai chiudere la segnalazione e lasciare la recensione.
+                  Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Scrivetevi in chat per trovare insieme
+                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione e lasciare la recensione.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   {onOpenChat ? (

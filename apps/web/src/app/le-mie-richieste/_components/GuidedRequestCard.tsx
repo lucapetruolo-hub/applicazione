@@ -459,7 +459,10 @@ export function GuidedRequestCard({
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED")) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
-    menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+    // Un intervento annullato dal professionista non si riapre dal lato cliente.
+    if (booking.canceledBy === "CLIENT") {
+      menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+    }
   } else if (canDelete) {
     // Annulla ≠ elimina (docs/CHANGELOG.md §130): la richiesta resta visibile
     // come "Annullata da te", i professionisti lo leggono nella cronologia.

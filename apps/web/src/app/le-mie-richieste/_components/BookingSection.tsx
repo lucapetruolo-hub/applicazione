@@ -156,7 +156,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </a>
       ) : null}
 
-      {booking.status === "CANCELED" ? (
+      {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
+      {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <CardButton onPress={handleReopenBooking} disabled={isReopening}>
             {isReopening ? "Riapertura..." : "Riapri prenotazione"}

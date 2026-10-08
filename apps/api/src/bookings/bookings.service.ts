@@ -528,6 +528,13 @@ export class BookingsService {
     if (booking.status !== "CANCELED") {
       throw new ForbiddenException("Questa prenotazione non è annullata.");
     }
+    // Il cliente riapre solo ciò che ha annullato lui: un intervento annullato
+    // dal professionista (o senza autore, righe precedenti a canceledBy) non si
+    // riapre dal lato cliente (richiesta esplicita dell'utente). Può sempre
+    // inviare una richiesta nuova.
+    if (isClient && booking.canceledBy !== "CLIENT") {
+      throw new ForbiddenException("Il professionista ha annullato questo intervento: non puoi riaprirlo. Puoi inviare una nuova richiesta.");
+    }
 
     const scheduledAt = booking.scheduledAt;
     const dayStart = new Date(scheduledAt);
@@ -692,7 +699,7 @@ export class BookingsService {
         "CLIENT",
         assisted
           ? `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il professionista ha 48 ore per rispondere qui in chat e provare a trovare una soluzione; se non risponde la segnalazione passa da sola al nostro team, se non trovate un accordo il cliente può chiedere al nostro team di decidere.`
-          : `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il lavoro è pagato direttamente al professionista: il problema va risolto tra voi, qui in chat. Accordo o no, il cliente potrà poi lasciare la recensione.`,
+          : `Il cliente ha segnalato un problema: ${JOB_ISSUE_LABEL[input.type].toLowerCase()}. «${input.description.trim()}» Il lavoro è pagato direttamente al professionista: scrivetevi qui in chat per trovare insieme una soluzione. Il cliente potrà poi lasciare la recensione.`,
       );
     }
     return { id: issue.id, status: issue.status };
@@ -736,7 +743,7 @@ export class BookingsService {
           "CLIENT",
           outcome === "RESOLVED"
             ? "Il cliente ha indicato che il problema è stato risolto con il professionista."
-            : "Il cliente ha indicato che non avete trovato un accordo. Il lavoro era pagato direttamente: la questione resta tra voi.",
+            : "Il cliente ha indicato che non avete trovato un accordo.",
         );
       }
       return { bookingId, status };
