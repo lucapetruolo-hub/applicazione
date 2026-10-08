@@ -12,7 +12,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
-import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
 
 export default function RegistratiPage() {
@@ -259,36 +258,31 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
   );
 }
 
-const CLIENT_HEADERS = {
-  email: "Continua con l'email",
-  new: "Crea il tuo account gratuito",
-  password: "Inserisci la password",
-  google: "Accedi con Google",
-} as const;
-
-function ClientSignup({ onAuthenticated }: { onAuthenticated: () => void }) {
+/**
+ * Registrazione del cliente con la stessa scheda e gli stessi campi del
+ * professionista (Google, oppure email, password e conferma password,
+ * docs/CHANGELOG.md §192, richiesta dell'utente): prima era il flusso
+ * "prima l'email" di §176, che resta solo nel popup della richiesta.
+ */
+function ClientSignupLayout({ children }: { children: ReactNode }) {
   return (
     <AuthPageBackground>
-      <Surface className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <ClientEmailFirstAuth
-          intro="Richieste, preventivi e professionisti salvati saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti."
-          firstTimeNote="Se è la prima volta, creeremo il tuo account gratuito. Se hai già un account, ti chiediamo la password."
-          submitSuffix=""
-          onAuthenticated={onAuthenticated}
-          renderHeader={(step) => (
-            <YStack alignItems="center" gap="$3">
-              <AuthIconBadge icon="search" />
-              <YStack alignItems="center" gap="$1">
-                <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                  Passo 2 di 2
-                </Text>
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-                  {CLIENT_HEADERS[step]}
-                </Text>
-              </YStack>
-            </YStack>
-          )}
-        />
+      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon="search" />
+          <YStack alignItems="center" gap="$1">
+            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+              Passo 2 di 2
+            </Text>
+            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              Crea il tuo account gratuito
+            </Text>
+            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+              Richieste, preventivi e professionisti salvati li ritrovi nel tuo account.
+            </Text>
+          </YStack>
+        </YStack>
+        {children}
         <TrustChips />
         <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
           Offri un servizio?{" "}
@@ -360,12 +354,6 @@ function RegistratiForm() {
     return <RoleChoiceScreen onChoose={chooseRole} noAccountFound={searchParams.get("motivo") === "nessun-account"} />;
   }
 
-  // Cliente: accesso "prima l'email" (docs/CHANGELOG.md §176), lo stesso del
-  // popup della richiesta. Un'email già registrata qui entra con la password.
-  if (!isProfessional) {
-    return <ClientSignup onAuthenticated={() => router.push("/")} />;
-  }
-
   // Con Google Sign-In questa pagina può autenticare anche un account
   // professionista già esistente (es. cliccando "Iscriviti gratis" da
   // /per-professionisti pur avendo già un profilo) — non solo una vera
@@ -375,6 +363,10 @@ function RegistratiForm() {
   // dritto in Dashboard — bug reale segnalato dall'utente, prima si
   // finiva sempre su /dashboard/profilo anche da loggati.
   function afterAuth(isNewUser: boolean) {
+    if (!isProfessional) {
+      router.push("/");
+      return;
+    }
     // Richiesta esplicita dell'utente: un account professionista appena
     // creato apre subito la schermata "Come fornirai i tuoi servizi?"
     // (/dashboard/tipo-attivita, skippabile) prima del profilo pubblico —
@@ -476,8 +468,7 @@ function RegistratiForm() {
     setGoogleConsentError(null);
   }
 
-  // Google, campi, consensi e pulsante del professionista (il cliente usa
-  // ClientSignup, sopra).
+  // Google, campi, consensi e pulsante: uguali per cliente e professionista.
   const formFields = (
     <>
       <GoogleSignInButton onCredential={handleGoogleCredential} />
@@ -640,7 +631,11 @@ function RegistratiForm() {
 
   return (
     <>
-    <ProfessionalSignupLayout>{formFields}</ProfessionalSignupLayout>
+    {isProfessional ? (
+      <ProfessionalSignupLayout>{formFields}</ProfessionalSignupLayout>
+    ) : (
+      <ClientSignupLayout>{formFields}</ClientSignupLayout>
+    )}
     {pendingGoogleIdToken ? (
       <GoogleConsentModal
         acceptedLegalTerms={acceptedLegalTerms}
