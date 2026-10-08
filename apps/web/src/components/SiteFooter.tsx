@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
+import { BRAND, PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
 
@@ -36,7 +36,7 @@ export function SiteFooter() {
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
         <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
           <YStack gap="$3" maxWidth={280}>
-            <Logo size={22} />
+            <Logo name={BRAND.name} size={22} />
             <Text fontSize="$3" color={brand.grafite70}>
               Trova e prenota professionisti verificati per la casa: idraulici, elettricisti, imbianchini e altro,
               vicino a te.
@@ -108,7 +108,7 @@ export function SiteFooter() {
           <XStack alignItems="center" gap="$2">
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
-              © {new Date().getFullYear()} Professionisti · Tutti i diritti riservati.
+              © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>

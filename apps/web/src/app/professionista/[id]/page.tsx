@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { BRAND } from "@professionisti/shared";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 
 type PageParams = { id: string };
@@ -17,7 +18,9 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
     return {
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
       description: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city}. ${
-        professional.reviewCount > 0 ? `${professional.rating}/5 su ${professional.reviewCount} recensioni.` : "Profilo verificato su Professionisti."
+        professional.reviewCount > 0 ? `${professional.rating}/5 su ${professional.reviewCount} recensioni.` : professional.verified
+          ? `Profilo verificato su ${BRAND.name}.`
+          : `Profilo su ${BRAND.name}.`
       }`,
     };
   } catch {

@@ -2,7 +2,9 @@ import { Text, XStack } from "tamagui";
 import { brand } from "./tokens";
 
 export type LogoProps = {
-  /** "full" = marchio + wordmark "Professionisti"; "mark" = solo il quadrato, per spazi stretti (favicon, avatar app). */
+  /** Nome del marchio scritto accanto al quadrato: arriva da `BRAND.name` (`packages/shared/src/brand.ts`). */
+  name: string;
+  /** "full" = marchio + nome; "mark" = solo il quadrato, per spazi stretti (favicon, avatar app). */
   variant?: "full" | "mark";
   size?: number;
 };
@@ -25,7 +27,7 @@ function Mark({ size }: { size: number }) {
   );
 }
 
-export function Logo({ variant = "full", size = 28 }: LogoProps) {
+export function Logo({ name, variant = "full", size = 28 }: LogoProps) {
   if (variant === "mark") {
     return <Mark size={size} />;
   }
@@ -34,7 +36,7 @@ export function Logo({ variant = "full", size = 28 }: LogoProps) {
     <XStack alignItems="center" gap="$2">
       <Mark size={size} />
       <Text fontFamily="$heading" fontWeight="800" fontSize={size * 0.7} letterSpacing={-0.5} color={brand.grafite}>
-        Professionisti
+        {name}
       </Text>
     </XStack>
   );

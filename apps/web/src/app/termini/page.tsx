@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 import { OnlinePaymentsTermsNote } from "@/components/OnlinePaymentsTermsNote";
+import { BRAND } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Termini di Servizio",
-  description: "Le regole d'uso della piattaforma Professionisti.",
+  description: `Le regole d'uso della piattaforma ${BRAND.name}.`,
 };
 
 export default function TerminiPage() {
@@ -14,8 +15,8 @@ export default function TerminiPage() {
       updatedAt="29 settembre 2026"
       sections={[
         {
-          heading: "1. Cos'è Professionisti",
-          body: "Professionisti è una piattaforma che mette in contatto chi cerca un professionista per lavori alla casa (idraulici, elettricisti, imbianchini e altre categorie) con i professionisti iscritti. La piattaforma facilita il contatto e lo scambio di preventivi: il contratto di lavoro si conclude sempre e solo tra cliente e professionista, che restano gli unici responsabili dell'esecuzione e della qualità del lavoro. Il cliente può pagare il lavoro online sulla piattaforma, con le garanzie descritte al punto 5, oppure direttamente al professionista.",
+          heading: `1. Cos'è ${BRAND.name}`,
+          body: BRAND.name + " è una piattaforma che mette in contatto chi cerca un professionista per lavori alla casa (idraulici, elettricisti, imbianchini e altre categorie) con i professionisti iscritti. La piattaforma facilita il contatto e lo scambio di preventivi: il contratto di lavoro si conclude sempre e solo tra cliente e professionista, che restano gli unici responsabili dell'esecuzione e della qualità del lavoro. Il cliente può pagare il lavoro online sulla piattaforma, con le garanzie descritte al punto 5, oppure direttamente al professionista.",
         },
         {
           heading: "2. Account",

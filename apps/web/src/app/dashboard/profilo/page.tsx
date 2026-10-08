@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, X } from "lucide-react";
-import {
+import {BRAND, 
   PROFESSIONAL_CATEGORIES,
   POPULAR_SERVICES,
   ALL_ITALIAN_CITY_NAMES,
@@ -114,6 +114,8 @@ export default function DashboardProfiloPage() {
   const { user, token, isLoading } = useAuth();
 
   const [businessName, setBusinessName] = useState("");
+  // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §199).
+  const [verified, setVerified] = useState(false);
   const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
@@ -199,6 +201,7 @@ export default function DashboardProfiloPage() {
         if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
         if (profile) {
           setBusinessName(profile.businessName);
+          setVerified(profile.verified);
           setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
           setCity(profile.city);
           setAddress(profile.address ?? "");
@@ -515,10 +518,26 @@ export default function DashboardProfiloPage() {
             Profilo e visibilità
           </Text>
           <Text color={brand.grafite70}>
-            Queste informazioni sono visibili pubblicamente su Professionisti e determinano in quali ricerche
+            Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche
             compari.
           </Text>
         </YStack>
+
+        {isFirstProfileSave ? null : (
+          <Surface gap="$2">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="badge-check" size={18} color={verified ? brand.verificato : brand.grafite70} strokeWidth={2} />
+              <Text fontWeight="700" color={brand.grafite}>
+                {verified ? "Il tuo profilo è verificato" : "Badge Verificato"}
+              </Text>
+            </XStack>
+            <Text color={brand.grafite70}>
+              {verified
+                ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
+                : `Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Per richiederlo scrivici a ${BRAND.supportEmail}: ti ricontattiamo per il controllo.`}
+            </Text>
+          </Surface>
+        )}
 
         {needsConfirmation ? (
           <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>

@@ -181,6 +181,12 @@ model ProfessionalProfile {
   // stesso upload Cloudinary già in uso per l'immagine profilo.
   portfolioUrls                String[]  @default([])
   verified                     Boolean   @default(false)
+  // Verifica manuale fatta da un admin in /admin/verifiche (docs/CHANGELOG.md
+  // §199): documento d'identità e partita IVA (o codice fiscale) controllati.
+  // Il badge "Verificato" segue `verified`; questi campi dicono chi e quando.
+  verifiedAt                   DateTime?
+  verifiedByUserId             String?
+  verificationNote             String?
   // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
   // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
   // escludere questi profili dalle sezioni pubbliche che dichiarano

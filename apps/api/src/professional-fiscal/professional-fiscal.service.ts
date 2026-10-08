@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
-import { FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
+import { BRAND, FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 
@@ -200,7 +200,7 @@ export class ProfessionalFiscalService {
   async createStripeConnectOnboardingLink(userId: string) {
     if (!this.stripe) {
       throw new BadRequestException(
-        "I pagamenti tramite Manovia non sono ancora configurati su questo ambiente. Aggiungi STRIPE_SECRET_KEY per attivarli.",
+        `I pagamenti tramite ${BRAND.name} non sono ancora configurati su questo ambiente. Aggiungi STRIPE_SECRET_KEY per attivarli.`,
       );
     }
     const professionalProfileId = await this.requireMyProfileId(userId);

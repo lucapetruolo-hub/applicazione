@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { BRAND, buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import type { JobPayment } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
@@ -220,7 +220,7 @@ export function BookingDetailPanel({
               Pagamento
             </Text>
             <Text color={brand.grafite} fontSize="$3">
-              {jobPayment.paymentMethod === "MANOVIA" ? "Tramite Manovia" : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
+              {jobPayment.paymentMethod === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
             </Text>
             <Text color={brand.grafite70} fontSize="$3">
               Lordo {euro(jobPayment.grossAmountEurCents)}

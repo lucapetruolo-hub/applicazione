@@ -15,3 +15,5 @@ export * from "./jobIssues";
 export * from "./onlinePayments";
 export * from "./profileInvites";
 export * from "./scheduleChange";
+export * from "./brand";
+export * from "./professionalVerification";

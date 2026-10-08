@@ -16979,3 +16979,59 @@ questione resta tra voi".
   `PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX`).
 - **Verifica:** cinque test nuovi in `bookings.service.test.ts` (237 test
   API verdi), typecheck di `apps/api` e `apps/web`.
+
+## 198. Nome del marchio in un solo punto
+
+**Richiesta dell'utente:** tenere nome e logo del marchio provvisorio in un
+unico punto configurabile, così al cambio del nome si tocca un file solo.
+
+- **`BRAND`** (`packages/shared/src/brand.ts`): nome, email di assistenza e
+  frase del titolo. Lo usano header e footer, titolo e descrizioni delle
+  pagine (privacy, termini, cookie, FAQ, contatti, accessibilità), manifest,
+  immagine di anteprima dei link, profilo pubblico, dashboard, admin finanza,
+  app mobile e le email (`EMAIL_BRAND` legge nome ed email da qui).
+- **Testi con "Manovia"** visibili all'utente (commissione, "Tramite
+  Manovia", pagina fiscale, admin finanza, errore Stripe Connect) ora usano
+  `BRAND.name`. Restano "MANOVIA" solo come valore interno di
+  `paymentMethod` nel database e nel codice: non si vede e non va rinominato.
+- **`Logo`** (`packages/ui`) riceve il nome come proprietà `name`: il
+  pacchetto UI non dipende da `shared`.
+- **Fuori da `BRAND`** (elencati nel commento del file): le immagini del
+  logo, `apps/mobile/app.json` e `RESEND_FROM_EMAIL` su Render.
+- **Verifica:** typecheck di tutto il monorepo, build di `apps/web` e
+  `apps/api`, test API verdi.
+
+## 199. Verifica manuale dei professionisti (badge "Verificato" vero)
+
+**Richiesta dell'utente:** il claim "Profili verificati" era pubblicato ma
+nessun profilo veniva mai verificato (checklist lancio punto 15). Costruire
+la verifica invece di riformulare il testo.
+
+- **Pagina admin `/admin/verifiche`** ("Verifica profili", ruolo
+  Moderatore): schede "Da verificare" e "Verificati", ricerca per nome,
+  comune o email, dati fiscali inseriti dal professionista (partita IVA,
+  codice fiscale) e RC dichiarata. "Segna come verificato" chiede due spunte
+  obbligatorie (documento d'identità controllato; partita IVA o codice
+  fiscale controllati) e una nota interna facoltativa. "Togli verifica"
+  chiede il motivo, che arriva al professionista.
+- **Nessun documento caricato o conservato sul sito**: il controllo si fa
+  in videochiamata o per email, nel database resta solo l'esito.
+- **API** `admin/professional-verifications` (`GET`, `POST :id/verify`,
+  `POST :id/unverify`), modulo `apps/api/src/professional-verification/`.
+  Esclusi profili eliminati, demo e non ancora confermati. Ogni cambio va nel
+  registro azioni.
+- **Database:** `ProfessionalProfile.verifiedAt`, `verifiedByUserId`,
+  `verificationNote` (migrazione `20261008140000_professional_verification`,
+  solo colonne nuove facoltative). Il badge segue `verified`, già mostrato
+  in ricerca, mappa, profilo e richieste.
+- **Avvisi al professionista:** `PROFILE_VERIFIED` e
+  `PROFILE_VERIFICATION_REMOVED` (argomento "Account e sicurezza", sito +
+  email).
+- **Testi:** in `/dashboard/profilo` un riquadro spiega come ottenere il
+  badge (scrivere all'email di assistenza) o conferma che il profilo è
+  verificato. "Garanzia Piattaforma" non dice più "In arrivo" e promette
+  solo ciò che si controlla davvero (documento e partita IVA, non l'RC). La
+  descrizione del profilo pubblico dice "Profilo verificato" solo se lo è.
+- **Verifica:** 4 test nuovi in `professional-verification.service.test.ts`
+  (241 test API verdi), typecheck di tutto il monorepo, build di `apps/web`
+  e `apps/api`, migrazione confrontata con `prisma migrate diff`.
