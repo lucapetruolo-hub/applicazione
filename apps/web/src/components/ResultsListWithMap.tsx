@@ -508,7 +508,8 @@ export function ResultsListWithMap({
                   &quot;In evidenza&quot;;
                 </li>
                 <li>poi, a parità di posizione, la valutazione media più alta;</li>
-                <li>a parità di valutazione, il numero di recensioni ricevute.</li>
+                <li>a parità di valutazione, il numero di recensioni ricevute;</li>
+                <li>se hai cercato un luogo, a parità di tutto il più vicino.</li>
               </ol>
               <p>
                 Un professionista con più segnalazioni accolte in 30 giorni scende in fondo all&apos;elenco per 14 giorni,
