@@ -17384,3 +17384,7 @@ senza nessuno entro 25 km da Milano compare Bergamo e non Torino o Roma;
 più profili sullo stesso comune compaiono insieme; chi non ha coordinate
 è escluso); tutti i test di `apps/api` verdi, tipi di `apps/api` e
 `apps/web` senza errori.
+
+**Etichetta del boost (richiesta di Luca nel thread):** "In evidenza" diventa
+"Sponsorizzato" sulla scheda dei risultati, sul profilo e nella spiegazione
+dell'ordinamento, così una posizione a pagamento si riconosce come tale.

@@ -294,7 +294,7 @@ export function ProfessionalCard({
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
                   <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.ottone}>
-                    In evidenza
+                    Sponsorizzato
                   </Text>
                 </XStack>
               ) : null}
