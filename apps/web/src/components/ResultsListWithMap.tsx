@@ -620,6 +620,7 @@ export function ResultsListWithMap({
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               city={pro.city}
+              distanceKm={pro.distanceKm}
               subTags={pro.subTags}
               rating={pro.rating ?? undefined}
               reviewCount={pro.reviewCount}

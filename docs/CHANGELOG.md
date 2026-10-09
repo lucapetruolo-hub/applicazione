@@ -17388,3 +17388,7 @@ più profili sullo stesso comune compaiono insieme; chi non ha coordinate
 **Etichetta del boost (richiesta di Luca nel thread):** "In evidenza" diventa
 "Sponsorizzato" sulla scheda dei risultati, sul profilo e nella spiegazione
 dell'ordinamento, così una posizione a pagamento si riconosce come tale.
+
+**Distanza sulla scheda (richiesta di Luca nel thread):** nella ricerca per
+luogo la scheda mostra "Città · a N km" accanto alla città (campo
+`distanceKm`, virgola decimale).
