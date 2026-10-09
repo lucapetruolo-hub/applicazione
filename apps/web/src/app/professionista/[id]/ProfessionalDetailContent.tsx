@@ -305,7 +305,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   {professional.businessName}
                 </Text>
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
-                {professional.boosted ? <Badge variant="pro">In evidenza</Badge> : null}
+                {professional.boosted ? <Badge variant="pro">Sponsorizzato</Badge> : null}
                 {professional.isNewProfile ? <Badge variant="nuovo">Nuovo profilo</Badge> : null}
                 {professional.hasLiabilityInsurance ? (
                   <span className="rc-badge" title="Dichiarata dal professionista, non ancora verificata da noi">

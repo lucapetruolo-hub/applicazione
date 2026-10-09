@@ -64,6 +64,8 @@ export type ProfessionalCardProps = {
   businessName: string;
   categoryLabel: string;
   city: string;
+  /** Distanza in km dal luogo cercato (ricerca per luogo): mostrata accanto alla città. */
+  distanceKm?: number;
   /** Sotto-tag di specializzazione (es. "impianti civili"), mostrati accanto alla categoria — fino a 3. */
   subTags?: string[];
   rating?: number;
@@ -144,6 +146,7 @@ export function ProfessionalCard({
   businessName,
   categoryLabel,
   city,
+  distanceKm,
   subTags,
   rating,
   reviewCount,
@@ -294,7 +297,7 @@ export function ProfessionalCard({
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
                   <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.ottone}>
-                    In evidenza
+                    Sponsorizzato
                   </Text>
                 </XStack>
               ) : null}
@@ -335,7 +338,7 @@ export function ProfessionalCard({
             <XStack gap="$1" alignItems="center">
               <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={13} color={brand.grafite70}>
-                {city}
+                {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
               </Text>
             </XStack>
             {completedThisMonth && completedThisMonth > 0 ? (

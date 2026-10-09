@@ -54,6 +54,16 @@ function offsetOverlappingPositions(items: ProfessionalSearchResult[]): Map<stri
   return positions;
 }
 
+// Mezza ampiezza minima dell'inquadratura attorno al luogo cercato (~5 km):
+// con i risultati tutti nel centro del comune la mappa non zooma su un punto.
+const MIN_HALF_SPAN_DEG = 0.045;
+
+function boundsAround([lat, lng]: [number, number], points: [number, number][]) {
+  const halfLat = Math.max(MIN_HALF_SPAN_DEG, ...points.map(([pLat]) => Math.abs(pLat - lat)));
+  const halfLng = Math.max(MIN_HALF_SPAN_DEG, ...points.map(([, pLng]) => Math.abs(pLng - lng)));
+  return { north: lat + halfLat, south: lat - halfLat, east: lng + halfLng, west: lng - halfLng, padding: 32 };
+}
+
 export function ResultsMap({
   professionals,
   initialProfessionals,
@@ -90,8 +100,12 @@ export function ResultsMap({
   // Si inquadra solo all'apertura, poi zoom e spostamenti restano
   // dell'utente. La mappa viene montata solo quando è visibile
   // (ResultsListWithMap), quindi il contenitore ha già le sue dimensioni.
-  const initialBounds =
-    initialPoints.length >= 2
+  // Con un luogo cercato (richiesta esplicita dell'utente) la mappa resta
+  // centrata sul luogo e si allarga fino al risultato più lontano, anche
+  // quando è l'unico professionista trovato fuori dal raggio di ricerca.
+  const initialBounds = fallbackCenter && initialPoints.length > 0
+    ? boundsAround(fallbackCenter, initialPoints)
+    : initialPoints.length >= 2
       ? {
           north: Math.max(...initialPoints.map(([lat]) => lat)),
           south: Math.min(...initialPoints.map(([lat]) => lat)),

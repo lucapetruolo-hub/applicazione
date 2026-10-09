@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, PUBLIC_AGENDA_DAYS, type ProfessionalSearchResult } from "@professionisti/shared";
+import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -48,6 +48,14 @@ export function ResultsListWithMap({
     return comune ? [comune.lat, comune.lon] : undefined;
   }, [city]);
   const pool = allProfessionals ?? professionals;
+  // Nessuno entro il raggio di ricerca: l'API ha allargato fino al
+  // professionista più vicino (ProfessionalsService.search), lo diciamo.
+  const nearestOutsideKm = useMemo(() => {
+    if (!city || professionals.length === 0) return null;
+    const distances = professionals.map((pro) => pro.distanceKm);
+    if (distances.some((d) => d === undefined || d <= SEARCH_RADIUS_KM)) return null;
+    return Math.round(Math.min(...(distances as number[])));
+  }, [city, professionals]);
 
   const [visible, setVisible] = useState(professionals);
   // Da mobile la mappa parte chiusa: si apre solo toccando il bottone nella
@@ -497,10 +505,11 @@ export function ResultsListWithMap({
               <ol>
                 <li>
                   prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
-                  &quot;In evidenza&quot;;
+                  &quot;Sponsorizzato&quot;;
                 </li>
                 <li>poi, a parità di posizione, la valutazione media più alta;</li>
-                <li>a parità di valutazione, il numero di recensioni ricevute.</li>
+                <li>a parità di valutazione, il numero di recensioni ricevute;</li>
+                <li>se hai cercato un luogo, a parità di tutto il più vicino.</li>
               </ol>
               <p>
                 Un professionista con più segnalazioni accolte in 30 giorni scende in fondo all&apos;elenco per 14 giorni,
@@ -597,12 +606,21 @@ export function ResultsListWithMap({
             </button>
           </XStack>
           {header}
+          {nearestOutsideKm !== null ? (
+            <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$3">
+              <Text color={brand.grafite} fontSize="$3">
+                Nessun professionista entro {SEARCH_RADIUS_KM} km da {findComuneByName(city!)?.name ?? city}: ti mostriamo il più
+                vicino, a circa {nearestOutsideKm} km.
+              </Text>
+            </YStack>
+          ) : null}
           {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro) => (
             <ProfessionalCard
               key={pro.id}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               city={pro.city}
+              distanceKm={pro.distanceKm}
               subTags={pro.subTags}
               rating={pro.rating ?? undefined}
               reviewCount={pro.reviewCount}
