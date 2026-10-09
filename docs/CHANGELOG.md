@@ -17350,3 +17350,37 @@ compare un testo breve con le stesse informazioni (solo cookie tecnici,
 servizi Google su consenso, niente pubblicità, revoca in fondo alla
 pagina, link alla Cookie Policy) e bottoni più bassi: banner alto 105px a
 360px e 390px, bottoni interi; su computer invariato (56px).
+
+## 207. Ricerca per luogo: raggio di 25 km e professionista più vicino
+
+**Richiesta esplicita dell'utente:** cercando un professionista in un luogo,
+allargare il raggio di ricerca con al centro il luogo scelto; se lì non c'è
+nessuno, allargare la mappa fino al primo professionista disponibile e
+mostrarlo nei risultati.
+
+**Decisione:**
+- *API (`ProfessionalsService.search`):* con una città che è un comune ISTAT
+  la ricerca non confronta più il nome della città ma la distanza dal
+  centro del comune: compaiono tutti i professionisti entro
+  `SEARCH_RADIUS_KM` (25 km, `packages/shared/src/professionals.ts`, stesso
+  valore del raggio di ingaggio predefinito). Se nel raggio non c'è
+  nessuno, si allarga al più vicino (e a chi è alla sua stessa distanza,
+  di solito più profili sullo stesso comune): `selectSearchArea` in
+  `apps/api/src/professionals/search-area.ts`. Prima una query leggera
+  sulle sole coordinate, poi il dettaglio dei profili scelti. Ogni
+  risultato porta `distanceKm`. Ordinamento invariato
+  (boost → valutazione → recensioni), a parità il più vicino. Un nome che
+  non è un comune resta un confronto esatto come prima. Stessi filtri di
+  sempre (eliminati, sospesi, in pausa, invito in attesa, bloccati).
+- *Mappa (`ResultsMap`):* con un luogo cercato l'inquadratura iniziale è
+  centrata sul luogo e si allarga fino al risultato più lontano (minimo
+  ~5 km per lato), anche quando l'unico risultato è fuori dal raggio.
+- *Lista (`ResultsListWithMap`):* se tutti i risultati sono oltre i 25 km
+  compare l'avviso "Nessun professionista entro 25 km da X: ti mostriamo il
+  più vicino, a circa N km."
+
+**Verifica:** test `search-area.test.ts` (Monza compare cercando Milano;
+senza nessuno entro 25 km da Milano compare Bergamo e non Torino o Roma;
+più profili sullo stesso comune compaiono insieme; chi non ha coordinate
+è escluso); tutti i test di `apps/api` verdi, tipi di `apps/api` e
+`apps/web` senza errori.

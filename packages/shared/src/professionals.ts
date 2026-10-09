@@ -228,7 +228,22 @@ export type ProfessionalSearchResult = {
    * Calcolato server-side (ProfessionalsService.computeIsNewProfile).
    */
   isNewProfile: boolean;
+  /**
+   * Distanza in linea d'aria (km, una cifra decimale) dal centro del comune
+   * cercato: presente solo nelle ricerche con una città riconosciuta
+   * (`SEARCH_RADIUS_KM`).
+   */
+  distanceKm?: number;
 };
+
+/**
+ * Raggio della ricerca per luogo (richiesta esplicita dell'utente): con una
+ * città cercata compaiono i professionisti entro questa distanza dal centro
+ * del comune, non solo quelli di quel comune. Se non ce n'è nessuno, la
+ * ricerca si allarga fino al professionista più vicino. Stesso valore del
+ * raggio di ingaggio predefinito del professionista (`engagementRadiusKm`).
+ */
+export const SEARCH_RADIUS_KM = 25;
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {

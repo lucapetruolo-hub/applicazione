@@ -5,6 +5,7 @@ import {
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
+  SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
@@ -33,6 +34,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
+import { selectSearchArea } from "./search-area";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
@@ -85,26 +87,47 @@ export class ProfessionalsService {
   ) {}
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+    const baseWhere: Prisma.ProfessionalProfileWhereInput = {
+      // Un professionista che ha eliminato l'account non deve mai
+      // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
+      // né uno sospeso da un admin (docs/CHANGELOG.md §144), né uno in pausa
+      // per l'abbonamento (§162).
+      deletedAt: null,
+      suspendedAt: null,
+      pausedAt: null,
+      // Creato da un operatore e non ancora confermato dal professionista (§170).
+      invitePendingAt: null,
+      // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
+      // in pausa, fuori dalla ricerca finché non può ricevere richieste.
+      OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+      ...(category ? { category: { slug: category } } : {}),
+      ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
+      ...(remote ? { remoteAvailable: true } : {}),
+      ...(excludeDemo ? { isDemo: false } : {}),
+    };
+
+    // Ricerca per luogo (richiesta esplicita dell'utente): con un comune
+    // riconosciuto si cercano i professionisti entro SEARCH_RADIUS_KM dal suo
+    // centro e, se non ce n'è nessuno, il più vicino (selectSearchArea). Una
+    // prima query leggera solo sulle coordinate, poi il dettaglio completo
+    // solo per i profili scelti. Un nome che non è un comune ISTAT resta un
+    // confronto esatto sulla città, come prima.
+    const comune = city ? findComuneByName(city) : undefined;
+    let distanceById: Map<string, number> | null = null;
+    let where: Prisma.ProfessionalProfileWhereInput = baseWhere;
+    if (comune) {
+      const candidates = await this.prisma.professionalProfile.findMany({
+        where: baseWhere,
+        select: { id: true, latitude: true, longitude: true },
+      });
+      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM);
+      where = { ...baseWhere, id: { in: [...distanceById.keys()] } };
+    } else if (city) {
+      where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
+    }
+
     const profiles = await this.prisma.professionalProfile.findMany({
-      where: {
-        // Un professionista che ha eliminato l'account non deve mai
-        // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
-        // né uno sospeso da un admin (docs/CHANGELOG.md §144), né uno in pausa
-        // per l'abbonamento (§162).
-        deletedAt: null,
-        suspendedAt: null,
-        pausedAt: null,
-        // Creato da un operatore e non ancora confermato dal professionista (§170).
-        invitePendingAt: null,
-        // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
-        // in pausa, fuori dalla ricerca finché non può ricevere richieste.
-        OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
-        ...(category ? { category: { slug: category } } : {}),
-        ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
-        ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
-        ...(remote ? { remoteAvailable: true } : {}),
-        ...(excludeDemo ? { isDemo: false } : {}),
-      },
+      where,
       include: {
         category: true,
         bookings: { include: { review: true, clientReview: true } },
@@ -154,6 +177,7 @@ export class ProfessionalsService {
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
+        ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
 
@@ -169,7 +193,10 @@ export class ProfessionalsService {
       if (a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;
-      return b.reviewCount - a.reviewCount;
+      const reviewDiff = b.reviewCount - a.reviewCount;
+      if (reviewDiff !== 0) return reviewDiff;
+      // A parità di tutto, nella ricerca per luogo prima il più vicino.
+      return (a.distanceKm ?? 0) - (b.distanceKm ?? 0);
     });
 
     return results;
