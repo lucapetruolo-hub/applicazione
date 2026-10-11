@@ -20,12 +20,12 @@ type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | nul
 const LEAD_PRICE_STANDARD_EUR_CENTS = 500;
 const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 
-// Smistamento (docs/CHANGELOG.md §209, decisione dell'utente): una richiesta
+// Smistamento (docs/CHANGELOG.md §210, decisione dell'utente): una richiesta
 // generale va a tutti i professionisti della categoria nel cui raggio cade
 // la città del cliente, senza tetto né scadenza per rispondere; resta aperta
 // finché non si chiude (al più 30 giorni se urgente, 60 se normale). Una
 // richiesta diretta va solo al professionista scelto, senza scadenza per lui:
-// l'eventuale inoltro agli altri parte dopo 60 minuti / 6 ore (§208).
+// l'eventuale inoltro agli altri parte dopo 60 minuti / 6 ore (§209).
 // Il boost a pagamento non entra mai nello smistamento.
 
 // Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
@@ -67,7 +67,7 @@ export class GuidedRequestsService {
       throw new BadRequestException("Categoria non valida.");
     }
     // Richieste generali chiuse per tutto il sito o per questa categoria in
-    // questa città (docs/CHANGELOG.md §210). Non vale per il rinvio fatto dal
+    // questa città (docs/CHANGELOG.md §211). Non vale per il rinvio fatto dal
     // sistema dopo una mancata presentazione (excludeProfileId, §167).
     if (!input.professionalProfileId && !opts.excludeProfileId) {
       const availability = await this.generalRequestsService.availability(category.id, input.city ?? null);
@@ -207,14 +207,14 @@ export class GuidedRequestsService {
           remoteOnly: input.serviceMode === "ONLINE",
         });
 
-    // A tutti i compatibili, senza tetto né coda di riserva (docs/CHANGELOG.md §209).
+    // A tutti i compatibili, senza tetto né coda di riserva (docs/CHANGELOG.md §210).
     const leadRecipients = matchingProfiles.map((m) => m.profile);
 
     const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
     const requestExpiresAt = this.computeRequestExpiry(input.isUrgent);
 
     if (leadRecipients.length > 0) {
-      // Nessuna scadenza per rispondere (docs/CHANGELOG.md §208-§209): si
+      // Nessuna scadenza per rispondere (docs/CHANGELOG.md §209-§210): si
       // risponde finché la richiesta è aperta. Per una richiesta diretta
       // l'eventuale inoltro ad altri parte da GuidedRequest.forwardAt.
       await this.prisma.lead.createMany({
@@ -277,7 +277,7 @@ export class GuidedRequestsService {
     return {
       // Professionisti che hanno DAVVERO ricevuto un Lead (dopo la
       // selezione), non solo i candidati compatibili trovati — questo
-      // numero coincide con matchingProfiles.length (nessun tetto, §209).
+      // numero coincide con matchingProfiles.length (nessun tetto, §210).
       guidedRequestId: guidedRequest.id,
       matchedProfessionals: leadRecipients.length,
     };
@@ -468,7 +468,7 @@ export class GuidedRequestsService {
     if (quoteCount > 0) {
       throw new ForbiddenException("Non puoi modificare la richiesta: un professionista ha già inviato un preventivo.");
     }
-    // Richiesta generale: la città resta obbligatoria anche online (§209).
+    // Richiesta generale: la città resta obbligatoria anche online (§210).
     if (!request.professionalProfileId && !input.city?.trim()) {
       throw new BadRequestException("La città è obbligatoria.");
     }
@@ -598,7 +598,7 @@ export class GuidedRequestsService {
     const [totalContacted, responded, pending] = await Promise.all([
       this.prisma.lead.count({ where: { guidedRequestId: id } }),
       this.prisma.quote.count({ where: { guidedRequestId: id } }),
-      // expiresAt nullo: professionista scelto dal cliente, senza scadenza (§208).
+      // expiresAt nullo: professionista scelto dal cliente, senza scadenza (§209).
       this.prisma.lead.count({
         where: { guidedRequestId: id, status: "PENDING", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       }),
@@ -659,7 +659,7 @@ export class GuidedRequestsService {
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
         OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
         ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
-        // Intervento online: solo chi offre consulenza da remoto (§209).
+        // Intervento online: solo chi offre consulenza da remoto (§210).
         ...(remoteOnly ? { remoteAvailable: true } : {}),
       },
     });
@@ -725,7 +725,7 @@ export class GuidedRequestsService {
     });
 
     for (const request of openRequests) {
-      // Ogni richiesta generale va a tutti i compatibili (§209): anche a chi
+      // Ogni richiesta generale va a tutti i compatibili (§210): anche a chi
       // si iscrive dopo, purché non l'abbia già ricevuta.
       if (request.serviceMode === "ONLINE" && !profile.remoteAvailable) continue;
       const alreadyReceived = await this.prisma.lead.count({ where: { guidedRequestId: request.id, professionalProfileId: profile.id } });
@@ -772,12 +772,12 @@ export class GuidedRequestsService {
    * Inoltra una richiesta diretta ad altri professionisti simili quando
    * quello scelto non ha risposto entro `forwardAt` (runExpiryCheck) o ha
    * rifiutato, se il cliente ha lasciato attiva la casella (docs/CHANGELOG.md
-   * §154, tempi in §208). Una sola volta: la
+   * §154, tempi in §209). Una sola volta: la
    * prima chiamata "prenota" l'inoltro con un update condizionato su
    * `forwardedAt` nullo, così due espansioni concorrenti non lo raddoppiano.
    * Stessa selezione per punteggio delle richieste generiche, escluso il
    * professionista scelto: va a tutti i compatibili della zona, senza
-   * scadenza (§209).
+   * scadenza (§210).
    */
   private async forwardDirectRequest(guidedRequestId: string): Promise<void> {
     const claimed = await this.prisma.guidedRequest.updateMany({
@@ -789,7 +789,7 @@ export class GuidedRequestsService {
     if (!request) return;
 
     // Zona: quella scritta dal cliente; se non l'ha indicata (es. intervento
-    // online), quella del professionista scelto (docs/CHANGELOG.md §208).
+    // online), quella del professionista scelto (docs/CHANGELOG.md §209).
     const chosen = request.professionalProfileId
       ? await this.prisma.professionalProfile.findUnique({ where: { id: request.professionalProfileId }, select: { city: true } })
       : null;
@@ -798,7 +798,7 @@ export class GuidedRequestsService {
       excludeProfileId: request.professionalProfileId ?? undefined,
       remoteOnly: request.serviceMode === "ONLINE",
     });
-    // A tutti i compatibili della zona, come una richiesta generale (§209).
+    // A tutti i compatibili della zona, come una richiesta generale (§210).
     const selected = matched.map((m) => m.profile);
 
     if (selected.length === 0) {
@@ -1007,7 +1007,7 @@ export class GuidedRequestsService {
 
     // Richieste dirette senza risposta dal professionista scelto entro
     // forwardAt (60 minuti se urgente, 6 ore se normale, docs/CHANGELOG.md
-    // §208), né preventivo né messaggio in chat: se il cliente ha lasciato
+    // §209), né preventivo né messaggio in chat: se il cliente ha lasciato
     // la casella, si inoltrano ad altri.
     // Il professionista scelto tiene la richiesta e può ancora rispondere.
     const dueForward = await this.prisma.guidedRequest.findMany({

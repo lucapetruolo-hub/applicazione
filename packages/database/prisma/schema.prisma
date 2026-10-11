@@ -690,7 +690,7 @@ model GuidedRequest {
   forwardedAt           DateTime?
   // Quando inoltrarla se il professionista scelto non ha ancora risposto:
   // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
-  // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §208).
+  // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §209).
   forwardAt             DateTime?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -2092,7 +2092,7 @@ model ProfileInvite {
 }
 
 // Richieste generali chiuse per una categoria in una città (docs/CHANGELOG.md
-// §210): in automatico quando i professionisti della zona ne ricevono troppe
+// §211): in automatico quando i professionisti della zona ne ricevono troppe
 // o rispondono poco, oppure a mano dall'area admin. Una riga per coppia
 // categoria+città: riaprire valorizza reopenedAt (e keepOpenUntil, per non
 // farla richiudere subito dal controllo automatico).

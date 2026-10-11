@@ -190,9 +190,9 @@ export const guidedRequestSchema = z
     photoUrls: z.array(z.string().url()).max(5).default([]),
     /**
      * Obbligatoria a domicilio e in ogni richiesta generale, anche online
-     * (docs/CHANGELOG.md §209: decide a chi arriva). Facoltativa solo per
+     * (docs/CHANGELOG.md §210: decide a chi arriva). Facoltativa solo per
      * una consulenza online a un professionista scelto: se vuota, l'inoltro
-     * usa la città del professionista (§208).
+     * usa la città del professionista (§209).
      */
     city: z.string().optional(),
     /**
@@ -255,7 +255,7 @@ export const guidedRequestSchema = z
   // prima che questi campi diventassero facoltativi.
   .superRefine((data, ctx) => {
     // Richiesta generale: città sempre obbligatoria, anche online — decide a
-    // quali professionisti arriva (docs/CHANGELOG.md §209).
+    // quali professionisti arriva (docs/CHANGELOG.md §210).
     if (data.serviceMode !== "HOME") {
       if (!data.professionalProfileId && !data.city?.trim())
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });

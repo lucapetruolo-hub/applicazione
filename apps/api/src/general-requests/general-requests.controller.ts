@@ -6,7 +6,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { GeneralRequestsService } from "./general-requests.service";
 
-/** Pubblico: il modulo di richiesta chiede se le richieste generali sono aperte (docs/CHANGELOG.md §210). */
+/** Pubblico: il modulo di richiesta chiede se le richieste generali sono aperte (docs/CHANGELOG.md §211). */
 @Controller("general-requests")
 export class GeneralRequestsController {
   constructor(private readonly generalRequestsService: GeneralRequestsService) {}

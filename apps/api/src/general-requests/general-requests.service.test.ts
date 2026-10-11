@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { generalRequestCloseReason, responseRate, weeklyPerProfessional, type GeneralRequestLoad } from "@professionisti/shared";
 import { GeneralRequestsService } from "./general-requests.service";
 
-/** Chiusura automatica delle richieste generali per categoria e città (docs/CHANGELOG.md §210). */
+/** Chiusura automatica delle richieste generali per categoria e città (docs/CHANGELOG.md §211). */
 
 const NOW = new Date("2026-10-11T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);

@@ -17393,7 +17393,47 @@ dell'ordinamento, così una posizione a pagamento si riconosce come tale.
 luogo la scheda mostra "Città · a N km" accanto alla città (campo
 `distanceKm`, virgola decimale).
 
-## 208. Richiesta diretta: nessuna scadenza per il professionista scelto, inoltro dopo 60 minuti o 6 ore
+## 208. Profilo pubblico: lavori svolti sotto la descrizione, lingue nell'elenco, cuoricino per tutti
+
+**Richiesta (Luca, 11/10/2026):** nel profilo pubblico del professionista i
+lavori svolti devono stare nella prima parte, subito sotto la descrizione;
+le lingue parlate nello stesso elenco di anni di esperienza, patentini e
+assicurazione; il cuoricino "salva" non si vedeva più.
+
+**Causa del cuoricino:** nessuna regressione. Dal primo giorno compariva
+solo a un cliente già entrato (`user?.role === "CLIENT"`): a chi guardava
+il profilo senza essere entrato, o da professionista/admin, non c'era.
+
+**Decisione:**
+- "Lavori svolti" spostato dentro la scheda identità, subito dopo la
+  descrizione (titolo un po' più piccolo, è una parte della scheda).
+- "Parla …" spostato nell'elenco dei dati dichiarati, tra esperienza e
+  patentini, sotto la stessa nota "Dati dichiarati dal professionista".
+- Cuoricino visibile anche a chi non è entrato: al tocco porta ad
+  `/accedi?redirect=/professionista/<id>?salva=1` e, tornato sul profilo da
+  cliente, il profilo si salva da solo. Resta nascosto a professionisti e
+  admin, che non salvano profili.
+
+**Migliorie approvate da Luca nello stesso thread** (la terza proposta,
+togliere il badge RC accanto al nome, scartata: serve in ricerca):
+- Cuoricino anche nelle schede dei risultati di ricerca, accanto al nome
+  (slot `action` di `ProfessionalCard`, poi spostato sulla foto, logica in
+  `apps/web/src/lib/useSavedProfessionals.ts`: una sola richiesta per i
+  salvati). Il clic non apre il profilo. Chi non è entrato va all'accesso e
+  torna sulla stessa ricerca con `?salva=<id>`, che salva e poi sparisce
+  dall'indirizzo.
+- Su telefono (sotto 660px) le foto dei lavori scorrono in una riga sola.
+- Poi, sempre su richiesta di Luca, il cuoricino dei risultati è passato
+  da accanto al nome (dove sui telefoni mandava a capo i nomi) a piccolo
+  (24px) nell'angolo in basso a destra della foto; `IconActionButton` ha
+  ora una prop `size`.
+
+**Verifica:** typecheck e lint di `apps/web` e `packages/ui`; anteprime da
+build di produzione con API finta (computer e telefono); clic sul cuoricino
+da non entrato che porta all'accesso; da cliente il clic salva senza aprire
+il profilo e `?salva=` al ritorno salva da solo.
+
+## 209. Richiesta diretta: nessuna scadenza per il professionista scelto, inoltro dopo 60 minuti o 6 ore
 
 **Richiesta (Luca nel thread, 11/10/2026):** "Quando un cliente seleziona un
 professionista e clicca su urgente, come funziona?". Dalla verifica del
@@ -17455,7 +17495,7 @@ o della zona del professionista scelto se il cliente non l'ha indicata.
 mostrato; nascosto dopo un messaggio in chat o dopo l'inoltro); 260 test di
 `apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
 
-## 209. Richieste generali a tutti i professionisti nel raggio, senza scadenza
+## 210. Richieste generali a tutti i professionisti nel raggio, senza scadenza
 
 **Richiesta (Luca nel thread, 11/10/2026):** le richieste mandate senza
 scegliere un professionista vanno a tutti i professionisti della categoria
@@ -17475,7 +17515,7 @@ per punteggio, coda di riserva, 35/60 minuti o 4 ore per rispondere).
   per un nuovo e coda di riserva (`selectLeadCandidates`,
   `selectLeadRecipients`, `leadQualityScore`, `LEADS_PER_REQUEST`): il
   declassamento dopo le segnalazioni accolte resta solo nell'ordine della
-  ricerca. Anche l'inoltro di una richiesta diretta (§208) va a tutti i
+  ricerca. Anche l'inoltro di una richiesta diretta (§209) va a tutti i
   compatibili della zona invece che a 3 o 5.
 - *Nessuna scadenza:* ogni nuovo `Lead` ha `expiresAt` nullo (tolti
   `computeLeadExpiry` e i tempi 35/60 minuti e 4 ore). I Lead già creati con
@@ -17501,11 +17541,11 @@ città rifiutata, con città accettata, diretta senza città accettata); test
 di `lead-routing.test.ts` ridotti alle funzioni rimaste; 252 test di
 `apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
 
-## 210. Richieste generali: interruttore, chiusura automatica per zona, niente numero al cliente
+## 211. Richieste generali: interruttore, chiusura automatica per zona, niente numero al cliente
 
 **Richiesta (Luca nel thread, 11/10/2026):** "Effettua le 3 migliorie e fai
 in modo che in automatico si spengono le richieste generali per singola
-città o categoria". Le tre migliorie proposte dopo §209: un interruttore per
+città o categoria". Le tre migliorie proposte dopo §210: un interruttore per
 spegnere le richieste generali con una misura del carico in admin, la
 chiusura per città o categoria, e non mostrare al cliente quanti
 professionisti hanno ricevuto la richiesta.
@@ -17542,7 +17582,7 @@ professionisti hanno ricevuto la richiesta.
   dicono "ai professionisti della tua zona"; l'elenco "Inviata a" resta solo
   per una richiesta diretta.
 
-**Motivo:** con le richieste a tutti (§209) il rischio è che in una zona
+**Motivo:** con le richieste a tutti (§210) il rischio è che in una zona
 affollata ogni professionista riceva troppe richieste e smetta di
 rispondere; la chiusura per zona agisce solo dove succede, senza spegnere
 il resto del sito.

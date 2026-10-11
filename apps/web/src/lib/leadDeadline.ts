@@ -1,7 +1,7 @@
 /**
  * "Rispondi entro …" per un lead (CLAUDE.md §14): condiviso da Richieste e
  * lavori e dalla Home "Oggi" (docs/CHANGELOG.md §147). Gli orizzonti reali
- * sono brevi (60 minuti o 6 ore prima dell'inoltro di una richiesta diretta, §208-§209), quindi
+ * sono brevi (60 minuti o 6 ore prima dell'inoltro di una richiesta diretta, §209-§210), quindi
  * sempre minuti/ore. `null` se la scadenza è passata o non nota.
  */
 export function formatLeadDeadline(expiresAt: string | null): { label: string; urgent: boolean } | null {
@@ -21,7 +21,7 @@ export function formatLeadDeadline(expiresAt: string | null): { label: string; u
 }
 
 /**
- * Richiesta diretta (docs/CHANGELOG.md §208): il professionista scelto non
+ * Richiesta diretta (docs/CHANGELOG.md §209): il professionista scelto non
  * ha scadenza, ma dopo `forwardAt` senza risposta la richiesta va anche ad
  * altri. Stesso formato di formatLeadDeadline.
  */

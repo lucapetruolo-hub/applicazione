@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { guidedRequestSchema } from "@professionisti/shared";
 
-// Città obbligatoria in ogni richiesta generale, anche online (docs/CHANGELOG.md §209).
+// Città obbligatoria in ogni richiesta generale, anche online (docs/CHANGELOG.md §210).
 describe("guidedRequestSchema: città", () => {
   const online = { categorySlug: "idraulico", description: "Consulenza su un impianto", serviceMode: "ONLINE" as const };
 

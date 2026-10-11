@@ -5,7 +5,7 @@ import type { ProfessionalCategorySlug } from "./categories";
 
 /**
  * Richieste generali (senza un professionista scelto) aperte o chiuse
- * (docs/CHANGELOG.md §210, decisione dell'utente): si possono chiudere per
+ * (docs/CHANGELOG.md §211, decisione dell'utente): si possono chiudere per
  * tutto il sito (variabile `GENERAL_REQUESTS_ENABLED=false` su Render) o per
  * una singola categoria in una città, a mano dall'area admin oppure in
  * automatico quando i professionisti della zona ne ricevono troppe.

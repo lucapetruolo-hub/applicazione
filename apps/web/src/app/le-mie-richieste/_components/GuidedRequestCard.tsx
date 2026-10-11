@@ -195,7 +195,7 @@ export function GuidedRequestCard({
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
     }
-    // Città obbligatoria a domicilio e in ogni richiesta generale (§209).
+    // Città obbligatoria a domicilio e in ogni richiesta generale (§210).
     if ((request.serviceMode !== "ONLINE" || !request.professionalProfileId) && !city.trim()) {
       setError("Indica la città.");
       return;
@@ -607,7 +607,7 @@ export function GuidedRequestCard({
                 </Text>
               ) : (
                 <Text fontSize="$2" color={brand.grafite70}>
-                  {/* Richiesta generale: senza il numero dei professionisti contattati (docs/CHANGELOG.md §210). */}
+                  {/* Richiesta generale: senza il numero dei professionisti contattati (docs/CHANGELOG.md §211). */}
                   {!request.professionalProfileId
                     ? statusSummary.responded === 0
                       ? "Nessun preventivo ricevuto ancora."
@@ -667,7 +667,7 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
 
-          {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§210). */}
+          {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
           {request.professionalProfileId && request.sentTo.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>

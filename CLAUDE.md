@@ -387,7 +387,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Area account cliente, professionisti salvati, cancellazione account
 - [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
 - [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin
-- [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §209); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§210)
+- [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)

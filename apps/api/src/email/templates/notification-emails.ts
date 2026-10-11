@@ -119,7 +119,7 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Invia una nuova richiesta", url: `${frontendUrl()}/preventivo` },
   }),
   REQUEST_FORWARDED: (_payload, ctx) => {
-    // Senza il numero dei professionisti (docs/CHANGELOG.md §210).
+    // Senza il numero dei professionisti (docs/CHANGELOG.md §211).
     return {
       kind: "notification",
       subject: "Abbiamo inoltrato la tua richiesta ad altri professionisti",

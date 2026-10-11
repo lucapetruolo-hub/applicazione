@@ -866,7 +866,7 @@ export class ProfessionalsService {
           ])
         : [[], []];
     const leadsPerRequest = new Map(leadCounts.map((row) => [row.guidedRequestId, row._count._all]));
-    // Richieste dirette a cui ha già scritto in chat: l'inoltro non partirà (§208).
+    // Richieste dirette a cui ha già scritto in chat: l'inoltro non partirà (§209).
     const chattedRequestIds = new Set(
       requestIds.length > 0
         ? (

@@ -1510,7 +1510,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** Richieste generali aperte per questa categoria in questa città (docs/CHANGELOG.md §210). */
+    /** Richieste generali aperte per questa categoria in questa città (docs/CHANGELOG.md §211). */
     generalRequestAvailability: (categorySlug?: string, city?: string) => {
       const params = new URLSearchParams();
       if (categorySlug) params.set("categoria", categorySlug);

@@ -140,6 +140,12 @@ export type ProfessionalCardProps = {
   onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
+  /**
+   * Slot opzionale accanto al nome, in alto a destra della colonna dati (es.
+   * il cuoricino "salva", docs/CHANGELOG.md §208). Chi lo passa ferma da sé
+   * la propagazione del clic, altrimenti si aprirebbe anche il profilo.
+   */
+  action?: ReactNode;
 };
 
 export function ProfessionalCard({
@@ -165,6 +171,7 @@ export function ProfessionalCard({
   onSlotPress,
   onAgendaPress,
   icon,
+  action,
 }: ProfessionalCardProps) {
   const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
@@ -347,6 +354,7 @@ export function ProfessionalCard({
               </Text>
             ) : null}
           </YStack>
+          {action}
         </XStack>
 
         {totalDays > 0 ? (

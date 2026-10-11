@@ -1,8 +1,8 @@
 /**
- * Tempi delle richieste di preventivo (docs/CHANGELOG.md §209, decisione
+ * Tempi delle richieste di preventivo (docs/CHANGELOG.md §210, decisione
  * dell'utente): una richiesta generale va a tutti i professionisti
  * compatibili e nessuno ha una scadenza per rispondere. L'unico tempo che
- * conta è l'inoltro di una richiesta diretta (§208). Funzioni pure,
+ * conta è l'inoltro di una richiesta diretta (§209). Funzioni pure,
  * testate in `lead-routing.test.ts`.
  */
 
@@ -38,7 +38,7 @@ export function addDaytimeHours(from: Date, hours: number): Date {
 
 /**
  * Richiesta diretta a un professionista scelto dal cliente (docs/CHANGELOG.md
- * §208, decisione dell'utente): il professionista scelto non ha scadenza per
+ * §209, decisione dell'utente): il professionista scelto non ha scadenza per
  * rispondere. Se il cliente lascia spuntata la casella di inoltro, dopo 60
  * minuti (urgente, di giorno e di notte) o 6 ore contate dalle 8 alle 21
  * (normale) senza un suo preventivo la richiesta va anche ad altri

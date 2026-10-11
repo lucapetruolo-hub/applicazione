@@ -180,7 +180,7 @@ export function GuidedRequestForm({
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
 
   // Richieste generali chiuse per tutto il sito o per questa categoria in
-  // questa città (docs/CHANGELOG.md §210): il cliente sceglie un
+  // questa città (docs/CHANGELOG.md §211): il cliente sceglie un
   // professionista dalla ricerca. Il server lo rifiuterebbe comunque.
   const [generalClosed, setGeneralClosed] = useState<"GLOBAL" | "ZONE" | null>(null);
   useEffect(() => {
@@ -303,7 +303,7 @@ export function GuidedRequestForm({
   useEffect(() => {
     setGeneralClosed((current) => (current === "ZONE" ? null : current));
   }, [city, categorySlug]);
-  // Facoltativa solo per una consulenza online a un professionista scelto (§209).
+  // Facoltativa solo per una consulenza online a un professionista scelto (§210).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
@@ -485,7 +485,7 @@ export function GuidedRequestForm({
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
-    // chi arriva (docs/CHANGELOG.md §209).
+    // chi arriva (docs/CHANGELOG.md §210).
     if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return "Indica la città: la richiesta arriva ai professionisti della zona.";
     // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
@@ -1197,7 +1197,7 @@ export function GuidedRequestForm({
 }
 
 /**
- * Richieste generali chiuse (docs/CHANGELOG.md §210): per tutto il sito o
+ * Richieste generali chiuse (docs/CHANGELOG.md §211): per tutto il sito o
  * per questa categoria in questa città. Rimanda alla ricerca, da cui il
  * cliente sceglie un professionista e gli scrive dal suo profilo.
  */
@@ -1293,7 +1293,7 @@ function RequestSummary({
   onEdit: (step: 1 | 2) => void;
 }) {
   // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
-  // ad altri parte dopo questo tempo (docs/CHANGELOG.md §208).
+  // ad altri parte dopo questo tempo (docs/CHANGELOG.md §209).
   const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
   const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
   return (

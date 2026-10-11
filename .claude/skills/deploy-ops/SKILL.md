@@ -83,7 +83,7 @@ migrazioni restano anche in `CLAUDE.md`.
   sull'External Connection String di Render con `?sslmode=require`).
   `GENERAL_REQUESTS_ENABLED=false` sul servizio API spegne le richieste
   di preventivo generali in tutto il sito (restano quelle a un
-  professionista scelto; docs/CHANGELOG.md §210). Senza la variabile sono
+  professionista scelto; docs/CHANGELOG.md §211). Senza la variabile sono
   attive.
   Due problemi risolti durante il primo deploy (su Railway), entrambi
   corretti nel codice (non solo in configurazione, per non doverli rifare

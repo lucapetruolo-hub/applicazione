@@ -125,7 +125,7 @@ describe("ProfessionalsService.getMyLeads — concorrenti che hanno già rispost
   });
 });
 
-describe("ProfessionalsService.getMyLeads — inoltro di una richiesta diretta (docs/CHANGELOG.md §208)", () => {
+describe("ProfessionalsService.getMyLeads — inoltro di una richiesta diretta (docs/CHANGELOG.md §209)", () => {
   const forwardAt = new Date("2026-10-11T11:00:00Z");
   const direct = (extra: Record<string, unknown> = {}) =>
     buildLead({ guidedRequest: { ...buildLead().guidedRequest, professionalProfileId: "pro-1", forwardAt, forwardedAt: null, ...extra } });

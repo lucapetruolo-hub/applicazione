@@ -17,7 +17,7 @@ import { SkeletonTableRows } from "@/components/Skeleton";
 
 /**
  * Richieste generali (senza un professionista scelto) per categoria e città
- * (docs/CHANGELOG.md §210): carico per professionista, quota di risposte e
+ * (docs/CHANGELOG.md §211): carico per professionista, quota di risposte e
  * chiusura automatica o manuale della singola zona.
  */
 export default function AdminRichiesteGeneraliPage() {

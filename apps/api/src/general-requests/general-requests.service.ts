@@ -29,7 +29,7 @@ type ZoneKey = string;
 const zoneKey = (categoryId: string, city: string): ZoneKey => `${categoryId}|${city}`;
 
 /**
- * Apertura e chiusura delle richieste generali (docs/CHANGELOG.md §210):
+ * Apertura e chiusura delle richieste generali (docs/CHANGELOG.md §211):
  * per tutto il sito con la variabile d'ambiente, per una categoria in una
  * città con `GeneralRequestBlock` (automatica ogni ora o a mano dall'admin).
  */
