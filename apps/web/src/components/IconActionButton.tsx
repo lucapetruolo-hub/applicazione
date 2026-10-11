@@ -12,6 +12,8 @@ type IconActionButtonProps = {
   disabled?: boolean;
   /** Mostra la descrizione anche senza mouse sopra, es. "Link copiato" dopo un tocco. */
   forceTooltip?: boolean;
+  /** Diametro in px (default 40); il cuoricino sulla foto nei risultati è più piccolo. */
+  size?: number;
 };
 
 /**
@@ -20,7 +22,7 @@ type IconActionButtonProps = {
  * Segnala nella pagina profilo, docs/CHANGELOG.md §206). Fumetto in CSS e non
  * `title` nativo: quello compare solo dopo circa un secondo.
  */
-export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip }: IconActionButtonProps) {
+export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40 }: IconActionButtonProps) {
   return (
     <span className="icon-action">
       <button
@@ -42,9 +44,9 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           display: inline-flex;
         }
         button {
-          width: 40px;
-          height: 40px;
-          border-radius: 20px;
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: ${size / 2}px;
           border: 1px solid ${brand.filetto};
           background: ${brand.calce};
           display: inline-flex;

@@ -17417,12 +17417,16 @@ il profilo senza essere entrato, o da professionista/admin, non c'era.
 **Migliorie approvate da Luca nello stesso thread** (la terza proposta,
 togliere il badge RC accanto al nome, scartata: serve in ricerca):
 - Cuoricino anche nelle schede dei risultati di ricerca, accanto al nome
-  (slot `action` di `ProfessionalCard`, logica in
+  (slot `action` di `ProfessionalCard`, poi spostato sulla foto, logica in
   `apps/web/src/lib/useSavedProfessionals.ts`: una sola richiesta per i
   salvati). Il clic non apre il profilo. Chi non è entrato va all'accesso e
   torna sulla stessa ricerca con `?salva=<id>`, che salva e poi sparisce
   dall'indirizzo.
 - Su telefono (sotto 660px) le foto dei lavori scorrono in una riga sola.
+- Poi, sempre su richiesta di Luca, il cuoricino dei risultati è passato
+  da accanto al nome (dove sui telefoni mandava a capo i nomi) a piccolo
+  (24px) nell'angolo in basso a destra della foto; `IconActionButton` ha
+  ora una prop `size`.
 
 **Verifica:** typecheck e lint di `apps/web` e `packages/ui`; anteprime da
 build di produzione con API finta (computer e telefono); clic sul cuoricino

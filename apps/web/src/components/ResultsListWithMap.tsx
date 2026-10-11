@@ -680,28 +680,34 @@ export function ResultsListWithMap({
                   router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
                 )
               }
-              icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
-              action={
-                canSave ? (
-                  // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
-                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                  <span onClick={(e) => e.stopPropagation()}>
-                    <IconActionButton
-                      label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
-                      active={savedIds.has(pro.id)}
-                      disabled={pendingId === pro.id}
-                      onPress={() => void toggleSave(pro.id)}
-                    >
-                      <Icon
-                        name="heart"
-                        size={17}
-                        strokeWidth={1.5}
-                        color={savedIds.has(pro.id) ? "white" : brand.grafite}
-                        fill={savedIds.has(pro.id) ? "white" : "none"}
-                      />
-                    </IconActionButton>
-                  </span>
-                ) : null
+              // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
+              // dell'utente, docs/CHANGELOG.md §208): accanto al nome rubava
+              // spazio al nome sui telefoni.
+              icon={
+                <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+                  <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />
+                  {canSave ? (
+                    // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
+                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                    <span style={{ position: "absolute", right: 0, bottom: 0 }} onClick={(e) => e.stopPropagation()}>
+                      <IconActionButton
+                        label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
+                        active={savedIds.has(pro.id)}
+                        disabled={pendingId === pro.id}
+                        size={24}
+                        onPress={() => void toggleSave(pro.id)}
+                      >
+                        <Icon
+                          name="heart"
+                          size={12}
+                          strokeWidth={2}
+                          color={savedIds.has(pro.id) ? "white" : brand.grafite}
+                          fill={savedIds.has(pro.id) ? "white" : "none"}
+                        />
+                      </IconActionButton>
+                    </span>
+                  ) : null}
+                </span>
               }
             />
           ))}
