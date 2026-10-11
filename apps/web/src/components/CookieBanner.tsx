@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
+import { COOKIE_CONSENT_ACCEPTED_EVENT, COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
 /**
  * Banner cookie minimale (post-audit GDPR): il sito usa solo cookie
@@ -28,8 +28,14 @@ export function CookieBanner() {
     // "Preferenze cookie" nel footer riapre il banner per cambiare idea
     // (revoca del consenso, docs/CHANGELOG.md §170).
     const reopen = () => setVisible(true);
+    // Consenso dato da un altro punto ("Mostra la mappa", "Accetta e continua" di Google): il banner sparisce.
+    const hide = () => setVisible(false);
     window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
-    return () => window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
+    window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, hide);
+    return () => {
+      window.removeEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
+      window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, hide);
+    };
   }, []);
 
   function accept() {
@@ -74,7 +80,8 @@ export function CookieBanner() {
         boxShadow: "0 -4px 20px rgba(43,32,19,0.12)",
         padding: "10px 16px",
         paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
-        zIndex: 200,
+        // Sopra anche alle finestre di accesso (zIndex 300), docs/CHANGELOG.md §214.
+        zIndex: 400,
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",

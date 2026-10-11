@@ -6,7 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { ALL_ITALIAN_CITY_NAMES, averageQuoteTotalEurCents, findComuneByName, formatEurCents, type GuidedRequestStatusSummary } from "@professionisti/shared";
+import {
+  ALL_ITALIAN_CITY_NAMES,
+  averageQuoteTotalEurCents,
+  findComuneByName,
+  formatEurCents,
+  isPlausiblePhoneNumber,
+  type GuidedRequestStatusSummary,
+} from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -14,6 +21,8 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
+import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
@@ -110,6 +119,23 @@ export function GuidedRequestCard({
   const [addressExtra, setAddressExtra] = useState(request.addressExtra ?? "");
   const [postalCode, setPostalCode] = useState(request.postalCode ?? "");
   const [province, setProvince] = useState(request.province ?? "");
+  // Stesse regole della richiesta di preventivo (docs/CHANGELOG.md §214):
+  // indirizzo solo della città scelta e preso dall'elenco dei suggerimenti.
+  const chosenAddress = useChosenAddress(true);
+  const cityComune = findComuneByName(city);
+  function changeCity(next: string) {
+    const changed = next.trim().toLowerCase() !== city.trim().toLowerCase();
+    setCity(next);
+    if (!changed) return;
+    if (address.trim()) {
+      setAddress("");
+      setHouseNumber("");
+      setPostalCode("");
+    }
+    chosenAddress.setChosen(false);
+    const comune = findComuneByName(next);
+    if (comune) setProvince(comune.province);
+  }
   const [photoUrls, setPhotoUrls] = useState<string[]>(request.photoUrls);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -163,6 +189,7 @@ export function GuidedRequestCard({
     setPostalCode(request.postalCode ?? "");
     setProvince(request.province ?? "");
     setPhotoUrls(request.photoUrls);
+    chosenAddress.setChosen(true);
     setPhotoError(null);
     setError(null);
     setIsEditing(true);
@@ -198,6 +225,18 @@ export function GuidedRequestCard({
     // Città obbligatoria a domicilio e in ogni richiesta generale (§210).
     if ((request.serviceMode !== "ONLINE" || !request.professionalProfileId) && !city.trim()) {
       setError("Indica la città.");
+      return;
+    }
+    if (city.trim() && !cityComune) {
+      setError("Scegli la città dall'elenco dei comuni.");
+      return;
+    }
+    if (request.serviceMode === "HOME" && address.trim() && chosenAddress.missing) {
+      setError(ADDRESS_NOT_CHOSEN_MESSAGE);
+      return;
+    }
+    if (recipientPhone.trim() && !isPlausiblePhoneNumber(recipientPhone)) {
+      setError("Controlla il numero di telefono: sembra incompleto o troppo lungo.");
       return;
     }
     setIsSaving(true);
@@ -296,7 +335,7 @@ export function GuidedRequestCard({
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={setCity} value={city} onChangeText={setCity} placeholder="Città" minChars={3} />
+            <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
             <Text fontSize="$2" color={brand.grafite70}>
@@ -305,23 +344,30 @@ export function GuidedRequestCard({
           ) : null}
           <AddressAutocompleteInput
             value={address}
-            onChange={setAddress}
+            onChange={(next) => {
+              setAddress(next);
+              chosenAddress.setChosen(false);
+            }}
             onSelect={(selected) => {
-              // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141).
-              if (selected.street) setAddress(selected.street);
-              if (selected.houseNumber) setHouseNumber(selected.houseNumber);
+              // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214).
+              setAddress(selected.street ?? selected.address);
+              setHouseNumber(selected.houseNumber ?? "");
               if (selected.postalCode) setPostalCode(selected.postalCode);
               if (selected.province) setProvince(selected.province);
-              const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
-              if (comune) setCity(comune.name);
+              chosenAddress.setChosen(true);
             }}
-            biasTowards={(() => {
-              const comune = findComuneByName(city);
-              return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
-            })()}
-            placeholder="Via/piazza"
+            restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
+            askConsent
+            onServiceUnavailable={chosenAddress.markServiceDown}
+            disabled={!cityComune}
+            placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
             style={textareaStyle}
           />
+          {chosenAddress.missing && cityComune && address.trim() ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
+            </Text>
+          ) : null}
 
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={160}>
@@ -331,7 +377,7 @@ export function GuidedRequestCard({
               <input aria-label="Cognome" value={recipientSurname} onChange={(e) => setRecipientSurname(e.target.value)} placeholder="Cognome" style={textareaStyle} />
             </YStack>
           </XStack>
-          <input aria-label="Numero di telefono" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="Numero di telefono" style={textareaStyle} />
+          <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={textareaStyle} />
           <XStack gap="$2" flexWrap="wrap">
             <YStack flex={1} minWidth={120}>
               <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />

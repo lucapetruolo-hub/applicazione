@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { GOOGLE_API_PROVIDER_PROPS, HAS_GOOGLE_MAPS_KEY } from "@/components/GoogleMapGate";
-import { useCookieConsent } from "@/lib/cookieConsent";
+import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
 
 export type SelectedAddress = {
   /** Indirizzo formattato da Google, senza ", Italia" finale. */
@@ -29,7 +29,28 @@ type Props = {
   style?: CSSProperties;
   /** Favorisce i suggerimenti vicini a questo punto (es. il comune indicato nel profilo), senza escludere il resto d'Italia. */
   biasTowards?: { latitude: number; longitude: number } | null;
+  /**
+   * Solo indirizzi di questo comune (richiesta preventivo, docs/CHANGELOG.md
+   * §214): la ricerca aggiunge il nome del comune, l'elenco tiene solo i
+   * suggerimenti di quel comune e una scelta di un altro comune viene rifiutata.
+   */
+  restrictToCity?: { name: string; latitude: number; longitude: number } | null;
+  /** Senza consenso ai servizi Google mostra il pulsante per attivare i suggerimenti (dove la scelta dall'elenco è obbligatoria). */
+  askConsent?: boolean;
+  /** Google non risponde: chi rende obbligatoria la scelta deve accettare il testo libero. */
+  onServiceUnavailable?: () => void;
+  disabled?: boolean;
 };
+
+/** Confronto dei nomi dei comuni senza maiuscole, accenti e apostrofi diversi. */
+function normalizePlaceName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .trim();
+}
 
 /**
  * Campo indirizzo con i suggerimenti di Google Places (API "New"), richiesta
@@ -42,8 +63,31 @@ type Props = {
 export function AddressAutocompleteInput(props: Props) {
   const consent = useCookieConsent();
   if (!HAS_GOOGLE_MAPS_KEY || !consent) {
+    const plain = (
+      <input
+        aria-label={props.placeholder}
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        placeholder={props.placeholder}
+        style={props.style}
+        disabled={props.disabled}
+      />
+    );
+    if (!HAS_GOOGLE_MAPS_KEY || !props.askConsent) return plain;
     return (
-      <input aria-label={props.placeholder} value={props.value} onChange={(e) => props.onChange(e.target.value)} placeholder={props.placeholder} style={props.style} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {plain}
+        <span style={{ fontSize: 13, color: "#6e6459" }}>
+          L&apos;indirizzo si sceglie dai suggerimenti di Google: serve il tuo consenso ai servizi Google.{" "}
+          <button
+            type="button"
+            onClick={grantCookieConsent}
+            style={{ background: "none", border: "none", padding: 0, color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit", fontWeight: 700 }}
+          >
+            Attiva i suggerimenti
+          </button>
+        </span>
+      </div>
     );
   }
   return (
@@ -55,9 +99,10 @@ export function AddressAutocompleteInput(props: Props) {
 
 type Suggestion = { id: string; main: string; secondary: string; prediction: google.maps.places.PlacePrediction };
 
-function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, biasTowards }: Props) {
+function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
   const places = useMapsLibrary("places");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [wrongCity, setWrongCity] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   // Il campo cambia anche quando si sceglie un suggerimento: in quel caso non
@@ -70,8 +115,11 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
 
   // Solo le coordinate, non l'oggetto: un oggetto nuovo a ogni render del
   // genitore rifarebbe la ricerca a vuoto.
-  const biasLatitude = biasTowards?.latitude;
-  const biasLongitude = biasTowards?.longitude;
+  const biasLatitude = restrictToCity?.latitude ?? biasTowards?.latitude;
+  const biasLongitude = restrictToCity?.longitude ?? biasTowards?.longitude;
+  const cityName = restrictToCity?.name;
+  const onServiceUnavailableRef = useRef(onServiceUnavailable);
+  onServiceUnavailableRef.current = onServiceUnavailable;
 
   useEffect(() => {
     if (!places || !typedRef.current) return;
@@ -85,17 +133,19 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
       try {
         sessionRef.current ??= new places.AutocompleteSessionToken();
         const { suggestions: result } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-          input,
+          // Con un comune scelto la ricerca lo aggiunge al testo: "via roma 5" → "via roma 5, Bari".
+          input: cityName ? `${input}, ${cityName}` : input,
           sessionToken: sessionRef.current,
           includedRegionCodes: ["it"],
           // Solo vie e numeri civici, niente negozi o luoghi di interesse.
           includedPrimaryTypes: ["street_address", "route", "premise", "subpremise"],
           language: "it",
           ...(biasLatitude !== undefined && biasLongitude !== undefined
-            ? { locationBias: { center: { lat: biasLatitude, lng: biasLongitude }, radius: 30_000 } }
+            ? { locationBias: { center: { lat: biasLatitude, lng: biasLongitude }, radius: cityName ? 15_000 : 30_000 } }
             : {}),
         });
         if (cancelled) return;
+        const wantedCity = cityName ? normalizePlaceName(cityName) : null;
         setSuggestions(
           result.flatMap((s) =>
             s.placePrediction
@@ -108,20 +158,23 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
                   },
                 ]
               : [],
-          ),
+          ).filter((s) => !wantedCity || normalizePlaceName(s.secondary).includes(wantedCity)),
         );
         setHighlighted(-1);
         setOpen(true);
       } catch {
         // Servizio non disponibile: il campo resta utilizzabile come testo libero.
-        if (!cancelled) setSuggestions([]);
+        if (!cancelled) {
+          setSuggestions([]);
+          onServiceUnavailableRef.current?.();
+        }
       }
     }, 250);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [places, value, biasLatitude, biasLongitude]);
+  }, [places, value, biasLatitude, biasLongitude, cityName]);
 
   async function choose(suggestion: Suggestion) {
     setOpen(false);
@@ -136,6 +189,13 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
       onChange(address);
       if (location) {
         const component = (type: string) => place.addressComponents?.find((c) => c.types.includes(type));
+        // Il comune è "administrative_area_level_3"; "locality" può essere una frazione.
+        const comune = component("administrative_area_level_3")?.longText ?? component("locality")?.longText ?? null;
+        if (cityName && (!comune || normalizePlaceName(comune) !== normalizePlaceName(cityName))) {
+          setWrongCity(comune);
+          return;
+        }
+        setWrongCity(null);
         onSelect({
           address,
           latitude: location.lat(),
@@ -150,6 +210,7 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
     } catch {
       sessionRef.current = null;
       onChange(`${suggestion.main}, ${suggestion.secondary}`);
+      onServiceUnavailable?.();
     }
   }
 
@@ -159,8 +220,10 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
         value={value}
         onChange={(e) => {
           typedRef.current = true;
+          setWrongCity(null);
           onChange(e.target.value);
         }}
+        disabled={disabled}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={(e) => {
@@ -210,10 +273,21 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
           </li>
         </ul>
       ) : null}
+      {wrongCity !== null && cityName ? (
+        <p className="address-wrong-city" role="alert">
+          {wrongCity ? `Questo indirizzo è a ${wrongCity}, non a ${cityName}.` : `Questo indirizzo non risulta a ${cityName}.`} Scegline uno
+          dall&apos;elenco o cambia la città.
+        </p>
+      ) : null}
       <style jsx>{`
         .address-autocomplete {
           position: relative;
           width: 100%;
+        }
+        .address-wrong-city {
+          margin: 6px 0 0;
+          font-size: 13px;
+          color: #b3261e;
         }
         .address-suggestions {
           position: absolute;

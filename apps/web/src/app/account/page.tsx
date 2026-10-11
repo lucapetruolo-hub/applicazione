@@ -4,12 +4,15 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isPlausiblePhoneNumber } from "@professionisti/shared";
+import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
+import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 
 const inputStyle = {
@@ -133,6 +136,22 @@ export default function AccountPage() {
   const [postalCode, setPostalCode] = useState("");
   const [addressCity, setAddressCity] = useState("");
   const [province, setProvince] = useState("");
+  // Prima la città, poi la via scelta dai suggerimenti di quella città (docs/CHANGELOG.md §214).
+  const chosenAddress = useChosenAddress(true);
+  const cityComune = findComuneByName(addressCity);
+  function changeCity(next: string) {
+    const changed = next.trim().toLowerCase() !== addressCity.trim().toLowerCase();
+    setAddressCity(next);
+    if (!changed) return;
+    if (street.trim()) {
+      setStreet("");
+      setHouseNumber("");
+      setPostalCode("");
+    }
+    chosenAddress.setChosen(false);
+    const comune = findComuneByName(next);
+    if (comune) setProvince(comune.province);
+  }
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -255,6 +274,18 @@ export default function AccountPage() {
     }
     if (!email.trim()) {
       setProfileError("L'email è obbligatoria.");
+      return;
+    }
+    if (phone.trim() && !isPlausiblePhoneNumber(phone)) {
+      setProfileError("Controlla il numero di telefono: sembra incompleto o troppo lungo.");
+      return;
+    }
+    if (addressCity.trim() && !cityComune) {
+      setProfileError("Scegli la città dall'elenco dei comuni.");
+      return;
+    }
+    if (street.trim() && chosenAddress.missing) {
+      setProfileError(ADDRESS_NOT_CHOSEN_MESSAGE);
       return;
     }
     let birthDate: string | undefined;
@@ -503,12 +534,7 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="Telefono">
-            <input aria-label="Telefono"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Es. +39 333 1234567"
-              style={inputStyle}
-            />
+            <PhoneNumberInput value={phone} onChange={setPhone} style={inputStyle} placeholder="Es. 333 1234567" />
           </FieldRow>
         </Surface>
 
@@ -519,21 +545,50 @@ export default function AccountPage() {
             per ogni singola richiesta.
           </Text>
 
+          <FieldRow label="Città">
+            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" backgroundColor={brand.calce}>
+              <Autocomplete
+                items={ALL_ITALIAN_CITY_NAMES}
+                getKey={(item) => item}
+                getLabel={(item) => item}
+                onSelect={changeCity}
+                value={addressCity}
+                onChangeText={changeCity}
+                placeholder="Es. Roma"
+                minChars={3}
+              />
+            </YStack>
+          </FieldRow>
+
           <FieldRow label="Via">
-            <AddressAutocompleteInput
-              value={street}
-              onChange={setStreet}
-              onSelect={(selected) => {
-                // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141).
-                if (selected.street) setStreet(selected.street);
-                if (selected.houseNumber) setHouseNumber(selected.houseNumber);
-                if (selected.postalCode) setPostalCode(selected.postalCode);
-                if (selected.locality) setAddressCity(selected.locality);
-                if (selected.province) setProvince(selected.province);
-              }}
-              placeholder="Via/piazza"
-              style={inputStyle}
-            />
+            <YStack gap="$1" width="100%">
+              <AddressAutocompleteInput
+                value={street}
+                onChange={(next) => {
+                  setStreet(next);
+                  chosenAddress.setChosen(false);
+                }}
+                onSelect={(selected) => {
+                  // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214).
+                  setStreet(selected.street ?? selected.address);
+                  setHouseNumber(selected.houseNumber ?? "");
+                  if (selected.postalCode) setPostalCode(selected.postalCode);
+                  if (selected.province) setProvince(selected.province);
+                  chosenAddress.setChosen(true);
+                }}
+                restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
+                askConsent
+                onServiceUnavailable={chosenAddress.markServiceDown}
+                disabled={!cityComune}
+                placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
+                style={inputStyle}
+              />
+              {chosenAddress.missing && cityComune && street.trim() ? (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
+                </Text>
+              ) : null}
+            </YStack>
           </FieldRow>
 
           <FieldRow label="Numero civico">
@@ -551,10 +606,6 @@ export default function AccountPage() {
 
           <FieldRow label="CAP">
             <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
-          </FieldRow>
-
-          <FieldRow label="Città">
-            <input aria-label="Città" value={addressCity} onChange={(e) => setAddressCity(e.target.value)} placeholder="Città" style={inputStyle} />
           </FieldRow>
 
           <FieldRow label="Provincia">

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
@@ -18,6 +18,7 @@ import {
   welcomeProfessionalEmail,
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { GeocodingService } from "../geocoding/geocoding.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
 
@@ -43,6 +44,8 @@ export class AuthService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly emailService: EmailService,
     private readonly cloudinaryService: CloudinaryService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly geocodingService?: GeocodingService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -247,6 +250,14 @@ export class AuthService {
       const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
       if (existing && existing.id !== userId) {
         throw new ConflictException("Esiste già un account con questo numero di telefono.");
+      }
+    }
+
+    // Indirizzo predefinito vero e nel comune indicato, solo se cambia (docs/CHANGELOG.md §214).
+    if (data.street?.trim() && data.city?.trim()) {
+      const current = await this.prisma.user.findUnique({ where: { id: userId }, select: { street: true, houseNumber: true, city: true } });
+      if (!current || current.street !== data.street || (current.houseNumber ?? undefined) !== data.houseNumber || current.city !== data.city) {
+        await this.geocodingService?.assertAddressInCity({ street: data.street, houseNumber: data.houseNumber, postalCode: data.postalCode, city: data.city });
       }
     }
 

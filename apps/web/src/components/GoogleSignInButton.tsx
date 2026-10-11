@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Text, XStack, brand } from "@professionisti/ui";
-import { COOKIE_CONSENT_ACCEPTED_EVENT, hasCookieConsent } from "@/lib/cookieConsent";
+import { COOKIE_CONSENT_ACCEPTED_EVENT, grantCookieConsent, hasCookieConsent } from "@/lib/cookieConsent";
 
 declare global {
   interface Window {
     google?: {
       accounts: {
         id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: { credential: string }) => void;
-          }) => void;
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
           renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
         };
       };
@@ -60,10 +57,26 @@ function GoogleIcon() {
  * è stato accettato. Se il consenso non c'è ancora, resta in attesa
  * dell'evento `COOKIE_CONSENT_ACCEPTED_EVENT` emesso da quel banner, invece
  * di ripetere qui la stessa logica di lettura del banner.
+ *
+ * Senza consenso il pulsante non restava muto (docs/CHANGELOG.md §214, bug
+ * segnalato dall'utente nella richiesta di preventivo da non loggato, dove
+ * il banner cookie resta sotto la finestra di accesso): toccandolo compare
+ * la richiesta di consenso ai servizi Google, con "Accetta e continua";
+ * dopo il consenso compare direttamente il pulsante originale di Google,
+ * così basta un tocco (Google apre la sua finestra solo da un tocco diretto
+ * sul suo pulsante).
  */
 export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (idToken: string) => void; disabled?: boolean }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const hiddenContainerRef = useRef<HTMLDivElement>(null);
+  // Funzione sempre aggiornata senza rifare il pulsante Google a ogni render
+  // del genitore (prima veniva reinizializzato a ogni lettera digitata).
+  const onCredentialRef = useRef(onCredential);
+  onCredentialRef.current = onCredential;
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState<"consent" | "loading" | null>(null);
+  // Consenso dato da qui: al posto del nostro pulsante si mostra quello originale di Google.
+  const [showOfficial, setShowOfficial] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
@@ -72,12 +85,22 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
       if (!window.google || !hiddenContainerRef.current) return;
       window.google.accounts.id.initialize({
         client_id: clientId!,
-        callback: (response) => onCredential(response.credential),
+        callback: (response) => onCredentialRef.current(response.credential),
       });
       window.google.accounts.id.renderButton(hiddenContainerRef.current, {
         theme: "outline",
         size: "large",
-        width: 320,
+        width: Math.min(400, Math.max(200, hiddenContainerRef.current.offsetWidth || 320)),
+        text: "continue_with",
+        locale: "it",
+        shape: "pill",
+      });
+      setReady(true);
+      // Consenso appena dato o script appena caricato: il primo tocco non ha
+      // potuto aprire Google, si mostra il pulsante originale da toccare.
+      setNotice((current) => {
+        if (current) setShowOfficial(true);
+        return null;
       });
     }
 
@@ -85,7 +108,8 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
       const scriptId = "google-identity-services";
       const existing = document.getElementById(scriptId);
       if (existing) {
-        renderButton();
+        if (window.google) renderButton();
+        else existing.addEventListener("load", renderButton);
         return;
       }
       const script = document.createElement("script");
@@ -106,7 +130,7 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
     }
     window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
     return () => window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
-  }, [clientId, onCredential]);
+  }, [clientId]);
 
   if (!clientId) {
     return null;
@@ -114,35 +138,82 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
 
   function handlePress() {
     if (disabled) return;
+    if (!hasCookieConsent()) {
+      setNotice("consent");
+      return;
+    }
     const realButton = hiddenContainerRef.current?.querySelector<HTMLElement>('div[role="button"]');
-    realButton?.click();
+    if (!ready || !realButton) {
+      setNotice("loading");
+      return;
+    }
+    setNotice(null);
+    realButton.click();
   }
 
   return (
     <>
-      {/* Widget ufficiale Google, fuori dallo schermo: riceve il click reale */}
-      <div ref={hiddenContainerRef} style={{ position: "fixed", top: -2000, left: -2000 }} />
+      {/* Widget ufficiale Google: fuori dallo schermo riceve il click inoltrato
+          dal nostro pulsante; dopo il consenso dato da qui è visibile. */}
+      <div
+        ref={hiddenContainerRef}
+        style={
+          showOfficial
+            ? {
+                display: "flex",
+                justifyContent: "center",
+                width: "100%",
+                minHeight: 44,
+              }
+            : { position: "fixed", top: -2000, left: -2000, width: 320 }
+        }
+      />
 
-      <Button
-        onPress={handlePress}
-        disabled={disabled}
-        opacity={disabled ? 0.5 : 1}
-        cursor={disabled ? "not-allowed" : "pointer"}
-        backgroundColor={brand.gesso}
-        hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
-        pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
-        color={brand.grafite}
-        size="$5"
-        borderRadius={999}
-        width="100%"
-      >
-        <XStack alignItems="center" justifyContent="center" gap="$3">
-          <GoogleIcon />
-          <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
-            Continua con Google
+      {showOfficial ? null : (
+        <Button
+          onPress={handlePress}
+          disabled={disabled}
+          opacity={disabled ? 0.5 : 1}
+          cursor={disabled ? "not-allowed" : "pointer"}
+          backgroundColor={brand.gesso}
+          hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+          pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+          color={brand.grafite}
+          size="$5"
+          borderRadius={999}
+          width="100%"
+        >
+          <XStack alignItems="center" justifyContent="center" gap="$3">
+            <GoogleIcon />
+            <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
+              Continua con Google
+            </Text>
+          </XStack>
+        </Button>
+      )}
+      {notice === "consent" ? (
+        <Text fontSize="$2" color={brand.grafite70} textAlign="center" role="alert">
+          Per accedere con Google serve il tuo consenso ai servizi Google (lo stesso del banner dei cookie).{" "}
+          <Text
+            accessibilityRole="button"
+            fontSize="$2"
+            fontWeight="700"
+            color={brand.grafite}
+            textDecorationLine="underline"
+            cursor="pointer"
+            onPress={() => {
+              setNotice("loading");
+              grantCookieConsent();
+            }}
+          >
+            Accetta e continua
           </Text>
-        </XStack>
-      </Button>
+        </Text>
+      ) : notice === "loading" ? (
+        <Text fontSize="$2" color={brand.grafite70} textAlign="center" role="status">
+          Sto collegando Google, un attimo...
+        </Text>
+      ) : null}
     </>
   );
 }
