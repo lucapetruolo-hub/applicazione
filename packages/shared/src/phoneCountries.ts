@@ -133,8 +133,3 @@ export function isPlausiblePhoneNumber(value: string): boolean {
   if (joinPhoneNumber(iso, digits).length > 20) return false;
   return iso === "IT" ? digits.length >= 6 && digits.length <= 11 : digits.length >= 6 && digits.length <= 15;
 }
-
-/** Bandiera emoji dalla sigla ISO (le due lettere come "indicatori regionali" Unicode). */
-export function phoneCountryFlag(iso: string): string {
-  return String.fromCodePoint(...[...iso.toUpperCase()].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
-}

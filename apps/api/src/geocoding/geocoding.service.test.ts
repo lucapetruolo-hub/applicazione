@@ -35,4 +35,53 @@ describe("GeocodingService (Google Geocoding)", () => {
       expect(await new GeocodingService().geocodeAddress("Via Inesistente 999")).toBeNull();
     }
   });
+
+  describe("checkAddressInCity", () => {
+    const result = (types: string[], comune: string) => ({
+      ok: true,
+      json: async () => ({
+        status: "OK",
+        results: [
+          {
+            geometry: { location: { lat: 41.1, lng: 16.8 } },
+            types,
+            address_components: [{ long_name: comune, short_name: comune, types: ["administrative_area_level_3", "political"] }],
+          },
+        ],
+      }),
+    });
+    const input = { street: "Via Sparano da Bari", houseNumber: "10", postalCode: "70121", city: "Bari" };
+
+    it("senza chiave non chiama Google e non blocca", async () => {
+      vi.stubEnv("GOOGLE_MAPS_API_KEY", "");
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await new GeocodingService().checkAddressInCity(input)).toBe("unavailable");
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("via nel comune indicato → ok, anche con accenti diversi", async () => {
+      vi.stubEnv("GOOGLE_MAPS_API_KEY", "test-key");
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(result(["street_address"], "Bari")));
+      expect(await new GeocodingService().checkAddressInCity(input)).toBe("ok");
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(result(["route"], "Forlì")));
+      expect(await new GeocodingService().checkAddressInCity({ ...input, city: "Forli" })).toBe("ok");
+    });
+
+    it("via di un altro comune → wrong-city; solo il comune trovato → not-found", async () => {
+      vi.stubEnv("GOOGLE_MAPS_API_KEY", "test-key");
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(result(["street_address"], "Modugno")));
+      expect(await new GeocodingService().checkAddressInCity(input)).toBe("wrong-city");
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(result(["locality", "political"], "Bari")));
+      expect(await new GeocodingService().checkAddressInCity(input)).toBe("not-found");
+      await expect(new GeocodingService().assertAddressInCity(input)).rejects.toThrow("Indirizzo non trovato");
+    });
+
+    it("Google non risponde → unavailable, il salvataggio passa", async () => {
+      vi.stubEnv("GOOGLE_MAPS_API_KEY", "test-key");
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+      expect(await new GeocodingService().checkAddressInCity(input)).toBe("unavailable");
+      await expect(new GeocodingService().assertAddressInCity(input)).resolves.toBeUndefined();
+    });
+  });
 });

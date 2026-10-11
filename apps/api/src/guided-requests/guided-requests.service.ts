@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
+import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, professionalRestrictions, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
@@ -54,6 +55,8 @@ export class GuidedRequestsService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
     private readonly generalRequestsService: GeneralRequestsService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly geocodingService?: GeocodingService,
   ) {}
 
   /**
@@ -65,6 +68,15 @@ export class GuidedRequestsService {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
+    }
+    // Indirizzo vero e nel comune indicato (docs/CHANGELOG.md §214).
+    if (input.serviceMode === "HOME" && input.address?.trim() && input.city?.trim()) {
+      await this.geocodingService?.assertAddressInCity({
+        street: input.address,
+        houseNumber: input.houseNumber,
+        postalCode: input.postalCode,
+        city: input.city,
+      });
     }
     // Richieste generali chiuse per tutto il sito o per questa categoria in
     // questa città (docs/CHANGELOG.md §211). Non vale per il rinvio fatto dal
@@ -471,6 +483,23 @@ export class GuidedRequestsService {
     // Richiesta generale: la città resta obbligatoria anche online (§210).
     if (!request.professionalProfileId && !input.city?.trim()) {
       throw new BadRequestException("La città è obbligatoria.");
+    }
+    // Indirizzo controllato solo se cambia via, civico o città (docs/CHANGELOG.md §214).
+    const newAddress = input.address?.trim() || null;
+    const newHouseNumber = input.houseNumber !== undefined ? input.houseNumber.trim() || null : request.houseNumber;
+    const newCity = input.city?.trim() ?? "";
+    if (
+      (input.serviceMode ?? request.serviceMode) === "HOME" &&
+      newAddress &&
+      newCity &&
+      (newAddress !== request.address || newHouseNumber !== request.houseNumber || newCity !== request.city)
+    ) {
+      await this.geocodingService?.assertAddressInCity({
+        street: newAddress,
+        houseNumber: newHouseNumber,
+        postalCode: input.postalCode !== undefined ? input.postalCode : request.postalCode,
+        city: newCity,
+      });
     }
     const updated = await this.prisma.guidedRequest.update({
       where: { id: request.id },

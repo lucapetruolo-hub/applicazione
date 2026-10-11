@@ -26,7 +26,7 @@ import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
-import { HAS_GOOGLE_MAPS_KEY } from "@/components/GoogleMapGate";
+import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -244,6 +244,7 @@ export function GuidedRequestForm({
       city: user.city ?? "",
       province: user.province ?? "",
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
@@ -317,9 +318,8 @@ export function GuidedRequestForm({
   // scelta così da non mettere un indirizzo a caso"). Quello arrivato da
   // "Ripeti la richiesta" o dall'account vale come già scelto. Se Google
   // non risponde si accetta il testo libero, per non bloccare la richiesta.
-  const [addressVerified, setAddressVerified] = useState(Boolean(searchParams.get("via")));
-  const [addressServiceDown, setAddressServiceDown] = useState(false);
-  const addressMustBeChosen = HAS_GOOGLE_MAPS_KEY && !addressServiceDown;
+  const chosenAddress = useChosenAddress(Boolean(searchParams.get("via")));
+  const setAddressVerified = chosenAddress.setChosen;
   const cityComune = findComuneByName(city);
   /** Cambiando città l'indirizzo già scritto non vale più: si svuota insieme a civico, CAP e provincia. */
   function changeCity(next: string) {
@@ -525,7 +525,7 @@ export function GuidedRequestForm({
     if (serviceMode === "HOME") {
       if (!city.trim()) return "Indica la città in cui serve l'intervento.";
       if (!street.trim()) return "Indica l'indirizzo.";
-      if (addressMustBeChosen && !addressVerified) return "Scegli l'indirizzo dall'elenco dei suggerimenti.";
+      if (chosenAddress.missing) return ADDRESS_NOT_CHOSEN_MESSAGE;
       if (!recipientName.trim() || !recipientSurname.trim()) return "Indica nome e cognome di chi riceverà il professionista.";
       if (!recipientPhone.trim()) return "Indica un numero di telefono.";
       if (!isPlausiblePhoneNumber(recipientPhone)) return "Controlla il numero di telefono: sembra incompleto o troppo lungo.";
@@ -1137,12 +1137,12 @@ export function GuidedRequestForm({
                   }}
                   restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
                   askConsent
-                  onServiceUnavailable={() => setAddressServiceDown(true)}
+                  onServiceUnavailable={chosenAddress.markServiceDown}
                   disabled={!cityComune}
                   placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
                   style={fieldInputStyle}
                 />
-                {addressMustBeChosen && cityComune && street.trim() && !addressVerified ? (
+                {chosenAddress.missing && cityComune && street.trim() ? (
                   <Text fontSize="$2" color={brand.grafite70} marginTop="$1">
                     Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
                   </Text>
@@ -1181,8 +1181,13 @@ export function GuidedRequestForm({
             categoryLabel={selectedCategory?.label ?? ""}
             serviceMode={serviceMode}
             description={description}
-            city={city}
-            address={[street, houseNumber].filter((v) => v.trim()).join(" ")}
+            city={[postalCode, city].filter((v) => v.trim()).join(" ") + (province.trim() && city.trim() ? ` (${province.trim()})` : "")}
+            address={[[street, houseNumber].filter((v) => v.trim()).join(" "), addressExtra].filter((v) => v.trim()).join(", ")}
+            contact={
+              serviceMode === "HOME"
+                ? [[recipientName, recipientSurname].filter((v) => v.trim()).join(" "), recipientPhone].filter((v) => v.trim()).join(" · ")
+                : ""
+            }
             photosCount={photos.length}
             slotLabel={
               finalPreferredDate && finalPreferredTimeSlot
@@ -1315,6 +1320,7 @@ function RequestSummary({
   description,
   city,
   address,
+  contact,
   photosCount,
   slotLabel,
   forwardIfNoReply,
@@ -1328,6 +1334,8 @@ function RequestSummary({
   description: string;
   city: string;
   address: string;
+  /** Chi riceve il professionista e il suo telefono (docs/CHANGELOG.md §214). */
+  contact: string;
   photosCount: number;
   slotLabel: string | null;
   forwardIfNoReply: boolean;
@@ -1393,6 +1401,7 @@ function RequestSummary({
           </button>
         </div>
         <p>{[address, city].filter((v) => v.trim()).join(", ") || (serviceMode === "ONLINE" ? "Consulenza online" : "—")}</p>
+        {contact ? <p>{contact}</p> : null}
       </div>
     </YStack>
   );
