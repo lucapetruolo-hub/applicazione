@@ -17392,3 +17392,51 @@ dell'ordinamento, così una posizione a pagamento si riconosce come tale.
 **Distanza sulla scheda (richiesta di Luca nel thread):** nella ricerca per
 luogo la scheda mostra "Città · a N km" accanto alla città (campo
 `distanceKm`, virgola decimale).
+
+## 208. Richiesta diretta: nessuna scadenza per il professionista scelto, inoltro dopo 60 minuti o 6 ore
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Quando un cliente seleziona un
+professionista e clicca su urgente, come funziona?". Dalla verifica del
+codice il testo sotto "È urgente?" diceva "la mandiamo subito a più
+professionisti" anche quando la richiesta va a un professionista scelto
+(arriva solo a lui), e la conferma finale diceva "inviata a 1 professionista
+disponibili ora" (plurale sbagliato, disponibilità mai verificata). Luca ha
+chiesto di correggere i testi e di cambiare le regole: il professionista
+scelto non ha limiti di tempo per rispondere, urgente o no; con la casella
+spuntata, se non risponde entro 60 minuti (urgente) o 6 ore (normale) la
+richiesta va ad altri professionisti simili della zona scritta dal cliente,
+o della zona del professionista scelto se il cliente non l'ha indicata.
+
+**Decisione:**
+- *Nessuna scadenza:* il `Lead` del professionista scelto nasce con
+  `expiresAt` nullo, quindi non scade più e nella sua area non compare
+  "Rispondi entro". La richiesta intera chiude comunque dopo 7 giorni
+  (urgente) o 14 (normale) senza preventivi, come prima.
+- *Inoltro:* nuova colonna `GuidedRequest.forwardAt` (migrazione
+  `20261011100000_direct_request_forward_at`), impostata all'invio solo se
+  la casella è spuntata: 60 minuti per un'urgente (di giorno e di notte), 6
+  ore contate dalle 8 alle 21 per una normale (stessa regola delle 4 ore,
+  così una richiesta della sera non viene girata ad altri mentre il
+  professionista dorme). `computeDirectForwardAt` in `lead-routing.ts`.
+  `runExpiryCheck` (ogni 5 minuti) inoltra le richieste con `forwardAt`
+  passato e nessun preventivo del professionista scelto; se ha già
+  risposto azzera `forwardAt`. Il rifiuto esplicito inoltra subito, come
+  prima. Il professionista scelto tiene la richiesta e può rispondere anche
+  dopo l'inoltro.
+- *Zona:* `forwardDirectRequest` usa la città del cliente e, se vuota (es.
+  intervento online), quella del professionista scelto; per un intervento
+  online tiene solo chi offre consulenza da remoto. I professionisti a cui
+  viene inoltrata hanno i tempi di sempre (35/60 minuti o 4 ore) e la coda
+  di riserva.
+- *Stato per il cliente:* `getStatus` conta come "in attesa" anche un Lead
+  senza scadenza (prima mostrava "nessun professionista disponibile").
+- *Testi:* "È urgente?" con un professionista scelto dice che arriva a lui
+  segnata come urgente e che dopo 60 minuti si può inoltrare; riepilogo e
+  casella con i nuovi tempi e la zona; conferma finale col nome del
+  professionista e senza "disponibili ora"; email e notifiche di inoltro
+  dicono "non ha ancora risposto" e che può ancora rispondere (corretto
+  anche "ad altri un professionista simile").
+
+**Verifica:** test `lead-routing.test.ts` per `computeDirectForwardAt`
+(60 minuti esatti; 6 ore dalle 19 → 12 del giorno dopo); tutti i test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.

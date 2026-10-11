@@ -9,7 +9,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { toMyState } from "./guided-request-user-state.service";
-import { computeLeadExpiry, LEADS_PER_REQUEST, selectLeadRecipients, type LeadCandidateSignals } from "./lead-routing";
+import { computeDirectForwardAt, computeLeadExpiry, LEADS_PER_REQUEST, selectLeadRecipients, type LeadCandidateSignals } from "./lead-routing";
 
 /** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
 type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | null; radiusKm: number | null };
@@ -24,6 +24,8 @@ const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 // (docs/CHANGELOG.md §154). 3 per le normali, 5 per le urgenti; 4 ore
 // contate solo tra le 8 e le 21 (ora italiana) per le normali, 35 minuti per
 // le urgenti di giorno (7-22) e 60 di notte (§160); ordine per punteggio di qualità, mai per boost a pagamento.
+// Una richiesta diretta a un professionista scelto non ha scadenza per lui:
+// l'eventuale inoltro ad altri parte dopo 60 minuti / 6 ore (§208).
 
 // Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
 // aperta senza nessuna Quote ricevuta, il job schedulato la chiude
@@ -158,6 +160,7 @@ export class GuidedRequestsService {
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
+              forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
             },
@@ -199,7 +202,10 @@ export class GuidedRequestsService {
     const requestExpiresAt = this.computeRequestExpiry(input.isUrgent);
 
     if (leadRecipients.length > 0) {
-      const leadExpiresAt = computeLeadExpiry(input.isUrgent);
+      // Il professionista scelto dal cliente non ha scadenza per rispondere
+      // (docs/CHANGELOG.md §208): l'eventuale inoltro ad altri parte da
+      // GuidedRequest.forwardAt, senza togliergli la richiesta.
+      const leadExpiresAt = input.professionalProfileId ? null : computeLeadExpiry(input.isUrgent);
       await this.prisma.lead.createMany({
         data: leadRecipients.map((profile) => ({
           guidedRequestId: guidedRequest.id,
@@ -578,7 +584,10 @@ export class GuidedRequestsService {
     const [totalContacted, responded, pending] = await Promise.all([
       this.prisma.lead.count({ where: { guidedRequestId: id } }),
       this.prisma.quote.count({ where: { guidedRequestId: id } }),
-      this.prisma.lead.count({ where: { guidedRequestId: id, status: "PENDING", expiresAt: { gt: new Date() } } }),
+      // expiresAt nullo: professionista scelto dal cliente, senza scadenza (§208).
+      this.prisma.lead.count({
+        where: { guidedRequestId: id, status: "PENDING", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      }),
     ]);
 
     let statusMessage: string | null = null;
@@ -800,8 +809,9 @@ export class GuidedRequestsService {
 
   /**
    * Inoltra una richiesta diretta ad altri professionisti simili quando
-   * quello scelto non ha risposto in tempo o ha rifiutato, se il cliente ha
-   * lasciato attiva la casella (docs/CHANGELOG.md §154). Una sola volta: la
+   * quello scelto non ha risposto entro `forwardAt` (runExpiryCheck) o ha
+   * rifiutato, se il cliente ha lasciato attiva la casella (docs/CHANGELOG.md
+   * §154, tempi in §208). Una sola volta: la
    * prima chiamata "prenota" l'inoltro con un update condizionato su
    * `forwardedAt` nullo, così due espansioni concorrenti non lo raddoppiano.
    * Stessa selezione per punteggio delle richieste generiche, escluso il
@@ -817,7 +827,14 @@ export class GuidedRequestsService {
     const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, include: { category: true } });
     if (!request) return;
 
-    const matched = await this.matchProfilesForFanOut(request.categoryId, request.city, request.isUrgent, request.professionalProfileId ?? undefined);
+    // Zona: quella scritta dal cliente; se non l'ha indicata (es. intervento
+    // online), quella del professionista scelto (docs/CHANGELOG.md §208).
+    const chosen = request.professionalProfileId
+      ? await this.prisma.professionalProfile.findUnique({ where: { id: request.professionalProfileId }, select: { city: true } })
+      : null;
+    const zone = request.city.trim() || chosen?.city || "";
+    const matchedInZone = await this.matchProfilesForFanOut(request.categoryId, zone, request.isUrgent, request.professionalProfileId ?? undefined);
+    const matched = request.serviceMode === "ONLINE" ? matchedInZone.filter((m) => m.profile.remoteAvailable) : matchedInZone;
     const { selected, reserve } = await this.selectLeadCandidates(matched, { isUrgent: request.isUrgent, preferredDate: request.preferredDate });
 
     if (selected.length === 0) {
@@ -849,7 +866,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         profile.id,
         "SYSTEM",
-        "Il cliente aveva scelto un altro professionista che non ha risposto: la richiesta è stata inoltrata anche a te.",
+        "Il cliente aveva scelto un altro professionista che non ha ancora risposto: la richiesta è stata inoltrata anche a te.",
       );
     }
     await this.notificationsService.notify(request.clientId, "REQUEST_FORWARDED", { guidedRequestId, count: selected.length });
@@ -1022,6 +1039,27 @@ export class GuidedRequestsService {
       if (leadsToExpire.length > 0) {
         this.logger.log(`Scaduti ed espansi ${leadsToExpire.length} lead.`);
       }
+    }
+
+    // Richieste dirette senza risposta dal professionista scelto entro
+    // forwardAt (60 minuti se urgente, 6 ore se normale, docs/CHANGELOG.md
+    // §208): se il cliente ha lasciato la casella, si inoltrano ad altri.
+    // Il professionista scelto tiene la richiesta e può ancora rispondere.
+    const dueForward = await this.prisma.guidedRequest.findMany({
+      where: { forwardIfNoReply: true, forwardedAt: null, forwardAt: { lt: now }, status: { in: ["OPEN", "MATCHED"] } },
+      select: { id: true, professionalProfileId: true },
+    });
+    for (const request of dueForward) {
+      if (!request.professionalProfileId) continue;
+      const answered = await this.prisma.quote.count({
+        where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId },
+      });
+      if (answered > 0) {
+        // Ha già risposto: nessun inoltro, e la richiesta esce da questo controllo.
+        await this.prisma.guidedRequest.update({ where: { id: request.id }, data: { forwardAt: null } });
+        continue;
+      }
+      await this.forwardDirectRequest(request.id);
     }
 
     const expiredRequests = await this.prisma.guidedRequest.findMany({

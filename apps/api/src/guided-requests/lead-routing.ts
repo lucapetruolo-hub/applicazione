@@ -60,6 +60,21 @@ export function computeLeadExpiry(isUrgent: boolean, now: Date = new Date()): Da
   return isUrgent ? new Date(now.getTime() + urgentResponseMinutes(now) * 60_000) : addDaytimeHours(now, STANDARD_RESPONSE_HOURS);
 }
 
+/**
+ * Richiesta diretta a un professionista scelto dal cliente (docs/CHANGELOG.md
+ * §208, decisione dell'utente): il professionista scelto non ha scadenza per
+ * rispondere. Se il cliente lascia spuntata la casella di inoltro, dopo 60
+ * minuti (urgente, di giorno e di notte) o 6 ore contate dalle 8 alle 21
+ * (normale) senza un suo preventivo la richiesta va anche ad altri
+ * professionisti simili.
+ */
+export const DIRECT_FORWARD_URGENT_MINUTES = 60;
+export const DIRECT_FORWARD_STANDARD_HOURS = 6;
+
+export function computeDirectForwardAt(isUrgent: boolean, now: Date = new Date()): Date {
+  return isUrgent ? new Date(now.getTime() + DIRECT_FORWARD_URGENT_MINUTES * 60_000) : addDaytimeHours(now, DIRECT_FORWARD_STANDARD_HOURS);
+}
+
 export type LeadCandidateSignals = {
   id: string;
   /** Tempo medio di risposta in minuti, null se non ancora misurato. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDaytimeHours,
+  computeDirectForwardAt,
   computeLeadExpiry,
   leadQualityScore,
   selectLeadRecipients,
@@ -113,5 +114,16 @@ describe("selectLeadRecipients", () => {
 
   it("pochi candidati: tutti selezionati, nessuna riserva", () => {
     expect(selectLeadRecipients(strong.slice(0, 2), 3)).toEqual({ selected: ["s1", "s2"], reserve: [] });
+  });
+});
+
+describe("computeDirectForwardAt (inoltro di una richiesta diretta, §208)", () => {
+  it("urgente: 60 minuti, anche di giorno", () => {
+    const now = new Date("2026-09-24T08:00:00Z");
+    expect(computeDirectForwardAt(true, now).getTime() - now.getTime()).toBe(60 * 60_000);
+  });
+
+  it("normale: 6 ore contate dalle 8 alle 21 (19:00 → 2 ore oggi e 4 domattina → 12:00)", () => {
+    expect(computeDirectForwardAt(false, new Date("2026-09-24T17:00:00Z")).toISOString()).toBe("2026-09-25T10:00:00.000Z");
   });
 });

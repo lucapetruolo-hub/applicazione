@@ -377,7 +377,9 @@ export function GuidedRequestForm({
           </Text>
           <Text color={brand.grafite70} textAlign="center">
             {result.matchedProfessionals > 0
-              ? `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? " disponibili ora" : ""}. Riceverai i preventivi qui appena disponibili.`
+              ? professionalProfileId
+                ? `La tua richiesta è stata inviata a ${shownProfessionalName ?? "il professionista che hai scelto"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai il preventivo qui appena arriva.`
+                : `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
           </Text>
           {accountDataDiffers && !defaultsDeclined ? (
@@ -837,7 +839,13 @@ export function GuidedRequestForm({
           <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
           <span>
             <strong>È urgente?</strong>
-            {isUrgent ? <small>Sì: la mandiamo subito a più professionisti, che hanno 35 minuti per risponderti (60 di notte).</small> : null}
+            {isUrgent ? (
+              <small>
+                {professionalProfileId
+                  ? `Sì: arriva a ${shownProfessionalName ?? "il professionista"} segnata come urgente. Se non risponde entro 60 minuti, nel riepilogo puoi scegliere di inoltrarla anche ad altri professionisti della zona.`
+                  : "Sì: la mandiamo subito a più professionisti, che hanno 35 minuti per risponderti (60 di notte)."}
+              </small>
+            ) : null}
           </span>
         </label>
 
@@ -1214,13 +1222,20 @@ function RequestSummary({
   onEdit: (step: 1 | 2) => void;
 }) {
   const responseTime = isUrgent ? "35 minuti (60 minuti tra le 22 e le 7)" : "4 ore (contate dalle 8 alle 21)";
+  // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
+  // ad altri parte dopo questo tempo (docs/CHANGELOG.md §208).
+  const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
+  const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
   return (
     <YStack gap="$4">
       <div className="guided-next">
         <strong>Cosa succede dopo l&apos;invio</strong>
         {professionalName ? (
           <ul>
-            <li>La richiesta arriva a {professionalName}, che ha {responseTime} per risponderti con un preventivo.</li>
+            <li>
+              La richiesta arriva solo a {professionalName}
+              {isUrgent ? " (segnata come urgente)" : ""}, che può risponderti con un preventivo senza scadenza.
+            </li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
         ) : (
@@ -1239,8 +1254,8 @@ function RequestSummary({
         <label className="guided-forward">
           <input type="checkbox" checked={forwardIfNoReply} onChange={onToggleForward} />
           <span>
-            Se {professionalName} non risponde entro {responseTime} o non è disponibile, inoltrala fino ad altri {isUrgent ? "5" : "3"}{" "}
-            professionisti simili della zona.
+            Se {professionalName} non risponde entro {forwardTime} o non è disponibile, inoltrala anche ad altri professionisti simili {forwardZone}{" "}
+            (fino a {isUrgent ? "5" : "3"}). Potrà comunque risponderti anche dopo.
           </span>
         </label>
       ) : null}

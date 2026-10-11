@@ -687,6 +687,10 @@ model GuidedRequest {
   // risponde (docs/CHANGELOG.md §154) e quando è stata inoltrata.
   forwardIfNoReply      Boolean                    @default(false)
   forwardedAt           DateTime?
+  // Quando inoltrarla se il professionista scelto non ha ancora risposto:
+  // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
+  // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §208).
+  forwardAt             DateTime?
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
