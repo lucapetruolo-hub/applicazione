@@ -656,6 +656,7 @@ export class ProfessionalsService {
         longitude: profile.longitude,
         engagementRadiusKm: profile.engagementRadiusKm,
         urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+        remoteAvailable: profile.remoteAvailable,
       });
     }
 
@@ -865,6 +866,18 @@ export class ProfessionalsService {
           ])
         : [[], []];
     const leadsPerRequest = new Map(leadCounts.map((row) => [row.guidedRequestId, row._count._all]));
+    // Richieste dirette a cui ha già scritto in chat: l'inoltro non partirà (§209).
+    const chattedRequestIds = new Set(
+      requestIds.length > 0
+        ? (
+            await this.prisma.conversationEvent.findMany({
+              where: { guidedRequestId: { in: requestIds }, professionalProfileId, actor: "PROFESSIONAL", automatic: false },
+              select: { guidedRequestId: true },
+              distinct: ["guidedRequestId"],
+            })
+          ).map((row) => row.guidedRequestId)
+        : [],
+    );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
     const clientReviewsByClientId = new Map<string, typeof clientReviews>();
     for (const clientReview of clientReviews) {
@@ -898,6 +911,14 @@ export class ProfessionalsService {
         // `null` per un Lead senza scadenza (righe create prima di questa
         // funzionalità) o già scaduto/con preventivo (non più pertinente).
         expiresAt: lead.expiresAt ? lead.expiresAt.toISOString() : null,
+        forwardAt:
+          lead.guidedRequest.professionalProfileId === professionalProfileId &&
+          lead.guidedRequest.forwardAt &&
+          !lead.guidedRequest.forwardedAt &&
+          !quote &&
+          !chattedRequestIds.has(lead.guidedRequest.id)
+            ? lead.guidedRequest.forwardAt.toISOString()
+            : null,
         competitors: {
           responded: otherQuotesPerRequest.get(lead.guidedRequest.id) ?? 0,
           total: Math.max(0, (leadsPerRequest.get(lead.guidedRequest.id) ?? 1) - 1),

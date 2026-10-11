@@ -118,16 +118,16 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Invia una nuova richiesta", url: `${frontendUrl()}/preventivo` },
   }),
-  REQUEST_FORWARDED: (payload, ctx) => {
-    const count = typeof payload.count === "number" ? payload.count : null;
+  REQUEST_FORWARDED: (_payload, ctx) => {
+    // Senza il numero dei professionisti (docs/CHANGELOG.md §211).
     return {
       kind: "notification",
       subject: "Abbiamo inoltrato la tua richiesta ad altri professionisti",
       greeting: ctx.name,
       title: "Abbiamo inoltrato la tua richiesta",
       paragraphs: [
-        `Il professionista che avevi scelto non ha risposto in tempo. Come avevi chiesto, abbiamo inviato la tua richiesta per **${job(ctx)}** ${count ? `ad altri ${count === 1 ? "un professionista simile" : `${count} professionisti simili`}` : "ad altri professionisti simili"} della tua zona.`,
-        "Ti avviseremo appena arriva un preventivo.",
+        `Il professionista che avevi scelto non ha ancora risposto. Come avevi chiesto, abbiamo inviato la tua richiesta per **${job(ctx)}** anche agli altri professionisti simili della zona.`,
+        "Anche il professionista che avevi scelto può ancora risponderti. Ti avviseremo appena arriva un preventivo.",
       ],
       cta: clientRequests(),
     };
@@ -138,8 +138,8 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Il professionista non ha risposto",
     paragraphs: [
-      `Il professionista che avevi scelto non ha risposto alla tua richiesta per **${job(ctx)}** e in zona, per ora, non ce ne sono altri disponibili a cui inoltrarla.`,
-      "Puoi riprovare più avanti o cercare un altro professionista.",
+      `Il professionista che avevi scelto non ha ancora risposto alla tua richiesta per **${job(ctx)}** e in zona, per ora, non ce ne sono altri disponibili a cui inoltrarla.`,
+      "La richiesta resta aperta e lui può ancora risponderti. Intanto puoi cercare un altro professionista.",
     ],
     cta: { label: "Cerca un professionista", url: `${frontendUrl()}/cerca` },
   }),

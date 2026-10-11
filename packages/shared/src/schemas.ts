@@ -189,14 +189,10 @@ export const guidedRequestSchema = z
      */
     photoUrls: z.array(z.string().url()).max(5).default([]),
     /**
-     * Obbligatoria solo per un intervento "a domicilio" — richiesta
-     * esplicita dell'utente: una consulenza online non richiede di
-     * specificare dove si trova il cliente, quindi la città diventa
-     * facoltativa quando `serviceMode === "ONLINE"` (stesso principio già
-     * applicato all'indirizzo/destinatario sotto, stessa `.superRefine`).
-     * Se lasciata vuota il fan-out geografico ricade su
-     * `remoteAvailable: true` invece che sul raggio di ingaggio (vedi
-     * GuidedRequestsService.matchProfilesForFanOut).
+     * Obbligatoria a domicilio e in ogni richiesta generale, anche online
+     * (docs/CHANGELOG.md §210: decide a chi arriva). Facoltativa solo per
+     * una consulenza online a un professionista scelto: se vuota, l'inoltro
+     * usa la città del professionista (§209).
      */
     city: z.string().optional(),
     /**
@@ -258,7 +254,13 @@ export const guidedRequestSchema = z
   // (vedi commento sui singoli campi sopra) — stessi messaggi già in uso
   // prima che questi campi diventassero facoltativi.
   .superRefine((data, ctx) => {
-    if (data.serviceMode !== "HOME") return;
+    // Richiesta generale: città sempre obbligatoria, anche online — decide a
+    // quali professionisti arriva (docs/CHANGELOG.md §210).
+    if (data.serviceMode !== "HOME") {
+      if (!data.professionalProfileId && !data.city?.trim())
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
+      return;
+    }
     if (!data.city?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
     if (!data.address?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "L'indirizzo è obbligatorio.", path: ["address"] });
     if (!data.recipientName?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il nome è obbligatorio.", path: ["recipientName"] });

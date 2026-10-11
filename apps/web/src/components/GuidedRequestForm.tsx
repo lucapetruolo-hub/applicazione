@@ -179,6 +179,18 @@ export function GuidedRequestForm({
   // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
 
+  // Richieste generali chiuse per tutto il sito o per questa categoria in
+  // questa città (docs/CHANGELOG.md §211): il cliente sceglie un
+  // professionista dalla ricerca. Il server lo rifiuterebbe comunque.
+  const [generalClosed, setGeneralClosed] = useState<"GLOBAL" | "ZONE" | null>(null);
+  useEffect(() => {
+    if (professionalProfileId) return;
+    apiClient
+      .generalRequestAvailability()
+      .then((a) => setGeneralClosed(a.open ? null : a.closedScope))
+      .catch(() => {});
+  }, [professionalProfileId]);
+
   useEffect(() => {
     if (!professionalProfileId) return;
     apiClient
@@ -287,6 +299,12 @@ export function GuidedRequestForm({
   // (obbligatorie, e devono essere del problema attuale, non riciclate).
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
+  // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
+  useEffect(() => {
+    setGeneralClosed((current) => (current === "ZONE" ? null : current));
+  }, [city, categorySlug]);
+  // Facoltativa solo per una consulenza online a un professionista scelto (§210).
+  const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
   // (richiesta esplicita dell'utente: "voglio che li inserisca subito
@@ -377,7 +395,9 @@ export function GuidedRequestForm({
           </Text>
           <Text color={brand.grafite70} textAlign="center">
             {result.matchedProfessionals > 0
-              ? `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? " disponibili ora" : ""}. Riceverai i preventivi qui appena disponibili.`
+              ? professionalProfileId
+                ? `La tua richiesta è stata inviata a ${shownProfessionalName ?? "il professionista che hai scelto"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai il preventivo qui appena arriva.`
+                : `La tua richiesta è stata inviata ai professionisti della tua zona${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
           </Text>
           {accountDataDiffers && !defaultsDeclined ? (
@@ -464,7 +484,10 @@ export function GuidedRequestForm({
       if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
       return null;
     }
-    // Città, indirizzo e destinatario obbligatori solo a domicilio: per una
+    // Città obbligatoria anche online se la richiesta è generale: decide a
+    // chi arriva (docs/CHANGELOG.md §210).
+    if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return "Indica la città: la richiesta arriva ai professionisti della zona.";
+    // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
       if (!city.trim()) return "Indica la città in cui serve l'intervento.";
@@ -478,7 +501,7 @@ export function GuidedRequestForm({
     return null;
   }
 
-  function goToStep(next: 1 | 2 | 3) {
+  async function goToStep(next: 1 | 2 | 3) {
     setError(null);
     if (next > step) {
       const problem = validateStep(1) ?? (next === 3 ? validateStep(2) : null);
@@ -487,6 +510,12 @@ export function GuidedRequestForm({
         if (validateStep(1)) setStep(1);
         return;
       }
+    }
+    if (next === 3 && !professionalProfileId && categorySlug) {
+      const availability = await apiClient.generalRequestAvailability(categorySlug, city).catch(() => null);
+      const closed = availability && !availability.open ? availability.closedScope : null;
+      setGeneralClosed(closed);
+      if (closed) return;
     }
     setStep(next);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -679,7 +708,13 @@ export function GuidedRequestForm({
           )}
         </YStack>
 
-        <StepIndicator step={step} onGo={goToStep} />
+        {generalClosed ? (
+          <GeneralRequestsClosedNotice scope={generalClosed} categorySlug={categorySlug || null} categoryLabel={selectedCategory?.label ?? null} city={city} />
+        ) : null}
+
+        {generalClosed === "GLOBAL" ? null : (
+        <>
+        <StepIndicator step={step} onGo={(next) => void goToStep(next)} />
 
         {step === 1 ? (
           <>
@@ -837,7 +872,13 @@ export function GuidedRequestForm({
           <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
           <span>
             <strong>È urgente?</strong>
-            {isUrgent ? <small>Sì: la mandiamo subito a più professionisti, che hanno 35 minuti per risponderti (60 di notte).</small> : null}
+            {isUrgent ? (
+              <small>
+                {professionalProfileId
+                  ? `Sì: arriva a ${shownProfessionalName ?? "il professionista"} segnata come urgente. Se non risponde entro 60 minuti, nel riepilogo puoi scegliere di inoltrarla anche ad altri professionisti della zona.`
+                  : "Sì: la mandiamo subito a tutti i professionisti della zona, segnata come urgente."}
+              </small>
+            ) : null}
           </span>
         </label>
 
@@ -980,7 +1021,7 @@ export function GuidedRequestForm({
         {step === 2 ? (
           <>
         <YStack gap="$2">
-          <FieldLabel>{serviceMode === "ONLINE" ? "Città (facoltativa)" : "Città"}</FieldLabel>
+          <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
           {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
           <div className="guided-city">
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
@@ -997,7 +1038,7 @@ export function GuidedRequestForm({
             />
           </YStack>
           </div>
-          {serviceMode === "ONLINE" ? (
+          {cityOptional ? (
             // Richiesta esplicita dell'utente: "la città poiché si è
             // selezionato online non dev'essere obbligatoria... deve
             // esserci scritto che non è obbligatorio inserire la città, ma
@@ -1141,6 +1182,8 @@ export function GuidedRequestForm({
             </Button>
           )}
         </XStack>
+        </>
+        )}
       </YStack>
     </YStack>
     {showAuthGate ? (
@@ -1150,6 +1193,42 @@ export function GuidedRequestForm({
       />
     ) : null}
     </>
+  );
+}
+
+/**
+ * Richieste generali chiuse (docs/CHANGELOG.md §211): per tutto il sito o
+ * per questa categoria in questa città. Rimanda alla ricerca, da cui il
+ * cliente sceglie un professionista e gli scrive dal suo profilo.
+ */
+function GeneralRequestsClosedNotice({
+  scope,
+  categorySlug,
+  categoryLabel,
+  city,
+}: {
+  scope: "GLOBAL" | "ZONE";
+  categorySlug: string | null;
+  categoryLabel: string | null;
+  city: string;
+}) {
+  const searchHref = categorySlug ? `/cerca/${categorySlug}${city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : ""}` : "/cerca";
+  return (
+    <YStack gap="$2" padding="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4">
+      <Text fontWeight="700" color={brand.grafite}>
+        {scope === "GLOBAL" ? "Scegli tu il professionista" : `A ${city.trim()} scegli tu il professionista`}
+      </Text>
+      <Text color={brand.grafite70} fontSize="$3">
+        {scope === "GLOBAL"
+          ? "Per ora le richieste si inviano direttamente a un professionista: cercalo, guarda profilo e recensioni e scrivigli dalla sua pagina."
+          : `I professionisti${categoryLabel ? ` di ${categoryLabel}` : ""} di questa zona ricevono già molte richieste: per avere risposte più rapide scegline uno e scrivigli dalla sua pagina.`}
+      </Text>
+      <Link href={searchHref}>
+        <Button variant="primary" alignSelf="flex-start">
+          Cerca un professionista
+        </Button>
+      </Link>
+    </YStack>
   );
 }
 
@@ -1213,23 +1292,29 @@ function RequestSummary({
   onToggleForward: () => void;
   onEdit: (step: 1 | 2) => void;
 }) {
-  const responseTime = isUrgent ? "35 minuti (60 minuti tra le 22 e le 7)" : "4 ore (contate dalle 8 alle 21)";
+  // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
+  // ad altri parte dopo questo tempo (docs/CHANGELOG.md §209).
+  const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
+  const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
   return (
     <YStack gap="$4">
       <div className="guided-next">
         <strong>Cosa succede dopo l&apos;invio</strong>
         {professionalName ? (
           <ul>
-            <li>La richiesta arriva a {professionalName}, che ha {responseTime} per risponderti con un preventivo.</li>
+            <li>
+              La richiesta arriva solo a {professionalName}
+              {isUrgent ? " (segnata come urgente)" : ""}, che può risponderti con un preventivo senza scadenza.
+            </li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
         ) : (
           <ul>
             <li>
-              La mandiamo subito a fino a {isUrgent ? "5" : "3"} professionisti, i più adatti della tua zona, scelti per rapidità di risposta,
-              recensioni, affidabilità e vicinanza.
+              La mandiamo subito a tutti i professionisti di {categoryLabel} che lavorano nella tua zona
+              {isUrgent ? ", segnata come urgente" : ""}.
             </li>
-            <li>Ognuno ha {responseTime} per risponderti. Se qualcuno non risponde, la richiesta passa al successivo.</li>
+            <li>Possono risponderti finché la richiesta è aperta: al massimo {isUrgent ? "30" : "60"} giorni.</li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
         )}
@@ -1239,8 +1324,8 @@ function RequestSummary({
         <label className="guided-forward">
           <input type="checkbox" checked={forwardIfNoReply} onChange={onToggleForward} />
           <span>
-            Se {professionalName} non risponde entro {responseTime} o non è disponibile, inoltrala fino ad altri {isUrgent ? "5" : "3"}{" "}
-            professionisti simili della zona.
+            Se {professionalName} non risponde entro {forwardTime} o non è disponibile, inoltrala anche agli altri professionisti simili {forwardZone}.
+            Potrà comunque risponderti anche dopo.
           </span>
         </label>
       ) : null}

@@ -17,3 +17,4 @@ export * from "./profileInvites";
 export * from "./scheduleChange";
 export * from "./brand";
 export * from "./professionalVerification";
+export * from "./generalRequests";

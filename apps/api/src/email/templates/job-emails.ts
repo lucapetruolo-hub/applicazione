@@ -26,7 +26,7 @@ export function requestSentEmail(input: {
       ]
     : input.sentTo > 0
       ? [
-          `Abbiamo inviato la tua richiesta per **${input.category}${where}** a ${input.sentTo === 1 ? "un professionista" : `${input.sentTo} professionisti`} della tua zona${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
+          `Abbiamo inviato la tua richiesta per **${input.category}${where}** ai professionisti della tua zona${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
           "Ti scriviamo appena arriva un preventivo: potrai confrontarli, fare domande in chat e scegliere con calma.",
         ]
       : [
@@ -79,6 +79,25 @@ export function bookingReminderProfessionalEmail(input: { name: string | null; c
 }
 
 /** Avviso agli admin che moderano per ogni nuova segnalazione (docs/CHANGELOG.md §145). */
+/** Agli admin di moderazione: zone dove le richieste generali si sono chiuse da sole (docs/CHANGELOG.md §212). */
+export function adminGeneralRequestsClosedEmail(zones: { category: string; city: string; reason: string }[]): RenderedEmail {
+  const first = zones[0];
+  return renderEmail({
+    kind: "account",
+    tone: "urgent",
+    subject:
+      zones.length === 1 && first
+        ? `Richieste generali chiuse: ${first.category} a ${first.city}`
+        : `Richieste generali chiuse in ${zones.length} zone`,
+    title: "Richieste generali chiuse in automatico",
+    paragraphs: [
+      "In queste zone i clienti ora devono scegliere un professionista dalla ricerca. Puoi riaprirle o cambiare le soglie dalla pagina Richieste generali.",
+    ],
+    details: zones.map((z) => ({ label: `${z.category} a ${z.city}`, value: z.reason })),
+    cta: { label: "Apri Richieste generali", url: `${frontendUrl()}/admin/richieste-generali` },
+  });
+}
+
 export function adminNewReportEmail(input: { what: string; reason: string }): RenderedEmail {
   return renderEmail({
     kind: "account",

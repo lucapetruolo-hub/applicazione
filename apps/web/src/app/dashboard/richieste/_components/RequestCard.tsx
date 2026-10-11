@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
+import { formatCompetitors, formatForwardDeadline, formatLeadDeadline } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -67,7 +67,7 @@ export function RequestCard({
   const router = useRouter();
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
-  const leadDeadline = formatLeadDeadline(lead.expiresAt);
+  const leadDeadline = formatLeadDeadline(lead.expiresAt) ?? formatForwardDeadline(lead.forwardAt);
   const competitorsLabel = formatCompetitors(lead.competitors);
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);

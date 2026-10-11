@@ -8,8 +8,9 @@ import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { GeneralRequestsService } from "../general-requests/general-requests.service";
 import { toMyState } from "./guided-request-user-state.service";
-import { computeLeadExpiry, LEADS_PER_REQUEST, selectLeadRecipients, type LeadCandidateSignals } from "./lead-routing";
+import { computeDirectForwardAt } from "./lead-routing";
 
 /** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
 type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | null; radiusKm: number | null };
@@ -19,17 +20,19 @@ type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | nul
 const LEAD_PRICE_STANDARD_EUR_CENTS = 500;
 const LEAD_PRICE_URGENT_EUR_CENTS = 800;
 
-// Quanti professionisti ricevono una richiesta, entro quando devono
-// rispondere e con che ordine vengono scelti: in ./lead-routing.ts
-// (docs/CHANGELOG.md §154). 3 per le normali, 5 per le urgenti; 4 ore
-// contate solo tra le 8 e le 21 (ora italiana) per le normali, 35 minuti per
-// le urgenti di giorno (7-22) e 60 di notte (§160); ordine per punteggio di qualità, mai per boost a pagamento.
+// Smistamento (docs/CHANGELOG.md §210, decisione dell'utente): una richiesta
+// generale va a tutti i professionisti della categoria nel cui raggio cade
+// la città del cliente, senza tetto né scadenza per rispondere; resta aperta
+// finché non si chiude (al più 30 giorni se urgente, 60 se normale). Una
+// richiesta diretta va solo al professionista scelto, senza scadenza per lui:
+// l'eventuale inoltro agli altri parte dopo 60 minuti / 6 ore (§209).
+// Il boost a pagamento non entra mai nello smistamento.
 
 // Scadenza dell'intera richiesta guidata: oltre questo tempo, se ancora
 // aperta senza nessuna Quote ricevuta, il job schedulato la chiude
 // (closedReason EXPIRED) invece di lasciarla appesa per sempre.
-const URGENT_REQUEST_EXPIRY_DAYS = 7;
-const STANDARD_REQUEST_EXPIRY_DAYS = 14;
+const URGENT_REQUEST_EXPIRY_DAYS = 30;
+const STANDARD_REQUEST_EXPIRY_DAYS = 60;
 
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
@@ -50,6 +53,7 @@ export class GuidedRequestsService {
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
+    private readonly generalRequestsService: GeneralRequestsService,
   ) {}
 
   /**
@@ -61,6 +65,19 @@ export class GuidedRequestsService {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
+    }
+    // Richieste generali chiuse per tutto il sito o per questa categoria in
+    // questa città (docs/CHANGELOG.md §211). Non vale per il rinvio fatto dal
+    // sistema dopo una mancata presentazione (excludeProfileId, §167).
+    if (!input.professionalProfileId && !opts.excludeProfileId) {
+      const availability = await this.generalRequestsService.availability(category.id, input.city ?? null);
+      if (!availability.open) {
+        throw new ForbiddenException(
+          availability.closedScope === "GLOBAL"
+            ? "Le richieste generali non sono attive: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo."
+            : "In questa zona le richieste generali per questa categoria sono chiuse: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo.",
+        );
+      }
     }
 
     let targetProfile: {
@@ -158,6 +175,7 @@ export class GuidedRequestsService {
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
+              forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
             },
@@ -184,35 +202,34 @@ export class GuidedRequestsService {
           distanceKm: null,
           radiusKm: null,
         }))
-      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, opts.excludeProfileId);
+      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, {
+          excludeProfileId: opts.excludeProfileId,
+          remoteOnly: input.serviceMode === "ONLINE",
+        });
 
-    // Selezione per punteggio di qualità (docs/CHANGELOG.md §154): i
-    // migliori subito (3, o 5 se urgente), un posto per un nuovo, il resto in
-    // coda di riserva (pescata da expandLeadQueue quando un Lead scade o
-    // viene rifiutato). Una richiesta diretta non passa da qui: il cliente ha
-    // già scelto.
-    const { selected: leadRecipients, reserve: reserveCandidateIds } = input.professionalProfileId
-      ? { selected: matchingProfiles.map((m) => m.profile), reserve: [] as string[] }
-      : await this.selectLeadCandidates(matchingProfiles, { isUrgent: input.isUrgent, preferredDate: null });
+    // A tutti i compatibili, senza tetto né coda di riserva (docs/CHANGELOG.md §210).
+    const leadRecipients = matchingProfiles.map((m) => m.profile);
 
     const leadPriceEurCents = input.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS;
     const requestExpiresAt = this.computeRequestExpiry(input.isUrgent);
 
     if (leadRecipients.length > 0) {
-      const leadExpiresAt = computeLeadExpiry(input.isUrgent);
+      // Nessuna scadenza per rispondere (docs/CHANGELOG.md §209-§210): si
+      // risponde finché la richiesta è aperta. Per una richiesta diretta
+      // l'eventuale inoltro ad altri parte da GuidedRequest.forwardAt.
       await this.prisma.lead.createMany({
         data: leadRecipients.map((profile) => ({
           guidedRequestId: guidedRequest.id,
           professionalProfileId: profile.id,
           priceEurCents: leadPriceEurCents,
-          expiresAt: leadExpiresAt,
+          expiresAt: null,
         })),
         skipDuplicates: true,
       });
 
       await this.prisma.guidedRequest.update({
         where: { id: guidedRequest.id },
-        data: { status: "MATCHED", reserveCandidateIds, expiresAt: requestExpiresAt },
+        data: { status: "MATCHED", expiresAt: requestExpiresAt },
       });
 
       // Notifica a ogni destinatario con `notify` (docs/CHANGELOG.md §154):
@@ -260,8 +277,7 @@ export class GuidedRequestsService {
     return {
       // Professionisti che hanno DAVVERO ricevuto un Lead (dopo la
       // selezione), non solo i candidati compatibili trovati — questo
-      // numero prima coincideva sempre con matchingProfiles.length, ora che
-      // esiste un tetto (MAX_LEADS_PER_REQUEST) i due possono differire.
+      // numero coincide con matchingProfiles.length (nessun tetto, §210).
       guidedRequestId: guidedRequest.id,
       matchedProfessionals: leadRecipients.length,
     };
@@ -452,6 +468,10 @@ export class GuidedRequestsService {
     if (quoteCount > 0) {
       throw new ForbiddenException("Non puoi modificare la richiesta: un professionista ha già inviato un preventivo.");
     }
+    // Richiesta generale: la città resta obbligatoria anche online (§210).
+    if (!request.professionalProfileId && !input.city?.trim()) {
+      throw new BadRequestException("La città è obbligatoria.");
+    }
     const updated = await this.prisma.guidedRequest.update({
       where: { id: request.id },
       data: {
@@ -578,7 +598,10 @@ export class GuidedRequestsService {
     const [totalContacted, responded, pending] = await Promise.all([
       this.prisma.lead.count({ where: { guidedRequestId: id } }),
       this.prisma.quote.count({ where: { guidedRequestId: id } }),
-      this.prisma.lead.count({ where: { guidedRequestId: id, status: "PENDING", expiresAt: { gt: new Date() } } }),
+      // expiresAt nullo: professionista scelto dal cliente, senza scadenza (§209).
+      this.prisma.lead.count({
+        where: { guidedRequestId: id, status: "PENDING", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      }),
     ]);
 
     let statusMessage: string | null = null;
@@ -620,8 +643,9 @@ export class GuidedRequestsService {
     categoryId: string,
     city: string,
     isUrgent: boolean,
-    excludeProfileId?: string,
+    opts: { excludeProfileId?: string; remoteOnly?: boolean } = {},
   ): Promise<MatchedCandidate[]> {
+    const { excludeProfileId, remoteOnly } = opts;
     // Un professionista che ha eliminato l'account (soft-delete) non entra
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
@@ -635,6 +659,8 @@ export class GuidedRequestsService {
         // Nessuna nuova richiesta per 14 giorni dopo la 3ª segnalazione accolta (§167).
         OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
         ...(excludeProfileId ? { id: { not: excludeProfileId } } : {}),
+        // Intervento online: solo chi offre consulenza da remoto (§210).
+        ...(remoteOnly ? { remoteAvailable: true } : {}),
       },
     });
     const trimmedCity = city.trim();
@@ -681,6 +707,7 @@ export class GuidedRequestsService {
     longitude: number;
     engagementRadiusKm: number;
     urgentEngagementRadiusKm: number;
+    remoteAvailable: boolean;
   }): Promise<void> {
     // Comune non ancora geocodificato (0,0 placeholder) — stessa
     // convenzione già usata in matchProfilesForFanOut, mai eleggibile.
@@ -698,10 +725,11 @@ export class GuidedRequestsService {
     });
 
     for (const request of openRequests) {
-      const activePendingLeads = await this.prisma.lead.count({
-        where: { guidedRequestId: request.id, status: "PENDING", expiresAt: { gt: now } },
-      });
-      if (activePendingLeads > 0) continue;
+      // Ogni richiesta generale va a tutti i compatibili (§210): anche a chi
+      // si iscrive dopo, purché non l'abbia già ricevuta.
+      if (request.serviceMode === "ONLINE" && !profile.remoteAvailable) continue;
+      const alreadyReceived = await this.prisma.lead.count({ where: { guidedRequestId: request.id, professionalProfileId: profile.id } });
+      if (alreadyReceived > 0) continue;
 
       const requestComune = findComuneByName(request.city);
       if (!requestComune) continue;
@@ -714,7 +742,7 @@ export class GuidedRequestsService {
           guidedRequestId: request.id,
           professionalProfileId: profile.id,
           priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
-          expiresAt: computeLeadExpiry(request.isUrgent),
+          expiresAt: null,
           wasExpanded: true,
         },
       });
@@ -736,77 +764,20 @@ export class GuidedRequestsService {
     }
   }
 
-  /**
-   * Sceglie chi riceve davvero un Lead (docs/CHANGELOG.md §154): raccoglie
-   * i segnali di ogni candidato (metriche di risposta e affidabilità,
-   * recensioni, distanza, disponibilità nel giorno chiesto, ultimo
-   * preventivo inviato, richieste ricevute in settimana) e delega il
-   * punteggio e la scelta a `selectLeadRecipients` (./lead-routing.ts).
-   */
-  private async selectLeadCandidates(
-    candidates: MatchedCandidate[],
-    request: { isUrgent: boolean; preferredDate: Date | null },
-  ): Promise<{ selected: ProfessionalProfile[]; reserve: string[] }> {
-    if (candidates.length === 0) return { selected: [], reserve: [] };
-    const ids = candidates.map((c) => c.profile.id);
-    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
-    const [metrics, lastQuotes, recentLeads, slots] = await Promise.all([
-      this.prisma.professionalMetrics.findMany({ where: { professionalProfileId: { in: ids } } }),
-      this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: ids } }, _max: { createdAt: true } }),
-      this.prisma.lead.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: ids }, createdAt: { gte: weekAgo } }, _count: { _all: true } }),
-      request.preferredDate
-        ? this.prisma.availabilitySlot.findMany({ where: { professionalProfileId: { in: ids } }, select: { professionalProfileId: true, dayOfWeek: true, date: true } })
-        : Promise.resolve([] as { professionalProfileId: string; dayOfWeek: number; date: Date | null }[]),
-    ]);
-    const metricsBy = new Map(metrics.map((m) => [m.professionalProfileId, m]));
-    const lastQuoteBy = new Map(lastQuotes.map((q) => [q.professionalProfileId, q._max.createdAt]));
-    const recentBy = new Map(recentLeads.map((l) => [l.professionalProfileId, l._count._all]));
-    const preferredDay = request.preferredDate ? request.preferredDate.toISOString().slice(0, 10) : null;
-    const preferredWeekday = request.preferredDate ? request.preferredDate.getUTCDay() : null;
-
-    const signals: LeadCandidateSignals[] = candidates.map(({ profile, distanceKm, radiusKm }) => {
-      const m = metricsBy.get(profile.id);
-      const lastQuote = lastQuoteBy.get(profile.id) ?? null;
-      const mySlots = slots.filter((s) => s.professionalProfileId === profile.id);
-      return {
-        id: profile.id,
-        avgResponseTimeMinutes: m?.avgResponseTimeMinutes ?? null,
-        requestsReceived: m?.totalRequestsReceived ?? 0,
-        responsesSent: m?.totalResponsesMeasured ?? 0,
-        avgRating: m?.avgRating ?? null,
-        reviewCount: m?.reviewCount ?? 0,
-        honoredAppointments: m?.honoredAppointments ?? 0,
-        totalAppointments: m?.totalAppointments ?? 0,
-        distanceKm,
-        radiusKm,
-        availableOnPreferredDay:
-          preferredDay === null
-            ? null
-            : mySlots.some((s) => (s.date ? s.date.toISOString().slice(0, 10) === preferredDay : s.dayOfWeek === preferredWeekday)),
-        daysSinceLastQuote: lastQuote ? (Date.now() - lastQuote.getTime()) / 86_400_000 : null,
-        leadsLast7Days: recentBy.get(profile.id) ?? 0,
-        demoted: professionalRestrictions(profile, new Date()).demoted,
-      };
-    });
-
-    const { selected, reserve } = selectLeadRecipients(signals, request.isUrgent ? LEADS_PER_REQUEST.urgent : LEADS_PER_REQUEST.standard);
-    const profileById = new Map(candidates.map((c) => [c.profile.id, c.profile]));
-    return { selected: selected.map((id) => profileById.get(id)!), reserve };
-  }
-
   private computeRequestExpiry(isUrgent: boolean): Date {
     return isUrgent ? addDays(new Date(), URGENT_REQUEST_EXPIRY_DAYS) : addDays(new Date(), STANDARD_REQUEST_EXPIRY_DAYS);
   }
 
   /**
    * Inoltra una richiesta diretta ad altri professionisti simili quando
-   * quello scelto non ha risposto in tempo o ha rifiutato, se il cliente ha
-   * lasciato attiva la casella (docs/CHANGELOG.md §154). Una sola volta: la
+   * quello scelto non ha risposto entro `forwardAt` (runExpiryCheck) o ha
+   * rifiutato, se il cliente ha lasciato attiva la casella (docs/CHANGELOG.md
+   * §154, tempi in §209). Una sola volta: la
    * prima chiamata "prenota" l'inoltro con un update condizionato su
    * `forwardedAt` nullo, così due espansioni concorrenti non lo raddoppiano.
    * Stessa selezione per punteggio delle richieste generiche, escluso il
-   * professionista scelto; poi la richiesta prosegue come una generica
-   * (coda di riserva inclusa).
+   * professionista scelto: va a tutti i compatibili della zona, senza
+   * scadenza (§210).
    */
   private async forwardDirectRequest(guidedRequestId: string): Promise<void> {
     const claimed = await this.prisma.guidedRequest.updateMany({
@@ -817,8 +788,18 @@ export class GuidedRequestsService {
     const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, include: { category: true } });
     if (!request) return;
 
-    const matched = await this.matchProfilesForFanOut(request.categoryId, request.city, request.isUrgent, request.professionalProfileId ?? undefined);
-    const { selected, reserve } = await this.selectLeadCandidates(matched, { isUrgent: request.isUrgent, preferredDate: request.preferredDate });
+    // Zona: quella scritta dal cliente; se non l'ha indicata (es. intervento
+    // online), quella del professionista scelto (docs/CHANGELOG.md §209).
+    const chosen = request.professionalProfileId
+      ? await this.prisma.professionalProfile.findUnique({ where: { id: request.professionalProfileId }, select: { city: true } })
+      : null;
+    const zone = request.city.trim() || chosen?.city || "";
+    const matched = await this.matchProfilesForFanOut(request.categoryId, zone, request.isUrgent, {
+      excludeProfileId: request.professionalProfileId ?? undefined,
+      remoteOnly: request.serviceMode === "ONLINE",
+    });
+    // A tutti i compatibili della zona, come una richiesta generale (§210).
+    const selected = matched.map((m) => m.profile);
 
     if (selected.length === 0) {
       await this.notificationsService.notify(request.clientId, "REQUEST_FORWARD_NO_MATCH", { guidedRequestId });
@@ -830,12 +811,12 @@ export class GuidedRequestsService {
         guidedRequestId,
         professionalProfileId: profile.id,
         priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
-        expiresAt: computeLeadExpiry(request.isUrgent),
+        expiresAt: null,
         wasExpanded: true,
       })),
       skipDuplicates: true,
     });
-    await this.prisma.guidedRequest.update({ where: { id: guidedRequestId }, data: { reserveCandidateIds: reserve, status: "MATCHED" } });
+    await this.prisma.guidedRequest.update({ where: { id: guidedRequestId }, data: { status: "MATCHED" } });
 
     for (const profile of selected) {
       await this.notificationsService.notify(profile.userId, "NEW_LEAD", {
@@ -849,7 +830,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         profile.id,
         "SYSTEM",
-        "Il cliente aveva scelto un altro professionista che non ha risposto: la richiesta è stata inoltrata anche a te.",
+        "Il cliente aveva scelto un altro professionista che non ha ancora risposto: la richiesta è stata inoltrata anche a te.",
       );
     }
     await this.notificationsService.notify(request.clientId, "REQUEST_FORWARDED", { guidedRequestId, count: selected.length });
@@ -926,7 +907,7 @@ export class GuidedRequestsService {
               guidedRequestId,
               professionalProfileId: candidate.id,
               priceEurCents: request.isUrgent ? LEAD_PRICE_URGENT_EUR_CENTS : LEAD_PRICE_STANDARD_EUR_CENTS,
-              expiresAt: computeLeadExpiry(request.isUrgent),
+              expiresAt: null,
               wasExpanded: true,
             },
           });
@@ -1022,6 +1003,32 @@ export class GuidedRequestsService {
       if (leadsToExpire.length > 0) {
         this.logger.log(`Scaduti ed espansi ${leadsToExpire.length} lead.`);
       }
+    }
+
+    // Richieste dirette senza risposta dal professionista scelto entro
+    // forwardAt (60 minuti se urgente, 6 ore se normale, docs/CHANGELOG.md
+    // §209), né preventivo né messaggio in chat: se il cliente ha lasciato
+    // la casella, si inoltrano ad altri.
+    // Il professionista scelto tiene la richiesta e può ancora rispondere.
+    const dueForward = await this.prisma.guidedRequest.findMany({
+      where: { forwardIfNoReply: true, forwardedAt: null, forwardAt: { lt: now }, status: { in: ["OPEN", "MATCHED"] } },
+      select: { id: true, professionalProfileId: true },
+    });
+    for (const request of dueForward) {
+      if (!request.professionalProfileId) continue;
+      // Risposta = un preventivo o un messaggio scritto da lui in chat.
+      const [quotes, messages] = await Promise.all([
+        this.prisma.quote.count({ where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId } }),
+        this.prisma.conversationEvent.count({
+          where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId, actor: "PROFESSIONAL", automatic: false },
+        }),
+      ]);
+      if (quotes + messages > 0) {
+        // Ha già risposto: nessun inoltro, e la richiesta esce da questo controllo.
+        await this.prisma.guidedRequest.update({ where: { id: request.id }, data: { forwardAt: null } });
+        continue;
+      }
+      await this.forwardDirectRequest(request.id);
     }
 
     const expiredRequests = await this.prisma.guidedRequest.findMany({

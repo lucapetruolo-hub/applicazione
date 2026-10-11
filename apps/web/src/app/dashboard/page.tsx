@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
-import { formatCompetitors, formatLeadDeadline } from "@/lib/leadDeadline";
+import { formatCompetitors, formatForwardDeadline, formatLeadDeadline } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
@@ -257,7 +257,7 @@ function TodaySection({ title, subtitle, action, children }: { title: string; su
 }
 
 function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
-  const deadline = formatLeadDeadline(lead.expiresAt);
+  const deadline = formatLeadDeadline(lead.expiresAt) ?? formatForwardDeadline(lead.forwardAt);
   const competitors = formatCompetitors(lead.competitors);
   return (
     <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">

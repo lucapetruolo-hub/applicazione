@@ -78,6 +78,13 @@ export type ProfessionalLead = {
    */
   expiresAt: string | null;
   /**
+   * Richiesta diretta a te (docs/CHANGELOG.md §209): non hai scadenza, ma
+   * passato questo momento senza un tuo preventivo o messaggio in chat la
+   * richiesta va anche ad altri professionisti. `null` se non è prevista
+   * (casella tolta dal cliente), se è già stata inoltrata o se hai risposto.
+   */
+  forwardAt: string | null;
+  /**
    * Quanti altri professionisti hanno ricevuto la stessa richiesta e quanti
    * hanno già inviato un preventivo (docs/CHANGELOG.md §147): solo numeri,
    * mai chi sono né cosa hanno offerto.

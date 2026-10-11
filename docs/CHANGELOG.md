@@ -17432,3 +17432,231 @@ togliere il badge RC accanto al nome, scartata: serve in ricerca):
 build di produzione con API finta (computer e telefono); clic sul cuoricino
 da non entrato che porta all'accesso; da cliente il clic salva senza aprire
 il profilo e `?salva=` al ritorno salva da solo.
+
+## 209. Richiesta diretta: nessuna scadenza per il professionista scelto, inoltro dopo 60 minuti o 6 ore
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Quando un cliente seleziona un
+professionista e clicca su urgente, come funziona?". Dalla verifica del
+codice il testo sotto "È urgente?" diceva "la mandiamo subito a più
+professionisti" anche quando la richiesta va a un professionista scelto
+(arriva solo a lui), e la conferma finale diceva "inviata a 1 professionista
+disponibili ora" (plurale sbagliato, disponibilità mai verificata). Luca ha
+chiesto di correggere i testi e di cambiare le regole: il professionista
+scelto non ha limiti di tempo per rispondere, urgente o no; con la casella
+spuntata, se non risponde entro 60 minuti (urgente) o 6 ore (normale) la
+richiesta va ad altri professionisti simili della zona scritta dal cliente,
+o della zona del professionista scelto se il cliente non l'ha indicata.
+
+**Decisione:**
+- *Nessuna scadenza:* il `Lead` del professionista scelto nasce con
+  `expiresAt` nullo, quindi non scade più e nella sua area non compare
+  "Rispondi entro". La richiesta intera chiude comunque dopo 7 giorni
+  (urgente) o 14 (normale) senza preventivi, come prima.
+- *Inoltro:* nuova colonna `GuidedRequest.forwardAt` (migrazione
+  `20261011100000_direct_request_forward_at`), impostata all'invio solo se
+  la casella è spuntata: 60 minuti per un'urgente (di giorno e di notte), 6
+  ore contate dalle 8 alle 21 per una normale (stessa regola delle 4 ore,
+  così una richiesta della sera non viene girata ad altri mentre il
+  professionista dorme). `computeDirectForwardAt` in `lead-routing.ts`.
+  `runExpiryCheck` (ogni 5 minuti) inoltra le richieste con `forwardAt`
+  passato e nessun preventivo del professionista scelto; se ha già
+  risposto azzera `forwardAt`. Il rifiuto esplicito inoltra subito, come
+  prima. Il professionista scelto tiene la richiesta e può rispondere anche
+  dopo l'inoltro.
+- *Zona:* `forwardDirectRequest` usa la città del cliente e, se vuota (es.
+  intervento online), quella del professionista scelto; per un intervento
+  online tiene solo chi offre consulenza da remoto. I professionisti a cui
+  viene inoltrata hanno i tempi di sempre (35/60 minuti o 4 ore) e la coda
+  di riserva.
+- *Stato per il cliente:* `getStatus` conta come "in attesa" anche un Lead
+  senza scadenza (prima mostrava "nessun professionista disponibile").
+- *Testi:* "È urgente?" con un professionista scelto dice che arriva a lui
+  segnata come urgente e che dopo 60 minuti si può inoltrare; riepilogo e
+  casella con i nuovi tempi e la zona; conferma finale col nome del
+  professionista e senza "disponibili ora"; email e notifiche di inoltro
+  dicono "non ha ancora risposto" e che può ancora rispondere (corretto
+  anche "ad altri un professionista simile").
+
+**Verifica:** test `lead-routing.test.ts` per `computeDirectForwardAt`
+(60 minuti esatti; 6 ore dalle 19 → 12 del giorno dopo); tutti i test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+**Migliorie approvate da Luca nel thread:**
+- *Avviso al professionista scelto:* nella Home "Oggi" e in Richieste e
+  lavori la richiesta diretta mostra "Rispondi entro N minuti/ore, poi va
+  anche ad altri professionisti" (`forwardAt` nel DTO di `getMyLeads`,
+  `formatForwardDeadline` in `apps/web/src/lib/leadDeadline.ts`); sparisce
+  quando ha risposto, se la casella è stata tolta o dopo l'inoltro.
+- *Anche la chat conta come risposta:* un messaggio scritto a mano dal
+  professionista scelto (`ConversationEvent` PROFESSIONAL, non automatico)
+  ferma l'inoltro come un preventivo.
+
+**Verifica:** nuovi test in `professionals.service.test.ts` (avviso
+mostrato; nascosto dopo un messaggio in chat o dopo l'inoltro); 260 test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+## 210. Richieste generali a tutti i professionisti nel raggio, senza scadenza
+
+**Richiesta (Luca nel thread, 11/10/2026):** le richieste mandate senza
+scegliere un professionista vanno a tutti i professionisti della categoria
+nel cui raggio cade la città del cliente; la città è obbligatoria sia a
+domicilio sia online; nessun tempo limite per rispondere finché la
+richiesta è aperta; la richiesta chiude dopo 30 giorni (urgente) o 60
+(normale) invece di 7 e 14. Se il traffico cresce, le richieste generali
+andranno tolte del tutto (proposta nel thread, non implementata qui).
+
+**Decisione:** sostituisce le regole di §154/§160 (3 o 5 destinatari scelti
+per punteggio, coda di riserva, 35/60 minuti o 4 ore per rispondere).
+- *Destinatari:* `GuidedRequestsService.create` crea un `Lead` per ogni
+  professionista restituito da `matchProfilesForFanOut` (categoria, raggio
+  normale o urgente, stessi filtri di sempre: eliminati, sospesi, in pausa,
+  invito in attesa, bloccati). Per un intervento online solo chi offre
+  consulenza da remoto (`remoteOnly`). Tolti punteggio di qualità, posto
+  per un nuovo e coda di riserva (`selectLeadCandidates`,
+  `selectLeadRecipients`, `leadQualityScore`, `LEADS_PER_REQUEST`): il
+  declassamento dopo le segnalazioni accolte resta solo nell'ordine della
+  ricerca. Anche l'inoltro di una richiesta diretta (§209) va a tutti i
+  compatibili della zona invece che a 3 o 5.
+- *Nessuna scadenza:* ogni nuovo `Lead` ha `expiresAt` nullo (tolti
+  `computeLeadExpiry` e i tempi 35/60 minuti e 4 ore). I Lead già creati con
+  una scadenza seguono il vecchio giro (`runExpiryCheck`, `expandLeadQueue`)
+  finché non si esauriscono.
+- *Chiusura:* `URGENT_REQUEST_EXPIRY_DAYS` 30, `STANDARD_REQUEST_EXPIRY_DAYS`
+  60, solo per le nuove richieste.
+- *Iscritti dopo:* `matchNewProfileToOpenRequests` dà a un nuovo
+  professionista tutte le richieste generali aperte compatibili che non ha
+  ancora ricevuto (prima solo quelle rimaste senza nessuno in attesa);
+  online solo se offre consulenza da remoto.
+- *Città obbligatoria:* `guidedRequestSchema` la richiede in ogni richiesta
+  generale, anche online; resta facoltativa solo per una consulenza online
+  a un professionista scelto. Stesso controllo nella modifica della
+  richiesta (API e `/le-mie-richieste`) e nel modulo.
+- *Testi:* "È urgente?", riepilogo ("a tutti i professionisti di X che
+  lavorano nella tua zona", "possono risponderti finché la richiesta è
+  aperta: al massimo 30/60 giorni"), casella di inoltro senza "fino a 5", e
+  sottotitoli di `/preventivo` e `/urgente` (tolto "disponibili ora").
+
+**Verifica:** nuovo `guided-request-schema.test.ts` (online generale senza
+città rifiutata, con città accettata, diretta senza città accettata); test
+di `lead-routing.test.ts` ridotti alle funzioni rimaste; 252 test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+## 211. Richieste generali: interruttore, chiusura automatica per zona, niente numero al cliente
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua le 3 migliorie e fai
+in modo che in automatico si spengono le richieste generali per singola
+città o categoria". Le tre migliorie proposte dopo §210: un interruttore per
+spegnere le richieste generali con una misura del carico in admin, la
+chiusura per città o categoria, e non mostrare al cliente quanti
+professionisti hanno ricevuto la richiesta.
+
+**Decisione:**
+- *Interruttore per tutto il sito:* `GENERAL_REQUESTS_ENABLED=false` sul
+  servizio API di Render spegne le richieste generali; le richieste a un
+  professionista scelto restano. Il modulo lo legge da
+  `GET /general-requests/availability` e mostra un avviso con il link alla
+  ricerca invece dei passi.
+- *Chiusura per categoria in una città:* nuova tabella
+  `GeneralRequestBlock` (migrazione `20261011170000_general_request_blocks`,
+  unica per categoria + città, città normalizzata col nome ISTAT). Ogni ora
+  `GeneralRequestsService.runAutoCheck` misura le richieste generali degli
+  ultimi 14 giorni e chiude la zona se ogni professionista ne riceve in
+  media più di 10 a settimana, oppure se risponde (preventivo o messaggio
+  scritto in chat) meno di uno su tre, contando solo le richieste arrivate
+  da almeno 48 ore e solo con almeno 20 misurate. Non riapre mai da solo.
+  Soglie in `packages/shared/src/generalRequests.ts`.
+- *Admin:* pagina `/admin/richieste-generali` (permesso Moderazione) con
+  stato dell'interruttore, una riga per categoria e città (richieste,
+  professionisti, richieste a settimana per professionista, quota di
+  risposte, stato e motivo), "Chiudi" e "Riapri", e chiusura a mano di una
+  zona qualsiasi. Riaprire una zona la tiene aperta 30 giorni anche se
+  supera ancora le soglie. Ogni chiusura e riapertura va nel registro
+  azioni.
+- *Server:* `GuidedRequestsService.create` rifiuta una richiesta generale
+  (senza professionista scelto e non un inoltro) se è spenta ovunque o
+  nella zona, con il messaggio di andare alla ricerca. Il modulo controlla
+  la zona prima del passo 3, così il cliente non compila tutto per niente.
+- *Numero di professionisti:* il cliente non vede più "inviata a N
+  professionisti" né "su N professionisti contattati": messaggio di invio,
+  email di conferma, notifica di inoltro e scheda in `/le-mie-richieste`
+  dicono "ai professionisti della tua zona"; l'elenco "Inviata a" resta solo
+  per una richiesta diretta.
+
+**Motivo:** con le richieste a tutti (§210) il rischio è che in una zona
+affollata ogni professionista riceva troppe richieste e smetta di
+rispondere; la chiusura per zona agisce solo dove succede, senza spegnere
+il resto del sito.
+
+**Verifica:** nuovo `general-requests.service.test.ts` (soglie, chiusura
+automatica, zona già chiusa o riaperta a mano, risposte contate dopo 48
+ore, interruttore globale e per zona); 262 test di `apps/api` verdi, tipi e
+lint di `apps/api` e `apps/web` senza errori.
+
+## 212. Richieste generali: email agli admin e soglie modificabili
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua migliorie 1 e 2",
+cioè le prime due migliorie proposte dopo §211: avvisare per email quando
+una zona si chiude da sola, e rendere le soglie modificabili dalla pagina
+admin invece che fisse nel codice.
+
+**Decisione:**
+- *Email:* quando il controllo orario chiude una o più zone,
+  `GeneralRequestsService.emailModerators` manda un'unica email agli admin
+  con permesso Moderazione (o senza ruoli specifici), con categoria, città e
+  motivo di ogni zona e il link a `/admin/richieste-generali`
+  (`adminGeneralRequestsClosedEmail`). Stesso schema dell'email per le nuove
+  segnalazioni; un errore d'invio non annulla la chiusura. Parte davvero
+  solo con Resend configurato.
+- *Soglie:* nuova tabella a riga singola `GeneralRequestSettings`
+  (migrazione `20261011180000_general_request_settings`): chiusura
+  automatica accesa o spenta, richieste a settimana per professionista,
+  percentuale minima di risposte (0 = non si controlla), richieste
+  necessarie per misurare le risposte, giorni di apertura dopo una
+  riapertura a mano. Senza riga valgono `DEFAULT_GENERAL_REQUEST_THRESHOLDS`
+  (10, 33%, 20, 30 giorni, accesa), gli stessi valori di §211. La pagina
+  admin ha un riquadro "Chiusura automatica" con i campi, "Salva le soglie"
+  e "Valori iniziali" (`POST /admin/general-requests/thresholds`, permesso
+  Moderazione, validato da `generalRequestThresholdsSchema`); ogni modifica
+  va nel registro azioni con i valori di prima e di dopo. La finestra di 14
+  giorni resta fissa.
+
+**Verifica:** nuovi test in `general-requests.service.test.ts` (email agli
+admin, chiusura automatica spenta, soglie salvate, risposte non controllate
+con 0%); 266 test di `apps/api` verdi, tipi e lint di `apps/api` e
+`apps/web` senza errori.
+
+## 213. Richieste generali: numero nel menu admin e proposta di riapertura
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua le due migliorie"
+proposte dopo §212: un numero rosso sulla voce "Richieste generali" del menu
+admin quando ci sono zone chiuse, e proporre di riaprire una zona quando il
+carico torna sotto le soglie.
+
+**Decisione:**
+- *Numero nel menu:* `AdminOverview.closedGeneralRequestZones` conta le
+  righe di `GeneralRequestBlock` senza `reopenedAt`; `AdminNav` lo mostra
+  come badge, come le altre voci da gestire.
+- *Proposta di riapertura:* con le richieste generali chiuse il loro carico
+  non si può più misurare, perché in quella zona non ne arrivano. Si usa
+  quindi la domanda che arriva comunque: le richieste dirette della
+  categoria in quella città dopo la chiusura. Siccome una richiesta
+  generale va a tutti i professionisti della zona, ognuno ne riceverebbe
+  circa quante ne arrivano in tutto.
+  `generalRequestReopenSuggestion` (packages/shared) propone di riaprire:
+  - chiusa per troppe richieste: dopo almeno 7 giorni, se le richieste
+    dirette a settimana sono sotto il limite di richieste a settimana per
+    professionista;
+  - chiusa per poche risposte: dopo 30 giorni, come prova (non c'è un modo
+    di misurare le risposte a zona chiusa);
+  - chiusa a mano: mai.
+  Per distinguere i casi la chiusura salva il motivo in
+  `GeneralRequestBlock.closeTrigger` (LOAD, RESPONSES, MANUAL; migrazione
+  `20261011190000_general_request_close_trigger`; le righe precedenti lo
+  ricavano dall'admin o dal testo del motivo). La pagina admin mostra la
+  proposta sotto il motivo e il tasto "Riapri" diventa principale. Non
+  riapre mai da sola.
+
+**Verifica:** nuovi test sulla proposta (a mano o troppo presto, domanda
+sopra o sotto il limite, prova dopo 30 giorni) e sul motivo salvato alla
+chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
+`apps/web` senza errori.

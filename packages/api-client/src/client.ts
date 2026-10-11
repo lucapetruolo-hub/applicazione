@@ -69,6 +69,10 @@ import type {
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   VerifyProfessionalInput,
+  GeneralRequestAvailability,
+  GeneralRequestsAdminOverview,
+  GeneralRequestThresholds,
+  CloseGeneralRequestsInput,
   ProfileInviteLink,
   ProfileInvitePreview,
 } from "@professionisti/shared";
@@ -349,6 +353,8 @@ export type AdminOverview = {
   unpaidBalances: number;
   /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
   verificationRequests: number;
+  /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
+  closedGeneralRequestZones: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1507,6 +1513,22 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
+    /** Richieste generali aperte per questa categoria in questa città (docs/CHANGELOG.md §211). */
+    generalRequestAvailability: (categorySlug?: string, city?: string) => {
+      const params = new URLSearchParams();
+      if (categorySlug) params.set("categoria", categorySlug);
+      if (city?.trim()) params.set("citta", city.trim());
+      return request<GeneralRequestAvailability>(`/general-requests/availability?${params.toString()}`, { cache: "no-store" });
+    },
+    adminGeneralRequests: (token: string) =>
+      request<GeneralRequestsAdminOverview>("/admin/general-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminCloseGeneralRequests: (token: string, input: CloseGeneralRequestsInput) =>
+      request<void>("/admin/general-requests/close", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminUpdateGeneralRequestThresholds: (token: string, input: GeneralRequestThresholds) =>
+      request<GeneralRequestThresholds>("/admin/general-requests/thresholds", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminReopenGeneralRequests: (token: string, blockId: string) =>
+      request<void>(`/admin/general-requests/${encodeURIComponent(blockId)}/reopen`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
     /** Verifica manuale dei professionisti (docs/CHANGELOG.md §200). */
     adminListProfessionalVerifications: (token: string, filter: ProfessionalVerificationFilter, q = "") =>
       request<ProfessionalVerificationRow[]>(
