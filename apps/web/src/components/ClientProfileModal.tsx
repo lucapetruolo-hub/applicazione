@@ -55,6 +55,7 @@ function formatBirthDate(birthDate: string): string {
 export function ClientProfileModal({
   name,
   birthDate,
+  age,
   imageUrl,
   reviews,
   token,
@@ -63,6 +64,8 @@ export function ClientProfileModal({
   name: string;
   /** Data di nascita del cliente (YYYY-MM-DD), se compilata. */
   birthDate?: string | null;
+  /** Età del cliente, mostrata quando la data di nascita non è ancora sbloccata. */
+  age?: number | null;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
   /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
@@ -158,10 +161,17 @@ export function ClientProfileModal({
               Nato/a il {formatBirthDate(birthDate)}
             </Text>
           </XStack>
+        ) : age != null ? (
+          <XStack alignItems="center" justifyContent="center" gap="$2">
+            <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
+            <Text color={brand.grafite70} fontSize="$3" fontWeight="600">
+              {age} anni
+            </Text>
+          </XStack>
         ) : null}
 
         <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-          Telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
+          Cognome, data di nascita, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
         </Text>
 
         {reviews && reviews.length > 0 ? (

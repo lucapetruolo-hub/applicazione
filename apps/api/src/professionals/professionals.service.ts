@@ -44,7 +44,7 @@ import { toMyState } from "../guided-requests/guided-request-user-state.service"
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
-import { clientNameForProfessional } from "../common/client-name.util";
+import { ageInYears, clientNameForProfessional } from "../common/client-name.util";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -990,7 +990,11 @@ export class ProfessionalsService {
           // profilo" già dalla prima richiesta. Solo la data (YYYY-MM-DD,
           // nessun'ora): stesso taglio già in uso per preferredDate poco
           // sotto.
-          clientBirthDate: lead.guidedRequest.client.birthDate ? lead.guidedRequest.client.birthDate.toISOString().slice(0, 10) : null,
+          // Prima dell'accettazione solo l'età, la data si sblocca con la
+          // Booking come il cognome (docs/CHANGELOG.md §215).
+          clientBirthDate:
+            quote?.booking != null && lead.guidedRequest.client.birthDate ? lead.guidedRequest.client.birthDate.toISOString().slice(0, 10) : null,
+          clientAge: lead.guidedRequest.client.birthDate ? ageInYears(lead.guidedRequest.client.birthDate) : null,
           // Telefono/email/indirizzo NON esposti finché il preventivo non è
           // accettato — decisione di privacy ribaltata di nuovo su richiesta
           // esplicita dell'utente rispetto alla correzione precedente (che

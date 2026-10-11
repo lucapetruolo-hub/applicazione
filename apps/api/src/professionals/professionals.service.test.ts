@@ -84,6 +84,8 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     // no, si sblocca col preventivo accettato (docs/CHANGELOG.md §215).
     expect(lead!.guidedRequest.clientName).toBe("Mario");
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.surname);
+    expect(lead!.guidedRequest.clientBirthDate).toBeNull();
+    expect(lead!.guidedRequest.clientAge).toBeGreaterThan(30);
     expect(lead!.guidedRequest).not.toHaveProperty("clientPhone");
     expect(lead!.guidedRequest).not.toHaveProperty("clientEmail");
     expect(lead!.guidedRequest).not.toHaveProperty("clientAddress");
@@ -109,6 +111,7 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.address);
     // Il cognome invece si sblocca con la Booking, come chiesto (§215).
     expect(lead!.guidedRequest.clientName).toBe("Mario Rossi");
+    expect(lead!.guidedRequest.clientBirthDate).toBe("1990-01-01");
   });
 });
 

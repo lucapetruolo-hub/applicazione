@@ -159,6 +159,11 @@ export type ProfessionalLead = {
      */
     clientBirthDate: string | null;
     /**
+     * Età del cliente, sempre visibile; la data di nascita (`clientBirthDate`)
+     * arriva solo a preventivo accettato (docs/CHANGELOG.md §215).
+     */
+    clientAge: number | null;
+    /**
      * Telefono/email/indirizzo NON esposti a questo livello — decisione di
      * privacy ribaltata di nuovo su richiesta esplicita dell'utente ("non
      * devono già comparire il numero di telefono e il contatto email né

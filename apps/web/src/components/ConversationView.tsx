@@ -136,7 +136,7 @@ export function ConversationView({
   // pagina /chat), la scheda si carica qui al clic dalle richieste
   // ricevute: stessi dati di `RequestCard`, niente contatti prima
   // dell'accettazione (CLAUDE.md §5.9).
-  const [clientCard, setClientCard] = useState<{ name: string; birthDate: string | null; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
+  const [clientCard, setClientCard] = useState<{ name: string; birthDate: string | null; age: number | null; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
   async function openClientCard() {
     try {
       const leads = await apiClient.myLeads(token);
@@ -144,11 +144,12 @@ export function ConversationView({
       setClientCard({
         name: request?.clientName ?? otherPartyName ?? ACTOR_LABEL.CLIENT,
         birthDate: request?.clientBirthDate ?? null,
+        age: request?.clientAge ?? null,
         imageUrl: request?.clientImageUrl ?? otherPartyImageUrl ?? null,
         reviews: request?.clientReviews ?? [],
       });
     } catch {
-      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, birthDate: null, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
+      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, birthDate: null, age: null, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
     }
   }
   function openProfileOf(actor: ConversationEvent["actor"]): (() => void) | undefined {
@@ -1044,6 +1045,7 @@ export function ConversationView({
         <ClientProfileModal
           name={clientCard.name}
           birthDate={clientCard.birthDate}
+          age={clientCard.age}
           imageUrl={clientCard.imageUrl}
           reviews={clientCard.reviews}
           token={token}

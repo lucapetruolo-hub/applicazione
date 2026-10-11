@@ -1381,6 +1381,7 @@ export function RequestCard({
         <ClientProfileModal
           name={clientName}
           birthDate={gr.clientBirthDate}
+          age={gr.clientAge}
           imageUrl={gr.clientImageUrl}
           reviews={gr.clientReviews}
           token={token}
