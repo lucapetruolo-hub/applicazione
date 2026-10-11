@@ -38,8 +38,8 @@ const POINTS = [
  * successiva dell'utente (analisi CEO, consiglio esperti — segnalato dal
  * Go-To-Market Lead come rischio reputazionale: una pagina pubblica che
  * promette protezioni non costruite): ora ogni punto riflette lo stato
- * reale — le due protezioni già vere (recensioni "doppio cieco",
- * CLAUDE.md §40; contatti privati fino all'accettazione, §12/§45) restano
+ * reale — le due protezioni già vere (recensioni solo da lavoro confermato,
+ * CLAUDE.md §8; contatti privati fino all'accettazione, §12/§45) restano
  * senza badge, le due non ancora costruite (verifica identità/RC — nessun
  * KYC implementato; pagamento protetto in piattaforma — oggi il pagamento
  * è diretto tra cliente e professionista, Stripe Connect non configurato,

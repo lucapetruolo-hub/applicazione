@@ -611,20 +611,6 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
-/**
- * Recensione del professionista sul cliente (richiesta esplicita
- * dell'utente: "per il professionista per fare una recensione al cliente"),
- * stessa struttura di reviewSchema — stelle+testo+media, consentita solo
- * legata a una prenotazione COMPLETED del professionista stesso.
- */
-export const clientReviewSchema = z.object({
-  bookingId: z.string().uuid(),
-  rating: z.number().int().min(1).max(5),
-  comment: z.string().max(2000).optional(),
-  mediaUrls: z.array(z.string().url()).max(5).default([]),
-});
-export type ClientReviewInput = z.infer<typeof clientReviewSchema>;
-
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({

@@ -17686,3 +17686,18 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 - App per telefono: non ha ancora né la richiesta di preventivo né l'account (solo home e ricerca), quindi non c'era un campo da portare. Prefissi e normalizzazione stanno già in `packages/shared`, pronti quando si costruiranno quelle schermate.
 
 **Verifica:** test di `apps/api` (276, nuovi casi per il controllo dell'indirizzo e per la sistemazione dei numeri), typecheck e lint di `apps/web`, flusso da non loggato provato in locale (richiesta compilata, "Invia richiesta", "Continua con Google", consenso, pulsante Google pronto); prove delle funzioni dei prefissi con numeri italiani, fissi, britannici (0044), statunitensi, giamaicani (+1876) e svizzeri; pagina `/preventivo` aperta in locale (telefono 390px) con città Bari, provincia compilata da sola e prefisso +41.
+
+## 215. Niente più recensioni del professionista al cliente
+
+**Richiesta dell'utente (11/10/2026):** togliere la possibilità di recensire il cliente ed eliminare le recensioni al cliente da ogni punto del sito, compresi i menu come "Recensioni ricevute".
+
+**Decisioni:**
+- Tolti pulsante e voce di menu "Recensisci il cliente" nelle richieste del professionista, e il popup che si apriva dopo "Lavoro terminato".
+- Tolte le API `POST /client-reviews`, `GET /client-reviews/me` e `POST /client-reviews/photos` (modulo `apps/api/src/client-reviews/` eliminato) e i relativi metodi di `packages/api-client`.
+- Scheda cliente (`ClientProfileModal`): niente più recensioni né media stelle, solo nome, foto e data di nascita.
+- `/le-mie-recensioni`: tolta la sottoscheda "Ricevute", resta l'elenco delle recensioni che il cliente ha scritto.
+- **Fine del "doppio cieco"**: le recensioni del cliente al professionista erano pubbliche solo quando esisteva anche quella del professionista al cliente (o dopo 3 giorni, con una recensione automatica). Senza la seconda direzione ora sono pubbliche subito: profilo, ricerca, home, statistiche. Tolto il controllo orario che generava le recensioni automatiche; quelle già create restano.
+- Email e notifica "Nuova recensione" al professionista: dicono che la recensione è già visibile sul profilo. Tolte le frasi su "recensisci il cliente" e "la recensione diventa visibile anche senza la tua" nei promemoria di chiusura. Tolto dal popup di recensione il riquadro sull'attesa.
+- **Dati già salvati non cancellati**: la tabella `client_reviews` resta nel database e nell'esportazione dei dati dell'utente, ma non compare più in nessuna pagina. La moderazione admin delle segnalazioni già aperte su quelle recensioni continua a funzionare. La cancellazione resta da decidere con l'utente.
+
+**Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori.

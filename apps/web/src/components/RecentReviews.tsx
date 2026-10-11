@@ -38,7 +38,7 @@ const arrowStyle = {
 
 /**
  * Riprova sociale reale in home (audit, punto J): le ultime recensioni
- * pubbliche della piattaforma, dallo stesso criterio "doppio cieco" della
+ * pubbliche della piattaforma, con lo stesso criterio della
  * pagina profilo (GET /reviews/recent). Mai una recensione inventata: se non
  * ce ne sono ancora, la sezione non viene proprio renderizzata.
  *

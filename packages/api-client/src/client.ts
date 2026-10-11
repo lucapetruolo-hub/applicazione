@@ -9,7 +9,6 @@ import type {
   ChangePasswordInput,
   ChatThreadSummary,
   ClientConfirmCompleteInput,
-  ClientReviewInput,
   CompleteBookingInput,
   ContactMessageInput,
   ConversationEvent,
@@ -592,24 +591,11 @@ export type SentReview = {
   mediaUrls: string[];
   createdAt: string;
   isAutomatic: boolean;
-  /** Già sbloccata dal "doppio cieco" (anche il professionista ha recensito). */
-  isPublic: boolean;
   /** Nascosta da un admin dopo una segnalazione. */
   hidden: boolean;
   /** `null` se il professionista ha eliminato il profilo. */
   professionalProfileId: string | null;
   businessName: string;
-};
-
-/** Recensione lasciata da un professionista al cliente, vista dal cliente stesso. */
-export type ReceivedClientReview = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  mediaUrls: string[];
-  createdAt: string;
-  isAutomatic: boolean;
-  reviewerBusinessName: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -1387,22 +1373,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),
 
-    /** Il professionista recensisce il cliente (richiesta esplicita dell'utente), stessa struttura di createReview ma sul lato opposto. */
-    createClientReview: (token: string, input: ClientReviewInput) =>
-      request<{ id: string }>("/client-reviews", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify(input),
-      }),
-
     /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
     mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
-
-    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §179). */
-    myReceivedClientReviews: (token: string) =>
-      request<ReceivedClientReview[]>("/client-reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
-
-    uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
