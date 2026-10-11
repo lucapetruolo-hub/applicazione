@@ -26,7 +26,7 @@ export function requestSentEmail(input: {
       ]
     : input.sentTo > 0
       ? [
-          `Abbiamo inviato la tua richiesta per **${input.category}${where}** a ${input.sentTo === 1 ? "un professionista" : `${input.sentTo} professionisti`} della tua zona${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
+          `Abbiamo inviato la tua richiesta per **${input.category}${where}** ai professionisti della tua zona${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
           "Ti scriviamo appena arriva un preventivo: potrai confrontarli, fare domande in chat e scegliere con calma.",
         ]
       : [

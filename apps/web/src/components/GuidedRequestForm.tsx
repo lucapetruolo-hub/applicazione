@@ -179,6 +179,18 @@ export function GuidedRequestForm({
   // Avviso di conferma prima di inviare senza data/orario, quando ce n'era
   // uno disponibile da scegliere — richiesta esplicita dell'utente.
 
+  // Richieste generali chiuse per tutto il sito o per questa categoria in
+  // questa città (docs/CHANGELOG.md §210): il cliente sceglie un
+  // professionista dalla ricerca. Il server lo rifiuterebbe comunque.
+  const [generalClosed, setGeneralClosed] = useState<"GLOBAL" | "ZONE" | null>(null);
+  useEffect(() => {
+    if (professionalProfileId) return;
+    apiClient
+      .generalRequestAvailability()
+      .then((a) => setGeneralClosed(a.open ? null : a.closedScope))
+      .catch(() => {});
+  }, [professionalProfileId]);
+
   useEffect(() => {
     if (!professionalProfileId) return;
     apiClient
@@ -287,6 +299,10 @@ export function GuidedRequestForm({
   // (obbligatorie, e devono essere del problema attuale, non riciclate).
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
+  // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
+  useEffect(() => {
+    setGeneralClosed((current) => (current === "ZONE" ? null : current));
+  }, [city, categorySlug]);
   // Facoltativa solo per una consulenza online a un professionista scelto (§209).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
@@ -381,7 +397,7 @@ export function GuidedRequestForm({
             {result.matchedProfessionals > 0
               ? professionalProfileId
                 ? `La tua richiesta è stata inviata a ${shownProfessionalName ?? "il professionista che hai scelto"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai il preventivo qui appena arriva.`
-                : `La tua richiesta è stata inviata a ${result.matchedProfessionals} professionist${result.matchedProfessionals === 1 ? "a" : "i"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
+                : `La tua richiesta è stata inviata ai professionisti della tua zona${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
               : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
           </Text>
           {accountDataDiffers && !defaultsDeclined ? (
@@ -485,7 +501,7 @@ export function GuidedRequestForm({
     return null;
   }
 
-  function goToStep(next: 1 | 2 | 3) {
+  async function goToStep(next: 1 | 2 | 3) {
     setError(null);
     if (next > step) {
       const problem = validateStep(1) ?? (next === 3 ? validateStep(2) : null);
@@ -494,6 +510,12 @@ export function GuidedRequestForm({
         if (validateStep(1)) setStep(1);
         return;
       }
+    }
+    if (next === 3 && !professionalProfileId && categorySlug) {
+      const availability = await apiClient.generalRequestAvailability(categorySlug, city).catch(() => null);
+      const closed = availability && !availability.open ? availability.closedScope : null;
+      setGeneralClosed(closed);
+      if (closed) return;
     }
     setStep(next);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -686,7 +708,13 @@ export function GuidedRequestForm({
           )}
         </YStack>
 
-        <StepIndicator step={step} onGo={goToStep} />
+        {generalClosed ? (
+          <GeneralRequestsClosedNotice scope={generalClosed} categorySlug={categorySlug || null} categoryLabel={selectedCategory?.label ?? null} city={city} />
+        ) : null}
+
+        {generalClosed === "GLOBAL" ? null : (
+        <>
+        <StepIndicator step={step} onGo={(next) => void goToStep(next)} />
 
         {step === 1 ? (
           <>
@@ -1154,6 +1182,8 @@ export function GuidedRequestForm({
             </Button>
           )}
         </XStack>
+        </>
+        )}
       </YStack>
     </YStack>
     {showAuthGate ? (
@@ -1163,6 +1193,42 @@ export function GuidedRequestForm({
       />
     ) : null}
     </>
+  );
+}
+
+/**
+ * Richieste generali chiuse (docs/CHANGELOG.md §210): per tutto il sito o
+ * per questa categoria in questa città. Rimanda alla ricerca, da cui il
+ * cliente sceglie un professionista e gli scrive dal suo profilo.
+ */
+function GeneralRequestsClosedNotice({
+  scope,
+  categorySlug,
+  categoryLabel,
+  city,
+}: {
+  scope: "GLOBAL" | "ZONE";
+  categorySlug: string | null;
+  categoryLabel: string | null;
+  city: string;
+}) {
+  const searchHref = categorySlug ? `/cerca/${categorySlug}${city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : ""}` : "/cerca";
+  return (
+    <YStack gap="$2" padding="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4">
+      <Text fontWeight="700" color={brand.grafite}>
+        {scope === "GLOBAL" ? "Scegli tu il professionista" : `A ${city.trim()} scegli tu il professionista`}
+      </Text>
+      <Text color={brand.grafite70} fontSize="$3">
+        {scope === "GLOBAL"
+          ? "Per ora le richieste si inviano direttamente a un professionista: cercalo, guarda profilo e recensioni e scrivigli dalla sua pagina."
+          : `I professionisti${categoryLabel ? ` di ${categoryLabel}` : ""} di questa zona ricevono già molte richieste: per avere risposte più rapide scegline uno e scrivigli dalla sua pagina.`}
+      </Text>
+      <Link href={searchHref}>
+        <Button variant="primary" alignSelf="flex-start">
+          Cerca un professionista
+        </Button>
+      </Link>
+    </YStack>
   );
 }
 

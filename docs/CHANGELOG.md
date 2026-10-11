@@ -17500,3 +17500,54 @@ per punteggio, coda di riserva, 35/60 minuti o 4 ore per rispondere).
 città rifiutata, con città accettata, diretta senza città accettata); test
 di `lead-routing.test.ts` ridotti alle funzioni rimaste; 252 test di
 `apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+## 210. Richieste generali: interruttore, chiusura automatica per zona, niente numero al cliente
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua le 3 migliorie e fai
+in modo che in automatico si spengono le richieste generali per singola
+città o categoria". Le tre migliorie proposte dopo §209: un interruttore per
+spegnere le richieste generali con una misura del carico in admin, la
+chiusura per città o categoria, e non mostrare al cliente quanti
+professionisti hanno ricevuto la richiesta.
+
+**Decisione:**
+- *Interruttore per tutto il sito:* `GENERAL_REQUESTS_ENABLED=false` sul
+  servizio API di Render spegne le richieste generali; le richieste a un
+  professionista scelto restano. Il modulo lo legge da
+  `GET /general-requests/availability` e mostra un avviso con il link alla
+  ricerca invece dei passi.
+- *Chiusura per categoria in una città:* nuova tabella
+  `GeneralRequestBlock` (migrazione `20261011170000_general_request_blocks`,
+  unica per categoria + città, città normalizzata col nome ISTAT). Ogni ora
+  `GeneralRequestsService.runAutoCheck` misura le richieste generali degli
+  ultimi 14 giorni e chiude la zona se ogni professionista ne riceve in
+  media più di 10 a settimana, oppure se risponde (preventivo o messaggio
+  scritto in chat) meno di uno su tre, contando solo le richieste arrivate
+  da almeno 48 ore e solo con almeno 20 misurate. Non riapre mai da solo.
+  Soglie in `packages/shared/src/generalRequests.ts`.
+- *Admin:* pagina `/admin/richieste-generali` (permesso Moderazione) con
+  stato dell'interruttore, una riga per categoria e città (richieste,
+  professionisti, richieste a settimana per professionista, quota di
+  risposte, stato e motivo), "Chiudi" e "Riapri", e chiusura a mano di una
+  zona qualsiasi. Riaprire una zona la tiene aperta 30 giorni anche se
+  supera ancora le soglie. Ogni chiusura e riapertura va nel registro
+  azioni.
+- *Server:* `GuidedRequestsService.create` rifiuta una richiesta generale
+  (senza professionista scelto e non un inoltro) se è spenta ovunque o
+  nella zona, con il messaggio di andare alla ricerca. Il modulo controlla
+  la zona prima del passo 3, così il cliente non compila tutto per niente.
+- *Numero di professionisti:* il cliente non vede più "inviata a N
+  professionisti" né "su N professionisti contattati": messaggio di invio,
+  email di conferma, notifica di inoltro e scheda in `/le-mie-richieste`
+  dicono "ai professionisti della tua zona"; l'elenco "Inviata a" resta solo
+  per una richiesta diretta.
+
+**Motivo:** con le richieste a tutti (§209) il rischio è che in una zona
+affollata ogni professionista riceva troppe richieste e smetta di
+rispondere; la chiusura per zona agisce solo dove succede, senza spegnere
+il resto del sito.
+
+**Verifica:** nuovo `general-requests.service.test.ts` (soglie, chiusura
+automatica, zona già chiusa o riaperta a mano, risposte contate dopo 48
+ore, interruttore globale e per zona); 262 test di `apps/api` verdi, tipi e
+lint di `apps/api` e `apps/web` senza errori.

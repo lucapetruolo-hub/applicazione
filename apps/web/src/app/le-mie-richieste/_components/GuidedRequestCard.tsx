@@ -607,7 +607,12 @@ export function GuidedRequestCard({
                 </Text>
               ) : (
                 <Text fontSize="$2" color={brand.grafite70}>
-                  {statusSummary.responded === 0
+                  {/* Richiesta generale: senza il numero dei professionisti contattati (docs/CHANGELOG.md §210). */}
+                  {!request.professionalProfileId
+                    ? statusSummary.responded === 0
+                      ? "Nessun preventivo ricevuto ancora."
+                      : `${statusSummary.responded} preventiv${statusSummary.responded === 1 ? "o" : "i"} ricevut${statusSummary.responded === 1 ? "o" : "i"}.`
+                    : statusSummary.responded === 0
                     ? `Nessun preventivo ricevuto ancora, su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`
                     : `${statusSummary.responded} preventiv${statusSummary.responded === 1 ? "o" : "i"} ricevut${statusSummary.responded === 1 ? "o" : "i"} su ${statusSummary.totalContacted} professionist${statusSummary.totalContacted === 1 ? "a" : "i"} contattat${statusSummary.totalContacted === 1 ? "o" : "i"}.`}
                 </Text>
@@ -662,7 +667,8 @@ export function GuidedRequestCard({
             </Text>
           ) : null}
 
-          {request.sentTo.length > 0 ? (
+          {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§210). */}
+          {request.professionalProfileId && request.sentTo.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                 Inviata a

@@ -151,6 +151,7 @@ model Category {
   professionalProfiles ProfessionalProfile[]
   guidedRequests       GuidedRequest[]
   feeRules             PlatformFeeRule[]
+  generalRequestBlocks GeneralRequestBlock[]
 
   @@map("categories")
 }
@@ -2088,4 +2089,28 @@ model ProfileInvite {
 
   @@index([userId])
   @@map("profile_invites")
+}
+
+// Richieste generali chiuse per una categoria in una città (docs/CHANGELOG.md
+// §210): in automatico quando i professionisti della zona ne ricevono troppe
+// o rispondono poco, oppure a mano dall'area admin. Una riga per coppia
+// categoria+città: riaprire valorizza reopenedAt (e keepOpenUntil, per non
+// farla richiudere subito dal controllo automatico).
+model GeneralRequestBlock {
+  id               String    @id @default(uuid())
+  categoryId       String
+  // Nome ufficiale del comune (generalRequestCityKey in packages/shared).
+  city             String
+  closedAt         DateTime  @default(now())
+  // null = chiusura automatica.
+  closedByUserId   String?
+  reason           String
+  reopenedAt       DateTime?
+  reopenedByUserId String?
+  keepOpenUntil    DateTime?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, city])
+  @@map("general_request_blocks")
 }

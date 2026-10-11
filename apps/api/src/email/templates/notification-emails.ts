@@ -118,15 +118,15 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Invia una nuova richiesta", url: `${frontendUrl()}/preventivo` },
   }),
-  REQUEST_FORWARDED: (payload, ctx) => {
-    const count = typeof payload.count === "number" ? payload.count : null;
+  REQUEST_FORWARDED: (_payload, ctx) => {
+    // Senza il numero dei professionisti (docs/CHANGELOG.md §210).
     return {
       kind: "notification",
       subject: "Abbiamo inoltrato la tua richiesta ad altri professionisti",
       greeting: ctx.name,
       title: "Abbiamo inoltrato la tua richiesta",
       paragraphs: [
-        `Il professionista che avevi scelto non ha ancora risposto. Come avevi chiesto, abbiamo inviato la tua richiesta per **${job(ctx)}** anche ${count ? (count === 1 ? "a un altro professionista simile" : `ad altri ${count} professionisti simili`) : "ad altri professionisti simili"} della zona.`,
+        `Il professionista che avevi scelto non ha ancora risposto. Come avevi chiesto, abbiamo inviato la tua richiesta per **${job(ctx)}** anche agli altri professionisti simili della zona.`,
         "Anche il professionista che avevi scelto può ancora risponderti. Ti avviseremo appena arriva un preventivo.",
       ],
       cta: clientRequests(),

@@ -27,6 +27,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues + o.jobIssueAppeals },
   { href: "/admin/lavori", label: "Lavori terminati", icon: "badge-check", scope: "ANY" },
   { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances },
+  { href: "/admin/richieste-generali", label: "Richieste generali", icon: "send", scope: "MODERATION" },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
   { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock", scope: "MODERATION" },
   { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },

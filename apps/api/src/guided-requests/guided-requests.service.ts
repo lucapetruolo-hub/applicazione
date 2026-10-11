@@ -8,6 +8,7 @@ import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
+import { GeneralRequestsService } from "../general-requests/general-requests.service";
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
 
@@ -52,6 +53,7 @@ export class GuidedRequestsService {
     private readonly notificationsService: NotificationsService,
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
+    private readonly generalRequestsService: GeneralRequestsService,
   ) {}
 
   /**
@@ -63,6 +65,19 @@ export class GuidedRequestsService {
     const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
+    }
+    // Richieste generali chiuse per tutto il sito o per questa categoria in
+    // questa città (docs/CHANGELOG.md §210). Non vale per il rinvio fatto dal
+    // sistema dopo una mancata presentazione (excludeProfileId, §167).
+    if (!input.professionalProfileId && !opts.excludeProfileId) {
+      const availability = await this.generalRequestsService.availability(category.id, input.city ?? null);
+      if (!availability.open) {
+        throw new ForbiddenException(
+          availability.closedScope === "GLOBAL"
+            ? "Le richieste generali non sono attive: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo."
+            : "In questa zona le richieste generali per questa categoria sono chiuse: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo.",
+        );
+      }
     }
 
     let targetProfile: {
