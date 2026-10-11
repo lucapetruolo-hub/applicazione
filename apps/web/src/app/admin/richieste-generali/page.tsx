@@ -172,6 +172,11 @@ export default function AdminRichiesteGeneraliPage() {
                           <Text fontSize={12} color={brand.grafite70}>
                             {formatAdminDate(row.block.closedAt)}: {row.block.reason}
                           </Text>
+                          {row.block.reopenSuggestion ? (
+                            <Text fontSize={12} fontWeight="600" color={brand.grafite}>
+                              Si può riaprire. {row.block.reopenSuggestion}
+                            </Text>
+                          ) : null}
                         </YStack>
                       ) : row.keepOpenUntil ? (
                         <AdminPill tone="ok">Aperta fino al {formatAdminDate(row.keepOpenUntil)}</AdminPill>
@@ -181,7 +186,12 @@ export default function AdminRichiesteGeneraliPage() {
                     </td>
                     <td>
                       {row.block ? (
-                        <Button size="$2" variant="secondary" disabled={busy !== null} onPress={() => row.block && void reopen(row.block.id)}>
+                        <Button
+                          size="$2"
+                          variant={row.block.reopenSuggestion ? "primary" : "secondary"}
+                          disabled={busy !== null}
+                          onPress={() => row.block && void reopen(row.block.id)}
+                        >
                           Riapri
                         </Button>
                       ) : (

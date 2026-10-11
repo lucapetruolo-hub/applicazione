@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generalRequestCloseReason, responseRate, weeklyPerProfessional, type GeneralRequestLoad } from "@professionisti/shared";
+import {
+  DEFAULT_GENERAL_REQUEST_THRESHOLDS,
+  generalRequestCloseReason,
+  generalRequestReopenSuggestion,
+  responseRate,
+  weeklyPerProfessional,
+  type GeneralRequestLoad,
+} from "@professionisti/shared";
 import { GeneralRequestsService } from "./general-requests.service";
 
 /** Chiusura automatica delle richieste generali per categoria e città (docs/CHANGELOG.md §211). */
@@ -76,6 +83,7 @@ describe("GeneralRequestsService.runAutoCheck", () => {
       expect.objectContaining({ where: { categoryId_city: { categoryId: "cat-1", city: "Milano" } } }),
     );
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "GeneralRequestBlock", newValue: "CLOSED" }));
+    expect(prisma.generalRequestBlock.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ closeTrigger: "LOAD" }) }));
   });
 
   it("avvisa per email gli admin di moderazione", async () => {
@@ -145,5 +153,24 @@ describe("GeneralRequestsService.availability", () => {
     prisma.generalRequestBlock.findUnique.mockResolvedValueOnce({ reopenedAt: null });
     expect(await service.availability("cat-1", "Milano")).toEqual({ open: false, closedScope: "ZONE" });
     expect(await service.availability("cat-1", "Roma")).toEqual({ open: true, closedScope: null });
+  });
+});
+
+describe("proposta di riapertura", () => {
+  const thresholds = DEFAULT_GENERAL_REQUEST_THRESHOLDS;
+
+  it("non propone nulla per una zona chiusa a mano o da meno di 7 giorni", () => {
+    expect(generalRequestReopenSuggestion({ trigger: "MANUAL", daysClosed: 60, directRequestsSinceClose: 0, thresholds })).toBeNull();
+    expect(generalRequestReopenSuggestion({ trigger: "LOAD", daysClosed: 6, directRequestsSinceClose: 0, thresholds })).toBeNull();
+  });
+
+  it("chiusa per troppe richieste: propone di riaprire se la domanda è scesa sotto il limite", () => {
+    expect(generalRequestReopenSuggestion({ trigger: "LOAD", daysClosed: 14, directRequestsSinceClose: 30, thresholds })).toBeNull();
+    expect(generalRequestReopenSuggestion({ trigger: "LOAD", daysClosed: 14, directRequestsSinceClose: 12, thresholds })).toContain("circa 6 richieste");
+  });
+
+  it("chiusa per poche risposte: propone di riprovare dopo 30 giorni", () => {
+    expect(generalRequestReopenSuggestion({ trigger: "RESPONSES", daysClosed: 20, directRequestsSinceClose: 0, thresholds })).toBeNull();
+    expect(generalRequestReopenSuggestion({ trigger: "RESPONSES", daysClosed: 31, directRequestsSinceClose: 0, thresholds })).toContain("31 giorni");
   });
 });

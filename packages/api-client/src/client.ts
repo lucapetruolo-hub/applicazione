@@ -353,6 +353,8 @@ export type AdminOverview = {
   unpaidBalances: number;
   /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
   verificationRequests: number;
+  /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
+  closedGeneralRequestZones: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";

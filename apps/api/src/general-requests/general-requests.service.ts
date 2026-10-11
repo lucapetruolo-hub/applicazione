@@ -5,10 +5,12 @@ import {
   DEFAULT_GENERAL_REQUEST_THRESHOLDS,
   GENERAL_REQUESTS_WINDOW_DAYS,
   generalRequestCityKey,
-  generalRequestCloseReason,
+  generalRequestCloseDecision,
+  generalRequestReopenSuggestion,
   responseRate,
   weeklyPerProfessional,
   type GeneralRequestAvailability,
+  type GeneralRequestCloseTrigger,
   type GeneralRequestLoad,
   type GeneralRequestThresholds,
   type GeneralRequestsAdminOverview,
@@ -30,6 +32,13 @@ export function generalRequestsGloballyEnabled(): boolean {
 
 type ZoneKey = string;
 const zoneKey = (categoryId: string, city: string): ZoneKey => `${categoryId}|${city}`;
+
+/** Righe create prima di §213 senza closeTrigger: a mano se c'è un admin, altrimenti dal testo del motivo. */
+function blockTrigger(block: { closeTrigger: string | null; closedByUserId: string | null; reason: string }): GeneralRequestCloseTrigger {
+  if (block.closeTrigger === "LOAD" || block.closeTrigger === "RESPONSES" || block.closeTrigger === "MANUAL") return block.closeTrigger;
+  if (block.closedByUserId) return "MANUAL";
+  return block.reason.startsWith("Risponde") ? "RESPONSES" : "LOAD";
+}
 
 /**
  * Apertura e chiusura delle richieste generali (docs/CHANGELOG.md §211):
@@ -159,15 +168,16 @@ export class GeneralRequestsService {
     const blockBy = new Map(blocks.map((b) => [zoneKey(b.categoryId, b.city), b]));
     const closedZones: { categoryId: string; city: string; reason: string }[] = [];
     for (const [key, { categoryId, city, load }] of loads) {
-      const reason = generalRequestCloseReason(load, thresholds);
-      if (!reason) continue;
+      const decision = generalRequestCloseDecision(load, thresholds);
+      if (!decision) continue;
+      const { reason, trigger } = decision;
       const block = blockBy.get(key);
       if (block && !block.reopenedAt) continue; // già chiusa
       if (block?.keepOpenUntil && block.keepOpenUntil > now) continue; // riaperta a mano di recente
       const saved = await this.prisma.generalRequestBlock.upsert({
         where: { categoryId_city: { categoryId, city } },
-        create: { categoryId, city, reason },
-        update: { closedAt: now, closedByUserId: null, reason, reopenedAt: null, reopenedByUserId: null, keepOpenUntil: null },
+        create: { categoryId, city, reason, closeTrigger: trigger },
+        update: { closedAt: now, closedByUserId: null, reason, closeTrigger: trigger, reopenedAt: null, reopenedByUserId: null, keepOpenUntil: null },
       });
       await this.auditLogService.record({ entityType: "GeneralRequestBlock", entityId: saved.id, fieldName: "status", newValue: "CLOSED", reason });
       closedZones.push({ categoryId, city, reason });
@@ -214,6 +224,7 @@ export class GeneralRequestsService {
     const blockBy = new Map(blocks.map((b) => [zoneKey(b.categoryId, b.city), b]));
     const empty: GeneralRequestLoad = { leads: 0, professionals: 0, requests: 0, measuredLeads: 0, respondedLeads: 0 };
     const now = new Date();
+    const directSince = await this.directRequestsSinceClose(blocks.filter((b) => !b.reopenedAt));
     const rows: GeneralRequestZoneRow[] = [];
     for (const key of keys) {
       const zone = loads.get(key);
@@ -231,13 +242,47 @@ export class GeneralRequestsService {
         responseRate: responseRate(load, thresholds.minMeasuredLeads),
         block:
           block && !block.reopenedAt
-            ? { id: block.id, closedAt: block.closedAt.toISOString(), automatic: block.closedByUserId === null, reason: block.reason }
+            ? {
+                id: block.id,
+                closedAt: block.closedAt.toISOString(),
+                automatic: block.closedByUserId === null,
+                reason: block.reason,
+                reopenSuggestion: generalRequestReopenSuggestion({
+                  trigger: blockTrigger(block),
+                  daysClosed: (now.getTime() - block.closedAt.getTime()) / DAY_MS,
+                  directRequestsSinceClose: directSince.get(key) ?? 0,
+                  thresholds,
+                }),
+              }
             : null,
         keepOpenUntil: block?.reopenedAt && block.keepOpenUntil && block.keepOpenUntil > now ? block.keepOpenUntil.toISOString() : null,
       });
     }
     rows.sort((a, b) => Number(Boolean(b.block)) - Number(Boolean(a.block)) || b.weeklyPerProfessional - a.weeklyPerProfessional);
     return { globallyEnabled: generalRequestsGloballyEnabled(), thresholds, rows };
+  }
+
+  /**
+   * Richieste dirette (a un professionista scelto) arrivate in ogni zona
+   * chiusa dopo la chiusura: misurano la domanda quando le generali sono
+   * spente (docs/CHANGELOG.md §213).
+   */
+  private async directRequestsSinceClose(blocks: { categoryId: string; city: string; closedAt: Date }[]): Promise<Map<ZoneKey, number>> {
+    const counts = new Map<ZoneKey, number>();
+    if (blocks.length === 0) return counts;
+    const oldest = new Date(Math.min(...blocks.map((b) => b.closedAt.getTime())));
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: { createdAt: { gte: oldest }, professionalProfileId: { not: null }, categoryId: { in: [...new Set(blocks.map((b) => b.categoryId))] } },
+      select: { categoryId: true, city: true, createdAt: true },
+    });
+    const closedAtBy = new Map(blocks.map((b) => [zoneKey(b.categoryId, b.city), b.closedAt]));
+    for (const request of requests) {
+      if (!request.city) continue;
+      const key = zoneKey(request.categoryId, generalRequestCityKey(request.city));
+      const closedAt = closedAtBy.get(key);
+      if (closedAt && request.createdAt >= closedAt) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
   }
 
   async close(adminUserId: string, categorySlug: string, rawCity: string): Promise<void> {
@@ -247,8 +292,8 @@ export class GeneralRequestsService {
     const reason = "Chiusa a mano dall'area admin.";
     const saved = await this.prisma.generalRequestBlock.upsert({
       where: { categoryId_city: { categoryId: category.id, city } },
-      create: { categoryId: category.id, city, reason, closedByUserId: adminUserId },
-      update: { closedAt: new Date(), closedByUserId: adminUserId, reason, reopenedAt: null, reopenedByUserId: null, keepOpenUntil: null },
+      create: { categoryId: category.id, city, reason, closeTrigger: "MANUAL", closedByUserId: adminUserId },
+      update: { closedAt: new Date(), closedByUserId: adminUserId, reason, closeTrigger: "MANUAL", reopenedAt: null, reopenedByUserId: null, keepOpenUntil: null },
     });
     await this.auditLogService.record({ entityType: "GeneralRequestBlock", entityId: saved.id, fieldName: "status", newValue: "CLOSED", changedByUserId: adminUserId, reason });
   }

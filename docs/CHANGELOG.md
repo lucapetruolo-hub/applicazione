@@ -17624,3 +17624,39 @@ admin invece che fisse nel codice.
 admin, chiusura automatica spenta, soglie salvate, risposte non controllate
 con 0%); 266 test di `apps/api` verdi, tipi e lint di `apps/api` e
 `apps/web` senza errori.
+
+## 213. Richieste generali: numero nel menu admin e proposta di riapertura
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua le due migliorie"
+proposte dopo §212: un numero rosso sulla voce "Richieste generali" del menu
+admin quando ci sono zone chiuse, e proporre di riaprire una zona quando il
+carico torna sotto le soglie.
+
+**Decisione:**
+- *Numero nel menu:* `AdminOverview.closedGeneralRequestZones` conta le
+  righe di `GeneralRequestBlock` senza `reopenedAt`; `AdminNav` lo mostra
+  come badge, come le altre voci da gestire.
+- *Proposta di riapertura:* con le richieste generali chiuse il loro carico
+  non si può più misurare, perché in quella zona non ne arrivano. Si usa
+  quindi la domanda che arriva comunque: le richieste dirette della
+  categoria in quella città dopo la chiusura. Siccome una richiesta
+  generale va a tutti i professionisti della zona, ognuno ne riceverebbe
+  circa quante ne arrivano in tutto.
+  `generalRequestReopenSuggestion` (packages/shared) propone di riaprire:
+  - chiusa per troppe richieste: dopo almeno 7 giorni, se le richieste
+    dirette a settimana sono sotto il limite di richieste a settimana per
+    professionista;
+  - chiusa per poche risposte: dopo 30 giorni, come prova (non c'è un modo
+    di misurare le risposte a zona chiusa);
+  - chiusa a mano: mai.
+  Per distinguere i casi la chiusura salva il motivo in
+  `GeneralRequestBlock.closeTrigger` (LOAD, RESPONSES, MANUAL; migrazione
+  `20261011190000_general_request_close_trigger`; le righe precedenti lo
+  ricavano dall'admin o dal testo del motivo). La pagina admin mostra la
+  proposta sotto il motivo e il tasto "Riapri" diventa principale. Non
+  riapre mai da sola.
+
+**Verifica:** nuovi test sulla proposta (a mano o troppo presto, domanda
+sopra o sotto il limite, prova dopo 30 giorni) e sul motivo salvato alla
+chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
+`apps/web` senza errori.

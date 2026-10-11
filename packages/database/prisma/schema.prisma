@@ -2105,6 +2105,9 @@ model GeneralRequestBlock {
   // null = chiusura automatica.
   closedByUserId   String?
   reason           String
+  // LOAD, RESPONSES o MANUAL (GeneralRequestCloseTrigger); null sulle righe
+  // create prima di §213.
+  closeTrigger     String?
   reopenedAt       DateTime?
   reopenedByUserId String?
   keepOpenUntil    DateTime?

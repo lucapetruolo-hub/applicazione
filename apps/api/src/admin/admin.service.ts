@@ -46,6 +46,8 @@ export type AdminOverview = {
   waitlist: number;
   /** Professionisti che hanno chiesto la verifica (docs/CHANGELOG.md §201). */
   verificationRequests: number;
+  /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
+  closedGeneralRequestZones: number;
 };
 
 @Injectable()
@@ -508,7 +510,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests, closedGeneralRequestZones] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -528,6 +530,7 @@ export class AdminService {
         this.prisma.professionalProfile.count({
           where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
         }),
+        this.prisma.generalRequestBlock.count({ where: { reopenedAt: null } }),
       ]);
     return {
       openReports,
@@ -546,6 +549,7 @@ export class AdminService {
       paymentsEnabled: !!process.env.STRIPE_SECRET_KEY,
       unpaidBalances,
       verificationRequests,
+      closedGeneralRequestZones,
     };
   }
 

@@ -83,21 +83,67 @@ export function responseRate(load: GeneralRequestLoad, minMeasuredLeads: number 
   return load.respondedLeads / load.measuredLeads;
 }
 
+/** Perché una zona si è chiusa: troppe richieste, poche risposte o a mano. */
+export type GeneralRequestCloseTrigger = "LOAD" | "RESPONSES" | "MANUAL";
+
 /** Motivo per chiudere la categoria in quella città, o null se il carico è accettabile o la chiusura automatica è spenta. */
+export function generalRequestCloseDecision(
+  load: GeneralRequestLoad,
+  thresholds: GeneralRequestThresholds = DEFAULT_GENERAL_REQUEST_THRESHOLDS,
+): { trigger: Exclude<GeneralRequestCloseTrigger, "MANUAL">; reason: string } | null {
+  if (!thresholds.autoCloseEnabled) return null;
+  const weekly = weeklyPerProfessional(load);
+  if (weekly > thresholds.maxWeeklyPerPro) {
+    return {
+      trigger: "LOAD",
+      reason: `In media ${formatDecimal(weekly)} richieste generali a settimana per professionista (limite ${formatDecimal(thresholds.maxWeeklyPerPro)}).`,
+    };
+  }
+  const rate = responseRate(load, thresholds.minMeasuredLeads);
+  if (rate !== null && rate * 100 < thresholds.minResponsePercent) {
+    return {
+      trigger: "RESPONSES",
+      reason: `Risponde solo il ${Math.round(rate * 100)}% dei professionisti (minimo ${thresholds.minResponsePercent}%).`,
+    };
+  }
+  return null;
+}
+
 export function generalRequestCloseReason(
   load: GeneralRequestLoad,
   thresholds: GeneralRequestThresholds = DEFAULT_GENERAL_REQUEST_THRESHOLDS,
 ): string | null {
-  if (!thresholds.autoCloseEnabled) return null;
-  const weekly = weeklyPerProfessional(load);
-  if (weekly > thresholds.maxWeeklyPerPro) {
-    return `In media ${formatDecimal(weekly)} richieste generali a settimana per professionista (limite ${formatDecimal(thresholds.maxWeeklyPerPro)}).`;
+  return generalRequestCloseDecision(load, thresholds)?.reason ?? null;
+}
+
+/** Giorni minimi di chiusura prima di proporre una riapertura (docs/CHANGELOG.md §213). */
+export const GENERAL_REQUESTS_REOPEN_MIN_DAYS = 7;
+/** Chiusa per poche risposte: dopo questi giorni si propone di riprovare. */
+export const GENERAL_REQUESTS_REOPEN_RETRY_DAYS = 30;
+
+/**
+ * Proposta di riaprire una zona chiusa in automatico (docs/CHANGELOG.md
+ * §213), o null. Con le richieste generali chiuse il carico non si può più
+ * misurare, quindi si usa la domanda che arriva comunque: le richieste
+ * dirette della categoria in quella città dopo la chiusura. Una richiesta
+ * generale va a tutti i professionisti della zona, quindi ognuno ne
+ * riceverebbe circa quante ne arrivano in tutto.
+ */
+export function generalRequestReopenSuggestion(input: {
+  trigger: GeneralRequestCloseTrigger;
+  daysClosed: number;
+  directRequestsSinceClose: number;
+  thresholds: GeneralRequestThresholds;
+}): string | null {
+  const { trigger, daysClosed, directRequestsSinceClose, thresholds } = input;
+  if (trigger === "MANUAL" || daysClosed < GENERAL_REQUESTS_REOPEN_MIN_DAYS) return null;
+  if (trigger === "LOAD") {
+    const perWeek = directRequestsSinceClose / (daysClosed / 7);
+    if (perWeek > thresholds.maxWeeklyPerPro) return null;
+    return `Da quando è chiusa arrivano circa ${formatDecimal(perWeek)} richieste a settimana in questa zona: riaprendo, ogni professionista ne riceverebbe più o meno altrettante (limite ${formatDecimal(thresholds.maxWeeklyPerPro)}).`;
   }
-  const rate = responseRate(load, thresholds.minMeasuredLeads);
-  if (rate !== null && rate * 100 < thresholds.minResponsePercent) {
-    return `Risponde solo il ${Math.round(rate * 100)}% dei professionisti (minimo ${thresholds.minResponsePercent}%).`;
-  }
-  return null;
+  if (daysClosed < GENERAL_REQUESTS_REOPEN_RETRY_DAYS) return null;
+  return `Chiusa da ${Math.floor(daysClosed)} giorni per poche risposte: puoi riaprirla per provare se ora i professionisti rispondono di più.`;
 }
 
 function formatDecimal(value: number): string {
@@ -118,6 +164,8 @@ export type GeneralRequestZoneRow = {
     closedAt: string;
     automatic: boolean;
     reason: string;
+    /** Proposta di riapertura, se il carico lo permette (docs/CHANGELOG.md §213). */
+    reopenSuggestion: string | null;
   } | null;
   /** Riaperta a mano: il controllo automatico non la richiude fino a questa data. */
   keepOpenUntil: string | null;
