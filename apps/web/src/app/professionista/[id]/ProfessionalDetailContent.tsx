@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BRAND, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -73,6 +73,7 @@ function reviewTimeAgo(iso: string): string {
 
 export function ProfessionalDetailContent({ professional }: { professional: ProfessionalDetail }) {
   const { user, token, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
 
   // Visita al profilo (CLAUDE.md §8, dati comparativi in Home "Oggi",
@@ -202,13 +203,25 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   const agendaCanGoBack = agendaOffset > 0;
   const agendaCanGoForward = agendaOffset + AGENDA_PREVIEW_DAYS < totalAgendaDays;
 
+  // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
+  // ed è tornato qui dopo l'accesso, quindi il profilo si salva da solo
+  // (docs/CHANGELOG.md §208).
+  const saveAfterLogin = searchParams.get("salva") === "1";
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
     apiClient
       .mySavedProfessionals(token)
-      .then((saved) => setIsSaved(saved.some((p) => p.id === professional.id)))
+      .then(async (saved) => {
+        const alreadySaved = saved.some((p) => p.id === professional.id);
+        if (!alreadySaved && saveAfterLogin) {
+          await apiClient.saveProfessional(token, professional.id);
+          setIsSaved(true);
+        } else {
+          setIsSaved(alreadySaved);
+        }
+      })
       .catch(() => {});
-  }, [token, user, professional.id]);
+  }, [token, user, professional.id, saveAfterLogin]);
 
   useEffect(() => {
     apiClient
@@ -255,7 +268,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   }
 
   async function handleToggleSave() {
-    if (!token) return;
+    if (!token) {
+      router.push(`/accedi?redirect=${encodeURIComponent(`/professionista/${professional.id}?salva=1`)}`);
+      return;
+    }
     setIsSaving(true);
     try {
       if (isSaved) {
@@ -369,7 +385,11 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         {/* Solo icone, con la descrizione al passaggio del mouse (richiesta
             esplicita dell'utente, docs/CHANGELOG.md §206). */}
         <XStack gap="$2" alignItems="center">
-          {user?.role === "CLIENT" ? (
+          {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
+              §208): prima compariva solo a un cliente già entrato, e per
+              tutti gli altri sembrava sparito. Al tocco porta all'accesso.
+              Nascosto solo a professionisti e admin, che non salvano profili. */}
+          {!user || user.role === "CLIENT" ? (
             <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave}>
               <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
             </IconActionButton>
@@ -398,18 +418,39 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
         {professional.bio ? <Text color={brand.grafite70}>{professional.bio}</Text> : null}
 
-        {/* Lingue parlate — dato già raccolto (`ProfessionalProfile.
-            spokenLanguages`, usato dal pannello filtri di ricerca) ma mai
-            mostrato qui: bug di esposizione corretto in questo giro, stesso
-            principio "dato reale già disponibile, solo mai renderizzato"
-            già seguito più volte in questo file. */}
-        {professional.spokenLanguages.length > 0 ? (
-          <XStack alignItems="center" gap="$2" flexWrap="wrap">
-            <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
-            <Text fontSize="$2" color={brand.grafite70}>
-              Parla {professional.spokenLanguages.join(", ")}
-            </Text>
-          </XStack>
+        {/* Lavori svolti subito sotto la descrizione, dentro la scheda
+            identità (richiesta esplicita dell'utente, docs/CHANGELOG.md §208).
+            `?? []`: stessa cautela dell'agenda/recensioni sopra — un'API non
+            ancora allineata all'ultimo deploy potrebbe non includere ancora
+            portfolioUrls sul professionista. */}
+        {(professional.portfolioUrls ?? []).length > 0 ? (
+          <YStack gap="$3">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="camera" size={16} strokeWidth={1.5} color={brand.cianografiaScuro} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+                Lavori svolti
+              </Text>
+            </XStack>
+            <XStack gap="$2" flexWrap="wrap">
+              {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
+                <YStack
+                  key={url}
+                  width={96}
+                  height={96}
+                  borderRadius="$3"
+                  overflow="hidden"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  cursor="pointer"
+                  onPress={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
+                >
+                  <MediaPreview url={url} />
+                </YStack>
+              ))}
+            </XStack>
+          </YStack>
         ) : null}
 
         {/* Segnali di fiducia dichiarati (CEO, consiglio esperti — CPO),
@@ -417,13 +458,26 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             professionista" invece di un'icona di spunta, per non
             confonderli con `verified` (quello richiederebbe una verifica
             reale, oggi inesistente, CLAUDE.md §10 checklist punto 15). */}
-        {professional.yearsOfExperience !== null || professional.certifications || professional.hasLiabilityInsurance ? (
+        {professional.yearsOfExperience !== null ||
+        professional.spokenLanguages.length > 0 ||
+        professional.certifications ||
+        professional.hasLiabilityInsurance ? (
           <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
             {professional.yearsOfExperience !== null ? (
               <XStack alignItems="center" gap="$2">
                 <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
                 <Text fontSize="$2" color={brand.grafite70}>
                   {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
+                </Text>
+              </XStack>
+            ) : null}
+            {/* Lingue nello stesso elenco di esperienza, patentini e
+                assicurazione (richiesta esplicita dell'utente, §208). */}
+            {professional.spokenLanguages.length > 0 ? (
+              <XStack alignItems="center" gap="$2">
+                <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Parla {professional.spokenLanguages.join(", ")}
                 </Text>
               </XStack>
             ) : null}
@@ -476,39 +530,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 </XStack>
               ))}
             </Surface>
-          </YStack>
-        ) : null}
-
-        {/* `?? []`: stessa cautela dell'agenda/recensioni sopra — un'API non
-            ancora allineata all'ultimo deploy potrebbe non includere ancora
-            portfolioUrls sul professionista. */}
-        {(professional.portfolioUrls ?? []).length > 0 ? (
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
-              <Icon name="camera" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-                Lavori svolti
-              </Text>
-            </XStack>
-            <XStack gap="$2" flexWrap="wrap">
-              {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
-                <YStack
-                  key={url}
-                  width={96}
-                  height={96}
-                  borderRadius="$3"
-                  overflow="hidden"
-                  borderWidth={1}
-                  borderColor={brand.filetto}
-                  cursor="pointer"
-                  onPress={() => setLightbox({ photos: professional.portfolioUrls ?? [], index: photoIndex })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ingrandisci foto ${photoIndex + 1} dei lavori svolti`}
-                >
-                  <MediaPreview url={url} />
-                </YStack>
-              ))}
-            </XStack>
           </YStack>
         ) : null}
 
