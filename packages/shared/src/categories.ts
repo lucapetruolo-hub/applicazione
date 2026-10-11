@@ -77,17 +77,19 @@ export const PROFESSIONAL_CATEGORIES = [
     icon: "drill",
     subTags: ["piccole-riparazioni", "montaggio-mobili", "manutenzione-generale"],
   },
+  // Dogsitter e Babysitter al posto di OSS e Badanti (docs/CHANGELOG.md
+  // §214, richiesta dell'utente).
   {
-    slug: "oss",
-    label: "OSS",
-    icon: "stethoscope",
-    subTags: ["assistenza-domiciliare", "assistenza-ospedaliera", "mobilizzazione-pazienti"],
+    slug: "dogsitter",
+    label: "Dogsitter",
+    icon: "dog",
+    subTags: ["passeggiate", "visite-a-domicilio", "pensione-cani"],
   },
   {
-    slug: "badanti",
-    label: "Badanti",
-    icon: "heart-handshake",
-    subTags: ["assistenza-anziani", "convivenza", "compagnia"],
+    slug: "babysitter",
+    label: "Babysitter",
+    icon: "baby",
+    subTags: ["serate", "dopo-scuola", "neonati"],
   },
 ] as const;
 
@@ -182,19 +184,19 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Piccoli lavori idraulici",
     "Piccoli lavori elettrici",
   ],
-  oss: [
-    "Assistenza domiciliare",
-    "Assistenza ospedaliera",
-    "Mobilizzazione pazienti",
-    "Igiene personale",
-    "Somministrazione terapie",
+  dogsitter: [
+    "Passeggiata con il cane",
+    "Visita a domicilio",
+    "Pensione per cani",
+    "Accudimento durante le vacanze",
+    "Accompagnamento dal veterinario",
   ],
-  badanti: [
-    "Assistenza anziani",
-    "Compagnia e supporto",
-    "Aiuto nelle faccende domestiche",
-    "Accompagnamento a visite mediche",
-    "Convivenza h24",
+  babysitter: [
+    "Babysitting serale",
+    "Uscita da scuola e compiti",
+    "Accudimento neonati",
+    "Babysitting nel weekend",
+    "Babysitting durante eventi",
   ],
 };
 
@@ -231,9 +233,10 @@ export const CATEGORY_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySlug, str
     "Es. Armadio su misura per una camera mansardata con soffitto inclinato, larghezza circa 2,5 metri. Vorrei anche sistemare un cassetto rotto di un altro mobile mentre siete qui.",
   tuttofare:
     "Es. Montaggio di un armadio e di una libreria appena acquistati, più il fissaggio di due mensole in bagno. Piccoli lavori da completare in una mattina.",
-  oss: "Es. Assistenza domiciliare per un familiare anziano dopo un intervento chirurgico: aiuto nell'igiene personale e nella mobilizzazione, alcune ore al giorno per le prossime 2-3 settimane.",
-  badanti:
-    "Es. Cerco assistenza per mia madre, 82 anni, autosufficiente ma che non deve restare sola: compagnia, aiuto nelle faccende domestiche e accompagnamento a qualche visita medica, alcune ore al pomeriggio.",
+  dogsitter:
+    "Es. Cerco qualcuno che porti fuori il mio cane, un labrador di 4 anni, due volte al giorno dal lunedì al venerdì mentre sono al lavoro. È socievole e abituato al guinzaglio.",
+  babysitter:
+    "Es. Cerco una babysitter per due bambini di 4 e 7 anni, due sere a settimana dalle 19 alle 23: cena, gioco e messa a letto. Preferibile un'esperienza con bambini piccoli.",
 };
 
 /**
@@ -264,9 +267,10 @@ export const CATEGORY_URGENT_DESCRIPTION_EXAMPLES: Record<ProfessionalCategorySl
     "Es. La porta d'ingresso si è scardinata dai cardini e non chiude più, la casa resta di fatto senza protezione: serve una riparazione urgente.",
   tuttofare:
     "Es. Una tapparella è rimasta bloccata a metà e non riesco a chiuderla né alzarla, è previsto forte vento nelle prossime ore: serve un intervento rapido.",
-  oss: "Es. Mio padre è stato dimesso oggi dall'ospedale dopo una caduta e non può restare solo questa notte: cerco assistenza domiciliare urgente, anche solo per le prossime 24 ore.",
-  badanti:
-    "Es. La badante di mia nonna si è ammalata all'improvviso e non può venire nei prossimi giorni: cerco una sostituzione urgente, anche solo per qualche giorno.",
+  dogsitter:
+    "Es. Devo partire stasera per un'emergenza familiare e non so a chi lasciare il mio cane: cerco qualcuno che lo tenga o passi da casa per i prossimi 3 giorni.",
+  babysitter:
+    "Es. Mi hanno chiamato per un turno di lavoro imprevisto stasera e non ho nessuno per mia figlia di 5 anni: cerco una babysitter dalle 18 a mezzanotte.",
 };
 
 function normalize(value: string): string {

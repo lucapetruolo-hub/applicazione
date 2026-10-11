@@ -17692,3 +17692,13 @@ in registrazione e può cambiarle dal suo profilo, sempre fino a 3.
 categorie in `google-name.test.ts`), migrazione applicata su un Postgres
 locale senza differenze dallo schema, query di creazione/modifica/ricerca
 provate sul database, anteprime della registrazione da computer e telefono.
+
+**Aggiunte nello stesso giro (richiesta dell'utente):**
+- "fino a 3 scelte" scritto accanto all'etichetta delle categorie, in
+  registrazione e nel profilo.
+- Tolte le categorie **OSS** e **Badanti**, aggiunte **Dogsitter** e
+  **Babysitter** in tutte le liste (elenco unico `PROFESSIONAL_CATEGORIES`,
+  icone, menu "Servizi", prestazioni suggerite, esempi della richiesta).
+  `CategoriesSeedService` all'avvio cancella le categorie tolte solo se
+  nessun profilo, richiesta o regola commissioni le usa ancora; altrimenti
+  le lascia e lo scrive nei log.

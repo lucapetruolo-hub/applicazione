@@ -129,22 +129,25 @@ function TuttoFare(props: IconProps) {
   );
 }
 
-function Oss(props: IconProps) {
+function Dogsitter(props: IconProps) {
   return (
     <svg {...base(props)}>
-      <path d="M12 20s-7-4.4-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z" strokeLinejoin="round" />
-      <path d="M7 12h2l1.5-3 2 6 1.5-3H17" />
+      <circle cx="12" cy="16" r="3.5" />
+      <circle cx="5.5" cy="10.5" r="2" />
+      <circle cx="9.5" cy="6" r="2" />
+      <circle cx="14.5" cy="6" r="2" />
+      <circle cx="18.5" cy="10.5" r="2" />
     </svg>
   );
 }
 
-function Badanti(props: IconProps) {
+function Babysitter(props: IconProps) {
   return (
     <svg {...base(props)}>
-      <circle cx="8.5" cy="7.5" r="3" />
-      <circle cx="17" cy="8.5" r="2.6" />
-      <path d="M2.5 20v-1.5A4.5 4.5 0 0 1 7 14h3a4.5 4.5 0 0 1 4.5 4.5V20" />
-      <path d="M14.8 14.3A4 4 0 0 1 21.5 17.5V20" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9 10h.01M15 10h.01" strokeWidth={2.4} />
+      <path d="M9.5 14.5a3.5 3.5 0 0 0 5 0" />
+      <path d="M12 3.5c1.5 0 2 1.2 1.2 2" />
     </svg>
   );
 }
@@ -161,8 +164,8 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
   muratore: Muratore,
   falegname: Falegname,
   tuttofare: TuttoFare,
-  oss: Oss,
-  badanti: Badanti,
+  dogsitter: Dogsitter,
+  babysitter: Babysitter,
 };
 
 export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg: string }> = {
@@ -177,8 +180,8 @@ export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg:
   muratore: { bg: "#FEE2E2", fg: "#B91C1C" },
   falegname: { bg: "#F5E6D3", fg: "#92400E" },
   tuttofare: { bg: "#E0E7FF", fg: "#3730A3" },
-  oss: { bg: "#FFE4E6", fg: "#BE123C" },
-  badanti: { bg: "#E9D5FF", fg: "#7E22CE" },
+  dogsitter: { bg: "#FFE4E6", fg: "#BE123C" },
+  babysitter: { bg: "#E9D5FF", fg: "#7E22CE" },
 };
 
 export function CategoryIcon({ slug, size = 24, color }: { slug: string; size?: number; color?: string }) {

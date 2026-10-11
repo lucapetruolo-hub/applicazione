@@ -14,7 +14,7 @@ export const MEGA_MENU_GROUPS: MegaMenuGroup[] = [
     title: "Manutenzione e spazi",
     slugs: ["imbianchino", "pulizie", "giardiniere", "muratore", "falegname", "traslochi", "tuttofare"],
   },
-  { title: "Persona e servizi", slugs: ["oss", "badanti"] },
+  { title: "Persona e servizi", slugs: ["babysitter", "dogsitter"] },
 ];
 
 export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, string> = {
@@ -29,8 +29,8 @@ export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, strin
   muratore: "Ristrutturazioni e opere murarie",
   falegname: "Mobili su misura, infissi",
   tuttofare: "Piccole riparazioni e montaggi",
-  oss: "Assistenza domiciliare e ospedaliera",
-  badanti: "Compagnia e assistenza anziani",
+  dogsitter: "Passeggiate e cura del tuo cane",
+  babysitter: "Bambini a casa, serate e dopo scuola",
 };
 
 export function categoryBySlug(slug: ProfessionalCategorySlug) {

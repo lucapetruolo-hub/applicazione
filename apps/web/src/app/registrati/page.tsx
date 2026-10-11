@@ -505,7 +505,7 @@ function RegistratiForm() {
     <>
       <div>
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
-          Che lavori fai?
+          Che lavori fai? (fino a 3 scelte)
         </span>
         <CategoryMultiPicker
           value={categorySlugs}
