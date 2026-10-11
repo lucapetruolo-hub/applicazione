@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
+import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -8,6 +9,19 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."
 const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/, "Fascia oraria non valida.");
 
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
+
+/**
+ * Numero di telefono salvato sempre nello stesso formato, "+39 3331234567"
+ * (docs/CHANGELOG.md §214): "333 1234567", "+39 333-1234567" e
+ * "0039 3331234567" diventano lo stesso numero, così il controllo "numero
+ * già usato da un altro account" non si lascia ingannare dal formato.
+ * Vuoto resta vuoto (campo facoltativo).
+ */
+export const phoneNumberSchema = z
+  .string()
+  .max(30)
+  .refine((value) => !value.trim() || isPlausiblePhoneNumber(value), "Numero di telefono non valido.")
+  .transform((value) => (value.trim() ? normalizePhoneNumber(value) : ""));
 
 export const googleVerifySchema = z.object({
   idToken: z.string().min(10),
@@ -131,7 +145,7 @@ export const updateAccountSchema = z.object({
   surname: z.string().min(1).max(120).optional(),
   birthDate: z.string().date("Data non valida").optional(),
   email: z.string().email("Email non valida").optional(),
-  phone: z.string().min(6).max(20).optional(),
+  phone: phoneNumberSchema.optional(),
   street: z.string().max(200).optional(),
   houseNumber: z.string().max(20).optional(),
   addressExtra: z.string().max(200).optional(),
@@ -210,7 +224,7 @@ export const guidedRequestSchema = z
     address: z.string().max(200).optional(),
     recipientName: z.string().max(120).optional(),
     recipientSurname: z.string().max(120).optional(),
-    recipientPhone: z.string().max(20).optional(),
+    recipientPhone: phoneNumberSchema.optional(),
     houseNumber: z.string().max(20).optional(),
     addressExtra: z.string().max(200).optional(),
     postalCode: z.string().max(10).optional(),
@@ -295,7 +309,7 @@ export const guidedRequestUpdateSchema = z
     address: z.string().max(200).optional(),
     recipientName: z.string().max(120).optional(),
     recipientSurname: z.string().max(120).optional(),
-    recipientPhone: z.string().max(20).optional(),
+    recipientPhone: phoneNumberSchema.optional(),
     houseNumber: z.string().max(20).optional(),
     addressExtra: z.string().max(200).optional(),
     postalCode: z.string().max(10).optional(),

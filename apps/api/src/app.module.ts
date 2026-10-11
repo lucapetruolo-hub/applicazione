@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
+import { PhoneNumbersModule } from "./phone-numbers/phone-numbers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { CloudinaryModule } from "./cloudinary/cloudinary.module";
 import { GeocodingModule } from "./geocoding/geocoding.module";
@@ -61,6 +62,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     CloudinaryModule,
     GeocodingModule,
     CategoriesModule,
+    PhoneNumbersModule,
     AuthModule,
     ProfessionalsModule,
     GuidedRequestsModule,
