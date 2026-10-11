@@ -17440,3 +17440,17 @@ o della zona del professionista scelto se il cliente non l'ha indicata.
 **Verifica:** test `lead-routing.test.ts` per `computeDirectForwardAt`
 (60 minuti esatti; 6 ore dalle 19 → 12 del giorno dopo); tutti i test di
 `apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+**Migliorie approvate da Luca nel thread:**
+- *Avviso al professionista scelto:* nella Home "Oggi" e in Richieste e
+  lavori la richiesta diretta mostra "Rispondi entro N minuti/ore, poi va
+  anche ad altri professionisti" (`forwardAt` nel DTO di `getMyLeads`,
+  `formatForwardDeadline` in `apps/web/src/lib/leadDeadline.ts`); sparisce
+  quando ha risposto, se la casella è stata tolta o dopo l'inoltro.
+- *Anche la chat conta come risposta:* un messaggio scritto a mano dal
+  professionista scelto (`ConversationEvent` PROFESSIONAL, non automatico)
+  ferma l'inoltro come un preventivo.
+
+**Verifica:** nuovi test in `professionals.service.test.ts` (avviso
+mostrato; nascosto dopo un messaggio in chat o dopo l'inoltro); 260 test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.

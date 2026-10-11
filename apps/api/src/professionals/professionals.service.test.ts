@@ -18,6 +18,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     lead: { findMany: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
     quote: { groupBy: vi.fn().mockResolvedValue([]) },
     clientReview: { findMany: vi.fn().mockResolvedValue([]) },
+    conversationEvent: { findMany: vi.fn().mockResolvedValue([]) },
     ...prismaOverrides,
   };
   const service = new ProfessionalsService(
@@ -121,6 +122,29 @@ describe("ProfessionalsService.getMyLeads — concorrenti che hanno già rispost
     expect(prisma.quote.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ professionalProfileId: { not: "pro-1" }, status: { not: "WITHDRAWN" } }) }),
     );
+  });
+});
+
+describe("ProfessionalsService.getMyLeads — inoltro di una richiesta diretta (docs/CHANGELOG.md §208)", () => {
+  const forwardAt = new Date("2026-10-11T11:00:00Z");
+  const direct = (extra: Record<string, unknown> = {}) =>
+    buildLead({ guidedRequest: { ...buildLead().guidedRequest, professionalProfileId: "pro-1", forwardAt, forwardedAt: null, ...extra } });
+
+  it("mostra quando parte l'inoltro al professionista scelto che non ha ancora risposto", async () => {
+    const { service, prisma } = buildService();
+    (prisma.lead.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([direct()]);
+    const leads = await service.getMyLeads("pro-user-1");
+    expect(leads[0]!.forwardAt).toBe(forwardAt.toISOString());
+  });
+
+  it("niente inoltro da mostrare se ha già scritto in chat o la richiesta è già stata inoltrata", async () => {
+    const chatted = buildService({ conversationEvent: { findMany: vi.fn().mockResolvedValue([{ guidedRequestId: "gr-1" }]) } });
+    (chatted.prisma.lead.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([direct()]);
+    expect((await chatted.service.getMyLeads("pro-user-1"))[0]!.forwardAt).toBeNull();
+
+    const forwarded = buildService();
+    (forwarded.prisma.lead.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([direct({ forwardedAt: new Date() })]);
+    expect((await forwarded.service.getMyLeads("pro-user-1"))[0]!.forwardAt).toBeNull();
   });
 });
 

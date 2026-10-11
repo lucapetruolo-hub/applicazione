@@ -1043,7 +1043,8 @@ export class GuidedRequestsService {
 
     // Richieste dirette senza risposta dal professionista scelto entro
     // forwardAt (60 minuti se urgente, 6 ore se normale, docs/CHANGELOG.md
-    // §208): se il cliente ha lasciato la casella, si inoltrano ad altri.
+    // §208), né preventivo né messaggio in chat: se il cliente ha lasciato
+    // la casella, si inoltrano ad altri.
     // Il professionista scelto tiene la richiesta e può ancora rispondere.
     const dueForward = await this.prisma.guidedRequest.findMany({
       where: { forwardIfNoReply: true, forwardedAt: null, forwardAt: { lt: now }, status: { in: ["OPEN", "MATCHED"] } },
@@ -1051,10 +1052,14 @@ export class GuidedRequestsService {
     });
     for (const request of dueForward) {
       if (!request.professionalProfileId) continue;
-      const answered = await this.prisma.quote.count({
-        where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId },
-      });
-      if (answered > 0) {
+      // Risposta = un preventivo o un messaggio scritto da lui in chat.
+      const [quotes, messages] = await Promise.all([
+        this.prisma.quote.count({ where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId } }),
+        this.prisma.conversationEvent.count({
+          where: { guidedRequestId: request.id, professionalProfileId: request.professionalProfileId, actor: "PROFESSIONAL", automatic: false },
+        }),
+      ]);
+      if (quotes + messages > 0) {
         // Ha già risposto: nessun inoltro, e la richiesta esce da questo controllo.
         await this.prisma.guidedRequest.update({ where: { id: request.id }, data: { forwardAt: null } });
         continue;

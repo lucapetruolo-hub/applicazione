@@ -21,6 +21,17 @@ export function formatLeadDeadline(expiresAt: string | null): { label: string; u
 }
 
 /**
+ * Richiesta diretta (docs/CHANGELOG.md §208): il professionista scelto non
+ * ha scadenza, ma dopo `forwardAt` senza risposta la richiesta va anche ad
+ * altri. Stesso formato di formatLeadDeadline.
+ */
+export function formatForwardDeadline(forwardAt: string | null): { label: string; urgent: boolean } | null {
+  const deadline = formatLeadDeadline(forwardAt);
+  if (!deadline) return null;
+  return { label: `${deadline.label}, poi va anche ad altri professionisti`, urgent: deadline.urgent };
+}
+
+/**
  * "N su M altri professionisti hanno già risposto" (docs/CHANGELOG.md §147,
  * decisione esplicita dell'utente): conta solo i preventivi degli altri
  * professionisti che hanno ricevuto la stessa richiesta, mai chi sono.
