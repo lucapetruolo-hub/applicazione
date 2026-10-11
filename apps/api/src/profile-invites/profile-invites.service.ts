@@ -89,7 +89,7 @@ export class ProfileInvitesService {
       await this.professionalsService.upsertMyProfile(
         user.id,
         {
-          categorySlug: input.categorySlug,
+          categorySlugs: [input.categorySlug],
           businessName: input.businessName,
           city: input.city,
           address: input.address || undefined,

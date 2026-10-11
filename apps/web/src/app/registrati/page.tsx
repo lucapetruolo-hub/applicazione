@@ -4,7 +4,7 @@ import { Suspense, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { parseSubscriptionTier, registerSchema } from "@professionisti/shared";
+import { NO_CATEGORY_MESSAGE, parseSubscriptionTier, registerSchema, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
@@ -325,6 +326,9 @@ function RegistratiForm() {
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
+  // Da 1 a 3 categorie (docs/CHANGELOG.md §214): obbligatorie sia con
+  // email e password sia con Google, precompilano il profilo.
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -402,6 +406,7 @@ function RegistratiForm() {
       role,
       acceptedLegalTerms,
       declaredAdult,
+      categorySlugs,
     });
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Dati non validi.");
@@ -422,6 +427,7 @@ function RegistratiForm() {
         result.data.acceptedLegalTerms,
         result.data.declaredAdult,
         turnstileToken ?? undefined,
+        result.data.categorySlugs,
       );
       await login(token);
       afterAuth(isNewUser);
@@ -437,7 +443,7 @@ function RegistratiForm() {
   async function completeGoogleAuth(idToken: string, accepted: boolean, adult: boolean, viaModal: boolean) {
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult);
+      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -454,6 +460,13 @@ function RegistratiForm() {
       if (!viaModal && message === "Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.") {
         setGoogleConsentError(null);
         setPendingGoogleIdToken(idToken);
+        return;
+      }
+      // Nuovo account senza categorie: si chiude il popup e si chiede di
+      // sceglierle nel modulo, poi di ripetere l'accesso con Google.
+      if (message === NO_CATEGORY_MESSAGE) {
+        setPendingGoogleIdToken(null);
+        setError(`${NO_CATEGORY_MESSAGE} Poi premi di nuovo il pulsante di Google.`);
         return;
       }
       if (viaModal) {
@@ -490,6 +503,19 @@ function RegistratiForm() {
   // ClientSignup, sopra).
   const formFields = (
     <>
+      <div>
+        <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
+          Che lavori fai?
+        </span>
+        <CategoryMultiPicker
+          value={categorySlugs}
+          onChange={(next) => {
+            setCategorySlugs(next);
+            if (next.length > 0 && error?.startsWith(NO_CATEGORY_MESSAGE)) setError(null);
+          }}
+        />
+      </div>
+
       <GoogleSignInButton onCredential={handleGoogleCredential} />
 
       {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (

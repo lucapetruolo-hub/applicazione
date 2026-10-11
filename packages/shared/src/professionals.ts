@@ -178,6 +178,12 @@ export type ProfessionalSearchResult = {
   businessName: string;
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
+  /**
+   * Tutte le categorie del professionista, da 1 a 3 (docs/CHANGELOG.md §214).
+   * In una ricerca per categoria `categorySlug`/`categoryLabel` sono quella
+   * cercata, qui la principale resta la prima.
+   */
+  categories: { slug: ProfessionalCategorySlug; label: string }[];
   city: string;
   address: string | null;
   verified: boolean;

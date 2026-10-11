@@ -558,6 +558,8 @@ export type CurrentUser = {
    * `role === "PROFESSIONAL"`.
    */
   isProfessional: boolean;
+  /** Categorie (da 1 a 3) scelte da un professionista in registrazione, per precompilare il primo profilo (docs/CHANGELOG.md §214). */
+  signupCategorySlugs?: string[];
   /** Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146); vuota per gli altri ruoli. */
   adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
   hasPassword: boolean;
@@ -838,10 +840,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       acceptedLegalTerms: boolean,
       declaredAdult: boolean,
       turnstileToken?: string,
+      categorySlugs?: string[],
     ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs }),
       }),
 
     emailStatus: (email: string) =>
@@ -867,10 +870,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       createIfMissing?: boolean,
       acceptedLegalTerms?: boolean,
       declaredAdult?: boolean,
+      categorySlugs?: string[],
     ) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */

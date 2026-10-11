@@ -53,7 +53,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role);
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs);
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -76,7 +76,7 @@ export class AuthController {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    });
+    }, body.categorySlugs);
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
@@ -160,6 +160,7 @@ export class AuthController {
     city: string | null;
     province: string | null;
     emailVerifiedAt: Date | null;
+    signupCategorySlugs: string[];
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
@@ -216,6 +217,9 @@ export class AuthController {
       // cliente è facoltativa, proposta da un riquadro in /account.
       emailVerified: user.emailVerifiedAt !== null,
       emailVerificationRequired: isEmailVerificationRequired(),
+      // Categorie scelte in registrazione (docs/CHANGELOG.md §214): solo per
+      // precompilare il primo profilo in /dashboard/profilo.
+      signupCategorySlugs: user.signupCategorySlugs,
     };
   }
 

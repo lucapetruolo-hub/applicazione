@@ -9,6 +9,20 @@ const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0
 
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
+/**
+ * Categorie di un professionista (docs/CHANGELOG.md §214, richiesta
+ * dell'utente): da 1 a 3, scelte in registrazione e modificabili dal
+ * profilo. La prima è la principale.
+ */
+export const MAX_PROFESSIONAL_CATEGORIES = 3;
+const tooManyCategoriesMessage = `Puoi scegliere al massimo ${MAX_PROFESSIONAL_CATEGORIES} categorie.`;
+export const NO_CATEGORY_MESSAGE = "Scegli almeno una categoria.";
+export const professionalCategorySlugsSchema = z
+  .array(professionalCategorySlugSchema)
+  .min(1, NO_CATEGORY_MESSAGE)
+  .max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage)
+  .refine((slugs) => new Set(slugs).size === slugs.length, "Ogni categoria va scelta una volta sola.");
+
 export const googleVerifySchema = z.object({
   idToken: z.string().min(10),
   /** Usato solo se l'account Google non esiste ancora (nuova registrazione): un login su un account esistente non cambia mai il ruolo. */
@@ -32,6 +46,10 @@ export const googleVerifySchema = z.object({
   // anche a /accedi, che non li invia mai.
   acceptedLegalTerms: z.boolean().optional(),
   declaredAdult: z.boolean().optional(),
+  // Categorie scelte da un professionista che si iscrive con Google
+  // (docs/CHANGELOG.md §214): obbligatorie solo quando la chiamata crea un
+  // nuovo account professionista, controllato in `AuthService.verifyGoogleToken`.
+  categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -116,6 +134,13 @@ export const registerSchema = emailPasswordSchema.extend({
   acceptedLegalTerms: z.boolean().refine((v) => v === true, "Devi accettare Privacy Policy e Termini di Servizio."),
   declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
   turnstileToken: turnstileTokenSchema,
+  // Da 1 a 3 categorie, obbligatorie solo per un professionista
+  // (docs/CHANGELOG.md §214): precompilano il suo profilo.
+  categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
+}).superRefine((data, ctx) => {
+  if (data.role === "PROFESSIONAL" && !data.categorySlugs?.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_CATEGORY_MESSAGE, path: ["categorySlugs"] });
+  }
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -626,7 +651,8 @@ export type ProfessionalServiceInput = z.infer<typeof professionalServiceSchema>
 
 export const professionalProfileSchema = z.object({
   userId: z.string().uuid(),
-  categorySlug: professionalCategorySlugSchema,
+  // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §214).
+  categorySlugs: professionalCategorySlugsSchema,
   subTags: z.array(z.string()).default([]),
   businessName: z.string().min(2).max(120),
   city: z.string().min(2),

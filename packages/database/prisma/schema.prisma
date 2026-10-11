@@ -118,6 +118,10 @@ model User {
   // l'impronta SHA-256, come per ProfileInvite.
   emailVerifiedAt        DateTime?
   emailTokenHash         String?     @unique
+  // Categorie (da 1 a 3) scelte da un professionista nella registrazione
+  // (docs/CHANGELOG.md §214): precompilano il profilo in /dashboard/profilo,
+  // dove poi vivono davvero (ProfessionalProfile.category/extraCategories).
+  signupCategorySlugs    String[]    @default([])
   emailTokenExpiresAt    DateTime?
   // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
   // mandato via email, valido 60 minuti e una volta sola.
@@ -148,10 +152,13 @@ model Category {
   subTags   String[]
   createdAt DateTime @default(now())
 
-  professionalProfiles ProfessionalProfile[]
-  guidedRequests       GuidedRequest[]
-  feeRules             PlatformFeeRule[]
-  generalRequestBlocks GeneralRequestBlock[]
+  professionalProfiles      ProfessionalProfile[] @relation("ProfessionalPrimaryCategory")
+  // Categorie aggiuntive scelte dal professionista (fino a 2 oltre la
+  // principale, docs/CHANGELOG.md §214).
+  extraProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalExtraCategories")
+  guidedRequests            GuidedRequest[]
+  feeRules                  PlatformFeeRule[]
+  generalRequestBlocks      GeneralRequestBlock[]
 
   @@map("categories")
 }
@@ -275,8 +282,14 @@ model ProfessionalProfile {
   demotedUntil         DateTime?
   requestsBlockedUntil DateTime?
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Categoria principale: la prima scelta, usata dove serve una sola
+  // categoria (avatar, statistiche di zona, commissioni). Le altre (fino a 2,
+  // in tutto massimo 3 — MAX_PROFESSIONAL_CATEGORIES in packages/shared)
+  // stanno in `extraCategories` e valgono per ricerca e smistamento come la
+  // principale (docs/CHANGELOG.md §214).
+  category        Category   @relation("ProfessionalPrimaryCategory", fields: [categoryId], references: [id])
+  extraCategories Category[] @relation("ProfessionalExtraCategories")
 
   subscription           Subscription?
   visibilityBoosts       VisibilityBoost[]

@@ -650,7 +650,8 @@ export class GuidedRequestsService {
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
-        categoryId,
+        // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §214).
+        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }],
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
@@ -702,7 +703,8 @@ export class GuidedRequestsService {
   async matchNewProfileToOpenRequests(profile: {
     id: string;
     userId: string;
-    categoryId: string;
+    /** Categorie per cui cercare richieste aperte: tutte alla creazione, solo le nuove quando le cambia. */
+    categoryIds: string[];
     latitude: number;
     longitude: number;
     engagementRadiusKm: number;
@@ -717,7 +719,7 @@ export class GuidedRequestsService {
     const openRequests = await this.prisma.guidedRequest.findMany({
       where: {
         status: { in: ["OPEN", "MATCHED"] },
-        categoryId: profile.categoryId,
+        categoryId: { in: profile.categoryIds },
         professionalProfileId: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },

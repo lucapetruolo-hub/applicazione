@@ -17660,3 +17660,35 @@ carico torna sotto le soglie.
 sopra o sotto il limite, prova dopo 30 giorni) e sul motivo salvato alla
 chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 `apps/web` senza errori.
+
+## 214. Fino a 3 categorie per professionista
+
+**Richiesta dell'utente:** il professionista sceglie fino a 3 categorie già
+in registrazione e può cambiarle dal suo profilo, sempre fino a 3.
+
+**Decisione:**
+- Stesse categorie del sito (`PROFESSIONAL_CATEGORIES`), nessuna nuova.
+  Limite `MAX_PROFESSIONAL_CATEGORIES = 3` in `packages/shared/src/schemas.ts`,
+  applicato nell'interfaccia (`CategoryMultiPicker`: raggiunto il massimo le
+  altre si spengono) e sul server (schemi Zod di registrazione, Google e
+  profilo: da 1 a 3, mai doppie).
+- Database: `ProfessionalProfile.categoryId` resta la categoria principale
+  (la prima scelta: avatar, statistiche di zona, commissioni); le altre in
+  `extraCategories` (tabella `_ProfessionalExtraCategories`). Le categorie
+  scelte in registrazione stanno in `User.signupCategorySlugs` e
+  precompilano il primo profilo in `/dashboard/profilo` (il profilo nasce
+  lì, con nome e città). Migrazione `20261011200000_professional_extra_categories`.
+- Registrazione professionista (`/registrati?ruolo=professionista`):
+  "Che lavori fai?" in cima, obbligatorio con email e password e anche con
+  Google (nuovo account senza categorie: rifiutato con "Scegli almeno una
+  categoria.", il sito chiede di sceglierle e ripetere l'accesso).
+- Le categorie aggiuntive valgono come la principale in ricerca (la card
+  mostra la categoria cercata) e nello smistamento delle richieste; chi
+  aggiunge una categoria riceve anche le richieste generali già aperte di
+  quella categoria in zona. Il profilo pubblico le mostra tutte; le
+  prestazioni suggerite uniscono quelle di tutte le categorie scelte.
+
+**Verifica:** test nuovi (`profile-categories.test.ts`, Google senza
+categorie in `google-name.test.ts`), migrazione applicata su un Postgres
+locale senza differenze dallo schema, query di creazione/modifica/ricerca
+provate sul database, anteprime della registrazione da computer e telefono.

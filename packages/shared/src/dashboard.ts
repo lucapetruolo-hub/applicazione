@@ -4,8 +4,11 @@ import type { JobPaymentSummary } from "./onlinePayments";
 export type MyProfessionalProfile = {
   id: string;
   businessName: string;
+  /** Categoria principale (la prima di `categorySlugs`). */
   categorySlug: string;
   categoryLabel: string;
+  /** Tutte le categorie scelte, da 1 a 3, la principale per prima (docs/CHANGELOG.md §214). */
+  categorySlugs: string[];
   city: string;
   address: string | null;
   /** Posizione reale (geocodificata dal comune scelto, o dall'indirizzo preciso): usata per centrare la mappa del raggio di ingaggio. */
