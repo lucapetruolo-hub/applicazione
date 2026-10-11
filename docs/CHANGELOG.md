@@ -17702,3 +17702,24 @@ provate sul database, anteprime della registrazione da computer e telefono.
   `CategoriesSeedService` all'avvio cancella le categorie tolte solo se
   nessun profilo, richiesta o regola commissioni le usa ancora; altrimenti
   le lascia e lo scrive nei log.
+
+**Migliorie approvate dall'utente ("effettua le 7 migliorie"):**
+- Profilo creato dall'operatore (`/admin/professionisti`): fino a 3
+  categorie con lo stesso `CategoryMultiPicker` (schema
+  `operatorProfileInviteSchema.categorySlugs`), l'elenco dei profili in
+  attesa le mostra tutte.
+- Richiesta di preventivo dal profilo di un professionista con più
+  categorie: il cliente sceglie tra le sue (resta quella del link se è una
+  delle sue, altrimenti la principale).
+- Schede dei risultati e dei professionisti salvati: tutte le categorie
+  ("Idraulico · Fabbro · Pulizie", prima quella cercata).
+- Categoria principale scelta dal professionista: con più categorie, la riga
+  "Principale:" sotto le categorie permette di cambiarla.
+- Statistiche "Il tuo andamento" in dashboard: confronto con chi, nella
+  stessa città, condivide almeno una delle sue categorie.
+- Menu "Servizi" ribilanciato su 5/4/4: "Casa e impianti", "Lavori e
+  manutenzione", "Casa e famiglia" (pulizie, traslochi, babysitter,
+  dogsitter).
+- Non fatta: le foto di Dogsitter e Babysitter. `categoryPhotos.ts` accetta
+  solo foto fornite dall'utente, mai stock scelti a caso: restano
+  sull'icona finché non arrivano le foto.

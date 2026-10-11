@@ -92,6 +92,7 @@ export default function ProfessionistiSalvatiPage() {
                   <ProfessionalCard
                     businessName={pro.businessName}
                     categoryLabel={pro.categoryLabel}
+                    otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
                     city={pro.city}
                     subTags={pro.subTags}
                     rating={pro.rating ?? undefined}

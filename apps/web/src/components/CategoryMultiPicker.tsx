@@ -6,8 +6,8 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 /**
  * Scelta delle categorie del professionista, da 1 a 3 (docs/CHANGELOG.md
  * §214): usata in registrazione e in /dashboard/profilo. La prima scelta è
- * la principale. Raggiunto il massimo, le altre non si possono toccare
- * finché non se ne toglie una.
+ * la principale, e con più di una si può cambiare quale. Raggiunto il
+ * massimo, le altre non si possono toccare finché non se ne toglie una.
  */
 export function CategoryMultiPicker({
   value,
@@ -60,8 +60,41 @@ export function CategoryMultiPicker({
       <Text fontSize="$2" color={brand.grafite70}>
         {isFull
           ? `Hai scelto ${MAX_PROFESSIONAL_CATEGORIES} categorie, il massimo: togline una per sceglierne un'altra.`
-          : `Scegline fino a ${MAX_PROFESSIONAL_CATEGORIES} (${value.length} su ${MAX_PROFESSIONAL_CATEGORIES}). La prima è la principale.`}
+          : `Scegline fino a ${MAX_PROFESSIONAL_CATEGORIES} (${value.length} su ${MAX_PROFESSIONAL_CATEGORIES}).`}
       </Text>
+      {value.length > 1 ? (
+        <XStack alignItems="center" gap="$2" flexWrap="wrap">
+          <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+            Principale:
+          </Text>
+          {value.map((slug, index) => {
+            const category = PROFESSIONAL_CATEGORIES.find((item) => item.slug === slug);
+            if (!category) return null;
+            const isPrimary = index === 0;
+            return (
+              <XStack
+                key={slug}
+                alignItems="center"
+                gap="$1"
+                paddingHorizontal="$2"
+                paddingVertical={4}
+                borderRadius="$2"
+                borderWidth={1}
+                borderColor={isPrimary ? brand.cianografia : brand.filetto}
+                backgroundColor={isPrimary ? brand.cianografia : brand.calce}
+                cursor={isPrimary ? "default" : "pointer"}
+                onPress={isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)])}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isPrimary }}
+              >
+                <Text fontSize="$2" fontWeight="600" color={isPrimary ? "white" : brand.grafite}>
+                  {category.label}
+                </Text>
+              </XStack>
+            );
+          })}
+        </XStack>
+      ) : null}
     </YStack>
   );
 }

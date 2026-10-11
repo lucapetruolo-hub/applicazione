@@ -17,6 +17,7 @@ import { ProfessionalsService } from "../professionals/professionals.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { EmailService } from "../email/email.service";
 import { profileInviteEmail } from "../email/templates/account-emails";
+import { profileCategories } from "../common/profile-categories.util";
 import type { AuthResult } from "../auth/auth.service";
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -89,7 +90,7 @@ export class ProfileInvitesService {
       await this.professionalsService.upsertMyProfile(
         user.id,
         {
-          categorySlugs: [input.categorySlug],
+          categorySlugs: input.categorySlugs,
           businessName: input.businessName,
           city: input.city,
           address: input.address || undefined,
@@ -112,7 +113,7 @@ export class ProfileInvitesService {
       entityType: "User",
       entityId: user.id,
       fieldName: "profileInvite",
-      newValue: { businessName: input.businessName, city: input.city, categorySlug: input.categorySlug },
+      newValue: { businessName: input.businessName, city: input.city, categorySlugs: input.categorySlugs },
       changedByUserId: operatorUserId,
       reason: "Profilo creato da un operatore al telefono.",
     });
@@ -190,7 +191,8 @@ export class ProfileInvitesService {
       where: { invitePendingAt: { not: null }, deletedAt: null },
       orderBy: { invitePendingAt: "desc" },
       include: {
-        category: { select: { label: true } },
+        category: { select: { slug: true, label: true } },
+        extraCategories: { select: { slug: true, label: true } },
         user: { select: { id: true, email: true, name: true, surname: true, profileInvites: { orderBy: { createdAt: "desc" }, take: 1 } } },
       },
     });
@@ -200,7 +202,9 @@ export class ProfileInvitesService {
       name: [profile.user.name, profile.user.surname].filter(Boolean).join(" ") || null,
       businessName: profile.businessName,
       city: profile.city,
-      categoryLabel: profile.category.label,
+      categoryLabel: profileCategories(profile)
+        .map((category) => category.label)
+        .join(", "),
       createdAt: profile.invitePendingAt!.toISOString(),
       lastLinkExpiresAt: profile.user.profileInvites[0]?.expiresAt.toISOString() ?? null,
     }));

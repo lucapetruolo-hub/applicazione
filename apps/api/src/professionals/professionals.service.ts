@@ -799,14 +799,23 @@ export class ProfessionalsService {
     const professionalProfileId = await this.requireMyProfileId(userId);
     const me = await this.prisma.professionalProfile.findUniqueOrThrow({
       where: { id: professionalProfileId },
-      select: { categoryId: true, city: true, category: { select: { label: true } }, metrics: { select: { avgResponseTimeMinutes: true } } },
+      select: {
+        categoryId: true,
+        city: true,
+        category: { select: { id: true, slug: true, label: true } },
+        extraCategories: { select: { id: true, slug: true, label: true } },
+        metrics: { select: { avgResponseTimeMinutes: true } },
+      },
     });
+    // Confronto con chi in città condivide almeno una delle sue categorie
+    // (principale o aggiuntiva, docs/CHANGELOG.md §214).
+    const myCategoryIds = [me.categoryId, ...me.extraCategories.map((category) => category.id)];
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     since.setUTCHours(0, 0, 0, 0);
     const peers = await this.prisma.professionalProfile.findMany({
       where: {
         id: { not: professionalProfileId },
-        categoryId: me.categoryId,
+        OR: [{ categoryId: { in: myCategoryIds } }, { extraCategories: { some: { id: { in: myCategoryIds } } } }],
         city: { equals: me.city, mode: "insensitive" },
         deletedAt: null,
         suspendedAt: null,
@@ -828,7 +837,9 @@ export class ProfessionalsService {
     const peerResponseTimes = peers.map((p) => p.metrics?.avgResponseTimeMinutes).filter((v): v is number => typeof v === "number");
     const round = (value: number) => Math.round(value);
     return {
-      areaLabel: `${me.category.label} a ${me.city}`,
+      areaLabel: `${profileCategories(me)
+        .map((category) => category.label)
+        .join(", ")} a ${me.city}`,
       areaProfessionals: peers.length,
       avgResponseTimeMinutes: me.metrics?.avgResponseTimeMinutes != null ? round(me.metrics.avgResponseTimeMinutes) : null,
       areaAvgResponseTimeMinutes:

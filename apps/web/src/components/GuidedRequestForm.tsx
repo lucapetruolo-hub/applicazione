@@ -280,7 +280,11 @@ export function GuidedRequestForm({
       .getProfessional(professionalProfileId)
       .then((detail) => {
         setProfessional(detail);
-        setCategorySlug(detail.categorySlug);
+        // Con più categorie (docs/CHANGELOG.md §214) resta quella del link
+        // se è una delle sue, altrimenti la principale.
+        setCategorySlug((current) =>
+          current && detail.categories?.some((category) => category.slug === current) ? current : detail.categorySlug,
+        );
       })
       .catch(() => undefined);
   }, [professionalProfileId]);
@@ -720,23 +724,40 @@ export function GuidedRequestForm({
           <>
         {professionalProfileId && selectedCategory ? (
           // Categoria già determinata dal professionista scelto (si arriva
-          // qui dal suo profilo, con categoria e id già nell'URL): non ha
-          // senso farla ri-scegliere, è la sua specialità.
+          // qui dal suo profilo, con categoria e id già nell'URL): si sceglie
+          // solo tra le sue, quando ne ha più di una (docs/CHANGELOG.md §214).
           <YStack gap="$2">
             <FieldLabel>Categoria</FieldLabel>
-            <XStack
-              alignItems="center"
-              gap="$2"
-              alignSelf="flex-start"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              backgroundColor={brand.cianografia}
-              borderRadius="$2"
-            >
-              <Icon name={selectedCategory.icon} size={16} color="white" />
-              <Text color="white" fontWeight="600">
-                {selectedCategory.label}
-              </Text>
+            <XStack gap="$2" flexWrap="wrap">
+              {(professional?.categories?.length ? professional.categories : [{ slug: selectedCategory.slug, label: selectedCategory.label }]).map(
+                (item) => {
+                  const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === item.slug);
+                  if (!category) return null;
+                  const active = category.slug === categorySlug;
+                  const canChoose = (professional?.categories?.length ?? 0) > 1;
+                  return (
+                    <XStack
+                      key={category.slug}
+                      alignItems="center"
+                      gap="$2"
+                      paddingHorizontal="$3"
+                      paddingVertical="$2"
+                      borderRadius="$2"
+                      borderWidth={1}
+                      borderColor={active ? brand.cianografia : brand.filetto}
+                      backgroundColor={active ? brand.cianografia : brand.calce}
+                      cursor={canChoose ? "pointer" : "default"}
+                      onPress={canChoose ? () => setCategorySlug(category.slug) : undefined}
+                      accessibilityRole={canChoose ? "button" : undefined}
+                    >
+                      <Icon name={category.icon} size={16} color={active ? "white" : brand.grafite} />
+                      <Text color={active ? "white" : brand.grafite} fontWeight="600">
+                        {category.label}
+                      </Text>
+                    </XStack>
+                  );
+                },
+              )}
             </XStack>
           </YStack>
         ) : (
