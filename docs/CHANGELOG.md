@@ -17392,3 +17392,43 @@ dell'ordinamento, così una posizione a pagamento si riconosce come tale.
 **Distanza sulla scheda (richiesta di Luca nel thread):** nella ricerca per
 luogo la scheda mostra "Città · a N km" accanto alla città (campo
 `distanceKm`, virgola decimale).
+
+## 208. Profilo pubblico: lavori svolti sotto la descrizione, lingue nell'elenco, cuoricino per tutti
+
+**Richiesta (Luca, 11/10/2026):** nel profilo pubblico del professionista i
+lavori svolti devono stare nella prima parte, subito sotto la descrizione;
+le lingue parlate nello stesso elenco di anni di esperienza, patentini e
+assicurazione; il cuoricino "salva" non si vedeva più.
+
+**Causa del cuoricino:** nessuna regressione. Dal primo giorno compariva
+solo a un cliente già entrato (`user?.role === "CLIENT"`): a chi guardava
+il profilo senza essere entrato, o da professionista/admin, non c'era.
+
+**Decisione:**
+- "Lavori svolti" spostato dentro la scheda identità, subito dopo la
+  descrizione (titolo un po' più piccolo, è una parte della scheda).
+- "Parla …" spostato nell'elenco dei dati dichiarati, tra esperienza e
+  patentini, sotto la stessa nota "Dati dichiarati dal professionista".
+- Cuoricino visibile anche a chi non è entrato: al tocco porta ad
+  `/accedi?redirect=/professionista/<id>?salva=1` e, tornato sul profilo da
+  cliente, il profilo si salva da solo. Resta nascosto a professionisti e
+  admin, che non salvano profili.
+
+**Migliorie approvate da Luca nello stesso thread** (la terza proposta,
+togliere il badge RC accanto al nome, scartata: serve in ricerca):
+- Cuoricino anche nelle schede dei risultati di ricerca, accanto al nome
+  (slot `action` di `ProfessionalCard`, poi spostato sulla foto, logica in
+  `apps/web/src/lib/useSavedProfessionals.ts`: una sola richiesta per i
+  salvati). Il clic non apre il profilo. Chi non è entrato va all'accesso e
+  torna sulla stessa ricerca con `?salva=<id>`, che salva e poi sparisce
+  dall'indirizzo.
+- Su telefono (sotto 660px) le foto dei lavori scorrono in una riga sola.
+- Poi, sempre su richiesta di Luca, il cuoricino dei risultati è passato
+  da accanto al nome (dove sui telefoni mandava a capo i nomi) a piccolo
+  (24px) nell'angolo in basso a destra della foto; `IconActionButton` ha
+  ora una prop `size`.
+
+**Verifica:** typecheck e lint di `apps/web` e `packages/ui`; anteprime da
+build di produzione con API finta (computer e telefono); clic sul cuoricino
+da non entrato che porta all'accesso; da cliente il clic salva senza aprire
+il profilo e `?salva=` al ritorno salva da solo.
