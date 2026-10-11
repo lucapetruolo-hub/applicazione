@@ -40,7 +40,7 @@ function formatBirthDate(birthDate: string): string {
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * solo l'identità (nome/cognome, data di nascita, foto profilo) — richiesta
+ * solo l'identità (nome, cognome solo a preventivo accettato §215, data di nascita, foto profilo) — richiesta
  * esplicita dell'utente, che ha ribaltato di nuovo la decisione di privacy
  * presa in un giro precedente (CLAUDE.md §12, mostrava telefono/email già
  * da qui): "tutte le info relative al cliente gli verranno visualizzate

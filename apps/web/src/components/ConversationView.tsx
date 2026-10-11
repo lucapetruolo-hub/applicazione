@@ -98,7 +98,7 @@ export function ConversationView({
       centrati, non hanno un "lato". */
   viewerRole: "CLIENT" | "PROFESSIONAL";
   /**
-   * Nome reale dell'altra parte del thread (nome+cognome del cliente se
+   * Nome reale dell'altra parte del thread (nome del cliente, più il cognome a preventivo accettato, se
    * `viewerRole` è "PROFESSIONAL", nome attività del professionista se è
    * "CLIENT") — richiesta esplicita dell'utente: "al posto di cliente e
    * professionista deve esserci scritto il nome esatto". Ogni chiamante lo

@@ -4,6 +4,7 @@ import type { ChatThreadSummary, ConversationEvent, RealtimeEvent } from "@profe
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
+import { clientNameForProfessional } from "../common/client-name.util";
 
 export type TimelineActor = "CLIENT" | "PROFESSIONAL" | "SYSTEM";
 
@@ -91,7 +92,15 @@ export class TimelineService {
       where: { OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] },
       orderBy: { createdAt: "desc" },
       include: {
-        guidedRequest: { include: { client: true, category: true } },
+        guidedRequest: {
+          include: {
+            client: true,
+            category: true,
+            // Preventivi accettati della richiesta: il cognome del cliente
+            // si mostra solo al professionista con la Booking (§215).
+            quotes: { where: { booking: { isNot: null } }, select: { professionalProfileId: true } },
+          },
+        },
         professionalProfile: true,
       },
     });
@@ -111,7 +120,10 @@ export class TimelineService {
           ? professionalProfile.businessName
           : client.deletedAt
             ? "Account eliminato"
-            : ([client.name, client.surname].filter(Boolean).join(" ") || "Cliente");
+            : (clientNameForProfessional(
+                client,
+                event.guidedRequest.quotes.some((quote) => quote.professionalProfileId === event.professionalProfileId),
+              ) ?? "Cliente");
       const otherPartyImageUrl = viewerRole === "CLIENT" ? professionalProfile.imageUrl : client.deletedAt ? null : client.imageUrl;
 
       threads.push({

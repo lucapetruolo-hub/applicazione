@@ -44,6 +44,7 @@ import { toMyState } from "../guided-requests/guided-request-user-state.service"
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
+import { clientNameForProfessional } from "../common/client-name.util";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -979,11 +980,10 @@ export class ProfessionalsService {
           categoryLabel: lead.guidedRequest.category.label,
           description: lead.guidedRequest.description,
           city: lead.guidedRequest.city,
-          // Nome e cognome del cliente (richiesta esplicita dell'utente,
-          // "nelle richieste ricevute deve esserci anche il nome"): stesso
-          // pattern già in uso in getMyBookings, join(" ") invece di solo
-          // client.name per includere anche il cognome.
-          clientName: [lead.guidedRequest.client.name, lead.guidedRequest.client.surname].filter(Boolean).join(" ") || null,
+          // Solo il nome finché il preventivo non è accettato, il cognome
+          // si sblocca con la Booking come telefono e indirizzo
+          // (docs/CHANGELOG.md §215).
+          clientName: clientNameForProfessional(lead.guidedRequest.client, quote?.booking != null),
           // Data di nascita del cliente — richiesta esplicita dell'utente:
           // la scheda aperta cliccando il nome (ClientProfileModal) deve
           // poter mostrare "nome cognome, data di nascita e immagine del

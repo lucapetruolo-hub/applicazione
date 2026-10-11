@@ -17686,3 +17686,14 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 - App per telefono: non ha ancora né la richiesta di preventivo né l'account (solo home e ricerca), quindi non c'era un campo da portare. Prefissi e normalizzazione stanno già in `packages/shared`, pronti quando si costruiranno quelle schermate.
 
 **Verifica:** test di `apps/api` (276, nuovi casi per il controllo dell'indirizzo e per la sistemazione dei numeri), typecheck e lint di `apps/web`, flusso da non loggato provato in locale (richiesta compilata, "Invia richiesta", "Continua con Google", consenso, pulsante Google pronto); prove delle funzioni dei prefissi con numeri italiani, fissi, britannici (0044), statunitensi, giamaicani (+1876) e svizzeri; pagina `/preventivo` aperta in locale (telefono 390px) con città Bari, provincia compilata da sola e prefisso +41.
+
+## 215. Richieste ricevute: il cognome del cliente si vede solo a preventivo accettato
+
+**Richiesta dell'utente (11/10/2026):** nella richiesta di preventivo ricevuta il professionista deve leggere solo il nome del cliente; il cognome si sblocca come telefono e indirizzo, solo a preventivo accettato.
+
+**Decisioni:**
+- Regola applicata lato server, così il cognome non arriva al browser prima: nuova funzione `clientNameForProfessional` (`apps/api/src/common/client-name.util.ts`), che restituisce solo il nome finché non esiste la `Booking` nata dal preventivo di quel professionista, poi nome e cognome. Senza nome resta "Cliente", mai il solo cognome.
+- Punti coperti: `ProfessionalsService.getMyLeads` (elenco e scheda delle richieste, scheda cliente, chat aperta dalla scheda, Home della dashboard) e `TimelineService.listThreadsForUser` (elenco dei messaggi, che prima mostrava nome e cognome a tutti). `getMyBookings` (agenda, lavori accettati) continua a mostrare nome e cognome.
+- Email e notifiche al professionista non contenevano il nome del cliente: nulla da cambiare. Il nome e cognome di chi riceve il professionista (`recipientName`/`recipientSurname`) era già esposto solo dalla `Booking`. L'area admin vede sempre nome e cognome.
+
+**Verifica:** test di `apps/api` (279, nuovi casi per la funzione e per `getMyLeads` prima e dopo l'accettazione), typecheck di `apps/api`.
