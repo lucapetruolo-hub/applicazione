@@ -20,7 +20,7 @@ export function UrgenteContent() {
           isUrgent
           basePath="/urgente"
           title="Richiesta urgente"
-          subtitle="Per emergenze che non possono aspettare: la richiesta viene inviata subito ai professionisti disponibili ora in zona."
+          subtitle="Per emergenze che non possono aspettare: la richiesta arriva subito, segnata come urgente, a tutti i professionisti della zona."
           submitLabel="Invia richiesta urgente"
           submittingLabel="Invio in corso..."
           descriptionPlaceholder="Es. Allagamento in cucina, serve un intervento immediato."

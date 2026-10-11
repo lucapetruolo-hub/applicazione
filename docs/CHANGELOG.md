@@ -17454,3 +17454,49 @@ o della zona del professionista scelto se il cliente non l'ha indicata.
 **Verifica:** nuovi test in `professionals.service.test.ts` (avviso
 mostrato; nascosto dopo un messaggio in chat o dopo l'inoltro); 260 test di
 `apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.
+
+## 209. Richieste generali a tutti i professionisti nel raggio, senza scadenza
+
+**Richiesta (Luca nel thread, 11/10/2026):** le richieste mandate senza
+scegliere un professionista vanno a tutti i professionisti della categoria
+nel cui raggio cade la città del cliente; la città è obbligatoria sia a
+domicilio sia online; nessun tempo limite per rispondere finché la
+richiesta è aperta; la richiesta chiude dopo 30 giorni (urgente) o 60
+(normale) invece di 7 e 14. Se il traffico cresce, le richieste generali
+andranno tolte del tutto (proposta nel thread, non implementata qui).
+
+**Decisione:** sostituisce le regole di §154/§160 (3 o 5 destinatari scelti
+per punteggio, coda di riserva, 35/60 minuti o 4 ore per rispondere).
+- *Destinatari:* `GuidedRequestsService.create` crea un `Lead` per ogni
+  professionista restituito da `matchProfilesForFanOut` (categoria, raggio
+  normale o urgente, stessi filtri di sempre: eliminati, sospesi, in pausa,
+  invito in attesa, bloccati). Per un intervento online solo chi offre
+  consulenza da remoto (`remoteOnly`). Tolti punteggio di qualità, posto
+  per un nuovo e coda di riserva (`selectLeadCandidates`,
+  `selectLeadRecipients`, `leadQualityScore`, `LEADS_PER_REQUEST`): il
+  declassamento dopo le segnalazioni accolte resta solo nell'ordine della
+  ricerca. Anche l'inoltro di una richiesta diretta (§208) va a tutti i
+  compatibili della zona invece che a 3 o 5.
+- *Nessuna scadenza:* ogni nuovo `Lead` ha `expiresAt` nullo (tolti
+  `computeLeadExpiry` e i tempi 35/60 minuti e 4 ore). I Lead già creati con
+  una scadenza seguono il vecchio giro (`runExpiryCheck`, `expandLeadQueue`)
+  finché non si esauriscono.
+- *Chiusura:* `URGENT_REQUEST_EXPIRY_DAYS` 30, `STANDARD_REQUEST_EXPIRY_DAYS`
+  60, solo per le nuove richieste.
+- *Iscritti dopo:* `matchNewProfileToOpenRequests` dà a un nuovo
+  professionista tutte le richieste generali aperte compatibili che non ha
+  ancora ricevuto (prima solo quelle rimaste senza nessuno in attesa);
+  online solo se offre consulenza da remoto.
+- *Città obbligatoria:* `guidedRequestSchema` la richiede in ogni richiesta
+  generale, anche online; resta facoltativa solo per una consulenza online
+  a un professionista scelto. Stesso controllo nella modifica della
+  richiesta (API e `/le-mie-richieste`) e nel modulo.
+- *Testi:* "È urgente?", riepilogo ("a tutti i professionisti di X che
+  lavorano nella tua zona", "possono risponderti finché la richiesta è
+  aperta: al massimo 30/60 giorni"), casella di inoltro senza "fino a 5", e
+  sottotitoli di `/preventivo` e `/urgente` (tolto "disponibili ora").
+
+**Verifica:** nuovo `guided-request-schema.test.ts` (online generale senza
+città rifiutata, con città accettata, diretta senza città accettata); test
+di `lead-routing.test.ts` ridotti alle funzioni rimaste; 252 test di
+`apps/api` verdi, tipi e lint di `apps/api` e `apps/web` senza errori.

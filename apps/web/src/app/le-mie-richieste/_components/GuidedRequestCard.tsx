@@ -195,7 +195,8 @@ export function GuidedRequestCard({
       setError("Descrivi il lavoro con almeno 10 caratteri.");
       return;
     }
-    if (request.serviceMode !== "ONLINE" && !city.trim()) {
+    // Città obbligatoria a domicilio e in ogni richiesta generale (§209).
+    if ((request.serviceMode !== "ONLINE" || !request.professionalProfileId) && !city.trim()) {
       setError("Indica la città.");
       return;
     }

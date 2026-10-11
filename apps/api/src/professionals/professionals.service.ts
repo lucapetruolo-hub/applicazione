@@ -656,6 +656,7 @@ export class ProfessionalsService {
         longitude: profile.longitude,
         engagementRadiusKm: profile.engagementRadiusKm,
         urgentEngagementRadiusKm: profile.urgentEngagementRadiusKm,
+        remoteAvailable: profile.remoteAvailable,
       });
     }
 

@@ -287,6 +287,8 @@ export function GuidedRequestForm({
   // (obbligatorie, e devono essere del problema attuale, non riciclate).
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
+  // Facoltativa solo per una consulenza online a un professionista scelto (§209).
+  const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
   // (richiesta esplicita dell'utente: "voglio che li inserisca subito
@@ -466,7 +468,10 @@ export function GuidedRequestForm({
       if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
       return null;
     }
-    // Città, indirizzo e destinatario obbligatori solo a domicilio: per una
+    // Città obbligatoria anche online se la richiesta è generale: decide a
+    // chi arriva (docs/CHANGELOG.md §209).
+    if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return "Indica la città: la richiesta arriva ai professionisti della zona.";
+    // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
       if (!city.trim()) return "Indica la città in cui serve l'intervento.";
@@ -843,7 +848,7 @@ export function GuidedRequestForm({
               <small>
                 {professionalProfileId
                   ? `Sì: arriva a ${shownProfessionalName ?? "il professionista"} segnata come urgente. Se non risponde entro 60 minuti, nel riepilogo puoi scegliere di inoltrarla anche ad altri professionisti della zona.`
-                  : "Sì: la mandiamo subito a più professionisti, che hanno 35 minuti per risponderti (60 di notte)."}
+                  : "Sì: la mandiamo subito a tutti i professionisti della zona, segnata come urgente."}
               </small>
             ) : null}
           </span>
@@ -988,7 +993,7 @@ export function GuidedRequestForm({
         {step === 2 ? (
           <>
         <YStack gap="$2">
-          <FieldLabel>{serviceMode === "ONLINE" ? "Città (facoltativa)" : "Città"}</FieldLabel>
+          <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
           {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
           <div className="guided-city">
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
@@ -1005,7 +1010,7 @@ export function GuidedRequestForm({
             />
           </YStack>
           </div>
-          {serviceMode === "ONLINE" ? (
+          {cityOptional ? (
             // Richiesta esplicita dell'utente: "la città poiché si è
             // selezionato online non dev'essere obbligatoria... deve
             // esserci scritto che non è obbligatorio inserire la città, ma
@@ -1221,7 +1226,6 @@ function RequestSummary({
   onToggleForward: () => void;
   onEdit: (step: 1 | 2) => void;
 }) {
-  const responseTime = isUrgent ? "35 minuti (60 minuti tra le 22 e le 7)" : "4 ore (contate dalle 8 alle 21)";
   // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
   // ad altri parte dopo questo tempo (docs/CHANGELOG.md §208).
   const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
@@ -1241,10 +1245,10 @@ function RequestSummary({
         ) : (
           <ul>
             <li>
-              La mandiamo subito a fino a {isUrgent ? "5" : "3"} professionisti, i più adatti della tua zona, scelti per rapidità di risposta,
-              recensioni, affidabilità e vicinanza.
+              La mandiamo subito a tutti i professionisti di {categoryLabel} che lavorano nella tua zona
+              {isUrgent ? ", segnata come urgente" : ""}.
             </li>
-            <li>Ognuno ha {responseTime} per risponderti. Se qualcuno non risponde, la richiesta passa al successivo.</li>
+            <li>Possono risponderti finché la richiesta è aperta: al massimo {isUrgent ? "30" : "60"} giorni.</li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
         )}
@@ -1254,8 +1258,8 @@ function RequestSummary({
         <label className="guided-forward">
           <input type="checkbox" checked={forwardIfNoReply} onChange={onToggleForward} />
           <span>
-            Se {professionalName} non risponde entro {forwardTime} o non è disponibile, inoltrala anche ad altri professionisti simili {forwardZone}{" "}
-            (fino a {isUrgent ? "5" : "3"}). Potrà comunque risponderti anche dopo.
+            Se {professionalName} non risponde entro {forwardTime} o non è disponibile, inoltrala anche agli altri professionisti simili {forwardZone}.
+            Potrà comunque risponderti anche dopo.
           </span>
         </label>
       ) : null}
