@@ -17414,6 +17414,17 @@ il profilo senza essere entrato, o da professionista/admin, non c'era.
   cliente, il profilo si salva da solo. Resta nascosto a professionisti e
   admin, che non salvano profili.
 
-**Verifica:** typecheck e lint di `apps/web`; anteprime da build di
-produzione con API finta (computer e telefono), clic sul cuoricino da non
-entrato che porta all'accesso con il ritorno al profilo.
+**Migliorie approvate da Luca nello stesso thread** (la terza proposta,
+togliere il badge RC accanto al nome, scartata: serve in ricerca):
+- Cuoricino anche nelle schede dei risultati di ricerca, accanto al nome
+  (slot `action` di `ProfessionalCard`, logica in
+  `apps/web/src/lib/useSavedProfessionals.ts`: una sola richiesta per i
+  salvati). Il clic non apre il profilo. Chi non è entrato va all'accesso e
+  torna sulla stessa ricerca con `?salva=<id>`, che salva e poi sparisce
+  dall'indirizzo.
+- Su telefono (sotto 660px) le foto dei lavori scorrono in una riga sola.
+
+**Verifica:** typecheck e lint di `apps/web` e `packages/ui`; anteprime da
+build di produzione con API finta (computer e telefono); clic sul cuoricino
+da non entrato che porta all'accesso; da cliente il clic salva senza aprire
+il profilo e `?salva=` al ritorno salva da solo.

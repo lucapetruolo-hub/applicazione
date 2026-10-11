@@ -431,7 +431,9 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 Lavori svolti
               </Text>
             </XStack>
-            <XStack gap="$2" flexWrap="wrap">
+            {/* Su telefono le foto scorrono in una riga sola invece di andare
+                a capo (richiesta esplicita dell'utente, §208). */}
+            <div className="portfolio-row">
               {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
                 <YStack
                   key={url}
@@ -449,7 +451,26 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   <MediaPreview url={url} />
                 </YStack>
               ))}
-            </XStack>
+            </div>
+            <style jsx>{`
+              .portfolio-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+              }
+              @media (max-width: 660px) {
+                .portfolio-row {
+                  flex-wrap: nowrap;
+                  overflow-x: auto;
+                  scroll-snap-type: x mandatory;
+                  padding-bottom: 4px;
+                }
+                .portfolio-row > :global(*) {
+                  flex-shrink: 0;
+                  scroll-snap-align: start;
+                }
+              }
+            `}</style>
           </YStack>
         ) : null}
 

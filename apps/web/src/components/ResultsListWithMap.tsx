@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
 
@@ -43,6 +45,7 @@ export function ResultsListWithMap({
   initialUrgentOnly?: boolean;
 }) {
   const router = useRouter();
+  const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();
   const fallbackCenter = useMemo<[number, number] | undefined>(() => {
     const comune = city ? findComuneByName(city) : undefined;
     return comune ? [comune.lat, comune.lon] : undefined;
@@ -678,6 +681,28 @@ export function ResultsListWithMap({
                 )
               }
               icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />}
+              action={
+                canSave ? (
+                  // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
+                  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <IconActionButton
+                      label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
+                      active={savedIds.has(pro.id)}
+                      disabled={pendingId === pro.id}
+                      onPress={() => void toggleSave(pro.id)}
+                    >
+                      <Icon
+                        name="heart"
+                        size={17}
+                        strokeWidth={1.5}
+                        color={savedIds.has(pro.id) ? "white" : brand.grafite}
+                        fill={savedIds.has(pro.id) ? "white" : "none"}
+                      />
+                    </IconActionButton>
+                  </span>
+                ) : null
+              }
             />
           ))}
         </YStack>
