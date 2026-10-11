@@ -17660,3 +17660,15 @@ carico torna sotto le soglie.
 sopra o sotto il limite, prova dopo 30 giorni) e sul motivo salvato alla
 chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 `apps/web` senza errori.
+
+## 214. Richiesta preventivo, scheda "Dove": indirizzo solo della città scelta e prefissi di tutti i paesi
+
+**Richiesta dell'utente (11/10/2026):** nella scheda "Dove", una volta scelta la città, l'indirizzo deve proporre solo vie di quella città e obbligare a sceglierne una dall'elenco, così nessuno scrive un indirizzo a caso; il numero di telefono deve avere i prefissi di tutti i paesi, l'italiano preimpostato e in cima i più usati, come fanno gli altri siti.
+
+**Decisioni:**
+- `AddressAutocompleteInput` ha la nuova opzione `restrictToCity`: la ricerca aggiunge il nome del comune al testo, l'elenco tiene solo i suggerimenti di quel comune e una scelta di un altro comune (`administrative_area_level_3`, poi `locality`) viene rifiutata con un messaggio. Il campo resta spento finché la città non è un comune dell'elenco ISTAT.
+- La scelta dall'elenco è obbligatoria (`addressVerified` in `GuidedRequestForm`): scrivere a mano azzera la scelta. L'indirizzo arrivato da "Ripeti la richiesta" o dall'account vale come già scelto. Cambiando città si svuotano via, civico, CAP e provincia (la provincia si ricompila dal comune). Senza consenso ai servizi Google compare "Attiva i suggerimenti"; senza chiave Google o se Google non risponde si accetta il testo libero, per non bloccare la richiesta.
+- La città deve essere un comune dell'elenco (prima bastava un testo qualsiasi).
+- Nuovo `PhoneNumberInput` (`apps/web/src/components/PhoneNumberInput.tsx`) con i dati in `packages/shared/src/phoneCountries.ts`: 239 paesi, nomi in italiano da `Intl.DisplayNames`, Italia preimpostata, gruppo "Più usati" in cima (Italia, San Marino, Vaticano, Svizzera, Francia, Germania, Spagna, Regno Unito, Romania, Albania, Marocco, Ucraina, Cina, Stati Uniti). Il prefisso è un `<select>` nativo trasparente sopra bandiera e prefisso: sul telefono apre il selettore del sistema. Il numero si salva come "+39 3331234567"; i numeri già salvati senza prefisso si leggono come italiani, e il confronto con l'account non considera cambiato lo stesso numero con o senza "+39". Controllo di lunghezza: 6-11 cifre per l'Italia, 6-15 per gli altri.
+
+**Verifica:** typecheck e lint di `apps/web`, prove delle funzioni dei prefissi con numeri italiani, fissi, britannici (0044), statunitensi, giamaicani (+1876) e svizzeri; pagina `/preventivo` aperta in locale (telefono 390px) con città Bari, provincia compilata da sola e prefisso +41.
