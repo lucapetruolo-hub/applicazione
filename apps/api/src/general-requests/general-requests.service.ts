@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
-  GENERAL_REQUESTS_KEEP_OPEN_DAYS,
+  DEFAULT_GENERAL_REQUEST_THRESHOLDS,
   GENERAL_REQUESTS_WINDOW_DAYS,
   generalRequestCityKey,
   generalRequestCloseReason,
@@ -10,12 +10,15 @@ import {
   weeklyPerProfessional,
   type GeneralRequestAvailability,
   type GeneralRequestLoad,
+  type GeneralRequestThresholds,
   type GeneralRequestsAdminOverview,
   type GeneralRequestZoneRow,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { EmailService } from "../email/email.service";
+import { adminGeneralRequestsClosedEmail } from "../email/templates/job-emails";
 
 const DAY_MS = 86_400_000;
 const MEASURE_AFTER_MS = 2 * DAY_MS;
@@ -40,7 +43,39 @@ export class GeneralRequestsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
+    private readonly emailService: EmailService,
   ) {}
+
+  /** Soglie della chiusura automatica (docs/CHANGELOG.md §212): i default finché nessuno le cambia. */
+  async thresholds(): Promise<GeneralRequestThresholds> {
+    const row = await this.prisma.generalRequestSettings.findFirst();
+    if (!row) return { ...DEFAULT_GENERAL_REQUEST_THRESHOLDS };
+    return {
+      autoCloseEnabled: row.autoCloseEnabled,
+      maxWeeklyPerPro: row.maxWeeklyPerPro,
+      minResponsePercent: row.minResponsePercent,
+      minMeasuredLeads: row.minMeasuredLeads,
+      keepOpenDays: row.keepOpenDays,
+    };
+  }
+
+  async updateThresholds(adminUserId: string, input: GeneralRequestThresholds): Promise<GeneralRequestThresholds> {
+    const before = await this.thresholds();
+    const existing = await this.prisma.generalRequestSettings.findFirst({ select: { id: true } });
+    const data = { ...input, updatedByUserId: adminUserId };
+    const saved = existing
+      ? await this.prisma.generalRequestSettings.update({ where: { id: existing.id }, data })
+      : await this.prisma.generalRequestSettings.create({ data });
+    await this.auditLogService.record({
+      entityType: "GeneralRequestSettings",
+      entityId: saved.id,
+      fieldName: "thresholds",
+      oldValue: before,
+      newValue: input,
+      changedByUserId: adminUserId,
+    });
+    return this.thresholds();
+  }
 
   /** Stato per una categoria in una città (o solo l'interruttore generale, se mancano). */
   async availability(categoryId: string | null, city: string | null): Promise<GeneralRequestAvailability> {
@@ -117,12 +152,14 @@ export class GeneralRequestsService {
   /** Ogni ora: chiude le categorie nelle città dove il carico supera le soglie. Non riapre mai da solo. */
   @Cron(CronExpression.EVERY_HOUR)
   async runAutoCheck(now: Date = new Date()): Promise<number> {
+    const thresholds = await this.thresholds();
+    if (!thresholds.autoCloseEnabled) return 0;
     const loads = await this.computeLoads(now);
     const blocks = await this.prisma.generalRequestBlock.findMany();
     const blockBy = new Map(blocks.map((b) => [zoneKey(b.categoryId, b.city), b]));
-    let closed = 0;
+    const closedZones: { categoryId: string; city: string; reason: string }[] = [];
     for (const [key, { categoryId, city, load }] of loads) {
-      const reason = generalRequestCloseReason(load);
+      const reason = generalRequestCloseReason(load, thresholds);
       if (!reason) continue;
       const block = blockBy.get(key);
       if (block && !block.reopenedAt) continue; // già chiusa
@@ -133,18 +170,44 @@ export class GeneralRequestsService {
         update: { closedAt: now, closedByUserId: null, reason, reopenedAt: null, reopenedByUserId: null, keepOpenUntil: null },
       });
       await this.auditLogService.record({ entityType: "GeneralRequestBlock", entityId: saved.id, fieldName: "status", newValue: "CLOSED", reason });
-      closed += 1;
+      closedZones.push({ categoryId, city, reason });
     }
-    if (closed > 0) this.logger.log(`Richieste generali chiuse in automatico in ${closed} zone.`);
-    return closed;
+    if (closedZones.length > 0) {
+      this.logger.log(`Richieste generali chiuse in automatico in ${closedZones.length} zone.`);
+      await this.emailModerators(closedZones);
+    }
+    return closedZones.length;
+  }
+
+  /**
+   * Email agli admin di moderazione quando una o più zone si chiudono da
+   * sole (docs/CHANGELOG.md §212), così nessuno deve controllare la pagina.
+   * Un errore d'invio non annulla la chiusura.
+   */
+  private async emailModerators(zones: { categoryId: string; city: string; reason: string }[]): Promise<void> {
+    try {
+      const [admins, categories] = await Promise.all([
+        this.prisma.user.findMany({
+          where: { role: "ADMIN", deletedAt: null, suspendedAt: null, OR: [{ adminRoles: { isEmpty: true } }, { adminRoles: { hasSome: ["SUPER", "MODERATOR"] } }] },
+          select: { email: true },
+        }),
+        this.prisma.category.findMany({ where: { id: { in: [...new Set(zones.map((z) => z.categoryId))] } }, select: { id: true, label: true } }),
+      ]);
+      const labelBy = new Map(categories.map((c) => [c.id, c.label]));
+      const email = adminGeneralRequestsClosedEmail(zones.map((z) => ({ category: labelBy.get(z.categoryId) ?? "Categoria", city: z.city, reason: z.reason })));
+      await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, ...email })] : [])));
+    } catch (err) {
+      this.logger.error(`Email admin zone chiuse non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /** Pagina admin: carico di ogni zona attiva o chiusa, le chiuse per prime. */
   async adminOverview(): Promise<GeneralRequestsAdminOverview> {
-    const [loads, blocks, categories] = await Promise.all([
+    const [loads, blocks, categories, thresholds] = await Promise.all([
       this.computeLoads(),
       this.prisma.generalRequestBlock.findMany(),
       this.prisma.category.findMany({ select: { id: true, slug: true, label: true } }),
+      this.thresholds(),
     ]);
     const categoryBy = new Map(categories.map((c) => [c.id, c]));
     const keys = new Set([...loads.keys(), ...blocks.map((b) => zoneKey(b.categoryId, b.city))]);
@@ -165,7 +228,7 @@ export class GeneralRequestsService {
         city: zone?.city ?? block!.city,
         load,
         weeklyPerProfessional: weeklyPerProfessional(load),
-        responseRate: responseRate(load),
+        responseRate: responseRate(load, thresholds.minMeasuredLeads),
         block:
           block && !block.reopenedAt
             ? { id: block.id, closedAt: block.closedAt.toISOString(), automatic: block.closedByUserId === null, reason: block.reason }
@@ -174,7 +237,7 @@ export class GeneralRequestsService {
       });
     }
     rows.sort((a, b) => Number(Boolean(b.block)) - Number(Boolean(a.block)) || b.weeklyPerProfessional - a.weeklyPerProfessional);
-    return { globallyEnabled: generalRequestsGloballyEnabled(), rows };
+    return { globallyEnabled: generalRequestsGloballyEnabled(), thresholds, rows };
   }
 
   async close(adminUserId: string, categorySlug: string, rawCity: string): Promise<void> {
@@ -194,9 +257,10 @@ export class GeneralRequestsService {
     const block = await this.prisma.generalRequestBlock.findUnique({ where: { id: blockId } });
     if (!block) throw new NotFoundException("Chiusura non trovata.");
     const now = new Date();
+    const { keepOpenDays } = await this.thresholds();
     await this.prisma.generalRequestBlock.update({
       where: { id: blockId },
-      data: { reopenedAt: now, reopenedByUserId: adminUserId, keepOpenUntil: new Date(now.getTime() + GENERAL_REQUESTS_KEEP_OPEN_DAYS * DAY_MS) },
+      data: { reopenedAt: now, reopenedByUserId: adminUserId, keepOpenUntil: new Date(now.getTime() + keepOpenDays * DAY_MS) },
     });
     await this.auditLogService.record({ entityType: "GeneralRequestBlock", entityId: blockId, fieldName: "status", newValue: "OPEN", changedByUserId: adminUserId });
   }

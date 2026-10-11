@@ -71,6 +71,7 @@ import type {
   VerifyProfessionalInput,
   GeneralRequestAvailability,
   GeneralRequestsAdminOverview,
+  GeneralRequestThresholds,
   CloseGeneralRequestsInput,
   ProfileInviteLink,
   ProfileInvitePreview,
@@ -1521,6 +1522,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<GeneralRequestsAdminOverview>("/admin/general-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminCloseGeneralRequests: (token: string, input: CloseGeneralRequestsInput) =>
       request<void>("/admin/general-requests/close", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminUpdateGeneralRequestThresholds: (token: string, input: GeneralRequestThresholds) =>
+      request<GeneralRequestThresholds>("/admin/general-requests/thresholds", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
     adminReopenGeneralRequests: (token: string, blockId: string) =>
       request<void>(`/admin/general-requests/${encodeURIComponent(blockId)}/reopen`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 

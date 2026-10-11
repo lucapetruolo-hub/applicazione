@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO,
-  GENERAL_REQUESTS_MIN_MEASURED_LEADS,
+  DEFAULT_GENERAL_REQUEST_THRESHOLDS,
   GENERAL_REQUESTS_WINDOW_DAYS,
   PROFESSIONAL_CATEGORIES,
+  generalRequestThresholdsSchema,
+  type GeneralRequestThresholds,
   type GeneralRequestsAdminOverview,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
@@ -71,7 +72,7 @@ export default function AdminRichiesteGeneraliPage() {
     <YStack>
       <AdminPageHeader
         title="Richieste generali"
-        description={`Richieste inviate senza scegliere un professionista, ultimi ${GENERAL_REQUESTS_WINDOW_DAYS} giorni. Una zona si chiude da sola se ogni professionista riceve più di ${GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO} richieste a settimana, o se risponde meno di uno su tre (con almeno ${GENERAL_REQUESTS_MIN_MEASURED_LEADS} richieste misurate). Il cliente vede un avviso e sceglie un professionista dalla ricerca.`}
+        description={`Richieste inviate senza scegliere un professionista, ultimi ${GENERAL_REQUESTS_WINDOW_DAYS} giorni. Quando una zona si chiude il cliente vede un avviso e sceglie un professionista dalla ricerca; gli admin di moderazione ricevono un'email.`}
       />
 
       {data ? (
@@ -85,6 +86,15 @@ export default function AdminRichiesteGeneraliPage() {
               : "Spente da GENERAL_REQUESTS_ENABLED=false su Render. Per riaccenderle togli la variabile o mettila a true."}
           </Text>
         </AdminCard>
+      ) : null}
+
+      {data && token ? (
+        <ThresholdsForm
+          token={token}
+          initial={data.thresholds}
+          onSaved={(thresholds) => setData((prev) => (prev ? { ...prev, thresholds } : prev))}
+          onSavedReload={load}
+        />
       ) : null}
 
       <YStack marginTop="$4" marginBottom="$3" gap="$2">
@@ -138,7 +148,7 @@ export default function AdminRichiesteGeneraliPage() {
             <tbody>
               {data.rows.map((row) => {
                 const key = `${row.categorySlug}|${row.city}`;
-                const overLimit = row.weeklyPerProfessional > GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO;
+                const overLimit = row.weeklyPerProfessional > data.thresholds.maxWeeklyPerPro;
                 return (
                   <tr key={key}>
                     <td>{row.categoryLabel}</td>
@@ -189,9 +199,110 @@ export default function AdminRichiesteGeneraliPage() {
       ) : null}
       {data && data.rows.some((r) => r.block) ? (
         <Text color={brand.grafite70} marginTop="$2" fontSize={13}>
-          Riaprendo una zona, il controllo automatico non la richiude per 30 giorni.
+          Riaprendo una zona, il controllo automatico non la richiude per {data.thresholds.keepOpenDays} giorni.
         </Text>
       ) : null}
+    </YStack>
+  );
+}
+
+type ThresholdsDraft = Record<Exclude<keyof GeneralRequestThresholds, "autoCloseEnabled">, string> & { autoCloseEnabled: boolean };
+
+function toDraft(t: GeneralRequestThresholds): ThresholdsDraft {
+  return {
+    autoCloseEnabled: t.autoCloseEnabled,
+    maxWeeklyPerPro: String(t.maxWeeklyPerPro).replace(".", ","),
+    minResponsePercent: String(t.minResponsePercent),
+    minMeasuredLeads: String(t.minMeasuredLeads),
+    keepOpenDays: String(t.keepOpenDays),
+  };
+}
+
+/** Soglie della chiusura automatica (docs/CHANGELOG.md §212). */
+function ThresholdsForm({
+  token,
+  initial,
+  onSaved,
+  onSavedReload,
+}: {
+  token: string;
+  initial: GeneralRequestThresholds;
+  onSaved: (t: GeneralRequestThresholds) => void;
+  onSavedReload: () => void;
+}) {
+  const [draft, setDraft] = useState<ThresholdsDraft>(() => toDraft(initial));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const save = async () => {
+    const parsed = generalRequestThresholdsSchema.safeParse({
+      autoCloseEnabled: draft.autoCloseEnabled,
+      maxWeeklyPerPro: Number(draft.maxWeeklyPerPro.replace(",", ".")),
+      minResponsePercent: Number(draft.minResponsePercent),
+      minMeasuredLeads: Number(draft.minMeasuredLeads),
+      keepOpenDays: Number(draft.keepOpenDays),
+    });
+    if (!parsed.success) {
+      setMessage({ ok: false, text: parsed.error.issues[0]?.message ?? "Controlla i valori." });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const saved = await apiClient.adminUpdateGeneralRequestThresholds(token, parsed.data);
+      setDraft(toDraft(saved));
+      onSaved(saved);
+      onSavedReload();
+      setMessage({ ok: true, text: "Soglie salvate. Valgono dal prossimo controllo, ogni ora." });
+    } catch (err) {
+      setMessage({ ok: false, text: errorMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = (key: Exclude<keyof ThresholdsDraft, "autoCloseEnabled">, label: string, hint: string) => (
+    <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 200px" }}>
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <input
+        className="admin-input"
+        inputMode="decimal"
+        value={draft[key]}
+        disabled={!draft.autoCloseEnabled}
+        onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+      />
+      <span style={{ fontSize: 12, color: brand.grafite70 }}>{hint}</span>
+    </label>
+  );
+
+  return (
+    <YStack marginTop="$4">
+      <AdminCard>
+        <Text fontWeight="700">Chiusura automatica</Text>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={draft.autoCloseEnabled}
+            onChange={(e) => setDraft((prev) => ({ ...prev, autoCloseEnabled: e.target.checked }))}
+          />
+          <span>Chiudi da sole le zone che superano le soglie (controllo ogni ora)</span>
+        </label>
+        <XStack gap="$3" flexWrap="wrap" marginTop="$3">
+          {field("maxWeeklyPerPro", "Richieste a settimana per professionista", "Oltre questa media la zona si chiude.")}
+          {field("minResponsePercent", "Risposte minime (%)", "Sotto questa percentuale la zona si chiude. 0 per non controllarle.")}
+          {field("minMeasuredLeads", "Richieste per misurare le risposte", "Quante ne servono, arrivate da almeno 48 ore, prima di giudicare.")}
+          {field("keepOpenDays", "Giorni aperta dopo una riapertura", "Per quanto il controllo non richiude una zona riaperta a mano.")}
+        </XStack>
+        <XStack gap="$2" marginTop="$3" alignItems="center" flexWrap="wrap">
+          <Button variant="primary" size="$3" disabled={saving} onPress={() => void save()}>
+            {saving ? "Salvataggio…" : "Salva le soglie"}
+          </Button>
+          <Button variant="secondary" size="$3" disabled={saving} onPress={() => setDraft(toDraft(DEFAULT_GENERAL_REQUEST_THRESHOLDS))}>
+            Valori iniziali
+          </Button>
+          {message ? <Text color={message.ok ? brand.grafite70 : brand.urgenza}>{message.text}</Text> : null}
+        </XStack>
+      </AdminCard>
     </YStack>
   );
 }

@@ -11,16 +11,41 @@ import type { ProfessionalCategorySlug } from "./categories";
  * automatico quando i professionisti della zona ne ricevono troppe.
  */
 
-/** Oltre questa media di richieste generali a settimana per professionista, la categoria in quella città si chiude. */
-export const GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO = 10;
-/** Sotto questa quota di professionisti che rispondono, la categoria in quella città si chiude. */
-export const GENERAL_REQUESTS_MIN_RESPONSE_RATE = 1 / 3;
-/** Richieste ricevute (da almeno 48 ore) necessarie prima di giudicare la quota di risposte. */
-export const GENERAL_REQUESTS_MIN_MEASURED_LEADS = 20;
 /** Finestra su cui si misura il carico, in giorni. */
 export const GENERAL_REQUESTS_WINDOW_DAYS = 14;
-/** Dopo una riapertura a mano, il controllo automatico non la richiude per questi giorni. */
-export const GENERAL_REQUESTS_KEEP_OPEN_DAYS = 30;
+
+/**
+ * Soglie della chiusura automatica, modificabili da /admin/richieste-generali
+ * (docs/CHANGELOG.md §212). Valori iniziali in DEFAULT_GENERAL_REQUEST_THRESHOLDS.
+ */
+export type GeneralRequestThresholds = {
+  /** Spento: nessuna zona si chiude da sola (restano le chiusure a mano). */
+  autoCloseEnabled: boolean;
+  /** Oltre questa media di richieste generali a settimana per professionista la zona si chiude. */
+  maxWeeklyPerPro: number;
+  /** Sotto questa percentuale di risposte la zona si chiude (0 = non si controlla). */
+  minResponsePercent: number;
+  /** Richieste ricevute da almeno 48 ore necessarie prima di giudicare le risposte. */
+  minMeasuredLeads: number;
+  /** Dopo una riapertura a mano, il controllo automatico non la richiude per questi giorni. */
+  keepOpenDays: number;
+};
+
+export const DEFAULT_GENERAL_REQUEST_THRESHOLDS: GeneralRequestThresholds = {
+  autoCloseEnabled: true,
+  maxWeeklyPerPro: 10,
+  minResponsePercent: 33,
+  minMeasuredLeads: 20,
+  keepOpenDays: 30,
+};
+
+export const generalRequestThresholdsSchema = z.object({
+  autoCloseEnabled: z.boolean(),
+  maxWeeklyPerPro: z.number().min(1, "Almeno 1 richiesta a settimana.").max(1000),
+  minResponsePercent: z.number().int().min(0).max(100, "Al massimo 100%."),
+  minMeasuredLeads: z.number().int().min(1, "Almeno 1 richiesta.").max(10_000),
+  keepOpenDays: z.number().int().min(1, "Almeno 1 giorno.").max(365, "Al massimo 365 giorni."),
+});
 
 /** Chiave della città: il nome ufficiale del comune se riconosciuto, altrimenti il testo ripulito. */
 export function generalRequestCityKey(city: string): string {
@@ -53,22 +78,30 @@ export function weeklyPerProfessional(load: GeneralRequestLoad): number {
 }
 
 /** Quota di risposte, null finché le richieste misurabili sono troppo poche. */
-export function responseRate(load: GeneralRequestLoad): number | null {
-  if (load.measuredLeads < GENERAL_REQUESTS_MIN_MEASURED_LEADS) return null;
+export function responseRate(load: GeneralRequestLoad, minMeasuredLeads: number = DEFAULT_GENERAL_REQUEST_THRESHOLDS.minMeasuredLeads): number | null {
+  if (load.measuredLeads < minMeasuredLeads) return null;
   return load.respondedLeads / load.measuredLeads;
 }
 
-/** Motivo per chiudere la categoria in quella città, o null se il carico è accettabile. */
-export function generalRequestCloseReason(load: GeneralRequestLoad): string | null {
+/** Motivo per chiudere la categoria in quella città, o null se il carico è accettabile o la chiusura automatica è spenta. */
+export function generalRequestCloseReason(
+  load: GeneralRequestLoad,
+  thresholds: GeneralRequestThresholds = DEFAULT_GENERAL_REQUEST_THRESHOLDS,
+): string | null {
+  if (!thresholds.autoCloseEnabled) return null;
   const weekly = weeklyPerProfessional(load);
-  if (weekly > GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO) {
-    return `In media ${weekly.toFixed(1).replace(".", ",")} richieste generali a settimana per professionista (limite ${GENERAL_REQUESTS_MAX_WEEKLY_PER_PRO}).`;
+  if (weekly > thresholds.maxWeeklyPerPro) {
+    return `In media ${formatDecimal(weekly)} richieste generali a settimana per professionista (limite ${formatDecimal(thresholds.maxWeeklyPerPro)}).`;
   }
-  const rate = responseRate(load);
-  if (rate !== null && rate < GENERAL_REQUESTS_MIN_RESPONSE_RATE) {
-    return `Risponde solo il ${Math.round(rate * 100)}% dei professionisti (minimo ${Math.round(GENERAL_REQUESTS_MIN_RESPONSE_RATE * 100)}%).`;
+  const rate = responseRate(load, thresholds.minMeasuredLeads);
+  if (rate !== null && rate * 100 < thresholds.minResponsePercent) {
+    return `Risponde solo il ${Math.round(rate * 100)}% dei professionisti (minimo ${thresholds.minResponsePercent}%).`;
   }
   return null;
+}
+
+function formatDecimal(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
 }
 
 /** Riga della pagina admin "Richieste generali". */
@@ -92,6 +125,7 @@ export type GeneralRequestZoneRow = {
 
 export type GeneralRequestsAdminOverview = {
   globallyEnabled: boolean;
+  thresholds: GeneralRequestThresholds;
   rows: GeneralRequestZoneRow[];
 };
 

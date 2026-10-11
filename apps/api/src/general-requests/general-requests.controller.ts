@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { closeGeneralRequestsSchema, type CloseGeneralRequestsInput } from "@professionisti/shared";
+import { closeGeneralRequestsSchema, generalRequestThresholdsSchema, type CloseGeneralRequestsInput, type GeneralRequestThresholds } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
@@ -28,6 +28,13 @@ export class AdminGeneralRequestsController {
   @Get()
   overview() {
     return this.generalRequestsService.adminOverview();
+  }
+
+  /** Soglie della chiusura automatica (docs/CHANGELOG.md §212). */
+  @RequireAdminScope("MODERATION")
+  @Post("thresholds")
+  updateThresholds(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(generalRequestThresholdsSchema)) body: GeneralRequestThresholds) {
+    return this.generalRequestsService.updateThresholds(req.user.userId, body);
   }
 
   @RequireAdminScope("MODERATION")

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { AdminModule } from "../admin/admin.module";
 import { AuditLogModule } from "../audit-log/audit-log.module";
+import { EmailModule } from "../email/email.module";
 import { AdminGeneralRequestsController, GeneralRequestsController } from "./general-requests.controller";
 import { GeneralRequestsService } from "./general-requests.service";
 
@@ -11,7 +12,7 @@ import { GeneralRequestsService } from "./general-requests.service";
  * giro circolare. La parte admin vive in GeneralRequestsAdminModule.
  */
 @Module({
-  imports: [AuditLogModule],
+  imports: [AuditLogModule, EmailModule],
   controllers: [GeneralRequestsController],
   providers: [GeneralRequestsService],
   // GuidedRequestsService rifiuta una richiesta generale se è chiusa.

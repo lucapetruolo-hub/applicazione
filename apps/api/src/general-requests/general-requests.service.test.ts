@@ -27,13 +27,18 @@ describe("soglie delle richieste generali", () => {
     expect(generalRequestCloseReason(load({ leads: 42, professionals: 2 }))).toContain("10,5");
   });
 
+  it("con 0% di risposte minime non controlla le risposte", () => {
+    const thresholds = { autoCloseEnabled: true, maxWeeklyPerPro: 10, minResponsePercent: 0, minMeasuredLeads: 20, keepOpenDays: 30 };
+    expect(generalRequestCloseReason(load({ leads: 20, professionals: 10, measuredLeads: 20, respondedLeads: 0 }), thresholds)).toBeNull();
+  });
+
   it("chiude se risponde meno di un professionista su tre", () => {
     expect(generalRequestCloseReason(load({ leads: 20, professionals: 10, measuredLeads: 20, respondedLeads: 7 }))).toBeNull();
     expect(generalRequestCloseReason(load({ leads: 20, professionals: 10, measuredLeads: 20, respondedLeads: 6 }))).toContain("30%");
   });
 });
 
-function buildService(opts: { leads: unknown[]; blocks?: unknown[]; quotes?: unknown[] }) {
+function buildService(opts: { leads: unknown[]; blocks?: unknown[]; quotes?: unknown[]; settings?: unknown }) {
   const prisma = {
     lead: { findMany: vi.fn().mockResolvedValue(opts.leads) },
     quote: { findMany: vi.fn().mockResolvedValue(opts.quotes ?? []) },
@@ -43,10 +48,14 @@ function buildService(opts: { leads: unknown[]; blocks?: unknown[]; quotes?: unk
       findUnique: vi.fn().mockResolvedValue(null),
       upsert: vi.fn().mockResolvedValue({ id: "block-1" }),
     },
+    generalRequestSettings: { findFirst: vi.fn().mockResolvedValue(opts.settings ?? null) },
+    user: { findMany: vi.fn().mockResolvedValue([{ email: "mod@example.com" }]) },
+    category: { findMany: vi.fn().mockResolvedValue([{ id: "cat-1", label: "Idraulico" }]) },
   };
   const audit = { record: vi.fn() };
-  const service = new GeneralRequestsService(prisma as never, audit as never);
-  return { service, prisma, audit };
+  const email = { send: vi.fn().mockResolvedValue(true) };
+  const service = new GeneralRequestsService(prisma as never, audit as never, email as never);
+  return { service, prisma, audit, email };
 }
 
 /** 22 richieste a 1 solo professionista in 14 giorni: 11 a settimana, sopra il limite. */
@@ -67,6 +76,26 @@ describe("GeneralRequestsService.runAutoCheck", () => {
       expect.objectContaining({ where: { categoryId_city: { categoryId: "cat-1", city: "Milano" } } }),
     );
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "GeneralRequestBlock", newValue: "CLOSED" }));
+  });
+
+  it("avvisa per email gli admin di moderazione", async () => {
+    const { service, email } = buildService({ leads: overloadedLeads() });
+    await service.runAutoCheck(NOW);
+    expect(email.send).toHaveBeenCalledWith(expect.objectContaining({ to: "mod@example.com", subject: "Richieste generali chiuse: Idraulico a Milano" }));
+  });
+
+  it("non chiude nulla con la chiusura automatica spenta", async () => {
+    const settings = { autoCloseEnabled: false, maxWeeklyPerPro: 10, minResponsePercent: 33, minMeasuredLeads: 20, keepOpenDays: 30 };
+    const { service, prisma, email } = buildService({ leads: overloadedLeads(), settings });
+    expect(await service.runAutoCheck(NOW)).toBe(0);
+    expect(prisma.generalRequestBlock.upsert).not.toHaveBeenCalled();
+    expect(email.send).not.toHaveBeenCalled();
+  });
+
+  it("usa le soglie salvate dall'admin", async () => {
+    const settings = { autoCloseEnabled: true, maxWeeklyPerPro: 12, minResponsePercent: 33, minMeasuredLeads: 20, keepOpenDays: 30 };
+    const { service } = buildService({ leads: overloadedLeads(), settings });
+    expect(await service.runAutoCheck(NOW)).toBe(0);
   });
 
   it("non tocca una zona già chiusa", async () => {

@@ -2114,3 +2114,20 @@ model GeneralRequestBlock {
   @@unique([categoryId, city])
   @@map("general_request_blocks")
 }
+
+// Soglie della chiusura automatica delle richieste generali, modificabili da
+// /admin/richieste-generali (docs/CHANGELOG.md §212). Riga singola (stesso
+// pattern `findFirst() ?? create({})` di PlatformDac7Settings); i default
+// coincidono con DEFAULT_GENERAL_REQUEST_THRESHOLDS in packages/shared.
+model GeneralRequestSettings {
+  id                 String   @id @default(uuid())
+  autoCloseEnabled   Boolean  @default(true)
+  maxWeeklyPerPro    Float    @default(10)
+  minResponsePercent Int      @default(33)
+  minMeasuredLeads   Int      @default(20)
+  keepOpenDays       Int      @default(30)
+  updatedAt          DateTime @updatedAt
+  updatedByUserId    String?
+
+  @@map("general_request_settings")
+}

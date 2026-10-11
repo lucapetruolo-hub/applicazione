@@ -17591,3 +17591,36 @@ il resto del sito.
 automatica, zona già chiusa o riaperta a mano, risposte contate dopo 48
 ore, interruttore globale e per zona); 262 test di `apps/api` verdi, tipi e
 lint di `apps/api` e `apps/web` senza errori.
+
+## 212. Richieste generali: email agli admin e soglie modificabili
+
+**Richiesta (Luca nel thread, 11/10/2026):** "Effettua migliorie 1 e 2",
+cioè le prime due migliorie proposte dopo §211: avvisare per email quando
+una zona si chiude da sola, e rendere le soglie modificabili dalla pagina
+admin invece che fisse nel codice.
+
+**Decisione:**
+- *Email:* quando il controllo orario chiude una o più zone,
+  `GeneralRequestsService.emailModerators` manda un'unica email agli admin
+  con permesso Moderazione (o senza ruoli specifici), con categoria, città e
+  motivo di ogni zona e il link a `/admin/richieste-generali`
+  (`adminGeneralRequestsClosedEmail`). Stesso schema dell'email per le nuove
+  segnalazioni; un errore d'invio non annulla la chiusura. Parte davvero
+  solo con Resend configurato.
+- *Soglie:* nuova tabella a riga singola `GeneralRequestSettings`
+  (migrazione `20261011180000_general_request_settings`): chiusura
+  automatica accesa o spenta, richieste a settimana per professionista,
+  percentuale minima di risposte (0 = non si controlla), richieste
+  necessarie per misurare le risposte, giorni di apertura dopo una
+  riapertura a mano. Senza riga valgono `DEFAULT_GENERAL_REQUEST_THRESHOLDS`
+  (10, 33%, 20, 30 giorni, accesa), gli stessi valori di §211. La pagina
+  admin ha un riquadro "Chiusura automatica" con i campi, "Salva le soglie"
+  e "Valori iniziali" (`POST /admin/general-requests/thresholds`, permesso
+  Moderazione, validato da `generalRequestThresholdsSchema`); ogni modifica
+  va nel registro azioni con i valori di prima e di dopo. La finestra di 14
+  giorni resta fissa.
+
+**Verifica:** nuovi test in `general-requests.service.test.ts` (email agli
+admin, chiusura automatica spenta, soglie salvate, risposte non controllate
+con 0%); 266 test di `apps/api` verdi, tipi e lint di `apps/api` e
+`apps/web` senza errori.
