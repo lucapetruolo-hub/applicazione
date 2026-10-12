@@ -7,6 +7,7 @@ import {
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
   asScheduleChange,
+  formatItalianUntil,
   moderationActionOwnerText,
   scheduleChangeAlternative,
   scheduleChangeObject,
@@ -93,6 +94,7 @@ const BUILDERS: Record<string, Builder> = {
     const category = str(payload.category) ?? ctx.category ?? "un lavoro";
     const city = str(payload.city) ?? ctx.city;
     const urgent = payload.isUrgent === true;
+    const respondUntil = urgent ? null : str(payload.respondUntil);
     return {
       kind: "notification",
       tone: urgent ? "urgent" : "default",
@@ -102,6 +104,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         `Un cliente cerca un professionista per **${category}**${city ? ` a ${city}` : ""}.`,
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
+        ...(respondUntil ? [`**Puoi rispondere fino ${formatItalianUntil(respondUntil)}.**`] : []),
         "Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: apri la richiesta, guarda le foto e invia il tuo preventivo.",
       ],
       cta: proRequests("Rispondi alla richiesta"),

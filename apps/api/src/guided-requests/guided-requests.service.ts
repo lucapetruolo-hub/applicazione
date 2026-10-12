@@ -45,6 +45,15 @@ function addDays(date: Date, days: number): Date {
   return addHours(date, days * 24);
 }
 
+/**
+ * Scadenza da scrivere nell'email "Nuova richiesta" (docs/CHANGELOG.md
+ * §224): la scadenza della richiesta, mai per le urgenti (resta la
+ * dicitura di prima, decisione dell'utente §221).
+ */
+function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string | null {
+  return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
+}
+
 @Injectable()
 export class GuidedRequestsService {
   private readonly logger = new Logger(GuidedRequestsService.name);
@@ -274,6 +283,7 @@ export class GuidedRequestsService {
           category: category.label,
           city: input.city ?? null,
           isUrgent: input.isUrgent,
+          respondUntil: respondUntilForEmail(input.isUrgent, requestExpiresAt),
         });
       }
 
@@ -393,6 +403,15 @@ export class GuidedRequestsService {
         // lato client una richiesta scaduta da una annullata volontariamente,
         // stesso dato già usato solo internamente da getStatus() sopra.
         closedReason: request.closedReason,
+        // "La richiesta resta aperta fino al …" (docs/CHANGELOG.md §224):
+        // finché è aperta e nessun preventivo è stato accettato.
+        openUntil:
+          request.status !== "CLOSED" &&
+          request.expiresAt &&
+          request.expiresAt.getTime() > Date.now() &&
+          !request.quotes.some((quote) => quote.status === "ACCEPTED")
+            ? request.expiresAt.toISOString()
+            : null,
         createdAt: request.createdAt.toISOString(),
         updatedAt: latestQuoteUpdate.toISOString(),
         preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
@@ -803,6 +822,7 @@ export class GuidedRequestsService {
         category: request.category.label,
         city: request.city,
         isUrgent: request.isUrgent,
+        respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(profile.id);
@@ -875,6 +895,7 @@ export class GuidedRequestsService {
         category: request.category.label,
         city: request.city,
         isUrgent: request.isUrgent,
+        respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
       await this.professionalMetricsService.recordRequestReceived(profile.id);
       await this.timelineService.log(
@@ -924,7 +945,7 @@ export class GuidedRequestsService {
       await this.forwardDirectRequest(guidedRequestId);
       return;
     }
-    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean };
+    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; expiresAt: Date | null };
     let notifyTarget: NotifyTarget | null;
 
     try {
@@ -973,6 +994,7 @@ export class GuidedRequestsService {
             categoryLabel: request.category.label,
             city: request.city,
             isUrgent: request.isUrgent,
+            expiresAt: request.expiresAt,
           };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -993,6 +1015,7 @@ export class GuidedRequestsService {
         category: notifyTarget.categoryLabel,
         city: notifyTarget.city,
         isUrgent: notifyTarget.isUrgent,
+        respondUntil: respondUntilForEmail(notifyTarget.isUrgent, notifyTarget.expiresAt),
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(notifyTarget.professionalProfileId);

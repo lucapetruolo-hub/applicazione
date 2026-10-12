@@ -11,6 +11,7 @@ import {
   averageQuoteTotalEurCents,
   findComuneByName,
   formatEurCents,
+  formatItalianUntil,
   isPlausiblePhoneNumber,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
@@ -665,6 +666,15 @@ export function GuidedRequestCard({
                 </Text>
               )}
             </YStack>
+          ) : null}
+
+          {request.openUntil ? (
+            <XStack alignItems="center" gap="$2">
+              <Icon name="clock" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$3" color={brand.grafite70}>
+                La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil)}.
+              </Text>
+            </XStack>
           ) : null}
 
           {!request.professionalProfileId && averagePriceEurCents !== null ? (

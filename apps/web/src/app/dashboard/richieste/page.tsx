@@ -13,7 +13,7 @@ import { classifyLeadStage, type RequestStage } from "@/lib/requestStage";
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
-import { RestoreAllArchivedBar } from "@/components/RequestCardPersonalActions";
+import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
 
@@ -552,6 +552,7 @@ function RichiesteContent() {
           </div>
         ) : null}
 
+        <RestoredNotice />
         {activeTab === "archiviate" ? (
           <RestoreAllArchivedBar
             token={token}

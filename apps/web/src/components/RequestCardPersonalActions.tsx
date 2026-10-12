@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { GuidedRequestMyState } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -77,7 +77,14 @@ export function buildPersonalStateActions({
       ? { icon: "clock", text: "Annulla promemoria", onPress: () => update({ remindAt: null }) }
       : { icon: "clock", text: "Ricordamelo domani alle 9", onPress: () => update({ remindAt: tomorrowAtNine().toISOString() }) },
     myState.archivedAt
-      ? { icon: "rotate-ccw", text: "Ripristina dall'archivio", onPress: () => update({ archived: false }) }
+      ? {
+          icon: "rotate-ccw",
+          text: "Ripristina dall'archivio",
+          onPress: async () => {
+            await update({ archived: false });
+            announceRestored(1);
+          },
+        }
       : { icon: "archive", text: "Archivia", onPress: () => update({ archived: true }) },
   ];
 }
@@ -135,6 +142,7 @@ export function ArchivedRestoreBar({
     setError(null);
     try {
       await apiClient.updateGuidedRequestMyState(token, guidedRequestId, { archived: false });
+      announceRestored(1);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -192,6 +200,8 @@ export function RestoreAllArchivedBar({
     const failed = results.filter((r) => r.status === "rejected").length;
     setIsBusy(false);
     setConfirming(false);
+    const restored = guidedRequestIds.length - failed;
+    if (restored > 0) announceRestored(restored);
     if (failed > 0) setError(`${failed} richiest${failed === 1 ? "a non è stata ripristinata" : "e non sono state ripristinate"}, riprova.`);
     onChanged();
   }
@@ -223,5 +233,42 @@ export function RestoreAllArchivedBar({
         </Text>
       ) : null}
     </YStack>
+  );
+}
+
+// "Richiesta ripristinata" (richiesta esplicita dell'utente, docs/CHANGELOG.md
+// §224): la scheda sparisce dal tab "Archiviate", il messaggio dice dove è
+// finita. Un evento sulla finestra invece di passare callback da ogni scheda.
+const RESTORED_EVENT = "request-restored";
+
+function announceRestored(count: number) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<number>(RESTORED_EVENT, { detail: count }));
+}
+
+/** Messaggio di conferma dopo un ripristino, per qualche secondo, in cima all'elenco. */
+export function RestoredNotice() {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function handle(event: Event) {
+      setCount((event as CustomEvent<number>).detail);
+      clearTimeout(timer);
+      timer = setTimeout(() => setCount(null), 5000);
+    }
+    window.addEventListener(RESTORED_EVENT, handle);
+    return () => {
+      window.removeEventListener(RESTORED_EVENT, handle);
+      clearTimeout(timer);
+    };
+  }, []);
+  if (count === null) return null;
+  return (
+    <XStack role="status" alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
+      <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2.5} />
+      <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
+        {count === 1 ? `Richiesta ripristinata: la trovi di nuovo in "Tutte".` : `${count} richieste ripristinate: le trovi di nuovo in "Tutte".`}
+      </Text>
+    </XStack>
   );
 }

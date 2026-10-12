@@ -17986,3 +17986,26 @@ manuali già compilati (`presetSchedule` in `RequestCard.tsx`).
 
 **Verifica**: in locale, proposte fuori agenda (23 e 24 ottobre) precompilate
 correttamente da entrambe le parti; rimando con nota accettato (201).
+
+## 224. Scadenza nell'email e al cliente, "Richiesta ripristinata"
+
+**Richiesta dell'utente**: le tre migliorie proposte in §221-§222.
+
+- **Email "Nuova richiesta"**: per le richieste non urgenti riporta "Puoi
+  rispondere fino all'11 dicembre alle 16:36." (payload `respondUntil` di
+  `NEW_LEAD` in tutti e quattro i punti di invio, helper
+  `respondUntilForEmail`). Le urgenti restano come prima (§221). Test in
+  `email-templates.test.ts`.
+- **Cliente**: nella scheda aperta di `/le-mie-richieste`, "La richiesta
+  resta aperta ai preventivi fino all'… alle …" (campo `openUntil` di
+  `listForClient`: richiesta aperta, non scaduta, nessun preventivo
+  accettato).
+- **"Richiesta ripristinata"**: dopo "Ripristina", "Ripristina dall'archivio"
+  o "Ripristina tutte", messaggio verde per 5 secondi in cima all'elenco
+  ("la trovi di nuovo in Tutte"), sia cliente sia professionista
+  (`RestoredNotice`, evento `request-restored` sulla finestra).
+- Formato data condiviso `formatItalianUntil` in
+  `packages/shared/src/requestDeadline.ts` (sito ed email).
+
+**Verifica**: test API (285) e typecheck; in locale scritta del cliente e
+messaggio di ripristino visibili.

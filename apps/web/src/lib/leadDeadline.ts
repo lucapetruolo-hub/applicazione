@@ -1,3 +1,5 @@
+import { formatItalianUntil } from "@professionisti/shared";
+
 /**
  * "Rispondi entro …" per un lead (CLAUDE.md §14): condiviso da Richieste e
  * lavori e dalla Home "Oggi" (docs/CHANGELOG.md §147). Gli orizzonti reali
@@ -38,15 +40,9 @@ export function formatForwardDeadline(forwardAt: string | null): { label: string
  */
 export function formatRespondUntil(respondUntil: string | null): { label: string; urgent: boolean } | null {
   if (!respondUntil) return null;
-  const date = new Date(respondUntil);
-  const diffMs = date.getTime() - Date.now();
+  const diffMs = new Date(respondUntil).getTime() - Date.now();
   if (diffMs <= 0) return null;
-  const day = date.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
-  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
-  // "all'8", "all'11", "all'una": l'articolo si apostrofa davanti a vocale.
-  const dayArticle = day.startsWith("8 ") || day.startsWith("11 ") ? "all'" : "al ";
-  const timeArticle = time.startsWith("01:") ? "all'" : "alle ";
-  return { label: `Puoi rispondere fino ${dayArticle}${day} ${timeArticle}${time}`, urgent: diffMs <= 24 * 60 * 60 * 1000 };
+  return { label: `Puoi rispondere fino ${formatItalianUntil(respondUntil)}`, urgent: diffMs <= 24 * 60 * 60 * 1000 };
 }
 
 /**
