@@ -90,8 +90,9 @@ export type ProfessionalLead = {
   /**
    * Fino a quando puoi inviare il preventivo: la scadenza della richiesta
    * (docs/CHANGELOG.md §221), mostrata come "Puoi rispondere fino al … alle
-   * …". `null` se hai già inviato un preventivo, hai rifiutato, la richiesta
-   * è chiusa o non ha scadenza.
+   * …". `null` per una richiesta urgente (resta la dicitura di prima), se
+   * hai già inviato un preventivo, hai rifiutato, la richiesta è chiusa o
+   * non ha scadenza.
    */
   respondUntil: string | null;
   /**

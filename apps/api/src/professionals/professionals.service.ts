@@ -936,9 +936,11 @@ export class ProfessionalsService {
             : null,
         // Fino a quando si può rispondere (richiesta esplicita dell'utente,
         // docs/CHANGELOG.md §221): la scadenza della richiesta, finché non
-        // hai ancora inviato un preventivo e la richiesta è aperta.
+        // hai ancora inviato un preventivo e la richiesta è aperta. Non per
+        // le urgenti: lì resta la dicitura di prima (decisione dell'utente).
         respondUntil:
           lead.status === "PENDING" &&
+          !lead.guidedRequest.isUrgent &&
           !quote &&
           lead.guidedRequest.status !== "CLOSED" &&
           lead.guidedRequest.expiresAt &&

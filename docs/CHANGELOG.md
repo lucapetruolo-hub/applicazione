@@ -17934,7 +17934,8 @@ chiude e non si può più rispondere. Nuovo campo `respondUntil` del lead
 (`getMyLeads`), valorizzato finché il professionista non ha inviato un
 preventivo e la richiesta è aperta. In "Richieste e lavori" e in "Oggi" compare
 "Puoi rispondere fino al 11 dicembre alle 16:36" (ora italiana, "all'" davanti
-a 8, 11 e all'una; rossa nelle ultime 24 ore). Per una richiesta diretta resta
+a 8, 11 e all'una; rossa nelle ultime 24 ore). Non per le richieste urgenti:
+lì resta la dicitura di prima (decisione dell'utente). Per una richiesta diretta resta
 anche l'avviso sull'inoltro ad altri (§209). Helper `leadDeadlines` in
 `apps/web/src/lib/leadDeadline.ts`.
 
