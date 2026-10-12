@@ -15,7 +15,6 @@ import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
-import { ReviewModal } from "@/components/ReviewModal";
 import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
@@ -122,11 +121,10 @@ export function RequestCard({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Stessi popup già in uso in /dashboard (LeadCard/AcceptedJobCard) per
-  // "Lavoro terminato"/"Annulla intervento"/"Recensisci il cliente" —
+  // "Lavoro terminato"/"Annulla intervento" —
   // richiesta esplicita dell'utente di implementarli qui identici.
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showClientReviewModal, setShowClientReviewModal] = useState(false);
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -355,29 +353,6 @@ export function RequestCard({
     if (!booking) return;
     await apiClient.completeBooking(token, booking.id, input);
     setShowCompleteModal(false);
-    // Subito dopo aver segnalato il lavoro terminato si apre il popup per
-    // recensire il cliente (stesso comportamento già in uso in /dashboard).
-    // Bug reale corretto: `onChanged()` non va chiamato qui — se il tab
-    // attivo è "Accettate", ricaricare subito filtra via questa card (lo
-    // stadio passa a "completata") chiudendo il popup di recensione un
-    // istante dopo averlo aperto. Il reload va rimandato alla chiusura del
-    // popup (submit o annulla, sotto).
-    setShowClientReviewModal(true);
-  }
-
-  async function handleSubmitClientReview(input: { rating: number; comment?: string; mediaUrls: string[] }) {
-    if (!booking) return;
-    await apiClient.createClientReview(token, { bookingId: booking.id, ...input });
-    setShowClientReviewModal(false);
-    onChanged();
-  }
-
-  function closeClientReviewModal() {
-    setShowClientReviewModal(false);
-    // Il lavoro è comunque già stato segnalato come terminato — la lista va
-    // aggiornata anche se il popup viene chiuso senza recensire, altrimenti
-    // resterebbe visibile come "Accettata" finché non arriva il prossimo
-    // poll periodico.
     onChanged();
   }
 
@@ -499,9 +474,6 @@ export function RequestCard({
   if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
     menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
-  }
-  if (booking?.status === "COMPLETED" && !booking.hasClientReview) {
-    menuActions.push({ icon: "star", text: "Recensisci il cliente", onPress: () => setShowClientReviewModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
   if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
@@ -1059,8 +1031,7 @@ export function RequestCard({
                 {/* Stessi bottoni già in uso in /dashboard (AcceptedJobCard) —
                     richiesta esplicita dell'utente di implementarli identici
                     qui: "Lavoro terminato"/"Annulla intervento" finché la
-                    prenotazione è CONFIRMED, "Recensisci il cliente" dopo il
-                    completamento se non già recensito. */}
+                    prenotazione è CONFIRMED. */}
                 {booking?.status === "CONFIRMED" ? (
                   <>
                     {/* Turchese su richiesta esplicita dell'utente — stesso hex
@@ -1071,9 +1042,6 @@ export function RequestCard({
                       Lavoro terminato
                     </CardButton>
                   </>
-                ) : null}
-                {booking?.status === "COMPLETED" && !booking.hasClientReview ? (
-                  <CardButton onPress={() => setShowClientReviewModal(true)}>Recensisci il cliente</CardButton>
                 ) : null}
                 {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
                   <CardButton fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
@@ -1344,15 +1312,6 @@ export function RequestCard({
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {showClientReviewModal && booking ? (
-        <ReviewModal
-          title="Recensisci il cliente"
-          subtitle="Com'è andato il lavoro con questo cliente? La tua recensione sarà visibile solo nella sua scheda."
-          uploadPhoto={(file) => apiClient.uploadClientReviewPhoto(token, file).then((r) => r.imageUrl)}
-          onSubmit={handleSubmitClientReview}
-          onClose={closeClientReviewModal}
-        />
-      ) : null}
       {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
       {showReportModal ? (
         <ReportContentModal
@@ -1380,10 +1339,8 @@ export function RequestCard({
       {showClientProfile ? (
         <ClientProfileModal
           name={clientName}
-          birthDate={gr.clientBirthDate}
+          detailsUnlocked={gr.clientDetailsUnlocked}
           imageUrl={gr.clientImageUrl}
-          reviews={gr.clientReviews}
-          token={token}
           onClose={() => setShowClientProfile(false)}
         />
       ) : null}

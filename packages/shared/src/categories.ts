@@ -78,7 +78,7 @@ export const PROFESSIONAL_CATEGORIES = [
     subTags: ["piccole-riparazioni", "montaggio-mobili", "manutenzione-generale"],
   },
   // Dogsitter e Babysitter al posto di OSS e Badanti (docs/CHANGELOG.md
-  // §214, richiesta dell'utente).
+  // §217, richiesta dell'utente).
   {
     slug: "dogsitter",
     label: "Dogsitter",

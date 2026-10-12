@@ -124,7 +124,7 @@ export default function DashboardProfiloPage() {
   const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
   const [requestingVerification, setRequestingVerification] = useState(false);
   const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
-  // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §214).
+  // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
@@ -449,7 +449,7 @@ export default function DashboardProfiloPage() {
   // esplicita dell'utente: la spunta da sola attiva il filtro "Online" in
   // ricerca, ma non proponeva ancora la voce corrispondente tra le
   // prestazioni cliccabili.
-  // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §214), senza doppioni.
+  // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
   const suggestedServices = [
     ...new Set([...categorySlugs.flatMap((slug) => POPULAR_SERVICES[slug]), ...(remoteAvailable ? ["Consulenza online"] : [])]),
   ].filter((name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()));

@@ -179,7 +179,7 @@ export type ProfessionalSearchResult = {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
   /**
-   * Tutte le categorie del professionista, da 1 a 3 (docs/CHANGELOG.md §214).
+   * Tutte le categorie del professionista, da 1 a 3 (docs/CHANGELOG.md §217).
    * In una ricerca per categoria `categorySlug`/`categoryLabel` sono quella
    * cercata, qui la principale resta la prima.
    */
@@ -260,8 +260,6 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     comment: string | null;
     photoUrls: string[];
     createdAt: string;
-    /** Vera se generata automaticamente (5 stelle) dallo sblocco "doppio cieco" dopo 3 giorni di attesa. */
-    isAutomatic: boolean;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul

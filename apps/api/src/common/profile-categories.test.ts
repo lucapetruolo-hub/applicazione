@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { professionalProfileSelfSchema, registerSchema } from "@professionisti/shared";
 import { profileCategories } from "./profile-categories.util";
 
-// Fino a 3 categorie per professionista (docs/CHANGELOG.md §214).
+// Fino a 3 categorie per professionista (docs/CHANGELOG.md §217).
 describe("categorie del professionista", () => {
   const profile = {
     businessName: "Idraulica Rossi",

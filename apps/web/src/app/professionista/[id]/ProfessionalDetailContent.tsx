@@ -334,7 +334,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 ) : null}
               </XStack>
               <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
-                {/* Tutte le categorie, da 1 a 3 (docs/CHANGELOG.md §214). */}
+                {/* Tutte le categorie, da 1 a 3 (docs/CHANGELOG.md §217). */}
                 {(professional.categories?.length ? professional.categories.map((category) => category.label) : [professional.categoryLabel]).join(" · ")} ·{" "}
                 {professional.city}
               </Text>
@@ -859,11 +859,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     <Text fontSize="$1" color={brand.grafite70}>
                       · {reviewTimeAgo(review.createdAt)}
                     </Text>
-                    {review.isAutomatic ? (
-                      <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
-                        (recensione automatica)
-                      </Text>
-                    ) : null}
                   </XStack>
                   {user ? (
                     <XStack

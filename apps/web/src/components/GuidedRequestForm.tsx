@@ -10,7 +10,9 @@ import {
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
   PROFESSIONAL_CATEGORIES,
   findComuneByName,
+  isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
+  normalizePhoneNumber,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
@@ -23,6 +25,8 @@ import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
+import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -219,6 +223,8 @@ export function GuidedRequestForm({
     setRecipientSurname((prev) => prev || user.surname || "");
     setRecipientPhone((prev) => prev || user.phone || "");
     setStreet((prev) => prev || user.street || "");
+    // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
+    if (user.street) setAddressVerified(true);
     setHouseNumber((prev) => prev || user.houseNumber || "");
     setAddressExtra((prev) => prev || user.addressExtra || "");
     setPostalCode((prev) => prev || user.postalCode || "");
@@ -238,6 +244,7 @@ export function GuidedRequestForm({
       city: user.city ?? "",
       province: user.province ?? "",
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
@@ -280,7 +287,7 @@ export function GuidedRequestForm({
       .getProfessional(professionalProfileId)
       .then((detail) => {
         setProfessional(detail);
-        // Con più categorie (docs/CHANGELOG.md §214) resta quella del link
+        // Con più categorie (docs/CHANGELOG.md §217) resta quella del link
         // se è una delle sue, altrimenti la principale.
         setCategorySlug((current) =>
           current && detail.categories?.some((category) => category.slug === current) ? current : detail.categorySlug,
@@ -310,6 +317,31 @@ export function GuidedRequestForm({
   // Facoltativa solo per una consulenza online a un professionista scelto (§210).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
+  // Indirizzo scelto dai suggerimenti di Google (docs/CHANGELOG.md §214,
+  // richiesta esplicita dell'utente: "farti selezionare per forza una
+  // scelta così da non mettere un indirizzo a caso"). Quello arrivato da
+  // "Ripeti la richiesta" o dall'account vale come già scelto. Se Google
+  // non risponde si accetta il testo libero, per non bloccare la richiesta.
+  const chosenAddress = useChosenAddress(Boolean(searchParams.get("via")));
+  const setAddressVerified = chosenAddress.setChosen;
+  const cityComune = findComuneByName(city);
+  /** Cambiando città l'indirizzo già scritto non vale più: si svuota insieme a civico, CAP e provincia. */
+  function changeCity(next: string) {
+    if (next.trim().toLowerCase() === city.trim().toLowerCase()) {
+      setCity(next);
+      return;
+    }
+    setCity(next);
+    if (street.trim()) {
+      setStreet("");
+      setHouseNumber("");
+      setPostalCode("");
+      setProvince("");
+    }
+    setAddressVerified(false);
+    const comune = findComuneByName(next);
+    if (comune) setProvince(comune.province);
+  }
   // Destinatario + resto dell'indirizzo strutturato, raccolti fin da qui
   // (richiesta esplicita dell'utente: "voglio che li inserisca subito
   // appena [invia] un preventivo... ma verranno visualizzati al
@@ -491,13 +523,16 @@ export function GuidedRequestForm({
     // Città obbligatoria anche online se la richiesta è generale: decide a
     // chi arriva (docs/CHANGELOG.md §210).
     if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return "Indica la città: la richiesta arriva ai professionisti della zona.";
+    if (city.trim() && !cityComune) return "Scegli la città dall'elenco dei comuni.";
     // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
       if (!city.trim()) return "Indica la città in cui serve l'intervento.";
       if (!street.trim()) return "Indica l'indirizzo.";
+      if (chosenAddress.missing) return ADDRESS_NOT_CHOSEN_MESSAGE;
       if (!recipientName.trim() || !recipientSurname.trim()) return "Indica nome e cognome di chi riceverà il professionista.";
       if (!recipientPhone.trim()) return "Indica un numero di telefono.";
+      if (!isPlausiblePhoneNumber(recipientPhone)) return "Controlla il numero di telefono: sembra incompleto o troppo lungo.";
       if (!houseNumber.trim()) return "Indica il numero civico.";
       if (!postalCode.trim()) return "Indica il CAP.";
       if (!province.trim()) return "Indica la provincia.";
@@ -597,7 +632,9 @@ export function GuidedRequestForm({
           city: city.trim(),
           province: province.trim(),
         };
-        const differs = !snapshot || Object.keys(current).some((key) => current[key] !== (snapshot[key] ?? ""));
+        // Lo stesso numero con o senza "+39" non conta come cambiato.
+        const comparable = (key: string, v: string) => (key === "phone" ? normalizePhoneNumber(v) : v);
+        const differs = !snapshot || Object.keys(current).some((key) => comparable(key, current[key]!) !== comparable(key, snapshot[key] ?? ""));
         setAccountDataDiffers(differs);
       }
       setResult({ matchedProfessionals: response.matchedProfessionals });
@@ -724,7 +761,7 @@ export function GuidedRequestForm({
           <>
         {professionalProfileId && selectedCategory ? (
           // Professionista già scelto: nessuna categoria da scegliere
-          // (decisione dell'utente, docs/CHANGELOG.md §214). La richiesta usa
+          // (decisione dell'utente, docs/CHANGELOG.md §217). La richiesta usa
           // quella del link se è una delle sue, altrimenti la principale.
           null
         ) : (
@@ -1017,9 +1054,9 @@ export function GuidedRequestForm({
               items={ALL_ITALIAN_CITY_NAMES}
               getKey={(item) => item}
               getLabel={(item) => item}
-              onSelect={setCity}
+              onSelect={changeCity}
               value={city}
-              onChangeText={setCity}
+              onChangeText={changeCity}
               placeholder="Es. Roma"
               size="$5"
               minChars={3}
@@ -1064,35 +1101,40 @@ export function GuidedRequestForm({
               </YStack>
             </XStack>
 
-            <input aria-label="Numero di telefono"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
-              placeholder="Numero di telefono"
-              style={fieldInputStyle}
-            />
+            <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
 
             <XStack gap="$2" flexWrap="wrap">
               <YStack flex={2} minWidth={200}>
                 {/* Suggerimenti di Google: scegliendo un indirizzo si compilano
                     anche civico, CAP, provincia e città (docs/CHANGELOG.md §141). */}
+                {/* Solo indirizzi della città scelta sopra, da scegliere per forza
+                    dall'elenco: civico, CAP e provincia si compilano da soli
+                    (docs/CHANGELOG.md §141, §214). */}
                 <AddressAutocompleteInput
                   value={street}
-                  onChange={setStreet}
+                  onChange={(next) => {
+                    setStreet(next);
+                    setAddressVerified(false);
+                  }}
                   onSelect={(selected) => {
-                    if (selected.street) setStreet(selected.street);
-                    if (selected.houseNumber) setHouseNumber(selected.houseNumber);
+                    setStreet(selected.street ?? selected.address);
+                    setHouseNumber(selected.houseNumber ?? "");
                     if (selected.postalCode) setPostalCode(selected.postalCode);
                     if (selected.province) setProvince(selected.province);
-                    const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
-                    if (comune) setCity(comune.name);
+                    setAddressVerified(true);
                   }}
-                  biasTowards={(() => {
-                    const comune = findComuneByName(city);
-                    return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
-                  })()}
-                  placeholder="Via/piazza"
+                  restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
+                  askConsent
+                  onServiceUnavailable={chosenAddress.markServiceDown}
+                  disabled={!cityComune}
+                  placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
                   style={fieldInputStyle}
                 />
+                {chosenAddress.missing && cityComune && street.trim() ? (
+                  <Text fontSize="$2" color={brand.grafite70} marginTop="$1">
+                    Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
+                  </Text>
+                ) : null}
               </YStack>
               <YStack flex={1} minWidth={120}>
                 <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
@@ -1127,8 +1169,13 @@ export function GuidedRequestForm({
             categoryLabel={selectedCategory?.label ?? ""}
             serviceMode={serviceMode}
             description={description}
-            city={city}
-            address={[street, houseNumber].filter((v) => v.trim()).join(" ")}
+            city={[postalCode, city].filter((v) => v.trim()).join(" ") + (province.trim() && city.trim() ? ` (${province.trim()})` : "")}
+            address={[[street, houseNumber].filter((v) => v.trim()).join(" "), addressExtra].filter((v) => v.trim()).join(", ")}
+            contact={
+              serviceMode === "HOME"
+                ? [[recipientName, recipientSurname].filter((v) => v.trim()).join(" "), recipientPhone].filter((v) => v.trim()).join(" · ")
+                : ""
+            }
             photosCount={photos.length}
             slotLabel={
               finalPreferredDate && finalPreferredTimeSlot
@@ -1261,6 +1308,7 @@ function RequestSummary({
   description,
   city,
   address,
+  contact,
   photosCount,
   slotLabel,
   forwardIfNoReply,
@@ -1274,6 +1322,8 @@ function RequestSummary({
   description: string;
   city: string;
   address: string;
+  /** Chi riceve il professionista e il suo telefono (docs/CHANGELOG.md §214). */
+  contact: string;
   photosCount: number;
   slotLabel: string | null;
   forwardIfNoReply: boolean;
@@ -1339,6 +1389,7 @@ function RequestSummary({
           </button>
         </div>
         <p>{[address, city].filter((v) => v.trim()).join(", ") || (serviceMode === "ONLINE" ? "Consulenza online" : "—")}</p>
+        {contact ? <p>{contact}</p> : null}
       </div>
     </YStack>
   );

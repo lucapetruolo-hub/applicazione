@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 import { HealthController } from "./health/health.controller";
 import { CategoriesModule } from "./categories/categories.module";
+import { PhoneNumbersModule } from "./phone-numbers/phone-numbers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { CloudinaryModule } from "./cloudinary/cloudinary.module";
 import { GeocodingModule } from "./geocoding/geocoding.module";
@@ -14,7 +15,6 @@ import { GuidedRequestsModule } from "./guided-requests/guided-requests.module";
 import { QuotesModule } from "./quotes/quotes.module";
 import { BookingsModule } from "./bookings/bookings.module";
 import { ReviewsModule } from "./reviews/reviews.module";
-import { ClientReviewsModule } from "./client-reviews/client-reviews.module";
 import { BillingModule } from "./billing/billing.module";
 import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
 import { AdminModule } from "./admin/admin.module";
@@ -61,13 +61,13 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     CloudinaryModule,
     GeocodingModule,
     CategoriesModule,
+    PhoneNumbersModule,
     AuthModule,
     ProfessionalsModule,
     GuidedRequestsModule,
     QuotesModule,
     BookingsModule,
     ReviewsModule,
-    ClientReviewsModule,
     BillingModule,
     SavedProfessionalsModule,
     AdminModule,

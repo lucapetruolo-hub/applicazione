@@ -73,7 +73,7 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
     const { service, prisma } = setup(null);
     await service.verifyGoogleToken("token", role, true, { acceptedLegalTerms: true, declaredAdult: true }, ["idraulico", "fabbro"]);
     const data = prisma.user.create.mock.calls[0]?.[0].data;
-    // Categorie scelte in registrazione: solo per un professionista (§214).
+    // Categorie scelte in registrazione: solo per un professionista (§217).
     expect(data.signupCategorySlugs).toEqual(role === "PROFESSIONAL" ? ["idraulico", "fabbro"] : []);
     expect(data).toMatchObject({
       name: "Mario",

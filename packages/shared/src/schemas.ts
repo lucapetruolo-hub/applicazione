@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
+import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -10,7 +11,7 @@ const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
 /**
- * Categorie di un professionista (docs/CHANGELOG.md §214, richiesta
+ * Categorie di un professionista (docs/CHANGELOG.md §217, richiesta
  * dell'utente): da 1 a 3, scelte in registrazione e modificabili dal
  * profilo. La prima è la principale.
  */
@@ -22,6 +23,19 @@ export const professionalCategorySlugsSchema = z
   .min(1, NO_CATEGORY_MESSAGE)
   .max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage)
   .refine((slugs) => new Set(slugs).size === slugs.length, "Ogni categoria va scelta una volta sola.");
+
+/**
+ * Numero di telefono salvato sempre nello stesso formato, "+39 3331234567"
+ * (docs/CHANGELOG.md §214): "333 1234567", "+39 333-1234567" e
+ * "0039 3331234567" diventano lo stesso numero, così il controllo "numero
+ * già usato da un altro account" non si lascia ingannare dal formato.
+ * Vuoto resta vuoto (campo facoltativo).
+ */
+export const phoneNumberSchema = z
+  .string()
+  .max(30)
+  .refine((value) => !value.trim() || isPlausiblePhoneNumber(value), "Numero di telefono non valido.")
+  .transform((value) => (value.trim() ? normalizePhoneNumber(value) : ""));
 
 export const googleVerifySchema = z.object({
   idToken: z.string().min(10),
@@ -47,7 +61,7 @@ export const googleVerifySchema = z.object({
   acceptedLegalTerms: z.boolean().optional(),
   declaredAdult: z.boolean().optional(),
   // Categorie scelte da un professionista che si iscrive con Google
-  // (docs/CHANGELOG.md §214): obbligatorie solo quando la chiamata crea un
+  // (docs/CHANGELOG.md §217): obbligatorie solo quando la chiamata crea un
   // nuovo account professionista, controllato in `AuthService.verifyGoogleToken`.
   categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
 });
@@ -135,7 +149,7 @@ export const registerSchema = emailPasswordSchema.extend({
   declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
   turnstileToken: turnstileTokenSchema,
   // Da 1 a 3 categorie, obbligatorie solo per un professionista
-  // (docs/CHANGELOG.md §214): precompilano il suo profilo.
+  // (docs/CHANGELOG.md §217): precompilano il suo profilo.
   categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.categorySlugs?.length) {
@@ -156,7 +170,7 @@ export const updateAccountSchema = z.object({
   surname: z.string().min(1).max(120).optional(),
   birthDate: z.string().date("Data non valida").optional(),
   email: z.string().email("Email non valida").optional(),
-  phone: z.string().min(6).max(20).optional(),
+  phone: phoneNumberSchema.optional(),
   street: z.string().max(200).optional(),
   houseNumber: z.string().max(20).optional(),
   addressExtra: z.string().max(200).optional(),
@@ -235,7 +249,7 @@ export const guidedRequestSchema = z
     address: z.string().max(200).optional(),
     recipientName: z.string().max(120).optional(),
     recipientSurname: z.string().max(120).optional(),
-    recipientPhone: z.string().max(20).optional(),
+    recipientPhone: phoneNumberSchema.optional(),
     houseNumber: z.string().max(20).optional(),
     addressExtra: z.string().max(200).optional(),
     postalCode: z.string().max(10).optional(),
@@ -320,7 +334,7 @@ export const guidedRequestUpdateSchema = z
     address: z.string().max(200).optional(),
     recipientName: z.string().max(120).optional(),
     recipientSurname: z.string().max(120).optional(),
-    recipientPhone: z.string().max(20).optional(),
+    recipientPhone: phoneNumberSchema.optional(),
     houseNumber: z.string().max(20).optional(),
     addressExtra: z.string().max(200).optional(),
     postalCode: z.string().max(10).optional(),
@@ -622,20 +636,6 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
-/**
- * Recensione del professionista sul cliente (richiesta esplicita
- * dell'utente: "per il professionista per fare una recensione al cliente"),
- * stessa struttura di reviewSchema — stelle+testo+media, consentita solo
- * legata a una prenotazione COMPLETED del professionista stesso.
- */
-export const clientReviewSchema = z.object({
-  bookingId: z.string().uuid(),
-  rating: z.number().int().min(1).max(5),
-  comment: z.string().max(2000).optional(),
-  mediaUrls: z.array(z.string().url()).max(5).default([]),
-});
-export type ClientReviewInput = z.infer<typeof clientReviewSchema>;
-
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({
@@ -651,7 +651,7 @@ export type ProfessionalServiceInput = z.infer<typeof professionalServiceSchema>
 
 export const professionalProfileSchema = z.object({
   userId: z.string().uuid(),
-  // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §214).
+  // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §217).
   categorySlugs: professionalCategorySlugsSchema,
   subTags: z.array(z.string()).default([]),
   businessName: z.string().min(2).max(120),
@@ -821,7 +821,7 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
  */
 // GUIDED_REQUEST: una richiesta ricevuta, segnalata dal professionista che
 // l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
-export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "CLIENT_REVIEW", "GUIDED_REQUEST"] as const;
+export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
 export const createContentReportSchema = z.object({
   targetType: z.enum(contentReportTargetTypes),

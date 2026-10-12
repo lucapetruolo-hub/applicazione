@@ -17661,7 +17661,73 @@ sopra o sotto il limite, prova dopo 30 giorni) e sul motivo salvato alla
 chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 `apps/web` senza errori.
 
-## 214. Fino a 3 categorie per professionista
+## 214. Richiesta preventivo, scheda "Dove": indirizzo solo della città scelta e prefissi di tutti i paesi
+
+**Richiesta dell'utente (11/10/2026):** nella scheda "Dove", una volta scelta la città, l'indirizzo deve proporre solo vie di quella città e obbligare a sceglierne una dall'elenco, così nessuno scrive un indirizzo a caso; il numero di telefono deve avere i prefissi di tutti i paesi, l'italiano preimpostato e in cima i più usati, come fanno gli altri siti.
+
+**Decisioni:**
+- `AddressAutocompleteInput` ha la nuova opzione `restrictToCity`: la ricerca aggiunge il nome del comune al testo, l'elenco tiene solo i suggerimenti di quel comune e una scelta di un altro comune (`administrative_area_level_3`, poi `locality`) viene rifiutata con un messaggio. Il campo resta spento finché la città non è un comune dell'elenco ISTAT.
+- La scelta dall'elenco è obbligatoria (`addressVerified` in `GuidedRequestForm`): scrivere a mano azzera la scelta. L'indirizzo arrivato da "Ripeti la richiesta" o dall'account vale come già scelto. Cambiando città si svuotano via, civico, CAP e provincia (la provincia si ricompila dal comune). Senza consenso ai servizi Google compare "Attiva i suggerimenti"; senza chiave Google o se Google non risponde si accetta il testo libero, per non bloccare la richiesta.
+- La città deve essere un comune dell'elenco (prima bastava un testo qualsiasi).
+- Nuovo `PhoneNumberInput` (`apps/web/src/components/PhoneNumberInput.tsx`) con i dati in `packages/shared/src/phoneCountries.ts`: 239 paesi, nomi in italiano da `Intl.DisplayNames`, Italia preimpostata, gruppo "Più usati" in cima (Italia, San Marino, Vaticano, Svizzera, Francia, Germania, Spagna, Regno Unito, Romania, Albania, Marocco, Ucraina, Cina, Stati Uniti). Il prefisso è un `<select>` nativo trasparente sopra bandiera e prefisso: sul telefono apre il selettore del sistema. Il numero si salva come "+39 3331234567"; i numeri già salvati senza prefisso si leggono come italiani, e il confronto con l'account non considera cambiato lo stesso numero con o senza "+39". Controllo di lunghezza: 6-11 cifre per l'Italia, 6-15 per gli altri.
+
+- **Pulsante "Continua con Google" muto per chi non è loggato** (segnalazione dell'utente, stessa richiesta): lo script Google si carica solo dopo il consenso del banner cookie, ma nella finestra di accesso a fine richiesta (`InlineAuthGate`, zIndex 300) il banner (zIndex 200) restava coperto, quindi un visitatore nuovo non poteva accettare e il pulsante non faceva nulla. Ora `GoogleSignInButton` senza consenso mostra "Per accedere con Google serve il tuo consenso..." con "Accetta e continua", poi "Pronto: tocca di nuovo" (Google apre la sua finestra solo da un tocco diretto); il banner sta sopra le finestre (zIndex 400) e sparisce quando il consenso arriva da un altro punto. Il pulsante Google non viene più reinizializzato a ogni render del genitore.
+
+**Migliorie approvate dall'utente nella stessa PR ("effettua tutte le migliorie"):**
+- Campo telefono con prefissi e indirizzo solo della città scelta, da prendere dall'elenco, anche in "Modifica richiesta" (`GuidedRequestCard`) e nelle impostazioni dell'account (dove la città ora viene prima della via ed è un comune dell'elenco). Logica comune in `apps/web/src/lib/useChosenAddress.ts`.
+- Controllo anche lato server: `GeocodingService.checkAddressInCity`/`assertAddressInCity` geocodifica via, civico, CAP e città e rifiuta il salvataggio se Google trova la via in un altro comune o non trova una via (solo il comune). Vale alla creazione della richiesta a domicilio, alla modifica (solo se cambiano via, civico o città) e al salvataggio dell'indirizzo dell'account (solo se cambia). Senza `GOOGLE_MAPS_API_KEY` o se Google non risponde si salva comunque, come per la geocodifica del profilo.
+- Riepilogo della richiesta: indirizzo con interno, CAP e provincia, più nome e telefono di chi riceve il professionista.
+- Bandiere come immagini SVG in `apps/web/public/flags` (da country-flag-icons, licenza MIT nella stessa cartella): le emoji su Windows comparivano come lettere. Il prefisso ora si sceglie da un elenco del sito con ricerca per nome o prefisso (prima un `<select>` nativo).
+- Pulsante Google: dopo "Accetta e continua" compare direttamente il pulsante originale di Google, basta un tocco (prima "tocca di nuovo").
+
+**Seconde migliorie approvate dall'utente ("effettua le due migliorie"):**
+- Numeri salvati sempre nello stesso formato "+39 3331234567": `phoneNumberSchema` in `packages/shared/src/schemas.ts` (telefono dell'account, del profilo creato dall'operatore e di chi riceve il professionista) controlla la lunghezza e normalizza prima del salvataggio, così il controllo "numero già usato da un altro account" non dipende dal formato. Il telefono dei clienti dei lavori esterni resta testo libero: è un appunto del professionista.
+- Numeri già salvati: `PhoneNumbersNormalizeService` (`apps/api/src/phone-numbers/`) a ogni avvio porta nel formato unico account, richieste e lavori non ancora a posto; dopo il primo giro non tocca nulla. Due account con lo stesso numero scritto in modi diversi non vengono uniti: il secondo resta com'è e compare nel log di Render.
+- App per telefono: non ha ancora né la richiesta di preventivo né l'account (solo home e ricerca), quindi non c'era un campo da portare. Prefissi e normalizzazione stanno già in `packages/shared`, pronti quando si costruiranno quelle schermate.
+
+**Verifica:** test di `apps/api` (276, nuovi casi per il controllo dell'indirizzo e per la sistemazione dei numeri), typecheck e lint di `apps/web`, flusso da non loggato provato in locale (richiesta compilata, "Invia richiesta", "Continua con Google", consenso, pulsante Google pronto); prove delle funzioni dei prefissi con numeri italiani, fissi, britannici (0044), statunitensi, giamaicani (+1876) e svizzeri; pagina `/preventivo` aperta in locale (telefono 390px) con città Bari, provincia compilata da sola e prefisso +41.
+
+## 215. Niente più recensioni del professionista al cliente
+
+**Richiesta dell'utente (11/10/2026):** togliere la possibilità di recensire il cliente ed eliminare le recensioni al cliente da ogni punto del sito, compresi i menu come "Recensioni ricevute".
+
+**Decisioni:**
+- Tolti pulsante e voce di menu "Recensisci il cliente" nelle richieste del professionista, e il popup che si apriva dopo "Lavoro terminato".
+- Tolte le API `POST /client-reviews`, `GET /client-reviews/me` e `POST /client-reviews/photos` (modulo `apps/api/src/client-reviews/` eliminato) e i relativi metodi di `packages/api-client`.
+- Scheda cliente (`ClientProfileModal`): niente più recensioni né media stelle, solo nome, foto e data di nascita.
+- `/le-mie-recensioni`: tolta la sottoscheda "Ricevute", resta l'elenco delle recensioni che il cliente ha scritto.
+- **Fine del "doppio cieco"**: le recensioni del cliente al professionista erano pubbliche solo quando esisteva anche quella del professionista al cliente (o dopo 3 giorni, con una recensione automatica). Senza la seconda direzione ora sono pubbliche subito: profilo, ricerca, home, statistiche. Tolto il controllo orario che generava le recensioni automatiche; quelle già create restano.
+- Email e notifica "Nuova recensione" al professionista: dicono che la recensione è già visibile sul profilo. Tolte le frasi su "recensisci il cliente" e "la recensione diventa visibile anche senza la tua" nei promemoria di chiusura. Tolto dal popup di recensione il riquadro sull'attesa.
+
+**Cancellazione dei dati e migliorie approvate dall'utente ("procedi col consiglio più le 3 migliorie", poi "Cancellale" per le recensioni automatiche):**
+- Migrazione `20261011200000_remove_client_reviews`: cancella la tabella `client_reviews`, le segnalazioni su quelle recensioni e il tipo `CLIENT_REVIEW` (codice admin, moderazione, esportazione dati).
+- Recensioni automatiche: la stessa migrazione cancella le recensioni a 5 stelle generate dal vecchio "doppio cieco" (`reviews.isAutomatic = true`) e la colonna. Non le aveva scritte nessun cliente: senza etichetta sarebbero sembrate vere. Tolta ovunque l'etichetta "(recensione automatica)".
+- Voce di menu e titolo della pagina: "Le mie recensioni". Nella barra a schede del cliente resta "Recensioni", corta come le altre schede.
+
+**Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori. Migrazione provata su un Postgres locale con dati di prova: cancellate la recensione automatica, la recensione sul cliente e la sua segnalazione, rimaste la recensione vera e l'altra segnalazione; schema finale identico a `schema.prisma`.
+
+## 216. Richieste ricevute: il cognome del cliente si vede solo a preventivo accettato
+
+**Richiesta dell'utente (11/10/2026):** nella richiesta di preventivo ricevuta il professionista deve leggere solo il nome del cliente; il cognome si sblocca come telefono e indirizzo, solo a preventivo accettato.
+
+**Decisioni:**
+- Regola applicata lato server, così il cognome non arriva al browser prima: nuova funzione `clientNameForProfessional` (`apps/api/src/common/client-name.util.ts`), che restituisce solo il nome finché non esiste la `Booking` nata dal preventivo di quel professionista, poi nome e cognome. Senza nome resta "Cliente", mai il solo cognome.
+- Punti coperti: `ProfessionalsService.getMyLeads` (elenco e scheda delle richieste, scheda cliente, chat aperta dalla scheda, Home della dashboard) e `TimelineService.listThreadsForUser` (elenco dei messaggi, che prima mostrava nome e cognome a tutti). `getMyBookings` (agenda, lavori accettati) continua a mostrare nome e cognome.
+- Email e notifiche al professionista non contenevano il nome del cliente: nulla da cambiare. Il nome e cognome di chi riceve il professionista (`recipientName`/`recipientSurname`) era già esposto solo dalla `Booking`. L'area admin vede sempre nome e cognome.
+
+**Migliorie approvate dall'utente nella stessa PR ("effettua tutte le migliorie"):**
+- Recensioni pubbliche (`ReviewsService`, ultime recensioni in Home) firmate "Mario R." invece di nome e cognome interi: `publicClientName`.
+- Account senza cognome salvato (Google creati prima della separazione di nome e cognome, o chi ha scritto tutto nel campo nome): prima dell'accettazione e nelle recensioni si mostra solo la prima parola del nome. Scelta al posto di una correzione dei dati all'avvio: senza i dati di Google non si può dividere un nome completo in modo sicuro ("De Luca"), e così nessun dato viene toccato.
+- Data di nascita del cliente solo a preventivo accettato, prima l'età (poi tolte entrambe, vedi sotto).
+
+**Seconde decisioni dell'utente (12/10/2026):** "leva anche l'età sia prima che dopo l'accettazione, non è importante per il professionista", foto profilo solo dopo l'accettazione, nota della scheda solo prima.
+- Data di nascita ed età non arrivano più al professionista (`clientBirthDate` tolto da `ProfessionalLead`, niente `clientAge`): la scheda cliente non le mostra più. Questo supera la richiesta passata di mostrare la data di nascita nella scheda.
+- Foto profilo del cliente (`clientImageUrl` in `getMyLeads`, `otherPartyImageUrl` in `listThreadsForUser`) solo con la Booking: prima compare l'iniziale nell'avatar.
+- Nuovo campo `clientDetailsUnlocked`: la nota "Cognome, foto, telefono, email e indirizzo saranno visibili all'accettazione" compare in `ClientProfileModal` solo prima dell'accettazione.
+
+**Verifica:** test di `apps/api` (281, nuovi casi per le funzioni del nome e per `getMyLeads` prima e dopo l'accettazione: cognome e foto, data di nascita mai presente), typecheck di `apps/api` e `apps/web`, lint di `apps/web` senza errori.
+
+## 217. Fino a 3 categorie per professionista
 
 **Richiesta dell'utente:** il professionista sceglie fino a 3 categorie già
 in registrazione e può cambiarle dal suo profilo, sempre fino a 3.
@@ -17677,7 +17743,7 @@ in registrazione e può cambiarle dal suo profilo, sempre fino a 3.
   `extraCategories` (tabella `_ProfessionalExtraCategories`). Le categorie
   scelte in registrazione stanno in `User.signupCategorySlugs` e
   precompilano il primo profilo in `/dashboard/profilo` (il profilo nasce
-  lì, con nome e città). Migrazione `20261011200000_professional_extra_categories`.
+  lì, con nome e città). Migrazione `20261012060000_professional_extra_categories`.
 - Registrazione professionista (`/registrati?ruolo=professionista`):
   "Che lavori fai?" in cima, obbligatorio con email e password e anche con
   Google (nuovo account senza categorie: rifiutato con "Scegli almeno una

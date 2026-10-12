@@ -473,23 +473,6 @@ export class AdminService {
         ownerUserId: r.booking.client.id,
       };
     }
-    if (targetType === "CLIENT_REVIEW") {
-      const r = await this.prisma.clientReview.findUnique({
-        where: { id: targetId },
-        include: { client: { select: { name: true, surname: true } }, booking: { include: { professionalProfile: { select: { businessName: true, userId: true, user: { select: { email: true } } } } } } },
-      });
-      if (!r) return { exists: false };
-      return {
-        exists: true,
-        title: `Recensione su ${[r.client.name, r.client.surname].filter(Boolean).join(" ") || "cliente"}`,
-        author: r.booking.professionalProfile.user.email,
-        text: r.comment,
-        photos: r.mediaUrls,
-        rating: r.rating,
-        state: r.hiddenAt ? "Nascosta" : "Visibile",
-        ownerUserId: r.booking.professionalProfile.userId,
-      };
-    }
     const g = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, include: { category: true, client: { select: { id: true, email: true } } } });
     if (!g) return { exists: false };
     return {
@@ -594,11 +577,7 @@ export class AdminService {
     // segnalazione" lato admin (richiesta esplicita dell'utente): per un
     // profilo segnalato è il target stesso, per una recensione è il
     // profilo su cui vive (serve a costruire il link pubblico
-    // `/professionista/{id}#recensione-{reviewId}`) — per una recensione
-    // sul cliente resta `null` di proposito: quel contenuto non ha una
-    // pagina pubblica raggiungibile (nessun profilo pubblico del
-    // cliente in questo marketplace, CLAUDE.md §40/§45), un link lì
-    // sarebbe stato un bottone che non porta da nessuna parte.
+    // `/professionista/{id}#recensione-{reviewId}`).
     const targetInfo = await Promise.all(
       reports.map(async (report): Promise<{ label: string | null; linkedProfessionalProfileId: string | null; excerpt?: string | null }> => {
         if (report.targetType === "PROFESSIONAL_PROFILE") {
@@ -619,26 +598,15 @@ export class AdminService {
             excerpt: review?.comment ?? null,
           };
         }
-        if (report.targetType === "GUIDED_REQUEST") {
-          const request = await this.prisma.guidedRequest.findUnique({
-            where: { id: report.targetId },
-            select: { city: true, description: true, category: { select: { label: true } }, client: { select: { name: true, surname: true } } },
-          });
-          const clientName = request ? [request.client.name, request.client.surname].filter(Boolean).join(" ") || "cliente" : null;
-          return {
-            label: request ? `Richiesta ${request.category.label}${request.city ? ` a ${request.city}` : ""} di ${clientName}` : null,
-            linkedProfessionalProfileId: null,
-            excerpt: request?.description ?? null,
-          };
-        }
-        const clientReview = await this.prisma.clientReview.findUnique({
+        const request = await this.prisma.guidedRequest.findUnique({
           where: { id: report.targetId },
-          select: { comment: true, client: { select: { name: true, surname: true } } },
+          select: { city: true, description: true, category: { select: { label: true } }, client: { select: { name: true, surname: true } } },
         });
+        const clientName = request ? [request.client.name, request.client.surname].filter(Boolean).join(" ") || "cliente" : null;
         return {
-          label: clientReview ? `Recensione su ${[clientReview.client.name, clientReview.client.surname].filter(Boolean).join(" ") || "cliente"}` : null,
+          label: request ? `Richiesta ${request.category.label}${request.city ? ` a ${request.city}` : ""} di ${clientName}` : null,
           linkedProfessionalProfileId: null,
-          excerpt: clientReview?.comment ?? null,
+          excerpt: request?.description ?? null,
         };
       }),
     );
@@ -824,7 +792,6 @@ export class AdminService {
   private async targetExists(targetType: ContentReportTargetType, targetId: string): Promise<boolean> {
     if (targetType === "PROFESSIONAL_PROFILE") return (await this.prisma.professionalProfile.count({ where: { id: targetId } })) > 0;
     if (targetType === "REVIEW") return (await this.prisma.review.count({ where: { id: targetId } })) > 0;
-    if (targetType === "CLIENT_REVIEW") return (await this.prisma.clientReview.count({ where: { id: targetId } })) > 0;
     return (await this.prisma.guidedRequest.count({ where: { id: targetId } })) > 0;
   }
 
@@ -892,10 +859,6 @@ export class AdminService {
       });
       return [review.booking.professionalProfileId];
     }
-    if (targetType === "CLIENT_REVIEW") {
-      await tx.clientReview.update({ where: { id: targetId }, data: { hiddenAt } });
-      return [];
-    }
     if (targetType === "GUIDED_REQUEST") {
       const request = await tx.guidedRequest.findUnique({ where: { id: targetId }, select: { status: true } });
       // Ripristinarla non la riapre: una richiesta chiusa per moderazione
@@ -910,8 +873,7 @@ export class AdminService {
    * Chi ha scritto/possiede il contenuto segnalato — il destinatario dello
    * "statement of reasons" quando una segnalazione viene accolta. Stessa
    * distinzione per `targetType` già usata in `listContentReports` per
-   * risolvere `targetLabel`: per una `CLIENT_REVIEW` l'autore è il
-   * professionista (che l'ha scritta sul cliente), non il cliente stesso.
+   * risolvere `targetLabel`.
    */
   private async resolveContentOwnerUserId(targetType: ContentReportTargetType, targetId: string): Promise<string | null> {
     if (targetType === "PROFESSIONAL_PROFILE") {
@@ -922,15 +884,8 @@ export class AdminService {
       const review = await this.prisma.review.findUnique({ where: { id: targetId }, select: { booking: { select: { clientId: true } } } });
       return review?.booking.clientId ?? null;
     }
-    if (targetType === "GUIDED_REQUEST") {
-      const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
-      return request?.clientId ?? null;
-    }
-    const clientReview = await this.prisma.clientReview.findUnique({
-      where: { id: targetId },
-      select: { booking: { select: { professionalProfile: { select: { userId: true } } } } },
-    });
-    return clientReview?.booking.professionalProfile.userId ?? null;
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id: targetId }, select: { clientId: true } });
+    return request?.clientId ?? null;
   }
 
   /**

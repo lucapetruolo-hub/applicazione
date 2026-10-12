@@ -224,7 +224,7 @@ ricerca sia per differenziare i piani a pagamento.
 Espansa oltre il set iniziale di mestieri artigianali con tre categorie,
 su richiesta esplicita dell'utente: **Tutto Fare** (piccole riparazioni
 generiche), **Dogsitter** e **Babysitter** (queste due al posto di OSS e
-Badanti, tolte su decisione dell'utente, docs/CHANGELOG.md §214). Ogni
+Badanti, tolte su decisione dell'utente, docs/CHANGELOG.md §217). Ogni
 professionista sceglie da 1 a 3 categorie (`MAX_PROFESSIONAL_CATEGORIES`). Fonte di verità unica in
 `packages/shared/src/categories.ts` (`PROFESSIONAL_CATEGORIES`): icone SVG
 e colori accento in `apps/web/src/components/icons/CategoryIcons.tsx`

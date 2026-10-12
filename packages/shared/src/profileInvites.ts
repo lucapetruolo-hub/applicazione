@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { professionalCategorySlugsSchema } from "./schemas";
+import { phoneNumberSchema, professionalCategorySlugsSchema } from "./schemas";
 
 /**
  * Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170,
@@ -14,9 +14,9 @@ export const operatorProfileInviteSchema = z.object({
   email: z.string().email("Email non valida"),
   name: z.string().min(2, "Nome troppo corto").max(120),
   surname: z.string().max(120).optional(),
-  phone: z.string().min(6).max(20).optional(),
+  phone: phoneNumberSchema.optional(),
   businessName: z.string().min(2, "Nome attività troppo corto").max(120),
-  // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §214).
+  // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §217).
   categorySlugs: professionalCategorySlugsSchema,
   city: z.string().min(2, "Scegli il comune"),
   address: z.string().max(200).optional(),

@@ -81,7 +81,7 @@ notification("QUOTE_DATE_REJECTED", "Cliente", "Preventivi e date");
 add("promemoria-cliente", "Lavori e appuntamenti", "Cliente", bookingReminderClientEmail({ name: "Giulia", businessName: "Idraulica Rossi", scheduledAt: appointment, category: "Idraulico" }));
 add("promemoria-professionista", "Lavori e appuntamenti", "Professionista", bookingReminderProfessionalEmail({ name: "Marco", clientName: "Giulia", scheduledAt: appointment, category: "Idraulico", city: "Milano" }));
 notification("JOB_COMPLETED", "Cliente", "Lavori e appuntamenti", { finalAmountEurCents: 18000 });
-notification("NEW_REVIEW", "Professionista", "Lavori e appuntamenti", { published: false });
+notification("NEW_REVIEW", "Professionista", "Lavori e appuntamenti", {});
 notification("BOOKING_CANCELED_BY_PROFESSIONAL", "Cliente", "Lavori e appuntamenti", { cancellationNote: "Imprevisto in cantiere, mi scuso." });
 notification("BOOKING_REOPENED_BY_PROFESSIONAL", "Cliente", "Lavori e appuntamenti");
 notification("BOOKING_REOPENED_BY_CLIENT", "Professionista", "Lavori e appuntamenti");

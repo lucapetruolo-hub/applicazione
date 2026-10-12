@@ -7,7 +7,7 @@ import type { ConversationEvent } from "@professionisti/shared";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
-import { ClientProfileModal, type ClientReviewSummary } from "@/components/ClientProfileModal";
+import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -98,7 +98,7 @@ export function ConversationView({
       centrati, non hanno un "lato". */
   viewerRole: "CLIENT" | "PROFESSIONAL";
   /**
-   * Nome reale dell'altra parte del thread (nome+cognome del cliente se
+   * Nome reale dell'altra parte del thread (nome del cliente, più il cognome a preventivo accettato, se
    * `viewerRole` è "PROFESSIONAL", nome attività del professionista se è
    * "CLIENT") — richiesta esplicita dell'utente: "al posto di cliente e
    * professionista deve esserci scritto il nome esatto". Ogni chiamante lo
@@ -136,19 +136,18 @@ export function ConversationView({
   // pagina /chat), la scheda si carica qui al clic dalle richieste
   // ricevute: stessi dati di `RequestCard`, niente contatti prima
   // dell'accettazione (CLAUDE.md §5.9).
-  const [clientCard, setClientCard] = useState<{ name: string; birthDate: string | null; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
+  const [clientCard, setClientCard] = useState<{ name: string; detailsUnlocked: boolean; imageUrl: string | null } | null>(null);
   async function openClientCard() {
     try {
       const leads = await apiClient.myLeads(token);
       const request = leads.find((lead) => lead.guidedRequest.id === guidedRequestId)?.guidedRequest;
       setClientCard({
         name: request?.clientName ?? otherPartyName ?? ACTOR_LABEL.CLIENT,
-        birthDate: request?.clientBirthDate ?? null,
-        imageUrl: request?.clientImageUrl ?? otherPartyImageUrl ?? null,
-        reviews: request?.clientReviews ?? [],
+        detailsUnlocked: request?.clientDetailsUnlocked ?? false,
+        imageUrl: request ? request.clientImageUrl : (otherPartyImageUrl ?? null),
       });
     } catch {
-      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, birthDate: null, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
+      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, detailsUnlocked: false, imageUrl: otherPartyImageUrl ?? null });
     }
   }
   function openProfileOf(actor: ConversationEvent["actor"]): (() => void) | undefined {
@@ -1043,10 +1042,8 @@ export function ConversationView({
       {clientCard ? (
         <ClientProfileModal
           name={clientCard.name}
-          birthDate={clientCard.birthDate}
+          detailsUnlocked={clientCard.detailsUnlocked}
           imageUrl={clientCard.imageUrl}
-          reviews={clientCard.reviews}
-          token={token}
           onClose={() => setClientCard(null)}
         />
       ) : null}

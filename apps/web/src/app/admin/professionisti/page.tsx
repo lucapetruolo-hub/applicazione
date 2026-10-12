@@ -31,7 +31,7 @@ function optional(value: string): string | undefined {
 export default function AdminProfessionistiPage() {
   const { token } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
-  // Da 1 a 3 categorie, come nella registrazione (docs/CHANGELOG.md §214).
+  // Da 1 a 3 categorie, come nella registrazione (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [saving, setSaving] = useState(false);
   // Un doppio clic non deve creare due volte lo stesso profilo.

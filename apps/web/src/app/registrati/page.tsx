@@ -326,7 +326,7 @@ function RegistratiForm() {
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
-  // Da 1 a 3 categorie (docs/CHANGELOG.md §214): obbligatorie sia con
+  // Da 1 a 3 categorie (docs/CHANGELOG.md §217): obbligatorie sia con
   // email e password sia con Google, precompilano il profilo.
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [email, setEmail] = useState("");

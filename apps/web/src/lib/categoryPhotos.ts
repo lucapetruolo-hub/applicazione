@@ -12,7 +12,7 @@
  * voce qui resta sull'icona colorata di `CategoryIconBadge`, mai un
  * placeholder generico o una foto scelta a caso per lei.
  *
- * Eccezione autorizzata dall'utente (docs/CHANGELOG.md §214): le foto qui
+ * Eccezione autorizzata dall'utente (docs/CHANGELOG.md §217): le foto qui
  * sotto vengono da Unsplash, licenza Unsplash (uso commerciale libero,
  * senza obbligo di attribuzione):
  * - traslochi: Vitaly Gariev, unsplash.com/photos/wS40ELZROLE

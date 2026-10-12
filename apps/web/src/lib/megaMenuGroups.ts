@@ -9,7 +9,7 @@ export type MegaMenuGroup = {
 // "Servizi" dell'header (brief redesign §4.1) — unica fonte di verità,
 // letta anche dal drawer mobile così i due non divergono. Colonne
 // ribilanciate (5/4/4) quando Dogsitter e Babysitter hanno preso il posto
-// di OSS e Badanti (docs/CHANGELOG.md §214).
+// di OSS e Badanti (docs/CHANGELOG.md §217).
 export const MEGA_MENU_GROUPS: MegaMenuGroup[] = [
   { title: "Casa e impianti", slugs: ["idraulico", "elettricista", "climatizzazione", "fabbro", "falegname"] },
   { title: "Lavori e manutenzione", slugs: ["imbianchino", "muratore", "giardiniere", "tuttofare"] },

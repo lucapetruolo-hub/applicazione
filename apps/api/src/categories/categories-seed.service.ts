@@ -27,7 +27,7 @@ export class CategoriesSeedService implements OnModuleInit {
     }
     this.logger.log(`Categorie sincronizzate nel database (${PROFESSIONAL_CATEGORIES.length}).`);
 
-    // Categorie tolte dal sito (es. OSS e Badanti, docs/CHANGELOG.md §214):
+    // Categorie tolte dal sito (es. OSS e Badanti, docs/CHANGELOG.md §217):
     // si cancellano solo se nessun profilo, richiesta o regola commissioni le
     // usa ancora, altrimenti restano e lo si segnala nei log.
     const obsolete = await this.prisma.category.findMany({

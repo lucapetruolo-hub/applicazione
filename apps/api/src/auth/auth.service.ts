@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
@@ -18,6 +18,7 @@ import {
   welcomeProfessionalEmail,
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { GeocodingService } from "../geocoding/geocoding.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
 
@@ -43,6 +44,8 @@ export class AuthService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly emailService: EmailService,
     private readonly cloudinaryService: CloudinaryService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly geocodingService?: GeocodingService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -101,7 +104,7 @@ export class AuthService {
         role,
         legalConsentAt: new Date(),
         legalConsentVersion: LEGAL_CONSENT_VERSION,
-        // Categorie scelte in registrazione (docs/CHANGELOG.md §214), da 1 a
+        // Categorie scelte in registrazione (docs/CHANGELOG.md §217), da 1 a
         // 3 per un professionista: già controllate da `registerSchema`.
         signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
       },
@@ -179,7 +182,7 @@ export class AuthService {
       throw new BadRequestException("Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.");
     }
     // Un nuovo professionista sceglie da 1 a 3 categorie anche con Google
-    // (docs/CHANGELOG.md §214); il massimo è già nello schema Zod.
+    // (docs/CHANGELOG.md §217); il massimo è già nello schema Zod.
     if (!existingUser && role === "PROFESSIONAL" && categorySlugs.length === 0) {
       throw new BadRequestException(NO_CATEGORY_MESSAGE);
     }
@@ -270,6 +273,14 @@ export class AuthService {
       const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
       if (existing && existing.id !== userId) {
         throw new ConflictException("Esiste già un account con questo numero di telefono.");
+      }
+    }
+
+    // Indirizzo predefinito vero e nel comune indicato, solo se cambia (docs/CHANGELOG.md §214).
+    if (data.street?.trim() && data.city?.trim()) {
+      const current = await this.prisma.user.findUnique({ where: { id: userId }, select: { street: true, houseNumber: true, city: true } });
+      if (!current || current.street !== data.street || (current.houseNumber ?? undefined) !== data.houseNumber || current.city !== data.city) {
+        await this.geocodingService?.assertAddressInCity({ street: data.street, houseNumber: data.houseNumber, postalCode: data.postalCode, city: data.city });
       }
     }
 
@@ -462,7 +473,7 @@ export class AuthService {
     }
     const { passwordHash: _passwordHash, googleId: _googleId, ...account } = user;
 
-    const [guidedRequests, bookingsAsClient, reviewsWritten, clientReviewsReceived, savedProfessionals, professionalProfile] =
+    const [guidedRequests, bookingsAsClient, reviewsWritten, savedProfessionals, professionalProfile] =
       await Promise.all([
         this.prisma.guidedRequest.findMany({
           where: { clientId: userId },
@@ -500,14 +511,13 @@ export class AuthService {
           orderBy: { scheduledAt: "desc" },
         }),
         this.prisma.review.findMany({ where: { booking: { clientId: userId } }, orderBy: { createdAt: "desc" } }),
-        this.prisma.clientReview.findMany({ where: { clientId: userId }, orderBy: { createdAt: "desc" } }),
         this.prisma.savedProfessional.findMany({ where: { userId } }),
         this.prisma.professionalProfile.findUnique({ where: { userId } }),
       ]);
 
     let professional: Record<string, unknown> | null = null;
     if (professionalProfile) {
-      const [services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs] =
+      const [services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, externalJobs] =
         await Promise.all([
           this.prisma.professionalService.findMany({ where: { professionalProfileId: professionalProfile.id } }),
           this.prisma.availabilitySlot.findMany({ where: { professionalProfileId: professionalProfile.id } }),
@@ -525,13 +535,9 @@ export class AuthService {
             orderBy: { scheduledAt: "desc" },
           }),
           this.prisma.review.findMany({ where: { booking: { professionalProfileId: professionalProfile.id } }, orderBy: { createdAt: "desc" } }),
-          this.prisma.clientReview.findMany({
-            where: { booking: { professionalProfileId: professionalProfile.id } },
-            orderBy: { createdAt: "desc" },
-          }),
           this.prisma.externalJob.findMany({ where: { professionalProfileId: professionalProfile.id }, orderBy: { scheduledAt: "desc" } }),
         ]);
-      professional = { profile: professionalProfile, services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs };
+      professional = { profile: professionalProfile, services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, externalJobs };
     }
 
     return {
@@ -540,7 +546,6 @@ export class AuthService {
       guidedRequests,
       bookingsAsClient,
       reviewsWritten,
-      clientReviewsReceived,
       savedProfessionals,
       professional,
     };

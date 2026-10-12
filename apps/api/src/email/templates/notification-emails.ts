@@ -360,29 +360,21 @@ const BUILDERS: Record<string, Builder> = {
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
   }),
-  // Recensione "doppio cieco": il voto non si anticipa mai, il professionista
-  // lo vede solo dopo aver recensito anche lui il cliente.
+  // Recensione del cliente: pubblica subito sul profilo (docs/CHANGELOG.md
+  // §215). Il voto non si anticipa nell'email.
   NEW_REVIEW: (payload, ctx) => ({
     kind: "notification",
     subject: "Hai ricevuto una nuova recensione",
     greeting: ctx.name,
     title: "Nuova recensione",
     paragraphs:
-      payload.published === true
-        ? [`Il cliente ha recensito il lavoro per **${job(ctx)}**. Avevi già recensito anche tu il cliente: le due recensioni ora sono visibili, e la sua compare sul tuo profilo.`]
-        : payload.professionalCompleted === false
-          ? [
-              `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito.`,
-              "Per leggere la recensione segna anche tu il lavoro come terminato e recensisci il cliente: le due diventano visibili insieme.",
-            ]
-          : [
-              `Il cliente ha recensito il lavoro per **${job(ctx)}**.`,
-              "Per leggerla lascia anche tu la tua recensione sul cliente: le due diventano visibili insieme. Se non lo fai entro 3 giorni, la sua diventa comunque pubblica sul tuo profilo.",
-            ],
-    cta:
-      payload.published === true
-        ? proRequests("Apri il lavoro")
-        : proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Recensisci il cliente"),
+      payload.professionalCompleted === false
+        ? [
+            `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito: la recensione è già visibile sul tuo profilo.`,
+            "Ricordati di segnare anche tu il lavoro come terminato.",
+          ]
+        : [`Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`],
+    cta: proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Apri il lavoro"),
   }),
 
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).
@@ -625,7 +617,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Segna il lavoro come terminato",
     paragraphs: [
       `Il cliente ha confermato che il lavoro per **${job(ctx)}** è terminato.`,
-      `Segnalalo anche tu con l'importo finale${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}: dopo quella data la recensione del cliente diventa visibile anche senza la tua.`,
+      `Segnalalo anche tu con l'importo finale${str(payload.deadline) ? ` **entro ${formatDeadline(str(payload.deadline))}**` : ""}.`,
     ],
     cta: proRequests("Segna il lavoro come terminato"),
   }),
@@ -637,7 +629,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Termine scaduto",
     paragraphs: [
       `Non hai segnato come terminato il lavoro per **${job(ctx)}** entro ${BAD_WORK_REPORT_DAYS} giorni dalla conferma del cliente.`,
-      "Se il cliente ti ha recensito, la sua recensione diventa visibile sul tuo profilo. Puoi ancora segnare il lavoro come terminato con l'importo finale.",
+      "Puoi ancora segnare il lavoro come terminato con l'importo finale.",
     ],
     cta: proRequests("Apri il lavoro"),
   }),

@@ -3,7 +3,7 @@ import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@profess
 type CategoryRef = { slug: string; label: string };
 
 /**
- * Tutte le categorie di un profilo (docs/CHANGELOG.md §214): la principale
+ * Tutte le categorie di un profilo (docs/CHANGELOG.md §217): la principale
  * per prima, poi le aggiuntive nell'ordine dell'elenco del sito (la tabella
  * di collegamento non ricorda l'ordine di scelta).
  */

@@ -9,7 +9,6 @@ import type {
   ChangePasswordInput,
   ChatThreadSummary,
   ClientConfirmCompleteInput,
-  ClientReviewInput,
   CompleteBookingInput,
   ContactMessageInput,
   ConversationEvent,
@@ -266,7 +265,7 @@ export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
 
 type AdminReportRow = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
   reason: string;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   action: ModerationActionValue | null;
@@ -414,7 +413,7 @@ export type AdminDispute = {
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
   targetId: string;
   targetLabel: string | null;
   /** Profilo professionista su cui è raggiungibile il contenuto segnalato (`null` per una recensione sul cliente, priva di pagina pubblica). */
@@ -558,7 +557,7 @@ export type CurrentUser = {
    * `role === "PROFESSIONAL"`.
    */
   isProfessional: boolean;
-  /** Categorie (da 1 a 3) scelte da un professionista in registrazione, per precompilare il primo profilo (docs/CHANGELOG.md §214). */
+  /** Categorie (da 1 a 3) scelte da un professionista in registrazione, per precompilare il primo profilo (docs/CHANGELOG.md §217). */
   signupCategorySlugs?: string[];
   /** Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146); vuota per gli altri ruoli. */
   adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
@@ -593,25 +592,11 @@ export type SentReview = {
   comment: string | null;
   mediaUrls: string[];
   createdAt: string;
-  isAutomatic: boolean;
-  /** Già sbloccata dal "doppio cieco" (anche il professionista ha recensito). */
-  isPublic: boolean;
   /** Nascosta da un admin dopo una segnalazione. */
   hidden: boolean;
   /** `null` se il professionista ha eliminato il profilo. */
   professionalProfileId: string | null;
   businessName: string;
-};
-
-/** Recensione lasciata da un professionista al cliente, vista dal cliente stesso. */
-export type ReceivedClientReview = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  mediaUrls: string[];
-  createdAt: string;
-  isAutomatic: boolean;
-  reviewerBusinessName: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -979,7 +964,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
           id: string;
           rating: number;
           comment: string | null;
-          isAutomatic: boolean;
           createdAt: string;
           clientName: string;
           professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
@@ -1391,22 +1375,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),
 
-    /** Il professionista recensisce il cliente (richiesta esplicita dell'utente), stessa struttura di createReview ma sul lato opposto. */
-    createClientReview: (token: string, input: ClientReviewInput) =>
-      request<{ id: string }>("/client-reviews", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify(input),
-      }),
-
     /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
     mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
-
-    /** Recensioni ricevute dal cliente stesso (scheda "Recensioni", docs/CHANGELOG.md §179). */
-    myReceivedClientReviews: (token: string) =>
-      request<ReceivedClientReview[]>("/client-reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
-
-    uploadClientReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/client-reviews/photos", token, file, "image"),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

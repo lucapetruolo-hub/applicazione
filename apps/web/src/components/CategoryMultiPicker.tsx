@@ -5,7 +5,7 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
  * Scelta delle categorie del professionista, da 1 a 3 (docs/CHANGELOG.md
- * §214): usata in registrazione e in /dashboard/profilo. La prima scelta è
+ * §217): usata in registrazione e in /dashboard/profilo. La prima scelta è
  * la principale, e con più di una si può cambiare quale. Raggiunto il
  * massimo, le altre non si possono toccare finché non se ne toglie una.
  */

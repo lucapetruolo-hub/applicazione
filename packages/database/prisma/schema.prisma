@@ -119,7 +119,7 @@ model User {
   emailVerifiedAt        DateTime?
   emailTokenHash         String?     @unique
   // Categorie (da 1 a 3) scelte da un professionista nella registrazione
-  // (docs/CHANGELOG.md §214): precompilano il profilo in /dashboard/profilo,
+  // (docs/CHANGELOG.md §217): precompilano il profilo in /dashboard/profilo,
   // dove poi vivono davvero (ProfessionalProfile.category/extraCategories).
   signupCategorySlugs    String[]    @default([])
   emailTokenExpiresAt    DateTime?
@@ -133,7 +133,6 @@ model User {
   bookingsAsClient    Booking[]
   notifications       Notification[]
   savedProfessionals  SavedProfessional[]
-  clientReviews       ClientReview[]
   contentReports      ContentReport[]
   guidedRequestStates GuidedRequestUserState[]
   profileInvites      ProfileInvite[]
@@ -154,7 +153,7 @@ model Category {
 
   professionalProfiles      ProfessionalProfile[] @relation("ProfessionalPrimaryCategory")
   // Categorie aggiuntive scelte dal professionista (fino a 2 oltre la
-  // principale, docs/CHANGELOG.md §214).
+  // principale, docs/CHANGELOG.md §217).
   extraProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalExtraCategories")
   guidedRequests            GuidedRequest[]
   feeRules                  PlatformFeeRule[]
@@ -287,7 +286,7 @@ model ProfessionalProfile {
   // categoria (avatar, statistiche di zona, commissioni). Le altre (fino a 2,
   // in tutto massimo 3 — MAX_PROFESSIONAL_CATEGORIES in packages/shared)
   // stanno in `extraCategories` e valgono per ricerca e smistamento come la
-  // principale (docs/CHANGELOG.md §214).
+  // principale (docs/CHANGELOG.md §217).
   category        Category   @relation("ProfessionalPrimaryCategory", fields: [categoryId], references: [id])
   extraCategories Category[] @relation("ProfessionalExtraCategories")
 
@@ -1087,7 +1086,6 @@ model Booking {
 
   issue        JobIssue?
   review       Review?
-  clientReview ClientReview?
   // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
   // JobPayment in fondo a questo file. Nullable: una Booking creata prima
   // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
@@ -1161,11 +1159,6 @@ model Review {
   // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
   // della recensione, mostrate poi nella sezione recensioni del professionista.
   photoUrls   String[]  @default([])
-  // Vera solo se generata automaticamente dal job di sblocco (richiesta
-  // esplicita dell'utente: 5 stelle automatiche se la controparte non
-  // scrive la propria recensione entro 3 giorni) — mostrata con
-  // l'etichetta "(recensione automatica)" al posto del testo libero.
-  isAutomatic Boolean   @default(false)
   // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
   hiddenAt    DateTime?
@@ -1174,37 +1167,6 @@ model Review {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
-}
-
-// Recensione del professionista sul cliente (richiesta esplicita
-// dell'utente: "per il professionista per fare una recensione al
-// cliente") — stessa struttura di Review ma sul lato opposto. Nessun
-// profilo pubblico del cliente esiste in questo marketplace: visibile solo
-// nella scheda cliente (ClientProfileModal), aperta da un professionista
-// con una richiesta/prenotazione per quello stesso cliente — mai
-// indicizzata pubblicamente. Pubblica (in quella scheda) solo quando esiste
-// anche la Review del cliente sullo stesso booking, stesso principio
-// "doppio cieco" richiesto dall'utente ("saranno pubbliche solo quando
-// entrambi avranno effettuato la recensione") — nessun campo "published"
-// denormalizzato: la condizione si verifica al momento della query
-// controllando che entrambe le righe esistano per lo stesso bookingId.
-model ClientReview {
-  id          String    @id @default(uuid())
-  bookingId   String    @unique
-  clientId    String
-  rating      Int
-  comment     String?
-  mediaUrls   String[]  @default([])
-  isAutomatic Boolean   @default(false)
-  // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
-  // dalla scheda cliente. Non cambia lo sblocco "doppio cieco" della Review.
-  hiddenAt    DateTime?
-  createdAt   DateTime  @default(now())
-
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  client  User    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@map("client_reviews")
 }
 
 // ---------------------------------------------------------------------------
@@ -1369,7 +1331,6 @@ model ContactMessage {
 enum ContentReportTargetType {
   PROFESSIONAL_PROFILE
   REVIEW
-  CLIENT_REVIEW
   // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
   // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
   GUIDED_REQUEST

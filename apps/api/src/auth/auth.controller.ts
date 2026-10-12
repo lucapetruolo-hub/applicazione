@@ -217,7 +217,7 @@ export class AuthController {
       // cliente è facoltativa, proposta da un riquadro in /account.
       emailVerified: user.emailVerifiedAt !== null,
       emailVerificationRequired: isEmailVerificationRequired(),
-      // Categorie scelte in registrazione (docs/CHANGELOG.md §214): solo per
+      // Categorie scelte in registrazione (docs/CHANGELOG.md §217): solo per
       // precompilare il primo profilo in /dashboard/profilo.
       signupCategorySlugs: user.signupCategorySlugs,
     };

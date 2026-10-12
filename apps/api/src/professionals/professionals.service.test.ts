@@ -17,7 +17,6 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1" }) },
     lead: { findMany: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
     quote: { groupBy: vi.fn().mockResolvedValue([]) },
-    clientReview: { findMany: vi.fn().mockResolvedValue([]) },
     conversationEvent: { findMany: vi.fn().mockResolvedValue([]) },
     ...prismaOverrides,
   };
@@ -39,6 +38,7 @@ const CLIENT_WITH_FULL_CONTACT_INFO = {
   name: "Mario",
   surname: "Rossi",
   birthDate: new Date("1990-01-01"),
+  imageUrl: "https://img.example/mario.jpg",
   phone: "3331234567",
   email: "mario.rossi@example.com",
   address: "Via Segreta 42",
@@ -80,8 +80,13 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.email);
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.address);
     // Nome e data di nascita restano invece visibili fin da subito
-    // (richiesta esplicita dell'utente per la scheda cliente).
-    expect(lead!.guidedRequest.clientName).toBe("Mario Rossi");
+    // (richiesta esplicita dell'utente per la scheda cliente); il cognome
+    // no, si sblocca col preventivo accettato (docs/CHANGELOG.md §216).
+    expect(lead!.guidedRequest.clientName).toBe("Mario");
+    expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.surname);
+    expect(lead!.guidedRequest).not.toHaveProperty("clientBirthDate");
+    expect(lead!.guidedRequest.clientImageUrl).toBeNull();
+    expect(lead!.guidedRequest.clientDetailsUnlocked).toBe(false);
     expect(lead!.guidedRequest).not.toHaveProperty("clientPhone");
     expect(lead!.guidedRequest).not.toHaveProperty("clientEmail");
     expect(lead!.guidedRequest).not.toHaveProperty("clientAddress");
@@ -105,6 +110,11 @@ describe("ProfessionalsService.getMyLeads — gate contatti cliente", () => {
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.phone);
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.email);
     expect(serialized).not.toContain(CLIENT_WITH_FULL_CONTACT_INFO.address);
+    // Il cognome invece si sblocca con la Booking, come chiesto (§216).
+    expect(lead!.guidedRequest.clientName).toBe("Mario Rossi");
+    expect(lead!.guidedRequest.clientImageUrl).toBe("https://img.example/mario.jpg");
+    expect(lead!.guidedRequest.clientDetailsUnlocked).toBe(true);
+    expect(serialized).not.toContain("1990-01-01");
   });
 });
 

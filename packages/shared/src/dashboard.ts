@@ -7,7 +7,7 @@ export type MyProfessionalProfile = {
   /** Categoria principale (la prima di `categorySlugs`). */
   categorySlug: string;
   categoryLabel: string;
-  /** Tutte le categorie scelte, da 1 a 3, la principale per prima (docs/CHANGELOG.md §214). */
+  /** Tutte le categorie scelte, da 1 a 3, la principale per prima (docs/CHANGELOG.md §217). */
   categorySlugs: string[];
   city: string;
   address: string | null;
@@ -155,12 +155,11 @@ export type ProfessionalLead = {
      */
     clientName: string | null;
     /**
-     * Data di nascita del cliente (solo data, YYYY-MM-DD), per la scheda
-     * profilo aperta cliccando il nome (ClientProfileModal) — richiesta
-     * esplicita dell'utente: "vedere nome cognome, data di nascita e
-     * immagine del profilo". `null` se il cliente non l'ha compilata.
+     * True quando il preventivo di questo professionista è accettato (esiste
+     * la Booking): da lì si vedono cognome e foto del cliente. Data di
+     * nascita ed età non arrivano mai al professionista (docs/CHANGELOG.md §216).
      */
-    clientBirthDate: string | null;
+    clientDetailsUnlocked: boolean;
     /**
      * Telefono/email/indirizzo NON esposti a questo livello — decisione di
      * privacy ribaltata di nuovo su richiesta esplicita dell'utente ("non
@@ -170,7 +169,7 @@ export type ProfessionalLead = {
      * restano disponibili solo dopo l'accettazione, su
      * `ProfessionalBooking` (recipientPhone/street/ecc., già esistenti lì).
      */
-    /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
+    /** Immagine profilo dell'account cliente, solo a preventivo accettato (`null` prima, §216). */
     clientImageUrl: string | null;
     /** Il cliente ha confermato l'email (facoltativo per lui, docs/CHANGELOG.md §178): mostrato come segno di affidabilità. */
     clientEmailVerified: boolean;
@@ -187,23 +186,6 @@ export type ProfessionalLead = {
      * questi dati compilati".
      */
     clientAccountDeleted: boolean;
-    /**
-     * Recensioni ricevute dal cliente da qualunque professionista
-     * (richiesta esplicita dell'utente: "per il professionista per fare
-     * una recensione al cliente... visibile nella scheda cliente") —
-     * mostrate in ClientProfileModal, mai su un profilo pubblico (il
-     * cliente non ne ha uno in questo marketplace). Pubbliche solo se
-     * "doppio cieco" sbloccato (vedi ProfessionalMetricsService/ReviewsService).
-     */
-    clientReviews: {
-      id: string;
-      rating: number;
-      comment: string | null;
-      mediaUrls: string[];
-      createdAt: string;
-      isAutomatic: boolean;
-      reviewerBusinessName: string;
-    }[];
     /** Foto caricate dal cliente per far capire il lavoro al professionista (fino a 3). */
     photoUrls: string[];
     /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
@@ -329,8 +311,6 @@ export type ProfessionalBooking = {
   /** Foto/video del lavoro terminato allegate da ciascuna parte (richiesta esplicita dell'utente). */
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
-  /** Vero se il professionista ha già recensito il cliente per questa prenotazione. */
-  hasClientReview: boolean;
   /** Segnalazione del cliente (mancata presentazione o lavoro non andato bene), con l'eventuale risposta (docs/CHANGELOG.md §164). */
   issue: JobIssueSummary | null;
   /** Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve il professionista. */
