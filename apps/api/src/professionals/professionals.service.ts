@@ -131,7 +131,7 @@ export class ProfessionalsService {
       where,
       include: {
         category: true,
-        bookings: { include: { review: true, clientReview: true } },
+        bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
       },
@@ -140,13 +140,10 @@ export class ProfessionalsService {
     const previewsByProfileId = await this.buildAvailabilityPreviews(profiles.map((profile) => profile.id));
 
     const results = profiles.map((profile) => {
-      // Recensioni "doppio cieco" (richiesta esplicita dell'utente):
-      // pubbliche solo quando esiste anche la controparte
-      // (ClientReview, professionista→cliente, sullo stesso booking) — vera
-      // o generata automaticamente dopo l'attesa (ReviewsService.
-      // runAutoPublishCheck), non importa quale delle due.
+      // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215: il
+      // professionista non recensisce più il cliente, niente "doppio cieco").
       const reviews = profile.bookings
-        .filter((booking) => booking.review !== null && booking.clientReview !== null && booking.review.hiddenAt === null)
+        .filter((booking) => booking.review !== null && booking.review.hiddenAt === null)
         .map((booking) => booking.review)
         .filter((review): review is NonNullable<typeof review> => review !== null);
       const reviewCount = reviews.length;
@@ -396,7 +393,7 @@ export class ProfessionalsService {
       where: { id },
       include: {
         category: true,
-        bookings: { include: { review: true, clientReview: true } },
+        bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
         metrics: true,
@@ -407,12 +404,9 @@ export class ProfessionalsService {
       throw new NotFoundException("Professionista non trovato.");
     }
 
-    // Recensioni "doppio cieco" (richiesta esplicita dell'utente): pubbliche
-    // solo quando esiste anche la ClientReview sullo stesso booking — vera o
-    // generata automaticamente dopo l'attesa (ReviewsService.
-    // runAutoPublishCheck).
+    // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215).
     const reviews = profile.bookings
-      .filter((booking) => booking.review !== null && booking.clientReview !== null && booking.review.hiddenAt === null)
+      .filter((booking) => booking.review !== null && booking.review.hiddenAt === null)
       .map((booking) => booking.review)
       .filter((review): review is NonNullable<typeof review> => review !== null)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -459,7 +453,6 @@ export class ProfessionalsService {
         comment: review.comment,
         photoUrls: review.photoUrls,
         createdAt: review.createdAt.toISOString(),
-        isAutomatic: review.isAutomatic,
       })),
     };
   }
@@ -787,7 +780,7 @@ export class ProfessionalsService {
         ? this.prisma.profileViewDay.aggregate({ where: { professionalProfileId: { in: peers.map((p) => p.id) }, day: { gte: since } }, _sum: { count: true } })
         : Promise.resolve({ _sum: { count: 0 } }),
       this.prisma.review.aggregate({
-        where: { hiddenAt: null, booking: { professionalProfileId, clientReview: { isNot: null } } },
+        where: { hiddenAt: null, booking: { professionalProfileId } },
         _avg: { rating: true },
         _count: { _all: true },
       }),
@@ -833,23 +826,6 @@ export class ProfessionalsService {
       orderBy: { createdAt: "desc" },
     });
 
-    // Recensioni del cliente ricevute da QUALUNQUE professionista (richiesta
-    // esplicita dell'utente: "visibile nella scheda cliente" — non solo da
-    // questo professionista), mostrate nella scheda cliente
-    // (ClientProfileModal) aperta da questa dashboard. Pubbliche solo se
-    // "doppio cieco" sbloccato (la Review del cliente sullo stesso booking
-    // esiste anche lei, vera o automatica) — stesso principio già applicato
-    // alle recensioni pubbliche del profilo professionista. Un'unica query
-    // batch per l'intera pagina di lead, mai una per lead (N+1).
-    const clientIds = [...new Set(leads.map((lead) => lead.guidedRequest.client.id))];
-    const clientReviews =
-      clientIds.length > 0
-        ? await this.prisma.clientReview.findMany({
-            where: { clientId: { in: clientIds }, hiddenAt: null, booking: { review: { isNot: null } } },
-            include: { booking: { include: { professionalProfile: true } } },
-            orderBy: { createdAt: "desc" },
-          })
-        : [];
     // Quanti professionisti hanno già risposto alla stessa richiesta, su
     // quanti l'hanno ricevuta (docs/CHANGELOG.md §147, decisione esplicita
     // dell'utente): solo i numeri, mai chi sono né cosa hanno offerto. Due
@@ -880,13 +856,6 @@ export class ProfessionalsService {
         : [],
     );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
-    const clientReviewsByClientId = new Map<string, typeof clientReviews>();
-    for (const clientReview of clientReviews) {
-      const existing = clientReviewsByClientId.get(clientReview.clientId) ?? [];
-      existing.push(clientReview);
-      clientReviewsByClientId.set(clientReview.clientId, existing);
-    }
-
     return leads.map((lead) => {
       // quotes è filtrato per professionalProfileId nella query: al più una
       // voce (un professionista invia un solo preventivo per richiesta,
@@ -982,10 +951,10 @@ export class ProfessionalsService {
           city: lead.guidedRequest.city,
           // Solo il nome finché il preventivo non è accettato, il cognome
           // si sblocca con la Booking come telefono e indirizzo
-          // (docs/CHANGELOG.md §215).
+          // (docs/CHANGELOG.md §216).
           clientName: clientNameForProfessional(lead.guidedRequest.client, quote?.booking != null),
           // Data di nascita ed età non esposte al professionista, né prima
-          // né dopo l'accettazione (decisione dell'utente, §215).
+          // né dopo l'accettazione (decisione dell'utente, §216).
           clientDetailsUnlocked: quote?.booking != null,
           // Telefono/email/indirizzo NON esposti finché il preventivo non è
           // accettato — decisione di privacy ribaltata di nuovo su richiesta
@@ -997,26 +966,10 @@ export class ProfessionalsService {
           // street, ecc. — dati raccolti alla richiesta ma girati al
           // professionista solo con l'accettazione).
           // Foto profilo del cliente solo a preventivo accettato, come il
-          // cognome (decisione dell'utente, docs/CHANGELOG.md §215).
+          // cognome (decisione dell'utente, docs/CHANGELOG.md §216).
           clientImageUrl: quote?.booking != null ? lead.guidedRequest.client.imageUrl : null,
           clientEmailVerified: lead.guidedRequest.client.emailVerifiedAt !== null,
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
-          // Recensioni ricevute dal cliente, da qualunque professionista
-          // (richiesta esplicita dell'utente) — mostrate in
-          // ClientProfileModal fin da subito, indipendentemente
-          // dall'accettazione: non sono un dato di contatto personale, sono
-          // già "doppio cieco" per costruzione (pubbliche solo a review
-          // reciproca completata), mai su un profilo pubblico (il cliente
-          // non ne ha uno in questo marketplace).
-          clientReviews: (clientReviewsByClientId.get(lead.guidedRequest.client.id) ?? []).map((review) => ({
-            id: review.id,
-            rating: review.rating,
-            comment: review.comment,
-            mediaUrls: review.mediaUrls,
-            createdAt: review.createdAt.toISOString(),
-            isAutomatic: review.isAutomatic,
-            reviewerBusinessName: review.booking.professionalProfile.businessName,
-          })),
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,
@@ -1186,7 +1139,6 @@ export class ProfessionalsService {
         finalItems: true,
         issue: true,
         jobPayment: true,
-        clientReview: true,
       },
       orderBy: { scheduledAt: "asc" },
     });
@@ -1310,7 +1262,6 @@ export class ProfessionalsService {
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
-      hasClientReview: booking.clientReview !== null,
       // Segnalazione del cliente sul lavoro, con la risposta del professionista (docs/CHANGELOG.md §164).
       issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.

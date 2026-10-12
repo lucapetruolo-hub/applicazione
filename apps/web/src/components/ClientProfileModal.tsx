@@ -1,21 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { MediaPreview } from "@/components/MediaPreview";
-import { ReportContentModal } from "@/components/ReportContentModal";
-import { apiClient } from "@/lib/apiClient";
-import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
-
-export type ClientReviewSummary = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  mediaUrls: string[];
-  createdAt: string;
-  isAutomatic: boolean;
-  reviewerBusinessName: string;
-};
+import { useEffect } from "react";
+import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
@@ -27,7 +13,7 @@ export type ClientReviewSummary = {
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * solo l'identità (nome; cognome e foto profilo a preventivo accettato, §215) — richiesta
+ * solo l'identità (nome; cognome e foto profilo a preventivo accettato, §216) — richiesta
  * esplicita dell'utente, che ha ribaltato di nuovo la decisione di privacy
  * presa in un giro precedente (CLAUDE.md §12, mostrava telefono/email già
  * da qui): "tutte le info relative al cliente gli verranno visualizzate
@@ -35,16 +21,13 @@ export type ClientReviewSummary = {
  * props di questo componente — restano disponibili solo dopo l'accettazione
  * del preventivo, mostrati direttamente nella sezione "Contatti" della
  * card di un lavoro accettato (già esistente, sorgente ProfessionalBooking),
- * non in questa scheda identità. Le recensioni ricevute dal cliente restano
- * invece visibili subito (richiesta esplicita dell'utente): non sono un
- * dato di contatto personale, sono già "doppio cieco" per costruzione.
+ * non in questa scheda identità. Niente recensioni sul cliente: il
+ * professionista non recensisce più il cliente (docs/CHANGELOG.md §215).
  */
 export function ClientProfileModal({
   name,
   detailsUnlocked = false,
   imageUrl,
-  reviews,
-  token,
   onClose,
 }: {
   name: string;
@@ -52,33 +35,8 @@ export function ClientProfileModal({
   detailsUnlocked?: boolean;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
-  /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
-  reviews?: ClientReviewSummary[];
-  /** Per la segnalazione di una singola recensione (Verbale di Conformità, notice-and-action). */
-  token?: string | null;
   onClose: () => void;
 }) {
-  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
-  // Recensioni cliente già segnalate da questo browser nelle ultime 24 ore
-  // (richiesta esplicita dell'utente: "disabilita il tasto per evitare
-  // abusi di spam") — stesso principio di `ProfessionalDetailContent.tsx`
-  // per le recensioni professionista, qui limitato a `CLIENT_REVIEW`
-  // (l'unico targetType segnalabile da questo componente). Il backend
-  // (`ContentReportsService.create`, 409) resta l'unica fonte di verità
-  // autoritativa.
-  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    if (typeof window === "undefined" || !reviews) return initial;
-    for (const review of reviews) {
-      if (hasRecentlyReported("CLIENT_REVIEW", review.id)) initial.add(review.id);
-    }
-    return initial;
-  });
-  // Media delle stelle ricevute — richiesta esplicita dell'utente
-  // ("metti la media delle stelle ricevute"), calcolata dalle stesse
-  // recensioni già mostrate sotto (nessuna nuova chiamata API).
-  const avgRating = reviews && reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : null;
-
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -143,108 +101,7 @@ export function ClientProfileModal({
             Cognome, foto, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
           </Text>
         )}
-
-        {reviews && reviews.length > 0 ? (
-          <YStack width="100%" gap="$3" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
-            <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-              <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
-                Recensioni ricevute ({reviews.length})
-              </Text>
-              {avgRating !== null ? (
-                <XStack alignItems="center" gap={4}>
-                  <XStack gap={1}>
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <Icon
-                        key={value}
-                        name="star"
-                        size={13}
-                        strokeWidth={1.5}
-                        color={brand.ottone}
-                        fill={value <= Math.round(avgRating) ? brand.ottone : "none"}
-                      />
-                    ))}
-                  </XStack>
-                  <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
-                    {avgRating.toFixed(1)}
-                  </Text>
-                </XStack>
-              ) : null}
-            </XStack>
-            {reviews.map((review) => (
-              <YStack key={review.id} gap="$1" width="100%">
-                <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                    <XStack gap={2}>
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <Icon
-                          key={value}
-                          name="star"
-                          size={13}
-                          strokeWidth={1.5}
-                          color={brand.ottone}
-                          fill={value <= review.rating ? brand.ottone : "none"}
-                        />
-                      ))}
-                    </XStack>
-                    <Text fontSize="$2" color={brand.grafite} fontWeight="600">
-                      {review.reviewerBusinessName}
-                    </Text>
-                    {review.isAutomatic ? (
-                      <Text fontSize={11} color={brand.grafite70} fontStyle="italic">
-                        (recensione automatica)
-                      </Text>
-                    ) : null}
-                  </XStack>
-                  {token ? (
-                    <XStack
-                      alignItems="center"
-                      gap={4}
-                      cursor={reportedIds.has(review.id) ? "default" : "pointer"}
-                      opacity={reportedIds.has(review.id) ? 0.5 : 1}
-                      onPress={reportedIds.has(review.id) ? undefined : () => setReportTargetId(review.id)}
-                      accessibilityRole="button"
-                    >
-                      <Icon name="flag" size={11} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize={11} color={brand.grafite70}>
-                        {reportedIds.has(review.id) ? "Già segnalato" : "Segnala"}
-                      </Text>
-                    </XStack>
-                  ) : null}
-                </XStack>
-                {review.comment ? (
-                  <Text fontSize="$2" color={brand.grafite70}>
-                    {review.comment}
-                  </Text>
-                ) : null}
-                {review.mediaUrls.length > 0 ? (
-                  <XStack gap="$2" flexWrap="wrap">
-                    {review.mediaUrls.map((url) => (
-                      <YStack key={url} width={48} height={48} borderRadius="$2" overflow="hidden" borderWidth={1} borderColor={brand.filetto}>
-                        <MediaPreview url={url} />
-                      </YStack>
-                    ))}
-                  </XStack>
-                ) : null}
-              </YStack>
-            ))}
-          </YStack>
-        ) : null}
       </YStack>
-
-      {reportTargetId && token ? (
-        <ReportContentModal
-          targetType="CLIENT_REVIEW"
-          targetLabel="questa recensione"
-          onClose={() => setReportTargetId(null)}
-          onSubmit={async (reason, details) => {
-            await apiClient.createContentReport(token, { targetType: "CLIENT_REVIEW", targetId: reportTargetId, reason, details });
-            // Solo se la chiamata sopra non ha lanciato (es. 409 "già
-            // segnalato nelle ultime 24 ore") il tasto passa a disabilitato.
-            markReported("CLIENT_REVIEW", reportTargetId);
-            setReportedIds((prev) => new Set(prev).add(reportTargetId));
-          }}
-        />
-      ) : null}
     </div>
   );
 }

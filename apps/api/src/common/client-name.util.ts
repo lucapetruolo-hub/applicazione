@@ -1,6 +1,6 @@
 /**
  * Nome del cliente come lo vede un professionista (richiesta esplicita
- * dell'utente, docs/CHANGELOG.md §215): prima dell'accettazione del
+ * dell'utente, docs/CHANGELOG.md §216): prima dell'accettazione del
  * preventivo solo il nome, il cognome si sblocca insieme a telefono e
  * indirizzo quando nasce la `Booking` (CLAUDE.md §5 punto 9). Il cognome
  * viene tolto qui, lato server, così non arriva mai al browser prima.
@@ -24,7 +24,7 @@ function firstName(client: { name: string | null; surname: string | null }): str
 }
 
 /**
- * Firma pubblica del cliente sulle recensioni (docs/CHANGELOG.md §215): nome
+ * Firma pubblica del cliente sulle recensioni (docs/CHANGELOG.md §216): nome
  * e iniziale del cognome ("Mario R."), mai il cognome intero a chiunque.
  */
 export function publicClientName(client: { name: string | null; surname: string | null }): string | null {

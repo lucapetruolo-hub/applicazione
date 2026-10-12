@@ -254,8 +254,6 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     comment: string | null;
     photoUrls: string[];
     createdAt: string;
-    /** Vera se generata automaticamente (5 stelle) dallo sblocco "doppio cieco" dopo 3 giorni di attesa. */
-    isAutomatic: boolean;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul

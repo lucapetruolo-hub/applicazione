@@ -21,10 +21,9 @@ const textareaStyle = {
 /**
  * Popup di recensione condiviso (richiesta esplicita dell'utente: "si
  * aprirà un altro popup... per fare una recensione... dove inseriranno il
- * numero di stelle da 1 a 5, un testo e delle foto/video") — usato sia dal
- * cliente per recensire il professionista sia dal professionista per
- * recensire il cliente (stessa struttura, `onSubmit`/`uploadPhoto` parametrizzati
- * dal chiamante). Stesso pattern overlay di CompleteJobModal/BookingDetailPanel.
+ * numero di stelle da 1 a 5, un testo e delle foto/video") — usato dal
+ * cliente per recensire il professionista (`onSubmit`/`uploadPhoto`
+ * parametrizzati dal chiamante). Stesso pattern overlay di CompleteJobModal/BookingDetailPanel.
  */
 export function ReviewModal({
   title,
@@ -140,20 +139,6 @@ export function ReviewModal({
         </YStack>
 
         <textarea aria-label="Com'è andata?" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
-
-        {/* Spiegazione del meccanismo "doppio cieco" nel modulo stesso
-            (richiesta esplicita dell'utente, "Verbale Cognitivo" F6.1): un
-            meccanismo corretto ma invisibile rischia di sembrare un bug a
-            chi scrive la propria recensione e non la vede comparire subito
-            — CLAUDE.md §40, sblocco automatico dopo 3 giorni se l'altra
-            parte non recensisce mai. */}
-        <XStack gap="$2" alignItems="flex-start" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
-          <Icon name="shield" size={15} color={brand.grafite70} strokeWidth={1.5} />
-          <Text flex={1} fontSize="$2" color={brand.grafite70}>
-            La tua recensione sarà visibile quando anche l&apos;altra parte avrà segnato il lavoro come terminato e
-            lasciato la sua, o comunque 3 giorni dopo che entrambi lo avrete segnato come terminato.
-          </Text>
-        </XStack>
 
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.grafite70}>

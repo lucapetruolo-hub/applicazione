@@ -8,7 +8,6 @@ import { AdminService } from "./admin.service";
 function buildService(report: Record<string, unknown>, overrides: Record<string, unknown> = {}) {
   const tx = {
     review: { update: vi.fn().mockResolvedValue({ booking: { professionalProfileId: "pro-1" } }) },
-    clientReview: { update: vi.fn() },
     guidedRequest: { findUnique: vi.fn().mockResolvedValue({ status: "OPEN" }), update: vi.fn() },
     professionalProfile: { update: vi.fn(), updateMany: vi.fn() },
     user: { update: vi.fn(), updateMany: vi.fn() },
@@ -23,7 +22,6 @@ function buildService(report: Record<string, unknown>, overrides: Record<string,
       count: vi.fn().mockResolvedValue(1),
       findUnique: vi.fn().mockResolvedValue({ booking: { clientId: "author-1" } }),
     },
-    clientReview: { count: vi.fn().mockResolvedValue(1), findUnique: vi.fn().mockResolvedValue({ booking: { professionalProfile: { userId: "author-1" } } }) },
     guidedRequest: { count: vi.fn().mockResolvedValue(1), findUnique: vi.fn().mockResolvedValue({ clientId: "author-1" }) },
     professionalProfile: { count: vi.fn().mockResolvedValue(1), findUnique: vi.fn().mockResolvedValue({ userId: "author-1" }) },
     $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),

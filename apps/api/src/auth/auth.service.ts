@@ -450,7 +450,7 @@ export class AuthService {
     }
     const { passwordHash: _passwordHash, googleId: _googleId, ...account } = user;
 
-    const [guidedRequests, bookingsAsClient, reviewsWritten, clientReviewsReceived, savedProfessionals, professionalProfile] =
+    const [guidedRequests, bookingsAsClient, reviewsWritten, savedProfessionals, professionalProfile] =
       await Promise.all([
         this.prisma.guidedRequest.findMany({
           where: { clientId: userId },
@@ -488,14 +488,13 @@ export class AuthService {
           orderBy: { scheduledAt: "desc" },
         }),
         this.prisma.review.findMany({ where: { booking: { clientId: userId } }, orderBy: { createdAt: "desc" } }),
-        this.prisma.clientReview.findMany({ where: { clientId: userId }, orderBy: { createdAt: "desc" } }),
         this.prisma.savedProfessional.findMany({ where: { userId } }),
         this.prisma.professionalProfile.findUnique({ where: { userId } }),
       ]);
 
     let professional: Record<string, unknown> | null = null;
     if (professionalProfile) {
-      const [services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs] =
+      const [services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, externalJobs] =
         await Promise.all([
           this.prisma.professionalService.findMany({ where: { professionalProfileId: professionalProfile.id } }),
           this.prisma.availabilitySlot.findMany({ where: { professionalProfileId: professionalProfile.id } }),
@@ -513,13 +512,9 @@ export class AuthService {
             orderBy: { scheduledAt: "desc" },
           }),
           this.prisma.review.findMany({ where: { booking: { professionalProfileId: professionalProfile.id } }, orderBy: { createdAt: "desc" } }),
-          this.prisma.clientReview.findMany({
-            where: { booking: { professionalProfileId: professionalProfile.id } },
-            orderBy: { createdAt: "desc" },
-          }),
           this.prisma.externalJob.findMany({ where: { professionalProfileId: professionalProfile.id }, orderBy: { scheduledAt: "desc" } }),
         ]);
-      professional = { profile: professionalProfile, services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, clientReviewsWritten, externalJobs };
+      professional = { profile: professionalProfile, services, availabilitySlots, leads, quotesSent, bookingsAsProfessional, reviewsReceived, externalJobs };
     }
 
     return {
@@ -528,7 +523,6 @@ export class AuthService {
       guidedRequests,
       bookingsAsClient,
       reviewsWritten,
-      clientReviewsReceived,
       savedProfessionals,
       professional,
     };

@@ -17687,7 +17687,26 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 
 **Verifica:** test di `apps/api` (276, nuovi casi per il controllo dell'indirizzo e per la sistemazione dei numeri), typecheck e lint di `apps/web`, flusso da non loggato provato in locale (richiesta compilata, "Invia richiesta", "Continua con Google", consenso, pulsante Google pronto); prove delle funzioni dei prefissi con numeri italiani, fissi, britannici (0044), statunitensi, giamaicani (+1876) e svizzeri; pagina `/preventivo` aperta in locale (telefono 390px) con città Bari, provincia compilata da sola e prefisso +41.
 
-## 215. Richieste ricevute: il cognome del cliente si vede solo a preventivo accettato
+## 215. Niente più recensioni del professionista al cliente
+
+**Richiesta dell'utente (11/10/2026):** togliere la possibilità di recensire il cliente ed eliminare le recensioni al cliente da ogni punto del sito, compresi i menu come "Recensioni ricevute".
+
+**Decisioni:**
+- Tolti pulsante e voce di menu "Recensisci il cliente" nelle richieste del professionista, e il popup che si apriva dopo "Lavoro terminato".
+- Tolte le API `POST /client-reviews`, `GET /client-reviews/me` e `POST /client-reviews/photos` (modulo `apps/api/src/client-reviews/` eliminato) e i relativi metodi di `packages/api-client`.
+- Scheda cliente (`ClientProfileModal`): niente più recensioni né media stelle, solo nome, foto e data di nascita.
+- `/le-mie-recensioni`: tolta la sottoscheda "Ricevute", resta l'elenco delle recensioni che il cliente ha scritto.
+- **Fine del "doppio cieco"**: le recensioni del cliente al professionista erano pubbliche solo quando esisteva anche quella del professionista al cliente (o dopo 3 giorni, con una recensione automatica). Senza la seconda direzione ora sono pubbliche subito: profilo, ricerca, home, statistiche. Tolto il controllo orario che generava le recensioni automatiche; quelle già create restano.
+- Email e notifica "Nuova recensione" al professionista: dicono che la recensione è già visibile sul profilo. Tolte le frasi su "recensisci il cliente" e "la recensione diventa visibile anche senza la tua" nei promemoria di chiusura. Tolto dal popup di recensione il riquadro sull'attesa.
+
+**Cancellazione dei dati e migliorie approvate dall'utente ("procedi col consiglio più le 3 migliorie", poi "Cancellale" per le recensioni automatiche):**
+- Migrazione `20261011200000_remove_client_reviews`: cancella la tabella `client_reviews`, le segnalazioni su quelle recensioni e il tipo `CLIENT_REVIEW` (codice admin, moderazione, esportazione dati).
+- Recensioni automatiche: la stessa migrazione cancella le recensioni a 5 stelle generate dal vecchio "doppio cieco" (`reviews.isAutomatic = true`) e la colonna. Non le aveva scritte nessun cliente: senza etichetta sarebbero sembrate vere. Tolta ovunque l'etichetta "(recensione automatica)".
+- Voce di menu e titolo della pagina: "Le mie recensioni". Nella barra a schede del cliente resta "Recensioni", corta come le altre schede.
+
+**Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori. Migrazione provata su un Postgres locale con dati di prova: cancellate la recensione automatica, la recensione sul cliente e la sua segnalazione, rimaste la recensione vera e l'altra segnalazione; schema finale identico a `schema.prisma`.
+
+## 216. Richieste ricevute: il cognome del cliente si vede solo a preventivo accettato
 
 **Richiesta dell'utente (11/10/2026):** nella richiesta di preventivo ricevuta il professionista deve leggere solo il nome del cliente; il cognome si sblocca come telefono e indirizzo, solo a preventivo accettato.
 

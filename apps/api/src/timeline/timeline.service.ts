@@ -97,7 +97,7 @@ export class TimelineService {
             client: true,
             category: true,
             // Preventivi accettati della richiesta: il cognome del cliente
-            // e la foto si mostrano al professionista solo con la Booking (§215).
+            // e la foto si mostrano al professionista solo con la Booking (§216).
             quotes: { where: { booking: { isNot: null } }, select: { professionalProfileId: true } },
           },
         },
@@ -122,7 +122,7 @@ export class TimelineService {
           : client.deletedAt
             ? "Account eliminato"
             : (clientNameForProfessional(client, clientUnlocked) ?? "Cliente");
-      // Foto del cliente al professionista solo a preventivo accettato (§215).
+      // Foto del cliente al professionista solo a preventivo accettato (§216).
       const otherPartyImageUrl =
         viewerRole === "CLIENT" ? professionalProfile.imageUrl : client.deletedAt || !clientUnlocked ? null : client.imageUrl;
 
