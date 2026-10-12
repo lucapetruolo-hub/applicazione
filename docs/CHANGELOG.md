@@ -18009,3 +18009,15 @@ correttamente da entrambe le parti; rimando con nota accettato (201).
 
 **Verifica**: test API (285) e typecheck; in locale scritta del cliente e
 messaggio di ripristino visibili.
+
+## 225. Accettando un preventivo spariscono "Modifica" e "Rifiuta"
+
+**Richiesta dell'utente**: "quando il cliente clicca su accetta preventivo,
+devono scomparire momentaneamente i pulsanti modifica e rifiuta altrimenti
+c'è troppa confusione".
+
+**Decisione**: in `QuoteCard`, mentre è aperta la scelta del pagamento
+(`choosingPayment`) restano solo "Accetta preventivo" e "Annulla" di quel
+passaggio; con "Annulla" tornano "Modifica" e "Rifiuta".
+
+**Verifica**: in locale, conteggio dei pulsanti prima e dopo "Annulla".

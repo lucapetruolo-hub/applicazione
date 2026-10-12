@@ -414,12 +414,14 @@ export function QuoteCard({
                 Accetta preventivo
               </CardButton>
             ) : null}
-            {!isChoosingDate ? (
+            {/* Durante l'accettazione restano solo i pulsanti di quel passaggio
+                (richiesta esplicita dell'utente, docs/CHANGELOG.md §225). */}
+            {!isChoosingDate && !choosingPayment ? (
               <CardButton fill={brand.ottone} onPress={startChoosingDate}>
                 Modifica
               </CardButton>
             ) : null}
-            {!isChoosingDate && !confirmingReject ? (
+            {!isChoosingDate && !confirmingReject && !choosingPayment ? (
               <CardButton tone="danger" onPress={() => setConfirmingReject(true)}>
                 Rifiuta
               </CardButton>
