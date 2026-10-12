@@ -32,6 +32,34 @@ export function formatForwardDeadline(forwardAt: string | null): { label: string
 }
 
 /**
+ * "Puoi rispondere fino al 12 ottobre alle 15:30" (richiesta esplicita
+ * dell'utente, docs/CHANGELOG.md §221): la scadenza della richiesta, in ora
+ * italiana. Rossa nelle ultime 24 ore. `null` se passata o non nota.
+ */
+export function formatRespondUntil(respondUntil: string | null): { label: string; urgent: boolean } | null {
+  if (!respondUntil) return null;
+  const date = new Date(respondUntil);
+  const diffMs = date.getTime() - Date.now();
+  if (diffMs <= 0) return null;
+  const day = date.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  // "all'8", "all'11", "all'una": l'articolo si apostrofa davanti a vocale.
+  const dayArticle = day.startsWith("8 ") || day.startsWith("11 ") ? "all'" : "al ";
+  const timeArticle = time.startsWith("01:") ? "all'" : "alle ";
+  return { label: `Puoi rispondere fino ${dayArticle}${day} ${timeArticle}${time}`, urgent: diffMs <= 24 * 60 * 60 * 1000 };
+}
+
+/**
+ * Le scadenze da mostrare su una richiesta da quotare: fino a quando si può
+ * rispondere e, per una richiesta diretta, quando va anche ad altri.
+ */
+export function leadDeadlines(lead: { expiresAt: string | null; respondUntil: string | null; forwardAt: string | null }): { label: string; urgent: boolean }[] {
+  const respond = formatLeadDeadline(lead.expiresAt) ?? formatRespondUntil(lead.respondUntil);
+  const forward = formatForwardDeadline(lead.forwardAt);
+  return [respond, forward].filter((d): d is { label: string; urgent: boolean } => d !== null);
+}
+
+/**
  * "N su M altri professionisti hanno già risposto" (docs/CHANGELOG.md §147,
  * decisione esplicita dell'utente): conta solo i preventivi degli altri
  * professionisti che hanno ricevuto la stessa richiesta, mai chi sono.

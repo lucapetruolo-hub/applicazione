@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { formatCompetitors, formatForwardDeadline, formatLeadDeadline } from "@/lib/leadDeadline";
+import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -66,7 +66,7 @@ export function RequestCard({
   const router = useRouter();
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
-  const leadDeadline = formatLeadDeadline(lead.expiresAt) ?? formatForwardDeadline(lead.forwardAt);
+  const deadlines = leadDeadlines(lead);
   const competitorsLabel = formatCompetitors(lead.competitors);
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
@@ -535,7 +535,7 @@ export function RequestCard({
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
             <StagePill stage={stage} />
             <ServiceBadge online={isOnline} />
-            {stage === "da_quotare" && leadDeadline ? <DeadlinePill deadline={leadDeadline} /> : null}
+            {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
             {stage === "da_quotare" && competitorsLabel ? (
               <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
                 {competitorsLabel}

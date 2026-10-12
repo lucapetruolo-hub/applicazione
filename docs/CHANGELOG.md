@@ -17920,3 +17920,31 @@ effetti per l'altra parte. La voce del menu resta. Tolta la scritta
 **Verifica**: in locale (Postgres + API + web) una richiesta archiviata
 mostra la barra nel tab "Archiviate"; "Ripristina" la riporta in "Tutte" e
 "In attesa". Nessuna modifica all'API.
+
+## 221. Scadenza visibile al professionista e proposta del cliente modificabile
+
+**Richieste dell'utente**: "di' al professionista quanto tempo ha per
+rispondere alla richiesta preventivo inserendo la data: puoi rispondere fino
+al *data* alle *ora*" e "dai la possibilità al cliente di modificare più
+preventivi ricevuti e non solo 1".
+
+**Scadenza**: dal §210 il Lead non ha scadenza propria, ma la richiesta sì
+(`GuidedRequest.expiresAt`, 60 giorni, 30 se urgente): passata quella, si
+chiude e non si può più rispondere. Nuovo campo `respondUntil` del lead
+(`getMyLeads`), valorizzato finché il professionista non ha inviato un
+preventivo e la richiesta è aperta. In "Richieste e lavori" e in "Oggi" compare
+"Puoi rispondere fino al 11 dicembre alle 16:36" (ora italiana, "all'" davanti
+a 8, 11 e all'una; rossa nelle ultime 24 ore). Per una richiesta diretta resta
+anche l'avviso sull'inoltro ad altri (§209). Helper `leadDeadlines` in
+`apps/web/src/lib/leadDeadline.ts`.
+
+**Modifica del cliente**: provato in locale, con due preventivi il cliente
+poteva già proporre un'altra data a entrambi; dopo l'invio però il pulsante
+spariva e non poteva più cambiare la proposta finché il professionista non
+rispondeva. Ora nello stato "in attesa di conferma" c'è "Cambia proposta", che
+riapre la stessa scelta di data e nota. L'API lo consentiva già
+(`proposeDate` blocca solo preventivi accettati, rifiutati o ritirati).
+
+**Verifica**: in locale con due professionisti e due preventivi: scadenza
+visibile in entrambe le pagine; cambiata la proposta su un preventivo già in
+attesa, il professionista vede la nuova data.

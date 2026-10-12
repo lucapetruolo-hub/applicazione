@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
-import { formatCompetitors, formatForwardDeadline, formatLeadDeadline } from "@/lib/leadDeadline";
+import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
@@ -257,7 +257,7 @@ function TodaySection({ title, subtitle, action, children }: { title: string; su
 }
 
 function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
-  const deadline = formatLeadDeadline(lead.expiresAt) ?? formatForwardDeadline(lead.forwardAt);
+  const deadlines = leadDeadlines(lead);
   const competitors = formatCompetitors(lead.competitors);
   return (
     <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
@@ -268,7 +268,11 @@ function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
         </strong>
         <span className="today-row-sub">{truncate(lead.guidedRequest.description, 110)}</span>
         <span className="today-row-meta">
-          {deadline ? <span className={deadline.urgent ? "today-deadline is-urgent" : "today-deadline"}>{deadline.label}</span> : null}
+          {deadlines.map((deadline) => (
+            <span key={deadline.label} className={deadline.urgent ? "today-deadline is-urgent" : "today-deadline"}>
+              {deadline.label}
+            </span>
+          ))}
           {competitors ? <span className="today-competitors">{competitors}</span> : null}
         </span>
       </span>

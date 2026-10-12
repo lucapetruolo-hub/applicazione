@@ -934,6 +934,17 @@ export class ProfessionalsService {
           !chattedRequestIds.has(lead.guidedRequest.id)
             ? lead.guidedRequest.forwardAt.toISOString()
             : null,
+        // Fino a quando si può rispondere (richiesta esplicita dell'utente,
+        // docs/CHANGELOG.md §221): la scadenza della richiesta, finché non
+        // hai ancora inviato un preventivo e la richiesta è aperta.
+        respondUntil:
+          lead.status === "PENDING" &&
+          !quote &&
+          lead.guidedRequest.status !== "CLOSED" &&
+          lead.guidedRequest.expiresAt &&
+          lead.guidedRequest.expiresAt.getTime() > Date.now()
+            ? lead.guidedRequest.expiresAt.toISOString()
+            : null,
         competitors: {
           responded: otherQuotesPerRequest.get(lead.guidedRequest.id) ?? 0,
           total: Math.max(0, (leadsPerRequest.get(lead.guidedRequest.id) ?? 1) - 1),
