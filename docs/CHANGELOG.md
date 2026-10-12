@@ -18062,7 +18062,8 @@ Terzo giro, migliorie approvate dall'utente: sotto "Accettato" sparisce
 "Come pago?" (il metodo di pagamento è subito sotto); un preventivo accettato
 non mostra più l'etichetta "Nuovo"; la data dell'intervento diventa il titolo
 della sezione "Intervento" (con il giorno della settimana) invece di una riga
-grigia.
+grigia. Lato cliente "Lavoro terminato" (o "Lascia una recensione") è il
+primo della fila e ha lo stesso turchese del lato professionista.
 
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

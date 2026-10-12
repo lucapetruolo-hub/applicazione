@@ -268,10 +268,20 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       ) : null}
 
       {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
-          Contatta/Cronologia, Segnala un problema, Lavoro terminato o
-          recensione. Un solo Contatta/Cronologia nella scheda: quello del
+          Lavoro terminato (o recensione), Contatta/Cronologia, Segnala un
+          problema. Un solo Contatta/Cronologia nella scheda: quello del
           preventivo accettato è nascosto (QuoteCard, `contactInBooking`). */}
       <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+        {/* Lavoro terminato sempre per primo, turchese come lato professionista (richiesta esplicita dell'utente). */}
+        {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+          booking.hasReview ? null : booking.canReview ? (
+            <CardButton onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
+          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
+            <CardButton fill="#20B2AA" onPress={() => setShowClientCompleteModal(true)}>
+              Lavoro terminato
+            </CardButton>
+          ) : null
+        ) : null}
         {booking.guidedRequestId ? (
           <ContactButton
             unreadCount={effectiveUnreadCount}
@@ -285,15 +295,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           <CardButton tone="danger" onPress={() => setShowNoShowModal(true)}>
             Segnala un problema
           </CardButton>
-        ) : null}
-        {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
-          booking.hasReview ? null : booking.canReview ? (
-            <CardButton onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
-          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
-            <CardButton tone="primary" onPress={() => setShowClientCompleteModal(true)}>
-              Lavoro terminato
-            </CardButton>
-          ) : null
         ) : null}
       </XStack>
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
