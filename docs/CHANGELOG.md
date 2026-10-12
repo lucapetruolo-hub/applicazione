@@ -17720,9 +17720,12 @@ provate sul database, anteprime della registrazione da computer e telefono.
 - Menu "Servizi" ribilanciato su 5/4/4: "Casa e impianti", "Lavori e
   manutenzione", "Casa e famiglia" (pulizie, traslochi, babysitter,
   dogsitter).
-- Non fatta: le foto di Dogsitter e Babysitter. `categoryPhotos.ts` accetta
-  solo foto fornite dall'utente, mai stock scelti a caso: restano
-  sull'icona finché non arrivano le foto.
+- Foto di copertina di Dogsitter e Babysitter: rimandate in un primo giro
+  (`categoryPhotos.ts` accettava solo foto fornite dall'utente), poi
+  l'utente ha autorizzato a prenderle da internet. Scelte su Unsplash con
+  licenza Unsplash (uso commerciale libero): Andriyko Podilnyk (dogsitter)
+  e Vitaly Gariev (babysitter), fonti annotate in `categoryPhotos.ts`.
+  Stesso formato delle altre (webp 1536×1024).
 - Rivisto su indicazione dell'utente: nella richiesta a un professionista
   già scelto la categoria non si sceglie più (il campo è nascosto). Si usa
   quella del link, se è una delle sue, altrimenti la principale: serve solo
