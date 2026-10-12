@@ -18024,7 +18024,27 @@ conferma il rifiuto: gli altri pulsanti spariscono finché non annulla.
 
 **Verifica**: in locale, conteggio dei pulsanti prima e dopo "Annulla".
 
-## 226. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
+## 226. Foto accanto al nome in cima alla chat, anche nelle finestre
+
+**Richiesta dell'utente**: "nella chat, in alto dove c'è scritto il nome del
+professionista o cliente fai comparire anche la foto".
+
+**Decisione**: la pagina Messaggi la mostrava già; le chat aperte dalle schede
+(preventivo, lavoro, richiesta ricevuta, agenda) in una finestra mostravano
+solo l'iniziale perché `TimelineModal` non riceveva la foto. Ora la riceve da
+ogni punto: foto del professionista per il cliente; foto del cliente per il
+professionista solo a preventivo accettato (§216), prima l'iniziale.
+`ProfessionalBooking` porta `clientImageUrl` (c'è la Booking, quindi il
+preventivo è accettato; `null` se l'account è eliminato) per la chat aperta
+dall'agenda.
+
+Migliorie approvate dall'utente: foto in cima alla chat da 36 a 40px, dentro
+una zona da toccare di 44px (apre il profilo, comoda dal telefono).
+
+**Verifica**: tipi di `apps/web` e `apps/api` verdi, build di produzione e
+schermate in locale su computer e telefono.
+
+## 227. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
 
 **Richiesta dell'utente**: nella scheda del preventivo accettato mettere in
 fila gli ultimi tre pulsanti (Contatta/Cronologia, Segnala un problema,

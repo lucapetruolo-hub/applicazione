@@ -114,7 +114,7 @@ export class BookingsService {
     // accettato — mancava del tutto (richiesta esplicita dell'utente, "wow
     // hanno accettato un tuo preventivo" come esempio di popup atteso).
     // Dati del cliente già nell'email al professionista (richiesta esplicita
-    // dell'utente, docs/CHANGELOG.md §226): si sbloccano proprio ora, con la
+    // dell'utente, docs/CHANGELOG.md §227): si sbloccano proprio ora, con la
     // prenotazione creata (CLAUDE.md §5 punto 9). Stessi campi della scheda.
     const client = guidedRequest.client;
     const clientFullName =
@@ -341,7 +341,7 @@ export class BookingsService {
     ]);
 
     // Importo diverso dal preventivo: il motivo arriva al cliente nella
-    // notifica, nell'email e in chat (richiesta esplicita dell'utente, docs/CHANGELOG.md §226).
+    // notifica, nell'email e in chat (richiesta esplicita dell'utente, docs/CHANGELOG.md §227).
     const clientReason = deviation?.needsReason ? changeReason : null;
     await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", {
       bookingId,

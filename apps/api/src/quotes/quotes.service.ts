@@ -19,7 +19,7 @@ import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 
 
-/** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §226). */
+/** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §227). */
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
   return { start: start.toISOString(), end: end ? end.toISOString() : null };
 }
@@ -218,7 +218,7 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
         change: scheduleChange,
-        // Prima e dopo nell'email (docs/CHANGELOG.md §226).
+        // Prima e dopo nell'email (docs/CHANGELOG.md §227).
         from: slotPayload(existingQuote!.estimatedStartDate, existingQuote!.estimatedEndDate),
         to: slotPayload(data.estimatedStartDate, data.estimatedEndDate),
       });

@@ -16,7 +16,7 @@ function eur(cents: number): string {
  * Scelta del metodo di pagamento accettando un preventivo
  * (docs/CHANGELOG.md §168): online con Stripe (acconto del 20%, saldo a
  * lavoro finito, assistenza e rimborso) o "DIRETTO al professionista", una
- * riga senza spiegazioni (richiesta esplicita dell'utente, §226).
+ * riga senza spiegazioni (richiesta esplicita dell'utente, §227).
  *
  * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
  * diretto, con una riga che spiega che quello online arriverà

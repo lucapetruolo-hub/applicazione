@@ -71,7 +71,7 @@ const MAX_DESCRIPTION_LENGTH = 200;
 /**
  * Riga "Descrizione" del riquadro, in ogni email che riguarda una richiesta:
  * serve a capire di quale lavoro si parla (richiesta esplicita dell'utente,
- * docs/CHANGELOG.md §226). Accorciata a 200 caratteri.
+ * docs/CHANGELOG.md §227). Accorciata a 200 caratteri.
  */
 export function descriptionDetail(description: string | null | undefined): { label: string; value: string }[] {
   const text = description?.trim();

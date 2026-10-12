@@ -114,7 +114,7 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
-  // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §226).
+  // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §227).
   if (type === "JOB_COMPLETED" && typeof data.changeReason === "string" && data.changeReason.trim()) {
     return { icon: "✅", message: `Il professionista ha segnalato il lavoro come terminato, con un importo diverso dal preventivo: "${data.changeReason.trim()}"` };
   }

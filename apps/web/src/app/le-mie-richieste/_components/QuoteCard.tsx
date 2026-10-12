@@ -288,7 +288,7 @@ export function QuoteCard({
             </Text>
           </XStack>
         </Link>
-        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§226). */}
+        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§227). */}
         {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
@@ -504,7 +504,7 @@ export function QuoteCard({
           {dateChooser}
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
-        // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§226).
+        // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§227).
         <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Accettato
         </Text>
@@ -537,7 +537,7 @@ export function QuoteCard({
       ) : null}
 
       {showTimeline ? (
-        <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} onClose={() => setShowTimeline(false)} />
+        <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} otherPartyImageUrl={quote.imageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
   );
