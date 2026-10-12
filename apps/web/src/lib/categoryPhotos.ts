@@ -12,27 +12,27 @@
  * voce qui resta sull'icona colorata di `CategoryIconBadge`, mai un
  * placeholder generico o una foto scelta a caso per lei.
  *
- * Eccezione autorizzata dall'utente (docs/CHANGELOG.md §217): le foto qui
- * sotto vengono da Unsplash, licenza Unsplash (uso commerciale libero,
- * senza obbligo di attribuzione):
+ * Foto da Unsplash (licenza Unsplash) e Pexels (licenza Pexels), entrambe
+ * con uso commerciale libero e senza obbligo di attribuzione. Scelte
+ * dall'utente categoria per categoria tra tre alternative (docs/CHANGELOG.md
+ * §217 e §219):
+ * - idraulico: pexels.com/photo/6419128
+ * - elettricista: pexels.com/photo/34054464
+ * - imbianchino: Ivan S, pexels.com/photo/5799084
+ * - pulizie: pexels.com/photo/6196566
+ * - giardiniere: pexels.com/photo/6728926
  * - traslochi: Vitaly Gariev, unsplash.com/photos/wS40ELZROLE
- * - fabbro: Maria Ziegler, unsplash.com/photos/1AmEImwtnFk
- * - falegname: Ali Mkumbwa, unsplash.com/photos/PxlKOcj0a3Q
- * - tuttofare: Kevin Grieve, unsplash.com/photos/3CKZS3-o3XU
- * - dogsitter: Andriyko Podilnyk, unsplash.com/photos/VehdYPKnX8Y
+ * - fabbro: pexels.com/photo/5691693
+ * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463575
+ * - muratore: pexels.com/photo/5691606
+ * - falegname: pexels.com/photo/4888598
+ * - tuttofare: pexels.com/photo/5691544
+ * - dogsitter: pexels.com/photo/7210537
  * - babysitter: Vitaly Gariev, unsplash.com/photos/IGnXUcRKZzQ
  *
- * Sostituite su richiesta dell'utente perché "sembravano troppo AI"
- * (docs/CHANGELOG.md §219), con foto vere da Pexels, licenza Pexels (uso
- * commerciale libero, senza obbligo di attribuzione):
- * - elettricista: ranjeet, pexels.com/photo/27928762
- * - imbianchino: Ivan S, pexels.com/photo/5799084
- * - giardiniere: pexels.com/photo/24595771
- * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463575
- * Poi, su nuova richiesta (stesso §219), anche:
- * - muratore: pexels.com/photo/5493654
- * - idraulico: pexels.com/photo/6050244
- * - pulizie: pexels.com/photo/6196566
+ * Le foto di `/registrati` e `/per-professionisti` sono copie separate in
+ * `public/page-photos/`, così cambiare la foto di una categoria non cambia
+ * quelle pagine.
  */
 export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   idraulico: "/category-photos/idraulico.webp",
@@ -56,8 +56,6 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
  * fuori dal bordo. Le categorie non elencate restano centrate.
  */
 export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
-  elettricista: "15% 50%",
   imbianchino: "72% 50%",
-  giardiniere: "68% 50%",
   climatizzazione: "45% 50%",
 };
