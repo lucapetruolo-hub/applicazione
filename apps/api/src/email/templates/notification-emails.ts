@@ -18,7 +18,7 @@ import {
 } from "@professionisti/shared";
 import { frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
-import { formatAppointment, formatDay, formatDeadline, formatEur } from "../email-format";
+import { formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
@@ -166,18 +166,35 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
     };
   },
-  QUOTE_ACCEPTED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: "Il cliente ha accettato il tuo preventivo",
-    greeting: ctx.name,
-    title: "Preventivo accettato!",
-    paragraphs: [
-      `Ottima notizia: il cliente ha accettato il tuo preventivo per **${job(ctx)}**.`,
-      "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
-    ],
-    details: proJobDetails(ctx),
-    cta: proRequests("Apri il lavoro"),
-  }),
+  QUOTE_ACCEPTED: (payload, ctx) => {
+    // Dati del cliente subito nell'email: a preventivo accettato si sbloccano
+    // (richiesta esplicita dell'utente, docs/CHANGELOG.md §226).
+    const clientName = str(payload.clientName);
+    const clientPhone = str(payload.clientPhone);
+    const clientAddress = str(payload.clientAddress);
+    const endTime = str(payload.scheduledEndAt) ? formatAppointmentTime(str(payload.scheduledEndAt)) : "";
+    const details = [
+      ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+      ...(ctx.when ? [{ label: "Appuntamento", value: `${formatAppointment(ctx.when)}${endTime ? `–${endTime}` : ""}` }] : []),
+      ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
+      ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
+      ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
+    ];
+    return {
+      kind: "notification",
+      subject: "Il cliente ha accettato il tuo preventivo",
+      greeting: ctx.name,
+      title: "Preventivo accettato!",
+      paragraphs: [
+        `Ottima notizia: il cliente ha accettato il tuo preventivo per **${job(ctx)}**.`,
+        clientName || clientPhone || clientAddress
+          ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
+          : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: proRequests("Apri il lavoro"),
+    };
+  },
   QUOTE_REJECTED: (payload, ctx) => {
     // Nota del cliente e nuovo preventivo (docs/CHANGELOG.md §188): la nota
     // va nel riquadro, mai nel testo, così non passa la formattazione.

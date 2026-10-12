@@ -18073,5 +18073,12 @@ preventivo perché") e nel messaggio in chat. Nella pagina
 direttamente dal cliente, senza commissioni." (le regole complete restano nei
 Termini, punto 5).
 
+Quinto giro, richiesta dell'utente: l'email "preventivo accettato" al
+professionista riporta già nome e cognome del cliente (destinatario della
+richiesta se indicato, altrimenti l'account), telefono, indirizzo completo e
+l'appuntamento con la fascia oraria. Si sbloccano proprio con la
+prenotazione creata (CLAUDE.md §5 punto 9), quindi nessuna eccezione alla
+regola sui contatti.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

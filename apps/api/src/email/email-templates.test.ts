@@ -73,6 +73,20 @@ describe("email delle notifiche", () => {
     expect(without.text).not.toContain("Diverso dal preventivo");
   });
 
+  it("preventivo accettato: dati del cliente e fascia dell'appuntamento nell'email (docs/CHANGELOG.md §226)", () => {
+    const email = renderEmail(
+      notificationEmail(
+        "QUOTE_ACCEPTED",
+        { clientName: "Mario Bianchi", clientPhone: "333 1234567", clientAddress: "Via Roma 1 — 20100 Milano (MI)", scheduledEndAt: "2026-10-14T13:00:00.000Z" },
+        ctx,
+      )!,
+    );
+    expect(email.text).toContain("Mario Bianchi");
+    expect(email.text).toContain("333 1234567");
+    expect(email.text).toContain("Via Roma 1");
+    expect(email.text).toContain("09:30–13:00");
+  });
+
   it("la nuova recensione non anticipa mai il voto", () => {
     const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);
