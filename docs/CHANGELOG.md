@@ -18023,3 +18023,25 @@ su richiesta dell'utente, mentre sceglie una nuova data ("Modifica") e mentre
 conferma il rifiuto: gli altri pulsanti spariscono finché non annulla.
 
 **Verifica**: in locale, conteggio dei pulsanti prima e dopo "Annulla".
+
+## 226. Orari della "Prossima disponibilità" allineati sotto i giorni
+
+**Richiesta esplicita dell'utente** (12/10/2026, con screenshot): nella
+pagina dei risultati di ricerca la mini-agenda della scheda professionista
+si vedeva male: le fasce orarie non stavano sotto il loro giorno, i trattini
+"-" erano sparsi e la fascia barrata del giovedì usciva dallo spazio.
+
+**Causa:** in `packages/ui/src/ProfessionalCard.tsx` intestazioni e celle
+usavano `flex={1}` da solo, che in Tamagui (web) diventa `flexBasis: auto`:
+ogni colonna prendeva la larghezza del proprio contenuto, quindi una colonna
+con una pillola larga si allargava e le righe sotto non coincidevano più con
+le intestazioni.
+
+**Decisione:** `flexBasis={0}` su intestazioni e celle (colonne tutte
+uguali), colonna minima da 78 a 84px su computer, orari a 9,5px con
+spaziatura lievemente ridotta così "09:00–13:00" resta su una riga anche su
+un telefono da 360px.
+
+**Verifica:** typecheck di `packages/ui`; anteprime prima/dopo da computer
+(1100px) e telefono (375 e 360px) in
+`/mnt/project-files/anteprime/agenda-ricerca/`.

@@ -39,7 +39,7 @@ export type ProfessionalCardAvailabilityDay = {
   times: ProfessionalCardAvailabilitySlot[];
 };
 
-const AGENDA_COLUMN_WIDTH = 78;
+const AGENDA_COLUMN_WIDTH = 84;
 const AGENDA_VISIBLE_DAYS = 4;
 // Stesso valore di PUBLIC_AGENDA_DAYS in packages/shared (qui duplicato:
 // packages/ui non dipende dal resto del monorepo, vedi formatServicePrice).
@@ -477,11 +477,16 @@ export function ProfessionalCard({
                 </XStack>
               ) : null}
             </XStack>
+            {/* flexBasis 0 su intestazioni e celle (bug reale segnalato
+                dall'utente): con flex={1} da solo Tamagui usa flexBasis
+                "auto", ogni colonna prendeva la larghezza del suo contenuto e
+                gli orari non stavano più sotto il loro giorno. */}
             <XStack>
               {visibleDays.map((day) => (
                 <YStack
                   key={day.date}
                   flex={1}
+                  flexBasis={0}
                   minWidth={0}
                   alignItems="center"
                   gap={2}
@@ -507,7 +512,7 @@ export function ProfessionalCard({
                       const slot = day.times.find((s) => s.time === time);
                       if (!slot) {
                         return (
-                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                          <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text fontSize={12} color={brand.filetto}>
                               -
                             </Text>
@@ -517,10 +522,11 @@ export function ProfessionalCard({
                       const range = `${slot.time}–${slot.endTime}`;
                       if (!slot[availableKey]) {
                         return (
-                          <XStack key={day.date} flex={1} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                          <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text
                               fontFamily="$mono"
-                              fontSize={10}
+                              fontSize={9.5}
+                              letterSpacing={-0.3}
                               color={brand.grafite70}
                               textDecorationLine="line-through"
                               textAlign="center"
@@ -534,6 +540,7 @@ export function ProfessionalCard({
                         <XStack
                           key={day.date}
                           flex={1}
+                          flexBasis={0}
                           minWidth={0}
                           alignItems="center"
                           justifyContent="center"
@@ -550,8 +557,8 @@ export function ProfessionalCard({
                               : undefined
                           }
                         >
-                          <XStack paddingHorizontal={5} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
-                            <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                          <XStack paddingHorizontal={4} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                            <Text fontFamily="$mono" fontSize={9.5} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                               {range}
                             </Text>
                           </XStack>
