@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatServicePriceRange } from "@professionisti/shared";
 import { Section, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -22,7 +22,11 @@ type PriceEntry = { name: string; professionalCount: number; minEurCents: number
 // compare solo quando si clicca nel campo per scrivere (vedi showFullList).
 const IDLE_VISIBLE_COUNT = 10;
 
-export function PriceEstimatorTool() {
+/**
+ * In homepage sotto i prezzi ci sono anche le domande frequenti (`children`),
+ * prima sezione a parte (docs/CHANGELOG.md §219).
+ */
+export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   const [entries, setEntries] = useState<PriceEntry[] | null>(null);
   const [query, setQuery] = useState("");
   // Campo attivo (a fuoco) o con del testo scritto: solo in quel caso si
@@ -58,7 +62,7 @@ export function PriceEstimatorTool() {
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
-    <Section eyebrow="Prezzi reali" title="Quanto costa in media?" maxWidth={780}>
+    <Section eyebrow="Prezzi reali" title="Quanto costa in media?" titleAccent="Quanto costa" maxWidth={780}>
       <YStack width="100%" gap="$3">
         <Text fontSize="$3" color={brand.grafite70}>
           Range di prezzo calcolato dalle prestazioni inserite davvero dai professionisti sulla piattaforma — scrivi
@@ -152,6 +156,7 @@ export function PriceEstimatorTool() {
           </YStack>
         )}
       </YStack>
+      {children}
     </Section>
   );
 }

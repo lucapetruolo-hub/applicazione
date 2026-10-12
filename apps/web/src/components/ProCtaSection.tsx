@@ -30,16 +30,26 @@ const COLUMNS = [
  * dall'utente, docs/CHANGELOG.md §219 — prima era un fondo verde pieno senza
  * persone). Foto: cottonbro studio, pexels.com/photo/6791546 (licenza Pexels,
  * uso commerciale libero senza attribuzione obbligatoria).
+ *
+ * Luci colorate sfocate che si muovono piano sul fondo scuro e due notifiche
+ * d'esempio sopra la foto (idea presa dal sito Volt, scelta dall'utente solo
+ * per questa sezione, docs/CHANGELOG.md §219): mostrano cosa arriva a un
+ * professionista. Sono decorative (`aria-hidden`), stile in globals.css.
  */
 export function ProCtaSection() {
   return (
     <YStack width="100%" paddingVertical="$8" paddingHorizontal="$4" alignItems="center">
       <div className="pro-cta">
+        <span className="pro-cta-glow pro-cta-glow-green" aria-hidden />
+        <span className="pro-cta-glow pro-cta-glow-warm" aria-hidden />
         <YStack gap="$6" padding="$6" $gtSm={{ padding: "$8" }}>
           <YStack gap="$3">
             <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
             <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white">
-              Meno telefonate inutili, più lavoro concluso.
+              Meno telefonate inutili,{" "}
+              <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="#4FD69A">
+                più lavoro concluso.
+              </Text>
             </Text>
           </YStack>
 
@@ -111,6 +121,24 @@ export function ProCtaSection() {
             sizes="(max-width: 860px) 100vw, 556px"
             style={{ objectFit: "cover" }}
           />
+          <div className="pro-cta-notif pro-cta-notif-top" aria-hidden>
+            <span className="pro-cta-notif-icon" style={{ background: "#FF8A3D" }}>
+              <Icon name="check" size={18} color="white" strokeWidth={2.5} />
+            </span>
+            <span>
+              <strong>Preventivo accettato</strong>
+              <small>€ 93 · giovedì 9:00</small>
+            </span>
+          </div>
+          <div className="pro-cta-notif pro-cta-notif-bottom" aria-hidden>
+            <span className="pro-cta-notif-icon" style={{ background: brand.cianografia }}>
+              <Icon name="bell-ring" size={18} color="white" strokeWidth={2} />
+            </span>
+            <span>
+              <strong>Nuova richiesta</strong>
+              <small>Rubinetto che perde · Milano · 1 foto</small>
+            </span>
+          </div>
         </div>
       </div>
     </YStack>

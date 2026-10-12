@@ -17866,5 +17866,27 @@ Secondo giro, migliorie approvate dall'utente:
   colonne uguali (`.how-steps`). Testi invariati.
 - Foto di idraulico, pulizie e muratore sostituite con foto Pexels.
 
+Terzo giro: l'utente ha scelto una foto tra tre alternative per ogni
+categoria (traslochi invariata) e quattro idee prese dal sito Volt
+(anteprime in `/mnt/project-files/anteprime/home/idee-volt/`; scartata la
+promessa con un numero nella parte verde):
+- Foto delle categorie scelte dall'utente, fonti in `categoryPhotos.ts`. Le
+  foto di `/registrati` e `/per-professionisti` sono ora copie separate in
+  `public/page-photos/`, così cambiare una categoria non cambia quelle pagine.
+- "Come funziona" mostrato invece che raccontato (`QuoteExampleSection`, al
+  posto di `HowItWorks`, rimosso): una richiesta d'esempio che si scrive da
+  sola e il preventivo a voci che entra riga per riga, con la scritta
+  "Esempio"; sotto i tre passi in una riga e "Descrivi il tuo lavoro".
+- Home da 12 a 7 blocchi: recensioni, nuovi profili e "Arriviamo presto" in
+  "Professionisti della tua zona"; trasparenza e Garanzia Piattaforma in
+  "Perché fidarsi"; prezzi e domande insieme; tolto il link "Hai
+  un'emergenza?" in fondo (già nella parte verde). Per unirle, una
+  `Section` dentro un'altra diventa una sottosezione (`packages/ui`).
+- Parola chiave dei titoli in verde (`titleAccent` di `Section`) ed entrata
+  delle sezioni più visibile (`FadeInSection`, 560ms e 28px, elementi con
+  `data-stagger` a cascata); tutto fermo con "riduci movimento".
+- "Per chi offre servizi" con luci sfocate in movimento e due notifiche
+  d'esempio sopra la foto (sul telefono una sola).
+
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.

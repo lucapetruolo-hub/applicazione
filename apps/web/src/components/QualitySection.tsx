@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Icon, Section, Text, YStack } from "@professionisti/ui";
 
 const POINTS = [
@@ -28,11 +29,21 @@ const POINTS = [
  * che rende affidabile il sistema di reputazione — stesso fondo grafite,
  * unico blocco scuro della pagina, per non perdere lo spezzare il ritmo
  * dello scroll previsto dal brief.
+ *
+ * In homepage contiene anche la Garanzia Piattaforma (`children`): erano due
+ * sezioni in fila sullo stesso tema, unite in "Perché fidarsi"
+ * (docs/CHANGELOG.md §219).
  */
-export function QualitySection() {
+export function QualitySection({ children }: { children?: ReactNode }) {
   return (
-    <Section tone="dark" eyebrow="Come garantiamo la qualità" title="La trasparenza che non trovi in giro" maxWidth={1080}>
-      <YStack width="100%" flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6">
+    <Section
+      tone="dark"
+      eyebrow="Perché fidarsi"
+      title="La trasparenza che non trovi in giro"
+      titleAccent="trasparenza"
+      maxWidth={1080}
+    >
+      <YStack width="100%" flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6" data-stagger="">
         {POINTS.map((point) => (
           <YStack key={point.title} flex={1} gap="$3">
             <YStack
@@ -54,6 +65,7 @@ export function QualitySection() {
           </YStack>
         ))}
       </YStack>
+      {children}
     </Section>
   );
 }

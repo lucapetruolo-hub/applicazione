@@ -1,26 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import {
-  Icon,
-  Section,
-  SectionDensityProvider,
-  Text,
-  XStack,
-  YStack,
-  brand,
-} from "@professionisti/ui";
+import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
 import { CategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
-import { HowItWorks } from "@/components/HowItWorks";
 import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
 import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
+import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
@@ -46,89 +37,71 @@ export default function HomeContent({
   }
 
   return (
-    // Ritmo stretto tra le sezioni: con quello pieno (96px sopra e sotto)
-    // la home aveva grandi spazi vuoti (docs/CHANGELOG.md §219).
+    // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
+    // molte sezioni in fila (docs/CHANGELOG.md §219).
     <SectionDensityProvider value="compact">
+      {/* Sette blocchi invece di dodici (scelta dell'utente, idea presa dal
+          sito Volt, docs/CHANGELOG.md §219): le sezioni che parlavano della
+          stessa cosa sono unite. Una `Section` dentro un'altra diventa una
+          sottosezione (packages/ui/src/Section.tsx). Il link "Hai
+          un'emergenza?" in fondo è stato tolto: la richiesta urgente è già
+          nella parte verde in alto. */}
       <YStack width="100%" alignItems="center">
+        {/* 1. Parte verde con la ricerca, invariata. */}
         <HomeHero />
 
         {platformStats ? <PlatformStats stats={platformStats} /> : null}
 
+        {/* 2. Categorie. */}
         <FadeInSection>
           <Section
             eyebrow="Categorie"
             title="Di cosa hai bisogno?"
+            titleAccent="bisogno"
             maxWidth={1080}
           >
             <CategoryStoryRail countBySlug={countBySlug} />
           </Section>
         </FadeInSection>
 
-        {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
-          categorie (richiesta esplicita dell'utente) — prima erano più in
-          basso, dopo "Come funziona". */}
+        {/* 3. Come funziona, con un preventivo d'esempio. */}
         <FadeInSection>
-          <RecentReviews />
-        </FadeInSection>
-
-        <FadeInSection>
-          <NewProfilesCarousel professionals={professionals} />
-        </FadeInSection>
-
-        <FadeInSection>
-          <QualitySection />
-        </FadeInSection>
-
-        <FadeInSection>
-          <PlatformGuarantee />
-        </FadeInSection>
-
-        {/* "Cosa succede se..." non è più mostrato direttamente in home
-          (richiesta esplicita dell'utente): spostato in una pagina FAQ
-          dedicata (/faq, WhatIfSection montata lì), raggiungibile dal
-          link "Domande frequenti" nel footer, colonna "Per i clienti". */}
-
-        <FadeInSection>
-          <PriceEstimatorTool />
-        </FadeInSection>
-
-        <FadeInSection>
-          <div id="come-funziona" style={{ width: "100%" }}>
-            <HowItWorks />
+          <div id="come-funziona" style={{ width: "100%", scrollMarginTop: 72 }}>
+            <QuoteExampleSection />
           </div>
         </FadeInSection>
 
+        {/* 4. Professionisti e recensioni (o "Arriviamo presto" quando i
+            profili sono ancora pochi). */}
         <FadeInSection>
-          <HomeFaq />
-        </FadeInSection>
-
-        <FadeInSection>
-          <ProfessionalsShowcase professionals={professionals} />
-        </FadeInSection>
-
-        <ProCtaSection />
-
-        {/* Link diretto alla richiesta urgente: non un secondo CTA primario in
-          hero (il brief vuole un solo CTA per schermata), ma resta
-          raggiungibile per chi arriva fin qui senza averla notata. */}
-        <FadeInSection>
-          <YStack
-            width="100%"
+          <Section
+            eyebrow="Professionisti"
+            title="Professionisti della tua zona"
+            titleAccent="della tua zona"
             maxWidth={1080}
-            paddingVertical="$6"
-            paddingHorizontal="$4"
-            alignItems="center"
           >
-            <Link href="/urgente" style={{ textDecoration: "none" }}>
-              <XStack alignItems="center" gap="$2">
-                <Icon name="zap" size={16} color={brand.urgenza} />
-                <Text color={brand.urgenza} fontWeight="600">
-                  Hai un'emergenza? Richiedi un intervento urgente
-                </Text>
-              </XStack>
-            </Link>
-          </YStack>
+            <RecentReviews />
+            <NewProfilesCarousel professionals={professionals} />
+            <ProfessionalsShowcase professionals={professionals} />
+          </Section>
         </FadeInSection>
+
+        {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
+        <FadeInSection>
+          <QualitySection>
+            <PlatformGuarantee />
+          </QualitySection>
+        </FadeInSection>
+
+        {/* 6. Prezzi e domande frequenti. */}
+        <FadeInSection>
+          <PriceEstimatorTool>
+            <HomeFaq />
+          </PriceEstimatorTool>
+        </FadeInSection>
+
+        {/* 7. Per chi offre servizi. */}
+        <ProCtaSection />
       </YStack>
     </SectionDensityProvider>
   );

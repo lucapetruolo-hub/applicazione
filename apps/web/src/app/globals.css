@@ -2016,38 +2016,359 @@ a.admin-kpi:hover {
   }
 }
 
-/* Foto dei passi di "Come funziona" (HowItWorks). */
-.how-steps {
+/* "Come funziona" con richiesta e preventivo d'esempio (QuoteExampleSection). */
+.qx {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.1fr);
+  align-items: center;
+  gap: 8px;
 }
-@media (min-width: 861px) {
-  .how-steps {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.qx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.qx-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6e6459;
+}
+.qx-bubble,
+.qx-quote {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(43, 34, 32, 0.08);
+}
+.qx-bubble {
+  border-radius: 22px 22px 22px 6px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.qx-request {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: #2b2420;
+}
+.qx-rest {
+  opacity: 0;
+}
+.qx-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: #189a63;
+  animation: qx-blink 0.8s steps(1) infinite;
+}
+@keyframes qx-blink {
+  50% {
+    opacity: 0;
   }
 }
-.how-step-photo {
+.qx-photo {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 2;
-  border-radius: 22px;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
   overflow: hidden;
   background: #f6ecd9;
 }
-.how-step-number {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 34px;
-  height: 34px;
+.qx-meta {
+  font-size: 13px;
+  color: #6e6459;
+}
+.qx-arrow {
+  display: flex;
+  justify-content: center;
+}
+.qx-quote {
+  border-radius: 22px;
+  padding: 22px;
+}
+.qx-quote-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0e6dc;
+}
+.qx-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qx-name {
+  display: block;
+  font-weight: 700;
+  font-size: 17px;
+  color: #2b2420;
+}
+.qx-sub {
+  display: block;
+  font-size: 13px;
+  color: #6e6459;
+}
+.qx-example {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a6a1f;
+  background: #f6ecd9;
   border-radius: 999px;
-  background: #fff;
+  padding: 3px 10px;
+  flex-shrink: 0;
+}
+.qx-row,
+.qx-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.qx-row {
+  padding: 11px 0;
+  border-bottom: 1px dashed #f0e6dc;
+  font-size: 16px;
+  color: #2b2420;
+}
+.qx-value {
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.qx-total {
+  padding-top: 14px;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #2b2420;
+}
+.qx.is-on .qx-row,
+.qx.is-on .qx-total {
+  opacity: 1;
+  transform: none;
+}
+.qx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.qx-steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.qx-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.qx-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #dcf3e7;
   color: #0e7a4c;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+.qx-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.qx-cta-button {
+  display: inline-block;
+  background: #189a63;
+  color: #fff;
+  font-weight: 700;
+  padding: 13px 24px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+@media (max-width: 860px) {
+  .qx {
+    grid-template-columns: 1fr;
+  }
+  .qx-arrow {
+    transform: rotate(90deg);
+  }
+  .qx-steps {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* "Per chi offre servizi": luci sfocate e notifiche sopra la foto (idea presa
+   dal sito Volt, docs/CHANGELOG.md §219). */
+.pro-cta {
+  position: relative;
+  isolation: isolate;
+}
+.pro-cta-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(90px);
+  animation: pro-cta-drift 14s ease-in-out infinite alternate;
+}
+.pro-cta-glow-green {
+  width: 380px;
+  height: 380px;
+  left: -120px;
+  top: -140px;
+  background: #189a63;
+  opacity: 0.55;
+}
+.pro-cta-glow-warm {
+  width: 300px;
+  height: 300px;
+  left: 30%;
+  bottom: -170px;
+  background: #ff8a3d;
+  opacity: 0.32;
+  animation-delay: -7s;
+}
+@keyframes pro-cta-drift {
+  to {
+    transform: translate(60px, 40px) scale(1.15);
+  }
+}
+.pro-cta-notif {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 300px;
+  max-width: calc(100% - 32px);
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  color: #2b2420;
+  animation: pro-cta-float 5s ease-in-out infinite alternate;
+}
+.pro-cta-notif-top {
+  top: 28px;
+  right: 20px;
+  animation-delay: -2.5s;
+}
+.pro-cta-notif-bottom {
+  bottom: 28px;
+  left: 20px;
+}
+.pro-cta-notif-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pro-cta-notif strong {
+  display: block;
+  font-size: 15px;
+}
+.pro-cta-notif small {
+  display: block;
+  font-size: 13px;
+  color: #6e6459;
+}
+@media (max-width: 860px) {
+  .pro-cta-notif-top {
+    display: none;
+  }
+  .pro-cta-notif-bottom {
+    bottom: 16px;
+    left: 16px;
+  }
+}
+@keyframes pro-cta-float {
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+/* Entrata a cascata: gli elementi di una griglia marcata con
+   `data-stagger` entrano dal basso uno dopo l'altro quando la loro
+   FadeInSection arriva sullo schermo (docs/CHANGELOG.md §219). */
+.fade-in-section [data-stagger] > * {
+  opacity: 0;
+  transform: translateY(22px) scale(0.98);
+  transition:
+    opacity 480ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fade-in-section.is-visible [data-stagger] > * {
+  opacity: 1;
+  transform: none;
+}
+.fade-in-section [data-stagger] > *:nth-child(2) {
+  transition-delay: 110ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(3) {
+  transition-delay: 220ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(4) {
+  transition-delay: 330ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(n + 5) {
+  transition-delay: 440ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-cta-glow,
+  .pro-cta-notif,
+  .qx-caret {
+    animation: none;
+  }
+  .fade-in-section [data-stagger] > *,
+  .qx-row,
+  .qx-total {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-section {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
