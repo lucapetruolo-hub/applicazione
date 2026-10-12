@@ -1,24 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { PROFESSIONAL_CATEGORIES, type ProfessionalSearchResult } from "@professionisti/shared";
-import { Icon, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { CategoryCarousel } from "@/components/CategoryCarousel";
-import { CategoryTile } from "@/components/CategoryTile";
+import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
+import { CategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
-import { HowItWorks } from "@/components/HowItWorks";
 import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
 import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
+import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
 import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
-import { navigateWithTransition } from "@/lib/viewTransition";
 
 export default function HomeContent({
   professionals,
@@ -27,117 +23,86 @@ export default function HomeContent({
   professionals: ProfessionalSearchResult[];
   platformStats: { totalUsers: number; totalProfessionals: number } | null;
 }) {
-  const router = useRouter();
-
   // Conteggio reale per categoria (professionals arriva già filtrato
   // excludeDemo da apps/web/src/app/page.tsx): la riga "N professionisti"
   // sotto ogni categoria è omessa quando il conteggio è 0, mai un numero
   // finto (brief redesign §4.3).
   const countBySlug = new Map<string, number>();
+  // Conta tutte le categorie del professionista (fino a 3, §217), non solo
+  // la principale: chi fa anche il dogsitter rende "Disponibile" anche quella.
   for (const pro of professionals) {
-    countBySlug.set(pro.categorySlug, (countBySlug.get(pro.categorySlug) ?? 0) + 1);
+    for (const { slug } of pro.categories) {
+      countBySlug.set(slug, (countBySlug.get(slug) ?? 0) + 1);
+    }
   }
 
   return (
-    <YStack width="100%" alignItems="center">
-      <HomeHero />
+    // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
+    // molte sezioni in fila (docs/CHANGELOG.md §219).
+    <SectionDensityProvider value="compact">
+      {/* Sette blocchi invece di dodici (scelta dell'utente, idea presa dal
+          sito Volt, docs/CHANGELOG.md §219): le sezioni che parlavano della
+          stessa cosa sono unite. Una `Section` dentro un'altra diventa una
+          sottosezione (packages/ui/src/Section.tsx). Il link "Hai
+          un'emergenza?" in fondo è stato tolto: la richiesta urgente è già
+          nella parte verde in alto. */}
+      <YStack width="100%" alignItems="center">
+        {/* 1. Parte verde con la ricerca, invariata. */}
+        <HomeHero />
 
-      {platformStats ? <PlatformStats stats={platformStats} /> : null}
+        {platformStats ? <PlatformStats stats={platformStats} /> : null}
 
-      <FadeInSection>
-        <Section eyebrow="Categorie" title="Di cosa hai bisogno?" maxWidth={1080}>
-          <CategoryCarousel>
-            {PROFESSIONAL_CATEGORIES.map((c) => (
-              <div key={c.slug} style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
-                <CategoryTile
-                  slug={c.slug}
-                  label={c.label}
-                  count={countBySlug.get(c.slug)}
-                  onPress={() => navigateWithTransition(() => router.push(`/cerca/${c.slug}`))}
-                />
-              </div>
-            ))}
-            <div style={{ flexShrink: 0, scrollSnapAlign: "start" }}>
-              <Surface
-                width={152}
-                minHeight={132}
-                alignItems="center"
-                justifyContent="center"
-                gap="$2"
-                cursor="pointer"
-                onPress={() => router.push("/preventivo")}
-                accessibilityRole="button"
-                backgroundColor={brand.gesso}
-              >
-                <Icon name="sparkles" size={22} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                <Text fontWeight="600" color={brand.cianografiaScuro} textAlign="center">
-                  Altro servizio →
-                </Text>
-              </Surface>
-            </div>
-          </CategoryCarousel>
-        </Section>
-      </FadeInSection>
+        {/* 2. Categorie. */}
+        <FadeInSection>
+          <Section
+            eyebrow="Categorie"
+            title="Di cosa hai bisogno?"
+            titleAccent="bisogno"
+            maxWidth={1080}
+          >
+            <CategoryStoryRail countBySlug={countBySlug} />
+          </Section>
+        </FadeInSection>
 
-      {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
-          categorie (richiesta esplicita dell'utente) — prima erano più in
-          basso, dopo "Come funziona". */}
-      <FadeInSection>
-        <RecentReviews />
-      </FadeInSection>
+        {/* 3. Come funziona, con un preventivo d'esempio. */}
+        <FadeInSection>
+          <div id="come-funziona" style={{ width: "100%", scrollMarginTop: 72 }}>
+            <QuoteExampleSection />
+          </div>
+        </FadeInSection>
 
-      <FadeInSection>
-        <NewProfilesCarousel professionals={professionals} />
-      </FadeInSection>
+        {/* 4. Professionisti e recensioni (o "Arriviamo presto" quando i
+            profili sono ancora pochi). */}
+        <FadeInSection>
+          <Section
+            eyebrow="Professionisti"
+            title="Professionisti della tua zona"
+            titleAccent="della tua zona"
+            maxWidth={1080}
+          >
+            <RecentReviews />
+            <NewProfilesCarousel professionals={professionals} />
+            <ProfessionalsShowcase professionals={professionals} />
+          </Section>
+        </FadeInSection>
 
-      <FadeInSection>
-        <QualitySection />
-      </FadeInSection>
+        {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
+        <FadeInSection>
+          <QualitySection>
+            <PlatformGuarantee />
+          </QualitySection>
+        </FadeInSection>
 
-      <FadeInSection>
-        <PlatformGuarantee />
-      </FadeInSection>
+        {/* 6. Prezzi e domande frequenti. */}
+        <FadeInSection>
+          <PriceEstimatorTool>
+            <HomeFaq />
+          </PriceEstimatorTool>
+        </FadeInSection>
 
-      {/* "Cosa succede se..." non è più mostrato direttamente in home
-          (richiesta esplicita dell'utente): spostato in una pagina FAQ
-          dedicata (/faq, WhatIfSection montata lì), raggiungibile dal
-          link "Domande frequenti" nel footer, colonna "Per i clienti". */}
-
-      <FadeInSection>
-        <PriceEstimatorTool />
-      </FadeInSection>
-
-      <FadeInSection>
-        <div id="come-funziona" style={{ width: "100%" }}>
-          <HowItWorks />
-        </div>
-      </FadeInSection>
-
-      <FadeInSection>
-        <HomeFaq />
-      </FadeInSection>
-
-      <FadeInSection>
-        <ProfessionalsShowcase professionals={professionals} />
-      </FadeInSection>
-
-      <ProCtaSection />
-
-      {/* Link diretto alla richiesta urgente: non un secondo CTA primario in
-          hero (il brief vuole un solo CTA per schermata), ma resta
-          raggiungibile per chi arriva fin qui senza averla notata. */}
-      <FadeInSection>
-        <YStack width="100%" maxWidth={1080} paddingVertical="$6" paddingHorizontal="$4" alignItems="center">
-          <Link href="/urgente" style={{ textDecoration: "none" }}>
-            <XStack alignItems="center" gap="$2">
-              <Icon name="zap" size={16} color={brand.urgenza} />
-              <Text color={brand.urgenza} fontWeight="600">
-                Hai un'emergenza? Richiedi un intervento urgente
-              </Text>
-            </XStack>
-          </Link>
-        </YStack>
-      </FadeInSection>
-    </YStack>
+        {/* 7. Per chi offre servizi. */}
+        <ProCtaSection />
+      </YStack>
+    </SectionDensityProvider>
   );
 }

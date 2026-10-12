@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Eyebrow, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
@@ -24,72 +25,122 @@ const COLUMNS = [
 ];
 
 /**
- * Sezione di acquisizione lato offerta: fondo verde smeraldo pieno, testo
- * bianco — cambia pubblico, cambia colore, per segnalarlo visivamente
- * invece di lasciarla indistinguibile dal resto (brief "Vicinato",
- * CLAUDE.md §19).
+ * Sezione di acquisizione lato offerta: riquadro scuro con una foto di un
+ * professionista al lavoro a lato (direzione "C" della homepage scelta
+ * dall'utente, docs/CHANGELOG.md §219 — prima era un fondo verde pieno senza
+ * persone). Foto: cottonbro studio, pexels.com/photo/6791546 (licenza Pexels,
+ * uso commerciale libero senza attribuzione obbligatoria).
+ *
+ * Luci colorate sfocate che si muovono piano sul fondo scuro e due notifiche
+ * d'esempio sopra la foto (idea presa dal sito Volt, scelta dall'utente solo
+ * per questa sezione, docs/CHANGELOG.md §219): mostrano cosa arriva a un
+ * professionista. Sono decorative (`aria-hidden`), stile in globals.css.
  */
 export function ProCtaSection() {
   return (
-    <YStack width="100%" backgroundColor="$cianografia" paddingVertical="$9" paddingHorizontal="$4" alignItems="center">
-      <YStack width="100%" maxWidth={1080} gap="$6">
-        <YStack gap="$3">
-          <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
-          <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white" maxWidth={560}>
-            Meno telefonate inutili, più lavoro concluso.
-          </Text>
-        </YStack>
+    <YStack width="100%" paddingVertical="$8" paddingHorizontal="$4" alignItems="center">
+      <div className="pro-cta">
+        <span className="pro-cta-glow pro-cta-glow-green" aria-hidden />
+        <span className="pro-cta-glow pro-cta-glow-warm" aria-hidden />
+        <YStack gap="$6" padding="$6" $gtSm={{ padding: "$8" }}>
+          <YStack gap="$3">
+            <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
+            <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white">
+              Meno telefonate inutili,{" "}
+              <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="#4FD69A">
+                più lavoro concluso.
+              </Text>
+            </Text>
+          </YStack>
 
-        <YStack flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6">
-          {COLUMNS.map((column) => (
-            <YStack key={column.title} flex={1} gap="$3">
-              <YStack width={44} height={44} borderRadius={16} backgroundColor="rgba(255,255,255,0.16)" alignItems="center" justifyContent="center">
-                <Icon name={column.icon} size={22} color="white" strokeWidth={1.5} />
-              </YStack>
-              <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color="white">
-                  {column.title}
-                </Text>
-                {column.comingSoon ? (
-                  <XStack backgroundColor="rgba(255,255,255,0.18)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
-                    <Text fontSize={11} fontWeight="700" color="white">
-                      In arrivo
+          <YStack gap="$5">
+            {COLUMNS.map((column) => (
+              <XStack key={column.title} gap="$3" alignItems="flex-start">
+                <YStack
+                  width={44}
+                  height={44}
+                  borderRadius={16}
+                  backgroundColor="rgba(255,255,255,0.12)"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
+                  <Icon name={column.icon} size={22} color="white" strokeWidth={1.5} />
+                </YStack>
+                <YStack gap="$1" flex={1} minWidth={0}>
+                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                    <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color="white">
+                      {column.title}
                     </Text>
+                    {column.comingSoon ? (
+                      <XStack backgroundColor="rgba(255,255,255,0.18)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
+                        <Text fontSize={11} fontWeight="700" color="white">
+                          In arrivo
+                        </Text>
+                      </XStack>
+                    ) : null}
                   </XStack>
-                ) : null}
+                  <Text fontSize="$4" color="rgba(255,255,255,0.85)">
+                    {column.text}
+                  </Text>
+                </YStack>
               </XStack>
-              <Text fontSize="$4" color="rgba(255,255,255,0.85)">
-                {column.text}
-              </Text>
-            </YStack>
-          ))}
-        </YStack>
+            ))}
+          </YStack>
 
-        <XStack gap="$3" flexWrap="wrap">
-          <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-            <XStack backgroundColor="white" paddingHorizontal="$5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
-              <Text color={brand.cianografiaScuro} fontWeight="700">
-                Iscriviti gratis
-              </Text>
-            </XStack>
-          </Link>
-          <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-            <XStack
-              borderWidth={1.5}
-              borderColor="rgba(255,255,255,0.6)"
-              paddingHorizontal="$5"
-              height={48}
-              alignItems="center"
-              borderRadius={999}
-              cursor="pointer"
-            >
-              <Text color="white" fontWeight="700">
-                Vedi i piani
-              </Text>
-            </XStack>
-          </Link>
-        </XStack>
-      </YStack>
+          <XStack gap="$3" flexWrap="wrap">
+            <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
+              <XStack backgroundColor="white" paddingHorizontal="$5" height={48} alignItems="center" borderRadius={999} cursor="pointer">
+                <Text color={brand.cianografiaScuro} fontWeight="700">
+                  Iscriviti gratis
+                </Text>
+              </XStack>
+            </Link>
+            <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
+              <XStack
+                borderWidth={1.5}
+                borderColor="rgba(255,255,255,0.6)"
+                paddingHorizontal="$5"
+                height={48}
+                alignItems="center"
+                borderRadius={999}
+                cursor="pointer"
+              >
+                <Text color="white" fontWeight="700">
+                  Vedi i piani
+                </Text>
+              </XStack>
+            </Link>
+          </XStack>
+        </YStack>
+        <div className="pro-cta-photo">
+          <Image
+            src="/home-photos/professionista-al-lavoro.webp"
+            alt="Un falegname al lavoro nella sua bottega"
+            fill
+            sizes="(max-width: 860px) 100vw, 556px"
+            style={{ objectFit: "cover" }}
+          />
+          <div className="pro-cta-notif pro-cta-notif-top" aria-hidden>
+            <span className="pro-cta-notif-icon" style={{ background: "#FF8A3D" }}>
+              <Icon name="check" size={18} color="white" strokeWidth={2.5} />
+            </span>
+            <span>
+              <strong>Preventivo accettato</strong>
+              <small>€ 93 · giovedì 9:00</small>
+            </span>
+          </div>
+          <div className="pro-cta-notif pro-cta-notif-bottom" aria-hidden>
+            <span className="pro-cta-notif-icon" style={{ background: brand.cianografia }}>
+              <Icon name="bell-ring" size={18} color="white" strokeWidth={2} />
+            </span>
+            <span>
+              <strong>Nuova richiesta</strong>
+              <small>Rubinetto che perde · Milano · 1 foto</small>
+            </span>
+          </div>
+        </div>
+      </div>
     </YStack>
   );
 }

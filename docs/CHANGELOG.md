@@ -17825,3 +17825,76 @@ stamattina.
 **Controllo in CI**: `apps/api/scripts/check-boot.mjs`, dopo il build,
 costruisce il grafo dei moduli Nest da `dist/` in modalità `preview` (niente
 database né porte). Fallisce sul codice rotto, passa sulla correzione.
+
+## 219. Homepage: categorie a schede con foto e foto più vere
+
+**Richiesta dell'utente**: rendere la home più "umana" con le foto e le
+categorie più innovative. Tra tre proposte (anteprime in
+`/mnt/project-files/anteprime/home/`) ha scelto la "C", lasciando invariata
+la parte verde con la ricerca. Poi ha chiesto di cambiare le foto di
+elettricista, imbianchino, giardiniere, climatizzazione e muratore perché
+"sembrano troppo AI".
+
+**Fatto**:
+- Categorie come schede verticali con foto grande da scorrere
+  (`CategoryStoryRail.tsx`, al posto di `CategoryTile`, rimossa): filtri
+  Tutte / gruppi del mega-menu "Servizi" (`MEGA_MENU_GROUPS`, così menu e
+  home raggruppano allo stesso modo); passando sopra o col focus da tastiera
+  compaiono la descrizione breve del menu e "Vedi chi c'è vicino a te"; sul
+  telefono la descrizione è sempre visibile. In fondo la scheda "Non trovi il
+  tuo lavoro?" verso `/preventivo`.
+- "Disponibile" conta tutte le categorie del professionista (fino a 3,
+  §217), non solo la principale.
+- "Per chi offre servizi" (`ProCtaSection`) in un riquadro scuro con una
+  foto di un falegname al lavoro (Pexels), stessi testi e pulsanti.
+- Cinque foto di categoria sostituite con foto vere da Pexels (licenza
+  Pexels, uso commerciale libero; fonti in `categoryPhotos.ts`), con un
+  punto di messa a fuoco per il ritaglio verticale (`CATEGORY_PHOTO_FOCUS`).
+  Le stesse foto di elettricista e imbianchino compaiono anche in
+  `/registrati` e `/per-professionisti`.
+
+Secondo giro, migliorie approvate dall'utente:
+- Spazi vuoti più stretti: `Section` (`packages/ui`) accetta una densità
+  (`SectionDensityProvider`, "comfortable" 64/96px o "compact" 40/56px); la
+  home usa "compact", le altre pagine restano com'erano.
+- "Nuovi profili" e "Professionisti in evidenza" erano due sezioni uguali:
+  resta solo `NewProfilesCarousel`, che ora mostra anche voto, "Verificato"
+  e "Nuovo" (iscritto da meno di 30 giorni). `ProfessionalsShowcase` mostra
+  solo il blocco "Arriviamo presto nella tua zona" quando i profili sono pochi.
+- "Come funziona" con tre foto di persone (Pexels) al posto delle
+  illustrazioni (`HowItWorksIllustrations.tsx` rimosso), in una griglia a
+  colonne uguali (`.how-steps`). Testi invariati.
+- Foto di idraulico, pulizie e muratore sostituite con foto Pexels.
+
+Terzo giro: l'utente ha scelto una foto tra tre alternative per ogni
+categoria (traslochi invariata) e quattro idee prese dal sito Volt
+(anteprime in `/mnt/project-files/anteprime/home/idee-volt/`; scartata la
+promessa con un numero nella parte verde):
+- Foto delle categorie scelte dall'utente, fonti in `categoryPhotos.ts`. Le
+  foto di `/registrati` e `/per-professionisti` sono ora copie separate in
+  `public/page-photos/`, così cambiare una categoria non cambia quelle pagine.
+- "Come funziona" mostrato invece che raccontato (`QuoteExampleSection`, al
+  posto di `HowItWorks`, rimosso): una richiesta d'esempio che si scrive da
+  sola e il preventivo a voci che entra riga per riga, con la scritta
+  "Esempio"; sotto i tre passi in una riga e "Descrivi il tuo lavoro".
+- Home da 12 a 7 blocchi: recensioni, nuovi profili e "Arriviamo presto" in
+  "Professionisti della tua zona"; trasparenza e Garanzia Piattaforma in
+  "Perché fidarsi"; prezzi e domande insieme; tolto il link "Hai
+  un'emergenza?" in fondo (già nella parte verde). Per unirle, una
+  `Section` dentro un'altra diventa una sottosezione (`packages/ui`).
+- Parola chiave dei titoli in verde (`titleAccent` di `Section`) ed entrata
+  delle sezioni più visibile (`FadeInSection`, 560ms e 28px, elementi con
+  `data-stagger` a cascata); tutto fermo con "riduci movimento".
+- "Per chi offre servizi" con luci sfocate in movimento e due notifiche
+  d'esempio sopra la foto (sul telefono una sola).
+
+Quarto giro, migliorie approvate dall'utente: filtri delle categorie su una
+riga da scorrere sul telefono; link verde della pagina d'errore con il verde
+scuro dei testi piccoli (gli altri testi piccoli lo usavano già dal §172).
+"SMS" in "Come funziona" resta: il canale (SMS o WhatsApp) arriverà prima
+del lancio. Il servizio di prova "Mio piacimento" nei prezzi medi è una
+prestazione del profilo "Rossi S.r.l. Illuminazioni" in produzione: va tolta
+da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
+
+**Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
+schermate in locale su computer e telefono.

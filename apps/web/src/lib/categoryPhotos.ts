@@ -1,6 +1,6 @@
 /**
  * Foto reali per categoria da mostrare al posto dell'icona colorata nella
- * griglia categorie della homepage (`CategoryTile.tsx`) — richiesta
+ * schede categorie della homepage (`CategoryStoryRail.tsx`) — richiesta
  * esplicita dell'utente, già segnalata come rimandata in CLAUDE.md §19
  * ("richiede una decisione sulla fonte delle foto... per non introdurre
  * hotlink a immagini esterne non verificate o scelte a casuale"): qui la
@@ -12,16 +12,27 @@
  * voce qui resta sull'icona colorata di `CategoryIconBadge`, mai un
  * placeholder generico o una foto scelta a caso per lei.
  *
- * Eccezione autorizzata dall'utente (docs/CHANGELOG.md §217): le foto qui
- * sotto vengono da Unsplash, licenza Unsplash (uso commerciale libero,
- * senza obbligo di attribuzione):
+ * Foto da Unsplash (licenza Unsplash) e Pexels (licenza Pexels), entrambe
+ * con uso commerciale libero e senza obbligo di attribuzione. Scelte
+ * dall'utente categoria per categoria tra tre alternative (docs/CHANGELOG.md
+ * §217 e §219):
+ * - idraulico: pexels.com/photo/6419128
+ * - elettricista: pexels.com/photo/34054464
+ * - imbianchino: pexels.com/photo/5493653
+ * - pulizie: pexels.com/photo/6196566
+ * - giardiniere: pexels.com/photo/6728926
  * - traslochi: Vitaly Gariev, unsplash.com/photos/wS40ELZROLE
- * - fabbro: Maria Ziegler, unsplash.com/photos/1AmEImwtnFk
- * - muratore: Bermix Studio, unsplash.com/photos/nZZfP9QiQ6w
- * - falegname: Ali Mkumbwa, unsplash.com/photos/PxlKOcj0a3Q
- * - tuttofare: Kevin Grieve, unsplash.com/photos/3CKZS3-o3XU
- * - dogsitter: Andriyko Podilnyk, unsplash.com/photos/VehdYPKnX8Y
- * - babysitter: Vitaly Gariev, unsplash.com/photos/IGnXUcRKZzQ
+ * - fabbro: pexels.com/photo/5691693
+ * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463579
+ * - muratore: pexels.com/photo/5691606
+ * - falegname: pexels.com/photo/4888598
+ * - tuttofare: pexels.com/photo/5691544
+ * - dogsitter: pexels.com/photo/7210537
+ * - babysitter: pexels.com/photo/6986430
+ *
+ * Le foto di `/registrati` e `/per-professionisti` sono copie separate in
+ * `public/page-photos/`, così cambiare la foto di una categoria non cambia
+ * quelle pagine.
  */
 export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   idraulico: "/category-photos/idraulico.webp",
@@ -37,4 +48,14 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   tuttofare: "/category-photos/tuttofare.webp",
   dogsitter: "/category-photos/dogsitter.webp",
   babysitter: "/category-photos/babysitter.webp",
+};
+
+/**
+ * Punto da tenere al centro quando la foto (3:2) viene ritagliata in
+ * verticale nelle schede della homepage: senza, il volto finiva tagliato
+ * fuori dal bordo. Le categorie non elencate restano centrate.
+ */
+export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
+  climatizzazione: "30% 50%",
+  babysitter: "40% 50%",
 };

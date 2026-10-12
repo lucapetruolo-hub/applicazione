@@ -4,7 +4,7 @@ import { brand } from "@professionisti/ui";
 /**
  * Illustrazioni per due stati vuoti reali ad alto traffico (`/le-mie-
  * richieste`, `/professionisti-salvati`) — stesso principio/stessa "spilla"
- * d'angolo (ottone) già introdotto per `HowItWorksIllustrations.tsx`: un
+ * d'angolo (ottone) già introdotto per le vecchie illustrazioni di "Come funziona": un
  * linguaggio visivo condiviso tra le due superfici, non un disegno isolato
  * per pagina. `EmptyState` (packages/ui) resta comunque retrocompatibile
  * con la sola `icon` Lucide per ogni altro stato vuoto del sito non

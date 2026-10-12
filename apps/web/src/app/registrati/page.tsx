@@ -226,7 +226,7 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
         <YStack width="100%" gap="$5">
           <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
             <Image
-              src="/category-photos/elettricista.webp"
+              src="/page-photos/registrati-elettricista.webp"
               alt="Un elettricista sorride mentre lavora a un quadro elettrico"
               fill
               sizes="(max-width: 520px) 100vw, 480px"

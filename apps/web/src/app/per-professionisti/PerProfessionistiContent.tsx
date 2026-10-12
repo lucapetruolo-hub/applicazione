@@ -217,7 +217,7 @@ function ProPhoto() {
           }}
         >
           <Image
-            src="/category-photos/imbianchino.webp"
+            src="/page-photos/per-professionisti-imbianchino.webp"
             alt="Un imbianchino sorride mentre lavora in un appartamento"
             fill
             priority

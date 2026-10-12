@@ -206,10 +206,10 @@ prima del lancio"):
     del punto 5bis e aggiornarla in `BRAND.supportEmail`
     (`packages/shared/src/brand.ts`): vale per email e pagine.
 22. **Promemoria via SMS: ricerca di un'alternativa** (WhatsApp o altro).
-    "Come funziona" (`HowItWorks.tsx`) oggi promette "email e SMS" ma gli SMS
-    non sono attivi: finché la ricerca non è chiusa il testo non è stato
-    toccato (decisione dell'utente, 06/10/2026). Prima del lancio o si attiva
-    un canale reale o si corregge la frase.
+    "Come funziona" (`QuoteExampleSection.tsx`) oggi promette "email e SMS"
+    ma gli SMS non sono attivi. L'utente ha confermato il 12/10/2026 che il
+    testo resta: il canale (SMS o WhatsApp) verrà attivato prima del lancio.
+    Se al lancio non c'è ancora, correggere la frase.
 23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
     codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
