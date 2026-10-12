@@ -73,6 +73,14 @@ describe("email delle notifiche", () => {
     expect(email.text).not.toMatch(/recensisci il cliente/i);
   });
 
+  it("nuova richiesta: scadenza in ora italiana, mai per le urgenti (docs/CHANGELOG.md §224)", () => {
+    const respondUntil = "2026-12-11T15:36:00.000Z";
+    const normal = renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Roma", isUrgent: false, respondUntil }, ctx)!);
+    expect(normal.text).toContain("Puoi rispondere fino all'11 dicembre alle 16:36");
+    const urgent = renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Roma", isUrgent: true, respondUntil }, ctx)!);
+    expect(urgent.text).not.toContain("Puoi rispondere fino");
+  });
+
   it("al professionista non mostra contatti del cliente prima dell'accettazione", () => {
     const content = notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Roma", isUrgent: false }, ctx)!;
     const email = renderEmail(content);

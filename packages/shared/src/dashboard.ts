@@ -88,6 +88,14 @@ export type ProfessionalLead = {
    */
   forwardAt: string | null;
   /**
+   * Fino a quando puoi inviare il preventivo: la scadenza della richiesta
+   * (docs/CHANGELOG.md §221), mostrata come "Puoi rispondere fino al … alle
+   * …". `null` per una richiesta urgente (resta la dicitura di prima), se
+   * hai già inviato un preventivo, hai rifiutato, la richiesta è chiusa o
+   * non ha scadenza.
+   */
+  respondUntil: string | null;
+  /**
    * Quanti altri professionisti hanno ricevuto la stessa richiesta e quanti
    * hanno già inviato un preventivo (docs/CHANGELOG.md §147): solo numeri,
    * mai chi sono né cosa hanno offerto.

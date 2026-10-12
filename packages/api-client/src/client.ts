@@ -183,6 +183,11 @@ export type ClientGuidedRequest = {
    * closedReason`), prima mai esposto a questo endpoint.
    */
   closedReason: "EXPIRED" | "CANCELED_BY_CLIENT" | "COMPLETED" | null;
+  /**
+   * Fino a quando la richiesta resta aperta ai preventivi (docs/CHANGELOG.md
+   * §224): `null` se chiusa, già accettata o senza scadenza.
+   */
+  openUntil: string | null;
   createdAt: string;
   /** Per l'ordinamento "per ultimo aggiornamento" nelle liste (richiesta esplicita dell'utente). */
   updatedAt: string;

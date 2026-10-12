@@ -34,7 +34,7 @@ export function TimelineModal({
   professionalProfileId: string;
   viewerRole: "CLIENT" | "PROFESSIONAL";
   otherPartyName?: string | null;
-  /** Foto accanto al nome in intestazione (§220); senza, l'iniziale del nome. Per il cliente visto dal professionista arriva solo a preventivo accettato (§216). */
+  /** Foto accanto al nome in intestazione (§226); senza, l'iniziale del nome. Per il cliente visto dal professionista arriva solo a preventivo accettato (§216). */
   otherPartyImageUrl?: string | null;
   onOpenClientProfile?: () => void;
   onClose: () => void;

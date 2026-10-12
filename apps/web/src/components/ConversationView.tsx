@@ -567,7 +567,7 @@ export function ConversationView({
               questo comportamento è invariato rispetto a prima). */}
           {otherPartyName ? (
             <>
-              {/* Foto a 40px in una zona da toccare di 44px, comoda dal telefono (§220). */}
+              {/* Foto a 40px in una zona da toccare di 44px, comoda dal telefono (§226). */}
               <XStack
                 width={44}
                 height={44}

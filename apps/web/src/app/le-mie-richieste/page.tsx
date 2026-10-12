@@ -14,6 +14,7 @@ import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustra
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
 import { Pagination } from "@/components/ListControls";
+import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
@@ -561,6 +562,10 @@ function LeMieRichiesteContent() {
         ) : null}
 
         <YStack ref={listTopRef} gap="$4">
+          <RestoredNotice />
+          {activeStageTab === "archiviate" ? (
+            <RestoreAllArchivedBar token={token} guidedRequestIds={(requests ?? []).filter((r) => r.myState.archivedAt).map((r) => r.id)} onChanged={reload} />
+          ) : null}
           <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
 
           {requests === null ? (

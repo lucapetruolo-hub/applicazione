@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { formatCompetitors, formatForwardDeadline, formatLeadDeadline } from "@/lib/leadDeadline";
+import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -19,7 +19,7 @@ import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
-import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal";
 import { CardButton } from "@/components/CardButton";
@@ -66,7 +66,7 @@ export function RequestCard({
   const router = useRouter();
   const s = STAGE_STYLE[stage];
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
-  const leadDeadline = formatLeadDeadline(lead.expiresAt) ?? formatForwardDeadline(lead.forwardAt);
+  const deadlines = leadDeadlines(lead);
   const competitorsLabel = formatCompetitors(lead.competitors);
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
@@ -393,8 +393,38 @@ export function RequestCard({
     }
   }
 
+  // Precompila data e orario di un modulo con l'ultima data proposta
+  // (richiesta esplicita dell'utente, docs/CHANGELOG.md §223): la fascia
+  // dell'agenda se coincide, altrimenti i campi manuali già riempiti.
+  function presetSchedule(
+    startIso: string,
+    endIso: string | null,
+    set: { slot: (key: string) => void; manual: (on: boolean) => void; date: (v: string) => void; start: (v: string) => void; end: (v: string) => void },
+  ) {
+    const date = startIso.slice(0, 10);
+    const start = startIso.slice(11, 16);
+    const end = endIso ? endIso.slice(11, 16) : "";
+    const matching = modeAvailableSlots.find((sl) => sl.date === date && sl.startTime === start && (!end || sl.endTime === end));
+    if (matching) {
+      set.slot(slotKey(matching));
+      set.manual(false);
+    } else {
+      set.manual(true);
+      set.date(date);
+      set.start(start);
+      set.end(end);
+    }
+  }
+
   function startEditingQuote() {
     if (!lead.quote) return;
+    presetSchedule(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate, {
+      slot: setSelectedSlotKey,
+      manual: setUseManualDateTime,
+      date: setManualDate,
+      start: setManualStartTime,
+      end: setManualEndTime,
+    });
     setItems(lead.quote.items.map((it) => ({ name: it.name, priceMin: it.priceMinEurCents != null ? (it.priceMinEurCents / 100).toString() : "", priceMax: it.priceMaxEurCents != null ? (it.priceMaxEurCents / 100).toString() : "" })));
     setQuoteNotes(lead.quote.notes ?? "");
     setShowQuoteForm(true);
@@ -535,7 +565,7 @@ export function RequestCard({
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
             <StagePill stage={stage} />
             <ServiceBadge online={isOnline} />
-            {stage === "da_quotare" && leadDeadline ? <DeadlinePill deadline={leadDeadline} /> : null}
+            {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
             {stage === "da_quotare" && competitorsLabel ? (
               <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
                 {competitorsLabel}
@@ -626,6 +656,7 @@ export function RequestCard({
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
         </XStack>
       </YStack>
+      <ArchivedRestoreBar token={token} guidedRequestId={gr.id} myState={lead.myState} onChanged={onChanged} />
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
@@ -1008,10 +1039,15 @@ export function RequestCard({
                 <CardButton
                   fill={brand.ottone}
                   onPress={() => {
-                    const proposedDate = lead.quote?.clientProposedDate?.slice(0, 10);
-                    const proposedTime = lead.quote?.clientProposedDate?.slice(11, 16);
-                    const matching = modeAvailableSlots.find((sl) => sl.date === proposedDate && sl.startTime === proposedTime);
-                    setCounterSlotKey(matching ? slotKey(matching) : modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+                    if (lead.quote?.clientProposedDate) {
+                      presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
+                        slot: setCounterSlotKey,
+                        manual: setUseManualCounterDateTime,
+                        date: setManualCounterDate,
+                        start: setManualCounterStartTime,
+                        end: setManualCounterEndTime,
+                      });
+                    }
                     setCounterNote("");
                     setCounterError(null);
                     setShowCounterForm((v) => !v);
