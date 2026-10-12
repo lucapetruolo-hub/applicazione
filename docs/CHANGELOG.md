@@ -17948,3 +17948,19 @@ riapre la stessa scelta di data e nota. L'API lo consentiva già
 **Verifica**: in locale con due professionisti e due preventivi: scadenza
 visibile in entrambe le pagine; cambiata la proposta su un preventivo già in
 attesa, il professionista vede la nuova data.
+
+## 222. "Ripristina tutte" nel tab Archiviate
+
+**Richiesta dell'utente**: aggiungere "Ripristina tutte" nel tab
+"Archiviate" quando ce n'è più di una (miglioria proposta in §220).
+
+**Decisione**: `RestoreAllArchivedBar` (in
+`apps/web/src/components/RequestCardPersonalActions.tsx`) in cima al tab
+"Archiviate" di `/le-mie-richieste` e `/dashboard/richieste`, solo con almeno
+due schede archiviate. Chiede conferma ("Ripristinare tutte le N richieste
+archiviate?") e toglie l'archiviazione a ognuna con lo stesso endpoint di
+"Ripristina"; se qualcuna fallisce lo dice e ricarica l'elenco. Vale per tutte
+le archiviate, non solo per quelle filtrate dalla ricerca.
+
+**Verifica**: in locale, tre richieste archiviate tornano tutte in "Tutte"
+dopo la conferma.

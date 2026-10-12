@@ -163,3 +163,65 @@ export function ArchivedRestoreBar({
     </YStack>
   );
 }
+
+/**
+ * "Ripristina tutte" in cima al tab "Archiviate", con più di una scheda
+ * archiviata (richiesta esplicita dell'utente, docs/CHANGELOG.md §222):
+ * stesso effetto di "Ripristina" su ognuna, dopo una conferma.
+ */
+export function RestoreAllArchivedBar({
+  token,
+  guidedRequestIds,
+  onChanged,
+}: {
+  token: string;
+  guidedRequestIds: string[];
+  onChanged: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (guidedRequestIds.length < 2) return null;
+
+  async function handleRestoreAll() {
+    setIsBusy(true);
+    setError(null);
+    const results = await Promise.allSettled(
+      guidedRequestIds.map((id) => apiClient.updateGuidedRequestMyState(token, id, { archived: false })),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setIsBusy(false);
+    setConfirming(false);
+    if (failed > 0) setError(`${failed} richiest${failed === 1 ? "a non è stata ripristinata" : "e non sono state ripristinate"}, riprova.`);
+    onChanged();
+  }
+
+  return (
+    <YStack gap="$2">
+      <XStack alignItems="center" justifyContent="flex-end" gap="$2" flexWrap="wrap">
+        {confirming ? (
+          <YStack alignItems="flex-end" gap="$2">
+            <Text fontSize="$3" color={brand.grafite} textAlign="right">
+              Ripristinare tutte le {guidedRequestIds.length} richieste archiviate?
+            </Text>
+            <XStack gap="$2">
+              <CardButton tone="primary" onPress={handleRestoreAll} disabled={isBusy}>
+                {isBusy ? "Ripristino..." : "Sì, ripristina"}
+              </CardButton>
+              <CardButton onPress={() => setConfirming(false)} disabled={isBusy}>
+                Annulla
+              </CardButton>
+            </XStack>
+          </YStack>
+        ) : (
+          <CardButton onPress={() => setConfirming(true)}>Ripristina tutte ({guidedRequestIds.length})</CardButton>
+        )}
+      </XStack>
+      {error ? (
+        <Text color={brand.urgenza} fontSize="$3" textAlign="right">
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
+  );
+}
