@@ -17699,6 +17699,11 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 **Migliorie approvate dall'utente nella stessa PR ("effettua tutte le migliorie"):**
 - Recensioni pubbliche (`ReviewsService`, ultime recensioni in Home) firmate "Mario R." invece di nome e cognome interi: `publicClientName`.
 - Account senza cognome salvato (Google creati prima della separazione di nome e cognome, o chi ha scritto tutto nel campo nome): prima dell'accettazione e nelle recensioni si mostra solo la prima parola del nome. Scelta al posto di una correzione dei dati all'avvio: senza i dati di Google non si può dividere un nome completo in modo sicuro ("De Luca"), e così nessun dato viene toccato.
-- Data di nascita del cliente nella scheda cliente solo a preventivo accettato: prima si vede l'età (`clientAge`, "35 anni"). Il testo della scheda ora dice che cognome e data di nascita si vedono all'accettazione.
+- Data di nascita del cliente solo a preventivo accettato, prima l'età (poi tolte entrambe, vedi sotto).
 
-**Verifica:** test di `apps/api` (282, nuovi casi per le funzioni del nome e dell'età e per `getMyLeads` prima e dopo l'accettazione), typecheck di `apps/api` e `apps/web`, lint di `apps/web` senza errori.
+**Seconde decisioni dell'utente (12/10/2026):** "leva anche l'età sia prima che dopo l'accettazione, non è importante per il professionista", foto profilo solo dopo l'accettazione, nota della scheda solo prima.
+- Data di nascita ed età non arrivano più al professionista (`clientBirthDate` tolto da `ProfessionalLead`, niente `clientAge`): la scheda cliente non le mostra più. Questo supera la richiesta passata di mostrare la data di nascita nella scheda.
+- Foto profilo del cliente (`clientImageUrl` in `getMyLeads`, `otherPartyImageUrl` in `listThreadsForUser`) solo con la Booking: prima compare l'iniziale nell'avatar.
+- Nuovo campo `clientDetailsUnlocked`: la nota "Cognome, foto, telefono, email e indirizzo saranno visibili all'accettazione" compare in `ClientProfileModal` solo prima dell'accettazione.
+
+**Verifica:** test di `apps/api` (281, nuovi casi per le funzioni del nome e per `getMyLeads` prima e dopo l'accettazione: cognome e foto, data di nascita mai presente), typecheck di `apps/api` e `apps/web`, lint di `apps/web` senza errori.

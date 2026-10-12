@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageInYears, clientNameForProfessional, publicClientName } from "./client-name.util";
+import { clientNameForProfessional, publicClientName } from "./client-name.util";
 
 describe("clientNameForProfessional", () => {
   it("prima dell'accettazione mostra solo il nome", () => {
@@ -28,13 +28,5 @@ describe("publicClientName", () => {
     expect(publicClientName({ name: "Mario", surname: null })).toBe("Mario");
     expect(publicClientName({ name: null, surname: "Rossi" })).toBeNull();
     expect(publicClientName({ name: "Mario Rossi", surname: null })).toBe("Mario");
-  });
-});
-
-describe("ageInYears", () => {
-  it("conta gli anni compiuti", () => {
-    const now = new Date("2026-10-11T12:00:00Z");
-    expect(ageInYears(new Date("1990-10-11"), now)).toBe(36);
-    expect(ageInYears(new Date("1990-10-12"), now)).toBe(35);
   });
 });

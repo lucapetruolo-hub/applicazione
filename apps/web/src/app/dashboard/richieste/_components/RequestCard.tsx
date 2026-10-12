@@ -1380,8 +1380,7 @@ export function RequestCard({
       {showClientProfile ? (
         <ClientProfileModal
           name={clientName}
-          birthDate={gr.clientBirthDate}
-          age={gr.clientAge}
+          detailsUnlocked={gr.clientDetailsUnlocked}
           imageUrl={gr.clientImageUrl}
           reviews={gr.clientReviews}
           token={token}

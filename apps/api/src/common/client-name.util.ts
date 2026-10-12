@@ -34,11 +34,3 @@ export function publicClientName(client: { name: string | null; surname: string 
   return initial ? `${name} ${initial}.` : name;
 }
 
-/** Anni compiuti a oggi da una data di nascita (date salvate a mezzanotte UTC). */
-export function ageInYears(birthDate: Date, now: Date = new Date()): number {
-  let age = now.getUTCFullYear() - birthDate.getUTCFullYear();
-  const beforeBirthday =
-    now.getUTCMonth() < birthDate.getUTCMonth() || (now.getUTCMonth() === birthDate.getUTCMonth() && now.getUTCDate() < birthDate.getUTCDate());
-  if (beforeBirthday) age -= 1;
-  return age;
-}

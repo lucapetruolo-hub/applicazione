@@ -17,19 +17,6 @@ export type ClientReviewSummary = {
   reviewerBusinessName: string;
 };
 
-function formatBirthDate(birthDate: string): string {
-  const parts = birthDate.split("-").map(Number);
-  const year = parts[0] ?? 1970;
-  const month = parts[1] ?? 1;
-  const day = parts[2] ?? 1;
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("it-IT", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
  * ricevuta (`/dashboard/richieste`, `RequestCard`) — richiesta esplicita
@@ -40,7 +27,7 @@ function formatBirthDate(birthDate: string): string {
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * solo l'identità (nome, cognome solo a preventivo accettato §215, data di nascita, foto profilo) — richiesta
+ * solo l'identità (nome; cognome e foto profilo a preventivo accettato, §215) — richiesta
  * esplicita dell'utente, che ha ribaltato di nuovo la decisione di privacy
  * presa in un giro precedente (CLAUDE.md §12, mostrava telefono/email già
  * da qui): "tutte le info relative al cliente gli verranno visualizzate
@@ -54,18 +41,15 @@ function formatBirthDate(birthDate: string): string {
  */
 export function ClientProfileModal({
   name,
-  birthDate,
-  age,
+  detailsUnlocked = false,
   imageUrl,
   reviews,
   token,
   onClose,
 }: {
   name: string;
-  /** Data di nascita del cliente (YYYY-MM-DD), se compilata. */
-  birthDate?: string | null;
-  /** Età del cliente, mostrata quando la data di nascita non è ancora sbloccata. */
-  age?: number | null;
+  /** Preventivo accettato: cognome e foto già sbloccati, la nota sotto non serve più. */
+  detailsUnlocked?: boolean;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
   /** Recensioni ricevute dal cliente da parte di professionisti che hanno lavorato con lui. */
@@ -154,25 +138,11 @@ export function ClientProfileModal({
           </Text>
         </YStack>
 
-        {birthDate ? (
-          <XStack alignItems="center" justifyContent="center" gap="$2">
-            <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text color={brand.grafite70} fontSize="$3" fontWeight="600">
-              Nato/a il {formatBirthDate(birthDate)}
-            </Text>
-          </XStack>
-        ) : age != null ? (
-          <XStack alignItems="center" justifyContent="center" gap="$2">
-            <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text color={brand.grafite70} fontSize="$3" fontWeight="600">
-              {age} anni
-            </Text>
-          </XStack>
-        ) : null}
-
-        <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-          Cognome, data di nascita, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
-        </Text>
+        {detailsUnlocked ? null : (
+          <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+            Cognome, foto, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
+          </Text>
+        )}
 
         {reviews && reviews.length > 0 ? (
           <YStack width="100%" gap="$3" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">

@@ -136,20 +136,19 @@ export function ConversationView({
   // pagina /chat), la scheda si carica qui al clic dalle richieste
   // ricevute: stessi dati di `RequestCard`, niente contatti prima
   // dell'accettazione (CLAUDE.md §5.9).
-  const [clientCard, setClientCard] = useState<{ name: string; birthDate: string | null; age: number | null; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
+  const [clientCard, setClientCard] = useState<{ name: string; detailsUnlocked: boolean; imageUrl: string | null; reviews: ClientReviewSummary[] } | null>(null);
   async function openClientCard() {
     try {
       const leads = await apiClient.myLeads(token);
       const request = leads.find((lead) => lead.guidedRequest.id === guidedRequestId)?.guidedRequest;
       setClientCard({
         name: request?.clientName ?? otherPartyName ?? ACTOR_LABEL.CLIENT,
-        birthDate: request?.clientBirthDate ?? null,
-        age: request?.clientAge ?? null,
-        imageUrl: request?.clientImageUrl ?? otherPartyImageUrl ?? null,
+        detailsUnlocked: request?.clientDetailsUnlocked ?? false,
+        imageUrl: request ? request.clientImageUrl : (otherPartyImageUrl ?? null),
         reviews: request?.clientReviews ?? [],
       });
     } catch {
-      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, birthDate: null, age: null, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
+      setClientCard({ name: otherPartyName ?? ACTOR_LABEL.CLIENT, detailsUnlocked: false, imageUrl: otherPartyImageUrl ?? null, reviews: [] });
     }
   }
   function openProfileOf(actor: ConversationEvent["actor"]): (() => void) | undefined {
@@ -1044,8 +1043,7 @@ export function ConversationView({
       {clientCard ? (
         <ClientProfileModal
           name={clientCard.name}
-          birthDate={clientCard.birthDate}
-          age={clientCard.age}
+          detailsUnlocked={clientCard.detailsUnlocked}
           imageUrl={clientCard.imageUrl}
           reviews={clientCard.reviews}
           token={token}

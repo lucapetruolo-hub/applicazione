@@ -152,17 +152,11 @@ export type ProfessionalLead = {
      */
     clientName: string | null;
     /**
-     * Data di nascita del cliente (solo data, YYYY-MM-DD), per la scheda
-     * profilo aperta cliccando il nome (ClientProfileModal) — richiesta
-     * esplicita dell'utente: "vedere nome cognome, data di nascita e
-     * immagine del profilo". `null` se il cliente non l'ha compilata.
+     * True quando il preventivo di questo professionista è accettato (esiste
+     * la Booking): da lì si vedono cognome e foto del cliente. Data di
+     * nascita ed età non arrivano mai al professionista (docs/CHANGELOG.md §215).
      */
-    clientBirthDate: string | null;
-    /**
-     * Età del cliente, sempre visibile; la data di nascita (`clientBirthDate`)
-     * arriva solo a preventivo accettato (docs/CHANGELOG.md §215).
-     */
-    clientAge: number | null;
+    clientDetailsUnlocked: boolean;
     /**
      * Telefono/email/indirizzo NON esposti a questo livello — decisione di
      * privacy ribaltata di nuovo su richiesta esplicita dell'utente ("non
@@ -172,7 +166,7 @@ export type ProfessionalLead = {
      * restano disponibili solo dopo l'accettazione, su
      * `ProfessionalBooking` (recipientPhone/street/ecc., già esistenti lì).
      */
-    /** Immagine profilo dell'account cliente, se presente — richiesta esplicita dell'utente (scheda cliente, ClientProfileModal). */
+    /** Immagine profilo dell'account cliente, solo a preventivo accettato (`null` prima, §215). */
     clientImageUrl: string | null;
     /** Il cliente ha confermato l'email (facoltativo per lui, docs/CHANGELOG.md §178): mostrato come segno di affidabilità. */
     clientEmailVerified: boolean;

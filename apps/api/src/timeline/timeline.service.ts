@@ -97,7 +97,7 @@ export class TimelineService {
             client: true,
             category: true,
             // Preventivi accettati della richiesta: il cognome del cliente
-            // si mostra solo al professionista con la Booking (§215).
+            // e la foto si mostrano al professionista solo con la Booking (§215).
             quotes: { where: { booking: { isNot: null } }, select: { professionalProfileId: true } },
           },
         },
@@ -115,16 +115,16 @@ export class TimelineService {
       const viewerRole: "CLIENT" | "PROFESSIONAL" = event.guidedRequest.clientId === userId ? "CLIENT" : "PROFESSIONAL";
       const client = event.guidedRequest.client;
       const professionalProfile = event.professionalProfile;
+      const clientUnlocked = event.guidedRequest.quotes.some((quote) => quote.professionalProfileId === event.professionalProfileId);
       const otherPartyName =
         viewerRole === "CLIENT"
           ? professionalProfile.businessName
           : client.deletedAt
             ? "Account eliminato"
-            : (clientNameForProfessional(
-                client,
-                event.guidedRequest.quotes.some((quote) => quote.professionalProfileId === event.professionalProfileId),
-              ) ?? "Cliente");
-      const otherPartyImageUrl = viewerRole === "CLIENT" ? professionalProfile.imageUrl : client.deletedAt ? null : client.imageUrl;
+            : (clientNameForProfessional(client, clientUnlocked) ?? "Cliente");
+      // Foto del cliente al professionista solo a preventivo accettato (§215).
+      const otherPartyImageUrl =
+        viewerRole === "CLIENT" ? professionalProfile.imageUrl : client.deletedAt || !clientUnlocked ? null : client.imageUrl;
 
       threads.push({
         guidedRequestId: event.guidedRequestId,

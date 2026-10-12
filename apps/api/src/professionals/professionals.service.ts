@@ -44,7 +44,7 @@ import { toMyState } from "../guided-requests/guided-request-user-state.service"
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
-import { ageInYears, clientNameForProfessional } from "../common/client-name.util";
+import { clientNameForProfessional } from "../common/client-name.util";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -984,17 +984,9 @@ export class ProfessionalsService {
           // si sblocca con la Booking come telefono e indirizzo
           // (docs/CHANGELOG.md §215).
           clientName: clientNameForProfessional(lead.guidedRequest.client, quote?.booking != null),
-          // Data di nascita del cliente — richiesta esplicita dell'utente:
-          // la scheda aperta cliccando il nome (ClientProfileModal) deve
-          // poter mostrare "nome cognome, data di nascita e immagine del
-          // profilo" già dalla prima richiesta. Solo la data (YYYY-MM-DD,
-          // nessun'ora): stesso taglio già in uso per preferredDate poco
-          // sotto.
-          // Prima dell'accettazione solo l'età, la data si sblocca con la
-          // Booking come il cognome (docs/CHANGELOG.md §215).
-          clientBirthDate:
-            quote?.booking != null && lead.guidedRequest.client.birthDate ? lead.guidedRequest.client.birthDate.toISOString().slice(0, 10) : null,
-          clientAge: lead.guidedRequest.client.birthDate ? ageInYears(lead.guidedRequest.client.birthDate) : null,
+          // Data di nascita ed età non esposte al professionista, né prima
+          // né dopo l'accettazione (decisione dell'utente, §215).
+          clientDetailsUnlocked: quote?.booking != null,
           // Telefono/email/indirizzo NON esposti finché il preventivo non è
           // accettato — decisione di privacy ribaltata di nuovo su richiesta
           // esplicita dell'utente rispetto alla correzione precedente (che
@@ -1004,11 +996,9 @@ export class ProfessionalsService {
           // sempre su ProfessionalBooking/getMyBookings (recipientPhone,
           // street, ecc. — dati raccolti alla richiesta ma girati al
           // professionista solo con l'accettazione).
-          // Richiesta esplicita dell'utente: mostrare la foto profilo del
-          // cliente (se presente) nella scheda aperta cliccando il nome
-          // (ClientProfileModal) — stesso campo User.imageUrl già usato
-          // per l'avatar dell'account cliente altrove nel sito.
-          clientImageUrl: lead.guidedRequest.client.imageUrl,
+          // Foto profilo del cliente solo a preventivo accettato, come il
+          // cognome (decisione dell'utente, docs/CHANGELOG.md §215).
+          clientImageUrl: quote?.booking != null ? lead.guidedRequest.client.imageUrl : null,
           clientEmailVerified: lead.guidedRequest.client.emailVerifiedAt !== null,
           clientAccountDeleted: lead.guidedRequest.client.deletedAt !== null,
           // Recensioni ricevute dal cliente, da qualunque professionista
