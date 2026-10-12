@@ -17888,5 +17888,13 @@ promessa con un numero nella parte verde):
 - "Per chi offre servizi" con luci sfocate in movimento e due notifiche
   d'esempio sopra la foto (sul telefono una sola).
 
+Quarto giro, migliorie approvate dall'utente: filtri delle categorie su una
+riga da scorrere sul telefono; link verde della pagina d'errore con il verde
+scuro dei testi piccoli (gli altri testi piccoli lo usavano già dal §172).
+"SMS" in "Come funziona" resta: il canale (SMS o WhatsApp) arriverà prima
+del lancio. Il servizio di prova "Mio piacimento" nei prezzi medi è una
+prestazione del profilo "Rossi S.r.l. Illuminazioni" in produzione: va tolta
+da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
+
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.

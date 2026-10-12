@@ -1880,6 +1880,24 @@ a.admin-kpi:hover {
   color: #2b2420;
   cursor: pointer;
 }
+/* Sul telefono i filtri stanno su una riga sola da scorrere, invece di
+   andare a capo su due righe (docs/CHANGELOG.md §219). */
+@media (max-width: 700px) {
+  .story-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -24px;
+    padding: 0 24px 2px;
+  }
+  .story-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .story-filter {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
 .story-filter[aria-pressed="true"] {
   background: #189a63;
   border-color: #189a63;

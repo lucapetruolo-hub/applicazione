@@ -27,7 +27,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         >
           Riprova
         </button>
-        <Link href="/" style={{ padding: "10px 20px", color: "#189a63", fontWeight: 700 }}>
+        <Link href="/" style={{ padding: "10px 20px", color: "#0e7a4c", fontWeight: 700 }}>
           Torna alla home
         </Link>
       </div>
