@@ -17853,5 +17853,18 @@ elettricista, imbianchino, giardiniere, climatizzazione e muratore perché
   Le stesse foto di elettricista e imbianchino compaiono anche in
   `/registrati` e `/per-professionisti`.
 
+Secondo giro, migliorie approvate dall'utente:
+- Spazi vuoti più stretti: `Section` (`packages/ui`) accetta una densità
+  (`SectionDensityProvider`, "comfortable" 64/96px o "compact" 40/56px); la
+  home usa "compact", le altre pagine restano com'erano.
+- "Nuovi profili" e "Professionisti in evidenza" erano due sezioni uguali:
+  resta solo `NewProfilesCarousel`, che ora mostra anche voto, "Verificato"
+  e "Nuovo" (iscritto da meno di 30 giorni). `ProfessionalsShowcase` mostra
+  solo il blocco "Arriviamo presto nella tua zona" quando i profili sono pochi.
+- "Come funziona" con tre foto di persone (Pexels) al posto delle
+  illustrazioni (`HowItWorksIllustrations.tsx` rimosso), in una griglia a
+  colonne uguali (`.how-steps`). Testi invariati.
+- Foto di idraulico, pulizie e muratore sostituite con foto Pexels.
+
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.

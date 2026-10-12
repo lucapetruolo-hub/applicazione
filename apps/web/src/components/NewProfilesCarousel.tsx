@@ -3,7 +3,19 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Avatar, Icon, Section, Text, XStack, YStack, brand, motionEasing, motionFast } from "@professionisti/ui";
+import {
+  Avatar,
+  Badge,
+  Icon,
+  Rating,
+  Section,
+  Text,
+  XStack,
+  YStack,
+  brand,
+  motionEasing,
+  motionFast,
+} from "@professionisti/ui";
 import { useRevealOnScroll } from "./useRevealOnScroll";
 import { BRAND } from "@professionisti/shared";
 
@@ -12,6 +24,9 @@ import { BRAND } from "@professionisti/shared";
 // esiste per non far sembrare vuota una "vetrina in evidenza", questo è
 // semplicemente l'elenco dei più recenti, corretto anche con pochi profili).
 const VISIBLE_COUNT = 21;
+// Badge "Nuovo" per i profili creati negli ultimi 30 giorni (portato qui
+// dalla vecchia vetrina di ProfessionalsShowcase, docs/CHANGELOG.md §219).
+const NEW_PROFILE_WINDOW_DAYS = 30;
 // Stesso tetto alla cascata di RecentReviews.tsx (CLAUDE.md §105).
 const MAX_STAGGER_MS = 480;
 
@@ -48,25 +63,38 @@ const arrowStyle = {
  * `.category-carousel-arrow` (globals.css) già nascosta su dispositivi
  * touch-only via `@media (hover:none)` — evita di duplicare quella regola.
  */
-export function NewProfilesCarousel({ professionals }: { professionals: ProfessionalSearchResult[] }) {
+export function NewProfilesCarousel({
+  professionals,
+}: {
+  professionals: ProfessionalSearchResult[];
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   if (professionals.length === 0) return null;
 
   const newest = [...professionals]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
     .slice(0, VISIBLE_COUNT);
 
   function scrollByCard(direction: 1 | -1) {
     const track = trackRef.current;
     if (!track) return;
     const card = track.querySelector<HTMLElement>("[data-new-profile-card]");
-    const step = card ? card.getBoundingClientRect().width + 16 : track.clientWidth;
+    const step = card
+      ? card.getBoundingClientRect().width + 16
+      : track.clientWidth;
     track.scrollBy({ left: direction * step, behavior: "smooth" });
   }
 
   return (
-    <Section eyebrow="Nuovi profili" title={`Nuovi profili su ${BRAND.name}`} maxWidth={1160}>
+    <Section
+      eyebrow="Nuovi profili"
+      title={`Nuovi profili su ${BRAND.name}`}
+      maxWidth={1160}
+    >
       <div className="npc-wrap">
         <div
           className="category-carousel-arrow"
@@ -82,7 +110,11 @@ export function NewProfilesCarousel({ professionals }: { professionals: Professi
 
         <div ref={trackRef} className="npc-track">
           {newest.map((pro, index) => (
-            <NewProfileCard key={pro.id} pro={pro} delayMs={Math.min(index * 70, MAX_STAGGER_MS)} />
+            <NewProfileCard
+              key={pro.id}
+              pro={pro}
+              delayMs={Math.min(index * 70, MAX_STAGGER_MS)}
+            />
           ))}
         </div>
 
@@ -134,13 +166,27 @@ export function NewProfilesCarousel({ professionals }: { professionals: Professi
   );
 }
 
-function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delayMs: number }) {
+function NewProfileCard({
+  pro,
+  delayMs,
+}: {
+  pro: ProfessionalSearchResult;
+  delayMs: number;
+}) {
   const { ref, style } = useRevealOnScroll(delayMs);
   const [hovered, setHovered] = useState(false);
 
   return (
     <div ref={ref} data-new-profile-card className="npc-card" style={style}>
-      <Link href={`/professionista/${pro.id}`} style={{ textDecoration: "none", color: "inherit", display: "block", height: "100%" }}>
+      <Link
+        href={`/professionista/${pro.id}`}
+        style={{
+          textDecoration: "none",
+          color: "inherit",
+          display: "block",
+          height: "100%",
+        }}
+      >
         <YStack
           width="100%"
           height="100%"
@@ -167,7 +213,12 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
                 è il professionista, non solo intuirlo da un'icona piccola. */}
             <Avatar name={pro.businessName} imageUrl={pro.imageUrl} size={88} />
             <YStack flex={1} minWidth={0} gap={2}>
-              <Text fontWeight="700" fontSize={17} color={brand.grafite} numberOfLines={1}>
+              <Text
+                fontWeight="700"
+                fontSize={17}
+                color={brand.grafite}
+                numberOfLines={1}
+              >
                 {pro.businessName}
               </Text>
               <Text fontSize={13.5} color={brand.grafite70} numberOfLines={1}>
@@ -178,11 +229,33 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
               </Text>
             </YStack>
           </XStack>
+          {pro.rating !== null ||
+          pro.verified ||
+          isNewProfile(pro.createdAt) ? (
+            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+              {pro.rating !== null ? (
+                <Rating value={pro.rating} size={13} />
+              ) : null}
+              {pro.verified ? (
+                <Badge variant="verificato">Verificato</Badge>
+              ) : null}
+              {isNewProfile(pro.createdAt) ? (
+                <Badge variant="nuovo">Nuovo</Badge>
+              ) : null}
+            </XStack>
+          ) : null}
           <Text fontWeight="600" fontSize={14} color={brand.cianografiaScuro}>
             Mostra profilo →
           </Text>
         </YStack>
       </Link>
     </div>
+  );
+}
+
+function isNewProfile(createdAt: string): boolean {
+  return (
+    Date.now() - new Date(createdAt).getTime() <
+    NEW_PROFILE_WINDOW_DAYS * 24 * 60 * 60 * 1000
   );
 }

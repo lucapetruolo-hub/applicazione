@@ -29,7 +29,10 @@
  * - imbianchino: Ivan S, pexels.com/photo/5799084
  * - giardiniere: pexels.com/photo/24595771
  * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463575
- * - muratore: Yura Forrat, pexels.com/photo/11429199
+ * Poi, su nuova richiesta (stesso §219), anche:
+ * - muratore: pexels.com/photo/5493654
+ * - idraulico: pexels.com/photo/6050244
+ * - pulizie: pexels.com/photo/6196566
  */
 export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   idraulico: "/category-photos/idraulico.webp",
@@ -57,5 +60,4 @@ export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
   imbianchino: "72% 50%",
   giardiniere: "68% 50%",
   climatizzazione: "45% 50%",
-  muratore: "30% 50%",
 };

@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Icon, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
+import {
+  Icon,
+  Section,
+  SectionDensityProvider,
+  Text,
+  XStack,
+  YStack,
+  brand,
+} from "@professionisti/ui";
 import { CategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
@@ -38,76 +46,90 @@ export default function HomeContent({
   }
 
   return (
-    <YStack width="100%" alignItems="center">
-      <HomeHero />
+    // Ritmo stretto tra le sezioni: con quello pieno (96px sopra e sotto)
+    // la home aveva grandi spazi vuoti (docs/CHANGELOG.md §219).
+    <SectionDensityProvider value="compact">
+      <YStack width="100%" alignItems="center">
+        <HomeHero />
 
-      {platformStats ? <PlatformStats stats={platformStats} /> : null}
+        {platformStats ? <PlatformStats stats={platformStats} /> : null}
 
-      <FadeInSection>
-        <Section eyebrow="Categorie" title="Di cosa hai bisogno?" maxWidth={1080}>
-          <CategoryStoryRail countBySlug={countBySlug} />
-        </Section>
-      </FadeInSection>
+        <FadeInSection>
+          <Section
+            eyebrow="Categorie"
+            title="Di cosa hai bisogno?"
+            maxWidth={1080}
+          >
+            <CategoryStoryRail countBySlug={countBySlug} />
+          </Section>
+        </FadeInSection>
 
-      {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
+        {/* "Recensioni verificate" e "Nuovi profili" spostati subito sotto le
           categorie (richiesta esplicita dell'utente) — prima erano più in
           basso, dopo "Come funziona". */}
-      <FadeInSection>
-        <RecentReviews />
-      </FadeInSection>
+        <FadeInSection>
+          <RecentReviews />
+        </FadeInSection>
 
-      <FadeInSection>
-        <NewProfilesCarousel professionals={professionals} />
-      </FadeInSection>
+        <FadeInSection>
+          <NewProfilesCarousel professionals={professionals} />
+        </FadeInSection>
 
-      <FadeInSection>
-        <QualitySection />
-      </FadeInSection>
+        <FadeInSection>
+          <QualitySection />
+        </FadeInSection>
 
-      <FadeInSection>
-        <PlatformGuarantee />
-      </FadeInSection>
+        <FadeInSection>
+          <PlatformGuarantee />
+        </FadeInSection>
 
-      {/* "Cosa succede se..." non è più mostrato direttamente in home
+        {/* "Cosa succede se..." non è più mostrato direttamente in home
           (richiesta esplicita dell'utente): spostato in una pagina FAQ
           dedicata (/faq, WhatIfSection montata lì), raggiungibile dal
           link "Domande frequenti" nel footer, colonna "Per i clienti". */}
 
-      <FadeInSection>
-        <PriceEstimatorTool />
-      </FadeInSection>
+        <FadeInSection>
+          <PriceEstimatorTool />
+        </FadeInSection>
 
-      <FadeInSection>
-        <div id="come-funziona" style={{ width: "100%" }}>
-          <HowItWorks />
-        </div>
-      </FadeInSection>
+        <FadeInSection>
+          <div id="come-funziona" style={{ width: "100%" }}>
+            <HowItWorks />
+          </div>
+        </FadeInSection>
 
-      <FadeInSection>
-        <HomeFaq />
-      </FadeInSection>
+        <FadeInSection>
+          <HomeFaq />
+        </FadeInSection>
 
-      <FadeInSection>
-        <ProfessionalsShowcase professionals={professionals} />
-      </FadeInSection>
+        <FadeInSection>
+          <ProfessionalsShowcase professionals={professionals} />
+        </FadeInSection>
 
-      <ProCtaSection />
+        <ProCtaSection />
 
-      {/* Link diretto alla richiesta urgente: non un secondo CTA primario in
+        {/* Link diretto alla richiesta urgente: non un secondo CTA primario in
           hero (il brief vuole un solo CTA per schermata), ma resta
           raggiungibile per chi arriva fin qui senza averla notata. */}
-      <FadeInSection>
-        <YStack width="100%" maxWidth={1080} paddingVertical="$6" paddingHorizontal="$4" alignItems="center">
-          <Link href="/urgente" style={{ textDecoration: "none" }}>
-            <XStack alignItems="center" gap="$2">
-              <Icon name="zap" size={16} color={brand.urgenza} />
-              <Text color={brand.urgenza} fontWeight="600">
-                Hai un'emergenza? Richiedi un intervento urgente
-              </Text>
-            </XStack>
-          </Link>
-        </YStack>
-      </FadeInSection>
-    </YStack>
+        <FadeInSection>
+          <YStack
+            width="100%"
+            maxWidth={1080}
+            paddingVertical="$6"
+            paddingHorizontal="$4"
+            alignItems="center"
+          >
+            <Link href="/urgente" style={{ textDecoration: "none" }}>
+              <XStack alignItems="center" gap="$2">
+                <Icon name="zap" size={16} color={brand.urgenza} />
+                <Text color={brand.urgenza} fontWeight="600">
+                  Hai un'emergenza? Richiedi un intervento urgente
+                </Text>
+              </XStack>
+            </Link>
+          </YStack>
+        </FadeInSection>
+      </YStack>
+    </SectionDensityProvider>
   );
 }

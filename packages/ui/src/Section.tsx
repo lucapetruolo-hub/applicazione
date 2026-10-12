@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { H2, Paragraph, YStack } from "tamagui";
 import { Eyebrow } from "./Eyebrow";
 
@@ -33,29 +33,63 @@ const TONE_BACKGROUND: Record<SectionTone, string> = {
  * — definito una sola volta qui, mai con classi/padding ad-hoc nelle pagine
  * (brief redesign "Scheda Intervento" §1.4).
  */
-export function Section({ eyebrow, title, lead, tone = "light", maxWidth = 1200, children }: SectionProps) {
+/**
+ * Ritmo verticale più stretto (56px desktop / 40px mobile) per le pagine con
+ * molte sezioni in fila, come la homepage: con 96px sopra e sotto ogni
+ * sezione restavano grandi spazi vuoti (richiesta dell'utente,
+ * docs/CHANGELOG.md §219). Si attiva avvolgendo la pagina in
+ * `<SectionDensityProvider value="compact">`; senza, resta il ritmo pieno.
+ */
+export type SectionDensity = "comfortable" | "compact";
+
+const SectionDensityContext = createContext<SectionDensity>("comfortable");
+
+export const SectionDensityProvider = SectionDensityContext.Provider;
+
+const DENSITY_PADDING: Record<
+  SectionDensity,
+  { mobile: number; desktop: number }
+> = {
+  comfortable: { mobile: 64, desktop: 96 },
+  compact: { mobile: 40, desktop: 56 },
+};
+
+export function Section({
+  eyebrow,
+  title,
+  lead,
+  tone = "light",
+  maxWidth = 1200,
+  children,
+}: SectionProps) {
   const isDark = tone === "dark";
+  const padding = DENSITY_PADDING[useContext(SectionDensityContext)];
 
   return (
     <YStack
       width="100%"
       alignItems="center"
       backgroundColor={TONE_BACKGROUND[tone]}
-      paddingVertical={64}
+      paddingVertical={padding.mobile}
       paddingHorizontal={24}
-      $gtSm={{ paddingVertical: 96, paddingHorizontal: 40 }}
+      $gtSm={{ paddingVertical: padding.desktop, paddingHorizontal: 40 }}
     >
       <YStack width="100%" maxWidth={maxWidth} gap="$6">
         {eyebrow || title || lead ? (
           <YStack gap="$3">
-            {eyebrow ? <Eyebrow tone={isDark ? "dark" : "light"}>{eyebrow}</Eyebrow> : null}
+            {eyebrow ? (
+              <Eyebrow tone={isDark ? "dark" : "light"}>{eyebrow}</Eyebrow>
+            ) : null}
             {title ? (
               <H2 fontFamily="$heading" color={isDark ? "white" : "$grafite"}>
                 {title}
               </H2>
             ) : null}
             {lead ? (
-              <Paragraph color={isDark ? "$grafite70" : "$grafite70"} maxWidth={640}>
+              <Paragraph
+                color={isDark ? "$grafite70" : "$grafite70"}
+                maxWidth={640}
+              >
                 {lead}
               </Paragraph>
             ) : null}

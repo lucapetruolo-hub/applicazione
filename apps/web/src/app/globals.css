@@ -2015,3 +2015,39 @@ a.admin-kpi:hover {
     order: -1;
   }
 }
+
+/* Foto dei passi di "Come funziona" (HowItWorks). */
+.how-steps {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+@media (min-width: 861px) {
+  .how-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.how-step-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #f6ecd9;
+}
+.how-step-number {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0e7a4c;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
