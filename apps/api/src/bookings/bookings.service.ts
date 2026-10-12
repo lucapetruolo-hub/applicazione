@@ -1007,6 +1007,8 @@ export class BookingsService {
       // come terminato — richiesta esplicita dell'utente.
       finalAmountEurCents: booking.finalAmountEurCents,
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
+      // Motivo dell'importo diverso dal preventivo: lo legge anche il cliente (richiesta esplicita dell'utente).
+      completionChangeReason: booking.completionChangeReason,
       // Nota lasciata dal professionista se ha annullato l'intervento (facoltativa).
       cancellationNote: booking.cancellationNote,
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto

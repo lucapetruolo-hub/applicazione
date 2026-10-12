@@ -220,6 +220,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               €{(booking.finalAmountEurCents / 100).toFixed(2)}
             </Text>
           </XStack>
+          {booking.completionChangeReason ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Perché è diverso dal preventivo: {booking.completionChangeReason}
+            </Text>
+          ) : null}
         </YStack>
       ) : null}
 
@@ -334,14 +339,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           onClose={() => setShowClientCompleteModal(false)}
           onConfirm={handleClientConfirmComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-          onReportProblem={
-            canReportIssue
-              ? () => {
-                  setShowClientCompleteModal(false);
-                  setShowNoShowModal(true);
-                }
-              : undefined
-          }
         />
       ) : null}
       {showReviewModal ? (

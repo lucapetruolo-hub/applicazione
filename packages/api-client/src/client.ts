@@ -128,6 +128,8 @@ export type ClientBooking = {
   /** Importo finale esatto (voci del preventivo + eventuali extra), valorizzato solo a lavoro terminato. */
   finalAmountEurCents: number | null;
   finalItems: { id: string; name: string; priceEurCents: number }[];
+  /** Motivo scritto dal professionista quando l'importo finale esce dal preventivo, null altrimenti. */
+  completionChangeReason: string | null;
   /** Nota lasciata dal professionista se ha annullato l'intervento (facoltativa). */
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */

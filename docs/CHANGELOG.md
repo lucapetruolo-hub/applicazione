@@ -18046,5 +18046,17 @@ con una riga sola.
 - Lato professionista i pulsanti erano già in fila: cambia solo la riga del
   pagamento.
 
+Secondo giro, altre richieste dell'utente:
+- Accettando il preventivo l'opzione diretta è solo "DIRETTO al
+  professionista", senza la spiegazione su accordi e contestazioni
+  (`JOB_PAYMENT_CHOICE_COPY.DIRECT`, `body` ora facoltativo). L'opzione online
+  non cambia.
+- La finestra "Lavoro terminato" del cliente non ripete più "Non è andato
+  tutto bene? Segnala un problema": il pulsante è già accanto.
+- Il motivo scritto dal professionista quando l'importo finale esce dal
+  preventivo (`completionChangeReason`) ora lo legge anche il cliente, sotto
+  "Importo finale" ("Perché è diverso dal preventivo: ..."). Prima lo vedeva
+  solo l'admin; il testo nella finestra del professionista lo dice.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.
