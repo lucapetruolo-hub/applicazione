@@ -17913,5 +17913,8 @@ professionista solo a preventivo accettato (§216), prima l'iniziale.
 preventivo è accettato; `null` se l'account è eliminato) per la chat aperta
 dall'agenda.
 
+Migliorie approvate dall'utente: foto in cima alla chat da 36 a 40px, dentro
+una zona da toccare di 44px (apre il profilo, comoda dal telefono).
+
 **Verifica**: tipi di `apps/web` e `apps/api` verdi, build di produzione e
 schermate in locale su computer e telefono.
