@@ -18,17 +18,17 @@
  * §217 e §219):
  * - idraulico: pexels.com/photo/6419128
  * - elettricista: pexels.com/photo/34054464
- * - imbianchino: Ivan S, pexels.com/photo/5799084
+ * - imbianchino: pexels.com/photo/5493653
  * - pulizie: pexels.com/photo/6196566
  * - giardiniere: pexels.com/photo/6728926
  * - traslochi: Vitaly Gariev, unsplash.com/photos/wS40ELZROLE
  * - fabbro: pexels.com/photo/5691693
- * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463575
+ * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463579
  * - muratore: pexels.com/photo/5691606
  * - falegname: pexels.com/photo/4888598
  * - tuttofare: pexels.com/photo/5691544
  * - dogsitter: pexels.com/photo/7210537
- * - babysitter: Vitaly Gariev, unsplash.com/photos/IGnXUcRKZzQ
+ * - babysitter: pexels.com/photo/6986430
  *
  * Le foto di `/registrati` e `/per-professionisti` sono copie separate in
  * `public/page-photos/`, così cambiare la foto di una categoria non cambia
@@ -56,6 +56,6 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
  * fuori dal bordo. Le categorie non elencate restano centrate.
  */
 export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
-  imbianchino: "72% 50%",
-  climatizzazione: "45% 50%",
+  climatizzazione: "30% 50%",
+  babysitter: "40% 50%",
 };
