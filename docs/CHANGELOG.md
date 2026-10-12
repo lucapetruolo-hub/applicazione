@@ -18048,7 +18048,10 @@ dall'utente subito dopo): colonne allineate (larghezza fissa) ma orari a
 giovedì usciva dalla scheda su un telefono da 360px. Ora in
 `ProfessionalDetailContent.tsx` le colonne si dividono lo spazio in parti
 uguali (`flex={1}` + `flexBasis={0}`) fino a un massimo di 96px, orari a
-10,5px (9,5px sotto i 660px).
+10,5px (9,5px sotto i 660px). Su richiesta dell'utente le frecce dei giorni,
+che su computer stavano all'estremo destro della scheda, ora stanno sopra
+l'ultima colonna: frecce, intestazioni e righe degli orari hanno la stessa
+larghezza massima della griglia (4 × 96px).
 
 **Verifica:** typecheck di `packages/ui` e `apps/web`; anteprime prima/dopo
 da computer (1100px) e telefono (375 e 360px) in

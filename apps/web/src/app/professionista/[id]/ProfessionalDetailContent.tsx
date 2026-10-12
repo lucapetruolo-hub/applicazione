@@ -611,8 +611,12 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 visivo che le due frecce si riferiscano proprio ai giorni
                 subito sotto e non, ad esempio, ai tab sopra. Restano due
                 righe separate (non un'unica riga con le intestazioni) per
-                lo stesso motivo di prima — vedi bug qui sotto. */}
-            <YStack gap="$1">
+                lo stesso motivo di prima — vedi bug qui sotto. Larghezza
+                massima pari alla griglia (richiesta esplicita dell'utente,
+                docs/CHANGELOG.md §226): su computer le frecce finivano
+                all'estremo destro della scheda, lontane dai giorni; ora
+                stanno sopra l'ultima colonna. */}
+            <YStack gap="$1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * AGENDA_PREVIEW_DAYS}>
               {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
                 // Frecce su una riga propria, allineate a destra (richiesta
                 // esplicita dell'utente: prima condividevano la riga con le
@@ -673,7 +677,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             </YStack>
 
             {agendaTimeRows.length > 0 ? (
-              <YStack gap="$1.5">
+              <YStack gap="$1.5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * AGENDA_PREVIEW_DAYS}>
                 {agendaTimeRows.map((time) => (
                   <XStack key={time}>
                     {agendaWindowDays.map((day) => {
