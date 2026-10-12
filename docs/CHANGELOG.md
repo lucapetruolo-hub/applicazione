@@ -18058,5 +18058,11 @@ Secondo giro, altre richieste dell'utente:
   "Importo finale" ("Perché è diverso dal preventivo: ..."). Prima lo vedeva
   solo l'admin; il testo nella finestra del professionista lo dice.
 
+Terzo giro, migliorie approvate dall'utente: sotto "Accettato" sparisce
+"Come pago?" (il metodo di pagamento è subito sotto); un preventivo accettato
+non mostra più l'etichetta "Nuovo"; la data dell'intervento diventa il titolo
+della sezione "Intervento" (con il giorno della settimana) invece di una riga
+grigia.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

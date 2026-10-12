@@ -97,7 +97,6 @@ export function QuoteCard({
   const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
-  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   // Scelta del metodo di pagamento prima di accettare (§168).
   const [choosingPayment, setChoosingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<JobPaymentChoice>("DIRECT");
@@ -289,7 +288,8 @@ export function QuoteCard({
             </Text>
           </XStack>
         </Link>
-        {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§226). */}
+        {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
@@ -504,20 +504,10 @@ export function QuoteCard({
           {dateChooser}
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
-        <YStack gap="$2">
-          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-            Accettato
-          </Text>
-          {showPaymentInfo ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Il metodo di pagamento scelto, l&apos;acconto e il saldo sono nella sezione dell&apos;intervento qui sotto.
-            </Text>
-          ) : (
-            <CardButton alignSelf="flex-start" onPress={() => setShowPaymentInfo(true)}>
-              Come pago?
-            </CardButton>
-          )}
-        </YStack>
+        // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§226).
+        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+          Accettato
+        </Text>
       ) : quote.status === "REJECTED" ? (
         <YStack gap="$1">
           <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
