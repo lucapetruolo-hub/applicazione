@@ -1,6 +1,6 @@
 /**
  * Foto reali per categoria da mostrare al posto dell'icona colorata nella
- * griglia categorie della homepage (`CategoryTile.tsx`) — richiesta
+ * schede categorie della homepage (`CategoryStoryRail.tsx`) — richiesta
  * esplicita dell'utente, già segnalata come rimandata in CLAUDE.md §19
  * ("richiede una decisione sulla fonte delle foto... per non introdurre
  * hotlink a immagini esterne non verificate o scelte a casuale"): qui la
@@ -17,11 +17,19 @@
  * senza obbligo di attribuzione):
  * - traslochi: Vitaly Gariev, unsplash.com/photos/wS40ELZROLE
  * - fabbro: Maria Ziegler, unsplash.com/photos/1AmEImwtnFk
- * - muratore: Bermix Studio, unsplash.com/photos/nZZfP9QiQ6w
  * - falegname: Ali Mkumbwa, unsplash.com/photos/PxlKOcj0a3Q
  * - tuttofare: Kevin Grieve, unsplash.com/photos/3CKZS3-o3XU
  * - dogsitter: Andriyko Podilnyk, unsplash.com/photos/VehdYPKnX8Y
  * - babysitter: Vitaly Gariev, unsplash.com/photos/IGnXUcRKZzQ
+ *
+ * Sostituite su richiesta dell'utente perché "sembravano troppo AI"
+ * (docs/CHANGELOG.md §219), con foto vere da Pexels, licenza Pexels (uso
+ * commerciale libero, senza obbligo di attribuzione):
+ * - elettricista: ranjeet, pexels.com/photo/27928762
+ * - imbianchino: Ivan S, pexels.com/photo/5799084
+ * - giardiniere: pexels.com/photo/24595771
+ * - climatizzazione: José Andrés Pacheco Cortes, pexels.com/photo/5463575
+ * - muratore: Yura Forrat, pexels.com/photo/11429199
  */
 export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   idraulico: "/category-photos/idraulico.webp",
@@ -37,4 +45,17 @@ export const CATEGORY_PHOTOS: Partial<Record<string, string>> = {
   tuttofare: "/category-photos/tuttofare.webp",
   dogsitter: "/category-photos/dogsitter.webp",
   babysitter: "/category-photos/babysitter.webp",
+};
+
+/**
+ * Punto da tenere al centro quando la foto (3:2) viene ritagliata in
+ * verticale nelle schede della homepage: senza, il volto finiva tagliato
+ * fuori dal bordo. Le categorie non elencate restano centrate.
+ */
+export const CATEGORY_PHOTO_FOCUS: Partial<Record<string, string>> = {
+  elettricista: "15% 50%",
+  imbianchino: "72% 50%",
+  giardiniere: "68% 50%",
+  climatizzazione: "45% 50%",
+  muratore: "30% 50%",
 };

@@ -17825,3 +17825,33 @@ stamattina.
 **Controllo in CI**: `apps/api/scripts/check-boot.mjs`, dopo il build,
 costruisce il grafo dei moduli Nest da `dist/` in modalità `preview` (niente
 database né porte). Fallisce sul codice rotto, passa sulla correzione.
+
+## 219. Homepage: categorie a schede con foto e foto più vere
+
+**Richiesta dell'utente**: rendere la home più "umana" con le foto e le
+categorie più innovative. Tra tre proposte (anteprime in
+`/mnt/project-files/anteprime/home/`) ha scelto la "C", lasciando invariata
+la parte verde con la ricerca. Poi ha chiesto di cambiare le foto di
+elettricista, imbianchino, giardiniere, climatizzazione e muratore perché
+"sembrano troppo AI".
+
+**Fatto**:
+- Categorie come schede verticali con foto grande da scorrere
+  (`CategoryStoryRail.tsx`, al posto di `CategoryTile`, rimossa): filtri
+  Tutte / gruppi del mega-menu "Servizi" (`MEGA_MENU_GROUPS`, così menu e
+  home raggruppano allo stesso modo); passando sopra o col focus da tastiera
+  compaiono la descrizione breve del menu e "Vedi chi c'è vicino a te"; sul
+  telefono la descrizione è sempre visibile. In fondo la scheda "Non trovi il
+  tuo lavoro?" verso `/preventivo`.
+- "Disponibile" conta tutte le categorie del professionista (fino a 3,
+  §217), non solo la principale.
+- "Per chi offre servizi" (`ProCtaSection`) in un riquadro scuro con una
+  foto di un falegname al lavoro (Pexels), stessi testi e pulsanti.
+- Cinque foto di categoria sostituite con foto vere da Pexels (licenza
+  Pexels, uso commerciale libero; fonti in `categoryPhotos.ts`), con un
+  punto di messa a fuoco per il ritaglio verticale (`CATEGORY_PHOTO_FOCUS`).
+  Le stesse foto di elettricista e imbianchino compaiono anche in
+  `/registrati` e `/per-professionisti`.
+
+**Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
+schermate in locale su computer e telefono.
