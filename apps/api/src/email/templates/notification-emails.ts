@@ -318,19 +318,27 @@ const BUILDERS: Record<string, Builder> = {
   }),
 
   // ── Lavori e appuntamenti ──────────────────────────────────────────────
-  JOB_COMPLETED: (payload, ctx) => ({
-    kind: "notification",
-    subject: `${pro(ctx)} ha terminato il lavoro: com'è andata?`,
-    greeting: ctx.name,
-    title: "Com'è andata?",
-    paragraphs: [
-      `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
-      "Lascia una recensione: bastano un voto e due righe. Aiuta gli altri clienti a scegliere e il professionista a farsi conoscere.",
-    ],
-    details: typeof payload.finalAmountEurCents === "number" ? [{ label: "Importo finale", value: formatEur(payload.finalAmountEurCents) }] : undefined,
-    cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
-    after: [`Se qualcosa non è andato bene, puoi segnalarlo dalla richiesta entro ${BAD_WORK_REPORT_DAYS} giorni.`],
-  }),
+  JOB_COMPLETED: (payload, ctx) => {
+    // Importo diverso dal preventivo: il motivo scritto dal professionista (docs/CHANGELOG.md §226).
+    const reason = str(payload.changeReason);
+    const details = [
+      ...(typeof payload.finalAmountEurCents === "number" ? [{ label: "Importo finale", value: formatEur(payload.finalAmountEurCents) }] : []),
+      ...(reason ? [{ label: "Diverso dal preventivo perché", value: reason }] : []),
+    ];
+    return {
+      kind: "notification",
+      subject: `${pro(ctx)} ha terminato il lavoro: com'è andata?`,
+      greeting: ctx.name,
+      title: "Com'è andata?",
+      paragraphs: [
+        `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
+        "Lascia una recensione: bastano un voto e due righe. Aiuta gli altri clienti a scegliere e il professionista a farsi conoscere.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
+      after: [`Se qualcosa non è andato bene, puoi segnalarlo dalla richiesta entro ${BAD_WORK_REPORT_DAYS} giorni.`],
+    };
+  },
   BOOKING_CANCELED_BY_PROFESSIONAL: (payload, ctx) => {
     const note = str(payload.cancellationNote);
     return {

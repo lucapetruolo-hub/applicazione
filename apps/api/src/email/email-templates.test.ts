@@ -65,6 +65,14 @@ describe("email delle notifiche", () => {
     expect(renderEmail(content).text).toContain("09:30");
   });
 
+  it("lavoro terminato: riporta il motivo dell'importo diverso dal preventivo (docs/CHANGELOG.md §226)", () => {
+    const withReason = renderEmail(notificationEmail("JOB_COMPLETED", { finalAmountEurCents: 8000, changeReason: "Raccordo da sostituire" }, ctx)!);
+    expect(withReason.text).toContain("Diverso dal preventivo perché");
+    expect(withReason.text).toContain("Raccordo da sostituire");
+    const without = renderEmail(notificationEmail("JOB_COMPLETED", { finalAmountEurCents: 8000 }, ctx)!);
+    expect(without.text).not.toContain("Diverso dal preventivo");
+  });
+
   it("la nuova recensione non anticipa mai il voto", () => {
     const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);

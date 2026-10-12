@@ -18065,5 +18065,13 @@ della sezione "Intervento" (con il giorno della settimana) invece di una riga
 grigia. Lato cliente "Lavoro terminato" (o "Lascia una recensione") è il
 primo della fila e ha lo stesso turchese del lato professionista.
 
+Quarto giro, migliorie approvate dall'utente: quando il professionista chiude
+il lavoro con un importo diverso dal preventivo, il motivo arriva al cliente
+nella notifica sul sito, nell'email "ha terminato il lavoro" (riga "Diverso dal
+preventivo perché") e nel messaggio in chat. Nella pagina
+`/per-professionisti/pagamenti` il pagamento diretto è una riga: "Vieni pagato
+direttamente dal cliente, senza commissioni." (le regole complete restano nei
+Termini, punto 5).
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.
