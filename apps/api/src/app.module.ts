@@ -34,7 +34,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
-import { GeneralRequestsAdminModule } from "./general-requests/general-requests.module";
+import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 
 @Module({
