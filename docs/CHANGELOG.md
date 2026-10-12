@@ -17965,3 +17965,24 @@ le archiviate, non solo per quelle filtrate dalla ricerca.
 
 **Verifica**: in locale, tre richieste archiviate tornano tutte in "Tutte"
 dopo la conferma.
+
+## 223. "Modifica" parte dall'ultima data proposta
+
+**Richiesta dell'utente**: "quando il cliente o professionista cliccano su
+modifica un preventivo gli deve comparire l'ultima data e orario aggiunti o
+proposti".
+
+**Prima**: il cliente partiva sempre dalla data del preventivo, anche con una
+sua proposta in attesa; il professionista, su "Modifica" di una proposta del
+cliente fuori agenda, partiva dalla prima fascia libera; su "Modifica
+preventivo" restava la fascia scelta in precedenza nel modulo.
+
+**Ora**: il cliente parte dalla sua proposta in attesa, altrimenti dalla data
+del preventivo (orari ricaricati a ogni apertura; rimandare la stessa
+proposta fuori agenda con una nota funziona, `isManual`). Il professionista
+parte dalla proposta del cliente su "Modifica" e dalla data del preventivo su
+"Modifica preventivo": la fascia dell'agenda se coincide, altrimenti i campi
+manuali già compilati (`presetSchedule` in `RequestCard.tsx`).
+
+**Verifica**: in locale, proposte fuori agenda (23 e 24 ottobre) precompilate
+correttamente da entrambe le parti; rimando con nota accettato (201).

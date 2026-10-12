@@ -137,31 +137,35 @@ export function QuoteCard({
   async function startChoosingDate() {
     setError(null);
     setIsChoosingDate(true);
-    if (freeSlots === null) {
-      try {
-        const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
-        const slots: FreeSlot[] = [];
-        for (const day of agenda.days) {
-          for (const slot of day.slots) {
-            const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
-            if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
-              slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
-            }
+    // Riparte sempre dall'ultima data proposta (richiesta esplicita
+    // dell'utente, docs/CHANGELOG.md §223): la tua proposta in attesa se
+    // c'è, altrimenti quella del preventivo. Orari ricaricati a ogni apertura.
+    const lastStart = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedDate : quote.estimatedStartDate;
+    const lastEnd = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate;
+    setFreeSlots(null);
+    try {
+      const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
+      const slots: FreeSlot[] = [];
+      for (const day of agenda.days) {
+        for (const slot of day.slots) {
+          const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
+          if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
+            slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
           }
         }
-        const currentDate = quote.estimatedStartDate.slice(0, 10);
-        const currentStartTime = quote.estimatedStartDate.slice(11, 16);
-        const currentEndTime = quote.estimatedEndDate ? quote.estimatedEndDate.slice(11, 16) : currentStartTime;
-        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
-        if (!matching) {
-          slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
-        }
-        setFreeSlots(slots);
-        const initial = matching ?? slots[0];
-        if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
       }
+      const currentDate = lastStart.slice(0, 10);
+      const currentStartTime = lastStart.slice(11, 16);
+      const currentEndTime = lastEnd ? lastEnd.slice(11, 16) : currentStartTime;
+      const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
+      if (!matching) {
+        slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
+      }
+      setFreeSlots(slots);
+      const initial = matching ?? slots[0];
+      if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
     }
   }
 
@@ -185,6 +189,8 @@ export function QuoteCard({
         return;
       }
       [date, startTime, endTime] = parts as [string, string, string];
+      // L'ultima proposta fuori dall'agenda, rimandata così com'è (magari con una nota).
+      isManual = Boolean(freeSlots?.find((s) => s.isCurrentProposal && `${s.date}|${s.startTime}|${s.endTime}` === selectedSlotKey));
     }
     setError(null);
     setIsProposing(true);
