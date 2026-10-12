@@ -26,5 +26,24 @@ export class CategoriesSeedService implements OnModuleInit {
       });
     }
     this.logger.log(`Categorie sincronizzate nel database (${PROFESSIONAL_CATEGORIES.length}).`);
+
+    // Categorie tolte dal sito (es. OSS e Badanti, docs/CHANGELOG.md §217):
+    // si cancellano solo se nessun profilo, richiesta o regola commissioni le
+    // usa ancora, altrimenti restano e lo si segnala nei log.
+    const obsolete = await this.prisma.category.findMany({
+      where: { slug: { notIn: PROFESSIONAL_CATEGORIES.map((category) => category.slug) } },
+      select: { id: true, slug: true, _count: { select: { professionalProfiles: true, guidedRequests: true, feeRules: true } } },
+    });
+    for (const category of obsolete) {
+      const { professionalProfiles, guidedRequests, feeRules } = category._count;
+      if (professionalProfiles + guidedRequests + feeRules === 0) {
+        await this.prisma.category.delete({ where: { id: category.id } });
+        this.logger.log(`Categoria tolta dal sito e cancellata: ${category.slug}.`);
+      } else {
+        this.logger.warn(
+          `Categoria tolta dal sito ma ancora in uso (${professionalProfiles} profili, ${guidedRequests} richieste, ${feeRules} regole): ${category.slug}.`,
+        );
+      }
+    }
   }
 }

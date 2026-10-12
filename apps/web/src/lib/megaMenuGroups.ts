@@ -7,14 +7,13 @@ export type MegaMenuGroup = {
 
 // Raggruppamento dei 13 mestieri in 3 colonne tematiche per il mega-menu
 // "Servizi" dell'header (brief redesign §4.1) — unica fonte di verità,
-// letta anche dal drawer mobile così i due non divergono.
+// letta anche dal drawer mobile così i due non divergono. Colonne
+// ribilanciate (5/4/4) quando Dogsitter e Babysitter hanno preso il posto
+// di OSS e Badanti (docs/CHANGELOG.md §217).
 export const MEGA_MENU_GROUPS: MegaMenuGroup[] = [
-  { title: "Casa e impianti", slugs: ["idraulico", "elettricista", "climatizzazione", "fabbro"] },
-  {
-    title: "Manutenzione e spazi",
-    slugs: ["imbianchino", "pulizie", "giardiniere", "muratore", "falegname", "traslochi", "tuttofare"],
-  },
-  { title: "Persona e servizi", slugs: ["oss", "badanti"] },
+  { title: "Casa e impianti", slugs: ["idraulico", "elettricista", "climatizzazione", "fabbro", "falegname"] },
+  { title: "Lavori e manutenzione", slugs: ["imbianchino", "muratore", "giardiniere", "tuttofare"] },
+  { title: "Casa e famiglia", slugs: ["pulizie", "traslochi", "babysitter", "dogsitter"] },
 ];
 
 export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, string> = {
@@ -29,8 +28,8 @@ export const MEGA_MENU_MICRO_DESCRIPTION: Record<ProfessionalCategorySlug, strin
   muratore: "Ristrutturazioni e opere murarie",
   falegname: "Mobili su misura, infissi",
   tuttofare: "Piccole riparazioni e montaggi",
-  oss: "Assistenza domiciliare e ospedaliera",
-  badanti: "Compagnia e assistenza anziani",
+  dogsitter: "Passeggiate e cura del tuo cane",
+  babysitter: "Bambini a casa, serate e dopo scuola",
 };
 
 export function categoryBySlug(slug: ProfessionalCategorySlug) {

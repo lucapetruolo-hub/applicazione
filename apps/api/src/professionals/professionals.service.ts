@@ -37,6 +37,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
+import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
@@ -73,7 +74,6 @@ function mapServices(
   }));
 }
 
-
 @Injectable()
 export class ProfessionalsService {
   constructor(
@@ -101,7 +101,8 @@ export class ProfessionalsService {
       // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
       // in pausa, fuori dalla ricerca finché non può ricevere richieste.
       OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
-      ...(category ? { category: { slug: category } } : {}),
+      // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
+      ...(category ? { AND: [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] } : {}),
       ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
       ...(excludeDemo ? { isDemo: false } : {}),
@@ -131,6 +132,7 @@ export class ProfessionalsService {
       where,
       include: {
         category: true,
+        extraCategories: true,
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
@@ -150,12 +152,17 @@ export class ProfessionalsService {
       const rating =
         reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
       const preview = previewsByProfileId.get(profile.id);
+      const categories = profileCategories(profile);
+      // Cercando "idraulico" la card mostra Idraulico anche se è una
+      // categoria aggiuntiva del professionista.
+      const shownCategory = categories.find((item) => item.slug === category) ?? categories[0]!;
 
       return {
         id: profile.id,
         businessName: profile.businessName,
-        categorySlug: profile.category.slug as ProfessionalCategorySlug,
-        categoryLabel: profile.category.label,
+        categorySlug: shownCategory.slug,
+        categoryLabel: shownCategory.label,
+        categories,
         city: profile.city,
         address: profile.address,
         verified: profile.verified,
@@ -393,6 +400,7 @@ export class ProfessionalsService {
       where: { id },
       include: {
         category: true,
+        extraCategories: true,
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
@@ -419,6 +427,7 @@ export class ProfessionalsService {
       businessName: profile.businessName,
       categorySlug: profile.category.slug as ProfessionalCategorySlug,
       categoryLabel: profile.category.label,
+      categories: profileCategories(profile),
       city: profile.city,
       address: profile.address,
       verified: profile.verified,
@@ -460,7 +469,7 @@ export class ProfessionalsService {
   async getMyProfile(userId: string): Promise<MyProfessionalProfile | null> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      include: { category: true, services: true },
+      include: { category: true, extraCategories: true, services: true },
     });
     if (!profile) return null;
 
@@ -469,6 +478,7 @@ export class ProfessionalsService {
       businessName: profile.businessName,
       categorySlug: profile.category.slug,
       categoryLabel: profile.category.label,
+      categorySlugs: profileCategories(profile).map((category) => category.slug),
       city: profile.city,
       address: profile.address,
       latitude: profile.latitude,
@@ -500,10 +510,16 @@ export class ProfessionalsService {
    * dallo smistamento finché non lo fa.
    */
   async upsertMyProfile(userId: string, input: ProfessionalProfileSelfInput, options: { byOperator?: boolean } = {}): Promise<MyProfessionalProfile> {
-    const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
-    if (!category) {
+    // Da 1 a 3 categorie (limite già nello schema Zod), la prima è la
+    // principale (docs/CHANGELOG.md §217).
+    const categorySlugs = [...new Set(input.categorySlugs)];
+    const categories = await this.prisma.category.findMany({ where: { slug: { in: categorySlugs } }, select: { id: true, slug: true } });
+    if (categories.length !== categorySlugs.length) {
       throw new NotFoundException("Categoria non valida.");
     }
+    const categoryIdBySlug = new Map(categories.map((category) => [category.slug, category.id]));
+    const primaryCategoryId = categoryIdBySlug.get(categorySlugs[0]!)!;
+    const extraCategoryIds = categorySlugs.slice(1).map((slug) => ({ id: categoryIdBySlug.get(slug)! }));
 
     // Posizione sulla mappa: se il professionista indica un indirizzo
     // preciso, prova a geocodificarlo (Google Geocoding) per posizionarlo esatto
@@ -531,7 +547,14 @@ export class ProfessionalsService {
     // riceverne di nuove ogni volta che salva.
     const existingProfile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, businessName: true, profileDeclarationVersion: true, invitePendingAt: true },
+      select: {
+        id: true,
+        businessName: true,
+        profileDeclarationVersion: true,
+        invitePendingAt: true,
+        categoryId: true,
+        extraCategories: { select: { id: true } },
+      },
     });
     const isFirstTimeCreation = existingProfile === null;
     // Alla creazione senza un'immagine scelta, il profilo pubblico parte
@@ -559,7 +582,8 @@ export class ProfessionalsService {
     const profile = await this.prisma.professionalProfile.upsert({
       where: { userId },
       update: {
-        categoryId: category.id,
+        categoryId: primaryCategoryId,
+        extraCategories: { set: extraCategoryIds },
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
@@ -581,7 +605,8 @@ export class ProfessionalsService {
       },
       create: {
         userId,
-        categoryId: category.id,
+        categoryId: primaryCategoryId,
+        extraCategories: { connect: extraCategoryIds },
         subTags: input.subTags,
         businessName: input.businessName,
         city: input.city,
@@ -599,7 +624,7 @@ export class ProfessionalsService {
         ...declarationData,
         ...(options.byOperator ? { invitePendingAt: new Date() } : {}),
       },
-      include: { category: true },
+      include: { category: true, extraCategories: true },
     });
 
     // Lista prestazioni sostituita per intero ad ogni salvataggio (nessun
@@ -641,11 +666,19 @@ export class ProfessionalsService {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
     }
-    if ((isFirstTimeCreation && !options.byOperator) || activatesInvite) {
+    // Categorie aggiunte a un profilo già attivo (docs/CHANGELOG.md §217):
+    // riceve anche le richieste aperte di quelle categorie, solo quelle.
+    const profileCategoryIds = [profile.categoryId, ...profile.extraCategories.map((category) => category.id)];
+    const previousCategoryIds = existingProfile ? [existingProfile.categoryId, ...existingProfile.extraCategories.map((category) => category.id)] : [];
+    const addedCategoryIds = profileCategoryIds.filter((id) => !previousCategoryIds.includes(id));
+    const isActiveProfile = !!existingProfile && !existingProfile.invitePendingAt && !options.byOperator;
+    const matchCategoryIds =
+      (isFirstTimeCreation && !options.byOperator) || activatesInvite ? profileCategoryIds : isActiveProfile ? addedCategoryIds : [];
+    if (matchCategoryIds.length > 0) {
       await this.guidedRequestsService.matchNewProfileToOpenRequests({
         id: profile.id,
         userId,
-        categoryId: profile.categoryId,
+        categoryIds: matchCategoryIds,
         latitude: profile.latitude,
         longitude: profile.longitude,
         engagementRadiusKm: profile.engagementRadiusKm,
@@ -659,6 +692,7 @@ export class ProfessionalsService {
       businessName: profile.businessName,
       categorySlug: profile.category.slug,
       categoryLabel: profile.category.label,
+      categorySlugs: profileCategories(profile).map((category) => category.slug),
       city: profile.city,
       address: profile.address,
       latitude: profile.latitude,
@@ -759,14 +793,23 @@ export class ProfessionalsService {
     const professionalProfileId = await this.requireMyProfileId(userId);
     const me = await this.prisma.professionalProfile.findUniqueOrThrow({
       where: { id: professionalProfileId },
-      select: { categoryId: true, city: true, category: { select: { label: true } }, metrics: { select: { avgResponseTimeMinutes: true } } },
+      select: {
+        categoryId: true,
+        city: true,
+        category: { select: { id: true, slug: true, label: true } },
+        extraCategories: { select: { id: true, slug: true, label: true } },
+        metrics: { select: { avgResponseTimeMinutes: true } },
+      },
     });
+    // Confronto con chi in città condivide almeno una delle sue categorie
+    // (principale o aggiuntiva, docs/CHANGELOG.md §217).
+    const myCategoryIds = [me.categoryId, ...me.extraCategories.map((category) => category.id)];
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     since.setUTCHours(0, 0, 0, 0);
     const peers = await this.prisma.professionalProfile.findMany({
       where: {
         id: { not: professionalProfileId },
-        categoryId: me.categoryId,
+        OR: [{ categoryId: { in: myCategoryIds } }, { extraCategories: { some: { id: { in: myCategoryIds } } } }],
         city: { equals: me.city, mode: "insensitive" },
         deletedAt: null,
         suspendedAt: null,
@@ -788,7 +831,9 @@ export class ProfessionalsService {
     const peerResponseTimes = peers.map((p) => p.metrics?.avgResponseTimeMinutes).filter((v): v is number => typeof v === "number");
     const round = (value: number) => Math.round(value);
     return {
-      areaLabel: `${me.category.label} a ${me.city}`,
+      areaLabel: `${profileCategories(me)
+        .map((category) => category.label)
+        .join(", ")} a ${me.city}`,
       areaProfessionals: peers.length,
       avgResponseTimeMinutes: me.metrics?.avgResponseTimeMinutes != null ? round(me.metrics.avgResponseTimeMinutes) : null,
       areaAvgResponseTimeMinutes:

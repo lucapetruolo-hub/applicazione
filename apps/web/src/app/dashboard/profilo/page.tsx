@@ -7,8 +7,10 @@ import Image from "next/image";
 import { Camera, X } from "lucide-react";
 import {
   BRAND,
-  PROFESSIONAL_CATEGORIES,
+  MAX_PROFESSIONAL_CATEGORIES,
+  NO_CATEGORY_MESSAGE,
   POPULAR_SERVICES,
+  isProfessionalCategorySlug,
   ALL_ITALIAN_CITY_NAMES,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
@@ -24,6 +26,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { BoostSection } from "@/components/BoostSection";
+import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -121,7 +124,8 @@ export default function DashboardProfiloPage() {
   const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
   const [requestingVerification, setRequestingVerification] = useState(false);
   const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
-  const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">("");
+  // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §217).
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   // Coordinate esatte dell'indirizzo scelto dai suggerimenti di Google
@@ -204,11 +208,15 @@ export default function DashboardProfiloPage() {
         // Primo profilo: parte dalla foto dell'account (quella di Google per
         // chi si è registrato con Google), modificabile come le altre.
         if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
+        // Primo profilo: parte dalle categorie scelte in registrazione.
+        if (!profile && user?.signupCategorySlugs?.length) {
+          setCategorySlugs(user.signupCategorySlugs.filter(isProfessionalCategorySlug).slice(0, MAX_PROFESSIONAL_CATEGORIES));
+        }
         if (profile) {
           setBusinessName(profile.businessName);
           setVerified(profile.verified);
           setVerificationRequestedAt(profile.verificationRequestedAt);
-          setCategorySlug(profile.categorySlug as ProfessionalCategorySlug);
+          setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
           setCity(profile.city);
           setAddress(profile.address ?? "");
           setBio(profile.bio ?? "");
@@ -249,7 +257,7 @@ export default function DashboardProfiloPage() {
   // subito dal suo caricamento) e il raggio di ingaggio (proprio "Salva").
   const formSnapshot = JSON.stringify({
     businessName,
-    categorySlug,
+    categorySlugs,
     city,
     address,
     bio,
@@ -314,8 +322,8 @@ export default function DashboardProfiloPage() {
       setError("Inserisci il nome della tua attività.");
       return false;
     }
-    if (!categorySlug) {
-      setError("Seleziona la tua categoria.");
+    if (categorySlugs.length === 0) {
+      setError(NO_CATEGORY_MESSAGE);
       return false;
     }
     if (!city.trim()) {
@@ -355,7 +363,7 @@ export default function DashboardProfiloPage() {
         // registra data e versione a ogni salvataggio.
         profileDeclarationAccepted: true,
         businessName: businessName.trim(),
-        categorySlug: categorySlug as ProfessionalCategorySlug,
+        categorySlugs,
         city: city.trim(),
         address: address.trim() || undefined,
         ...(addressCoords && address.trim() ? addressCoords : {}),
@@ -441,9 +449,9 @@ export default function DashboardProfiloPage() {
   // esplicita dell'utente: la spunta da sola attiva il filtro "Online" in
   // ricerca, ma non proponeva ancora la voce corrispondente tra le
   // prestazioni cliccabili.
+  // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
   const suggestedServices = [
-    ...(categorySlug ? POPULAR_SERVICES[categorySlug] : []),
-    ...(remoteAvailable ? ["Consulenza online"] : []),
+    ...new Set([...categorySlugs.flatMap((slug) => POPULAR_SERVICES[slug]), ...(remoteAvailable ? ["Consulenza online"] : [])]),
   ].filter((name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()));
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
@@ -710,41 +718,16 @@ export default function DashboardProfiloPage() {
           </YStack>
         </Surface>
 
-        {/* Sezione "Categoria e presentazione" — la Bio si sposta qui,
-            subito sotto la scelta della categoria (richiesta esplicita
+        {/* Sezione "Categorie e presentazione" — la Bio si sposta qui,
+            subito sotto la scelta delle categorie (richiesta esplicita
             dell'utente), "(opzionale)" tolto dall'etichetta pur restando
             un campo facoltativo lato validazione. */}
         <Surface gap="$4">
-          <SectionTitle>Categoria e presentazione</SectionTitle>
+          <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="$2">
-            <FieldLabel>Categoria</FieldLabel>
-            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-              {PROFESSIONAL_CATEGORIES.map((category) => {
-                const active = categorySlug === category.slug;
-                return (
-                  <XStack
-                    key={category.slug}
-                    alignItems="center"
-                    gap="$2"
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={active ? brand.cianografia : brand.filetto}
-                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                    cursor="pointer"
-                    onPress={() => setCategorySlug(category.slug)}
-                    accessibilityRole="button"
-                  >
-                    <Icon name={category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
-                    <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
-                      {category.label}
-                    </Text>
-                  </XStack>
-                );
-              })}
-            </YStack>
+            <FieldLabel>Categorie (fino a 3 scelte)</FieldLabel>
+            <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
 
           <YStack gap="$2">
@@ -919,7 +902,7 @@ export default function DashboardProfiloPage() {
           {suggestedServices.length > 0 ? (
             <YStack gap="$1">
               <Text fontSize="$2" color={brand.grafite70}>
-                Le più richieste per questa categoria:
+                {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
                 {suggestedServices.map((name) => (

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ALL_ITALIAN_CITY_NAMES,
-  PROFESSIONAL_CATEGORIES,
   operatorProfileInviteSchema,
   type PendingProfileInvite,
   type ProfessionalCategorySlug,
@@ -14,8 +13,9 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 
-const EMPTY_FORM = { email: "", name: "", surname: "", phone: "", businessName: "", categorySlug: "", city: "", bio: "" };
+const EMPTY_FORM = { email: "", name: "", surname: "", phone: "", businessName: "", city: "", bio: "" };
 
 /** Valore facoltativo: stringa vuota → assente, così zod non lo valida. */
 function optional(value: string): string | undefined {
@@ -31,6 +31,8 @@ function optional(value: string): string | undefined {
 export default function AdminProfessionistiPage() {
   const { token } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
+  // Da 1 a 3 categorie, come nella registrazione (docs/CHANGELOG.md §217).
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [saving, setSaving] = useState(false);
   // Un doppio clic non deve creare due volte lo stesso profilo.
   const submittingRef = useRef(false);
@@ -67,7 +69,7 @@ export default function AdminProfessionistiPage() {
       surname: optional(form.surname),
       phone: optional(form.phone),
       businessName: form.businessName.trim(),
-      categorySlug: form.categorySlug as ProfessionalCategorySlug,
+      categorySlugs,
       city: form.city.trim(),
       bio: optional(form.bio),
     });
@@ -84,6 +86,7 @@ export default function AdminProfessionistiPage() {
       setLinkViewed(false);
       setCopied(false);
       setForm(EMPTY_FORM);
+      setCategorySlugs([]);
       loadPending();
     } catch (err) {
       setFormError(errorMessage(err));
@@ -206,15 +209,13 @@ export default function AdminProfessionistiPage() {
                 value={form.businessName}
                 onChange={(e) => update("businessName", e.target.value)}
               />
-              <select aria-label="Categoria" className="admin-input" style={{ flex: 1, minWidth: 200 }} value={form.categorySlug} onChange={(e) => update("categorySlug", e.target.value)}>
-                <option value="">Categoria *</option>
-                {PROFESSIONAL_CATEGORIES.map((category) => (
-                  <option key={category.slug} value={category.slug}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
             </XStack>
+            <YStack gap="$1">
+              <Text fontSize="$2" fontWeight="700" color={brand.grafite70}>
+                Categorie * (fino a 3 scelte)
+              </Text>
+              <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
+            </YStack>
             <YStack>
               <Autocomplete
                 items={ALL_ITALIAN_CITY_NAMES}
@@ -261,7 +262,7 @@ export default function AdminProfessionistiPage() {
                 <tr>
                   <th>Attività</th>
                   <th>Email</th>
-                  <th>Categoria e comune</th>
+                  <th>Categorie e comune</th>
                   <th>Creato il</th>
                   <th>Link valido fino al</th>
                   <th />

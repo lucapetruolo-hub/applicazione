@@ -3,6 +3,7 @@ import type { PrismaClient } from "@professionisti/database";
 import type { ProfessionalSearchResult, ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
+import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
 
 @Injectable()
@@ -31,6 +32,7 @@ export class SavedProfessionalsService {
         professionalProfile: {
           include: {
             category: true,
+            extraCategories: true,
             bookings: { include: { review: true } },
             visibilityBoosts: { where: { status: "ACTIVE" } },
             services: true,
@@ -52,6 +54,7 @@ export class SavedProfessionalsService {
         businessName: profile.businessName,
         categorySlug: profile.category.slug as ProfessionalCategorySlug,
         categoryLabel: profile.category.label,
+        categories: profileCategories(profile),
         city: profile.city,
         address: profile.address,
         verified: profile.verified,

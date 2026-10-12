@@ -622,6 +622,7 @@ export function ResultsListWithMap({
               key={pro.id}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
+              otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
               city={pro.city}
               distanceKm={pro.distanceKm}
               subTags={pro.subTags}

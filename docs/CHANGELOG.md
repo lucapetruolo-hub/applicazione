@@ -17726,3 +17726,81 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 - Nuovo campo `clientDetailsUnlocked`: la nota "Cognome, foto, telefono, email e indirizzo saranno visibili all'accettazione" compare in `ClientProfileModal` solo prima dell'accettazione.
 
 **Verifica:** test di `apps/api` (281, nuovi casi per le funzioni del nome e per `getMyLeads` prima e dopo l'accettazione: cognome e foto, data di nascita mai presente), typecheck di `apps/api` e `apps/web`, lint di `apps/web` senza errori.
+
+## 217. Fino a 3 categorie per professionista
+
+**Richiesta dell'utente:** il professionista sceglie fino a 3 categorie già
+in registrazione e può cambiarle dal suo profilo, sempre fino a 3.
+
+**Decisione:**
+- Stesse categorie del sito (`PROFESSIONAL_CATEGORIES`), nessuna nuova.
+  Limite `MAX_PROFESSIONAL_CATEGORIES = 3` in `packages/shared/src/schemas.ts`,
+  applicato nell'interfaccia (`CategoryMultiPicker`: raggiunto il massimo le
+  altre si spengono) e sul server (schemi Zod di registrazione, Google e
+  profilo: da 1 a 3, mai doppie).
+- Database: `ProfessionalProfile.categoryId` resta la categoria principale
+  (la prima scelta: avatar, statistiche di zona, commissioni); le altre in
+  `extraCategories` (tabella `_ProfessionalExtraCategories`). Le categorie
+  scelte in registrazione stanno in `User.signupCategorySlugs` e
+  precompilano il primo profilo in `/dashboard/profilo` (il profilo nasce
+  lì, con nome e città). Migrazione `20261012060000_professional_extra_categories`.
+- Registrazione professionista (`/registrati?ruolo=professionista`):
+  "Che lavori fai?" in cima, obbligatorio con email e password e anche con
+  Google (nuovo account senza categorie: rifiutato con "Scegli almeno una
+  categoria.", il sito chiede di sceglierle e ripetere l'accesso).
+- Le categorie aggiuntive valgono come la principale in ricerca (la card
+  mostra la categoria cercata) e nello smistamento delle richieste; chi
+  aggiunge una categoria riceve anche le richieste generali già aperte di
+  quella categoria in zona. Il profilo pubblico le mostra tutte; le
+  prestazioni suggerite uniscono quelle di tutte le categorie scelte.
+
+**Verifica:** test nuovi (`profile-categories.test.ts`, Google senza
+categorie in `google-name.test.ts`), migrazione applicata su un Postgres
+locale senza differenze dallo schema, query di creazione/modifica/ricerca
+provate sul database, anteprime della registrazione da computer e telefono.
+
+**Aggiunte nello stesso giro (richiesta dell'utente):**
+- "fino a 3 scelte" scritto accanto all'etichetta delle categorie, in
+  registrazione e nel profilo.
+- Tolte le categorie **OSS** e **Badanti**, aggiunte **Dogsitter** e
+  **Babysitter** in tutte le liste (elenco unico `PROFESSIONAL_CATEGORIES`,
+  icone, menu "Servizi", prestazioni suggerite, esempi della richiesta).
+  `CategoriesSeedService` all'avvio cancella le categorie tolte solo se
+  nessun profilo, richiesta o regola commissioni le usa ancora; altrimenti
+  le lascia e lo scrive nei log.
+
+**Migliorie approvate dall'utente ("effettua le 7 migliorie"):**
+- Profilo creato dall'operatore (`/admin/professionisti`): fino a 3
+  categorie con lo stesso `CategoryMultiPicker` (schema
+  `operatorProfileInviteSchema.categorySlugs`), l'elenco dei profili in
+  attesa le mostra tutte.
+- Richiesta di preventivo dal profilo di un professionista con più
+  categorie: il cliente sceglie tra le sue (resta quella del link se è una
+  delle sue, altrimenti la principale).
+- Schede dei risultati e dei professionisti salvati: tutte le categorie
+  ("Idraulico · Fabbro · Pulizie", prima quella cercata).
+- Categoria principale scelta dal professionista: con più categorie, la riga
+  "Principale:" sotto le categorie permette di cambiarla.
+- Statistiche "Il tuo andamento" in dashboard: confronto con chi, nella
+  stessa città, condivide almeno una delle sue categorie.
+- Menu "Servizi" ribilanciato su 5/4/4: "Casa e impianti", "Lavori e
+  manutenzione", "Casa e famiglia" (pulizie, traslochi, babysitter,
+  dogsitter).
+- Foto di copertina di Dogsitter e Babysitter: rimandate in un primo giro
+  (`categoryPhotos.ts` accettava solo foto fornite dall'utente), poi
+  l'utente ha autorizzato a prenderle da internet. Scelte su Unsplash con
+  licenza Unsplash (uso commerciale libero): Andriyko Podilnyk (dogsitter)
+  e Vitaly Gariev (babysitter), fonti annotate in `categoryPhotos.ts`.
+  Stesso formato delle altre (webp 1536×1024).
+- Migliorie approvate dall'utente dopo le foto:
+  - Foto anche per traslochi, fabbro, muratore, falegname e tutto fare
+    (stessa fonte e licenza), così tutte le categorie hanno la foto.
+  - Richiesta diretta: il server controlla che la categoria sia una di
+    quelle del professionista; se non lo è (link vecchio, chiamata diretta)
+    usa la sua principale invece di rifiutare la richiesta.
+  - Footer: "professionisti per la casa e la famiglia", con babysitter e
+    dogsitter nell'elenco.
+- Rivisto su indicazione dell'utente: nella richiesta a un professionista
+  già scelto la categoria non si sceglie più (il campo è nascosto). Si usa
+  quella del link, se è una delle sue, altrimenti la principale: serve solo
+  per l'esempio di descrizione e per l'eventuale inoltro ad altri.

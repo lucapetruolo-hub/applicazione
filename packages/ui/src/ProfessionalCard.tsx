@@ -63,6 +63,8 @@ function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: n
 export type ProfessionalCardProps = {
   businessName: string;
   categoryLabel: string;
+  /** Le altre categorie del professionista (fino a 2), mostrate dopo `categoryLabel`. */
+  otherCategoryLabels?: string[];
   city: string;
   /** Distanza in km dal luogo cercato (ricerca per luogo): mostrata accanto alla città. */
   distanceKm?: number;
@@ -151,6 +153,7 @@ export type ProfessionalCardProps = {
 export function ProfessionalCard({
   businessName,
   categoryLabel,
+  otherCategoryLabels,
   city,
   distanceKm,
   subTags,
@@ -173,7 +176,8 @@ export function ProfessionalCard({
   icon,
   action,
 }: ProfessionalCardProps) {
-  const specialtyLine = subTags && subTags.length > 0 ? `${categoryLabel} · ${subTags.slice(0, 3).join(", ")}` : categoryLabel;
+  const categoriesLine = [categoryLabel, ...(otherCategoryLabels ?? [])].join(" · ");
+  const specialtyLine = subTags && subTags.length > 0 ? `${categoriesLine} · ${subTags.slice(0, 3).join(", ")}` : categoriesLine;
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);

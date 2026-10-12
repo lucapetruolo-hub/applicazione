@@ -287,7 +287,11 @@ export function GuidedRequestForm({
       .getProfessional(professionalProfileId)
       .then((detail) => {
         setProfessional(detail);
-        setCategorySlug(detail.categorySlug);
+        // Con più categorie (docs/CHANGELOG.md §217) resta quella del link
+        // se è una delle sue, altrimenti la principale.
+        setCategorySlug((current) =>
+          current && detail.categories?.some((category) => category.slug === current) ? current : detail.categorySlug,
+        );
       })
       .catch(() => undefined);
   }, [professionalProfileId]);
@@ -756,26 +760,10 @@ export function GuidedRequestForm({
         {step === 1 ? (
           <>
         {professionalProfileId && selectedCategory ? (
-          // Categoria già determinata dal professionista scelto (si arriva
-          // qui dal suo profilo, con categoria e id già nell'URL): non ha
-          // senso farla ri-scegliere, è la sua specialità.
-          <YStack gap="$2">
-            <FieldLabel>Categoria</FieldLabel>
-            <XStack
-              alignItems="center"
-              gap="$2"
-              alignSelf="flex-start"
-              paddingHorizontal="$3"
-              paddingVertical="$2"
-              backgroundColor={brand.cianografia}
-              borderRadius="$2"
-            >
-              <Icon name={selectedCategory.icon} size={16} color="white" />
-              <Text color="white" fontWeight="600">
-                {selectedCategory.label}
-              </Text>
-            </XStack>
-          </YStack>
+          // Professionista già scelto: nessuna categoria da scegliere
+          // (decisione dell'utente, docs/CHANGELOG.md §217). La richiesta usa
+          // quella del link se è una delle sue, altrimenti la principale.
+          null
         ) : (
           <YStack gap="$2">
             <FieldLabel>Categoria</FieldLabel>

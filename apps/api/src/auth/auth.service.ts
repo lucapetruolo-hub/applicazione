@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { LEGAL_CONSENT_VERSION, type EmailStatus } from "@professionisti/shared";
+import { LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, type EmailStatus } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -78,7 +78,13 @@ export class AuthService {
     return "password";
   }
 
-  async register(email: string, password: string, name?: string, role: "CLIENT" | "PROFESSIONAL" = "CLIENT"): Promise<AuthResult> {
+  async register(
+    email: string,
+    password: string,
+    name?: string,
+    role: "CLIENT" | "PROFESSIONAL" = "CLIENT",
+    categorySlugs: string[] = [],
+  ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new ConflictException("Esiste già un account con questa email.");
@@ -91,7 +97,17 @@ export class AuthService {
     // nessun atto tracciato confermava che l'utente avesse letto le
     // informative né dichiarato la maggiore età.
     const user = await this.prisma.user.create({
-      data: { email, passwordHash, name, role, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION },
+      data: {
+        email,
+        passwordHash,
+        name,
+        role,
+        legalConsentAt: new Date(),
+        legalConsentVersion: LEGAL_CONSENT_VERSION,
+        // Categorie scelte in registrazione (docs/CHANGELOG.md §217), da 1 a
+        // 3 per un professionista: già controllate da `registerSchema`.
+        signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
+      },
     });
     // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
     // il link di conferma email (§178), al cliente no: non deve confermare nulla.
@@ -127,6 +143,7 @@ export class AuthService {
     role?: "CLIENT" | "PROFESSIONAL",
     createIfMissing = true,
     legalConsent?: { acceptedLegalTerms: boolean; declaredAdult: boolean },
+    categorySlugs: string[] = [],
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -164,6 +181,11 @@ export class AuthService {
     if (!existingUser && (!legalConsent?.acceptedLegalTerms || !legalConsent.declaredAdult)) {
       throw new BadRequestException("Devi accettare Privacy Policy e Termini di Servizio e dichiarare di avere almeno 18 anni.");
     }
+    // Un nuovo professionista sceglie da 1 a 3 categorie anche con Google
+    // (docs/CHANGELOG.md §217); il massimo è già nello schema Zod.
+    if (!existingUser && role === "PROFESSIONAL" && categorySlugs.length === 0) {
+      throw new BadRequestException(NO_CATEGORY_MESSAGE);
+    }
 
     // Foto dell'account Google come immagine profilo, se l'account non ne
     // ha già una (l'utente può sempre cambiarla da /account o dal profilo).
@@ -179,6 +201,7 @@ export class AuthService {
           ...googleNameFields(payload),
           imageUrl,
           role: role ?? "CLIENT",
+          signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
           // Google ha già verificato l'indirizzo: nessun link da confermare.

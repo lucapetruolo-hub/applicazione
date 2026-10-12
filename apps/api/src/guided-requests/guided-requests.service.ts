@@ -65,7 +65,7 @@ export class GuidedRequestsService {
    * docs/CHANGELOG.md §167).
    */
   async create(clientId: string, input: GuidedRequestInput, opts: { excludeProfileId?: string } = {}) {
-    const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
+    let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
     }
@@ -100,11 +100,23 @@ export class GuidedRequestsService {
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
+      category: NonNullable<typeof category>;
+      extraCategories: { id: string }[];
     } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
+        select: {
+          id: true,
+          deletedAt: true,
+          suspendedAt: true,
+          invitePendingAt: true,
+          pausedAt: true,
+          demotedUntil: true,
+          requestsBlockedUntil: true,
+          category: true,
+          extraCategories: { select: { id: true } },
+        },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
@@ -116,6 +128,14 @@ export class GuidedRequestsService {
       // Account in pausa, o bloccato per segnalazioni accolte (§167).
       if (targetProfile.pausedAt || professionalRestrictions(targetProfile, new Date()).blocked) {
         throw new ConflictException(NOT_ACCEPTING_REQUESTS);
+      }
+      // La categoria di una richiesta diretta deve essere una delle sue
+      // (docs/CHANGELOG.md §217): il modulo non la fa più scegliere, ma un
+      // link vecchio o una chiamata diretta potrebbero mandarne un'altra.
+      // Si usa la sua principale invece di rifiutare la richiesta.
+      const ownCategoryIds = [targetProfile.category.id, ...targetProfile.extraCategories.map((extra) => extra.id)];
+      if (!ownCategoryIds.includes(category.id)) {
+        category = targetProfile.category;
       }
     }
 
@@ -679,7 +699,8 @@ export class GuidedRequestsService {
     // mai nel fan-out — stesso filtro già applicato a search()/getById().
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
-        categoryId,
+        // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
+        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }],
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
@@ -731,7 +752,8 @@ export class GuidedRequestsService {
   async matchNewProfileToOpenRequests(profile: {
     id: string;
     userId: string;
-    categoryId: string;
+    /** Categorie per cui cercare richieste aperte: tutte alla creazione, solo le nuove quando le cambia. */
+    categoryIds: string[];
     latitude: number;
     longitude: number;
     engagementRadiusKm: number;
@@ -746,7 +768,7 @@ export class GuidedRequestsService {
     const openRequests = await this.prisma.guidedRequest.findMany({
       where: {
         status: { in: ["OPEN", "MATCHED"] },
-        categoryId: profile.categoryId,
+        categoryId: { in: profile.categoryIds },
         professionalProfileId: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },

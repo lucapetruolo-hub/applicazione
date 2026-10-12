@@ -334,7 +334,9 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 ) : null}
               </XStack>
               <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
-                {professional.categoryLabel} · {professional.city}
+                {/* Tutte le categorie, da 1 a 3 (docs/CHANGELOG.md §217). */}
+                {(professional.categories?.length ? professional.categories.map((category) => category.label) : [professional.categoryLabel]).join(" · ")} ·{" "}
+                {professional.city}
               </Text>
               {professional.rating !== null ? (
                 <Rating value={professional.rating} count={professional.reviewCount} size={16} />

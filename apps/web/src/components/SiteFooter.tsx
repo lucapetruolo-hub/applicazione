@@ -38,8 +38,8 @@ export function SiteFooter() {
           <YStack gap="$3" maxWidth={280}>
             <Logo name={BRAND.name} size={22} />
             <Text fontSize="$3" color={brand.grafite70}>
-              Trova e prenota professionisti per la casa: idraulici, elettricisti, imbianchini e altro,
-              vicino a te.
+              Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
+              imbianchini, babysitter, dogsitter e altro, vicino a te.
             </Text>
           </YStack>
 

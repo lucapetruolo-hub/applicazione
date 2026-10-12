@@ -21,7 +21,7 @@ function buildService() {
   return { service, prisma, professionalsService, emailService };
 }
 
-const input = { email: "Mario@Example.it", name: "Mario", businessName: "Idraulica Rossi", categorySlug: "idraulico" as const, city: "Latina" };
+const input = { email: "Mario@Example.it", name: "Mario", businessName: "Idraulica Rossi", categorySlugs: ["idraulico" as const], city: "Latina" };
 
 function validInvite(overrides: Record<string, unknown> = {}) {
   return {
