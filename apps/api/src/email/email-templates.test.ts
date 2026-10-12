@@ -102,6 +102,15 @@ describe("email delle notifiche", () => {
     }
   });
 
+  it("ogni email di una richiesta riporta la descrizione dell'intervento (docs/CHANGELOG.md §226)", () => {
+    const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
+    for (const type of NOTIFICATION_EMAIL_TYPES) {
+      const content = notificationEmail(type, {}, withDescription);
+      if (content) expect(renderEmail(content).text).toContain("Descrizione: Perdita sotto il lavello");
+    }
+    expect(renderEmail(notificationEmail("NEW_REVIEW", {}, ctx)!).text).not.toContain("Descrizione");
+  });
+
   it("la nuova recensione non anticipa mai il voto", () => {
     const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);

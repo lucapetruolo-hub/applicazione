@@ -18086,5 +18086,14 @@ riportano la descrizione della richiesta e l'appuntamento prima e la nuova
 proposta, con la fascia oraria. Le notifiche portano `from`/`to` nel payload;
 le email più vecchie senza quei campi restano come prima.
 
+Settimo giro, richiesta dell'utente: **ogni** email che riguarda una
+richiesta riporta nel riquadro la descrizione dell'intervento (dopo "Lavoro",
+al massimo 200 caratteri), per capire di quale si tratta. Un solo punto:
+`withDescription` in `notificationEmail`, con `description` letta in
+`NotificationsService.emailContext` dalla richiesta, dal preventivo o dalla
+prenotazione. Stessa riga (`descriptionDetail` in `email-format.ts`) anche
+nella conferma "richiesta inviata" al cliente e nei promemoria del giorno
+prima. Le email senza richiesta (account, abbonamento) non cambiano.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

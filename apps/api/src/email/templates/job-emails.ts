@@ -1,6 +1,6 @@
 import { frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
-import { formatAppointment } from "../email-format";
+import { descriptionDetail, formatAppointment } from "../email-format";
 
 /**
  * Email legate a una richiesta o a un appuntamento che non nascono da una
@@ -17,6 +17,7 @@ export function requestSentEmail(input: {
   sentTo: number;
   /** Richiesta inviata a un professionista scelto dal suo profilo. */
   direct: boolean;
+  description?: string | null;
 }): RenderedEmail {
   const where = input.city ? ` a ${input.city}` : "";
   const paragraphs = input.direct
@@ -39,13 +40,14 @@ export function requestSentEmail(input: {
     greeting: input.name,
     title: "Abbiamo ricevuto la tua richiesta",
     paragraphs,
+    details: input.description?.trim() ? descriptionDetail(input.description) : undefined,
     cta: { label: "Segui la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["I tuoi contatti restano riservati: il professionista vede telefono e indirizzo solo dopo che hai accettato il suo preventivo."],
   });
 }
 
 /** Promemoria del giorno prima (anti no-show), al cliente. */
-export function bookingReminderClientEmail(input: { name: string | null; businessName: string; scheduledAt: Date; category: string | null }): RenderedEmail {
+export function bookingReminderClientEmail(input: { name: string | null; businessName: string; scheduledAt: Date; category: string | null; description?: string | null }): RenderedEmail {
   return renderEmail({
     kind: "notification",
     subject: `Promemoria: domani l'appuntamento con ${input.businessName}`,
@@ -54,6 +56,7 @@ export function bookingReminderClientEmail(input: { name: string | null; busines
     paragraphs: [`Ti ricordiamo l'appuntamento con **${input.businessName}**.`],
     details: [
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
+      ...descriptionDetail(input.description),
       { label: "Quando", value: formatAppointment(input.scheduledAt) },
     ],
     cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
@@ -62,7 +65,14 @@ export function bookingReminderClientEmail(input: { name: string | null; busines
 }
 
 /** Promemoria del giorno prima (anti no-show), al professionista. */
-export function bookingReminderProfessionalEmail(input: { name: string | null; clientName: string | null; scheduledAt: Date; category: string | null; city: string | null }): RenderedEmail {
+export function bookingReminderProfessionalEmail(input: {
+  name: string | null;
+  clientName: string | null;
+  scheduledAt: Date;
+  category: string | null;
+  city: string | null;
+  description?: string | null;
+}): RenderedEmail {
   return renderEmail({
     kind: "notification",
     subject: `Promemoria: domani hai un intervento${input.category ? ` (${input.category})` : ""}`,
@@ -71,6 +81,7 @@ export function bookingReminderProfessionalEmail(input: { name: string | null; c
     paragraphs: [input.clientName ? `Ti ricordiamo l'appuntamento con **${input.clientName}**.` : "Ti ricordiamo l'appuntamento con il cliente."],
     details: [
       ...(input.category ? [{ label: "Lavoro", value: input.city ? `${input.category}, ${input.city}` : input.category }] : []),
+      ...descriptionDetail(input.description),
       { label: "Quando", value: formatAppointment(input.scheduledAt) },
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },

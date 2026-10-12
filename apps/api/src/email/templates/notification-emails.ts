@@ -18,7 +18,7 @@ import {
 } from "@professionisti/shared";
 import { frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
-import { formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
+import { descriptionDetail, formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
@@ -98,11 +98,10 @@ function slotText(value: unknown): string | null {
 function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabel: string, toLabel: string, withPro: boolean) {
   const from = slotText(payload.from);
   const to = slotText(payload.to);
-  const description = ctx.description?.trim();
+  // La descrizione la aggiunge notificationEmail, come in tutte le email di una richiesta.
   return [
     ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
     ...(withPro && ctx.businessName ? [{ label: "Professionista", value: ctx.businessName }] : []),
-    ...(description ? [{ label: "Descrizione", value: description.length > 200 ? `${description.slice(0, 200)}…` : description }] : []),
     ...(from ? [{ label: fromLabel, value: from }] : []),
     ...(to ? [{ label: toLabel, value: to }] : []),
   ];
@@ -971,7 +970,26 @@ export const NOTIFICATION_EMAIL_TYPES: ReadonlySet<string> = new Set(Object.keys
 
 export function notificationEmail(type: string, payload: Payload, ctx: NotificationEmailContext): EmailContent | null {
   const builder = BUILDERS[type];
-  return builder ? builder(payload, ctx) : null;
+  const content = builder ? builder(payload, ctx) : null;
+  return content ? withDescription(content, ctx) : null;
+}
+
+/**
+ * Descrizione dell'intervento in ogni email che riguarda una richiesta, per
+ * capire subito di quale si tratta (richiesta esplicita dell'utente,
+ * docs/CHANGELOG.md §226): nel riquadro, dopo "Lavoro" se c'è. Il
+ * professionista la vede già prima dell'accettazione, quindi non è un dato
+ * di contatto (CLAUDE.md §5 punto 9).
+ */
+function withDescription(content: EmailContent, ctx: NotificationEmailContext): EmailContent {
+  const row = descriptionDetail(ctx.description)[0];
+  if (!row) return content;
+  const details = content.details ?? [];
+  const jobIndex = details.findIndex((d) => d.label === "Lavoro");
+  return {
+    ...content,
+    details: jobIndex >= 0 ? [...details.slice(0, jobIndex + 1), row, ...details.slice(jobIndex + 1)] : [row, ...details],
+  };
 }
 
 /** Contesto vuoto, per i tipi che non riguardano un lavoro. */

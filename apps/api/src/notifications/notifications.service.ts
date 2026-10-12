@@ -134,6 +134,7 @@ export class NotificationsService {
           category: booking.quote?.guidedRequest.category.label ?? null,
           city: booking.quote?.guidedRequest.city ?? null,
           businessName: booking.professionalProfile.businessName,
+          description: booking.quote?.guidedRequest.description ?? null,
           when: booking.scheduledAt,
         };
       }
@@ -166,6 +167,7 @@ export class NotificationsService {
           ...EMPTY_EMAIL_CONTEXT,
           category: guidedRequest.category.label,
           city: guidedRequest.city,
+          description: guidedRequest.description,
           businessName: professional?.businessName ?? null,
         };
       }
@@ -177,7 +179,7 @@ export class NotificationsService {
    * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185),
    * nell'argomento "Le tue richieste" delle preferenze.
    */
-  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean }): void {
+  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean; description?: string | null }): void {
     void (async () => {
       const user = await this.prisma.user.findUnique({ where: { id: clientId }, select: { email: true, name: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) return;

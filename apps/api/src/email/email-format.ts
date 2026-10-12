@@ -65,3 +65,16 @@ export function formatEur(cents: unknown): string {
   if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
   return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
+
+const MAX_DESCRIPTION_LENGTH = 200;
+
+/**
+ * Riga "Descrizione" del riquadro, in ogni email che riguarda una richiesta:
+ * serve a capire di quale lavoro si parla (richiesta esplicita dell'utente,
+ * docs/CHANGELOG.md §226). Accorciata a 200 caratteri.
+ */
+export function descriptionDetail(description: string | null | undefined): { label: string; value: string }[] {
+  const text = description?.trim();
+  if (!text) return [];
+  return [{ label: "Descrizione", value: text.length > MAX_DESCRIPTION_LENGTH ? `${text.slice(0, MAX_DESCRIPTION_LENGTH)}…` : text }];
+}
