@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { GuidedRequestMyState } from "@professionisti/shared";
-import { Icon, Text, XStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import type { CardAction } from "@/components/CardActionsMenu";
+import { CardButton } from "@/components/CardButton";
 
 /**
  * Azioni "personali" del menu hamburger di una scheda richiesta, identiche
@@ -80,9 +82,9 @@ export function buildPersonalStateActions({
   ];
 }
 
-/** Riga di stato sotto il titolo della scheda: promemoria attivo, notifiche silenziate, archiviata. */
+/** Riga di stato sotto il titolo della scheda: promemoria attivo, notifiche silenziate (l'archiviazione ha la sua barra, `ArchivedRestoreBar`). */
 export function RequestStateIndicators({ myState }: { myState: GuidedRequestMyState }) {
-  if (!myState.remindAt && !myState.mutedAt && !myState.archivedAt) return null;
+  if (!myState.remindAt && !myState.mutedAt) return null;
   return (
     <XStack gap="$3" flexWrap="wrap" alignItems="center">
       {myState.remindAt ? (
@@ -101,14 +103,63 @@ export function RequestStateIndicators({ myState }: { myState: GuidedRequestMySt
           </Text>
         </XStack>
       ) : null}
-      {myState.archivedAt ? (
-        <XStack alignItems="center" gap={4}>
-          <Icon name="archive" size={13} color={brand.grafite70} />
-          <Text fontSize={13} color={brand.grafite70}>
-            Archiviata
+    </XStack>
+  );
+}
+
+/**
+ * Barra "Archiviata" con il pulsante "Ripristina" in vista, sotto
+ * l'intestazione di una scheda archiviata (richiesta esplicita dell'utente:
+ * annullare l'archiviazione senza cercare la voce nel menu). Toglie solo
+ * l'archiviazione personale: la richiesta torna tra le altre nello stato in
+ * cui era, senza effetti per l'altra parte. Fuori dall'intestazione
+ * cliccabile, così il clic non apre/chiude la scheda.
+ */
+export function ArchivedRestoreBar({
+  token,
+  guidedRequestId,
+  myState,
+  onChanged,
+}: {
+  token: string;
+  guidedRequestId: string;
+  myState: GuidedRequestMyState;
+  onChanged: () => void;
+}) {
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!myState.archivedAt) return null;
+
+  async function handleRestore() {
+    setIsBusy(true);
+    setError(null);
+    try {
+      await apiClient.updateGuidedRequestMyState(token, guidedRequestId, { archived: false });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setIsBusy(false);
+    }
+  }
+
+  return (
+    <YStack paddingHorizontal="$4" paddingBottom="$4" marginTop="$-2" gap="$2">
+      <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
+        <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
+          <Icon name="archive" size={16} color={brand.grafite70} />
+          <Text fontSize="$3" color={brand.grafite70}>
+            Archiviata il {new Date(myState.archivedAt).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
           </Text>
         </XStack>
+        <CardButton onPress={handleRestore} disabled={isBusy}>
+          {isBusy ? "Ripristino..." : "Ripristina"}
+        </CardButton>
+      </XStack>
+      {error ? (
+        <Text color={brand.urgenza} fontSize="$3">
+          {error}
+        </Text>
       ) : null}
-    </XStack>
+    </YStack>
   );
 }

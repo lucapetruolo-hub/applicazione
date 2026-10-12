@@ -28,7 +28,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
-import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
@@ -633,6 +633,7 @@ export function GuidedRequestCard({
           </CardButton>
         </XStack>
       ) : null}
+      <ArchivedRestoreBar token={token} guidedRequestId={request.id} myState={request.myState} onChanged={onChanged} />
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>

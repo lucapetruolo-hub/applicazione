@@ -19,7 +19,7 @@ import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
-import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal";
 import { CardButton } from "@/components/CardButton";
@@ -626,6 +626,7 @@ export function RequestCard({
           <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
         </XStack>
       </YStack>
+      <ArchivedRestoreBar token={token} guidedRequestId={gr.id} myState={lead.myState} onChanged={onChanged} />
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>

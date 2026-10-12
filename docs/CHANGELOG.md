@@ -17898,3 +17898,25 @@ da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
 
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.
+
+## 220. Richieste archiviate: pulsante "Ripristina" in vista
+
+**Richiesta dell'utente**: "permetti anche l'annulla archiviazione delle
+richieste archiviate".
+
+**Situazione**: il ripristino esisteva già, ma solo come voce "Ripristina
+dall'archivio" nel menu ☰ della scheda (§130), poco trovabile.
+
+**Decisione**: nelle schede archiviate, sia del cliente (`/le-mie-richieste`)
+sia del professionista (`/dashboard/richieste`), una barra "Archiviata il …"
+con il pulsante "Ripristina" sotto l'intestazione, fuori dalla parte
+cliccabile (`ArchivedRestoreBar` in
+`apps/web/src/components/RequestCardPersonalActions.tsx`). Toglie solo
+l'archiviazione personale (`PATCH /guided-requests/:id/my-state`
+`{ archived: false }`, già esistente): la scheda torna nel suo stadio, senza
+effetti per l'altra parte. La voce del menu resta. Tolta la scritta
+"Archiviata" dalla riga degli indicatori, ora detta dalla barra.
+
+**Verifica**: in locale (Postgres + API + web) una richiesta archiviata
+mostra la barra nel tab "Archiviate"; "Ripristina" la riporta in "Tutte" e
+"In attesa". Nessuna modifica all'API.
