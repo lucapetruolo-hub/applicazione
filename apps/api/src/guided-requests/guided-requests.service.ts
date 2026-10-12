@@ -62,7 +62,7 @@ export class GuidedRequestsService {
    * docs/CHANGELOG.md §167).
    */
   async create(clientId: string, input: GuidedRequestInput, opts: { excludeProfileId?: string } = {}) {
-    const category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
+    let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
       throw new BadRequestException("Categoria non valida.");
     }
@@ -88,11 +88,23 @@ export class GuidedRequestsService {
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
+      category: NonNullable<typeof category>;
+      extraCategories: { id: string }[];
     } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
         where: { id: input.professionalProfileId },
-        select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
+        select: {
+          id: true,
+          deletedAt: true,
+          suspendedAt: true,
+          invitePendingAt: true,
+          pausedAt: true,
+          demotedUntil: true,
+          requestsBlockedUntil: true,
+          category: true,
+          extraCategories: { select: { id: true } },
+        },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
@@ -104,6 +116,14 @@ export class GuidedRequestsService {
       // Account in pausa, o bloccato per segnalazioni accolte (§167).
       if (targetProfile.pausedAt || professionalRestrictions(targetProfile, new Date()).blocked) {
         throw new ConflictException(NOT_ACCEPTING_REQUESTS);
+      }
+      // La categoria di una richiesta diretta deve essere una delle sue
+      // (docs/CHANGELOG.md §214): il modulo non la fa più scegliere, ma un
+      // link vecchio o una chiamata diretta potrebbero mandarne un'altra.
+      // Si usa la sua principale invece di rifiutare la richiesta.
+      const ownCategoryIds = [targetProfile.category.id, ...targetProfile.extraCategories.map((extra) => extra.id)];
+      if (!ownCategoryIds.includes(category.id)) {
+        category = targetProfile.category;
       }
     }
 

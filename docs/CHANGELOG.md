@@ -17726,6 +17726,14 @@ provate sul database, anteprime della registrazione da computer e telefono.
   licenza Unsplash (uso commerciale libero): Andriyko Podilnyk (dogsitter)
   e Vitaly Gariev (babysitter), fonti annotate in `categoryPhotos.ts`.
   Stesso formato delle altre (webp 1536×1024).
+- Migliorie approvate dall'utente dopo le foto:
+  - Foto anche per traslochi, fabbro, muratore, falegname e tutto fare
+    (stessa fonte e licenza), così tutte le categorie hanno la foto.
+  - Richiesta diretta: il server controlla che la categoria sia una di
+    quelle del professionista; se non lo è (link vecchio, chiamata diretta)
+    usa la sua principale invece di rifiutare la richiesta.
+  - Footer: "professionisti per la casa e la famiglia", con babysitter e
+    dogsitter nell'elenco.
 - Rivisto su indicazione dell'utente: nella richiesta a un professionista
   già scelto la categoria non si sceglie più (il campo è nascosto). Si usa
   quella del link, se è una delle sue, altrimenti la principale: serve solo
