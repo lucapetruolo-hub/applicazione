@@ -243,6 +243,8 @@ export class QuotesService {
           itemsChanged,
           notesChanged,
           ...(notesChanged && notes ? { note: notes } : {}),
+          // Note di prima nell'email (docs/CHANGELOG.md §227).
+          ...(notesChanged && existingQuote.notes?.trim() ? { previousNote: existingQuote.notes.trim() } : {}),
           ...(priceChanged && totalsBefore
             ? {
                 priceBefore: formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents),
@@ -381,6 +383,9 @@ export class QuotesService {
         quoteId: quote.id,
         noteOnly: true,
         note,
+        // Nota di prima e appuntamento invariato nell'email (docs/CHANGELOG.md §227).
+        ...(quote.clientNote?.trim() ? { previousNote: quote.clientNote.trim() } : {}),
+        to: slotPayload(quote.estimatedStartDate, quote.estimatedEndDate),
       });
       await this.timelineService.log(
         quote.guidedRequestId,
@@ -703,7 +708,7 @@ export class QuotesService {
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
-      ...(change ? { change } : { noteOnly: true }),
+      ...(change ? { change } : { noteOnly: true, ...(quote.professionalCounterNote?.trim() ? { previousNote: quote.professionalCounterNote.trim() } : {}) }),
       ...(input.note?.trim() ? { note: input.note.trim() } : {}),
       from: slotPayload(quote.clientProposedDate ?? quote.estimatedStartDate, quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate),
       to: slotPayload(estimatedStartDate, estimatedEndDate),

@@ -58,6 +58,20 @@ function quotedNote(payload: Payload): string[] {
   return typeof payload.note === "string" && payload.note.trim() ? [`Nota: "${payload.note.trim()}"`] : [];
 }
 
+/** Nota di prima e nota nuova, per le modifiche che cambiano solo la nota (docs/CHANGELOG.md §227). */
+function noteChange(payload: Payload, previousLabel = "Nota di prima", newLabel = "Nota nuova"): string[] {
+  const previous = typeof payload.previousNote === "string" ? payload.previousNote.trim() : "";
+  const current = typeof payload.note === "string" ? payload.note.trim() : "";
+  if (!previous || previous === current) return quotedNote(payload);
+  return [`${previousLabel}: "${previous}"`, current ? `${newLabel}: "${current}"` : "La nota è stata tolta."];
+}
+
+/** Appuntamento invariato dal payload, per le modifiche che cambiano solo la nota (§227). */
+function unchangedSlot(payload: Payload): { label: string; value: string }[] {
+  const slot = slotText(payload.to);
+  return slot ? [{ label: "Appuntamento (invariato)", value: slot }] : [];
+}
+
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -263,10 +277,10 @@ const BUILDERS: Record<string, Builder> = {
         title: "Il cliente ha aggiunto una nota",
         paragraphs: [
           `Per il tuo preventivo per **${job(ctx)}** il cliente ha aggiunto una nota, senza cambiare data e orario.`,
-          ...quotedNote(payload),
+          ...noteChange(payload),
           "Il preventivo resta valido così com'è: il cliente può ancora accettarlo. Se vuoi rispondere, scrivigli dalla richiesta.",
         ],
-        details: proJobDetails(ctx),
+        details: unchangedSlot(payload).length ? proJobDetails({ ...ctx, when: null }, unchangedSlot(payload)) : proJobDetails(ctx),
         cta: proRequests("Apri la richiesta"),
       };
     }
@@ -296,8 +310,8 @@ const BUILDERS: Record<string, Builder> = {
         subject: `${pro(ctx)} ha aggiunto una nota al preventivo`,
         greeting: ctx.name,
         title: "Nuova nota sul preventivo",
-        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario.`, ...quotedNote(payload)],
-        details: jobDetails(ctx),
+        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario.`, ...noteChange(payload)],
+        details: unchangedSlot(payload).length ? jobDetails({ ...ctx, when: null }, unchangedSlot(payload)) : jobDetails(ctx),
         cta: clientRequests(),
       };
     }
@@ -333,7 +347,7 @@ const BUILDERS: Record<string, Builder> = {
         ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
           ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
           : []),
-        ...quotedNote(payload),
+        ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
       ],
       details: jobDetails(ctx),

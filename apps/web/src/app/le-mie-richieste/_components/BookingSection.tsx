@@ -275,15 +275,16 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         {/* Lavoro terminato sempre per primo, turchese come lato professionista (richiesta esplicita dell'utente). */}
         {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
           booking.hasReview ? null : booking.canReview ? (
-            <CardButton onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
+            <CardButton compactOnPhone onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
           ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
-            <CardButton fill="#20B2AA" onPress={() => setShowClientCompleteModal(true)}>
+            <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </CardButton>
           ) : null
         ) : null}
         {booking.guidedRequestId ? (
           <ContactButton
+            compactOnPhone
             unreadCount={effectiveUnreadCount}
             onPress={() => {
               setShowTimeline(true);
@@ -292,7 +293,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           />
         ) : null}
         {canReportIssue ? (
-          <CardButton tone="danger" onPress={() => setShowNoShowModal(true)}>
+          <CardButton compactOnPhone tone="danger" onPress={() => setShowNoShowModal(true)}>
             Segnala un problema
           </CardButton>
         ) : null}

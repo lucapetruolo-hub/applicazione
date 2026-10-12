@@ -18115,5 +18115,20 @@ prenotazione. Stessa riga (`descriptionDetail` in `email-format.ts`) anche
 nella conferma "richiesta inviata" al cliente e nei promemoria del giorno
 prima. Le email senza richiesta (account, abbonamento) non cambiano.
 
+Ottavo giro, quattro migliorie approvate dall'utente:
+- Lato professionista "Chat" nei dati del cliente apriva la stessa
+  conversazione di "Contatta/Cronologia": ora compare solo nelle richieste
+  scadute o chiuse, dove in fondo alla scheda non c'è altro modo di aprirla.
+- Su telefono i pulsanti in fondo alla scheda (cliente e professionista)
+  sono più bassi e col testo più piccolo (`compactOnPhone` in `CardButton`
+  e `ContactButton`). Sui telefoni stretti tre pulsanti restano su due righe:
+  il testo non ci sta in una.
+- Email in cui cambia solo la nota (cliente o professionista) e "preventivo
+  aggiornato": riportano la nota di prima e quella nuova (`previousNote` nel
+  payload, `noteChange` nei modelli) e l'appuntamento "invariato".
+- La notifica sul sito di un cambio di data dice il nuovo appuntamento
+  (`slotLabel` in `notificationCopy.ts`, dal campo `to` del payload); così
+  anche "il professionista non è disponibile", con l'appuntamento che resta.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

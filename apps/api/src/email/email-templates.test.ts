@@ -102,6 +102,20 @@ describe("email delle notifiche", () => {
     }
   });
 
+  it("modifiche della sola nota: nota di prima, nota nuova e appuntamento invariato (docs/CHANGELOG.md §227)", () => {
+    const payload = { noteOnly: true, previousNote: "Suonare al citofono", note: "Citofono rotto, chiamatemi", to: { start: "2026-10-14T09:30:00.000Z", end: "2026-10-14T11:00:00.000Z" } };
+    for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
+      const text = renderEmail(notificationEmail(type, payload, ctx)!).text;
+      expect(text, type).toContain('Nota di prima: "Suonare al citofono"');
+      expect(text, type).toContain('Nota nuova: "Citofono rotto, chiamatemi"');
+      expect(text, type).toContain("Appuntamento (invariato): ");
+      expect(text, type).toContain("09:30–11:00");
+    }
+    const updated = renderEmail(notificationEmail("QUOTE_UPDATED", { notesChanged: true, previousNote: "Materiali esclusi", note: "Materiali inclusi" }, ctx)!).text;
+    expect(updated).toContain('Note di prima: "Materiali esclusi"');
+    expect(updated).toContain('Note nuove: "Materiali inclusi"');
+  });
+
   it("ogni email di una richiesta riporta la descrizione dell'intervento (docs/CHANGELOG.md §227)", () => {
     const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
     for (const type of NOTIFICATION_EMAIL_TYPES) {
