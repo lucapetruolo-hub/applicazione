@@ -567,8 +567,19 @@ export function ConversationView({
               questo comportamento è invariato rispetto a prima). */}
           {otherPartyName ? (
             <>
-              <XStack cursor={headerOnPress ? "pointer" : undefined} onPress={headerOnPress} accessibilityRole={headerOnPress ? "button" : undefined}>
-                <Avatar name={otherPartyName} imageUrl={otherPartyImageUrl} size={36} />
+              {/* Foto a 40px in una zona da toccare di 44px, comoda dal telefono (§226). */}
+              <XStack
+                width={44}
+                height={44}
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+                cursor={headerOnPress ? "pointer" : undefined}
+                onPress={headerOnPress}
+                accessibilityRole={headerOnPress ? "button" : undefined}
+                accessibilityLabel={headerOnPress ? `Apri il profilo di ${otherPartyName}` : undefined}
+              >
+                <Avatar name={otherPartyName} imageUrl={otherPartyImageUrl} size={40} />
               </XStack>
               <YStack minWidth={0} flex={1}>
                 <Text

@@ -542,7 +542,7 @@ export function QuoteCard({
       ) : null}
 
       {showTimeline ? (
-        <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} onClose={() => setShowTimeline(false)} />
+        <TimelineModal token={token} guidedRequestId={guidedRequestId} professionalProfileId={quote.professionalProfileId} viewerRole="CLIENT" otherPartyName={quote.businessName} otherPartyImageUrl={quote.imageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
   );

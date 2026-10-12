@@ -1557,6 +1557,7 @@ function DashboardAgendaContent() {
           professionalProfileId={myProfileId}
           viewerRole="PROFESSIONAL"
           otherPartyName={selectedBooking.clientName}
+          otherPartyImageUrl={selectedBooking.clientImageUrl}
           onClose={() => setShowBookingTimeline(false)}
         />
       ) : null}

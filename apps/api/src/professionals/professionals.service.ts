@@ -1262,6 +1262,7 @@ export class ProfessionalsService {
       // presentarsi al lavoro sapendo con chi ha a che fare — richiesta
       // esplicita dell'utente ("nome e cognome").
       clientName: [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null,
+      clientImageUrl: booking.client.deletedAt ? null : booking.client.imageUrl,
       clientPhone: booking.client.phone,
       // Mai l'email anonimizzata sintetica — stesso motivo di getMyLeads sopra.
       clientEmail: booking.client.deletedAt ? null : booking.client.email,
