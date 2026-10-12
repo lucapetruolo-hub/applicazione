@@ -48,6 +48,14 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run build
 
+      # Il build compila anche con un import circolare tra moduli Nest, ma
+      # l'API poi non parte (docs/CHANGELOG.md §218): qui si costruisce il
+      # grafo dei moduli senza database, come fa l'avvio su Render.
+      - name: Avvio API (grafo dei moduli)
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: node apps/api/scripts/check-boot.mjs
+
       - name: Test
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci

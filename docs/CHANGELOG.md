@@ -17804,3 +17804,24 @@ provate sul database, anteprime della registrazione da computer e telefono.
   già scelto la categoria non si sceglie più (il campo è nascosto). Si usa
   quella del link, se è una delle sue, altrimenti la principale: serve solo
   per l'esempio di descrizione e per l'eventuale inoltro ad altri.
+
+## 218. L'API su Render non partiva: import circolare tra moduli
+
+**Richiesta dell'utente**: il deploy su Render falliva dopo le migrazioni con
+"The module at index [1] of the GeneralRequestsAdminModule imports array is
+undefined".
+
+**Causa**: `GeneralRequestsAdminModule` era nello stesso file di
+`GeneralRequestsModule` e importava `admin.module`. Il file era già nel giro
+`admin.module → job-issues.module → guided-requests.module →
+general-requests.module`, quindi a runtime `AdminModule` non era ancora
+definito. Il build TypeScript passava lo stesso. Rotto dall'unione della PR
+#57 (§213; con c6023fb l'avvio funzionava, con 4fb0e2b no), non dalle PR di
+stamattina.
+
+**Correzione**: `GeneralRequestsAdminModule` spostato in
+`general-requests-admin.module.ts`; `madge --circular` non trova più giri.
+
+**Controllo in CI**: `apps/api/scripts/check-boot.mjs`, dopo il build,
+costruisce il grafo dei moduli Nest da `dist/` in modalità `preview` (niente
+database né porte). Fallisce sul codice rotto, passa sulla correzione.
