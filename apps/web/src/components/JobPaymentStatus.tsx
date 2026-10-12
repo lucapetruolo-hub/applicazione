@@ -18,20 +18,16 @@ function eur(cents: number): string {
 /**
  * Pagamento di un lavoro (docs/CHANGELOG.md §168). Lato cliente: metodo
  * scelto, acconto e saldo da pagare con Stripe, custodia fino alla
- * conferma; col pagamento diretto, che i problemi si risolvono col
- * professionista. Lato professionista: cosa ha pagato il cliente, quanto
+ * conferma; col pagamento diretto solo il metodo, in una riga. Lato professionista: cosa ha pagato il cliente, quanto
  * riceverà (meno commissione e costo Stripe) e quando.
  */
 export function JobPaymentStatus({
   payment,
   audience,
-  businessName,
   onPay,
 }: {
   payment: JobPaymentSummary;
   audience: "client" | "professional";
-  /** Nome dell'altra parte: il professionista per il cliente. */
-  businessName?: string;
   /** Solo cliente: apre il checkout Stripe dell'acconto o del saldo. */
   onPay?: (part: "deposit" | "balance") => Promise<void>;
 }) {
@@ -66,18 +62,19 @@ export function JobPaymentStatus({
     </YStack>
   );
 
+  // Pagamento diretto: una riga sola (richiesta esplicita dell'utente, al
+  // posto della spiegazione lunga su accordi e contestazioni).
   if (payment.method === "DIRECT") {
-    return box(
-      <>
-        <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
-          Pagamento diretto al professionista
+    return (
+      <Text fontSize="$3" color={brand.grafite70}>
+        Metodo di pagamento:{" "}
+        <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+          DIRETTO
         </Text>
-        <Text fontSize="$2" color={brand.grafite70}>
-          {audience === "client"
-            ? `Paghi ${businessName ?? "il professionista"} come vi accordate. Eventuali problemi vanno risolti direttamente con lui: possiamo mettervi in contatto, ma non rimborsiamo e non decidiamo sulle contestazioni.`
-            : "Il cliente ti paga come vi accordate. Se nasce un problema, ne parlate in chat per trovare una soluzione."}
-        </Text>
-      </>,
+        {audience === "client"
+          ? " · paghi direttamente il professionista"
+          : " · vieni pagato direttamente dal cliente"}
+      </Text>
     );
   }
 

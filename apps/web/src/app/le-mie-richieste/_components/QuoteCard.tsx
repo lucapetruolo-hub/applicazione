@@ -65,6 +65,7 @@ export function QuoteCard({
   isNew,
   unreadCount,
   autoOpenTimeline,
+  contactInBooking,
   requestOpen,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
@@ -83,6 +84,8 @@ export function QuoteCard({
   unreadCount?: number;
   /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenTimeline?: boolean;
+  /** Il preventivo è diventato un intervento: Contatta/Cronologia sta lì, non qui (un solo pulsante per scheda). */
+  contactInBooking?: boolean;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -235,13 +238,15 @@ export function QuoteCard({
       <Text fontSize="$2" color={brand.grafite70}>
         {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
-      <ContactButton
-        unreadCount={effectiveUnreadCount}
-        onPress={() => {
-          setShowTimeline(true);
-          dismissUnread();
-        }}
-      />
+      {contactInBooking ? null : (
+        <ContactButton
+          unreadCount={effectiveUnreadCount}
+          onPress={() => {
+            setShowTimeline(true);
+            dismissUnread();
+          }}
+        />
+      )}
       {(() => {
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).

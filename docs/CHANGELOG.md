@@ -17898,3 +17898,28 @@ da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
 
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.
+
+## 220. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
+
+**Richiesta dell'utente**: nella scheda del preventivo accettato mettere in
+fila gli ultimi tre pulsanti (Contatta/Cronologia, Segnala un problema,
+Lavoro terminato) e sostituire le spiegazioni lunghe sul pagamento diretto
+con una riga sola.
+
+**Decisione**:
+- Pagamento diretto (`JobPaymentStatus`): "Metodo di pagamento: DIRETTO ·
+  paghi direttamente il professionista" (cliente) o "· vieni pagato
+  direttamente dal cliente" (professionista), senza riquadro. Il testo su
+  rimborsi e contestazioni resta nel modulo "Segnala un problema"
+  (`assisted={false}`) e in "Come pago?". Il pagamento online non cambia.
+- Lato cliente (`BookingSection`) Contatta/Cronologia, Segnala un problema e
+  Lavoro terminato (o Lascia una recensione) stanno su una riga, dopo
+  pagamento e segnalazioni; sul telefono vanno a capo.
+- Un solo Contatta/Cronologia nella scheda: quello del preventivo accettato
+  è nascosto (`QuoteCard`, `contactInBooking`) e i suoi non letti si
+  sommano al pulsante dell'intervento.
+- Lato professionista i pulsanti erano già in fila: cambia solo la riga del
+  pagamento.
+
+**Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
+computer e telefono per cliente e professionista.

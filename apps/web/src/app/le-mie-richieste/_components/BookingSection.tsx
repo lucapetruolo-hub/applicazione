@@ -131,16 +131,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
 
-      {booking.guidedRequestId ? (
-        <ContactButton
-          unreadCount={effectiveUnreadCount}
-          onPress={() => {
-            setShowTimeline(true);
-            dismissUnread();
-          }}
-        />
-      ) : null}
-
       {booking.meetingLink ? (
         <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
           <CardButton>
@@ -178,18 +168,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         <JobPaymentStatus
           payment={booking.payment}
           audience="client"
-          businessName={booking.businessName}
           onPay={async (part) => {
             const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
             if (url) window.location.href = url;
           }}
         />
-      ) : null}
-
-      {canReportIssue ? (
-        <CardButton tone="danger" alignSelf="flex-start" onPress={() => setShowNoShowModal(true)}>
-          Segnala un problema
-        </CardButton>
       ) : null}
 
       {booking.issue ? (
@@ -278,26 +261,45 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         />
       ) : null}
 
-      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
-        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {booking.hasReview ? (
-            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-              Recensione inviata
-            </Text>
-          ) : booking.canReview ? (
-            <CardButton alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
-              Lascia una recensione
-            </CardButton>
-          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Potrai lasciare la recensione quando la segnalazione sarà chiusa.
-            </Text>
-          ) : !booking.clientConfirmedCompletedAt ? (
-            <CardButton tone="primary" alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
+      {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
+          Contatta/Cronologia, Segnala un problema, Lavoro terminato o
+          recensione. Un solo Contatta/Cronologia nella scheda: quello del
+          preventivo accettato è nascosto (QuoteCard, `contactInBooking`). */}
+      <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+        {booking.guidedRequestId ? (
+          <ContactButton
+            unreadCount={effectiveUnreadCount}
+            onPress={() => {
+              setShowTimeline(true);
+              dismissUnread();
+            }}
+          />
+        ) : null}
+        {canReportIssue ? (
+          <CardButton tone="danger" onPress={() => setShowNoShowModal(true)}>
+            Segnala un problema
+          </CardButton>
+        ) : null}
+        {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+          booking.hasReview ? null : booking.canReview ? (
+            <CardButton onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
+          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
+            <CardButton tone="primary" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </CardButton>
-          ) : null}
-        </YStack>
+          ) : null
+        ) : null}
+      </XStack>
+      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+        booking.hasReview ? (
+          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+            Recensione inviata
+          </Text>
+        ) : !booking.canReview && (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") ? (
+          <Text fontSize="$2" color={brand.grafite70}>
+            Potrai lasciare la recensione quando la segnalazione sarà chiusa.
+          </Text>
+        ) : null
       ) : null}
 
       {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}
