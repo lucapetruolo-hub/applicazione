@@ -18077,3 +18077,23 @@ larghezza massima della griglia (4 × 96px).
 da computer (1100px) e telefono (375 e 360px) in
 `/mnt/project-files/anteprime/agenda-ricerca/` (`profilo-*` per la pagina
 del professionista).
+
+## 228. `render.yaml` non nomina più il database
+
+**Richiesta:** dalla dashboard di Render l'utente ha visto che il vecchio
+`professionisti-db` è scaduto (verrà cancellato), mentre l'API usa già
+`professionisti-db-2`. Il Blueprint però collegava ancora `DATABASE_URL` a
+`professionisti-db` per nome; l'utente ha chiesto di sistemarlo.
+
+**Decisione:** tolto il blocco `databases` e il `fromDatabase` da
+`render.yaml`; `DATABASE_URL` diventa `sync: false` (si imposta a mano,
+come già si faceva a ogni scadenza). Scelto invece di scrivere
+`professionisti-db-2` perché il nome cambia a ogni database nuovo (scadenza
+dei 30 giorni o passaggio a un piano a pagamento), e con un nome fisso nel
+Blueprint, dopo la cancellazione del database scaduto, una sincronizzazione
+avrebbe potuto crearne uno vuoto con quel nome e ricollegarci l'API.
+Render non cancella le risorse tolte dal Blueprint, e `sync: false` non
+tocca un valore già impostato sul servizio.
+
+**Verifica:** `render.yaml` letto da un parser YAML; nessuna modifica al
+codice dell'API.
