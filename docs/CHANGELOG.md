@@ -17723,3 +17723,7 @@ provate sul database, anteprime della registrazione da computer e telefono.
 - Non fatta: le foto di Dogsitter e Babysitter. `categoryPhotos.ts` accetta
   solo foto fornite dall'utente, mai stock scelti a caso: restano
   sull'icona finché non arrivano le foto.
+- Rivisto su indicazione dell'utente: nella richiesta a un professionista
+  già scelto la categoria non si sceglie più (il campo è nascosto). Si usa
+  quella del link, se è una delle sue, altrimenti la principale: serve solo
+  per l'esempio di descrizione e per l'eventuale inoltro ad altri.

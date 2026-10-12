@@ -723,43 +723,10 @@ export function GuidedRequestForm({
         {step === 1 ? (
           <>
         {professionalProfileId && selectedCategory ? (
-          // Categoria già determinata dal professionista scelto (si arriva
-          // qui dal suo profilo, con categoria e id già nell'URL): si sceglie
-          // solo tra le sue, quando ne ha più di una (docs/CHANGELOG.md §214).
-          <YStack gap="$2">
-            <FieldLabel>Categoria</FieldLabel>
-            <XStack gap="$2" flexWrap="wrap">
-              {(professional?.categories?.length ? professional.categories : [{ slug: selectedCategory.slug, label: selectedCategory.label }]).map(
-                (item) => {
-                  const category = PROFESSIONAL_CATEGORIES.find((c) => c.slug === item.slug);
-                  if (!category) return null;
-                  const active = category.slug === categorySlug;
-                  const canChoose = (professional?.categories?.length ?? 0) > 1;
-                  return (
-                    <XStack
-                      key={category.slug}
-                      alignItems="center"
-                      gap="$2"
-                      paddingHorizontal="$3"
-                      paddingVertical="$2"
-                      borderRadius="$2"
-                      borderWidth={1}
-                      borderColor={active ? brand.cianografia : brand.filetto}
-                      backgroundColor={active ? brand.cianografia : brand.calce}
-                      cursor={canChoose ? "pointer" : "default"}
-                      onPress={canChoose ? () => setCategorySlug(category.slug) : undefined}
-                      accessibilityRole={canChoose ? "button" : undefined}
-                    >
-                      <Icon name={category.icon} size={16} color={active ? "white" : brand.grafite} />
-                      <Text color={active ? "white" : brand.grafite} fontWeight="600">
-                        {category.label}
-                      </Text>
-                    </XStack>
-                  );
-                },
-              )}
-            </XStack>
-          </YStack>
+          // Professionista già scelto: nessuna categoria da scegliere
+          // (decisione dell'utente, docs/CHANGELOG.md §214). La richiesta usa
+          // quella del link se è una delle sue, altrimenti la principale.
+          null
         ) : (
           <YStack gap="$2">
             <FieldLabel>Categoria</FieldLabel>
