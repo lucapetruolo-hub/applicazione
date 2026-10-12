@@ -254,8 +254,6 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     comment: string | null;
     photoUrls: string[];
     createdAt: string;
-    /** Vera se generata automaticamente (5 stelle) dal vecchio sblocco "doppio cieco", tolto in docs/CHANGELOG.md §215. */
-    isAutomatic: boolean;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul

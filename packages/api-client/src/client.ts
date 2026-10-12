@@ -265,7 +265,7 @@ export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
 
 type AdminReportRow = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
   reason: string;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   action: ModerationActionValue | null;
@@ -413,7 +413,7 @@ export type AdminDispute = {
 /** Segnalazione contenuti (richiesta esplicita dell'utente, "Verbale di Conformità" — DSA art. 16), vista admin. */
 export type AdminContentReport = {
   id: string;
-  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "CLIENT_REVIEW" | "GUIDED_REQUEST";
+  targetType: "PROFESSIONAL_PROFILE" | "REVIEW" | "GUIDED_REQUEST";
   targetId: string;
   targetLabel: string | null;
   /** Profilo professionista su cui è raggiungibile il contenuto segnalato (`null` per una recensione sul cliente, priva di pagina pubblica). */
@@ -590,7 +590,6 @@ export type SentReview = {
   comment: string | null;
   mediaUrls: string[];
   createdAt: string;
-  isAutomatic: boolean;
   /** Nascosta da un admin dopo una segnalazione. */
   hidden: boolean;
   /** `null` se il professionista ha eliminato il profilo. */
@@ -961,7 +960,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
           id: string;
           rating: number;
           comment: string | null;
-          isAutomatic: boolean;
           createdAt: string;
           clientName: string;
           professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };

@@ -795,7 +795,7 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
  */
 // GUIDED_REQUEST: una richiesta ricevuta, segnalata dal professionista che
 // l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
-export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "CLIENT_REVIEW", "GUIDED_REQUEST"] as const;
+export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
 export const createContentReportSchema = z.object({
   targetType: z.enum(contentReportTargetTypes),

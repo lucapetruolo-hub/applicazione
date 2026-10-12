@@ -82,7 +82,7 @@ export default function LeMieRecensioniPage() {
       <YStack width="100%" maxWidth={760} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Recensioni
+            Le mie recensioni
           </Text>
           <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro concluso.</Text>
         </YStack>
@@ -123,11 +123,6 @@ function SentReviewsList({ reviews, error }: { reviews: SentReview[] | null; err
                   {review.businessName}
                 </Text>
               )}
-              {review.isAutomatic ? (
-                <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
-                  (recensione automatica)
-                </Text>
-              ) : null}
             </XStack>
             <Text fontSize="$2" color={brand.grafite70}>
               {formatDate(review.createdAt)}

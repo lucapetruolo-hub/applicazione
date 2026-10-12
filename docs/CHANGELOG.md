@@ -17698,6 +17698,10 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 - `/le-mie-recensioni`: tolta la sottoscheda "Ricevute", resta l'elenco delle recensioni che il cliente ha scritto.
 - **Fine del "doppio cieco"**: le recensioni del cliente al professionista erano pubbliche solo quando esisteva anche quella del professionista al cliente (o dopo 3 giorni, con una recensione automatica). Senza la seconda direzione ora sono pubbliche subito: profilo, ricerca, home, statistiche. Tolto il controllo orario che generava le recensioni automatiche; quelle già create restano.
 - Email e notifica "Nuova recensione" al professionista: dicono che la recensione è già visibile sul profilo. Tolte le frasi su "recensisci il cliente" e "la recensione diventa visibile anche senza la tua" nei promemoria di chiusura. Tolto dal popup di recensione il riquadro sull'attesa.
-- **Dati già salvati non cancellati**: la tabella `client_reviews` resta nel database e nell'esportazione dei dati dell'utente, ma non compare più in nessuna pagina. La moderazione admin delle segnalazioni già aperte su quelle recensioni continua a funzionare. La cancellazione resta da decidere con l'utente.
 
-**Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori.
+**Cancellazione dei dati e migliorie approvate dall'utente ("procedi col consiglio più le 3 migliorie", poi "Cancellale" per le recensioni automatiche):**
+- Migrazione `20261011200000_remove_client_reviews`: cancella la tabella `client_reviews`, le segnalazioni su quelle recensioni e il tipo `CLIENT_REVIEW` (codice admin, moderazione, esportazione dati).
+- Recensioni automatiche: la stessa migrazione cancella le recensioni a 5 stelle generate dal vecchio "doppio cieco" (`reviews.isAutomatic = true`) e la colonna. Non le aveva scritte nessun cliente: senza etichetta sarebbero sembrate vere. Tolta ovunque l'etichetta "(recensione automatica)".
+- Voce di menu e titolo della pagina: "Le mie recensioni". Nella barra a schede del cliente resta "Recensioni", corta come le altre schede.
+
+**Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori. Migrazione provata su un Postgres locale con dati di prova: cancellate la recensione automatica, la recensione sul cliente e la sua segnalazione, rimaste la recensione vera e l'altra segnalazione; schema finale identico a `schema.prisma`.

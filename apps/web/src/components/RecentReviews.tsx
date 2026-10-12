@@ -12,7 +12,6 @@ type RecentReview = {
   id: string;
   rating: number;
   comment: string | null;
-  isAutomatic: boolean;
   createdAt: string;
   clientName: string;
   professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
@@ -304,7 +303,7 @@ function ReviewCard({ review, delayMs }: { review: RecentReview; delayMs: number
           </Text>
 
           <Text fontSize={15} lineHeight={23} color={brand.grafite} marginTop={-12} numberOfLines={4}>
-            {review.isAutomatic ? "Recensione automatica: lavoro completato, nessun commento scritto dal cliente." : review.comment ?? ""}
+            {review.comment ?? ""}
           </Text>
 
           <XStack justifyContent="flex-end">

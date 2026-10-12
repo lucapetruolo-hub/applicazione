@@ -40,7 +40,6 @@ export class ReviewsService {
       comment: review.comment,
       mediaUrls: review.photoUrls,
       createdAt: review.createdAt.toISOString(),
-      isAutomatic: review.isAutomatic,
       hidden: review.hiddenAt !== null,
       professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
       businessName: review.booking.professionalProfile.businessName,
@@ -76,11 +75,7 @@ export class ReviewsService {
     return reviews.map((review) => ({
       id: review.id,
       rating: review.rating,
-      // Le automatiche (5 stelle per controparte assente) non hanno testo
-      // libero: l'etichetta "(recensione automatica)" la mette il frontend,
-      // come già nella pagina profilo pubblica.
-      comment: review.isAutomatic ? null : review.comment,
-      isAutomatic: review.isAutomatic,
+      comment: review.comment,
       createdAt: review.createdAt.toISOString(),
       // Nome di chi ha scritto la recensione (richiesta esplicita
       // dell'utente: "il nome da chi è stata fatta la recensione a mò di
