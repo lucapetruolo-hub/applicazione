@@ -18018,6 +18018,8 @@ c'è troppa confusione".
 
 **Decisione**: in `QuoteCard`, mentre è aperta la scelta del pagamento
 (`choosingPayment`) restano solo "Accetta preventivo" e "Annulla" di quel
-passaggio; con "Annulla" tornano "Modifica" e "Rifiuta".
+passaggio; con "Annulla" tornano "Modifica" e "Rifiuta". Stesso principio,
+su richiesta dell'utente, mentre sceglie una nuova data ("Modifica") e mentre
+conferma il rifiuto: gli altri pulsanti spariscono finché non annulla.
 
 **Verifica**: in locale, conteggio dei pulsanti prima e dopo "Annulla".

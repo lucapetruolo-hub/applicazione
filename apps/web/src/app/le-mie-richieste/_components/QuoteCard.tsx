@@ -403,7 +403,7 @@ export function QuoteCard({
       {quote.status === "SENT" ? (
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            {!choosingPayment ? (
+            {!choosingPayment && !isChoosingDate && !confirmingReject ? (
               <CardButton
                 tone="primary"
                 onPress={() => {
@@ -414,9 +414,10 @@ export function QuoteCard({
                 Accetta preventivo
               </CardButton>
             ) : null}
-            {/* Durante l'accettazione restano solo i pulsanti di quel passaggio
-                (richiesta esplicita dell'utente, docs/CHANGELOG.md §225). */}
-            {!isChoosingDate && !choosingPayment ? (
+            {/* Durante accettazione, modifica o rifiuto restano solo i
+                pulsanti di quel passaggio (richiesta esplicita
+                dell'utente, docs/CHANGELOG.md §225). */}
+            {!isChoosingDate && !choosingPayment && !confirmingReject ? (
               <CardButton fill={brand.ottone} onPress={startChoosingDate}>
                 Modifica
               </CardButton>
