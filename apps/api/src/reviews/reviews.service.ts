@@ -4,6 +4,7 @@ import { clientCanReview, type ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { publicClientName } from "../common/client-name.util";
 
 // Le recensioni del cliente sono pubbliche subito: il professionista non
 // recensisce più il cliente e il "doppio cieco" non esiste più
@@ -85,7 +86,8 @@ export class ReviewsService {
       // account eliminato (name/surname già azzerati dal soft-delete,
       // CLAUDE.md §16 — nessuna logica di privacy aggiuntiva necessaria
       // qui, il fallback neutro copre già entrambi i casi).
-      clientName: [review.booking.client.name, review.booking.client.surname].filter(Boolean).join(" ") || "Cliente",
+      // Pagina pubblica: solo nome e iniziale del cognome (§216).
+      clientName: publicClientName(review.booking.client) ?? "Cliente",
       professional: {
         // Richiesta esplicita dell'utente: le card devono essere cliccabili
         // verso la recensione in questione sul profilo pubblico — serve

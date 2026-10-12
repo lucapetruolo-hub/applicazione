@@ -17705,3 +17705,24 @@ chiusura; 269 test di `apps/api` verdi, tipi e lint di `apps/api` e
 - Voce di menu e titolo della pagina: "Le mie recensioni". Nella barra a schede del cliente resta "Recensioni", corta come le altre schede.
 
 **Verifica:** 275 test di `apps/api` verdi, tipi di `apps/api` e `apps/web` e lint senza errori. Migrazione provata su un Postgres locale con dati di prova: cancellate la recensione automatica, la recensione sul cliente e la sua segnalazione, rimaste la recensione vera e l'altra segnalazione; schema finale identico a `schema.prisma`.
+
+## 216. Richieste ricevute: il cognome del cliente si vede solo a preventivo accettato
+
+**Richiesta dell'utente (11/10/2026):** nella richiesta di preventivo ricevuta il professionista deve leggere solo il nome del cliente; il cognome si sblocca come telefono e indirizzo, solo a preventivo accettato.
+
+**Decisioni:**
+- Regola applicata lato server, così il cognome non arriva al browser prima: nuova funzione `clientNameForProfessional` (`apps/api/src/common/client-name.util.ts`), che restituisce solo il nome finché non esiste la `Booking` nata dal preventivo di quel professionista, poi nome e cognome. Senza nome resta "Cliente", mai il solo cognome.
+- Punti coperti: `ProfessionalsService.getMyLeads` (elenco e scheda delle richieste, scheda cliente, chat aperta dalla scheda, Home della dashboard) e `TimelineService.listThreadsForUser` (elenco dei messaggi, che prima mostrava nome e cognome a tutti). `getMyBookings` (agenda, lavori accettati) continua a mostrare nome e cognome.
+- Email e notifiche al professionista non contenevano il nome del cliente: nulla da cambiare. Il nome e cognome di chi riceve il professionista (`recipientName`/`recipientSurname`) era già esposto solo dalla `Booking`. L'area admin vede sempre nome e cognome.
+
+**Migliorie approvate dall'utente nella stessa PR ("effettua tutte le migliorie"):**
+- Recensioni pubbliche (`ReviewsService`, ultime recensioni in Home) firmate "Mario R." invece di nome e cognome interi: `publicClientName`.
+- Account senza cognome salvato (Google creati prima della separazione di nome e cognome, o chi ha scritto tutto nel campo nome): prima dell'accettazione e nelle recensioni si mostra solo la prima parola del nome. Scelta al posto di una correzione dei dati all'avvio: senza i dati di Google non si può dividere un nome completo in modo sicuro ("De Luca"), e così nessun dato viene toccato.
+- Data di nascita del cliente solo a preventivo accettato, prima l'età (poi tolte entrambe, vedi sotto).
+
+**Seconde decisioni dell'utente (12/10/2026):** "leva anche l'età sia prima che dopo l'accettazione, non è importante per il professionista", foto profilo solo dopo l'accettazione, nota della scheda solo prima.
+- Data di nascita ed età non arrivano più al professionista (`clientBirthDate` tolto da `ProfessionalLead`, niente `clientAge`): la scheda cliente non le mostra più. Questo supera la richiesta passata di mostrare la data di nascita nella scheda.
+- Foto profilo del cliente (`clientImageUrl` in `getMyLeads`, `otherPartyImageUrl` in `listThreadsForUser`) solo con la Booking: prima compare l'iniziale nell'avatar.
+- Nuovo campo `clientDetailsUnlocked`: la nota "Cognome, foto, telefono, email e indirizzo saranno visibili all'accettazione" compare in `ClientProfileModal` solo prima dell'accettazione.
+
+**Verifica:** test di `apps/api` (281, nuovi casi per le funzioni del nome e per `getMyLeads` prima e dopo l'accettazione: cognome e foto, data di nascita mai presente), typecheck di `apps/api` e `apps/web`, lint di `apps/web` senza errori.

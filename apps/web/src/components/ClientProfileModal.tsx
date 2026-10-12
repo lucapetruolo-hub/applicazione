@@ -1,20 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Avatar, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-
-function formatBirthDate(birthDate: string): string {
-  const parts = birthDate.split("-").map(Number);
-  const year = parts[0] ?? 1970;
-  const month = parts[1] ?? 1;
-  const day = parts[2] ?? 1;
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("it-IT", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
@@ -26,7 +13,7 @@ function formatBirthDate(birthDate: string): string {
  *
  * Il cliente non ha un profilo pubblico in questo marketplace (solo i
  * professionisti ne hanno uno, /professionista/[id]): questa scheda mostra
- * solo l'identità (nome/cognome, data di nascita, foto profilo) — richiesta
+ * solo l'identità (nome; cognome e foto profilo a preventivo accettato, §216) — richiesta
  * esplicita dell'utente, che ha ribaltato di nuovo la decisione di privacy
  * presa in un giro precedente (CLAUDE.md §12, mostrava telefono/email già
  * da qui): "tutte le info relative al cliente gli verranno visualizzate
@@ -39,13 +26,13 @@ function formatBirthDate(birthDate: string): string {
  */
 export function ClientProfileModal({
   name,
-  birthDate,
+  detailsUnlocked = false,
   imageUrl,
   onClose,
 }: {
   name: string;
-  /** Data di nascita del cliente (YYYY-MM-DD), se compilata. */
-  birthDate?: string | null;
+  /** Preventivo accettato: cognome e foto già sbloccati, la nota sotto non serve più. */
+  detailsUnlocked?: boolean;
   /** Foto profilo dell'account cliente, se presente — richiesta esplicita dell'utente. */
   imageUrl?: string | null;
   onClose: () => void;
@@ -109,18 +96,11 @@ export function ClientProfileModal({
           </Text>
         </YStack>
 
-        {birthDate ? (
-          <XStack alignItems="center" justifyContent="center" gap="$2">
-            <Icon name="calendar" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text color={brand.grafite70} fontSize="$3" fontWeight="600">
-              Nato/a il {formatBirthDate(birthDate)}
-            </Text>
-          </XStack>
-        ) : null}
-
-        <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-          Telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
-        </Text>
+        {detailsUnlocked ? null : (
+          <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+            Cognome, foto, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
+          </Text>
+        )}
       </YStack>
     </div>
   );

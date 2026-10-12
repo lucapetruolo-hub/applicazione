@@ -1339,7 +1339,7 @@ export function RequestCard({
       {showClientProfile ? (
         <ClientProfileModal
           name={clientName}
-          birthDate={gr.clientBirthDate}
+          detailsUnlocked={gr.clientDetailsUnlocked}
           imageUrl={gr.clientImageUrl}
           onClose={() => setShowClientProfile(false)}
         />
