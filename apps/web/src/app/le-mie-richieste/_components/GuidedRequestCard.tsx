@@ -11,6 +11,7 @@ import {
   averageQuoteTotalEurCents,
   findComuneByName,
   formatEurCents,
+  formatItalianUntil,
   isPlausiblePhoneNumber,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
@@ -28,7 +29,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
-import { buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
+import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
@@ -633,6 +634,7 @@ export function GuidedRequestCard({
           </CardButton>
         </XStack>
       ) : null}
+      <ArchivedRestoreBar token={token} guidedRequestId={request.id} myState={request.myState} onChanged={onChanged} />
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
@@ -664,6 +666,15 @@ export function GuidedRequestCard({
                 </Text>
               )}
             </YStack>
+          ) : null}
+
+          {request.openUntil ? (
+            <XStack alignItems="center" gap="$2">
+              <Icon name="clock" size={14} color={brand.grafite70} strokeWidth={1.5} />
+              <Text fontSize="$3" color={brand.grafite70}>
+                La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil)}.
+              </Text>
+            </XStack>
           ) : null}
 
           {!request.professionalProfileId && averagePriceEurCents !== null ? (

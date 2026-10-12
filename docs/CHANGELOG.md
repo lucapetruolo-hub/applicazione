@@ -17898,3 +17898,128 @@ da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
 
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.
+
+## 220. Richieste archiviate: pulsante "Ripristina" in vista
+
+**Richiesta dell'utente**: "permetti anche l'annulla archiviazione delle
+richieste archiviate".
+
+**Situazione**: il ripristino esisteva già, ma solo come voce "Ripristina
+dall'archivio" nel menu ☰ della scheda (§130), poco trovabile.
+
+**Decisione**: nelle schede archiviate, sia del cliente (`/le-mie-richieste`)
+sia del professionista (`/dashboard/richieste`), una barra "Archiviata il …"
+con il pulsante "Ripristina" sotto l'intestazione, fuori dalla parte
+cliccabile (`ArchivedRestoreBar` in
+`apps/web/src/components/RequestCardPersonalActions.tsx`). Toglie solo
+l'archiviazione personale (`PATCH /guided-requests/:id/my-state`
+`{ archived: false }`, già esistente): la scheda torna nel suo stadio, senza
+effetti per l'altra parte. La voce del menu resta. Tolta la scritta
+"Archiviata" dalla riga degli indicatori, ora detta dalla barra.
+
+**Verifica**: in locale (Postgres + API + web) una richiesta archiviata
+mostra la barra nel tab "Archiviate"; "Ripristina" la riporta in "Tutte" e
+"In attesa". Nessuna modifica all'API.
+
+## 221. Scadenza visibile al professionista e proposta del cliente modificabile
+
+**Richieste dell'utente**: "di' al professionista quanto tempo ha per
+rispondere alla richiesta preventivo inserendo la data: puoi rispondere fino
+al *data* alle *ora*" e "dai la possibilità al cliente di modificare più
+preventivi ricevuti e non solo 1".
+
+**Scadenza**: dal §210 il Lead non ha scadenza propria, ma la richiesta sì
+(`GuidedRequest.expiresAt`, 60 giorni, 30 se urgente): passata quella, si
+chiude e non si può più rispondere. Nuovo campo `respondUntil` del lead
+(`getMyLeads`), valorizzato finché il professionista non ha inviato un
+preventivo e la richiesta è aperta. In "Richieste e lavori" e in "Oggi" compare
+"Puoi rispondere fino al 11 dicembre alle 16:36" (ora italiana, "all'" davanti
+a 8, 11 e all'una; rossa nelle ultime 24 ore). Non per le richieste urgenti:
+lì resta la dicitura di prima (decisione dell'utente). Per una richiesta diretta resta
+anche l'avviso sull'inoltro ad altri (§209). Helper `leadDeadlines` in
+`apps/web/src/lib/leadDeadline.ts`.
+
+**Modifica del cliente**: provato in locale, con due preventivi il cliente
+poteva già proporre un'altra data a entrambi; dopo l'invio però il pulsante
+spariva e non poteva più cambiare la proposta finché il professionista non
+rispondeva. Ora nello stato "in attesa di conferma" c'è "Cambia proposta", che
+riapre la stessa scelta di data e nota. L'API lo consentiva già
+(`proposeDate` blocca solo preventivi accettati, rifiutati o ritirati).
+
+**Verifica**: in locale con due professionisti e due preventivi: scadenza
+visibile in entrambe le pagine; cambiata la proposta su un preventivo già in
+attesa, il professionista vede la nuova data.
+
+## 222. "Ripristina tutte" nel tab Archiviate
+
+**Richiesta dell'utente**: aggiungere "Ripristina tutte" nel tab
+"Archiviate" quando ce n'è più di una (miglioria proposta in §220).
+
+**Decisione**: `RestoreAllArchivedBar` (in
+`apps/web/src/components/RequestCardPersonalActions.tsx`) in cima al tab
+"Archiviate" di `/le-mie-richieste` e `/dashboard/richieste`, solo con almeno
+due schede archiviate. Chiede conferma ("Ripristinare tutte le N richieste
+archiviate?") e toglie l'archiviazione a ognuna con lo stesso endpoint di
+"Ripristina"; se qualcuna fallisce lo dice e ricarica l'elenco. Vale per tutte
+le archiviate, non solo per quelle filtrate dalla ricerca.
+
+**Verifica**: in locale, tre richieste archiviate tornano tutte in "Tutte"
+dopo la conferma.
+
+## 223. "Modifica" parte dall'ultima data proposta
+
+**Richiesta dell'utente**: "quando il cliente o professionista cliccano su
+modifica un preventivo gli deve comparire l'ultima data e orario aggiunti o
+proposti".
+
+**Prima**: il cliente partiva sempre dalla data del preventivo, anche con una
+sua proposta in attesa; il professionista, su "Modifica" di una proposta del
+cliente fuori agenda, partiva dalla prima fascia libera; su "Modifica
+preventivo" restava la fascia scelta in precedenza nel modulo.
+
+**Ora**: il cliente parte dalla sua proposta in attesa, altrimenti dalla data
+del preventivo (orari ricaricati a ogni apertura; rimandare la stessa
+proposta fuori agenda con una nota funziona, `isManual`). Il professionista
+parte dalla proposta del cliente su "Modifica" e dalla data del preventivo su
+"Modifica preventivo": la fascia dell'agenda se coincide, altrimenti i campi
+manuali già compilati (`presetSchedule` in `RequestCard.tsx`).
+
+**Verifica**: in locale, proposte fuori agenda (23 e 24 ottobre) precompilate
+correttamente da entrambe le parti; rimando con nota accettato (201).
+
+## 224. Scadenza nell'email e al cliente, "Richiesta ripristinata"
+
+**Richiesta dell'utente**: le tre migliorie proposte in §221-§222.
+
+- **Email "Nuova richiesta"**: per le richieste non urgenti riporta "Puoi
+  rispondere fino all'11 dicembre alle 16:36." (payload `respondUntil` di
+  `NEW_LEAD` in tutti e quattro i punti di invio, helper
+  `respondUntilForEmail`). Le urgenti restano come prima (§221). Test in
+  `email-templates.test.ts`.
+- **Cliente**: nella scheda aperta di `/le-mie-richieste`, "La richiesta
+  resta aperta ai preventivi fino all'… alle …" (campo `openUntil` di
+  `listForClient`: richiesta aperta, non scaduta, nessun preventivo
+  accettato).
+- **"Richiesta ripristinata"**: dopo "Ripristina", "Ripristina dall'archivio"
+  o "Ripristina tutte", messaggio verde per 5 secondi in cima all'elenco
+  ("la trovi di nuovo in Tutte"), sia cliente sia professionista
+  (`RestoredNotice`, evento `request-restored` sulla finestra).
+- Formato data condiviso `formatItalianUntil` in
+  `packages/shared/src/requestDeadline.ts` (sito ed email).
+
+**Verifica**: test API (285) e typecheck; in locale scritta del cliente e
+messaggio di ripristino visibili.
+
+## 225. Accettando un preventivo spariscono "Modifica" e "Rifiuta"
+
+**Richiesta dell'utente**: "quando il cliente clicca su accetta preventivo,
+devono scomparire momentaneamente i pulsanti modifica e rifiuta altrimenti
+c'è troppa confusione".
+
+**Decisione**: in `QuoteCard`, mentre è aperta la scelta del pagamento
+(`choosingPayment`) restano solo "Accetta preventivo" e "Annulla" di quel
+passaggio; con "Annulla" tornano "Modifica" e "Rifiuta". Stesso principio,
+su richiesta dell'utente, mentre sceglie una nuova data ("Modifica") e mentre
+conferma il rifiuto: gli altri pulsanti spariscono finché non annulla.
+
+**Verifica**: in locale, conteggio dei pulsanti prima e dopo "Annulla".
