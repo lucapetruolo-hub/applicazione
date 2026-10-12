@@ -774,6 +774,7 @@ export function GuidedRequestCard({
               professionalProfileId={openTimelineProfessionalId}
               viewerRole="CLIENT"
               otherPartyName={request.sentTo.find((p) => p.id === openTimelineProfessionalId)?.businessName ?? null}
+              otherPartyImageUrl={request.sentTo.find((p) => p.id === openTimelineProfessionalId)?.imageUrl ?? null}
               onClose={() => setOpenTimelineProfessionalId(null)}
             />
           ) : null}

@@ -24,7 +24,7 @@ const AGENDA_PREVIEW_DAYS = 4;
 // uguali (flex 1 + flexBasis 0) senza superare questo valore. Bug reali
 // corretti: con colonne fisse da 90px la griglia usciva dallo schermo dei
 // telefoni stretti; con colonne fisse da 78px gli orari andavano su due
-// righe e la fascia barrata usciva dalla scheda (docs/CHANGELOG.md §226).
+// righe e la fascia barrata usciva dalla scheda (docs/CHANGELOG.md §227).
 const AGENDA_COLUMN_WIDTH = 96;
 const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
@@ -613,7 +613,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 righe separate (non un'unica riga con le intestazioni) per
                 lo stesso motivo di prima — vedi bug qui sotto. Larghezza
                 massima pari alla griglia (richiesta esplicita dell'utente,
-                docs/CHANGELOG.md §226): su computer le frecce finivano
+                docs/CHANGELOG.md §227): su computer le frecce finivano
                 all'estremo destro della scheda, lontane dai giorni; ora
                 stanno sopra l'ultima colonna. */}
             <YStack gap="$1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * AGENDA_PREVIEW_DAYS}>
