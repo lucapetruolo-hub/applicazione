@@ -140,31 +140,35 @@ export function QuoteCard({
   async function startChoosingDate() {
     setError(null);
     setIsChoosingDate(true);
-    if (freeSlots === null) {
-      try {
-        const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
-        const slots: FreeSlot[] = [];
-        for (const day of agenda.days) {
-          for (const slot of day.slots) {
-            const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
-            if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
-              slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
-            }
+    // Riparte sempre dall'ultima data proposta (richiesta esplicita
+    // dell'utente, docs/CHANGELOG.md §223): la tua proposta in attesa se
+    // c'è, altrimenti quella del preventivo. Orari ricaricati a ogni apertura.
+    const lastStart = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedDate : quote.estimatedStartDate;
+    const lastEnd = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate;
+    setFreeSlots(null);
+    try {
+      const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
+      const slots: FreeSlot[] = [];
+      for (const day of agenda.days) {
+        for (const slot of day.slots) {
+          const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
+          if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
+            slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
           }
         }
-        const currentDate = quote.estimatedStartDate.slice(0, 10);
-        const currentStartTime = quote.estimatedStartDate.slice(11, 16);
-        const currentEndTime = quote.estimatedEndDate ? quote.estimatedEndDate.slice(11, 16) : currentStartTime;
-        const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
-        if (!matching) {
-          slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
-        }
-        setFreeSlots(slots);
-        const initial = matching ?? slots[0];
-        if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
       }
+      const currentDate = lastStart.slice(0, 10);
+      const currentStartTime = lastStart.slice(11, 16);
+      const currentEndTime = lastEnd ? lastEnd.slice(11, 16) : currentStartTime;
+      const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
+      if (!matching) {
+        slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
+      }
+      setFreeSlots(slots);
+      const initial = matching ?? slots[0];
+      if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
     }
   }
 
@@ -188,6 +192,8 @@ export function QuoteCard({
         return;
       }
       [date, startTime, endTime] = parts as [string, string, string];
+      // L'ultima proposta fuori dall'agenda, rimandata così com'è (magari con una nota).
+      isManual = Boolean(freeSlots?.find((s) => s.isCurrentProposal && `${s.date}|${s.startTime}|${s.endTime}` === selectedSlotKey));
     }
     setError(null);
     setIsProposing(true);
@@ -217,6 +223,59 @@ export function QuoteCard({
       setIsRejecting(false);
     }
   }
+
+  // Scelta di un'altra data: sul preventivo appena ricevuto e anche per
+  // cambiare una proposta già inviata, mentre si aspetta la risposta del
+  // professionista (richiesta esplicita dell'utente, docs/CHANGELOG.md §221).
+  const dateChooser = isChoosingDate ? (
+    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+      {freeSlots === null ? (
+        <Text fontSize="$2" color={brand.grafite70}>
+          Caricamento orari disponibili...
+        </Text>
+      ) : freeSlots.length === 0 ? (
+        <Text fontSize="$2" color={brand.grafite70}>
+          Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
+        </Text>
+      ) : (
+        <>
+          <select aria-label="Orario proposto" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
+            {freeSlots.map((slot) => {
+              const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
+              const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
+              return (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              );
+            })}
+            <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
+          </select>
+          {selectedSlotKey === MANUAL_OPTION_VALUE ? (
+            <YStack gap="$2">
+              <XStack gap="$2" flexWrap="wrap">
+                <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
+                <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+              </XStack>
+              <Text fontSize={11} color={brand.grafite70}>
+                Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
+              </Text>
+            </YStack>
+          ) : null}
+          <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
+          <XStack gap="$2" flexWrap="wrap">
+            <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
+              {isProposing ? "Invio..." : "Invia proposta"}
+            </CardButton>
+            <CardButton onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
+              Annulla
+            </CardButton>
+          </XStack>
+        </>
+      )}
+    </YStack>
+  ) : null;
 
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
@@ -349,7 +408,7 @@ export function QuoteCard({
       {quote.status === "SENT" ? (
         <>
           <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            {!choosingPayment ? (
+            {!choosingPayment && !isChoosingDate && !confirmingReject ? (
               <CardButton
                 tone="primary"
                 onPress={() => {
@@ -360,12 +419,15 @@ export function QuoteCard({
                 Accetta preventivo
               </CardButton>
             ) : null}
-            {!isChoosingDate ? (
+            {/* Durante accettazione, modifica o rifiuto restano solo i
+                pulsanti di quel passaggio (richiesta esplicita
+                dell'utente, docs/CHANGELOG.md §225). */}
+            {!isChoosingDate && !choosingPayment && !confirmingReject ? (
               <CardButton fill={brand.ottone} onPress={startChoosingDate}>
                 Modifica
               </CardButton>
             ) : null}
-            {!isChoosingDate && !confirmingReject ? (
+            {!isChoosingDate && !confirmingReject && !choosingPayment ? (
               <CardButton tone="danger" onPress={() => setConfirmingReject(true)}>
                 Rifiuta
               </CardButton>
@@ -414,55 +476,7 @@ export function QuoteCard({
               </XStack>
             </YStack>
           ) : null}
-          {isChoosingDate ? (
-            <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-              {freeSlots === null ? (
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Caricamento orari disponibili...
-                </Text>
-              ) : freeSlots.length === 0 ? (
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
-                </Text>
-              ) : (
-                <>
-                  <select aria-label="Orario proposto" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
-                    {freeSlots.map((slot) => {
-                      const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
-                      const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
-                      return (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      );
-                    })}
-                    <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
-                  </select>
-                  {selectedSlotKey === MANUAL_OPTION_VALUE ? (
-                    <YStack gap="$2">
-                      <XStack gap="$2" flexWrap="wrap">
-                        <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
-                        <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
-                        <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
-                      </XStack>
-                      <Text fontSize={11} color={brand.grafite70}>
-                        Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
-                      </Text>
-                    </YStack>
-                  ) : null}
-                  <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
-                  <XStack gap="$2" flexWrap="wrap">
-                    <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
-                      {isProposing ? "Invio..." : "Invia proposta"}
-                    </CardButton>
-                    <CardButton onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
-                      Annulla
-                    </CardButton>
-                  </XStack>
-                </>
-              )}
-            </YStack>
-          ) : null}
+          {dateChooser}
         </>
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
         <YStack gap="$1">
@@ -482,6 +496,12 @@ export function QuoteCard({
               {quote.clientProposedNote}
             </Text>
           ) : null}
+          {!isChoosingDate ? (
+            <CardButton alignSelf="flex-start" fill={brand.ottone} onPress={startChoosingDate}>
+              Cambia proposta
+            </CardButton>
+          ) : null}
+          {dateChooser}
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
         <YStack gap="$2">
