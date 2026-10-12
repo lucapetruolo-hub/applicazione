@@ -18042,6 +18042,15 @@ uguali), colonna minima da 78 a 84px su computer, orari a 9,5px con
 spaziatura lievemente ridotta così "09:00–13:00" resta su una riga anche su
 un telefono da 360px.
 
-**Verifica:** typecheck di `packages/ui`; anteprime prima/dopo da computer
-(1100px) e telefono (375 e 360px) in
-`/mnt/project-files/anteprime/agenda-ricerca/`.
+**Stesso controllo sull'agenda della pagina del professionista** (richiesto
+dall'utente subito dopo): colonne allineate (larghezza fissa) ma orari a
+11,5px in colonne da 78px, quindi su due righe, e la fascia barrata del
+giovedì usciva dalla scheda su un telefono da 360px. Ora in
+`ProfessionalDetailContent.tsx` le colonne si dividono lo spazio in parti
+uguali (`flex={1}` + `flexBasis={0}`) fino a un massimo di 96px, orari a
+10,5px (9,5px sotto i 660px).
+
+**Verifica:** typecheck di `packages/ui` e `apps/web`; anteprime prima/dopo
+da computer (1100px) e telefono (375 e 360px) in
+`/mnt/project-files/anteprime/agenda-ricerca/` (`profilo-*` per la pagina
+del professionista).

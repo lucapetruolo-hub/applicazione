@@ -20,16 +20,12 @@ import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 // bisogno di una ricerca aggiuntiva se non c'è disponibilità nella finestra:
 // il primo orario libero è cercato nello stesso payload già scaricato.
 const AGENDA_PREVIEW_DAYS = 4;
-// Bug reale corretto: a 90px per colonna, 4 colonne (360px) superavano lo
-// spazio realmente disponibile su molti schermi da cellulare (padding
-// orizzontale della pagina già sottratto, es. ~358px su un viewport di
-// 390px, molto meno su un Android stretto da 360px) — la griglia risultava
-// tagliata/spinta fuori schermo su dispositivi reali (mai riprodotto in modo
-// netto in locale su un solo viewport di test, ma il margine era già troppo
-// risicato per essere sicuro). Stessa larghezza colonna della mini-agenda di
-// ricerca (`AGENDA_COLUMN_WIDTH` in packages/ui/src/ProfessionalCard.tsx),
-// che con lo stesso numero di colonne non aveva mai mostrato il problema.
-const AGENDA_COLUMN_WIDTH = 78;
+// Larghezza MASSIMA di una colonna: le colonne si dividono lo spazio in parti
+// uguali (flex 1 + flexBasis 0) senza superare questo valore. Bug reali
+// corretti: con colonne fisse da 90px la griglia usciva dallo schermo dei
+// telefoni stretti; con colonne fisse da 78px gli orari andavano su due
+// righe e la fascia barrata usciva dalla scheda (docs/CHANGELOG.md §226).
+const AGENDA_COLUMN_WIDTH = 96;
 const WEEKDAY_SHORT_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 
@@ -664,7 +660,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
 
               <XStack>
                 {agendaWindowDays.map((day) => (
-                  <YStack key={day.date} width={AGENDA_COLUMN_WIDTH} flexShrink={0} alignItems="center" gap={2}>
+                  <YStack key={day.date} flex={1} flexBasis={0} minWidth={0} maxWidth={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
                     <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
@@ -686,8 +682,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         return (
                           <XStack
                             key={day.date}
-                            width={AGENDA_COLUMN_WIDTH}
-                            flexShrink={0}
+                            flex={1}
+                            flexBasis={0}
+                            minWidth={0}
+                            maxWidth={AGENDA_COLUMN_WIDTH}
                             alignItems="center"
                             justifyContent="center"
                             paddingVertical={4}
@@ -705,15 +703,19 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                         return (
                           <XStack
                             key={day.date}
-                            width={AGENDA_COLUMN_WIDTH}
-                            flexShrink={0}
+                            flex={1}
+                            flexBasis={0}
+                            minWidth={0}
+                            maxWidth={AGENDA_COLUMN_WIDTH}
                             alignItems="center"
                             justifyContent="center"
                             paddingVertical={4}
                           >
                             <Text
                               fontFamily="$mono"
-                              fontSize={11.5}
+                              fontSize={10.5}
+                              $xs={{ fontSize: 9.5 }}
+                              letterSpacing={-0.3}
                               color={brand.grafite70}
                               textDecorationLine="line-through"
                               textAlign="center"
@@ -735,15 +737,17 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       return (
                         <XStack
                           key={day.date}
-                          width={AGENDA_COLUMN_WIDTH}
-                          flexShrink={0}
+                          flex={1}
+                          flexBasis={0}
+                          minWidth={0}
+                          maxWidth={AGENDA_COLUMN_WIDTH}
                           alignItems="center"
                           justifyContent="center"
                           paddingVertical={3}
                         >
                           <Link href={href} style={{ textDecoration: "none" }}>
-                            <XStack paddingHorizontal="$2" paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontFamily="$mono" fontSize={11.5} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                            <XStack paddingHorizontal={6} $xs={{ paddingHorizontal: 4 }} paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                              <Text fontFamily="$mono" fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>
                             </XStack>
