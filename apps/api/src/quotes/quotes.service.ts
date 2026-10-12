@@ -19,7 +19,7 @@ import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 
 
-/** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §227). */
+/** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
   return { start: start.toISOString(), end: end ? end.toISOString() : null };
 }
@@ -218,7 +218,7 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
         change: scheduleChange,
-        // Prima e dopo nell'email (docs/CHANGELOG.md §227).
+        // Prima e dopo nell'email (docs/CHANGELOG.md §228).
         from: slotPayload(existingQuote!.estimatedStartDate, existingQuote!.estimatedEndDate),
         to: slotPayload(data.estimatedStartDate, data.estimatedEndDate),
       });
@@ -243,7 +243,7 @@ export class QuotesService {
           itemsChanged,
           notesChanged,
           ...(notesChanged && notes ? { note: notes } : {}),
-          // Note di prima nell'email (docs/CHANGELOG.md §227).
+          // Note di prima nell'email (docs/CHANGELOG.md §228).
           ...(notesChanged && existingQuote.notes?.trim() ? { previousNote: existingQuote.notes.trim() } : {}),
           ...(priceChanged && totalsBefore
             ? {
@@ -383,7 +383,7 @@ export class QuotesService {
         quoteId: quote.id,
         noteOnly: true,
         note,
-        // Nota di prima e appuntamento invariato nell'email (docs/CHANGELOG.md §227).
+        // Nota di prima e appuntamento invariato nell'email (docs/CHANGELOG.md §228).
         ...(quote.clientNote?.trim() ? { previousNote: quote.clientNote.trim() } : {}),
         to: slotPayload(quote.estimatedStartDate, quote.estimatedEndDate),
       });

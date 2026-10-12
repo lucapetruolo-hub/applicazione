@@ -23,7 +23,7 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
   fill?: string;
   /** Versione più piccola, per i pannelli stretti come la prenotazione in Agenda (richiesta dell'utente). */
   compact?: boolean;
-  /** Versione piccola solo su telefono, per le file di pulsanti delle schede (docs/CHANGELOG.md §227). */
+  /** Versione piccola solo su telefono, per le file di pulsanti delle schede (docs/CHANGELOG.md §228). */
   compactOnPhone?: boolean;
   children: ReactNode;
 };

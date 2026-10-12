@@ -124,7 +124,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
         Intervento
       </Text>
-      {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §227). */}
+      {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
         {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         {" · "}

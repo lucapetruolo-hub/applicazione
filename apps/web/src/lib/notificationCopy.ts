@@ -89,7 +89,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
 
-/** Appuntamento dal payload (`{ start, end }`): "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §227). */
+/** Appuntamento dal payload (`{ start, end }`): "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §228). */
 function slotLabel(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const { start, end } = value as { start?: unknown; end?: unknown };
@@ -120,7 +120,7 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "📝", message: `Il cliente ha aggiunto una nota al preventivo, senza cambiare data e orario.${quotedNote}` };
   }
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
-  // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §227).
+  // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
   if (change && type === "QUOTE_DATE_CHANGED") {
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo${newSlot ? `: ora è ${newSlot}` : ""}.` };
@@ -132,7 +132,7 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "📅", message: `Il professionista non è disponibile in quella data: l'appuntamento resta ${newSlot}.` };
   }
   // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
-  // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §227).
+  // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §228).
   if (type === "JOB_COMPLETED" && typeof data.changeReason === "string" && data.changeReason.trim()) {
     return { icon: "✅", message: `Il professionista ha segnalato il lavoro come terminato, con un importo diverso dal preventivo: "${data.changeReason.trim()}"` };
   }

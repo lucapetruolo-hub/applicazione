@@ -288,7 +288,7 @@ export function QuoteCard({
             </Text>
           </XStack>
         </Link>
-        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§227). */}
+        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
         {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
@@ -504,7 +504,7 @@ export function QuoteCard({
           {dateChooser}
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
-        // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§227).
+        // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§228).
         <Text fontSize="$2" color={brand.verificato} fontWeight="600">
           Accettato
         </Text>

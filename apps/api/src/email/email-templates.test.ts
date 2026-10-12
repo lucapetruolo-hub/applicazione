@@ -65,7 +65,7 @@ describe("email delle notifiche", () => {
     expect(renderEmail(content).text).toContain("09:30");
   });
 
-  it("lavoro terminato: riporta il motivo dell'importo diverso dal preventivo (docs/CHANGELOG.md §227)", () => {
+  it("lavoro terminato: riporta il motivo dell'importo diverso dal preventivo (docs/CHANGELOG.md §228)", () => {
     const withReason = renderEmail(notificationEmail("JOB_COMPLETED", { finalAmountEurCents: 8000, changeReason: "Raccordo da sostituire" }, ctx)!);
     expect(withReason.text).toContain("Diverso dal preventivo perché");
     expect(withReason.text).toContain("Raccordo da sostituire");
@@ -73,7 +73,7 @@ describe("email delle notifiche", () => {
     expect(without.text).not.toContain("Diverso dal preventivo");
   });
 
-  it("preventivo accettato: dati del cliente e fascia dell'appuntamento nell'email (docs/CHANGELOG.md §227)", () => {
+  it("preventivo accettato: dati del cliente e fascia dell'appuntamento nell'email (docs/CHANGELOG.md §228)", () => {
     const email = renderEmail(
       notificationEmail(
         "QUOTE_ACCEPTED",
@@ -87,7 +87,7 @@ describe("email delle notifiche", () => {
     expect(email.text).toContain("09:30–13:00");
   });
 
-  it("modifiche dell'appuntamento: descrizione, prima e nuova proposta (docs/CHANGELOG.md §227)", () => {
+  it("modifiche dell'appuntamento: descrizione, prima e nuova proposta (docs/CHANGELOG.md §228)", () => {
     const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
     const slots = {
       change: "both",
@@ -102,7 +102,7 @@ describe("email delle notifiche", () => {
     }
   });
 
-  it("modifiche della sola nota: nota di prima, nota nuova e appuntamento invariato (docs/CHANGELOG.md §227)", () => {
+  it("modifiche della sola nota: nota di prima, nota nuova e appuntamento invariato (docs/CHANGELOG.md §228)", () => {
     const payload = { noteOnly: true, previousNote: "Suonare al citofono", note: "Citofono rotto, chiamatemi", to: { start: "2026-10-14T09:30:00.000Z", end: "2026-10-14T11:00:00.000Z" } };
     for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
       const text = renderEmail(notificationEmail(type, payload, ctx)!).text;
@@ -116,7 +116,7 @@ describe("email delle notifiche", () => {
     expect(updated).toContain('Note nuove: "Materiali inclusi"');
   });
 
-  it("ogni email di una richiesta riporta la descrizione dell'intervento (docs/CHANGELOG.md §227)", () => {
+  it("ogni email di una richiesta riporta la descrizione dell'intervento (docs/CHANGELOG.md §228)", () => {
     const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
     for (const type of NOTIFICATION_EMAIL_TYPES) {
       const content = notificationEmail(type, {}, withDescription);

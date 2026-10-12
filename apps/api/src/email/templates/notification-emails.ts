@@ -46,7 +46,7 @@ export type NotificationEmailContext = {
   when: Date | null;
   /** Data proposta dal cliente (QUOTE_DATE_PROPOSED). */
   proposedWhen: Date | null;
-  /** Descrizione della richiesta, per capire di quale lavoro si tratta (docs/CHANGELOG.md §227). */
+  /** Descrizione della richiesta, per capire di quale lavoro si tratta (docs/CHANGELOG.md §228). */
   description?: string | null;
 };
 
@@ -58,7 +58,7 @@ function quotedNote(payload: Payload): string[] {
   return typeof payload.note === "string" && payload.note.trim() ? [`Nota: "${payload.note.trim()}"`] : [];
 }
 
-/** Nota di prima e nota nuova, per le modifiche che cambiano solo la nota (docs/CHANGELOG.md §227). */
+/** Nota di prima e nota nuova, per le modifiche che cambiano solo la nota (docs/CHANGELOG.md §228). */
 function noteChange(payload: Payload, previousLabel = "Nota di prima", newLabel = "Nota nuova"): string[] {
   const previous = typeof payload.previousNote === "string" ? payload.previousNote.trim() : "";
   const current = typeof payload.note === "string" ? payload.note.trim() : "";
@@ -66,7 +66,7 @@ function noteChange(payload: Payload, previousLabel = "Nota di prima", newLabel 
   return [`${previousLabel}: "${previous}"`, current ? `${newLabel}: "${current}"` : "La nota è stata tolta."];
 }
 
-/** Appuntamento invariato dal payload, per le modifiche che cambiano solo la nota (§227). */
+/** Appuntamento invariato dal payload, per le modifiche che cambiano solo la nota (§228). */
 function unchangedSlot(payload: Payload): { label: string; value: string }[] {
   const slot = slotText(payload.to);
   return slot ? [{ label: "Appuntamento (invariato)", value: slot }] : [];
@@ -98,7 +98,7 @@ function proJobDetails(ctx: NotificationEmailContext, extra: { label: string; va
   return jobDetails({ ...ctx, businessName: null }, extra);
 }
 
-/** Appuntamento "prima"/"dopo" dal payload: "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §227). */
+/** Appuntamento "prima"/"dopo" dal payload: "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §228). */
 function slotText(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const slot = value as { start?: unknown; end?: unknown };
@@ -108,7 +108,7 @@ function slotText(value: unknown): string | null {
   return `${formatAppointment(start)}${end ? `–${formatAppointmentTime(end)}` : ""}`;
 }
 
-/** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §227). */
+/** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §228). */
 function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabel: string, toLabel: string, withPro: boolean) {
   const from = slotText(payload.from);
   const to = slotText(payload.to);
@@ -207,7 +207,7 @@ const BUILDERS: Record<string, Builder> = {
   },
   QUOTE_ACCEPTED: (payload, ctx) => {
     // Dati del cliente subito nell'email: a preventivo accettato si sbloccano
-    // (richiesta esplicita dell'utente, docs/CHANGELOG.md §227).
+    // (richiesta esplicita dell'utente, docs/CHANGELOG.md §228).
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
@@ -381,7 +381,7 @@ const BUILDERS: Record<string, Builder> = {
 
   // ── Lavori e appuntamenti ──────────────────────────────────────────────
   JOB_COMPLETED: (payload, ctx) => {
-    // Importo diverso dal preventivo: il motivo scritto dal professionista (docs/CHANGELOG.md §227).
+    // Importo diverso dal preventivo: il motivo scritto dal professionista (docs/CHANGELOG.md §228).
     const reason = str(payload.changeReason);
     const details = [
       ...(typeof payload.finalAmountEurCents === "number" ? [{ label: "Importo finale", value: formatEur(payload.finalAmountEurCents) }] : []),
@@ -991,7 +991,7 @@ export function notificationEmail(type: string, payload: Payload, ctx: Notificat
 /**
  * Descrizione dell'intervento in ogni email che riguarda una richiesta, per
  * capire subito di quale si tratta (richiesta esplicita dell'utente,
- * docs/CHANGELOG.md §227): nel riquadro, dopo "Lavoro" se c'è. Il
+ * docs/CHANGELOG.md §228): nel riquadro, dopo "Lavoro" se c'è. Il
  * professionista la vede già prima dell'accettazione, quindi non è un dato
  * di contatto (CLAUDE.md §5 punto 9).
  */

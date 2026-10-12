@@ -18044,7 +18044,41 @@ una zona da toccare di 44px (apre il profilo, comoda dal telefono).
 **Verifica**: tipi di `apps/web` e `apps/api` verdi, build di produzione e
 schermate in locale su computer e telefono.
 
-## 227. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
+## 227. Orari della "Prossima disponibilità" allineati sotto i giorni
+
+**Richiesta esplicita dell'utente** (12/10/2026, con screenshot): nella
+pagina dei risultati di ricerca la mini-agenda della scheda professionista
+si vedeva male: le fasce orarie non stavano sotto il loro giorno, i trattini
+"-" erano sparsi e la fascia barrata del giovedì usciva dallo spazio.
+
+**Causa:** in `packages/ui/src/ProfessionalCard.tsx` intestazioni e celle
+usavano `flex={1}` da solo, che in Tamagui (web) diventa `flexBasis: auto`:
+ogni colonna prendeva la larghezza del proprio contenuto, quindi una colonna
+con una pillola larga si allargava e le righe sotto non coincidevano più con
+le intestazioni.
+
+**Decisione:** `flexBasis={0}` su intestazioni e celle (colonne tutte
+uguali), colonna minima da 78 a 84px su computer, orari a 9,5px con
+spaziatura lievemente ridotta così "09:00–13:00" resta su una riga anche su
+un telefono da 360px.
+
+**Stesso controllo sull'agenda della pagina del professionista** (richiesto
+dall'utente subito dopo): colonne allineate (larghezza fissa) ma orari a
+11,5px in colonne da 78px, quindi su due righe, e la fascia barrata del
+giovedì usciva dalla scheda su un telefono da 360px. Ora in
+`ProfessionalDetailContent.tsx` le colonne si dividono lo spazio in parti
+uguali (`flex={1}` + `flexBasis={0}`) fino a un massimo di 96px, orari a
+10,5px (9,5px sotto i 660px). Su richiesta dell'utente le frecce dei giorni,
+che su computer stavano all'estremo destro della scheda, ora stanno sopra
+l'ultima colonna: frecce, intestazioni e righe degli orari hanno la stessa
+larghezza massima della griglia (4 × 96px).
+
+**Verifica:** typecheck di `packages/ui` e `apps/web`; anteprime prima/dopo
+da computer (1100px) e telefono (375 e 360px) in
+`/mnt/project-files/anteprime/agenda-ricerca/` (`profilo-*` per la pagina
+del professionista).
+
+## 228. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
 
 **Richiesta dell'utente**: nella scheda del preventivo accettato mettere in
 fila gli ultimi tre pulsanti (Contatta/Cronologia, Segnala un problema,

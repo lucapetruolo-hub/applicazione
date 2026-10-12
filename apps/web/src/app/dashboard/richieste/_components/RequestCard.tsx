@@ -833,7 +833,7 @@ export function RequestCard({
                   {/* Tasto Chat in fondo ai "Dettagli cliente" (richiesta
                       esplicita dell'utente), solo quando le azioni in fondo
                       alla scheda non hanno già "Contatta/Cronologia", che apre
-                      la stessa conversazione (docs/CHANGELOG.md §227). */}
+                      la stessa conversazione (docs/CHANGELOG.md §228). */}
                   {stage === "scaduta" || stage === "chiusa" ? (
                     <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
                       <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
