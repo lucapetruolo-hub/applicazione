@@ -1,40 +1,16 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { clientCanReview, type ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
-// Recensioni "doppio cieco" (richiesta esplicita dell'utente): pubbliche
-// solo quando entrambe le parti hanno recensito, a meno che non passino
-// questi giorni di attesa — a quel punto la controparte mancante riceve una
-// recensione automatica a 5 stelle (mostrata con l'etichetta "(recensione
-// automatica)"), che sblocca comunque quella già scritta.
-// Da docs/CHANGELOG.md §189 ognuno recensisce subito dopo il proprio
-// "Lavoro terminato", anche prima dell'altro: l'attesa parte solo quando
-// entrambi hanno segnato il lavoro come terminato (e dalla recensione, se
-// arriva dopo), così la coppia non diventa mai pubblica prima.
-export const AUTO_REVIEW_AFTER_DAYS = 3;
-
-// Segnalazione decisa: il cliente può recensire anche un lavoro mai chiuso
-// (clientCanReview), e l'attesa resta quella di sempre.
-const DECIDED_ISSUE_STATUSES = ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] as const;
-
-/** Entrambi hanno cliccato "Lavoro terminato" da almeno `threshold`. */
-function bothCompletedBefore(threshold: Date) {
-  return {
-    status: "COMPLETED" as const,
-    clientConfirmedCompletedAt: { lt: threshold },
-    // null solo per lavori chiusi dal vecchio cambio di stato del calendario.
-    OR: [{ professionalCompletedAt: null }, { professionalCompletedAt: { lt: threshold } }],
-  };
-}
+// Le recensioni del cliente sono pubbliche subito: il professionista non
+// recensisce più il cliente e il "doppio cieco" non esiste più
+// (docs/CHANGELOG.md §215).
 
 @Injectable()
 export class ReviewsService {
-  private readonly logger = new Logger(ReviewsService.name);
-
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly professionalMetricsService: ProfessionalMetricsService,
@@ -43,9 +19,8 @@ export class ReviewsService {
 
   /**
    * Recensioni scritte dal cliente ai professionisti, per la scheda
-   * "Inviate" di /le-mie-recensioni (docs/CHANGELOG.md §180). Tutte, anche
-   * quelle non ancora pubbliche: sono sue. `isPublic` dice se il "doppio
-   * cieco" le ha già sbloccate, `hidden` se un admin le ha nascoste.
+   * /le-mie-recensioni (docs/CHANGELOG.md §180). `hidden` dice se un admin
+   * le ha nascoste.
    */
   async listMine(clientId: string) {
     const reviews = await this.prisma.review.findMany({
@@ -53,7 +28,6 @@ export class ReviewsService {
       include: {
         booking: {
           select: {
-            clientReview: { select: { id: true } },
             professionalProfile: { select: { id: true, businessName: true, deletedAt: true } },
           },
         },
@@ -66,8 +40,6 @@ export class ReviewsService {
       comment: review.comment,
       mediaUrls: review.photoUrls,
       createdAt: review.createdAt.toISOString(),
-      isAutomatic: review.isAutomatic,
-      isPublic: review.booking.clientReview !== null,
       hidden: review.hiddenAt !== null,
       professionalProfileId: review.booking.professionalProfile.deletedAt ? null : review.booking.professionalProfile.id,
       businessName: review.booking.professionalProfile.businessName,
@@ -76,8 +48,7 @@ export class ReviewsService {
 
   /**
    * Ultime recensioni pubbliche della piattaforma (sezione riprova sociale
-   * in home). Stesso filtro "doppio cieco" del profilo pubblico: visibili
-   * solo se esiste anche la ClientReview sullo stesso booking. Demo esclusi
+   * in home). Demo esclusi
    * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
    * se non ce ne sono, la home non mostra proprio la sezione.
    */
@@ -86,7 +57,6 @@ export class ReviewsService {
       where: {
         hiddenAt: null,
         booking: {
-          clientReview: { isNot: null },
           professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
         },
       },
@@ -105,11 +75,7 @@ export class ReviewsService {
     return reviews.map((review) => ({
       id: review.id,
       rating: review.rating,
-      // Le automatiche (5 stelle per controparte assente) non hanno testo
-      // libero: l'etichetta "(recensione automatica)" la mette il frontend,
-      // come già nella pagina profilo pubblica.
-      comment: review.isAutomatic ? null : review.comment,
-      isAutomatic: review.isAutomatic,
+      comment: review.comment,
       createdAt: review.createdAt.toISOString(),
       // Nome di chi ha scritto la recensione (richiesta esplicita
       // dell'utente: "il nome da chi è stata fatta la recensione a mò di
@@ -144,7 +110,6 @@ export class ReviewsService {
       include: {
         review: true,
         issue: { select: { status: true } },
-        clientReview: { select: { id: true } },
         professionalProfile: { select: { userId: true } },
         quote: { select: { guidedRequestId: true } },
       },
@@ -183,80 +148,16 @@ export class ReviewsService {
     // Metriche di affidabilità (CLAUDE.md §15, evento 5).
     await this.professionalMetricsService.recordReview(booking.professionalProfileId, input.rating);
 
-    // Avviso al professionista (docs/CHANGELOG.md §185). Mai il voto: con il
-    // "doppio cieco" lo vede solo quando ha recensito anche lui il cliente.
+    // Avviso al professionista (docs/CHANGELOG.md §185): la recensione è già
+    // pubblica sul suo profilo.
     await this.notificationsService.notify(booking.professionalProfile.userId, "NEW_REVIEW", {
       bookingId: booking.id,
       guidedRequestId: booking.quote?.guidedRequestId ?? null,
-      published: booking.clientReview !== null,
       // Il cliente può recensire prima che il professionista segni il lavoro
       // come terminato (§189): l'email gli ricorda di farlo.
       professionalCompleted: booking.status === "COMPLETED",
     });
 
     return { id: review.id };
-  }
-
-  /**
-   * Sblocco automatico "doppio cieco" (richiesta esplicita dell'utente):
-   * se una recensione esiste da più di AUTO_REVIEW_AFTER_DAYS giorni senza
-   * la controparte sull'altro lato, e da altrettanti giorni entrambi hanno
-   * segnato il lavoro come terminato (§189), genera quella mancante a 5 stelle
-   * (isAutomatic: true) — così entrambe risultano presenti e la coppia
-   * diventa pubblica (vedi il filtro "entrambe esistono" in
-   * ProfessionalsService.search/getById).
-   */
-  @Cron(CronExpression.EVERY_HOUR)
-  async runAutoPublishCheck(): Promise<void> {
-    const threshold = new Date(Date.now() - AUTO_REVIEW_AFTER_DAYS * 24 * 60 * 60 * 1000);
-
-    const staleReviews = await this.prisma.review.findMany({
-      where: {
-        isAutomatic: false,
-        createdAt: { lt: threshold },
-        booking: {
-          clientReview: { is: null },
-          OR: [
-            bothCompletedBefore(threshold),
-            // Chiuso d'ufficio dopo i promemoria (§190): l'altra parte ha già avuto il suo tempo.
-            { completionAutoClosedAt: { not: null } },
-            { issue: { status: { in: [...DECIDED_ISSUE_STATUSES] } } },
-          ],
-        },
-      },
-      include: { booking: true },
-    });
-    for (const review of staleReviews) {
-      await this.prisma.clientReview.create({
-        data: { bookingId: review.bookingId, clientId: review.booking.clientId, rating: 5, isAutomatic: true, mediaUrls: [] },
-      });
-    }
-
-    const staleClientReviews = await this.prisma.clientReview.findMany({
-      // Mai una recensione automatica a 5 stelle al professionista se il
-      // cliente ha segnalato un problema ancora aperto o accolto (§164-§165).
-      where: {
-        isAutomatic: false,
-        createdAt: { lt: threshold },
-        booking: {
-          review: { is: null },
-          AND: [
-            { OR: [bothCompletedBefore(threshold), { completionAutoClosedAt: { not: null } }] },
-            { OR: [{ issue: { is: null } }, { issue: { status: { in: ["REJECTED", "RESOLVED"] } } }] },
-          ],
-        },
-      },
-    });
-    for (const clientReview of staleClientReviews) {
-      await this.prisma.review.create({
-        data: { bookingId: clientReview.bookingId, rating: 5, isAutomatic: true, photoUrls: [] },
-      });
-    }
-
-    if (staleReviews.length > 0 || staleClientReviews.length > 0) {
-      this.logger.log(
-        `Recensioni automatiche generate: ${staleReviews.length} lato cliente→professionista mancanti, ${staleClientReviews.length} lato professionista→cliente mancanti.`,
-      );
-    }
   }
 }

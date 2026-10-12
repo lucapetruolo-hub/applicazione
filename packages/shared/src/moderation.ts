@@ -17,7 +17,6 @@ export type ModerationAction = (typeof moderationActions)[number];
  */
 export const MODERATION_ACTIONS_BY_TARGET: Record<ContentReportTargetType, readonly ModerationAction[]> = {
   REVIEW: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
-  CLIENT_REVIEW: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
   PROFESSIONAL_PROFILE: ["SUSPEND_PROFILE", "REQUEST_CORRECTION", "WARN", "SUSPEND_USER"],
   GUIDED_REQUEST: ["HIDE_CONTENT", "WARN", "SUSPEND_USER"],
 };
@@ -70,7 +69,6 @@ export function moderationActionOwnerText(action: ModerationAction | null, targe
 export const CONTENT_REPORT_TARGET_LABEL: Record<ContentReportTargetType, string> = {
   PROFESSIONAL_PROFILE: "Profilo professionista",
   REVIEW: "Recensione del cliente",
-  CLIENT_REVIEW: "Recensione sul cliente",
   GUIDED_REQUEST: "Richiesta di un cliente",
 };
 

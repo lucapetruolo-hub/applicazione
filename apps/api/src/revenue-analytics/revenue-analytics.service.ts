@@ -210,7 +210,7 @@ export class RevenueAnalyticsService {
         select: { updatedAt: true, finalAmountEurCents: true },
       }),
       this.prisma.review.findMany({
-        where: { hiddenAt: null, createdAt: createdIn, booking: { professionalProfileId, clientReview: { isNot: null } } },
+        where: { hiddenAt: null, createdAt: createdIn, booking: { professionalProfileId } },
         select: { rating: true },
       }),
     ]);

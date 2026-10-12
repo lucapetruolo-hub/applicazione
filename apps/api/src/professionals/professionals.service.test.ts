@@ -17,7 +17,6 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1" }) },
     lead: { findMany: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
     quote: { groupBy: vi.fn().mockResolvedValue([]) },
-    clientReview: { findMany: vi.fn().mockResolvedValue([]) },
     conversationEvent: { findMany: vi.fn().mockResolvedValue([]) },
     ...prismaOverrides,
   };

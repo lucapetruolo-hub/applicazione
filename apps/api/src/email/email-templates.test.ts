@@ -66,10 +66,11 @@ describe("email delle notifiche", () => {
   });
 
   it("la nuova recensione non anticipa mai il voto", () => {
-    const content = notificationEmail("NEW_REVIEW", { rating: 2, published: false }, ctx)!;
+    const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);
     expect(email.text).not.toMatch(/★|2 su 5/);
-    expect(email.text).toContain("lascia anche tu la tua recensione");
+    expect(email.text).toContain("già visibile sul tuo profilo");
+    expect(email.text).not.toMatch(/recensisci il cliente/i);
   });
 
   it("al professionista non mostra contatti del cliente prima dell'accettazione", () => {

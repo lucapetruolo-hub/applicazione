@@ -30,7 +30,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },
   BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha riaperto una prenotazione annullata." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
-  // Recensione del cliente (docs/CHANGELOG.md §185): mai il voto, per il "doppio cieco".
+  // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
   // DSA artt. 16/17 ("Verbale di Conformità", Parte 1 punto 4): esito di una
   // segnalazione contenuti comunicato a chi l'ha presentata, e "statement of
@@ -121,9 +121,6 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     const note = typeof data.note === "string" && data.note.trim() ? ` Nota: "${data.note.trim()}"` : "";
     const resend = data.canResend === true ? " Puoi inviargli un nuovo preventivo." : "";
     return { icon: "😕", message: `Il cliente ha rifiutato il tuo preventivo.${note}${resend}` };
-  }
-  if (type === "NEW_REVIEW" && (payload as Record<string, unknown> | undefined)?.published !== true) {
-    return { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: recensiscilo anche tu per leggere la sua recensione." };
   }
   return NOTIFICATION_COPY[type] ?? DEFAULT_COPY;
 }

@@ -857,11 +857,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                     <Text fontSize="$1" color={brand.grafite70}>
                       · {reviewTimeAgo(review.createdAt)}
                     </Text>
-                    {review.isAutomatic ? (
-                      <Text fontSize="$2" color={brand.grafite70} fontStyle="italic">
-                        (recensione automatica)
-                      </Text>
-                    ) : null}
                   </XStack>
                   {user ? (
                     <XStack
