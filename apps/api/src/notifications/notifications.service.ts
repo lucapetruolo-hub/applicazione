@@ -122,7 +122,7 @@ export class NotificationsService {
     const bookingId = id("bookingId");
     const quoteId = id("quoteId");
     const guidedRequestId = id("guidedRequestId");
-    const request = { select: { city: true, category: { select: { label: true } } } } as const;
+    const request = { select: { city: true, description: true, category: { select: { label: true } } } } as const;
     if (bookingId) {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -149,6 +149,7 @@ export class NotificationsService {
           category: quote.guidedRequest.category.label,
           city: quote.guidedRequest.city,
           businessName: quote.professionalProfile.businessName,
+          description: quote.guidedRequest.description,
           when: quote.estimatedStartDate,
           proposedWhen: quote.clientProposedDate,
         };

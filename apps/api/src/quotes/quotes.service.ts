@@ -18,6 +18,11 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 
+
+/** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §226). */
+function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
+  return { start: start.toISOString(), end: end ? end.toISOString() : null };
+}
 @Injectable()
 export class QuotesService {
   constructor(
@@ -213,6 +218,9 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
         change: scheduleChange,
+        // Prima e dopo nell'email (docs/CHANGELOG.md §226).
+        from: slotPayload(existingQuote!.estimatedStartDate, existingQuote!.estimatedEndDate),
+        to: slotPayload(data.estimatedStartDate, data.estimatedEndDate),
       });
       await this.timelineService.log(
         lead.guidedRequestId,
@@ -411,6 +419,8 @@ export class QuotesService {
       quoteId: quote.id,
       change,
       ...(note ? { note } : {}),
+      from: slotPayload(quote.estimatedStartDate, quote.estimatedEndDate),
+      to: slotPayload(proposedDate, proposedEndDate),
     });
     await this.timelineService.log(
       quote.guidedRequestId,
@@ -595,6 +605,8 @@ export class QuotesService {
     await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_REJECTED", {
       guidedRequestId: quote.guidedRequestId,
       quoteId: quote.id,
+      ...(quote.clientProposedDate ? { from: slotPayload(quote.clientProposedDate, quote.clientProposedEndDate) } : {}),
+      to: slotPayload(quote.estimatedStartDate, quote.estimatedEndDate),
     });
     await this.timelineService.log(
       quote.guidedRequestId,
@@ -693,6 +705,8 @@ export class QuotesService {
       quoteId: quote.id,
       ...(change ? { change } : { noteOnly: true }),
       ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+      from: slotPayload(quote.clientProposedDate ?? quote.estimatedStartDate, quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate),
+      to: slotPayload(estimatedStartDate, estimatedEndDate),
     });
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
     const note = input.note?.trim() ? ` Nota: "${input.note.trim()}"` : "";

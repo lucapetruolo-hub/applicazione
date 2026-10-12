@@ -87,6 +87,21 @@ describe("email delle notifiche", () => {
     expect(email.text).toContain("09:30–13:00");
   });
 
+  it("modifiche dell'appuntamento: descrizione, prima e nuova proposta (docs/CHANGELOG.md §226)", () => {
+    const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
+    const slots = {
+      change: "both",
+      from: { start: "2026-10-14T09:30:00.000Z", end: "2026-10-14T11:00:00.000Z" },
+      to: { start: "2026-10-16T15:00:00.000Z", end: "2026-10-16T17:00:00.000Z" },
+    };
+    for (const type of ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_REJECTED"]) {
+      const text = renderEmail(notificationEmail(type, slots, withDescription)!).text;
+      expect(text).toContain("Perdita sotto il lavello");
+      expect(text).toContain("09:30–11:00");
+      expect(text).toContain("15:00–17:00");
+    }
+  });
+
   it("la nuova recensione non anticipa mai il voto", () => {
     const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);

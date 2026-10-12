@@ -18080,5 +18080,11 @@ l'appuntamento con la fascia oraria. Si sbloccano proprio con la
 prenotazione creata (CLAUDE.md §5 punto 9), quindi nessuna eccezione alla
 regola sui contatti.
 
+Sesto giro, richiesta dell'utente: le email di modifica dell'appuntamento
+(proposta del cliente, modifica del professionista, data non disponibile)
+riportano la descrizione della richiesta e l'appuntamento prima e la nuova
+proposta, con la fascia oraria. Le notifiche portano `from`/`to` nel payload;
+le email più vecchie senza quei campi restano come prima.
+
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.

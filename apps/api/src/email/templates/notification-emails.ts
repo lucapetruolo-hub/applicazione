@@ -46,6 +46,8 @@ export type NotificationEmailContext = {
   when: Date | null;
   /** Data proposta dal cliente (QUOTE_DATE_PROPOSED). */
   proposedWhen: Date | null;
+  /** Descrizione della richiesta, per capire di quale lavoro si tratta (docs/CHANGELOG.md §226). */
+  description?: string | null;
 };
 
 type Payload = Record<string, unknown>;
@@ -80,6 +82,30 @@ function jobDetails(ctx: NotificationEmailContext, extra: { label: string; value
 /** Il professionista non vede il proprio nome nel riquadro. */
 function proJobDetails(ctx: NotificationEmailContext, extra: { label: string; value: string }[] = []) {
   return jobDetails({ ...ctx, businessName: null }, extra);
+}
+
+/** Appuntamento "prima"/"dopo" dal payload: "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §226). */
+function slotText(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const slot = value as { start?: unknown; end?: unknown };
+  const start = str(slot.start);
+  if (!start) return null;
+  const end = str(slot.end);
+  return `${formatAppointment(start)}${end ? `–${formatAppointmentTime(end)}` : ""}`;
+}
+
+/** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §226). */
+function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabel: string, toLabel: string, withPro: boolean) {
+  const from = slotText(payload.from);
+  const to = slotText(payload.to);
+  const description = ctx.description?.trim();
+  return [
+    ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+    ...(withPro && ctx.businessName ? [{ label: "Professionista", value: ctx.businessName }] : []),
+    ...(description ? [{ label: "Descrizione", value: description.length > 200 ? `${description.slice(0, 200)}…` : description }] : []),
+    ...(from ? [{ label: fromLabel, value: from }] : []),
+    ...(to ? [{ label: toLabel, value: to }] : []),
+  ];
 }
 
 const clientRequests = () => ({ label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` });
@@ -256,7 +282,9 @@ const BUILDERS: Record<string, Builder> = {
         ...quotedNote(payload),
         "Confermala se ti va bene, oppure rispondi con un'alternativa.",
       ],
-      details: proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Proposta del cliente", value: formatAppointment(ctx.proposedWhen) }] : []),
+      details: slotText(payload.to)
+        ? changeDetails(ctx, payload, "Appuntamento del preventivo", "Nuova proposta del cliente", false)
+        : proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Proposta del cliente", value: formatAppointment(ctx.proposedWhen) }] : []),
       cta: proRequests("Rispondi alla proposta"),
     };
   },
@@ -281,7 +309,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: `Cambia ${scheduleChangeObject(change)} dell'appuntamento`,
       paragraphs: [`**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`, ...quotedNote(payload)],
-      details: jobDetails(ctx),
+      details: slotText(payload.to) ? changeDetails(ctx, payload, "Prima", "Nuova proposta", true) : jobDetails(ctx),
       cta: clientRequests(),
       after: ["Se non ti va bene puoi proporre un'altra data o scrivere al professionista in chat."],
     };
@@ -322,17 +350,21 @@ const BUILDERS: Record<string, Builder> = {
     details: jobDetails(ctx),
     cta: clientRequests(),
   }),
-  QUOTE_DATE_REJECTED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: `${pro(ctx)} non è disponibile nella data proposta`,
-    greeting: ctx.name,
-    title: "Data non disponibile",
-    paragraphs: [
-      `**${pro(ctx)}** non è disponibile nella data che avevi proposto per **${job(ctx)}**.`,
-      "Puoi accettare la data del preventivo, proporne un'altra o scrivergli in chat per trovare insieme il momento giusto.",
-    ],
-    cta: clientRequests(),
-  }),
+  QUOTE_DATE_REJECTED: (payload, ctx) => {
+    const details = changeDetails(ctx, payload, "Data che avevi proposto", "Resta valida", true);
+    return {
+      kind: "notification",
+      subject: `${pro(ctx)} non è disponibile nella data proposta`,
+      greeting: ctx.name,
+      title: "Data non disponibile",
+      paragraphs: [
+        `**${pro(ctx)}** non è disponibile nella data che avevi proposto per **${job(ctx)}**.`,
+        "Puoi accettare la data del preventivo, proporne un'altra o scrivergli in chat per trovare insieme il momento giusto.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: clientRequests(),
+    };
+  },
 
   // ── Lavori e appuntamenti ──────────────────────────────────────────────
   JOB_COMPLETED: (payload, ctx) => {
