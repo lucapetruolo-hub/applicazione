@@ -1351,6 +1351,7 @@ export function RequestCard({
           professionalProfileId={myProfileId}
           viewerRole="PROFESSIONAL"
           otherPartyName={gr.clientName}
+          otherPartyImageUrl={gr.clientImageUrl}
           onOpenClientProfile={() => setShowClientProfile(true)}
           onClose={() => setShowTimeline(false)}
         />

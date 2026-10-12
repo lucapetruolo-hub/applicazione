@@ -17898,3 +17898,20 @@ da quel profilo (Profilo e visibilità), non c'è una funzione admin per farlo.
 
 **Verifica**: tipi e lint di `apps/web` verdi, build di produzione e
 schermate in locale su computer e telefono.
+
+## 220. Foto accanto al nome in cima alla chat, anche nelle finestre
+
+**Richiesta dell'utente**: "nella chat, in alto dove c'è scritto il nome del
+professionista o cliente fai comparire anche la foto".
+
+**Decisione**: la pagina Messaggi la mostrava già; le chat aperte dalle schede
+(preventivo, lavoro, richiesta ricevuta, agenda) in una finestra mostravano
+solo l'iniziale perché `TimelineModal` non riceveva la foto. Ora la riceve da
+ogni punto: foto del professionista per il cliente; foto del cliente per il
+professionista solo a preventivo accettato (§216), prima l'iniziale.
+`ProfessionalBooking` porta `clientImageUrl` (c'è la Booking, quindi il
+preventivo è accettato; `null` se l'account è eliminato) per la chat aperta
+dall'agenda.
+
+**Verifica**: tipi di `apps/web` e `apps/api` verdi, build di produzione e
+schermate in locale su computer e telefono.

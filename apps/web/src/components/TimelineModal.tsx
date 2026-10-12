@@ -25,6 +25,7 @@ export function TimelineModal({
   professionalProfileId,
   viewerRole,
   otherPartyName,
+  otherPartyImageUrl,
   onOpenClientProfile,
   onClose,
 }: {
@@ -33,6 +34,8 @@ export function TimelineModal({
   professionalProfileId: string;
   viewerRole: "CLIENT" | "PROFESSIONAL";
   otherPartyName?: string | null;
+  /** Foto accanto al nome in intestazione (§220); senza, l'iniziale del nome. Per il cliente visto dal professionista arriva solo a preventivo accettato (§216). */
+  otherPartyImageUrl?: string | null;
   onOpenClientProfile?: () => void;
   onClose: () => void;
 }) {
@@ -71,6 +74,7 @@ export function TimelineModal({
           professionalProfileId={professionalProfileId}
           viewerRole={viewerRole}
           otherPartyName={otherPartyName}
+          otherPartyImageUrl={otherPartyImageUrl}
           onOpenClientProfile={onOpenClientProfile}
           onBack={onClose}
           backIcon="x"

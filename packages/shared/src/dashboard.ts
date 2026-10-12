@@ -228,6 +228,8 @@ export type ProfessionalBooking = {
   updatedAt: string;
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
   clientName: string | null;
+  /** Foto del cliente: c'è la Booking, quindi il preventivo è accettato (§216); `null` se l'account è eliminato. Facoltativa solo per un'API non ancora aggiornata. */
+  clientImageUrl?: string | null;
   clientPhone: string | null;
   clientEmail: string | null;
   /** Stesso significato di ProfessionalLead.guidedRequest.clientAccountDeleted — vedi lì. */

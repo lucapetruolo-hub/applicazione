@@ -353,7 +353,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       ) : null}
 
       {showTimeline && booking.guidedRequestId ? (
-        <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} onClose={() => setShowTimeline(false)} />
+        <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} otherPartyImageUrl={booking.professionalImageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
   );
