@@ -21,7 +21,7 @@ export default function HomeContent({
   platformStats,
 }: {
   professionals: ProfessionalSearchResult[];
-  platformStats: { totalUsers: number; totalProfessionals: number } | null;
+  platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
   // Conteggio reale per categoria (professionals arriva già filtrato
   // excludeDemo da apps/web/src/app/page.tsx): la riga "N professionisti"
@@ -80,7 +80,13 @@ export default function HomeContent({
             titleAccent="della tua zona"
             maxWidth={1080}
           >
-            <RecentReviews />
+            <RecentReviews
+              summary={
+                platformStats?.reviewCount !== undefined && platformStats.averageRating != null
+                  ? { count: platformStats.reviewCount, average: platformStats.averageRating }
+                  : null
+              }
+            />
             <NewProfilesCarousel professionals={professionals} />
             <ProfessionalsShowcase professionals={professionals} />
           </Section>

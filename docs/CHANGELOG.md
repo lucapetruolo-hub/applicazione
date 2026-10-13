@@ -18242,3 +18242,81 @@ Secondo giro, migliorie approvate dall'utente:
 **Verifica**: anteprime prima/dopo su computer e telefono con dati di prova
 (`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web` e
 `apps/api`, test dell'API verdi.
+
+## 232. Strisce della home ferme sotto la rotellina
+
+**Richiesta dell'utente**: in home, con il mouse sopra le recensioni che
+scorrono e girando la rotellina, la striscia si spostava di poco in su e in
+giù; forse anche "Nuovi profili".
+
+**Causa**: `overflow-x: auto` su `.rr-track` e `.npc-track` rende `auto`
+anche l'asse verticale. Le card non ancora apparse (animazione di ingresso,
+`translateY(18px) scale(0.96)` in `useRevealOnScroll`) sporgevano di 9px
+sotto la striscia, quindi la rotellina scorreva prima quei 9px e solo dopo
+la pagina. Stesso problema in entrambe le strisce.
+
+**Decisione**: `overflow-y: hidden` sulle due strisce. Tolto anche il
+`translateY(-4px)` all'hover delle card di "Nuovi profili" (ora verrebbe
+tagliato in alto, ed è lo stesso spostamento che faceva oscillare le
+recensioni, corretto lì in passato). Non usare `overscroll-behavior-y: none`
+qui: blocca anche lo scorrimento della pagina con il mouse sopra la striscia.
+
+**Verifica**: in locale con Chromium, rotellina sopra le due strisce:
+`scrollTop` della striscia passava da 0 a 9, ora resta 0 e la pagina scorre.
+Tipi e lint di `apps/web` verdi.
+
+Secondo giro, scelte dell'utente tra tre anteprime
+(`anteprime/home-scorrimento/`):
+- **Recensioni, idea B "recensione in primo piano"**: una recensione grande
+  (foto o icona della categoria, stelle, testo, "Vedi profilo") che cambia da
+  sola ogni 6 secondi con una barra di avanzamento; da computer l'elenco
+  delle altre a destra, da telefono i puntini. Si ferma con il mouse o il
+  focus sulla sezione e non gira con `prefers-reduced-motion` (la regola
+  globale porta le animazioni a 0,01ms: per questo il cambio usa un timer e
+  non la fine dell'animazione della barra). Niente più striscia orizzontale.
+- **Solo recensioni da 3 stelle in su in home** (richiesta dell'utente):
+  filtro `rating >= 3` in `ReviewsService.getRecentPublic`. Le altre restano
+  sul profilo.
+- **Nuovi profili, idea C "biglietti da visita"**: fascia col colore e
+  l'icona della categoria, foto grande al centro, "iscritto N giorni fa",
+  bordi sfumati, barra di posizione e frecce sotto la striscia. Titolo
+  "Appena arrivati su ...". Da telefono la card è larga il 72% perché quella
+  dopo si veda abbastanza da far partire la sua animazione di ingresso
+  (`useRevealOnScroll` aspetta il 20% visibile: al 78% restava invisibile).
+- Tolti da `globals.css` i blocchi `.rr-card`/`.rr-photo`, non più usati: gli
+  stili delle card ora stanno nei componenti con `:global(...)`.
+
+**Verifica**: schermate in locale con Chromium su computer e telefono, con
+un'API finta; rotellina sopra le sezioni senza spostamenti. Tipi di
+`apps/web` verdi.
+
+
+Terzo giro, quattro migliorie approvate dall'utente:
+- In home niente recensioni senza testo (filtro nell'API, più un controllo
+  sugli spazi lato sito): nel riquadro grande comparivano le virgolette vuote.
+- Niente recensioni di professionisti in pausa o con profilo creato da un
+  operatore e non ancora confermato (`pausedAt`/`invitePendingAt`), come per
+  gli altri punti che mostrano professionisti (CLAUDE.md §5 punto 11).
+- 6 recensioni invece di 5 (`getRecentPublic(limit = 6)`).
+- Sotto il titolo la media vera di tutte le recensioni pubbliche, anche
+  quelle da 1 e 2 stelle che la home non mostra, solo da 10 recensioni in
+  su: "★ 4,8 su 5 · 23 recensioni, solo di lavori confermati". Arriva da
+  `GET /stats/platform` (`reviewCount`, `averageRating`), già letto dalla
+  home lato server; i due campi sono facoltativi nel client, così un'API non
+  ancora aggiornata non rompe la pagina.
+
+**Verifica**: build e test dell'API verdi, tipi di `apps/web` verdi,
+schermate in locale su computer e telefono.
+
+Quarto giro, due migliorie approvate dall'utente:
+- Da telefono si cambia recensione scorrendo col dito (verso sinistra la
+  successiva, verso destra la precedente, gira in tondo). Conta solo un
+  gesto più orizzontale che verticale, di almeno 50px. `touch-action: pan-y`
+  sul riquadro: senza, Chrome usava lo stesso gesto per tornare alla pagina
+  precedente (riprodotto in locale con il tocco emulato).
+- Test automatici: i filtri di `getRecentPublic` (3 stelle, testo, profili
+  attivi, 6 al massimo) in `reviews.service.test.ts`, e la media delle
+  recensioni di `getPlatformStats` in `stats.service.test.ts`.
+
+**Verifica**: test dell'API verdi (293), tipi di `apps/web` verdi, gesto
+provato in Chromium con il tocco emulato su un telefono da 390px.
