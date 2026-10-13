@@ -18166,3 +18166,17 @@ Ottavo giro, quattro migliorie approvate dall'utente:
 
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.
+
+## 229. Profilo pubblico: Agenda prima delle Prestazioni
+
+**Richiesta dell'utente**: nel profilo pubblico del professionista invertire
+la sezione Agenda con quella Prestazioni.
+
+**Decisione**: in `ProfessionalDetailContent.tsx` l'Agenda viene subito dopo
+la scheda identità, poi le Prestazioni, il pulsante "Richiedi un preventivo"
+e le Recensioni. Solo spostamento dei due blocchi, nessun cambio di
+contenuto; le condizioni restano le stesse (Agenda solo con orari e account
+non in pausa, Prestazioni solo se ce ne sono).
+
+**Verifica**: anteprime prima/dopo su computer e telefono con dati di prova
+(`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web`.
