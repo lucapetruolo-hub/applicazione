@@ -1,5 +1,5 @@
 import type { JobIssueSummary } from "./jobIssues";
-import type { JobPaymentSummary } from "./onlinePayments";
+import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
@@ -123,6 +123,9 @@ export type ProfessionalLead = {
     clientNote: string | null;
     /** Nota facoltativa lasciata dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
+    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §234). */
+    paymentOptions: JobPaymentChoice[];
+    depositPercent: number;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */
     resentAt: string | null;
     /**

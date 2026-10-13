@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, professionalRestrictions, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, professionalRestrictions, quotePaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -480,6 +480,8 @@ export class GuidedRequestsService {
           professionalCounterNote: quote.professionalCounterNote,
           // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
           rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
+          // Modi di pagamento offerti (docs/CHANGELOG.md §234), coi valori di serie per i preventivi vecchi.
+          ...quotePaymentOffer(quote),
           resentAt: quote.resentAt?.toISOString() ?? null,
           notes: quote.notes,
           status: quote.status,

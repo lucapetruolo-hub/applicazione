@@ -237,6 +237,9 @@ export type ClientGuidedRequest = {
     professionalCounterNote: string | null;
     /** Nota facoltativa scritta dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
+    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §234). */
+    paymentOptions: JobPaymentChoice[];
+    depositPercent: number;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
     resentAt: string | null;
     notes: string | null;

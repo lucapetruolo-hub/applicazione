@@ -13,6 +13,8 @@ import {
   formatBookingAddress,
   toJobPaymentSummary,
   type JobPaymentChoice,
+  paymentChoiceIsOnline,
+  quotePaymentOffer,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
@@ -73,7 +75,12 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
-    if (paymentMethod === "ONLINE" && !onlinePaymentsEnabled()) {
+    // Il cliente sceglie solo tra i modi offerti dal professionista nel preventivo (docs/CHANGELOG.md §234).
+    const offer = quotePaymentOffer(quote);
+    if (!offer.paymentOptions.includes(paymentMethod)) {
+      throw new BadRequestException("Il professionista non ha offerto questo modo di pagamento: scegline uno tra quelli del preventivo.");
+    }
+    if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
       throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
     }
 
@@ -99,11 +106,13 @@ export class BookingsService {
       },
     });
 
-    // Metodo di pagamento scelto dal cliente (§168): online con acconto del
-    // 20% sull'importo massimo, o diretto al professionista.
+    // Metodo di pagamento scelto dal cliente (§168, §234): acconto online
+    // con la percentuale del professionista sull'importo massimo, saldo
+    // online o diretto; oppure tutto diretto al professionista.
     await this.jobPaymentsService.createAtAcceptance({
       bookingId: booking.id,
       choice: paymentMethod,
+      depositPercent: offer.depositPercent,
       quoteMaxEurCents: quotePriceTotals(quote.items).totalMaxEurCents,
       clientUserId: clientId,
     });

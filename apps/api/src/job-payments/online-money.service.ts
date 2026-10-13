@@ -6,6 +6,7 @@ import {
   ONLINE_APP_FEE_PERCENT,
   ONLINE_RELEASE_DAYS,
   onlineBalanceDueEurCents,
+  onlineTargetEurCents,
   onlineCanRelease,
   onlinePayoutEurCents,
   type JobPaymentOnlineStage,
@@ -77,10 +78,13 @@ export class OnlineMoneyService {
       amount = jp.depositEurCents;
     } else {
       if (booking.finalAmountEurCents === null) throw new BadRequestException("Il saldo si paga quando il professionista chiude il lavoro con l'importo finale.");
-      amount = onlineBalanceDueEurCents(booking.finalAmountEurCents, jp.paidEurCents - jp.refundedEurCents);
+      // Col saldo diretto (§234) online si paga al massimo l'acconto: il resto va al professionista.
+      amount = onlineBalanceDueEurCents(onlineTargetEurCents(booking.finalAmountEurCents, jp), jp.paidEurCents - jp.refundedEurCents);
       // Dopo l'accredito il saldo si può ancora pagare se era rimasto scoperto (§168).
       const closed = jp.onlineStage === "REFUNDED" || (jp.onlineStage === "RELEASED" && !jp.balanceUnpaidAt);
-      if (amount <= 0 || closed) throw new BadRequestException("Non c'è nessun saldo da pagare.");
+      if (amount <= 0 || closed) {
+        throw new BadRequestException(jp.balanceDirect ? "Il saldo lo paghi direttamente al professionista." : "Non c'è nessun saldo da pagare.");
+      }
     }
 
     const back = booking.quote
@@ -131,7 +135,7 @@ export class OnlineMoneyService {
     const final = jp.booking.finalAmountEurCents;
     let stage: JobPaymentOnlineStage;
     if (final === null) stage = "DEPOSIT_PAID";
-    else stage = onlineBalanceDueEurCents(final, paid - jp.refundedEurCents) > 0 ? "AWAITING_BALANCE" : "PAID";
+    else stage = onlineBalanceDueEurCents(onlineTargetEurCents(final, jp), paid - jp.refundedEurCents) > 0 ? "AWAITING_BALANCE" : "PAID";
 
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
@@ -244,7 +248,7 @@ export class OnlineMoneyService {
       balanceUnpaidAt: jp.balanceUnpaidAt!.toISOString(),
       finalAmountEurCents: jp.booking.finalAmountEurCents,
       paidEurCents: jp.paidEurCents - jp.refundedEurCents,
-      dueEurCents: onlineBalanceDueEurCents(jp.booking.finalAmountEurCents ?? 0, jp.paidEurCents - jp.refundedEurCents),
+      dueEurCents: onlineBalanceDueEurCents(onlineTargetEurCents(jp.booking.finalAmountEurCents ?? 0, jp), jp.paidEurCents - jp.refundedEurCents),
       client: {
         userId: jp.booking.client.id,
         name: [jp.booking.client.name, jp.booking.client.surname].filter(Boolean).join(" ") || null,
@@ -274,13 +278,15 @@ export class OnlineMoneyService {
    */
   async afterCompletion(jobPaymentId: string, finalAmountEurCents: number, appFeeEurCents: number): Promise<{ balanceDueEurCents: number }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
-    const due = onlineBalanceDueEurCents(finalAmountEurCents, jp.paidEurCents - jp.refundedEurCents);
+    // Col saldo diretto (§234) da Stripe passa solo l'acconto: il saldo online è già a zero.
+    const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
+    const due = onlineBalanceDueEurCents(onlineTarget, jp.paidEurCents - jp.refundedEurCents);
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
         grossAmountEurCents: finalAmountEurCents,
         platformFeeEurCents: appFeeEurCents,
-        netAmountEurCents: Math.max(0, finalAmountEurCents - appFeeEurCents - jp.stripeFeeEurCents),
+        netAmountEurCents: Math.max(0, onlineTarget - appFeeEurCents - jp.stripeFeeEurCents),
         onlineStage: due > 0 ? "AWAITING_BALANCE" : "PAID",
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
@@ -335,13 +341,16 @@ export class OnlineMoneyService {
     }
     const stripe = this.stripe;
     const balanceUnpaid = jp.onlineStage === "AWAITING_BALANCE";
+    // Col saldo diretto (§234) il dovuto online è solo l'acconto: se l'importo
+    // finale è più basso, la differenza torna al cliente.
+    const onlineTarget = onlineTargetEurCents(booking.finalAmountEurCents, jp);
     const { payout, refundToClient } = onlinePayoutEurCents({
-      finalAmountEurCents: booking.finalAmountEurCents,
+      finalAmountEurCents: onlineTarget,
       paidEurCents: jp.paidEurCents,
       refundedEurCents: jp.refundedEurCents,
       stripeFeeEurCents: jp.stripeFeeEurCents,
       appFeeEurCents: balanceUnpaid
-        ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, booking.finalAmountEurCents))
+        ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, onlineTarget))
         : jp.platformFeeEurCents,
     });
 

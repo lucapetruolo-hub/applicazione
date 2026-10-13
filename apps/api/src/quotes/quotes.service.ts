@@ -3,6 +3,8 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   formatServicePriceRange,
+  paymentChoiceIsOnline,
+  quotePaymentOffer,
   quotePriceTotals,
   scheduleChangeAlternative,
   scheduleChangeBetween,
@@ -17,6 +19,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -95,7 +98,17 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
     }
 
+    // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §234). Senza
+    // pagamenti online attivi deve restare almeno il pagamento diretto, o il
+    // cliente non potrebbe accettare.
+    const offer = quotePaymentOffer({ paymentOptions: input.paymentOptions, depositPercent: input.depositPercent });
+    if (!onlinePaymentsEnabled() && !offer.paymentOptions.includes("DIRECT")) {
+      throw new BadRequestException("Il pagamento online non è ancora attivo: lascia anche il pagamento diretto.");
+    }
+
     const data = {
+      paymentOptions: offer.paymentOptions,
+      depositPercent: offer.paymentOptions.some(paymentChoiceIsOnline) ? offer.depositPercent : null,
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,

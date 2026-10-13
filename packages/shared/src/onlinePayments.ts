@@ -18,11 +18,42 @@ import { z } from "zod";
  *   lasciare la recensione.
  */
 
-export const jobPaymentChoices = ["ONLINE", "DIRECT"] as const;
+/**
+ * Modi di pagamento che il professionista offre nel preventivo e tra cui il
+ * cliente sceglie accettandolo (decisione dell'utente del 13/10/2026,
+ * docs/CHANGELOG.md §234): il professionista ne spunta uno o più.
+ * - `DIRECT`: tutto direttamente al professionista;
+ * - `ONLINE`: acconto online (percentuale scelta dal professionista) e saldo online;
+ * - `MIXED`: acconto online e saldo direttamente al professionista.
+ */
+export const jobPaymentChoices = ["ONLINE", "MIXED", "DIRECT"] as const;
 export type JobPaymentChoice = (typeof jobPaymentChoices)[number];
 
-/** Acconto: percentuale dell'importo massimo del preventivo (decisione dell'utente). */
+/** Acconto predefinito: percentuale dell'importo massimo del preventivo (decisione dell'utente, §168). */
 export const ONLINE_DEPOSIT_PERCENT = 20;
+export const MIN_DEPOSIT_PERCENT = 1;
+export const MAX_DEPOSIT_PERCENT = 100;
+
+/** Modi di pagamento offerti di serie: i preventivi inviati prima di §234 non li hanno salvati. */
+export const DEFAULT_QUOTE_PAYMENT_OPTIONS: JobPaymentChoice[] = ["ONLINE", "DIRECT"];
+
+/** Modi offerti da un preventivo e percentuale dell'acconto, con i valori di serie per i preventivi vecchi. */
+export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; depositPercent?: number | null }): {
+  paymentOptions: JobPaymentChoice[];
+  depositPercent: number;
+} {
+  const saved = (quote.paymentOptions ?? []).filter((o): o is JobPaymentChoice => (jobPaymentChoices as readonly string[]).includes(o));
+  return {
+    // Ordine fisso, qualunque sia quello salvato.
+    paymentOptions: saved.length ? jobPaymentChoices.filter((o) => saved.includes(o)) : DEFAULT_QUOTE_PAYMENT_OPTIONS,
+    depositPercent: quote.depositPercent ?? ONLINE_DEPOSIT_PERCENT,
+  };
+}
+
+/** Il modo di pagamento passa da Stripe (acconto online)? */
+export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
+  return choice === "ONLINE" || choice === "MIXED";
+}
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
 /** Commissione Manovia sui pagamenti online, a carico del professionista (valore reale nelle regole di commissione in admin). */
@@ -30,15 +61,32 @@ export const ONLINE_APP_FEE_PERCENT = 5;
 
 export type JobPaymentOnlineStage = "AWAITING_DEPOSIT" | "DEPOSIT_PAID" | "AWAITING_BALANCE" | "PAID" | "RELEASED" | "REFUNDED";
 
-export const JOB_PAYMENT_CHOICE_COPY: Record<JobPaymentChoice, { title: string; body?: string }> = {
-  ONLINE: {
-    title: "Paga online con carta (consigliato)",
-    body: `Paghi con Stripe: un acconto del ${ONLINE_DEPOSIT_PERCENT}% ora e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
-  },
-  DIRECT: {
-    // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente).
-    title: "DIRETTO al professionista",
-  },
+/** Testi per il cliente; la percentuale dell'acconto è quella scelta dal professionista nel preventivo. */
+export function jobPaymentChoiceCopy(choice: JobPaymentChoice, depositPercent: number = ONLINE_DEPOSIT_PERCENT): { title: string; body?: string } {
+  if (choice === "ONLINE") {
+    return {
+      title: depositPercent >= 100 ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
+      body:
+        depositPercent >= 100
+          ? "Paghi con Stripe l'intero importo ora. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo."
+          : `Paghi con Stripe: un acconto del ${depositPercent}% ora e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
+    };
+  }
+  if (choice === "MIXED") {
+    return {
+      title: "Acconto online, saldo diretto al professionista",
+      body: `Paghi con Stripe un acconto del ${depositPercent}% ora; il resto lo paghi direttamente al professionista a lavoro finito. Assistenza e rimborso valgono solo per l'acconto pagato online.`,
+    };
+  }
+  // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente).
+  return { title: "DIRETTO al professionista" };
+}
+
+/** Testi per il professionista nel modulo del preventivo. */
+export const QUOTE_PAYMENT_OPTION_LABEL: Record<JobPaymentChoice, string> = {
+  DIRECT: "Tutto diretto (contanti, bonifico...)",
+  ONLINE: "Acconto online e saldo online",
+  MIXED: "Acconto online e saldo diretto",
 };
 
 export const JOB_PAYMENT_STAGE_LABEL: Record<JobPaymentOnlineStage, string> = {
@@ -51,8 +99,17 @@ export const JOB_PAYMENT_STAGE_LABEL: Record<JobPaymentOnlineStage, string> = {
 };
 
 /** Acconto sull'importo massimo del preventivo, arrotondato al centesimo. */
-export function onlineDepositEurCents(quoteMaxEurCents: number): number {
-  return Math.round((quoteMaxEurCents * ONLINE_DEPOSIT_PERCENT) / 100);
+export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: number = ONLINE_DEPOSIT_PERCENT): number {
+  return Math.round((quoteMaxEurCents * depositPercent) / 100);
+}
+
+/**
+ * Parte dell'importo finale che passa da Stripe. Col saldo diretto
+ * (`MIXED`) è solo l'acconto, al massimo l'importo finale: il resto il
+ * cliente lo paga al professionista fuori dal sito.
+ */
+export function onlineTargetEurCents(finalAmountEurCents: number, jp: { balanceDirect: boolean; depositEurCents: number | null }): number {
+  return jp.balanceDirect ? Math.min(finalAmountEurCents, jp.depositEurCents ?? 0) : finalAmountEurCents;
 }
 
 /** Quanto resta da pagare a lavoro chiuso (0 se l'acconto copre già l'importo finale). */
@@ -96,7 +153,12 @@ export function onlineCanRelease(input: {
 
 /** Riepilogo del pagamento di un lavoro, uguale per cliente e professionista. */
 export type JobPaymentSummary = {
-  method: JobPaymentChoice;
+  /** ONLINE anche con saldo diretto: l'acconto passa comunque da Stripe (vedi `balanceDirect`). */
+  method: "ONLINE" | "DIRECT";
+  /** Acconto online e saldo pagato direttamente al professionista (§234). */
+  balanceDirect: boolean;
+  /** Col saldo diretto: quanto il cliente paga direttamente al professionista (null finché l'importo finale non è noto). */
+  directBalanceEurCents: number | null;
   stage: JobPaymentOnlineStage | null;
   depositEurCents: number | null;
   paidEurCents: number;
@@ -117,10 +179,22 @@ export type JobPaymentSummary = {
 export const acceptQuoteSchema = z.object({
   paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
 });
+
+/** Modi di pagamento scelti dal professionista nel preventivo (§234). */
+export const quotePaymentOfferSchema = {
+  paymentOptions: z.array(z.enum(jobPaymentChoices)).min(1, "Scegli almeno un modo di pagamento.").max(jobPaymentChoices.length).optional(),
+  depositPercent: z
+    .number()
+    .int("La percentuale dell'acconto dev'essere un numero intero.")
+    .min(MIN_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
+    .max(MAX_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
+    .optional(),
+};
 export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
 
 type JobPaymentRow = {
   paymentMethod: string;
+  balanceDirect: boolean;
   onlineStage: string | null;
   depositEurCents: number | null;
   paidEurCents: number;
@@ -140,26 +214,30 @@ export function toJobPaymentSummary(
   forProfessional = false,
 ): JobPaymentSummary | null {
   if (!jp) return null;
-  const method: JobPaymentChoice = jp.paymentMethod === "MANOVIA" ? "ONLINE" : "DIRECT";
+  const method = jp.paymentMethod === "MANOVIA" ? "ONLINE" : "DIRECT";
   const stage = method === "ONLINE" ? ((jp.onlineStage as JobPaymentOnlineStage | null) ?? null) : null;
   const collected = jp.paidEurCents - jp.refundedEurCents;
+  const balanceDirect = method === "ONLINE" && jp.balanceDirect;
+  const onlineTarget = finalAmountEurCents === null ? null : onlineTargetEurCents(finalAmountEurCents, { balanceDirect, depositEurCents: jp.depositEurCents });
   const summary: JobPaymentSummary = {
     method,
+    balanceDirect,
+    directBalanceEurCents: balanceDirect && finalAmountEurCents !== null && onlineTarget !== null ? finalAmountEurCents - onlineTarget : null,
     stage,
     depositEurCents: jp.depositEurCents,
     paidEurCents: jp.paidEurCents,
     refundedEurCents: jp.refundedEurCents,
     finalAmountEurCents,
     balanceDueEurCents:
-      method === "ONLINE" && finalAmountEurCents !== null && stage !== "REFUNDED" && (stage !== "RELEASED" || !!jp.balanceUnpaidAt)
-        ? onlineBalanceDueEurCents(finalAmountEurCents, collected)
+      method === "ONLINE" && onlineTarget !== null && stage !== "REFUNDED" && (stage !== "RELEASED" || !!jp.balanceUnpaidAt)
+        ? onlineBalanceDueEurCents(onlineTarget, collected)
         : 0,
     releaseDueAt: jp.releaseDueAt?.toISOString() ?? null,
     releasedAt: jp.releasedAt?.toISOString() ?? null,
     balanceUnpaid: !!jp.balanceUnpaidAt,
   };
   if (forProfessional && method === "ONLINE") {
-    const base = finalAmountEurCents ?? collected;
+    const base = onlineTarget ?? collected;
     const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || Math.round((base * ONLINE_APP_FEE_PERCENT) / 100);
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;

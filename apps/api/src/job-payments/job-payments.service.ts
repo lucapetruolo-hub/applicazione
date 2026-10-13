@@ -4,7 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
-import { onlineDepositEurCents, type JobPaymentChoice } from "@professionisti/shared";
+import { onlineDepositEurCents, onlineTargetEurCents, paymentChoiceIsOnline, type JobPaymentChoice } from "@professionisti/shared";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
@@ -33,10 +33,18 @@ export class JobPaymentsService {
    * da pagare subito con Stripe. Diretto: nessun movimento sul sito, il
    * pagamento si conferma a lavoro terminato come prima.
    */
-  async createAtAcceptance(params: { bookingId: string; choice: JobPaymentChoice; quoteMaxEurCents: number; clientUserId: string }): Promise<void> {
+  async createAtAcceptance(params: {
+    bookingId: string;
+    choice: JobPaymentChoice;
+    /** Percentuale dell'acconto online scelta dal professionista nel preventivo (§234). */
+    depositPercent?: number;
+    quoteMaxEurCents: number;
+    clientUserId: string;
+  }): Promise<void> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId } });
     if (existing) return;
-    const online = params.choice === "ONLINE";
+    const online = paymentChoiceIsOnline(params.choice);
+    const balanceDirect = params.choice === "MIXED";
     const jobPayment = await this.prisma.jobPayment.create({
       data: {
         bookingId: params.bookingId,
@@ -45,15 +53,21 @@ export class JobPaymentsService {
         grossAmountEurCents: params.quoteMaxEurCents,
         platformFeeEurCents: 0,
         netAmountEurCents: params.quoteMaxEurCents,
-        ...(online ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: onlineDepositEurCents(params.quoteMaxEurCents) } : {}),
+        ...(online
+          ? { onlineStage: "AWAITING_DEPOSIT", depositEurCents: onlineDepositEurCents(params.quoteMaxEurCents, params.depositPercent), balanceDirect }
+          : {}),
       },
     });
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jobPayment.id,
-      newValue: { paymentMethod: jobPayment.paymentMethod, depositEurCents: jobPayment.depositEurCents },
+      newValue: { paymentMethod: jobPayment.paymentMethod, depositEurCents: jobPayment.depositEurCents, balanceDirect },
       changedByUserId: params.clientUserId,
-      reason: online ? "Il cliente ha scelto il pagamento online (acconto + saldo)." : "Il cliente ha scelto il pagamento diretto al professionista.",
+      reason: !online
+        ? "Il cliente ha scelto il pagamento diretto al professionista."
+        : balanceDirect
+          ? "Il cliente ha scelto l'acconto online e il saldo diretto al professionista."
+          : "Il cliente ha scelto il pagamento online (acconto + saldo).",
     });
   }
 
@@ -77,7 +91,8 @@ export class JobPaymentsService {
 
     if (existing?.paymentMethod === "MANOVIA") {
       const rule = await this.feeRulesService.resolveRule({ professionalProfileId: existing.booking.professionalProfileId, categoryId: null });
-      const appFee = this.feeRulesService.computeFee(params.grossAmountEurCents, rule);
+      // Col saldo diretto la commissione vale solo sulla parte pagata online (§234).
+      const appFee = this.feeRulesService.computeFee(onlineTargetEurCents(params.grossAmountEurCents, existing), rule);
       if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
       const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee);
       if (params.alreadyConfirmedByClient) await this.onlineMoneyService.releaseIfDue(existing.id).catch(() => false);

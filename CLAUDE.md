@@ -282,8 +282,10 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - Prezzi e limiti da rivedere sui dati dei primi mesi.
 - Si incassa solo con P.IVA/società e parere del commercialista (checklist
   §10). **Pagamento dei lavori** (decisioni dell'utente, docs/CHANGELOG.md
-  §168): accettando il preventivo il cliente sceglie **online con Stripe**
-  (acconto del 20% del massimo, saldo a lavoro chiuso, soldi in custodia
+  §168): nel preventivo il professionista offre uno o più modi (§234: diretto,
+  acconto online con percentuale sua 1-100% e saldo online o diretto) e
+  accettando il cliente sceglie tra questi: **online con Stripe**
+  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi in custodia
   fino alla conferma o per 7 giorni, poi al professionista meno costo Stripe
   e commissione del 5%; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni

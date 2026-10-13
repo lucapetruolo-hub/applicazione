@@ -18382,3 +18382,47 @@ contestazione persa parziale e totale). Test, tipi e lint di `apps/api` e
 tipi di `apps/web` verdi; migrazione applicata su un Postgres locale. Il
 connettore Stripe del progetto ha solo accesso in lettura all'ambiente di
 prova: prodotti, webhook e account di prova vanno creati dalla Dashboard.
+
+## 234. Il professionista sceglie nel preventivo come farsi pagare
+
+**Richiesta esplicita dell'utente** (13/10/2026): "in fase di invio del
+preventivo il professionista seleziona già il metodo di pagamento scelto
+[...] direttamente o una percentuale di pagamento subito (da 1 a 100) o un
+mix di entrambe [...] può anche fare più di una selezione, così da poter far
+scegliere al cliente".
+
+**Decisione**: nel modulo del preventivo (`RequestCard`, dashboard
+richieste) la sezione "Come vuoi essere pagato?" con tre caselle, anche più
+di una insieme:
+- **Tutto diretto** (`DIRECT`);
+- **Acconto online e saldo online** (`ONLINE`, il flusso di §168);
+- **Acconto online e saldo diretto** (`MIXED`, nuovo).
+
+Una sola percentuale per l'acconto online, da 1 a 100% dell'importo massimo
+del preventivo (intero). Valori di serie scelti da me: diretto + online con
+acconto del 20%, cioè quanto valeva prima per tutti; i preventivi già
+inviati restano così (`quotePaymentOffer` in `packages/shared`). Senza
+pagamenti online attivi il modulo mostra solo il diretto e l'API rifiuta un
+preventivo senza il diretto. Accettando, il cliente vede solo i modi offerti
+con l'acconto calcolato (`PaymentChoice`); l'API rifiuta un modo non offerto.
+
+**Saldo diretto** (`JobPayment.balanceDirect`): da Stripe passa solo
+l'acconto (`onlineTargetEurCents` = acconto, al massimo l'importo finale).
+A lavoro chiuso non c'è saldo online da pagare; la commissione del 5% vale
+solo sulla parte pagata online; se l'importo finale è sotto l'acconto la
+differenza torna al cliente come prima. Assistenza e rimborso valgono solo
+per l'acconto (scritto anche nei Termini, da far vedere all'avvocato).
+
+**Database**: migrazione `20261013150000_quote_payment_options`
+(`quotes.paymentOptions`, `quotes.depositPercent`, `job_payments.balanceDirect`).
+
+**Testi aggiornati**: Termini (§5 pagamenti), pagina "Pagamenti" per i
+professionisti, Dati fiscali e pagamenti, garanzia della piattaforma (non
+dice più "20%").
+
+**Verifica**: `job-payments/quote-payment-options.test.ts` (valori di serie,
+limiti 1-100, saldo diretto: nessun saldo online, accredito dell'acconto,
+rimborso della differenza) e due test in `bookings.service.test.ts`
+(percentuale e saldo diretto passati al pagamento, modo non offerto
+rifiutato). Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione
+applicata su un Postgres locale.

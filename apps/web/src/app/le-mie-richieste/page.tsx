@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { JobPaymentChoice } from "@professionisti/shared";
+import { paymentChoiceIsOnline, type JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -309,7 +309,7 @@ function LeMieRichiesteContent() {
   async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
     const { bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
-    if (paymentMethod === "ONLINE") {
+    if (paymentChoiceIsOnline(paymentMethod)) {
       try {
         const { url } = await apiClient.jobPaymentCheckout(token, bookingId, "deposit");
         if (url) {

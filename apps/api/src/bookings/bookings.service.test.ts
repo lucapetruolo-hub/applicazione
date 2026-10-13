@@ -137,9 +137,32 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith({
       bookingId: "new-booking-2",
       choice: "ONLINE",
+      depositPercent: 20,
       quoteMaxEurCents: 30000,
       clientUserId: "client-1",
     });
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("usa la percentuale di acconto e il saldo diretto scelti dal professionista (§234)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["MIXED", "DIRECT"], depositPercent: 35 }));
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-3" });
+
+    await service.createFromQuote("client-1", "quote-1", "MIXED");
+
+    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith(expect.objectContaining({ choice: "MIXED", depositPercent: 35 }));
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("rifiuta un modo di pagamento che il professionista non ha offerto (§234)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["DIRECT"] }));
+
+    await expect(service.createFromQuote("client-1", "quote-1", "ONLINE")).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
     delete process.env.STRIPE_SECRET_KEY;
   });
 

@@ -587,10 +587,11 @@ function DashboardFiscaleContent() {
               Pagamenti tramite {BRAND.name}
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
-              I clienti che scelgono il pagamento online versano un acconto del 20% e il saldo a lavoro finito. Teniamo noi i soldi e te li
+              Nel preventivo scegli tu come farti pagare: diretto, acconto online (la percentuale la decidi tu) con saldo online, o acconto
+              online con saldo diretto. Quello che il cliente paga online lo teniamo noi e te lo
               accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
               la commissione {BRAND.name} del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
-              I clienti che scelgono il pagamento diretto ti pagano come vi accordate.
+              Quello che il cliente paga direttamente te lo dà come vi accordate.
             </Text>
             {profile?.stripeChargesEnabled ? (
               <Badge variant="verificato">Pagamenti attivi</Badge>

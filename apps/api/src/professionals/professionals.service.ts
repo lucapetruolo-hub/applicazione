@@ -2,6 +2,7 @@ import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
+  quotePaymentOffer,
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
@@ -969,6 +970,8 @@ export class ProfessionalsService {
               // Nota del cliente senza cambio di data (docs/CHANGELOG.md §196).
               clientNote: quote.clientNote,
               rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
+              // Modi di pagamento offerti (docs/CHANGELOG.md §234), coi valori di serie per i preventivi vecchi.
+              ...quotePaymentOffer(quote),
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla
               // scadenza della richiesta contata dal suo invio

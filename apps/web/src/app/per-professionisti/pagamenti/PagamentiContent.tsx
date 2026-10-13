@@ -72,11 +72,14 @@ export function PagamentiContent() {
 
         <Block title="Pagamento online">
           <Point n={1} title="Acconto">
-            Accettando il preventivo il cliente paga con carta tramite Stripe un acconto del 20% dell&apos;importo massimo del preventivo.
+            Nel preventivo scegli tu come farti pagare, anche più modi insieme: tutto diretto, acconto online e saldo online, oppure
+            acconto online e saldo diretto. La percentuale dell&apos;acconto la decidi tu (da 1 a 100% dell&apos;importo massimo del
+            preventivo, 20% se non la cambi). Accettando il preventivo il cliente sceglie tra i modi che hai offerto e paga l&apos;acconto
+            con carta tramite Stripe.
           </Point>
           <Point n={2} title="Saldo">
-            Quando chiudi il lavoro indichi l&apos;importo finale e il cliente paga la differenza. Se l&apos;acconto supera l&apos;importo
-            finale, la parte in più torna al cliente.
+            Quando chiudi il lavoro indichi l&apos;importo finale e il cliente paga la differenza, online o direttamente a te secondo il
+            modo scelto. Se l&apos;acconto supera l&apos;importo finale, la parte in più torna al cliente.
           </Point>
           <Point n={3} title="Accredito">
             Teniamo noi i soldi in custodia e te li accreditiamo sul tuo conto Stripe quando il cliente conferma che il lavoro è finito,
@@ -84,8 +87,8 @@ export function PagamentiContent() {
             non si chiude.
           </Point>
           <Point n={4} title="Costi">
-            Dall&apos;importo togliamo il costo del servizio di pagamento Stripe e una commissione del 5%. Il cliente non paga costi in
-            più.
+            Da quanto il cliente paga online togliamo il costo del servizio di pagamento Stripe e una commissione del 5%. Su quanto ti
+            paga direttamente non c&apos;è commissione. Il cliente non paga costi in più.
           </Point>
           <P>
             Per ricevere gli accrediti attivi i pagamenti in Dati fiscali e pagamenti, nella tua area. Finché non lo fai, i soldi restano
