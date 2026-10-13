@@ -11,11 +11,21 @@ import { UnreadDot } from "@/components/UnreadDot";
  * (docs/CHANGELOG.md §187). La sua misura è quella di tutti i pulsanti in
  * fondo alle schede (`CardButton`, docs/CHANGELOG.md §195).
  */
-export function ContactButton({ onPress, unreadCount, compact }: { onPress: () => void; unreadCount?: number; compact?: boolean }) {
+export function ContactButton({
+  onPress,
+  unreadCount,
+  compact,
+  compactOnPhone,
+}: {
+  onPress: () => void;
+  unreadCount?: number;
+  compact?: boolean;
+  compactOnPhone?: boolean;
+}) {
   return (
-    <CardButton tone="primary" compact={compact} alignSelf="flex-start" onPress={onPress}>
+    <CardButton tone="primary" compact={compact} compactOnPhone={compactOnPhone} alignSelf="flex-start" onPress={onPress}>
       <XStack alignItems="center" gap="$1">
-        <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"}>
+        <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
           Contatta/Cronologia
         </Text>
         <UnreadDot count={unreadCount} />

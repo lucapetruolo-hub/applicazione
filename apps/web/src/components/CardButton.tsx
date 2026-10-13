@@ -23,13 +23,15 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
   fill?: string;
   /** Versione più piccola, per i pannelli stretti come la prenotazione in Agenda (richiesta dell'utente). */
   compact?: boolean;
+  /** Versione piccola solo su telefono, per le file di pulsanti delle schede (docs/CHANGELOG.md §228). */
+  compactOnPhone?: boolean;
   children: ReactNode;
 };
 
 export const CARD_BUTTON_HEIGHT = 40;
 const CARD_BUTTON_HEIGHT_COMPACT = 34;
 
-export function CardButton({ tone = "outline", fill, compact, children, disabled, ...rest }: CardButtonProps) {
+export function CardButton({ tone = "outline", fill, compact, compactOnPhone, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;
   const toneProps: ComponentProps<typeof Button> = fill
     ? { variant: "secondary", backgroundColor: fill, borderColor: fill, hoverStyle: { backgroundColor: fill, opacity: 0.88 }, pressStyle: { backgroundColor: fill, opacity: 0.8 } }
@@ -51,10 +53,11 @@ export function CardButton({ tone = "outline", fill, compact, children, disabled
       paddingHorizontal={compact ? 14 : 24}
       disabled={disabled}
       opacity={disabled ? 0.6 : 1}
+      {...(compactOnPhone && !compact ? { $xs: { height: CARD_BUTTON_HEIGHT_COMPACT, paddingHorizontal: 14 } } : {})}
       {...rest}
     >
       {typeof children === "string" ? (
-        <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"}>
+        <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
           {children}
         </Text>
       ) : (

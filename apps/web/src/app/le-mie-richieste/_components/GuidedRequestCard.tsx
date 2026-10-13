@@ -175,6 +175,8 @@ export function GuidedRequestCard({
   // punto (stesso confine applicato lato API).
   const canDelete = request.status !== "CLOSED";
   const hasQuote = request.quotes.length > 0;
+  // Preventivo diventato l'intervento: il suo Contatta/Cronologia passa nella sezione dell'intervento.
+  const acceptedQuote = booking ? request.quotes.find((quote) => quote.status === "ACCEPTED" && quote.professionalProfileId === booking.professionalProfileId) : undefined;
   const canEditDetails = canDelete && !hasQuote;
   const averagePriceEurCents = useMemo(() => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)), [request.quotes]);
 
@@ -797,6 +799,7 @@ export function GuidedRequestCard({
                   unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
                   requestOpen={request.status !== "CLOSED"}
+                  contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
                 />
               ))}
             </YStack>
@@ -811,7 +814,12 @@ export function GuidedRequestCard({
               booking={booking}
               token={token}
               onChanged={onChanged}
-              unreadCount={combineUnreadCounts(bookingUnreadCounts?.get(booking.id), threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`))}
+              unreadCount={combineUnreadCounts(
+                bookingUnreadCounts?.get(booking.id),
+                threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
+                // Il pulsante del preventivo accettato è qui: anche i suoi non letti.
+                acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
+              )}
             />
           ) : null}
 

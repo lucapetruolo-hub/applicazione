@@ -10,6 +10,7 @@ import {
   toJobIssueSummary,
   jobPaidOnline,
   quotePriceTotals,
+  formatBookingAddress,
   toJobPaymentSummary,
   type JobPaymentChoice,
   jobIssueCanEscalate,
@@ -53,7 +54,7 @@ export class BookingsService {
   async createFromQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice = "DIRECT") {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { guidedRequest: true, booking: true, professionalProfile: true, items: true },
+      include: { guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } } } }, booking: true, professionalProfile: true, items: true },
     });
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
@@ -112,9 +113,20 @@ export class BookingsService {
     // Il professionista deve sapere che il proprio preventivo è stato
     // accettato — mancava del tutto (richiesta esplicita dell'utente, "wow
     // hanno accettato un tuo preventivo" come esempio di popup atteso).
+    // Dati del cliente già nell'email al professionista (richiesta esplicita
+    // dell'utente, docs/CHANGELOG.md §228): si sbloccano proprio ora, con la
+    // prenotazione creata (CLAUDE.md §5 punto 9). Stessi campi della scheda.
+    const client = guidedRequest.client;
+    const clientFullName =
+      [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || [client?.name, client?.surname].filter(Boolean).join(" ") || null;
+    const clientAddress = formatBookingAddress(booking) ?? (guidedRequest.address ? `${guidedRequest.address}${guidedRequest.city ? `, ${guidedRequest.city}` : ""}` : null);
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
       bookingId: booking.id,
       guidedRequestId: quote.guidedRequestId,
+      clientName: clientFullName,
+      clientPhone: booking.recipientPhone ?? client?.phone ?? null,
+      clientAddress,
+      scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
     });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
@@ -328,10 +340,14 @@ export class BookingsService {
       }),
     ]);
 
+    // Importo diverso dal preventivo: il motivo arriva al cliente nella
+    // notifica, nell'email e in chat (richiesta esplicita dell'utente, docs/CHANGELOG.md §228).
+    const clientReason = deviation?.needsReason ? changeReason : null;
     await this.notificationsService.notify(booking.clientId, "JOB_COMPLETED", {
       bookingId,
       finalAmountEurCents,
       guidedRequestId: booking.quote?.guidedRequestId,
+      ...(clientReason ? { changeReason: clientReason } : {}),
     });
 
     if (booking.quote) {
@@ -340,7 +356,7 @@ export class BookingsService {
         booking.quote.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        `Il professionista ha segnalato il lavoro come terminato. Importo finale: €${totalEuro}.`,
+        `Il professionista ha segnalato il lavoro come terminato. Importo finale: €${totalEuro}.${clientReason ? ` Diverso dal preventivo perché: "${clientReason}"` : ""}`,
       );
     }
 
@@ -1007,6 +1023,8 @@ export class BookingsService {
       // come terminato — richiesta esplicita dell'utente.
       finalAmountEurCents: booking.finalAmountEurCents,
       finalItems: booking.finalItems.map((item) => ({ id: item.id, name: item.name, priceEurCents: item.priceEurCents })),
+      // Motivo dell'importo diverso dal preventivo: lo legge anche il cliente (richiesta esplicita dell'utente).
+      completionChangeReason: booking.completionChangeReason,
       // Nota lasciata dal professionista se ha annullato l'intervento (facoltativa).
       cancellationNote: booking.cancellationNote,
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto

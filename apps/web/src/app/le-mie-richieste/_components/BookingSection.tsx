@@ -124,22 +124,13 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
         Intervento
       </Text>
-      <Text color={brand.grafite70} fontSize="$3">
-        {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })}
+      {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
+      <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+        {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         {" · "}
         {new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
         {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
       </Text>
-
-      {booking.guidedRequestId ? (
-        <ContactButton
-          unreadCount={effectiveUnreadCount}
-          onPress={() => {
-            setShowTimeline(true);
-            dismissUnread();
-          }}
-        />
-      ) : null}
 
       {booking.meetingLink ? (
         <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
@@ -178,18 +169,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         <JobPaymentStatus
           payment={booking.payment}
           audience="client"
-          businessName={booking.businessName}
           onPay={async (part) => {
             const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
             if (url) window.location.href = url;
           }}
         />
-      ) : null}
-
-      {canReportIssue ? (
-        <CardButton tone="danger" alignSelf="flex-start" onPress={() => setShowNoShowModal(true)}>
-          Segnala un problema
-        </CardButton>
       ) : null}
 
       {booking.issue ? (
@@ -237,6 +221,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               €{(booking.finalAmountEurCents / 100).toFixed(2)}
             </Text>
           </XStack>
+          {booking.completionChangeReason ? (
+            <Text fontSize="$2" color={brand.grafite70}>
+              Perché è diverso dal preventivo: {booking.completionChangeReason}
+            </Text>
+          ) : null}
         </YStack>
       ) : null}
 
@@ -278,26 +267,47 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         />
       ) : null}
 
-      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
-        <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {booking.hasReview ? (
-            <Text fontSize="$2" color={brand.verificato} fontWeight="600">
-              Recensione inviata
-            </Text>
-          ) : booking.canReview ? (
-            <CardButton alignSelf="flex-start" onPress={() => setShowReviewModal(true)}>
-              Lascia una recensione
-            </CardButton>
-          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
-              Potrai lasciare la recensione quando la segnalazione sarà chiusa.
-            </Text>
-          ) : !booking.clientConfirmedCompletedAt ? (
-            <CardButton tone="primary" alignSelf="flex-start" onPress={() => setShowClientCompleteModal(true)}>
+      {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
+          Lavoro terminato (o recensione), Contatta/Cronologia, Segnala un
+          problema. Un solo Contatta/Cronologia nella scheda: quello del
+          preventivo accettato è nascosto (QuoteCard, `contactInBooking`). */}
+      <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+        {/* Lavoro terminato sempre per primo, turchese come lato professionista (richiesta esplicita dell'utente). */}
+        {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+          booking.hasReview ? null : booking.canReview ? (
+            <CardButton compactOnPhone onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
+          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
+            <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowClientCompleteModal(true)}>
               Lavoro terminato
             </CardButton>
-          ) : null}
-        </YStack>
+          ) : null
+        ) : null}
+        {booking.guidedRequestId ? (
+          <ContactButton
+            compactOnPhone
+            unreadCount={effectiveUnreadCount}
+            onPress={() => {
+              setShowTimeline(true);
+              dismissUnread();
+            }}
+          />
+        ) : null}
+        {canReportIssue ? (
+          <CardButton compactOnPhone tone="danger" onPress={() => setShowNoShowModal(true)}>
+            Segnala un problema
+          </CardButton>
+        ) : null}
+      </XStack>
+      {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
+        booking.hasReview ? (
+          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+            Recensione inviata
+          </Text>
+        ) : !booking.canReview && (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") ? (
+          <Text fontSize="$2" color={brand.grafite70}>
+            Potrai lasciare la recensione quando la segnalazione sarà chiusa.
+          </Text>
+        ) : null
       ) : null}
 
       {/* Elimina sempre per ultimo (richiesta esplicita dell'utente). */}
@@ -332,14 +342,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           onClose={() => setShowClientCompleteModal(false)}
           onConfirm={handleClientConfirmComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-          onReportProblem={
-            canReportIssue
-              ? () => {
-                  setShowClientCompleteModal(false);
-                  setShowNoShowModal(true);
-                }
-              : undefined
-          }
         />
       ) : null}
       {showReviewModal ? (

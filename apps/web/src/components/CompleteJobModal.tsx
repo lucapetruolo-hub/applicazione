@@ -332,7 +332,7 @@ export function CompleteJobModal({
               {deviation.quoteMaxEurCents !== null && deviation.quoteMaxEurCents !== deviation.quoteMinEurCents
                 ? ` – €${(deviation.quoteMaxEurCents / 100).toFixed(0)}`
                 : ""}
-              . Il motivo resta agli atti e può essere letto dal nostro team in caso di contestazione.
+              . Il motivo lo legge anche il cliente e resta agli atti in caso di contestazione.
             </Text>
             <textarea
               value={changeReason}

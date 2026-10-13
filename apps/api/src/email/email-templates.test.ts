@@ -65,6 +65,66 @@ describe("email delle notifiche", () => {
     expect(renderEmail(content).text).toContain("09:30");
   });
 
+  it("lavoro terminato: riporta il motivo dell'importo diverso dal preventivo (docs/CHANGELOG.md §228)", () => {
+    const withReason = renderEmail(notificationEmail("JOB_COMPLETED", { finalAmountEurCents: 8000, changeReason: "Raccordo da sostituire" }, ctx)!);
+    expect(withReason.text).toContain("Diverso dal preventivo perché");
+    expect(withReason.text).toContain("Raccordo da sostituire");
+    const without = renderEmail(notificationEmail("JOB_COMPLETED", { finalAmountEurCents: 8000 }, ctx)!);
+    expect(without.text).not.toContain("Diverso dal preventivo");
+  });
+
+  it("preventivo accettato: dati del cliente e fascia dell'appuntamento nell'email (docs/CHANGELOG.md §228)", () => {
+    const email = renderEmail(
+      notificationEmail(
+        "QUOTE_ACCEPTED",
+        { clientName: "Mario Bianchi", clientPhone: "333 1234567", clientAddress: "Via Roma 1 — 20100 Milano (MI)", scheduledEndAt: "2026-10-14T13:00:00.000Z" },
+        ctx,
+      )!,
+    );
+    expect(email.text).toContain("Mario Bianchi");
+    expect(email.text).toContain("333 1234567");
+    expect(email.text).toContain("Via Roma 1");
+    expect(email.text).toContain("09:30–13:00");
+  });
+
+  it("modifiche dell'appuntamento: descrizione, prima e nuova proposta (docs/CHANGELOG.md §228)", () => {
+    const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
+    const slots = {
+      change: "both",
+      from: { start: "2026-10-14T09:30:00.000Z", end: "2026-10-14T11:00:00.000Z" },
+      to: { start: "2026-10-16T15:00:00.000Z", end: "2026-10-16T17:00:00.000Z" },
+    };
+    for (const type of ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_REJECTED"]) {
+      const text = renderEmail(notificationEmail(type, slots, withDescription)!).text;
+      expect(text).toContain("Perdita sotto il lavello");
+      expect(text).toContain("09:30–11:00");
+      expect(text).toContain("15:00–17:00");
+    }
+  });
+
+  it("modifiche della sola nota: nota di prima, nota nuova e appuntamento invariato (docs/CHANGELOG.md §228)", () => {
+    const payload = { noteOnly: true, previousNote: "Suonare al citofono", note: "Citofono rotto, chiamatemi", to: { start: "2026-10-14T09:30:00.000Z", end: "2026-10-14T11:00:00.000Z" } };
+    for (const type of ["QUOTE_DATE_CHANGED", "QUOTE_DATE_PROPOSED"]) {
+      const text = renderEmail(notificationEmail(type, payload, ctx)!).text;
+      expect(text, type).toContain('Nota di prima: "Suonare al citofono"');
+      expect(text, type).toContain('Nota nuova: "Citofono rotto, chiamatemi"');
+      expect(text, type).toContain("Appuntamento (invariato): ");
+      expect(text, type).toContain("09:30–11:00");
+    }
+    const updated = renderEmail(notificationEmail("QUOTE_UPDATED", { notesChanged: true, previousNote: "Materiali esclusi", note: "Materiali inclusi" }, ctx)!).text;
+    expect(updated).toContain('Note di prima: "Materiali esclusi"');
+    expect(updated).toContain('Note nuove: "Materiali inclusi"');
+  });
+
+  it("ogni email di una richiesta riporta la descrizione dell'intervento (docs/CHANGELOG.md §228)", () => {
+    const withDescription = { ...ctx, description: "Perdita sotto il lavello" };
+    for (const type of NOTIFICATION_EMAIL_TYPES) {
+      const content = notificationEmail(type, {}, withDescription);
+      if (content) expect(renderEmail(content).text).toContain("Descrizione: Perdita sotto il lavello");
+    }
+    expect(renderEmail(notificationEmail("NEW_REVIEW", {}, ctx)!).text).not.toContain("Descrizione");
+  });
+
   it("la nuova recensione non anticipa mai il voto", () => {
     const content = notificationEmail("NEW_REVIEW", { rating: 2 }, ctx)!;
     const email = renderEmail(content);

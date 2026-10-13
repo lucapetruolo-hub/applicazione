@@ -18,7 +18,7 @@ import {
 } from "@professionisti/shared";
 import { frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
-import { formatAppointment, formatDay, formatDeadline, formatEur } from "../email-format";
+import { descriptionDetail, formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
@@ -46,6 +46,8 @@ export type NotificationEmailContext = {
   when: Date | null;
   /** Data proposta dal cliente (QUOTE_DATE_PROPOSED). */
   proposedWhen: Date | null;
+  /** Descrizione della richiesta, per capire di quale lavoro si tratta (docs/CHANGELOG.md §228). */
+  description?: string | null;
 };
 
 type Payload = Record<string, unknown>;
@@ -54,6 +56,20 @@ type Builder = (payload: Payload, ctx: NotificationEmailContext) => EmailContent
 /** Nota scritta dall'altra parte, riportata nell'email (docs/CHANGELOG.md §196). */
 function quotedNote(payload: Payload): string[] {
   return typeof payload.note === "string" && payload.note.trim() ? [`Nota: "${payload.note.trim()}"`] : [];
+}
+
+/** Nota di prima e nota nuova, per le modifiche che cambiano solo la nota (docs/CHANGELOG.md §228). */
+function noteChange(payload: Payload, previousLabel = "Nota di prima", newLabel = "Nota nuova"): string[] {
+  const previous = typeof payload.previousNote === "string" ? payload.previousNote.trim() : "";
+  const current = typeof payload.note === "string" ? payload.note.trim() : "";
+  if (!previous || previous === current) return quotedNote(payload);
+  return [`${previousLabel}: "${previous}"`, current ? `${newLabel}: "${current}"` : "La nota è stata tolta."];
+}
+
+/** Appuntamento invariato dal payload, per le modifiche che cambiano solo la nota (§228). */
+function unchangedSlot(payload: Payload): { label: string; value: string }[] {
+  const slot = slotText(payload.to);
+  return slot ? [{ label: "Appuntamento (invariato)", value: slot }] : [];
 }
 
 function str(value: unknown): string | null {
@@ -80,6 +96,29 @@ function jobDetails(ctx: NotificationEmailContext, extra: { label: string; value
 /** Il professionista non vede il proprio nome nel riquadro. */
 function proJobDetails(ctx: NotificationEmailContext, extra: { label: string; value: string }[] = []) {
   return jobDetails({ ...ctx, businessName: null }, extra);
+}
+
+/** Appuntamento "prima"/"dopo" dal payload: "martedì 14 ottobre, 09:00–13:00" (docs/CHANGELOG.md §228). */
+function slotText(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const slot = value as { start?: unknown; end?: unknown };
+  const start = str(slot.start);
+  if (!start) return null;
+  const end = str(slot.end);
+  return `${formatAppointment(start)}${end ? `–${formatAppointmentTime(end)}` : ""}`;
+}
+
+/** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §228). */
+function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabel: string, toLabel: string, withPro: boolean) {
+  const from = slotText(payload.from);
+  const to = slotText(payload.to);
+  // La descrizione la aggiunge notificationEmail, come in tutte le email di una richiesta.
+  return [
+    ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+    ...(withPro && ctx.businessName ? [{ label: "Professionista", value: ctx.businessName }] : []),
+    ...(from ? [{ label: fromLabel, value: from }] : []),
+    ...(to ? [{ label: toLabel, value: to }] : []),
+  ];
 }
 
 const clientRequests = () => ({ label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` });
@@ -166,18 +205,35 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
     };
   },
-  QUOTE_ACCEPTED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: "Il cliente ha accettato il tuo preventivo",
-    greeting: ctx.name,
-    title: "Preventivo accettato!",
-    paragraphs: [
-      `Ottima notizia: il cliente ha accettato il tuo preventivo per **${job(ctx)}**.`,
-      "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
-    ],
-    details: proJobDetails(ctx),
-    cta: proRequests("Apri il lavoro"),
-  }),
+  QUOTE_ACCEPTED: (payload, ctx) => {
+    // Dati del cliente subito nell'email: a preventivo accettato si sbloccano
+    // (richiesta esplicita dell'utente, docs/CHANGELOG.md §228).
+    const clientName = str(payload.clientName);
+    const clientPhone = str(payload.clientPhone);
+    const clientAddress = str(payload.clientAddress);
+    const endTime = str(payload.scheduledEndAt) ? formatAppointmentTime(str(payload.scheduledEndAt)) : "";
+    const details = [
+      ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
+      ...(ctx.when ? [{ label: "Appuntamento", value: `${formatAppointment(ctx.when)}${endTime ? `–${endTime}` : ""}` }] : []),
+      ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
+      ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
+      ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
+    ];
+    return {
+      kind: "notification",
+      subject: "Il cliente ha accettato il tuo preventivo",
+      greeting: ctx.name,
+      title: "Preventivo accettato!",
+      paragraphs: [
+        `Ottima notizia: il cliente ha accettato il tuo preventivo per **${job(ctx)}**.`,
+        clientName || clientPhone || clientAddress
+          ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
+          : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: proRequests("Apri il lavoro"),
+    };
+  },
   QUOTE_REJECTED: (payload, ctx) => {
     // Nota del cliente e nuovo preventivo (docs/CHANGELOG.md §188): la nota
     // va nel riquadro, mai nel testo, così non passa la formattazione.
@@ -221,10 +277,10 @@ const BUILDERS: Record<string, Builder> = {
         title: "Il cliente ha aggiunto una nota",
         paragraphs: [
           `Per il tuo preventivo per **${job(ctx)}** il cliente ha aggiunto una nota, senza cambiare data e orario.`,
-          ...quotedNote(payload),
+          ...noteChange(payload),
           "Il preventivo resta valido così com'è: il cliente può ancora accettarlo. Se vuoi rispondere, scrivigli dalla richiesta.",
         ],
-        details: proJobDetails(ctx),
+        details: unchangedSlot(payload).length ? proJobDetails({ ...ctx, when: null }, unchangedSlot(payload)) : proJobDetails(ctx),
         cta: proRequests("Apri la richiesta"),
       };
     }
@@ -239,7 +295,9 @@ const BUILDERS: Record<string, Builder> = {
         ...quotedNote(payload),
         "Confermala se ti va bene, oppure rispondi con un'alternativa.",
       ],
-      details: proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Proposta del cliente", value: formatAppointment(ctx.proposedWhen) }] : []),
+      details: slotText(payload.to)
+        ? changeDetails(ctx, payload, "Appuntamento del preventivo", "Nuova proposta del cliente", false)
+        : proJobDetails({ ...ctx, when: null }, ctx.proposedWhen ? [{ label: "Proposta del cliente", value: formatAppointment(ctx.proposedWhen) }] : []),
       cta: proRequests("Rispondi alla proposta"),
     };
   },
@@ -252,8 +310,8 @@ const BUILDERS: Record<string, Builder> = {
         subject: `${pro(ctx)} ha aggiunto una nota al preventivo`,
         greeting: ctx.name,
         title: "Nuova nota sul preventivo",
-        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario.`, ...quotedNote(payload)],
-        details: jobDetails(ctx),
+        paragraphs: [`**${pro(ctx)}** ha aggiunto una nota al preventivo per **${job(ctx)}**, senza cambiare data e orario.`, ...noteChange(payload)],
+        details: unchangedSlot(payload).length ? jobDetails({ ...ctx, when: null }, unchangedSlot(payload)) : jobDetails(ctx),
         cta: clientRequests(),
       };
     }
@@ -264,7 +322,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: `Cambia ${scheduleChangeObject(change)} dell'appuntamento`,
       paragraphs: [`**${pro(ctx)}** ha modificato ${scheduleChangeObject(change)} del preventivo per **${job(ctx)}**. Ecco come è ora:`, ...quotedNote(payload)],
-      details: jobDetails(ctx),
+      details: slotText(payload.to) ? changeDetails(ctx, payload, "Prima", "Nuova proposta", true) : jobDetails(ctx),
       cta: clientRequests(),
       after: ["Se non ti va bene puoi proporre un'altra data o scrivere al professionista in chat."],
     };
@@ -289,7 +347,7 @@ const BUILDERS: Record<string, Builder> = {
         ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
           ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
           : []),
-        ...quotedNote(payload),
+        ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
       ],
       details: jobDetails(ctx),
@@ -305,32 +363,44 @@ const BUILDERS: Record<string, Builder> = {
     details: jobDetails(ctx),
     cta: clientRequests(),
   }),
-  QUOTE_DATE_REJECTED: (_payload, ctx) => ({
-    kind: "notification",
-    subject: `${pro(ctx)} non è disponibile nella data proposta`,
-    greeting: ctx.name,
-    title: "Data non disponibile",
-    paragraphs: [
-      `**${pro(ctx)}** non è disponibile nella data che avevi proposto per **${job(ctx)}**.`,
-      "Puoi accettare la data del preventivo, proporne un'altra o scrivergli in chat per trovare insieme il momento giusto.",
-    ],
-    cta: clientRequests(),
-  }),
+  QUOTE_DATE_REJECTED: (payload, ctx) => {
+    const details = changeDetails(ctx, payload, "Data che avevi proposto", "Resta valida", true);
+    return {
+      kind: "notification",
+      subject: `${pro(ctx)} non è disponibile nella data proposta`,
+      greeting: ctx.name,
+      title: "Data non disponibile",
+      paragraphs: [
+        `**${pro(ctx)}** non è disponibile nella data che avevi proposto per **${job(ctx)}**.`,
+        "Puoi accettare la data del preventivo, proporne un'altra o scrivergli in chat per trovare insieme il momento giusto.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: clientRequests(),
+    };
+  },
 
   // ── Lavori e appuntamenti ──────────────────────────────────────────────
-  JOB_COMPLETED: (payload, ctx) => ({
-    kind: "notification",
-    subject: `${pro(ctx)} ha terminato il lavoro: com'è andata?`,
-    greeting: ctx.name,
-    title: "Com'è andata?",
-    paragraphs: [
-      `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
-      "Lascia una recensione: bastano un voto e due righe. Aiuta gli altri clienti a scegliere e il professionista a farsi conoscere.",
-    ],
-    details: typeof payload.finalAmountEurCents === "number" ? [{ label: "Importo finale", value: formatEur(payload.finalAmountEurCents) }] : undefined,
-    cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
-    after: [`Se qualcosa non è andato bene, puoi segnalarlo dalla richiesta entro ${BAD_WORK_REPORT_DAYS} giorni.`],
-  }),
+  JOB_COMPLETED: (payload, ctx) => {
+    // Importo diverso dal preventivo: il motivo scritto dal professionista (docs/CHANGELOG.md §228).
+    const reason = str(payload.changeReason);
+    const details = [
+      ...(typeof payload.finalAmountEurCents === "number" ? [{ label: "Importo finale", value: formatEur(payload.finalAmountEurCents) }] : []),
+      ...(reason ? [{ label: "Diverso dal preventivo perché", value: reason }] : []),
+    ];
+    return {
+      kind: "notification",
+      subject: `${pro(ctx)} ha terminato il lavoro: com'è andata?`,
+      greeting: ctx.name,
+      title: "Com'è andata?",
+      paragraphs: [
+        `**${pro(ctx)}** ha segnato come terminato il lavoro per **${job(ctx)}**.`,
+        "Lascia una recensione: bastano un voto e due righe. Aiuta gli altri clienti a scegliere e il professionista a farsi conoscere.",
+      ],
+      details: details.length > 0 ? details : undefined,
+      cta: { label: "Lascia una recensione", url: `${frontendUrl()}/le-mie-richieste` },
+      after: [`Se qualcosa non è andato bene, puoi segnalarlo dalla richiesta entro ${BAD_WORK_REPORT_DAYS} giorni.`],
+    };
+  },
   BOOKING_CANCELED_BY_PROFESSIONAL: (payload, ctx) => {
     const note = str(payload.cancellationNote);
     return {
@@ -914,7 +984,26 @@ export const NOTIFICATION_EMAIL_TYPES: ReadonlySet<string> = new Set(Object.keys
 
 export function notificationEmail(type: string, payload: Payload, ctx: NotificationEmailContext): EmailContent | null {
   const builder = BUILDERS[type];
-  return builder ? builder(payload, ctx) : null;
+  const content = builder ? builder(payload, ctx) : null;
+  return content ? withDescription(content, ctx) : null;
+}
+
+/**
+ * Descrizione dell'intervento in ogni email che riguarda una richiesta, per
+ * capire subito di quale si tratta (richiesta esplicita dell'utente,
+ * docs/CHANGELOG.md §228): nel riquadro, dopo "Lavoro" se c'è. Il
+ * professionista la vede già prima dell'accettazione, quindi non è un dato
+ * di contatto (CLAUDE.md §5 punto 9).
+ */
+function withDescription(content: EmailContent, ctx: NotificationEmailContext): EmailContent {
+  const row = descriptionDetail(ctx.description)[0];
+  if (!row) return content;
+  const details = content.details ?? [];
+  const jobIndex = details.findIndex((d) => d.label === "Lavoro");
+  return {
+    ...content,
+    details: jobIndex >= 0 ? [...details.slice(0, jobIndex + 1), row, ...details.slice(jobIndex + 1)] : [row, ...details],
+  };
 }
 
 /** Contesto vuoto, per i tipi che non riguardano un lavoro. */

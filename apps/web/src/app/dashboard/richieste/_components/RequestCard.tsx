@@ -830,16 +830,20 @@ export function RequestCard({
                       Telefono, email e indirizzo saranno visibili qui ad accettazione del preventivo.
                     </Text>
                   ) : null}
-                  {/* Tasto Chat spostato in fondo alla scheda "Dettagli
-                      cliente" — richiesta esplicita dell'utente. */}
-                  <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
-                    <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
-                      <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
-                        Chat
-                      </Text>
-                      <UnreadDot count={effectiveUnreadCount} />
+                  {/* Tasto Chat in fondo ai "Dettagli cliente" (richiesta
+                      esplicita dell'utente), solo quando le azioni in fondo
+                      alla scheda non hanno già "Contatta/Cronologia", che apre
+                      la stessa conversazione (docs/CHANGELOG.md §228). */}
+                  {stage === "scaduta" || stage === "chiusa" ? (
+                    <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
+                      <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={8} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
+                        <Text fontSize={12.5} fontWeight="700" color={brand.cianografiaScuro}>
+                          Chat
+                        </Text>
+                        <UnreadDot count={effectiveUnreadCount} />
+                      </XStack>
                     </XStack>
-                  </XStack>
+                  ) : null}
                 </>
               )}
             </YStack>
@@ -1074,13 +1078,13 @@ export function RequestCard({
                         già in uso per lo stato "Completata" in STAGE_STYLE
                         sopra, coerenza cromatica tra il bottone che porta a
                         quello stato e lo stato stesso. */}
-                    <CardButton fill="#20B2AA" onPress={() => setShowCompleteModal(true)}>
+                    <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowCompleteModal(true)}>
                       Lavoro terminato
                     </CardButton>
                   </>
                 ) : null}
                 {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
-                  <CardButton fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
+                  <CardButton compactOnPhone fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
                     {isReopening ? "Riapertura..." : "Riapri intervento"}
                   </CardButton>
                 ) : null}
@@ -1091,12 +1095,12 @@ export function RequestCard({
                     `?booking=` (letto da /dashboard/agenda) naviga alla data
                     esatta e apre subito il pannello di dettaglio. */}
                 <Link href={booking ? `/dashboard/agenda?booking=${booking.id}` : "/dashboard/agenda"} style={{ textDecoration: "none" }}>
-                  <CardButton fill={brand.verificato}>Vedi in agenda</CardButton>
+                  <CardButton compactOnPhone fill={brand.verificato}>Vedi in agenda</CardButton>
                 </Link>
-                <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
+                <ContactButton compactOnPhone onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {/* Annulla sempre per ultimo (richiesta esplicita dell'utente). */}
                 {booking?.status === "CONFIRMED" ? (
-                  <CardButton tone="danger" onPress={() => setShowCancelModal(true)}>
+                  <CardButton compactOnPhone tone="danger" onPress={() => setShowCancelModal(true)}>
                     Annulla intervento
                   </CardButton>
                 ) : null}

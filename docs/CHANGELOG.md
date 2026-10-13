@@ -18077,3 +18077,92 @@ larghezza massima della griglia (4 × 96px).
 da computer (1100px) e telefono (375 e 360px) in
 `/mnt/project-files/anteprime/agenda-ricerca/` (`profilo-*` per la pagina
 del professionista).
+
+## 228. Scheda dell'intervento: pulsanti in fila e pagamento diretto in una riga
+
+**Richiesta dell'utente**: nella scheda del preventivo accettato mettere in
+fila gli ultimi tre pulsanti (Contatta/Cronologia, Segnala un problema,
+Lavoro terminato) e sostituire le spiegazioni lunghe sul pagamento diretto
+con una riga sola.
+
+**Decisione**:
+- Pagamento diretto (`JobPaymentStatus`): "Metodo di pagamento: DIRETTO ·
+  paghi direttamente il professionista" (cliente) o "· vieni pagato
+  direttamente dal cliente" (professionista), senza riquadro. Il testo su
+  rimborsi e contestazioni resta nel modulo "Segnala un problema"
+  (`assisted={false}`) e in "Come pago?". Il pagamento online non cambia.
+- Lato cliente (`BookingSection`) Contatta/Cronologia, Segnala un problema e
+  Lavoro terminato (o Lascia una recensione) stanno su una riga, dopo
+  pagamento e segnalazioni; sul telefono vanno a capo.
+- Un solo Contatta/Cronologia nella scheda: quello del preventivo accettato
+  è nascosto (`QuoteCard`, `contactInBooking`) e i suoi non letti si
+  sommano al pulsante dell'intervento.
+- Lato professionista i pulsanti erano già in fila: cambia solo la riga del
+  pagamento.
+
+Secondo giro, altre richieste dell'utente:
+- Accettando il preventivo l'opzione diretta è solo "DIRETTO al
+  professionista", senza la spiegazione su accordi e contestazioni
+  (`JOB_PAYMENT_CHOICE_COPY.DIRECT`, `body` ora facoltativo). L'opzione online
+  non cambia.
+- La finestra "Lavoro terminato" del cliente non ripete più "Non è andato
+  tutto bene? Segnala un problema": il pulsante è già accanto.
+- Il motivo scritto dal professionista quando l'importo finale esce dal
+  preventivo (`completionChangeReason`) ora lo legge anche il cliente, sotto
+  "Importo finale" ("Perché è diverso dal preventivo: ..."). Prima lo vedeva
+  solo l'admin; il testo nella finestra del professionista lo dice.
+
+Terzo giro, migliorie approvate dall'utente: sotto "Accettato" sparisce
+"Come pago?" (il metodo di pagamento è subito sotto); un preventivo accettato
+non mostra più l'etichetta "Nuovo"; la data dell'intervento diventa il titolo
+della sezione "Intervento" (con il giorno della settimana) invece di una riga
+grigia. Lato cliente "Lavoro terminato" (o "Lascia una recensione") è il
+primo della fila e ha lo stesso turchese del lato professionista.
+
+Quarto giro, migliorie approvate dall'utente: quando il professionista chiude
+il lavoro con un importo diverso dal preventivo, il motivo arriva al cliente
+nella notifica sul sito, nell'email "ha terminato il lavoro" (riga "Diverso dal
+preventivo perché") e nel messaggio in chat. Nella pagina
+`/per-professionisti/pagamenti` il pagamento diretto è una riga: "Vieni pagato
+direttamente dal cliente, senza commissioni." (le regole complete restano nei
+Termini, punto 5).
+
+Quinto giro, richiesta dell'utente: l'email "preventivo accettato" al
+professionista riporta già nome e cognome del cliente (destinatario della
+richiesta se indicato, altrimenti l'account), telefono, indirizzo completo e
+l'appuntamento con la fascia oraria. Si sbloccano proprio con la
+prenotazione creata (CLAUDE.md §5 punto 9), quindi nessuna eccezione alla
+regola sui contatti.
+
+Sesto giro, richiesta dell'utente: le email di modifica dell'appuntamento
+(proposta del cliente, modifica del professionista, data non disponibile)
+riportano la descrizione della richiesta e l'appuntamento prima e la nuova
+proposta, con la fascia oraria. Le notifiche portano `from`/`to` nel payload;
+le email più vecchie senza quei campi restano come prima.
+
+Settimo giro, richiesta dell'utente: **ogni** email che riguarda una
+richiesta riporta nel riquadro la descrizione dell'intervento (dopo "Lavoro",
+al massimo 200 caratteri), per capire di quale si tratta. Un solo punto:
+`withDescription` in `notificationEmail`, con `description` letta in
+`NotificationsService.emailContext` dalla richiesta, dal preventivo o dalla
+prenotazione. Stessa riga (`descriptionDetail` in `email-format.ts`) anche
+nella conferma "richiesta inviata" al cliente e nei promemoria del giorno
+prima. Le email senza richiesta (account, abbonamento) non cambiano.
+
+Ottavo giro, quattro migliorie approvate dall'utente:
+- Lato professionista "Chat" nei dati del cliente apriva la stessa
+  conversazione di "Contatta/Cronologia": ora compare solo nelle richieste
+  scadute o chiuse, dove in fondo alla scheda non c'è altro modo di aprirla.
+- Su telefono i pulsanti in fondo alla scheda (cliente e professionista)
+  sono più bassi e col testo più piccolo (`compactOnPhone` in `CardButton`
+  e `ContactButton`). Sui telefoni stretti tre pulsanti restano su due righe:
+  il testo non ci sta in una.
+- Email in cui cambia solo la nota (cliente o professionista) e "preventivo
+  aggiornato": riportano la nota di prima e quella nuova (`previousNote` nel
+  payload, `noteChange` nei modelli) e l'appuntamento "invariato".
+- La notifica sul sito di un cambio di data dice il nuovo appuntamento
+  (`slotLabel` in `notificationCopy.ts`, dal campo `to` del payload); così
+  anche "il professionista non è disponibile", con l'appuntamento che resta.
+
+**Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
+computer e telefono per cliente e professionista.

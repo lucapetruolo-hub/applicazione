@@ -51,7 +51,7 @@ export class BookingRemindersService {
       include: {
         client: { select: { email: true, name: true, notificationPrefs: true } },
         professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, name: true, notificationPrefs: true } } } },
-        quote: { select: { guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
+        quote: { select: { guidedRequest: { select: { city: true, description: true, category: { select: { label: true } } } } } },
       },
     });
     if (bookings.length === 0) return;
@@ -59,12 +59,13 @@ export class BookingRemindersService {
     for (const booking of bookings) {
       const professionalName = booking.professionalProfile.businessName;
       const category = booking.quote?.guidedRequest.category.label ?? null;
+      const description = booking.quote?.guidedRequest.description ?? null;
 
       // Solo a chi non ha spento le email di "Lavori e appuntamenti" (docs/CHANGELOG.md §152).
       if (booking.client.email && wantsReminderEmail(booking.client.notificationPrefs)) {
         await this.emailService.send({
           to: booking.client.email,
-          ...bookingReminderClientEmail({ name: booking.client.name, businessName: professionalName, scheduledAt: booking.scheduledAt, category }),
+          ...bookingReminderClientEmail({ name: booking.client.name, businessName: professionalName, scheduledAt: booking.scheduledAt, category, description }),
         });
       }
       if (booking.professionalProfile.user.email && wantsReminderEmail(booking.professionalProfile.user.notificationPrefs)) {
@@ -76,6 +77,7 @@ export class BookingRemindersService {
             scheduledAt: booking.scheduledAt,
             category,
             city: booking.city ?? booking.quote?.guidedRequest.city ?? null,
+            description,
           }),
         });
       }
