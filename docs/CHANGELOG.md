@@ -18186,3 +18186,25 @@ tocca un valore già impostato sul servizio.
 
 **Verifica:** `render.yaml` letto da un parser YAML; nessuna modifica al
 codice dell'API.
+
+## 230. Font salvati nel sito: il build non scarica più da Google Fonts
+
+**Richiesta:** un controllo GitHub era fallito con "An error occurred in
+`next/font` ... Cannot read properties of null (reading '1')" in
+`apps/web/src/app/fonts.ts`: `next/font/google` scarica i font a ogni build
+e, quando Google Fonts risponde male, il build (CI e Vercel) si ferma.
+L'utente ha chiesto di togliere questa dipendenza.
+
+**Decisione:** i tre file usati dal sito (sottoinsieme latino di Fredoka e
+Inter Tight, variabili, e IBM Plex Mono 500) stanno in
+`apps/web/src/app/fonts/` e `fonts.ts` usa `next/font/local` con le stesse
+variabili CSS (`--font-display`, `--font-body`, `--font-mono`). Sono
+esattamente i file che `next/font/google` scaricava (stesso contenuto, stesso
+nome in `.next/static/media`). Pesi dichiarati limitati a quelli caricati
+prima (500-700, 400-600, 500). Non sono più inclusi gli altri sottoinsiemi
+(latino esteso, cirillico, greco, vietnamita), che il sito non precaricava:
+lettere come "ł" o "ş" in un nome si vedono col carattere di riserva.
+
+**Verifica:** build di `apps/web` riuscito; screenshot prima/dopo di home e
+privacy da computer (1280px) e telefono (390px) identici pixel per pixel, in
+`/mnt/project-files/anteprime/font-locali/`.
