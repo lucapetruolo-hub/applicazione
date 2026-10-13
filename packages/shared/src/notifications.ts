@@ -48,6 +48,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
+      // Acconto pagato ma lavoro non più confermabile: rimborsato (docs/CHANGELOG.md §237).
+      "QUOTE_DEPOSIT_REFUNDED",
     ],
     activeChannels: ["inApp", "email"],
   },

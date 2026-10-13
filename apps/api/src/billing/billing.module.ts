@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { BookingsModule } from "../bookings/bookings.module";
 import { JobPaymentsModule } from "../job-payments/job-payments.module";
 import { ProfessionalFiscalModule } from "../professional-fiscal/professional-fiscal.module";
 import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
@@ -12,7 +13,7 @@ import { BillingService } from "./billing.service";
   // la conferma di un pagamento MANOVIA del lavoro e la sincronizzazione
   // dello stato Stripe Connect (CLAUDE.md §88) — un solo endpoint webhook,
   // mai due paralleli sullo stesso account Stripe.
-  imports: [AuthModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule],
+  imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule],
   controllers: [BillingController],
   providers: [BillingService],
 })

@@ -1,6 +1,7 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
+import type Stripe from "stripe";
 import {
   JOB_ISSUE_LABEL,
   completionDeviation,
@@ -15,6 +16,7 @@ import {
   type JobPaymentChoice,
   paymentChoiceIsOnline,
   quotePaymentOffer,
+  onlineDepositEurCents,
   jobIssueCanEscalate,
   jobIssueEvidenceDueAt,
   type JobIssueResponseInput,
@@ -31,6 +33,8 @@ import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+
+type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
 
 @Injectable()
 export class BookingsService {
@@ -54,7 +58,37 @@ export class BookingsService {
    * questi campi arrivavano da un input separato raccolto solo qui, in una
    * schermata dedicata all'accettazione).
    */
-  async createFromQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice = "DIRECT") {
+  async createFromQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice = "DIRECT"): Promise<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }> {
+    const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod);
+    if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
+      throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
+    }
+    // Con l'acconto online il lavoro si conferma solo a pagamento riuscito
+    // (decisione dell'utente, docs/CHANGELOG.md §237): fino ad allora il
+    // preventivo resta in attesa e i contatti del cliente restano nascosti
+    // (CLAUDE.md §5 punto 9). La prenotazione la crea `confirmQuoteDeposit`.
+    if (paymentChoiceIsOnline(paymentMethod)) {
+      const { url } = await this.jobPaymentsService.createQuoteDepositCheckout({
+        clientUserId: clientId,
+        quoteId: quote.id,
+        guidedRequestId: quote.guidedRequestId,
+        paymentMethod,
+        amountEurCents: this.quoteDepositEurCents(quote),
+        businessName: quote.professionalProfile.businessName,
+      });
+      if (!url) throw new BadRequestException("Il pagamento online non è partito: riprova tra poco.");
+      return { bookingId: null, paymentMethod, checkoutUrl: url };
+    }
+    const bookingId = await this.confirmAcceptedQuote(quote, clientId, paymentMethod);
+    return { bookingId, paymentMethod, checkoutUrl: null };
+  }
+
+  private quoteDepositEurCents(quote: AcceptableQuote): number {
+    return onlineDepositEurCents(quotePriceTotals(quote.items).totalMaxEurCents, quotePaymentOffer(quote).depositPercent);
+  }
+
+  /** Il preventivo esiste, è del cliente, si può ancora accettare e offre il modo di pagamento scelto. */
+  private async loadAcceptableQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: { guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } } } }, booking: true, professionalProfile: true, items: true },
@@ -80,10 +114,65 @@ export class BookingsService {
     if (!offer.paymentOptions.includes(paymentMethod)) {
       throw new BadRequestException("Il professionista non ha offerto questo modo di pagamento: scegline uno tra quelli del preventivo.");
     }
-    if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
-      throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
+
+    return quote;
+  }
+
+  /**
+   * Webhook Stripe dell'acconto pagato accettando il preventivo (§237):
+   * crea il lavoro e registra l'acconto. Se nel frattempo il preventivo è
+   * cambiato, è stato ritirato o il cliente ha già scelto un altro
+   * professionista, l'acconto torna tutto al cliente. Idempotente sul
+   * payment intent: Stripe può mandare lo stesso evento più volte.
+   */
+  async confirmQuoteDeposit(session: Stripe.Checkout.Session): Promise<void> {
+    const { quoteId, clientUserId } = session.metadata ?? {};
+    const paymentMethod = session.metadata?.paymentMethod as JobPaymentChoice | undefined;
+    const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    if (!quoteId || !clientUserId || !paymentMethod || !paymentIntentId) return;
+
+    const existing = await this.prisma.booking.findUnique({ where: { quoteId }, include: { jobPayment: true } });
+    if (existing?.jobPayment?.stripePaymentIntentId === paymentIntentId) return;
+    // Lavoro creato da un tentativo precedente interrotto prima di registrare l'acconto.
+    if (existing && existing.clientId === clientUserId && existing.jobPayment?.onlineStage === "AWAITING_DEPOSIT" && !existing.jobPayment.stripePaymentIntentId) {
+      await this.jobPaymentsService.recordQuoteDeposit(existing.jobPayment.id, session);
+      return;
     }
 
+    let quote: AcceptableQuote | null = null;
+    let refundReason: string | null = null;
+    try {
+      quote = await this.loadAcceptableQuote(clientUserId, quoteId, paymentMethod);
+    } catch (err) {
+      refundReason = err instanceof Error ? err.message : "Preventivo non più disponibile.";
+    }
+    if (quote) {
+      const otherJob = await this.prisma.booking.findFirst({ where: { quote: { guidedRequestId: quote.guidedRequestId } }, select: { id: true } });
+      if (otherJob) refundReason = "Il cliente ha già accettato un altro preventivo per questa richiesta.";
+      else if ((session.amount_total ?? 0) !== this.quoteDepositEurCents(quote)) refundReason = "Il preventivo è cambiato durante il pagamento.";
+    }
+    if (!quote || refundReason) {
+      await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.");
+      const info = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequestId: true, professionalProfileId: true } });
+      await this.notificationsService.notify(clientUserId, "QUOTE_DEPOSIT_REFUNDED", {
+        guidedRequestId: info?.guidedRequestId ?? null,
+        quoteId,
+        amountEurCents: session.amount_total ?? 0,
+      });
+      if (info) {
+        await this.timelineService.log(info.guidedRequestId, info.professionalProfileId, "CLIENT", "L'acconto pagato è stato rimborsato: il preventivo non si poteva più confermare.");
+      }
+      return;
+    }
+
+    const bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
+    const jobPayment = await this.prisma.jobPayment.findUniqueOrThrow({ where: { bookingId } });
+    await this.jobPaymentsService.recordQuoteDeposit(jobPayment.id, session);
+  }
+
+  /** Crea la prenotazione dal preventivo accettato: da qui il professionista vede i contatti del cliente (CLAUDE.md §5 punto 9). */
+  private async confirmAcceptedQuote(quote: AcceptableQuote, clientId: string, paymentMethod: JobPaymentChoice): Promise<string> {
+    const offer = quotePaymentOffer(quote);
     const { guidedRequest } = quote;
     const booking = await this.prisma.booking.create({
       data: {
@@ -150,11 +239,13 @@ export class BookingsService {
       quote.professionalProfileId,
       "CLIENT",
       paymentMethod === "ONLINE"
-        ? "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento online (acconto ora, saldo a lavoro finito)."
-        : "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento diretto al professionista.",
+        ? "Il cliente ha accettato il preventivo e pagato l'acconto online: prenotazione confermata, saldo online a lavoro finito."
+        : paymentMethod === "MIXED"
+          ? "Il cliente ha accettato il preventivo e pagato l'acconto online: prenotazione confermata, saldo diretto al professionista."
+          : "Il cliente ha accettato il preventivo: prenotazione confermata, pagamento diretto al professionista.",
     );
 
-    return { bookingId: booking.id, paymentMethod };
+    return booking.id;
   }
 
   /**

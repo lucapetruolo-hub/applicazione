@@ -14,14 +14,20 @@ import { BookingsService } from "./bookings.service";
 function buildService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
     quote: { findUnique: vi.fn(), update: vi.fn() },
-    booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
+    booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
+    jobPayment: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "jp-1" }) },
     guidedRequest: { update: vi.fn() },
     ...prismaOverrides,
   };
   const notificationsService = { notify: vi.fn() };
   const professionalMetricsService = { recordJobAccepted: vi.fn() };
   const timelineService = { log: vi.fn() };
-  const jobPaymentsService = { createAtAcceptance: vi.fn() };
+  const jobPaymentsService = {
+    createAtAcceptance: vi.fn(),
+    createQuoteDepositCheckout: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/c/pay" }),
+    recordQuoteDeposit: vi.fn(),
+    refundQuoteDeposit: vi.fn(),
+  };
 
   const service = new BookingsService(
     prisma as never,
@@ -102,7 +108,7 @@ describe("BookingsService.createFromQuote", () => {
 
     const result = await service.createFromQuote("client-1", "quote-1");
 
-    expect(result).toEqual({ bookingId: "new-booking-1", paymentMethod: "DIRECT" });
+    expect(result).toEqual({ bookingId: "new-booking-1", paymentMethod: "DIRECT", checkoutUrl: null });
     expect(prisma.booking.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -125,34 +131,30 @@ describe("BookingsService.createFromQuote", () => {
 });
 
 describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
-  it("con il pagamento online crea il pagamento con acconto sull'importo massimo del preventivo", async () => {
+  it("con l'acconto online apre il pagamento e non crea ancora la prenotazione (§237)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
-    const { service, prisma, jobPaymentsService } = buildService();
+    const { service, prisma, jobPaymentsService, notificationsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
-    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-2" });
 
     const result = await service.createFromQuote("client-1", "quote-1", "ONLINE");
 
-    expect(result).toEqual({ bookingId: "new-booking-2", paymentMethod: "ONLINE" });
-    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith({
-      bookingId: "new-booking-2",
-      choice: "ONLINE",
-      depositPercent: 20,
-      quoteMaxEurCents: 30000,
-      clientUserId: "client-1",
-    });
+    expect(result).toEqual({ bookingId: null, paymentMethod: "ONLINE", checkoutUrl: "https://checkout.stripe.com/c/pay" });
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE", amountEurCents: 6000 }),
+    );
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(notificationsService.notify).not.toHaveBeenCalled();
     delete process.env.STRIPE_SECRET_KEY;
   });
 
-  it("usa la percentuale di acconto e il saldo diretto scelti dal professionista (§234)", async () => {
+  it("usa la percentuale di acconto scelta dal professionista (§234)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["MIXED", "DIRECT"], depositPercent: 35 }));
-    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-3" });
 
     await service.createFromQuote("client-1", "quote-1", "MIXED");
 
-    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith(expect.objectContaining({ choice: "MIXED", depositPercent: 35 }));
+    expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "MIXED", amountEurCents: 10500 }));
     delete process.env.STRIPE_SECRET_KEY;
   });
 
@@ -257,5 +259,79 @@ describe("BookingsService.reportProblemByProfessional", () => {
     );
     expect(timelineService.log).toHaveBeenCalledWith("gr-1", "pro-1", "PROFESSIONAL", expect.stringContaining("non era presente"), input.photoUrls);
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "TIMELINE_MESSAGE_FROM_PROFESSIONAL", expect.anything());
+  });
+});
+
+describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'acconto (§237)", () => {
+  function session(overrides: Record<string, unknown> = {}) {
+    return {
+      payment_intent: "pi_1",
+      amount_total: 6000,
+      metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
+      ...overrides,
+    } as never;
+  }
+
+  it("crea la prenotazione, sblocca i contatti al professionista e registra l'acconto", async () => {
+    const { service, prisma, jobPaymentsService, notificationsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "new-booking-9", recipientPhone: "3331234567" });
+
+    await service.confirmQuoteDeposit(session());
+
+    expect(prisma.booking.create).toHaveBeenCalled();
+    expect(jobPaymentsService.createAtAcceptance).toHaveBeenCalledWith(expect.objectContaining({ bookingId: "new-booking-9", choice: "ONLINE", depositPercent: 20 }));
+    expect(jobPaymentsService.recordQuoteDeposit).toHaveBeenCalledWith("jp-1", expect.anything());
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.objectContaining({ bookingId: "new-booking-9" }));
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+  });
+
+  it("non fa nulla se lo stesso pagamento è già stato registrato", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "b-1", clientId: "client-1", jobPayment: { stripePaymentIntentId: "pi_1" } });
+
+    await service.confirmQuoteDeposit(session());
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.recordQuoteDeposit).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundQuoteDeposit).not.toHaveBeenCalled();
+  });
+
+  it("rimborsa l'acconto se il preventivo è stato ritirato durante il pagamento", async () => {
+    const { service, prisma, jobPaymentsService, notificationsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ status: "WITHDRAWN" }));
+
+    await service.confirmQuoteDeposit(session());
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String));
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "QUOTE_DEPOSIT_REFUNDED", expect.objectContaining({ amountEurCents: 6000 }));
+  });
+
+  it("rimborsa l'acconto se l'importo del preventivo è cambiato", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ items: [{ priceMinEurCents: 20000, priceMaxEurCents: 40000 }] }));
+
+    await service.confirmQuoteDeposit(session());
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalled();
+  });
+
+  it("rimborsa l'acconto se il cliente ha già accettato un altro preventivo della stessa richiesta", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "altro-lavoro" });
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+
+    await service.confirmQuoteDeposit(session());
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalled();
   });
 });

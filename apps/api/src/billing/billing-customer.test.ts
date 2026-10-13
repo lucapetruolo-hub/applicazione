@@ -17,7 +17,7 @@ function buildService(profileOverrides: Record<string, unknown> = {}) {
     subscriptions: { retrieve: vi.fn() },
     billingPortal: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/p/session" }) } },
   };
-  const service = new BillingService(prisma as never, {} as never, {} as never, {} as never);
+  const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, {} as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
   return { service, prisma, stripe };
 }

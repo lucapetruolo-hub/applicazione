@@ -162,6 +162,20 @@ export class JobPaymentsService {
     return this.onlineMoneyService.createCheckout(clientUserId, bookingId, part);
   }
 
+  /** Checkout dell'acconto che conferma il lavoro all'accettazione del preventivo (§237). */
+  createQuoteDepositCheckout(params: Parameters<OnlineMoneyService["createQuoteDepositCheckout"]>[0]) {
+    return this.onlineMoneyService.createQuoteDepositCheckout(params);
+  }
+
+  /** Acconto del preventivo pagato: lo registra sul pagamento del lavoro appena creato, senza un secondo avviso. */
+  recordQuoteDeposit(jobPaymentId: string, session: Stripe.Checkout.Session): Promise<void> {
+    return this.onlineMoneyService.recordCheckoutPayment(jobPaymentId, "deposit", session, { notify: false });
+  }
+
+  refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
+    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason);
+  }
+
   /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */
   handleManoviaCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     return this.onlineMoneyService.handleCheckoutCompleted(session);

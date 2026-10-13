@@ -16,7 +16,7 @@ function buildService() {
   };
   const jobPaymentsService = { handleManoviaCheckoutCompleted: vi.fn(), handleStripeDispute: vi.fn().mockResolvedValue(true), notifyFinanceAdmins: vi.fn() };
   const professionalFiscalService = { refreshStripeConnectStatus: vi.fn() };
-  const service = new BillingService(prisma as never, jobPaymentsService as never, professionalFiscalService as never, {} as never);
+  const service = new BillingService(prisma as never, jobPaymentsService as never, {} as never, professionalFiscalService as never, {} as never);
   const boostEvent = {
     id: "evt_1",
     type: "checkout.session.completed",

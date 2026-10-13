@@ -5,6 +5,7 @@ import { SUBSCRIPTION_TIERS, subscriptionTierInfo, tierPriceDifferenceEurCents, 
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialEndFor } from "../subscriptions/subscription-rules";
+import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
@@ -55,6 +56,7 @@ export class BillingService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly jobPaymentsService: JobPaymentsService,
+    private readonly bookingsService: BookingsService,
     private readonly professionalFiscalService: ProfessionalFiscalService,
     private readonly subscriptionsService: SubscriptionsService,
   ) {
@@ -463,6 +465,9 @@ export class BillingService {
       // distinto dai casi sopra, dove è il professionista che paga Manovia:
       // qui il cliente paga il lavoro, i soldi restano in custodia e la
       // commissione si trattiene trasferendo meno al professionista.
+      if (metadata.kind === "quote_deposit") {
+        await this.bookingsService.confirmQuoteDeposit(session);
+      }
       if (metadata.kind === "job_payment") {
         await this.jobPaymentsService.handleManoviaCheckoutCompleted(session);
       }

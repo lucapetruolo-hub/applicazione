@@ -135,12 +135,73 @@ export class OnlineMoneyService {
     return { url: session.url };
   }
 
+  /**
+   * Checkout dell'acconto al momento dell'accettazione del preventivo
+   * (docs/CHANGELOG.md §237): il lavoro non esiste ancora, nasce solo quando
+   * Stripe conferma il pagamento (`BookingsService.confirmQuoteDeposit`).
+   * Scade dopo un'ora: un pagamento così tardivo su un preventivo cambiato
+   * nel frattempo verrebbe comunque rimborsato.
+   */
+  async createQuoteDepositCheckout(params: {
+    clientUserId: string;
+    quoteId: string;
+    guidedRequestId: string;
+    paymentMethod: string;
+    amountEurCents: number;
+    businessName: string;
+  }): Promise<{ url: string | null }> {
+    const back = `${this.frontendUrl()}/le-mie-richieste?open=${params.guidedRequestId}`;
+    const suffix = statementSuffix(params.businessName);
+    const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod };
+    const session = await this.requireStripe().checkout.sessions.create({
+      mode: "payment",
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            unit_amount: params.amountEurCents,
+            product_data: { name: `Acconto del lavoro con ${params.businessName}` },
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+        metadata,
+      },
+      success_url: `${back}&pagamento=completato`,
+      cancel_url: back,
+      metadata,
+    });
+    return { url: session.url };
+  }
+
+  /** Acconto pagato su un preventivo che non si può più confermare: torna tutto al cliente. */
+  async refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
+    await this.requireStripe().refunds.create(
+      { payment_intent: paymentIntentId, metadata: { reason: reason.slice(0, 450) } },
+      { idempotencyKey: `quote-deposit-refund-${paymentIntentId}` },
+    );
+    this.logger.warn(`Acconto ${paymentIntentId} rimborsato: ${reason}`);
+  }
+
   /** Webhook `checkout.session.completed` di un acconto o saldo. Idempotente sul payment intent. */
   async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     const jobPaymentId = session.metadata?.jobPaymentId;
     const part = session.metadata?.part === "balance" ? "balance" : "deposit";
+    if (!jobPaymentId) return;
+    await this.recordCheckoutPayment(jobPaymentId, part, session, { notify: true });
+  }
+
+  /**
+   * Registra un acconto o saldo pagato con Checkout sul pagamento del lavoro.
+   * `notify: false` per l'acconto che conferma il lavoro: il professionista
+   * riceve già l'avviso "preventivo accettato".
+   */
+  async recordCheckoutPayment(jobPaymentId: string, part: "deposit" | "balance", session: Stripe.Checkout.Session, opts: { notify: boolean }): Promise<void> {
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-    if (!jobPaymentId || !paymentIntentId) return;
+    if (!paymentIntentId) return;
     const jp = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, include: { booking: true } });
     if (!jp) return;
     if (jp.stripePaymentIntentId === paymentIntentId || jp.balancePaymentIntentId === paymentIntentId) return;
@@ -179,7 +240,7 @@ export class OnlineMoneyService {
     });
     const pro = await this.prisma.professionalProfile.findUnique({ where: { id: jp.booking.professionalProfileId }, select: { userId: true } });
     const quote = jp.booking.quoteId ? await this.prisma.quote.findUnique({ where: { id: jp.booking.quoteId }, select: { guidedRequestId: true } }) : null;
-    if (pro) {
+    if (pro && opts.notify) {
       await this.notificationsService.notify(pro.userId, part === "deposit" ? "JOB_DEPOSIT_PAID" : "JOB_BALANCE_PAID", {
         bookingId: jp.bookingId,
         guidedRequestId: quote?.guidedRequestId ?? null,

@@ -1217,7 +1217,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
      * pagamento scelto dal cliente (§168).
      */
     acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
-      request<{ bookingId: string; paymentMethod: JobPaymentChoice }>(`/bookings/from-quote/${quoteId}`, {
+      request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ paymentMethod }),

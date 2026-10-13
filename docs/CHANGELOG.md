@@ -18501,3 +18501,34 @@ Regola da seguire per i nuovi punti pubblici: aggiungere `stripeKycWhere()`
 **Verifica**: `professional-fiscal/stripe-kyc.test.ts` (filtro spento senza
 Stripe, account attivo richiesto, profili dimostrativi; testi e confronti
 dei modi di pagamento). Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 237. Lavoro confermato solo dopo l'acconto online
+
+**Richiesta esplicita dell'utente** (13/10/2026), dalla domanda "il cliente
+per accettare il preventivo deve anche pagare?": scelta "Solo dopo
+l'acconto" sulla scheda di decisione.
+
+**Decisione**: se il cliente sceglie un modo con acconto online (tutto
+online, oppure acconto online e saldo diretto), accettare il preventivo apre
+solo il pagamento Stripe (`OnlineMoneyService.createQuoteDepositCheckout`,
+metadati `kind: "quote_deposit"`, scade dopo un'ora). La prenotazione, la
+chiusura della richiesta, l'avviso "preventivo accettato" al professionista
+e quindi i contatti del cliente (CLAUDE.md §5 punto 9, principio invariato:
+si sbloccano con la `Booking`) arrivano solo quando il webhook conferma il
+pagamento (`BookingsService.confirmQuoteDeposit`), che registra subito
+l'acconto sul pagamento del lavoro. Fino ad allora il preventivo resta da
+accettare e il cliente può riprovare. Col pagamento diretto non cambia nulla.
+
+Scelte mie: se al pagamento il preventivo è stato ritirato o rifiutato, ha
+cambiato importo, oppure il cliente ha già accettato un altro preventivo
+della stessa richiesta, l'acconto viene rimborsato per intero con avviso
+`QUOTE_DEPOSIT_REFUNDED` (argomento "preventivi") e riga in cronologia. Il
+webhook è idempotente sul payment intent. Al ritorno da Stripe la pagina "Le
+mie richieste" avvisa che il lavoro si sta confermando e si ricarica. Le
+prenotazioni online create prima di questa modifica continuano a pagare
+l'acconto dalla scheda del lavoro come prima. Termini §5 aggiornati.
+
+**Verifica**: `bookings.service.test.ts` (pagamento aperto senza
+prenotazione, percentuale dell'acconto, conferma col webhook, evento
+ripetuto, rimborso per preventivo ritirato, importo cambiato o altro
+preventivo già accettato). Test, tipi e lint di `apps/api` e `apps/web` verdi.

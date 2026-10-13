@@ -279,6 +279,19 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: clientRequests(),
   }),
+  // Acconto pagato su un preventivo non più disponibile (docs/CHANGELOG.md §237).
+  QUOTE_DEPOSIT_REFUNDED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Ti abbiamo rimborsato l'acconto",
+    greeting: ctx.name,
+    title: "Acconto rimborsato",
+    paragraphs: [
+      `Il preventivo di **${pro(ctx)}** per **${job(ctx)}** non si poteva più confermare quando è arrivato il tuo pagamento: per esempio era cambiato o era stato ritirato.`,
+      "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
   QUOTE_DATE_PROPOSED: (payload, ctx) => {
     // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
     // (docs/CHANGELOG.md §196).

@@ -87,14 +87,14 @@ export function jobPaymentChoiceCopy(choice: JobPaymentChoice, depositPercent: n
       title: depositPercent >= 100 ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
       body:
         depositPercent >= 100
-          ? "Paghi con Stripe l'intero importo ora. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo."
-          : `Paghi con Stripe: un acconto del ${depositPercent}% ora e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
+          ? "Paghi con Stripe l'intero importo ora: il lavoro è confermato appena il pagamento va a buon fine. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo."
+          : `Paghi con Stripe: un acconto del ${depositPercent}% ora, che conferma il lavoro, e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
     };
   }
   if (choice === "MIXED") {
     return {
       title: "Acconto online, saldo diretto al professionista",
-      body: `Paghi con Stripe un acconto del ${depositPercent}% ora; il resto lo paghi direttamente al professionista a lavoro finito. Assistenza e rimborso valgono solo per l'acconto pagato online.`,
+      body: `Paghi con Stripe un acconto del ${depositPercent}% ora, che conferma il lavoro; il resto lo paghi direttamente al professionista a lavoro finito. Assistenza e rimborso valgono solo per l'acconto pagato online.`,
     };
   }
   // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente).
