@@ -13,7 +13,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_ACCEPTED: { icon: "🥳", message: "Wow, hanno accettato un tuo preventivo!" },
   QUOTE_DATE_PROPOSED: { icon: "🗓️", message: "Il cliente ha proposto un'altra data per il preventivo." },
   QUOTE_DATE_CHANGED: { icon: "🗓️", message: "Il professionista ha modificato la data del tuo preventivo." },
-  QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo, senza cambiare data e orario." },
+  QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
   QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto!" },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },

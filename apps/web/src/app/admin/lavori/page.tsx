@@ -127,6 +127,9 @@ export default function AdminLavoriPage() {
                         Preventivo {range}
                       </Text>
                     ) : null}
+                    <Text fontSize={13} color={brand.grafite70} textAlign="right">
+                      {job.paymentLabel}
+                    </Text>
                     {job.direction === "ABOVE" ? <AdminPill tone="danger">Più alto del preventivo</AdminPill> : null}
                     {job.direction === "BELOW" ? <AdminPill tone="warn">Più basso del preventivo</AdminPill> : null}
                   </YStack>

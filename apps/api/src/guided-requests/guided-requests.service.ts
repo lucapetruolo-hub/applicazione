@@ -4,6 +4,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, professionalRestrictions, quotePaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { STRIPE_KYC_SELECT, stripeKycMissing, stripeKycWhere } from "../professional-fiscal/stripe-kyc";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -111,6 +112,8 @@ export class GuidedRequestsService {
       requestsBlockedUntil: Date | null;
       category: NonNullable<typeof category>;
       extraCategories: { id: string }[];
+      isDemo: boolean;
+      fiscalProfile: { stripePayoutsEnabled: boolean } | null;
     } | null = null;
     if (input.professionalProfileId) {
       targetProfile = await this.prisma.professionalProfile.findUnique({
@@ -125,12 +128,13 @@ export class GuidedRequestsService {
           requestsBlockedUntil: true,
           category: true,
           extraCategories: { select: { id: true } },
+          ...STRIPE_KYC_SELECT,
         },
       });
       // Un professionista che ha eliminato l'account (soft-delete) non può
       // ricevere nuove richieste — stesso stato di "non trovato" già
       // applicato altrove alle query pubbliche su ProfessionalProfile.
-      if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt || targetProfile.invitePendingAt) {
+      if (!targetProfile || targetProfile.deletedAt || targetProfile.suspendedAt || targetProfile.invitePendingAt || stripeKycMissing(targetProfile)) {
         throw new NotFoundException("Professionista non trovato.");
       }
       // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162).
@@ -722,7 +726,8 @@ export class GuidedRequestsService {
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
         // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }],
+        // Solo professionisti verificati su Stripe (docs/CHANGELOG.md §236).
+        AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }, stripeKycWhere()],
         deletedAt: null,
         suspendedAt: null,
         pausedAt: null,
@@ -958,7 +963,7 @@ export class GuidedRequestsService {
           if (!request || request.reserveCandidateIds.length === 0) return null;
 
           const [nextCandidateId, ...remainingReserve] = request.reserveCandidateIds;
-          const candidate = await tx.professionalProfile.findUnique({ where: { id: nextCandidateId } });
+          const candidate = await tx.professionalProfile.findUnique({ where: { id: nextCandidateId }, include: { fiscalProfile: { select: { stripePayoutsEnabled: true } } } });
           // Scartato anche se nel frattempo è uscito dallo smistamento
           // (eliminato, sospeso, in pausa, bloccato per segnalazioni, §167).
           if (
@@ -967,6 +972,7 @@ export class GuidedRequestsService {
             candidate.suspendedAt ||
             candidate.invitePendingAt ||
             candidate.pausedAt ||
+            stripeKycMissing(candidate) ||
             professionalRestrictions(candidate, new Date()).blocked
           ) {
             // Il candidato non esiste più (profilo eliminato nel

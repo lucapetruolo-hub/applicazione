@@ -477,6 +477,8 @@ export type AdminCompletedJob = {
   clientNote: string | null;
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
+  /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §236). */
+  paymentLabel: string;
 };
 
 /** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */

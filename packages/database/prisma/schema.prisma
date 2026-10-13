@@ -176,6 +176,11 @@ model ProfessionalProfile {
   // riusato (docs/CHANGELOG.md §235): carta, fatture e Customer Portal in un
   // unico posto. Distinto dall'account Connect con cui riceve i pagamenti.
   stripeCustomerId             String?   @unique
+  // Modi di pagamento proposti di serie nei nuovi preventivi, salvati dal
+  // modulo del preventivo con "usa anche per i prossimi" (docs/CHANGELOG.md
+  // §236). Vuoto = diretto + online con acconto del 20%.
+  defaultPaymentOptions        String[]  @default([])
+  defaultDepositPercent        Int?
   city                         String
   latitude                     Float
   longitude                    Float

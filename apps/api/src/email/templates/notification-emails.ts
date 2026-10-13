@@ -9,6 +9,7 @@ import {
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
+  quoteChangeWhat,
   scheduleChangeAlternative,
   scheduleChangeObject,
   type ContentReportTargetType,
@@ -342,13 +343,8 @@ const BUILDERS: Record<string, Builder> = {
   // Preventivo aggiornato (voci o note) senza cambio di data (docs/CHANGELOG.md §196).
   QUOTE_UPDATED: (payload, ctx) => {
     const what =
-      payload.itemsChanged === true && payload.notesChanged === true
-        ? "le voci e le note"
-        : payload.itemsChanged === true
-          ? "le voci"
-          : payload.notesChanged === true
-            ? "le note"
-            : "il contenuto";
+      quoteChangeWhat({ itemsChanged: payload.itemsChanged === true, notesChanged: payload.notesChanged === true, paymentChanged: payload.paymentChanged === true }) ??
+      "il contenuto";
     return {
       kind: "notification",
       subject: `${pro(ctx)} ha aggiornato il preventivo`,
@@ -359,6 +355,8 @@ const BUILDERS: Record<string, Builder> = {
         ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
           ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
           : []),
+        // Modi di pagamento offerti (docs/CHANGELOG.md §236).
+        ...(typeof payload.paymentOffer === "string" ? [`Come puoi pagare: ${payload.paymentOffer}.`] : []),
         ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
       ],

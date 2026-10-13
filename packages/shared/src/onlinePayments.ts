@@ -50,6 +50,25 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
   };
 }
 
+/** Modi di pagamento offerti in una riga, per cronologia ed email (es. "tutto diretto; acconto online e saldo diretto, acconto 30%"). */
+export function describePaymentOffer(offer: { paymentOptions: JobPaymentChoice[]; depositPercent: number }): string {
+  const list = offer.paymentOptions.map((choice) => QUOTE_PAYMENT_OPTION_LABEL[choice].toLowerCase()).join("; ");
+  return offer.paymentOptions.some(paymentChoiceIsOnline) ? `${list} (acconto online ${offer.depositPercent}%)` : list;
+}
+
+/** Due offerte di pagamento sono diverse? La percentuale conta solo se c'è un modo online. */
+export function paymentOfferChanged(a: { paymentOptions: JobPaymentChoice[]; depositPercent: number }, b: { paymentOptions: JobPaymentChoice[]; depositPercent: number }): boolean {
+  if (a.paymentOptions.join() !== b.paymentOptions.join()) return true;
+  return a.paymentOptions.some(paymentChoiceIsOnline) && a.depositPercent !== b.depositPercent;
+}
+
+/** "le voci, le note e i modi di pagamento": cosa è cambiato in un preventivo, senza la data. */
+export function quoteChangeWhat(change: { itemsChanged: boolean; notesChanged: boolean; paymentChanged?: boolean }): string | null {
+  const parts = [change.itemsChanged && "le voci", change.notesChanged && "le note", change.paymentChanged && "i modi di pagamento"].filter((p): p is string => !!p);
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`;
+}
+
 /** Il modo di pagamento passa da Stripe (acconto online)? */
 export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
   return choice === "ONLINE" || choice === "MIXED";
@@ -189,6 +208,8 @@ export const quotePaymentOfferSchema = {
     .min(MIN_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
     .max(MAX_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
     .optional(),
+  /** Salva questi modi come proposta di serie per i prossimi preventivi (§236). */
+  rememberPaymentOffer: z.boolean().optional(),
 };
 export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
 
@@ -244,6 +265,19 @@ export function toJobPaymentSummary(
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
   }
   return summary;
+}
+
+/** Come è stato pagato un lavoro, in una riga per l'area admin (docs/CHANGELOG.md §236). */
+export function jobPaymentAdminLabel(summary: JobPaymentSummary | null): string {
+  if (!summary || summary.method === "DIRECT") return "Pagamento diretto al professionista";
+  const eur = (cents: number) => `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}`;
+  const online = `pagato online ${eur(summary.paidEurCents)}${summary.refundedEurCents > 0 ? `, rimborsato ${eur(summary.refundedEurCents)}` : ""}`;
+  const stage = summary.stage ? `, ${JOB_PAYMENT_STAGE_LABEL[summary.stage].toLowerCase()}` : "";
+  if (summary.balanceDirect) {
+    const direct = summary.directBalanceEurCents !== null ? ` ${eur(summary.directBalanceEurCents)}` : "";
+    return `Acconto online e saldo diretto: ${online}${stage}; saldo diretto${direct}`;
+  }
+  return `Online con Stripe: ${online}${stage}`;
 }
 
 /** Chiusura di un saldo scoperto da parte della Finanza, con la motivazione. */

@@ -18459,3 +18459,45 @@ c'è già in Dati fiscali e pagamenti (§233).
 riusato, ripreso dall'abbonamento esistente; suffisso dell'estratto conto).
 Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione applicata su
 un Postgres locale.
+
+## 236. Profilo visibile solo dopo la verifica su Stripe, e tre migliorie ai modi di pagamento
+
+**Richiesta esplicita dell'utente** (13/10/2026): "l'account del
+professionista, che sia privato con codice fiscale, privato con P.IVA o
+azienda, si attiva e viene reso pubblico solamente una volta che effettua
+l'attivazione a Stripe, poiché vogliamo che Stripe gli effettui il KYC o
+KYB". Insieme: "effettua le tre migliorie" proposte prima di unire la PR #72.
+
+**Decisione — verifica su Stripe** (`apps/api/src/professional-fiscal/stripe-kyc.ts`):
+finché l'account Stripe del professionista non può ricevere i pagamenti
+(`ProfessionalFiscalProfile.stripePayoutsEnabled`, aggiornato dal webhook
+`account.updated` e riletto quando torna dalla verifica) il profilo non
+compare in ricerca, non entra nello smistamento né nella coda di riserva,
+non riceve richieste dirette né prenotazioni dall'agenda, la sua pagina dà
+"non trovato" e le sue recensioni non vanno in home. Vale per tutti, anche
+per chi vuole solo il pagamento diretto. Banner "Il tuo profilo non è
+ancora visibile" in Home e Abbonamento con il link a Dati fiscali e
+pagamenti. Il tipo di account Stripe segue il tipo fiscale già scelto
+(privato e ditta individuale come persona, azienda come società).
+Scelte mie: come la pausa dell'abbonamento (§162) vale solo con
+`STRIPE_SECRET_KEY` impostata, altrimenti nessuno potrebbe verificarsi e la
+ricerca resterebbe vuota; i profili dimostrativi restano visibili; se Stripe
+in seguito sospende l'account il profilo torna nascosto.
+
+Regola da seguire per i nuovi punti pubblici: aggiungere `stripeKycWhere()`
+(o `stripeKycMissing`) accanto ai filtri di CLAUDE.md §5 punto 11.
+
+**Migliorie**:
+- Avviso al cliente anche quando cambiano solo i modi di pagamento di un
+  preventivo già inviato (`QUOTE_UPDATED` con `paymentChanged`, riga nella
+  cronologia ed email "Come puoi pagare: ...").
+- Area admin, Lavori terminati: una riga su come è stato pagato il lavoro
+  (diretto, online, acconto online e saldo diretto con gli importi).
+- "Proponi questi modi anche nei prossimi preventivi" nel modulo del
+  preventivo: salva i modi e la percentuale come proposta di serie
+  (`ProfessionalProfile.defaultPaymentOptions/defaultDepositPercent`,
+  migrazione `20261013190000_professional_default_payment`).
+
+**Verifica**: `professional-fiscal/stripe-kyc.test.ts` (filtro spento senza
+Stripe, account attivo richiesto, profili dimostrativi; testi e confronti
+dei modi di pagamento). Test, tipi e lint di `apps/api` e `apps/web` verdi.

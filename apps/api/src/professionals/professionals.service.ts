@@ -32,6 +32,7 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { STRIPE_KYC_SELECT, stripeKycMissing, stripeKycWhere } from "../professional-fiscal/stripe-kyc";
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
@@ -103,7 +104,11 @@ export class ProfessionalsService {
       // in pausa, fuori dalla ricerca finché non può ricevere richieste.
       OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
       // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-      ...(category ? { AND: [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] } : {}),
+      AND: [
+        ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
+        // Visibile solo dopo la verifica su Stripe (docs/CHANGELOG.md §236).
+        stripeKycWhere(),
+      ],
       ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
       ...(excludeDemo ? { isDemo: false } : {}),
@@ -401,6 +406,7 @@ export class ProfessionalsService {
       where: { id },
       include: {
         category: true,
+        fiscalProfile: { select: { stripePayoutsEnabled: true } },
         extraCategories: true,
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
@@ -409,7 +415,8 @@ export class ProfessionalsService {
       },
     });
 
-    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt) {
+    // Senza verifica su Stripe la pagina non è ancora pubblica (docs/CHANGELOG.md §236).
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || stripeKycMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
 
@@ -501,6 +508,8 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
       requestsBlockedUntil: profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date() ? profile.requestsBlockedUntil.toISOString() : null,
+      // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §236).
+      defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
     };
   }
 
@@ -713,6 +722,7 @@ export class ProfessionalsService {
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
+      defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
     };
   }
 
@@ -1628,9 +1638,9 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...STRIPE_KYC_SELECT },
     });
-    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt) {
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || stripeKycMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {

@@ -605,7 +605,8 @@ function DashboardFiscaleContent() {
               online con saldo diretto. Quello che il cliente paga online lo teniamo noi e te lo
               accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
               la commissione {BRAND.name} del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
-              Quello che il cliente paga direttamente te lo dà come vi accordate.
+              Quello che il cliente paga direttamente te lo dà come vi accordate. La verifica su Stripe serve a tutti, anche a chi si fa
+              pagare solo direttamente: finché non è completata il tuo profilo non compare nelle ricerche e non ricevi richieste.
             </Text>
             {profile?.stripeChargesEnabled ? (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">

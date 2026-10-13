@@ -54,6 +54,7 @@ export function RequestCard({
   token,
   availableSlots,
   myProfileId,
+  defaultPaymentOffer,
   isOpen,
   onToggle,
   onChanged,
@@ -69,6 +70,8 @@ export function RequestCard({
   token: string;
   availableSlots: ProfessionalAvailableSlot[];
   myProfileId: string | null;
+  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236); null = valori di sistema. */
+  defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -110,8 +113,16 @@ export function RequestCard({
   const [quoteNotes, setQuoteNotes] = useState("");
   // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §234).
   const onlinePayments = useOnlinePayments();
-  const [paymentOptions, setPaymentOptions] = useState<JobPaymentChoice[]>(DEFAULT_QUOTE_PAYMENT_OPTIONS);
-  const [depositPercentDraft, setDepositPercentDraft] = useState(String(ONLINE_DEPOSIT_PERCENT));
+  const [paymentOptions, setPaymentOptions] = useState<JobPaymentChoice[]>(defaultPaymentOffer?.paymentOptions ?? DEFAULT_QUOTE_PAYMENT_OPTIONS);
+  const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
+  const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
+  // Il profilo arriva dopo la scheda: si applicano i valori di serie finché il modulo non è aperto.
+  useEffect(() => {
+    if (!defaultPaymentOffer || showQuoteForm) return;
+    setPaymentOptions(defaultPaymentOffer.paymentOptions);
+    setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultPaymentOffer]);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
 
@@ -310,7 +321,9 @@ export function RequestCard({
         notes: quoteNotes.trim() || undefined,
         paymentOptions: offered,
         ...(offered.some(paymentChoiceIsOnline) ? { depositPercent } : {}),
+        ...(rememberPaymentOffer ? { rememberPaymentOffer: true } : {}),
       });
+      setRememberPaymentOffer(false);
       setShowQuoteForm(false);
       onChanged();
     } catch (err) {
@@ -1328,6 +1341,12 @@ export function RequestCard({
                     Il cliente ti paga direttamente: il pagamento online arriverà a breve.
                   </Text>
                 )}
+                {onlinePayments ? (
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 13, color: brand.grafite70 }}>
+                    <input type="checkbox" checked={rememberPaymentOffer} onChange={(e) => setRememberPaymentOffer(e.target.checked)} style={{ accentColor: brand.verificato }} />
+                    Proponi questi modi anche nei prossimi preventivi
+                  </label>
+                ) : null}
               </YStack>
 
               <textarea aria-label="Messaggio per il cliente" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />

@@ -11,6 +11,7 @@ import {
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { STRIPE_KYC_SELECT, stripeKycMissing } from "../professional-fiscal/stripe-kyc";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
   hasLaunched,
@@ -147,7 +148,7 @@ export class SubscriptionsService {
   }
 
   async getMySubscription(userId: string): Promise<MySubscription> {
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, ...STRIPE_KYC_SELECT } });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato. Completa prima il tuo profilo.");
     const now = new Date();
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
@@ -173,6 +174,7 @@ export class SubscriptionsService {
         monthLabel: romeMonthLabel(now),
       },
       checkoutAvailable: paymentsActive(),
+      stripeVerificationNeeded: stripeKycMissing(profile),
     };
   }
 

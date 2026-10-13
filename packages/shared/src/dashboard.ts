@@ -3,6 +3,8 @@ import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
+  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236). */
+  defaultPaymentOffer: { paymentOptions: JobPaymentChoice[]; depositPercent: number };
   businessName: string;
   /** Categoria principale (la prima di `categorySlugs`). */
   categorySlug: string;
