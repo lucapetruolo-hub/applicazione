@@ -15,9 +15,8 @@ function eur(cents: number): string {
 /**
  * Scelta del metodo di pagamento accettando un preventivo
  * (docs/CHANGELOG.md §168): online con Stripe (acconto del 20%, saldo a
- * lavoro finito, assistenza e rimborso) o direttamente al professionista
- * (problemi da risolvere con lui, nessun rimborso). Le due differenze devono
- * essere chiare prima di scegliere (decisione dell'utente).
+ * lavoro finito, assistenza e rimborso) o "DIRETTO al professionista", una
+ * riga senza spiegazioni (richiesta esplicita dell'utente, §228).
  *
  * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
  * diretto, con una riga che spiega che quello online arriverà
@@ -73,9 +72,11 @@ export function PaymentChoice({
               <Text fontWeight="700" color={brand.grafite}>
                 {copy.title}
               </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
-                {copy.body}
-              </Text>
+              {copy.body ? (
+                <Text fontSize="$2" color={brand.grafite70}>
+                  {copy.body}
+                </Text>
+              ) : null}
               {option === "ONLINE" && quoteMaxEurCents > 0 ? (
                 <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
                   Acconto ora ({ONLINE_DEPOSIT_PERCENT}% del massimo del

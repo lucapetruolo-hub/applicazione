@@ -1,7 +1,7 @@
 # Blueprint Render — deploy dell'API
 # (Dashboard → New → Blueprint → seleziona questo repo).
 #
-# Il database NON è dichiarato qui (docs/CHANGELOG.md §228): il Postgres free
+# Il database NON è dichiarato qui (docs/CHANGELOG.md §229): il Postgres free
 # scade dopo 30 giorni e va ricreato con un nome nuovo (oggi
 # professionisti-db-2), quindi un nome fisso nel Blueprint finiva per puntare
 # a un database scaduto, e a ogni sincronizzazione Render avrebbe potuto

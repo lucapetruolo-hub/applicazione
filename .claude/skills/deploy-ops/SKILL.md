@@ -69,7 +69,7 @@ migrazioni restano anche in `CLAUDE.md`.
   Il deploy è dichiarato come codice in **`render.yaml`** (Blueprint alla
   radice del repo): Dashboard Render → New → Blueprint → selezionare il repo
   crea il servizio API. Il database non è nel Blueprint (docs/CHANGELOG.md
-  §228): si crea a mano e la sua Internal Database URL va in `DATABASE_URL`
+  §229): si crea a mano e la sua Internal Database URL va in `DATABASE_URL`
   (`sync: false`), così un database scaduto non resta collegato per nome e
   una sincronizzazione non ne ricrea uno vuoto. Le variabili segrete marcate
   `sync: false` vanno valorizzate una sola volta dalla dashboard.

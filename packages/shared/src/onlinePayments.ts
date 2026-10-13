@@ -30,14 +30,14 @@ export const ONLINE_APP_FEE_PERCENT = 5;
 
 export type JobPaymentOnlineStage = "AWAITING_DEPOSIT" | "DEPOSIT_PAID" | "AWAITING_BALANCE" | "PAID" | "RELEASED" | "REFUNDED";
 
-export const JOB_PAYMENT_CHOICE_COPY: Record<JobPaymentChoice, { title: string; body: string }> = {
+export const JOB_PAYMENT_CHOICE_COPY: Record<JobPaymentChoice, { title: string; body?: string }> = {
   ONLINE: {
     title: "Paga online con carta (consigliato)",
     body: `Paghi con Stripe: un acconto del ${ONLINE_DEPOSIT_PERCENT}% ora e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
   },
   DIRECT: {
-    title: "Pago direttamente il professionista",
-    body: "Paghi il professionista come vi accordate (contanti, bonifico...). Eventuali problemi vanno risolti direttamente con lui: possiamo solo mettervi in contatto, non rimborsiamo e non decidiamo sulle contestazioni.",
+    // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente).
+    title: "DIRETTO al professionista",
   },
 };
 

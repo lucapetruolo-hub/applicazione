@@ -314,6 +314,7 @@ export class GuidedRequestsService {
       isUrgent: input.isUrgent,
       sentTo: leadRecipients.length,
       direct: Boolean(input.professionalProfileId),
+      description: guidedRequest.description,
     });
 
     return {

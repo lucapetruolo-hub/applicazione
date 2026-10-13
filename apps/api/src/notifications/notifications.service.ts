@@ -122,7 +122,7 @@ export class NotificationsService {
     const bookingId = id("bookingId");
     const quoteId = id("quoteId");
     const guidedRequestId = id("guidedRequestId");
-    const request = { select: { city: true, category: { select: { label: true } } } } as const;
+    const request = { select: { city: true, description: true, category: { select: { label: true } } } } as const;
     if (bookingId) {
       const booking = await this.prisma.booking.findUnique({
         where: { id: bookingId },
@@ -134,6 +134,7 @@ export class NotificationsService {
           category: booking.quote?.guidedRequest.category.label ?? null,
           city: booking.quote?.guidedRequest.city ?? null,
           businessName: booking.professionalProfile.businessName,
+          description: booking.quote?.guidedRequest.description ?? null,
           when: booking.scheduledAt,
         };
       }
@@ -149,6 +150,7 @@ export class NotificationsService {
           category: quote.guidedRequest.category.label,
           city: quote.guidedRequest.city,
           businessName: quote.professionalProfile.businessName,
+          description: quote.guidedRequest.description,
           when: quote.estimatedStartDate,
           proposedWhen: quote.clientProposedDate,
         };
@@ -165,6 +167,7 @@ export class NotificationsService {
           ...EMPTY_EMAIL_CONTEXT,
           category: guidedRequest.category.label,
           city: guidedRequest.city,
+          description: guidedRequest.description,
           businessName: professional?.businessName ?? null,
         };
       }
@@ -176,7 +179,7 @@ export class NotificationsService {
    * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185),
    * nell'argomento "Le tue richieste" delle preferenze.
    */
-  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean }): void {
+  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean; description?: string | null }): void {
     void (async () => {
       const user = await this.prisma.user.findUnique({ where: { id: clientId }, select: { email: true, name: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) return;
