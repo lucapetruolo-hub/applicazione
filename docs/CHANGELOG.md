@@ -18214,3 +18214,20 @@ Secondo giro, scelte dell'utente tra tre anteprime
 un'API finta; rotellina sopra le sezioni senza spostamenti. Tipi di
 `apps/web` verdi.
 
+
+Terzo giro, quattro migliorie approvate dall'utente:
+- In home niente recensioni senza testo (filtro nell'API, più un controllo
+  sugli spazi lato sito): nel riquadro grande comparivano le virgolette vuote.
+- Niente recensioni di professionisti in pausa o con profilo creato da un
+  operatore e non ancora confermato (`pausedAt`/`invitePendingAt`), come per
+  gli altri punti che mostrano professionisti (CLAUDE.md §5 punto 11).
+- 6 recensioni invece di 5 (`getRecentPublic(limit = 6)`).
+- Sotto il titolo la media vera di tutte le recensioni pubbliche, anche
+  quelle da 1 e 2 stelle che la home non mostra, solo da 10 recensioni in
+  su: "★ 4,8 su 5 · 23 recensioni, solo di lavori confermati". Arriva da
+  `GET /stats/platform` (`reviewCount`, `averageRating`), già letto dalla
+  home lato server; i due campi sono facoltativi nel client, così un'API non
+  ancora aggiornata non rompe la pagina.
+
+**Verifica**: build e test dell'API verdi, tipi di `apps/web` verdi,
+schermate in locale su computer e telefono.

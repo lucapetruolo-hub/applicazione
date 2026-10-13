@@ -18,6 +18,9 @@ type RecentReview = {
 
 // Ogni quanto passa da sola alla recensione successiva.
 const ROTATE_MS = 6000;
+// Sotto questo numero di recensioni la media non dice ancora molto: non la
+// mostriamo (docs/CHANGELOG.md §229).
+const MIN_REVIEWS_FOR_AVERAGE = 10;
 
 const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
 
@@ -35,8 +38,10 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * Riprova sociale reale in home: le ultime recensioni pubbliche da 3 stelle
- * in su (GET /reviews/recent). Mai una recensione inventata: se non ce ne
+ * Riprova sociale reale in home: le ultime 6 recensioni pubbliche da 3
+ * stelle in su, con un testo e di professionisti non in pausa
+ * (GET /reviews/recent). Sotto il titolo la media vera di tutte le
+ * recensioni, da 10 in su (`summary`, da GET /stats/platform). Mai una recensione inventata: se non ce ne
  * sono, la sezione non compare.
  *
  * "Recensione in primo piano" (idea B scelta dall'utente, docs/CHANGELOG.md
@@ -50,7 +55,7 @@ function timeAgo(iso: string): string {
  * ricomincia da capo i 6 secondi della recensione mostrata (`cycle`), così
  * la barra di avanzamento e il timer restano allineati.
  */
-export function RecentReviews() {
+export function RecentReviews({ summary }: { summary: { count: number; average: number } | null }) {
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -61,7 +66,8 @@ export function RecentReviews() {
   useEffect(() => {
     apiClient
       .getRecentReviews()
-      .then(setReviews)
+      // Anche il server le esclude: qui resta solo il controllo sugli spazi.
+      .then((items) => setReviews(items.filter((item) => item.comment?.trim())))
       .catch(() => setReviews([]));
     setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
@@ -97,7 +103,16 @@ export function RecentReviews() {
   }
 
   return (
-    <Section eyebrow="Recensioni verificate" title="Chi ha già trovato il professionista giusto" maxWidth={1160}>
+    <Section
+      eyebrow="Recensioni verificate"
+      title="Chi ha già trovato il professionista giusto"
+      lead={
+        summary && summary.count >= MIN_REVIEWS_FOR_AVERAGE
+          ? `★ ${summary.average.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5 · ${summary.count} recensioni, solo di lavori confermati`
+          : undefined
+      }
+      maxWidth={1160}
+    >
       <div
         ref={rootRef}
         role="group"
@@ -332,7 +347,7 @@ export function RecentReviews() {
           margin: 0;
           padding: 0;
           flex-direction: column;
-          gap: 10px;
+          gap: 8px;
         }
         .rr-item {
           display: flex;
@@ -340,9 +355,9 @@ export function RecentReviews() {
           gap: 12px;
           width: 100%;
           text-align: left;
-          padding: 12px 14px;
+          padding: 9px 12px;
           border: none;
-          border-radius: 18px;
+          border-radius: 16px;
           background: rgba(255, 255, 255, 0.55);
           cursor: pointer;
           font: inherit;
@@ -403,12 +418,12 @@ export function RecentReviews() {
 
 function ReviewAvatar({ review }: { review: RecentReview }) {
   if (review.professional.imageUrl) {
-    return <Avatar name={review.professional.businessName} imageUrl={review.professional.imageUrl} size={44} />;
+    return <Avatar name={review.professional.businessName} imageUrl={review.professional.imageUrl} size={40} />;
   }
   const accent = accentFor(review.professional.categorySlug);
   return (
-    <YStack width={44} height={44} borderRadius={22} flexShrink={0} alignItems="center" justifyContent="center" backgroundColor={accent.bg}>
-      <CategoryIcon slug={review.professional.categorySlug} size={22} color={accent.fg} />
+    <YStack width={40} height={40} borderRadius={20} flexShrink={0} alignItems="center" justifyContent="center" backgroundColor={accent.bg}>
+      <CategoryIcon slug={review.professional.categorySlug} size={20} color={accent.fg} />
     </YStack>
   );
 }

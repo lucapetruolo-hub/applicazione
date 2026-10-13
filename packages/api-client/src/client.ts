@@ -1707,7 +1707,8 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     /** Numeri reali della piattaforma (richiesta esplicita dell'utente, "social proof" in homepage) — mai finti. */
-    platformStats: () => request<{ totalUsers: number; totalProfessionals: number }>("/stats/platform", { cache: "no-store" }),
+    /** `reviewCount`/`averageRating` facoltativi: un'API non ancora aggiornata non li manda. */
+    platformStats: () => request<{ totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null }>("/stats/platform", { cache: "no-store" }),
 
     /** Conteggio notifiche non lette, per il numeretto badge nell'header (CLAUDE.md §13). */
     unreadNotificationsCount: (token: string) =>

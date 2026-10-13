@@ -55,16 +55,19 @@ export class ReviewsService {
    * in home). Demo esclusi
    * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
    * se non ce ne sono, la home non mostra proprio la sezione.
-   * Solo da 3 stelle in su (decisione dell'utente, docs/CHANGELOG.md §229):
-   * le recensioni da 1 e 2 stelle restano sul profilo, non in home.
+   * Solo da 3 stelle in su, con un testo e di professionisti non in pausa
+   * (decisioni dell'utente, docs/CHANGELOG.md §229): le altre restano sul
+   * profilo, non in home.
    */
-  async getRecentPublic(limit = 5) {
+  async getRecentPublic(limit = 6) {
     const reviews = await this.prisma.review.findMany({
       where: {
         hiddenAt: null,
         rating: { gte: HOME_MIN_RATING },
+        comment: { not: null },
+        NOT: { comment: "" },
         booking: {
-          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
+          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null },
         },
       },
       include: {
