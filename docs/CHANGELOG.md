@@ -18188,3 +18188,29 @@ qui: blocca anche lo scorrimento della pagina con il mouse sopra la striscia.
 **Verifica**: in locale con Chromium, rotellina sopra le due strisce:
 `scrollTop` della striscia passava da 0 a 9, ora resta 0 e la pagina scorre.
 Tipi e lint di `apps/web` verdi.
+
+Secondo giro, scelte dell'utente tra tre anteprime
+(`anteprime/home-scorrimento/`):
+- **Recensioni, idea B "recensione in primo piano"**: una recensione grande
+  (foto o icona della categoria, stelle, testo, "Vedi profilo") che cambia da
+  sola ogni 6 secondi con una barra di avanzamento; da computer l'elenco
+  delle altre a destra, da telefono i puntini. Si ferma con il mouse o il
+  focus sulla sezione e non gira con `prefers-reduced-motion` (la regola
+  globale porta le animazioni a 0,01ms: per questo il cambio usa un timer e
+  non la fine dell'animazione della barra). Niente più striscia orizzontale.
+- **Solo recensioni da 3 stelle in su in home** (richiesta dell'utente):
+  filtro `rating >= 3` in `ReviewsService.getRecentPublic`. Le altre restano
+  sul profilo.
+- **Nuovi profili, idea C "biglietti da visita"**: fascia col colore e
+  l'icona della categoria, foto grande al centro, "iscritto N giorni fa",
+  bordi sfumati, barra di posizione e frecce sotto la striscia. Titolo
+  "Appena arrivati su ...". Da telefono la card è larga il 72% perché quella
+  dopo si veda abbastanza da far partire la sua animazione di ingresso
+  (`useRevealOnScroll` aspetta il 20% visibile: al 78% restava invisibile).
+- Tolti da `globals.css` i blocchi `.rr-card`/`.rr-photo`, non più usati: gli
+  stili delle card ora stanno nei componenti con `:global(...)`.
+
+**Verifica**: schermate in locale con Chromium su computer e telefono, con
+un'API finta; rotellina sopra le sezioni senza spostamenti. Tipi di
+`apps/web` verdi.
+

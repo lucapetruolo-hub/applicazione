@@ -10,6 +10,9 @@ import { publicClientName } from "../common/client-name.util";
 // recensisce più il cliente e il "doppio cieco" non esiste più
 // (docs/CHANGELOG.md §215).
 
+// Stelle minime di una recensione mostrata in home (getRecentPublic).
+const HOME_MIN_RATING = 3;
+
 @Injectable()
 export class ReviewsService {
   constructor(
@@ -52,11 +55,14 @@ export class ReviewsService {
    * in home). Demo esclusi
    * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
    * se non ce ne sono, la home non mostra proprio la sezione.
+   * Solo da 3 stelle in su (decisione dell'utente, docs/CHANGELOG.md §229):
+   * le recensioni da 1 e 2 stelle restano sul profilo, non in home.
    */
   async getRecentPublic(limit = 5) {
     const reviews = await this.prisma.review.findMany({
       where: {
         hiddenAt: null,
+        rating: { gte: HOME_MIN_RATING },
         booking: {
           professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
         },
