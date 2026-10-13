@@ -1,4 +1,5 @@
 import type { ProfessionalCategorySlug } from "./categories";
+import type { ProfessionalTraderStatus } from "./fiscalCompleteness";
 
 export type PlaceholderProfessional = {
   businessName: string;
@@ -204,6 +205,8 @@ export type ProfessionalSearchResult = {
   city: string;
   address: string | null;
   verified: boolean;
+  /** Identità verificata da Stripe (KYC/KYB), badge distinto da `verified` (docs/CHANGELOG.md §238). */
+  stripeVerified: boolean;
   rating: number | null;
   reviewCount: number;
   boosted: boolean;
@@ -270,6 +273,8 @@ export const SEARCH_RADIUS_KM = 25;
 
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {
+  /** Privato senza P.IVA o professionista/azienda (Codice del consumo art. 49-bis, §238); null se non ancora indicato. */
+  traderStatus: ProfessionalTraderStatus | null;
   bio: string | null;
   reviews: {
     id: string;

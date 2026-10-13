@@ -18532,3 +18532,51 @@ l'acconto dalla scheda del lavoro come prima. Termini §5 aggiornati.
 prenotazione, percentuale dell'acconto, conferma col webhook, evento
 ripetuto, rimborso per preventivo ritirato, importo cambiato o altro
 preventivo già accettato). Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 238. Profilo pubblico con i dati fiscali, Stripe solo per l'acconto online e il badge
+
+**Richiesta esplicita dell'utente** (13/10/2026): "tutti gli account
+professionali che si registrano scelgono solo che tipo sono dei 3 (privato
+senza P.IVA, privato con P.IVA, società/azienda), poi sono subito pubblicati
+ma possono usare solo i pagamenti diretti; se invece vogliono essere pagati
+online o avere il badge verificato (da Stripe) devono fare il percorso
+tramite Stripe, così Stripe fa il KYC o KYB". Scelta "Sì, cambia" sulla
+scheda di decisione dopo il controllo legale. Poi: "effettua le 3 migliorie".
+
+**Decisione** (sostituisce la verifica Stripe obbligatoria di §236):
+- Profilo pubblico (ricerca, smistamento, richieste dirette, agenda, pagina
+  pubblica, recensioni in home) quando il professionista ha scelto il tipo e
+  compilato i dati minimi DAC7 (`fiscalDataMissing` in
+  `packages/shared/src/fiscalCompleteness.ts`: nome o ragione sociale,
+  codice fiscale o P.IVA, data di nascita per le persone, indirizzo,
+  dichiarazione). Salvato in `ProfessionalFiscalProfile.fiscalDataCompleteAt`
+  a ogni salvataggio (migrazione `20261013210000_fiscal_data_complete`, che
+  lo calcola anche per i profili già compilati). Filtro in
+  `apps/api/src/professional-fiscal/public-visibility.ts`
+  (`publicVisibilityWhere`/`publicVisibilityMissing`), come prima attivo
+  solo con `STRIPE_SECRET_KEY`. Banner e pagina Dati fiscali dicono cosa
+  manca.
+- Acconto online solo con l'account Stripe attivo (`stripeVerified`): nel
+  modulo del preventivo le caselle online non compaiono, con il link alla
+  verifica; il server rifiuta un preventivo con acconto online e
+  l'accettazione online; al cliente si mostrano solo i modi che può usare.
+- Badge "Identità verificata da Stripe" nella ricerca, nei salvati e sul
+  profilo, distinto dal "Verificato" del nostro team (§200), con la nota
+  "non è una garanzia sulla qualità del lavoro" (rischio di pratica
+  ingannevole se fosse un "Verificato" generico).
+
+**Migliorie**:
+- Avviso al professionista (sito ed email, argomento "Account e
+  sicurezza") quando Stripe attiva l'account: `STRIPE_ACCOUNT_ACTIVE`.
+- Dati fiscali obbligatori per essere pubblici (sopra), come chiede la DAC7.
+- Sul profilo pubblico "Privato senza partita IVA" o "Professionista con
+  partita IVA" (Codice del consumo art. 49-bis), e per il privato la nota che
+  i diritti del consumatore non si applicano (`TRADER_STATUS_COPY`).
+
+Da far confermare al commercialista e all'avvocato prima del lancio (analisi
+nel thread, non un parere legale).
+
+**Verifica**: `professional-fiscal/public-visibility.test.ts` (filtro,
+dati minimi per tipo, privato/professionista), `bookings.service.test.ts`
+(acconto online rifiutato senza verifica Stripe). Test, tipi e lint di
+`apps/api` e `apps/web` verdi.

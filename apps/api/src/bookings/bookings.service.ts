@@ -32,6 +32,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
@@ -68,6 +69,14 @@ export class BookingsService {
     // preventivo resta in attesa e i contatti del cliente restano nascosti
     // (CLAUDE.md §5 punto 9). La prenotazione la crea `confirmQuoteDeposit`.
     if (paymentChoiceIsOnline(paymentMethod)) {
+      // Solo un professionista verificato su Stripe può ricevere l'acconto (§238).
+      const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+        where: { professionalProfileId: quote.professionalProfileId },
+        select: { stripePayoutsEnabled: true },
+      });
+      if (!stripeVerified(fiscal)) {
+        throw new BadRequestException("Questo professionista non può ancora ricevere pagamenti online: scegli il pagamento diretto.");
+      }
       const { url } = await this.jobPaymentsService.createQuoteDepositCheckout({
         clientUserId: clientId,
         quoteId: quote.id,

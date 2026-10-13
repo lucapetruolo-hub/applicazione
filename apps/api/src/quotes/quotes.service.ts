@@ -23,6 +23,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { stripeVerified } from "../professional-fiscal/public-visibility";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -103,10 +104,23 @@ export class QuotesService {
 
     // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §234). Senza
     // pagamenti online attivi deve restare almeno il pagamento diretto, o il
-    // cliente non potrebbe accettare.
-    const offer = quotePaymentOffer({ paymentOptions: input.paymentOptions, depositPercent: input.depositPercent });
+    // cliente non potrebbe accettare. L'acconto online lo offre solo chi ha
+    // completato la verifica su Stripe (§238): per gli altri il valore di
+    // serie è il solo pagamento diretto.
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { professionalProfileId: professionalProfile.id },
+      select: { stripePayoutsEnabled: true },
+    });
+    const canOfferOnline = !onlinePaymentsEnabled() || stripeVerified(fiscal);
+    const offer = quotePaymentOffer({
+      paymentOptions: input.paymentOptions ?? (canOfferOnline ? undefined : ["DIRECT"]),
+      depositPercent: input.depositPercent,
+    });
     if (!onlinePaymentsEnabled() && !offer.paymentOptions.includes("DIRECT")) {
       throw new BadRequestException("Il pagamento online non è ancora attivo: lascia anche il pagamento diretto.");
+    }
+    if (!canOfferOnline && offer.paymentOptions.some(paymentChoiceIsOnline)) {
+      throw new BadRequestException("Per offrire l'acconto online completa prima la verifica su Stripe in Dati fiscali e pagamenti.");
     }
 
     if (input.rememberPaymentOffer) {

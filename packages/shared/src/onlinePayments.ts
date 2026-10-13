@@ -50,6 +50,18 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
   };
 }
 
+/**
+ * Modi che il cliente può davvero scegliere (docs/CHANGELOG.md §238): senza
+ * la verifica su Stripe del professionista l'acconto online sparisce. Se
+ * restasse vuoto si mostra l'offerta com'è e l'accettazione spiega il perché.
+ */
+export function clientPaymentOffer(quote: { paymentOptions?: string[] | null; depositPercent?: number | null }, professionalStripeVerified: boolean) {
+  const offer = quotePaymentOffer(quote);
+  if (professionalStripeVerified) return offer;
+  const direct = offer.paymentOptions.filter((choice) => !paymentChoiceIsOnline(choice));
+  return direct.length ? { ...offer, paymentOptions: direct } : offer;
+}
+
 /** Modi di pagamento offerti in una riga, per cronologia ed email (es. "tutto diretto; acconto online e saldo diretto, acconto 30%"). */
 export function describePaymentOffer(offer: { paymentOptions: JobPaymentChoice[]; depositPercent: number }): string {
   const list = offer.paymentOptions.map((choice) => QUOTE_PAYMENT_OPTION_LABEL[choice].toLowerCase()).join("; ");

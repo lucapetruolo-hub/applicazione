@@ -1576,6 +1576,10 @@ model ProfessionalFiscalProfile {
   fiscalDeclarationAcceptedAt DateTime?
   fiscalDeclarationVersion    String?
 
+  // Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §238,
+  // `fiscalDataMissing` in packages/shared): aggiornato a ogni salvataggio.
+  fiscalDataCompleteAt DateTime?
+
   // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
   stripeConnectAccountId   String? @unique
   stripeChargesEnabled     Boolean @default(false)

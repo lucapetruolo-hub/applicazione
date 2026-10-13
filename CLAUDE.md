@@ -195,10 +195,12 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
 11. **Filtri obbligatori nei nuovi punti pubblici**: ogni punto che mostra
     profili o recensioni filtra `deletedAt`/`suspendedAt`/`hiddenAt`; ogni
     punto che mostra professionisti o assegna richieste filtra anche
-    `pausedAt` e `requestsBlockedUntil`, e la verifica su Stripe
-    (`stripeKycWhere()`/`stripeKycMissing` in
-    `apps/api/src/professional-fiscal/stripe-kyc.ts`, decisione dell'utente,
-    docs/CHANGELOG.md §236: profilo pubblico solo dopo KYC/KYB di Stripe).
+    `pausedAt` e `requestsBlockedUntil`, e i dati fiscali compilati
+    (`publicVisibilityWhere()`/`publicVisibilityMissing` in
+    `apps/api/src/professional-fiscal/public-visibility.ts`, decisione
+    dell'utente, docs/CHANGELOG.md §238: profilo pubblico con tipo e dati
+    DAC7 compilati; la verifica KYC/KYB di Stripe serve solo per l'acconto
+    online e il badge "Identità verificata da Stripe", `stripeVerified`).
 12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
     qualunque admin.

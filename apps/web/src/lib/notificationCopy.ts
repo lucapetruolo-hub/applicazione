@@ -47,6 +47,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
+  STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
   PROFILE_VERIFIED: { icon: "✅", message: "Il tuo profilo è verificato: ora mostra il badge Verificato." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: controlla la tua email per il motivo." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).

@@ -93,6 +93,6 @@ export type MySubscription = {
   };
   /** Pagamenti attivi su questo ambiente (chiave Stripe presente). */
   checkoutAvailable: boolean;
-  /** Profilo non visibile finché non completa la verifica di identità su Stripe (docs/CHANGELOG.md §236). */
-  stripeVerificationNeeded: boolean;
+  /** Profilo non visibile finché non compila tipo e dati fiscali (docs/CHANGELOG.md §238). */
+  fiscalDataNeeded: boolean;
 };

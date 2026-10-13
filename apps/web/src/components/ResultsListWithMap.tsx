@@ -630,6 +630,7 @@ export function ResultsListWithMap({
               reviewCount={pro.reviewCount}
               completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
+              stripeVerified={pro.stripeVerified}
               boosted={pro.boosted}
               isNewProfile={pro.isNewProfile}
               hasLiabilityInsurance={pro.hasLiabilityInsurance}

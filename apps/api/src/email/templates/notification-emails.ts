@@ -857,6 +857,17 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },
   }),
+  STRIPE_ACCOUNT_ACTIVE: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Stripe ha verificato la tua identità",
+    greeting: ctx.name,
+    title: "Pagamenti online attivi",
+    paragraphs: [
+      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Identità verificata da Stripe**.",
+      "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
+    ],
+    cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
   PROFILE_VERIFICATION_REMOVED: (payload, ctx) => {
     const note = str(payload.note);
     return {

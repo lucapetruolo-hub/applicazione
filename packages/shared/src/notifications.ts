@@ -123,6 +123,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Badge "Verificato" assegnato o tolto da un admin (docs/CHANGELOG.md §200).
       "PROFILE_VERIFIED",
       "PROFILE_VERIFICATION_REMOVED",
+      // Account Stripe attivato: acconto online e badge (docs/CHANGELOG.md §238).
+      "STRIPE_ACCOUNT_ACTIVE",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
       "SUBSCRIPTION_TRIAL_ENDING",

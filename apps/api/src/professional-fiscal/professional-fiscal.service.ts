@@ -1,9 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
-import { BRAND, FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
+import { BRAND, FISCAL_DECLARATION_VERSION, fiscalDataMissing, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
 
@@ -50,6 +51,7 @@ export class ProfessionalFiscalService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -120,9 +122,17 @@ export class ProfessionalFiscalService {
       data.fiscalDeclarationVersion = FISCAL_DECLARATION_VERSION;
     }
 
-    const fiscalProfile = existing
+    let fiscalProfile = existing
       ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data })
       : await this.prisma.professionalFiscalProfile.create({ data: { professionalProfileId, ...data } });
+    // Dati minimi per essere pubblici (docs/CHANGELOG.md §238).
+    const complete = fiscalDataMissing(fiscalProfile).length === 0;
+    if (complete !== !!fiscalProfile.fiscalDataCompleteAt) {
+      fiscalProfile = await this.prisma.professionalFiscalProfile.update({
+        where: { professionalProfileId },
+        data: { fiscalDataCompleteAt: complete ? new Date() : null },
+      });
+    }
 
     for (const field of FISCAL_FIELDS) {
       if (input[field] === undefined) continue;
@@ -304,11 +314,18 @@ export class ProfessionalFiscalService {
 
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */
   async syncStripeConnectStatus(stripeAccountId: string, chargesEnabled: boolean, payoutsEnabled: boolean, requirementsStatus: string | null) {
-    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { stripeConnectAccountId: stripeAccountId } });
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { stripeConnectAccountId: stripeAccountId },
+      include: { professionalProfile: { select: { userId: true } } },
+    });
     if (!fiscalProfile) return;
     await this.prisma.professionalFiscalProfile.update({
       where: { id: fiscalProfile.id },
       data: { stripeChargesEnabled: chargesEnabled, stripePayoutsEnabled: payoutsEnabled, stripeRequirementsStatus: requirementsStatus },
     });
+    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §238).
+    if (payoutsEnabled && !fiscalProfile.stripePayoutsEnabled) {
+      await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_ACTIVE", {});
+    }
   }
 }

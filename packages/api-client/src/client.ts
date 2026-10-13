@@ -665,6 +665,8 @@ export type ProfessionalFiscalProfile = {
   verificationNote: string | null;
   verifiedAt: string | null;
   fiscalDeclarationAcceptedAt: string | null;
+  /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §238). */
+  fiscalDataCompleteAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;

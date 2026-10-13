@@ -45,13 +45,13 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
   let tone: "stop" | "warn" = "stop";
   let href = "/dashboard/abbonamento#livelli";
 
-  // Prima di tutto la verifica su Stripe: senza, il profilo non è pubblico (docs/CHANGELOG.md §236).
-  if (sub.stripeVerificationNeeded) {
+  // Prima di tutto i dati fiscali: senza, il profilo non è pubblico (docs/CHANGELOG.md §238).
+  if (sub.fiscalDataNeeded) {
     title = "Il tuo profilo non è ancora visibile";
     body =
-      "Per comparire nelle ricerche e ricevere richieste devi verificare la tua identità con Stripe, il nostro servizio di pagamento: " +
-      "documento e codice fiscale, più partita IVA o dati della società se li hai. Serve anche se vuoi farti pagare solo direttamente.";
-    action = "Verifica la tua identità";
+      "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila i dati fiscali: " +
+      "la legge ci chiede di raccoglierli per tutti. Per farti pagare l'acconto online serve poi anche la verifica su Stripe.";
+    action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
   } else if (sub.pausedReason === "LIMIT_REACHED") {
     const limit = sub.usage.monthlyLimit ?? 0;

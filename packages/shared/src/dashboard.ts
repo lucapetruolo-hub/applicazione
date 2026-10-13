@@ -5,6 +5,8 @@ export type MyProfessionalProfile = {
   id: string;
   /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236). */
   defaultPaymentOffer: { paymentOptions: JobPaymentChoice[]; depositPercent: number };
+  /** Verifica su Stripe completata: può offrire l'acconto online e ha il badge (docs/CHANGELOG.md §238). */
+  stripeVerified: boolean;
   businessName: string;
   /** Categoria principale (la prima di `categorySlugs`). */
   categorySlug: string;

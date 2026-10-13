@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 import type { PrismaClient } from "@professionisti/database";
 import { clientCanReview, type ReviewInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { stripeKycWhere } from "../professional-fiscal/stripe-kyc";
+import { publicVisibilityWhere } from "../professional-fiscal/public-visibility";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { publicClientName } from "../common/client-name.util";
@@ -68,7 +68,7 @@ export class ReviewsService {
         comment: { not: null },
         NOT: { comment: "" },
         booking: {
-          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null, ...stripeKycWhere() },
+          professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null, ...publicVisibilityWhere() },
         },
       },
       include: {

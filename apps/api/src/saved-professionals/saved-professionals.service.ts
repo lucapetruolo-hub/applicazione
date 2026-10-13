@@ -4,6 +4,7 @@ import type { ProfessionalSearchResult, ProfessionalCategorySlug } from "@profes
 import { PRISMA } from "../prisma/prisma.module";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
+import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { computeIsNewProfile } from "../common/new-profile.util";
 
 @Injectable()
@@ -36,6 +37,7 @@ export class SavedProfessionalsService {
             bookings: { include: { review: true } },
             visibilityBoosts: { where: { status: "ACTIVE" } },
             services: true,
+            fiscalProfile: { select: { stripePayoutsEnabled: true } },
           },
         },
       },
@@ -58,6 +60,7 @@ export class SavedProfessionalsService {
         city: profile.city,
         address: profile.address,
         verified: profile.verified,
+        stripeVerified: stripeVerified(profile.fiscalProfile),
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,

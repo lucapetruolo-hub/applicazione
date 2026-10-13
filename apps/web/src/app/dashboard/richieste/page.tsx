@@ -73,6 +73,7 @@ function RichiesteContent() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
+  const [stripeVerified, setStripeVerified] = useState(true);
   const [profileMissing, setProfileMissing] = useState(false);
   // Pallino rosso su "Contatta" (stesso significato già in uso su
   // /dashboard e /le-mie-richieste) — questa pagina è ora la destinazione
@@ -187,6 +188,7 @@ function RichiesteContent() {
         setAvailableSlots(slots);
         setMyProfileId(profile?.id ?? null);
         setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
+        setStripeVerified(profile?.stripeVerified ?? true);
         if (!profile) setProfileMissing(true);
       })
       .catch(() => setProfileMissing(true));
@@ -627,6 +629,7 @@ function RichiesteContent() {
                   availableSlots={availableSlots}
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
+                  stripeVerified={stripeVerified}
                   isOpen={openId === lead.id}
                   onToggle={() => {
                     const opening = openId !== lead.id;

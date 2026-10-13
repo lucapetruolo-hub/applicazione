@@ -16,6 +16,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     quote: { findUnique: vi.fn(), update: vi.fn() },
     booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
     jobPayment: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "jp-1" }) },
+    professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ stripePayoutsEnabled: true }) },
     guidedRequest: { update: vi.fn() },
     ...prismaOverrides,
   };
@@ -155,6 +156,17 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     await service.createFromQuote("client-1", "quote-1", "MIXED");
 
     expect(jobPaymentsService.createQuoteDepositCheckout).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: "MIXED", amountEurCents: 10500 }));
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+
+  it("rifiuta l'acconto online se il professionista non è verificato su Stripe (§238)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.professionalFiscalProfile.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ stripePayoutsEnabled: false });
+
+    await expect(service.createFromQuote("client-1", "quote-1", "ONLINE")).rejects.toBeInstanceOf(BadRequestException);
+    expect(jobPaymentsService.createQuoteDepositCheckout).not.toHaveBeenCalled();
     delete process.env.STRIPE_SECRET_KEY;
   });
 

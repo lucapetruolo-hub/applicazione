@@ -55,6 +55,7 @@ export function RequestCard({
   availableSlots,
   myProfileId,
   defaultPaymentOffer,
+  stripeVerified = true,
   isOpen,
   onToggle,
   onChanged,
@@ -72,6 +73,8 @@ export function RequestCard({
   myProfileId: string | null;
   /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236); null = valori di sistema. */
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
+  /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §238). */
+  stripeVerified?: boolean;
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -112,7 +115,9 @@ export function RequestCard({
   const [manualEndTime, setManualEndTime] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
   // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §234).
-  const onlinePayments = useOnlinePayments();
+  const onlinePaymentsActive = useOnlinePayments();
+  // L'acconto online lo offre solo chi ha completato la verifica su Stripe (§238).
+  const onlinePayments = onlinePaymentsActive && stripeVerified;
   const [paymentOptions, setPaymentOptions] = useState<JobPaymentChoice[]>(defaultPaymentOffer?.paymentOptions ?? DEFAULT_QUOTE_PAYMENT_OPTIONS);
   const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
   const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
@@ -1338,7 +1343,17 @@ export function RequestCard({
                   </>
                 ) : (
                   <Text fontSize={13} color={brand.grafite70}>
-                    Il cliente ti paga direttamente: il pagamento online arriverà a breve.
+                    {onlinePaymentsActive ? (
+                      <>
+                        Il cliente ti paga direttamente. Per offrire anche l&apos;acconto online completa la verifica su Stripe in{" "}
+                        <a href="/dashboard/fiscale" style={{ color: brand.verificato }}>
+                          Dati fiscali e pagamenti
+                        </a>
+                        .
+                      </>
+                    ) : (
+                      "Il cliente ti paga direttamente: il pagamento online arriverà a breve."
+                    )}
                   </Text>
                 )}
                 {onlinePayments ? (
