@@ -52,12 +52,15 @@ const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ag
 // — vedi formatServicePriceRange in packages/shared/src/professionals.ts per
 // la stessa logica lato pagina profilo pubblica.
 function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
-  const format = (cents: number) => `${(cents / 100).toFixed(2)} €`;
+  const amount = (cents: number) => {
+    const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return cents % 100 === 0 ? euros : `${euros},${(cents % 100).toString().padStart(2, "0")}`;
+  };
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
-    return `${format(priceMinEurCents)} - ${format(priceMaxEurCents)}`;
+    return `${amount(priceMinEurCents)}–${amount(priceMaxEurCents)}\u00A0€`;
   }
   const single = priceMinEurCents ?? priceMaxEurCents;
-  return single !== null ? format(single) : "Su richiesta";
+  return single !== null ? `${amount(single)}\u00A0€` : "Su richiesta";
 }
 
 export type ProfessionalCardProps = {

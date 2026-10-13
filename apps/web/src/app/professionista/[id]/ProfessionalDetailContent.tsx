@@ -291,7 +291,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             visualizzazione di un profilo pubblico"): prima nome/badge/
             rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
             pesca della pagina, senza alcun trattamento a card, mentre ogni
-            altra sezione sotto (Prestazioni/Agenda/Recensioni) era già
+            altra sezione sotto (Agenda/Prestazioni/Recensioni) era già
             avvolta in una `Surface` — incoerenza visiva mai risolta prima
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
         <Surface gap="$4">
@@ -522,35 +522,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
         </Surface>
-
-        {professional.services.length > 0 ? (
-          <YStack gap="$3">
-            <XStack alignItems="center" gap="$2">
-              <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
-              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-                Prestazioni
-              </Text>
-            </XStack>
-            <Surface padding={0} overflow="hidden">
-              {professional.services.map((service, index) => (
-                <XStack
-                  key={service.id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  paddingHorizontal="$4"
-                  paddingVertical="$3"
-                  borderTopWidth={index === 0 ? 0 : 1}
-                  borderTopColor={brand.filetto}
-                >
-                  <Text color={brand.grafite}>{service.name}</Text>
-                  <Text fontWeight="600" color={brand.grafite}>
-                    {formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
-                  </Text>
-                </XStack>
-              ))}
-            </Surface>
-          </YStack>
-        ) : null}
 
         {professional.acceptingRequests && agendaPreview?.hasAnySlot ? (
           <YStack gap="$3">
@@ -821,6 +792,35 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             </Link>
           </Surface>
         )}
+
+        {professional.services.length > 0 ? (
+          <YStack gap="$3">
+            <XStack alignItems="center" gap="$2">
+              <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
+              <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                Prestazioni
+              </Text>
+            </XStack>
+            <Surface padding={0} overflow="hidden">
+              {professional.services.map((service, index) => (
+                <XStack
+                  key={service.id}
+                  justifyContent="space-between"
+                  alignItems="center"
+                  paddingHorizontal="$4"
+                  paddingVertical="$3"
+                  borderTopWidth={index === 0 ? 0 : 1}
+                  borderTopColor={brand.filetto}
+                >
+                  <Text color={brand.grafite}>{service.name}</Text>
+                  <Text fontWeight="600" color={brand.grafite}>
+                    {formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
+                  </Text>
+                </XStack>
+              ))}
+            </Surface>
+          </YStack>
+        ) : null}
 
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
