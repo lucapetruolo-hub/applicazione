@@ -18166,3 +18166,25 @@ Ottavo giro, quattro migliorie approvate dall'utente:
 
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.
+
+## 229. Strisce della home ferme sotto la rotellina
+
+**Richiesta dell'utente**: in home, con il mouse sopra le recensioni che
+scorrono e girando la rotellina, la striscia si spostava di poco in su e in
+giù; forse anche "Nuovi profili".
+
+**Causa**: `overflow-x: auto` su `.rr-track` e `.npc-track` rende `auto`
+anche l'asse verticale. Le card non ancora apparse (animazione di ingresso,
+`translateY(18px) scale(0.96)` in `useRevealOnScroll`) sporgevano di 9px
+sotto la striscia, quindi la rotellina scorreva prima quei 9px e solo dopo
+la pagina. Stesso problema in entrambe le strisce.
+
+**Decisione**: `overflow-y: hidden` sulle due strisce. Tolto anche il
+`translateY(-4px)` all'hover delle card di "Nuovi profili" (ora verrebbe
+tagliato in alto, ed è lo stesso spostamento che faceva oscillare le
+recensioni, corretto lì in passato). Non usare `overscroll-behavior-y: none`
+qui: blocca anche lo scorrimento della pagina con il mouse sopra la striscia.
+
+**Verifica**: in locale con Chromium, rotellina sopra le due strisce:
+`scrollTop` della striscia passava da 0 a 9, ora resta 0 e la pagina scorre.
+Tipi e lint di `apps/web` verdi.

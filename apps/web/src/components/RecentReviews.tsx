@@ -233,6 +233,11 @@ export function RecentReviews() {
           display: flex;
           gap: 20px;
           overflow-x: auto;
+          /* Senza questa riga overflow-x:auto rende "auto" anche l'asse
+             verticale: le card sporgevano di qualche pixel (animazione di
+             ingresso) e la rotellina del mouse sopra la striscia la faceva
+             salire e scendere invece di scorrere la pagina. */
+          overflow-y: hidden;
           flex: 1;
           min-width: 0;
           padding-bottom: 4px;

@@ -142,6 +142,9 @@ export function NewProfilesCarousel({
           display: flex;
           gap: 16px;
           overflow-x: auto;
+          /* Come in RecentReviews.tsx: senza questa riga la rotellina sopra
+             la striscia la spostava di qualche pixel in su e in giù. */
+          overflow-y: hidden;
           flex: 1;
           min-width: 0;
           scroll-snap-type: x mandatory;
@@ -203,8 +206,10 @@ function NewProfileCard({
             // un accenno resta solo dove una superficie si solleva
             // davvero sopra il resto, qui il gesto di hover stesso).
             boxShadow: hovered ? "0 10px 24px rgba(43,32,19,0.08)" : "none",
-            transition: `transform ${motionFast} ${motionEasing}, box-shadow ${motionFast} ${motionEasing}`,
-            transform: hovered ? "translateY(-4px)" : "none",
+            // Niente translateY all'hover: con overflow-y:hidden la card
+            // verrebbe tagliata in alto, e spostare la card fa oscillare
+            // l'hover (stesso bug già corretto in RecentReviews.tsx).
+            transition: `box-shadow ${motionFast} ${motionEasing}`,
           }}
         >
           <XStack alignItems="center" gap="$3">
