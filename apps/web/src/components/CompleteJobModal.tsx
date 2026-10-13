@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
-import { completionDeviation, completionDeviationText, type CompleteBookingInput } from "@professionisti/shared";
+import { completionDeviation, completionDeviationText, formatEurCents, formatServicePriceRange, type CompleteBookingInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -37,11 +37,7 @@ type ExtraRow = { name: string; price: string };
 
 function formatRangeHint(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
   if (priceMinEurCents == null && priceMaxEurCents == null) return "Preventivato: su richiesta";
-  const fmt = (cents: number) => `€${(cents / 100).toFixed(0)}`;
-  if (priceMinEurCents != null && priceMaxEurCents != null && priceMinEurCents !== priceMaxEurCents) {
-    return `Preventivato: ${fmt(priceMinEurCents)} – ${fmt(priceMaxEurCents)}`;
-  }
-  return `Preventivato: ${fmt(priceMinEurCents ?? priceMaxEurCents!)}`;
+  return `Preventivato: ${formatServicePriceRange(priceMinEurCents, priceMaxEurCents)}`;
 }
 
 function parseEuroToCents(value: string): number | null {
@@ -318,7 +314,7 @@ export function CompleteJobModal({
             Totale
           </Text>
           <Text fontWeight="800" fontSize="$5" color={brand.cianografiaScuro}>
-            €{(totalEurCents / 100).toFixed(2)}
+            {formatEurCents(totalEurCents)}
           </Text>
         </XStack>
 
@@ -328,11 +324,7 @@ export function CompleteJobModal({
               {completionDeviationText(deviation)}: spiega il motivo *
             </Text>
             <Text fontSize="$2" color={brand.grafite70}>
-              Preventivo: €{(deviation.quoteMinEurCents / 100).toFixed(0)}
-              {deviation.quoteMaxEurCents !== null && deviation.quoteMaxEurCents !== deviation.quoteMinEurCents
-                ? ` – €${(deviation.quoteMaxEurCents / 100).toFixed(0)}`
-                : ""}
-              . Il motivo lo legge anche il cliente e resta agli atti in caso di contestazione.
+              Preventivo: {formatServicePriceRange(deviation.quoteMinEurCents, deviation.quoteMaxEurCents)}. Il motivo lo legge anche il cliente e resta agli atti in caso di contestazione.
             </Text>
             <textarea
               value={changeReason}

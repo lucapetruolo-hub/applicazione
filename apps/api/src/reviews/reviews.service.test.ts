@@ -46,7 +46,7 @@ describe("ReviewsService.create — recensione subito dopo \"Lavoro terminato\""
 });
 
 /**
- * Recensioni in home (docs/CHANGELOG.md §229): solo da 3 stelle in su, con
+ * Recensioni in home (docs/CHANGELOG.md §232): solo da 3 stelle in su, con
  * un testo, di professionisti attivi (non in pausa, non in attesa di
  * conferma), al massimo 6.
  */

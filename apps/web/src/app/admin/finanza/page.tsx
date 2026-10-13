@@ -7,11 +7,7 @@ import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
-import { BRAND } from "@professionisti/shared";
-
-function euro(cents: number): string {
-  return `${(cents / 100).toFixed(2)} €`;
-}
+import { BRAND, formatEurCents } from "@professionisti/shared";
 
 /**
  * Finanza, DAC7, regole di commissione — CLAUDE.md §88. Pagina separata da
@@ -186,7 +182,7 @@ export default function AdminFinanzaPage() {
                   finance.revenueBySource.map((r) => (
                     <XStack key={r.source} justifyContent="space-between" maxWidth={400}>
                       <Text>{r.source}</Text>
-                      <Text fontFamily="$mono">{euro(r.totalEurCents)}</Text>
+                      <Text fontFamily="$mono">{formatEurCents(r.totalEurCents)}</Text>
                     </XStack>
                   ))
                 )}
@@ -198,7 +194,7 @@ export default function AdminFinanzaPage() {
                     <Text>
                       {m.method === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretti"} ({m.count})
                     </Text>
-                    <Text fontFamily="$mono">{euro(m.totalGrossEurCents)}</Text>
+                    <Text fontFamily="$mono">{formatEurCents(m.totalGrossEurCents)}</Text>
                   </XStack>
                 ))}
               </YStack>
@@ -243,9 +239,9 @@ export default function AdminFinanzaPage() {
                     <tr key={rule.id}>
                       <td>{rule.name}</td>
                       <td>{(rule.percentageBasisPoints / 100).toFixed(2)}%</td>
-                      <td>{euro(rule.fixedFeeEurCents)}</td>
+                      <td>{formatEurCents(rule.fixedFeeEurCents)}</td>
                       <td>
-                        {rule.minFeeEurCents !== null ? euro(rule.minFeeEurCents) : "—"} / {rule.maxFeeEurCents !== null ? euro(rule.maxFeeEurCents) : "—"}
+                        {rule.minFeeEurCents !== null ? formatEurCents(rule.minFeeEurCents) : "—"} / {rule.maxFeeEurCents !== null ? formatEurCents(rule.maxFeeEurCents) : "—"}
                       </td>
                       <td>{rule.professionalProfileId ? "Professionista specifico" : rule.categoryId ? "Categoria" : "Globale"}</td>
                       <td>{new Date(rule.effectiveFrom).toLocaleDateString("it-IT")}</td>
@@ -363,7 +359,7 @@ export default function AdminFinanzaPage() {
                       {r.professionalProfileId} {r.missingFiscalData ? "· dati fiscali mancanti/non verificati" : ""}
                     </Text>
                     <Text fontSize={13} fontFamily="$mono">
-                      {euro(r.considerationEurCents)} · {r.numberOfTransactions} transazioni
+                      {formatEurCents(r.considerationEurCents)} · {r.numberOfTransactions} transazioni
                     </Text>
                   </XStack>
                 ))

@@ -56,7 +56,7 @@ export class ReviewsService {
    * (come le statistiche pubbliche, StatsService). Nessun dato inventato:
    * se non ce ne sono, la home non mostra proprio la sezione.
    * Solo da 3 stelle in su, con un testo e di professionisti non in pausa
-   * (decisioni dell'utente, docs/CHANGELOG.md §229): le altre restano sul
+   * (decisioni dell'utente, docs/CHANGELOG.md §232): le altre restano sul
    * profilo, non in home.
    */
   async getRecentPublic(limit = 6) {

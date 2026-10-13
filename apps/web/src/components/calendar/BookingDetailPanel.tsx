@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BRAND, buildWhatsAppLink, formatBookingAddress, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { BRAND, buildWhatsAppLink, formatBookingAddress, formatEurCents, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import type { JobPayment } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
@@ -10,10 +10,6 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 import { apiClient } from "@/lib/apiClient";
-
-function euro(cents: number): string {
-  return `${(cents / 100).toFixed(2)} €`;
-}
 
 const JOB_PAYMENT_STATUS_LABEL: Record<JobPayment["status"], string> = {
   PENDING: "In attesa",
@@ -223,8 +219,8 @@ export function BookingDetailPanel({
               {jobPayment.paymentMethod === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretto"} · {JOB_PAYMENT_STATUS_LABEL[jobPayment.status]}
             </Text>
             <Text color={brand.grafite70} fontSize="$3">
-              Lordo {euro(jobPayment.grossAmountEurCents)}
-              {jobPayment.platformFeeEurCents > 0 ? ` · Commissione ${euro(jobPayment.platformFeeEurCents)} · Netto ${euro(jobPayment.netAmountEurCents)}` : ""}
+              Lordo {formatEurCents(jobPayment.grossAmountEurCents)}
+              {jobPayment.platformFeeEurCents > 0 ? ` · Commissione ${formatEurCents(jobPayment.platformFeeEurCents)} · Netto ${formatEurCents(jobPayment.netAmountEurCents)}` : ""}
             </Text>
           </YStack>
         ) : null}

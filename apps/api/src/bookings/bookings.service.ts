@@ -18,6 +18,7 @@ import {
   type JobIssueResponseInput,
   type ReportJobIssueInput,
   PROFESSIONAL_JOB_PROBLEM_REASONS,
+  formatEurCents,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
@@ -351,12 +352,12 @@ export class BookingsService {
     });
 
     if (booking.quote) {
-      const totalEuro = (finalAmountEurCents / 100).toFixed(2);
+      const totalEuro = formatEurCents(finalAmountEurCents);
       await this.timelineService.log(
         booking.quote.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
-        `Il professionista ha segnalato il lavoro come terminato. Importo finale: €${totalEuro}.${clientReason ? ` Diverso dal preventivo perché: "${clientReason}"` : ""}`,
+        `Il professionista ha segnalato il lavoro come terminato. Importo finale: ${totalEuro}.${clientReason ? ` Diverso dal preventivo perché: "${clientReason}"` : ""}`,
       );
     }
 

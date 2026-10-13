@@ -1,11 +1,19 @@
-# Blueprint Render — deploy API + PostgreSQL con un click
+# Blueprint Render — deploy dell'API
 # (Dashboard → New → Blueprint → seleziona questo repo).
+#
+# Il database NON è dichiarato qui (docs/CHANGELOG.md §229): il Postgres free
+# scade dopo 30 giorni e va ricreato con un nome nuovo (oggi
+# professionisti-db-2), quindi un nome fisso nel Blueprint finiva per puntare
+# a un database scaduto, e a ogni sincronizzazione Render avrebbe potuto
+# ricrearne uno vuoto con quel nome e collegarci l'API. DATABASE_URL si
+# imposta a mano dalla dashboard (Internal Database URL del database in uso).
 #
 # Sostituisce l'hosting Railway (piano free scaduto). Note sul free tier Render:
 # - Il web service free va in sleep dopo 15 min di inattività (~1 min di
 #   cold start alla prima richiesta successiva). 750 ore/mese incluse.
 # - Il Postgres free ha 1 GB e SCADE DOPO 30 GIORNI: alla scadenza va creato
-#   un nuovo database free e rieseguito il seed (vedi CLAUDE.md §2).
+#   un nuovo database free, copiata la sua Internal Database URL in
+#   DATABASE_URL del servizio API (le migrazioni partono da sole all'avvio).
 # - Render inietta automaticamente PORT: l'API la legge già da process.env.PORT
 #   e ascolta su 0.0.0.0 (apps/api/src/main.ts), quindi nessuna config extra.
 
@@ -42,10 +50,10 @@ services:
         - .nvmrc
         - render.yaml
     envVars:
+      # Internal Database URL del Postgres in uso, incollata dalla dashboard:
+      # niente fromDatabase, vedi la nota in cima al file.
       - key: DATABASE_URL
-        fromDatabase:
-          name: professionisti-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       # Valorizzare dalla dashboard Render dopo la creazione (sync:false =
@@ -86,8 +94,3 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://applicazione-web.vercel.app
-
-databases:
-  - name: professionisti-db
-    plan: free
-    databaseName: professionisti

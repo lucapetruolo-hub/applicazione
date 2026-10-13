@@ -28,11 +28,11 @@ const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
  * (nessuna nuova chiamata API), riordinata per createdAt discendente.
  *
  * Card a "biglietto da visita" (idea C scelta dall'utente, docs/CHANGELOG.md
- * §229): fascia in alto col colore e l'icona della categoria, foto grande al
+ * §232): fascia in alto col colore e l'icona della categoria, foto grande al
  * centro, "iscritto N giorni fa". Sotto la striscia una barra mostra a che
  * punto si è e, da computer, le frecce; bordi sfumati per far capire che la
  * striscia continua. `overflow-y: hidden` sulla striscia: senza, la rotellina
- * del mouse la spostava di qualche pixel in verticale (§229).
+ * del mouse la spostava di qualche pixel in verticale (§232).
  *
  * Gli stili delle card vivono qui con `:global(...)` sotto `.npc-root`:
  * `<style jsx>` non applica le sue classi ai nodi di un altro componente

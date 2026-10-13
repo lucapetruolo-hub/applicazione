@@ -18167,7 +18167,83 @@ Ottavo giro, quattro migliorie approvate dall'utente:
 **Verifica**: tipi e lint di `apps/web` verdi, schermate in locale su
 computer e telefono per cliente e professionista.
 
-## 229. Strisce della home ferme sotto la rotellina
+## 229. `render.yaml` non nomina più il database
+
+**Richiesta:** dalla dashboard di Render l'utente ha visto che il vecchio
+`professionisti-db` è scaduto (verrà cancellato), mentre l'API usa già
+`professionisti-db-2`. Il Blueprint però collegava ancora `DATABASE_URL` a
+`professionisti-db` per nome; l'utente ha chiesto di sistemarlo.
+
+**Decisione:** tolto il blocco `databases` e il `fromDatabase` da
+`render.yaml`; `DATABASE_URL` diventa `sync: false` (si imposta a mano,
+come già si faceva a ogni scadenza). Scelto invece di scrivere
+`professionisti-db-2` perché il nome cambia a ogni database nuovo (scadenza
+dei 30 giorni o passaggio a un piano a pagamento), e con un nome fisso nel
+Blueprint, dopo la cancellazione del database scaduto, una sincronizzazione
+avrebbe potuto crearne uno vuoto con quel nome e ricollegarci l'API.
+Render non cancella le risorse tolte dal Blueprint, e `sync: false` non
+tocca un valore già impostato sul servizio.
+
+**Verifica:** `render.yaml` letto da un parser YAML; nessuna modifica al
+codice dell'API.
+
+## 230. Font salvati nel sito: il build non scarica più da Google Fonts
+
+**Richiesta:** un controllo GitHub era fallito con "An error occurred in
+`next/font` ... Cannot read properties of null (reading '1')" in
+`apps/web/src/app/fonts.ts`: `next/font/google` scarica i font a ogni build
+e, quando Google Fonts risponde male, il build (CI e Vercel) si ferma.
+L'utente ha chiesto di togliere questa dipendenza.
+
+**Decisione:** i tre file usati dal sito (sottoinsieme latino di Fredoka e
+Inter Tight, variabili, e IBM Plex Mono 500) stanno in
+`apps/web/src/app/fonts/` e `fonts.ts` usa `next/font/local` con le stesse
+variabili CSS (`--font-display`, `--font-body`, `--font-mono`). Sono
+esattamente i file che `next/font/google` scaricava (stesso contenuto, stesso
+nome in `.next/static/media`). Pesi dichiarati limitati a quelli caricati
+prima (500-700, 400-600, 500). Non sono più inclusi gli altri sottoinsiemi
+(latino esteso, cirillico, greco, vietnamita), che il sito non precaricava:
+lettere come "ł" o "ş" in un nome si vedono col carattere di riserva.
+
+**Verifica:** build di `apps/web` riuscito; screenshot prima/dopo di home e
+privacy da computer (1280px) e telefono (390px) identici pixel per pixel, in
+`/mnt/project-files/anteprime/font-locali/`.
+
+## 231. Profilo pubblico: Agenda prima delle Prestazioni
+
+**Richiesta dell'utente**: nel profilo pubblico del professionista invertire
+la sezione Agenda con quella Prestazioni.
+
+**Decisione**: in `ProfessionalDetailContent.tsx` l'Agenda viene subito dopo
+la scheda identità, poi le Prestazioni, il pulsante "Richiedi un preventivo"
+e le Recensioni. Solo spostamento dei due blocchi, nessun cambio di
+contenuto; le condizioni restano le stesse (Agenda solo con orari e account
+non in pausa, Prestazioni solo se ce ne sono).
+
+Secondo giro, migliorie approvate dall'utente:
+- Il pulsante "Richiedi un preventivo" (o il riquadro "Al momento non
+  accetta nuove richieste") sta subito sotto l'Agenda, prima delle
+  Prestazioni.
+- Prezzi all'italiana in `formatServicePriceRange` (usata ovunque: profilo,
+  preventivi, calcolatore, notifiche): "30–50 €" invece di "30.00 € - 50.00 €",
+  virgola per i decimali ("12,50 €"), punto per le migliaia, niente ",00"
+  sugli importi tondi, spazio indivisibile prima di "€" così sul telefono il
+  simbolo non va più a capo da solo. Stesso formato nella scheda dei
+  risultati di ricerca (`ProfessionalCard`, copia locale in `packages/ui`).
+- Terzo giro (approvato dall'utente): anche gli importi esatti dei pagamenti
+  all'italiana, sempre con i centesimi ("1.234,50 €"), con `formatEurCents`
+  in `packages/shared`: acconto/saldo/importo finale nelle schede, lordo,
+  commissione e netto nel calendario, finestra "Lavoro terminato", cronologia
+  della richiesta, pagine admin di finanza, pagamenti e problemi. Tolte le
+  copie locali (`euro()`, `eur()`, `€${...toFixed(2)}`). Restano col punto
+  solo i campi da compilare in `/dashboard/profilo` e l'XML DAC7, dove è il
+  formato richiesto.
+
+**Verifica**: anteprime prima/dopo su computer e telefono con dati di prova
+(`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web` e
+`apps/api`, test dell'API verdi.
+
+## 232. Strisce della home ferme sotto la rotellina
 
 **Richiesta dell'utente**: in home, con il mouse sopra le recensioni che
 scorrono e girando la rotellina, la striscia si spostava di poco in su e in

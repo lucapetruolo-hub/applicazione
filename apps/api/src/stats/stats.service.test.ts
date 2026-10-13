@@ -12,7 +12,7 @@ function buildService(aggregate: { _count: { _all: number }; _avg: { rating: num
 
 /**
  * Media delle stelle sotto il titolo delle recensioni in home
- * (docs/CHANGELOG.md §229): tutte le recensioni pubbliche, anche quelle da
+ * (docs/CHANGELOG.md §232): tutte le recensioni pubbliche, anche quelle da
  * 1 e 2 stelle che la home non mostra.
  */
 describe("StatsService.getPlatformStats — media delle recensioni", () => {

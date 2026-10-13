@@ -21,7 +21,7 @@ const ROTATE_MS = 6000;
 // Spostamento orizzontale minimo del dito per cambiare recensione.
 const SWIPE_MIN_PX = 50;
 // Sotto questo numero di recensioni la media non dice ancora molto: non la
-// mostriamo (docs/CHANGELOG.md §229).
+// mostriamo (docs/CHANGELOG.md §232).
 const MIN_REVIEWS_FOR_AVERAGE = 10;
 
 const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
@@ -47,7 +47,7 @@ function timeAgo(iso: string): string {
  * sono, la sezione non compare.
  *
  * "Recensione in primo piano" (idea B scelta dall'utente, docs/CHANGELOG.md
- * §229): una recensione grande che cambia da sola ogni 6 secondi e, da
+ * §232): una recensione grande che cambia da sola ogni 6 secondi e, da
  * computer, l'elenco delle altre a destra da scegliere col clic. Sostituisce
  * la striscia che scorreva da sola: niente più scorrimento orizzontale,
  * quindi niente più spostamenti con la rotellina del mouse.
@@ -97,7 +97,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
   }
 
   // Da telefono si cambia recensione scorrendo col dito (docs/CHANGELOG.md
-  // §229): solo un gesto più orizzontale che verticale, così lo scorrimento
+  // §232): solo un gesto più orizzontale che verticale, così lo scorrimento
   // della pagina resta com'è.
   function onTouchStart(e: TouchEvent) {
     const touch = e.touches[0];
