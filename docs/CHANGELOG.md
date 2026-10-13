@@ -18178,5 +18178,16 @@ e le Recensioni. Solo spostamento dei due blocchi, nessun cambio di
 contenuto; le condizioni restano le stesse (Agenda solo con orari e account
 non in pausa, Prestazioni solo se ce ne sono).
 
+Secondo giro, migliorie approvate dall'utente:
+- Il pulsante "Richiedi un preventivo" (o il riquadro "Al momento non
+  accetta nuove richieste") sta subito sotto l'Agenda, prima delle
+  Prestazioni.
+- Prezzi all'italiana in `formatServicePriceRange` (usata ovunque: profilo,
+  preventivi, calcolatore, notifiche): "30–50 €" invece di "30.00 € - 50.00 €",
+  virgola per i decimali ("12,50 €"), punto per le migliaia, niente ",00"
+  sugli importi tondi, spazio indivisibile prima di "€" così sul telefono il
+  simbolo non va più a capo da solo. `formatEurCents` (pagamenti) non cambia.
+
 **Verifica**: anteprime prima/dopo su computer e telefono con dati di prova
-(`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web`.
+(`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web` e
+`apps/api`, test dell'API verdi.

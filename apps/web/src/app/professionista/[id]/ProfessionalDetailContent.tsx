@@ -772,6 +772,27 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
           </YStack>
         ) : null}
 
+        {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il
+            profilo resta visibile dal link, ma senza agenda né richieste. */}
+        {professional.acceptingRequests ? (
+          <Link
+            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
+            style={{ textDecoration: "none", alignSelf: "flex-start" }}
+          >
+            <Button variant="primary">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
+          </Link>
+        ) : (
+          <Surface gap="$2">
+            <Text fontWeight="700" color={brand.grafite}>
+              Al momento non accetta nuove richieste
+            </Text>
+            <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
+            <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+              <Button variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
+            </Link>
+          </Surface>
+        )}
+
         {professional.services.length > 0 ? (
           <YStack gap="$3">
             <XStack alignItems="center" gap="$2">
@@ -800,27 +821,6 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             </Surface>
           </YStack>
         ) : null}
-
-        {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il
-            profilo resta visibile dal link, ma senza agenda né richieste. */}
-        {professional.acceptingRequests ? (
-          <Link
-            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
-            style={{ textDecoration: "none", alignSelf: "flex-start" }}
-          >
-            <Button variant="primary">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
-          </Link>
-        ) : (
-          <Surface gap="$2">
-            <Text fontWeight="700" color={brand.grafite}>
-              Al momento non accetta nuove richieste
-            </Text>
-            <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
-            <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-              <Button variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
-            </Link>
-          </Surface>
-        )}
 
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">

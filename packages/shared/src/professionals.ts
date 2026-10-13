@@ -23,17 +23,24 @@ export type ProfessionalServiceItem = {
 };
 
 /**
- * Formatta il prezzo di una prestazione: range ("50,00 € - 90,00 €") se sono
- * impostati sia il minimo che il massimo (e sono diversi), prezzo singolo se
- * è impostato solo uno dei due, "Su richiesta" se nessuno dei due lo è.
+ * Formatta il prezzo di una prestazione all'italiana (docs/CHANGELOG.md
+ * §229): range ("50–90 €") se sono impostati sia il minimo che il massimo
+ * (e sono diversi), prezzo singolo ("12,50 €") se è impostato solo uno dei
+ * due, "Su richiesta" se nessuno dei due lo è. Virgola per i decimali,
+ * niente ",00" sugli importi tondi, spazio indivisibile prima di "€" così
+ * il simbolo non va mai a capo da solo.
  */
 export function formatServicePriceRange(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
-  const format = (cents: number) => `${(cents / 100).toFixed(2)} €`;
+  const amount = (cents: number) => {
+    const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const rest = cents % 100;
+    return rest === 0 ? euros : `${euros},${rest.toString().padStart(2, "0")}`;
+  };
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
-    return `${format(priceMinEurCents)} - ${format(priceMaxEurCents)}`;
+    return `${amount(priceMinEurCents)}–${amount(priceMaxEurCents)}\u00A0€`;
   }
   const single = priceMinEurCents ?? priceMaxEurCents;
-  return single !== null ? format(single) : "Su richiesta";
+  return single !== null ? `${amount(single)}\u00A0€` : "Su richiesta";
 }
 
 /** Formatta un importo in centesimi come "12,50 €" — stesso pattern già usato in `formatServicePriceRange`. */
