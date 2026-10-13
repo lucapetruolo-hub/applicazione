@@ -172,6 +172,10 @@ model ProfessionalProfile {
   categoryId                   String
   subTags                      String[]
   businessName                 String
+  // Cliente Stripe del professionista per abbonamento e boost, uno solo e
+  // riusato (docs/CHANGELOG.md §235): carta, fatture e Customer Portal in un
+  // unico posto. Distinto dall'account Connect con cui riceve i pagamenti.
+  stripeCustomerId             String?   @unique
   city                         String
   latitude                     Float
   longitude                    Float

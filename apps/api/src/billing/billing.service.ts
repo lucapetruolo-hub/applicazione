@@ -82,6 +82,58 @@ export class BillingService {
     return profile;
   }
 
+  /**
+   * Cliente Stripe del professionista, creato una volta e poi riusato per
+   * abbonamento, differenze di livello e boost (docs/CHANGELOG.md §235):
+   * così carta, fatture e Customer Portal stanno in un posto solo. Chi aveva
+   * già un abbonamento riprende il cliente di quell'abbonamento.
+   */
+  private async ensureCustomer(stripe: Stripe, profile: { id: string; businessName: string; stripeCustomerId: string | null; user: { email: string | null } }): Promise<string> {
+    if (profile.stripeCustomerId) return profile.stripeCustomerId;
+    const current = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { stripeSubscriptionId: true } });
+    let customerId: string | null = null;
+    if (current?.stripeSubscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(current.stripeSubscriptionId).catch(() => null);
+      if (subscription) customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+    }
+    if (!customerId) {
+      const customer = await stripe.customers.create(
+        {
+          email: profile.user.email ?? undefined,
+          name: profile.businessName,
+          preferred_locales: ["it"],
+          metadata: { professionalProfileId: profile.id },
+        },
+        { idempotencyKey: `professional-customer-${profile.id}` },
+      );
+      customerId = customer.id;
+    }
+    // Update condizionato: con due richieste insieme vince la prima e l'altra rilegge.
+    const saved = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, stripeCustomerId: null }, data: { stripeCustomerId: customerId } });
+    if (saved.count === 0) {
+      const fresh = await this.prisma.professionalProfile.findUnique({ where: { id: profile.id }, select: { stripeCustomerId: true } });
+      if (fresh?.stripeCustomerId) return fresh.stripeCustomerId;
+    }
+    return customerId;
+  }
+
+  /**
+   * Customer Portal di Stripe (docs/CHANGELOG.md §235): il professionista
+   * cambia la carta e scarica le fatture di abbonamento e boost. Livelli e
+   * annullamento restano nella pagina Abbonamento del sito.
+   */
+  async createBillingPortal(userId: string): Promise<{ url: string }> {
+    const stripe = this.requireStripe();
+    const profile = await this.requireMyProfile(userId);
+    const customer = await this.ensureCustomer(stripe, profile);
+    const session = await stripe.billingPortal.sessions.create({
+      customer,
+      locale: "it",
+      return_url: `${this.frontendUrl()}/dashboard/abbonamento`,
+    });
+    return { url: session.url };
+  }
+
   private tierOfPrice(priceId: string | undefined): SubscriptionTier | null {
     if (!priceId) return null;
     return (Object.keys(SUBSCRIPTION_PRICE_ENV) as SubscriptionTier[]).find((tier) => process.env[SUBSCRIPTION_PRICE_ENV[tier]] === priceId) ?? null;
@@ -168,7 +220,7 @@ export class BillingService {
           : []),
       ],
       subscription_data: { ...(trialEnd ? { trial_end: trialEnd } : {}), metadata: { professionalProfileId: profile.id } },
-      customer_email: profile.user.email ?? undefined,
+      customer: await this.ensureCustomer(stripe, profile),
       success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
       cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
       metadata: { kind: "subscription", professionalProfileId: profile.id, plan },
@@ -273,7 +325,7 @@ export class BillingService {
           quantity: 1,
         },
       ],
-      customer_email: profile.user.email ?? undefined,
+      customer: await this.ensureCustomer(stripe, profile),
       success_url: `${this.frontendUrl()}/dashboard?boost=attivato`,
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "boost", boostType, professionalProfileId: profile.id },

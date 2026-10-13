@@ -226,6 +226,20 @@ export class ProfessionalFiscalService {
    * Prima di creare il primo account va accettata la responsabilità delle
    * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */
+  /**
+   * Accesso alla Dashboard Express di Stripe (docs/CHANGELOG.md §235): il
+   * professionista vede accrediti e bonifici sul suo conto e cambia l'IBAN,
+   * senza scrivere a noi. Solo con la verifica avviata.
+   */
+  async createStripeDashboardLink(userId: string): Promise<{ url: string }> {
+    if (!this.stripe) throw new BadRequestException(`I pagamenti tramite ${BRAND.name} non sono ancora configurati su questo ambiente.`);
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
+    if (!fiscalProfile?.stripeConnectAccountId) throw new BadRequestException("Attiva prima i pagamenti con Stripe.");
+    const link = await this.stripe.accounts.createLoginLink(fiscalProfile.stripeConnectAccountId);
+    return { url: link.url };
+  }
+
   async createStripeConnectOnboardingLink(userId: string) {
     if (!this.stripe) {
       throw new BadRequestException(

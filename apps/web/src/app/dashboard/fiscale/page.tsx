@@ -293,6 +293,20 @@ function DashboardFiscaleContent() {
     }
   }
 
+  // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §235).
+  async function handleStripeDashboard() {
+    if (!token) return;
+    setStripeLoading(true);
+    setStripeError(null);
+    try {
+      const { url } = await apiClient.createStripeDashboardLink(token);
+      window.location.href = url;
+    } catch (e) {
+      setStripeError(e instanceof Error ? e.message : "Impossibile aprire il tuo conto Stripe.");
+      setStripeLoading(false);
+    }
+  }
+
   if (isLoading || profile === undefined) {
     return (
       <Section title="Dati fiscali e pagamenti">
@@ -594,7 +608,17 @@ function DashboardFiscaleContent() {
               Quello che il cliente paga direttamente te lo dà come vi accordate.
             </Text>
             {profile?.stripeChargesEnabled ? (
-              <Badge variant="verificato">Pagamenti attivi</Badge>
+              <XStack gap="$3" alignItems="center" flexWrap="wrap">
+                <Badge variant="verificato">Pagamenti attivi</Badge>
+                <Button variant="secondary" onPress={handleStripeDashboard} disabled={stripeLoading}>
+                  {stripeLoading ? "Attendere..." : "Vedi accrediti e IBAN su Stripe"}
+                </Button>
+                {stripeError && (
+                  <Text fontSize={13} color={brand.urgenza}>
+                    {stripeError}
+                  </Text>
+                )}
+              </XStack>
             ) : (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">
                 <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>

@@ -37,6 +37,23 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
  * lo usano sia i pagamenti sia le segnalazioni, senza dipendenze circolari.
  * La commissione arriva già calcolata in `JobPayment.platformFeeEurCents`.
  */
+/**
+ * Suffisso dell'estratto conto per i pagamenti con carta: solo lettere,
+ * cifre e spazi (Stripe rifiuta < > \ ' " *), almeno una lettera, al massimo
+ * 10 caratteri perché prefisso e suffisso insieme stanno in 22.
+ */
+export function statementSuffix(businessName: string): string | null {
+  const clean = businessName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 10)
+    .trim();
+  return /[A-Za-z]/.test(clean) ? clean.toUpperCase() : null;
+}
+
 @Injectable()
 export class OnlineMoneyService {
   private readonly logger = new Logger(OnlineMoneyService.name);
@@ -90,6 +107,7 @@ export class OnlineMoneyService {
     const back = booking.quote
       ? `${this.frontendUrl()}/le-mie-richieste?tab=lavori&open=${booking.quote.guidedRequestId}`
       : `${this.frontendUrl()}/le-mie-richieste?tab=lavori`;
+    const suffix = statementSuffix(booking.professionalProfile.businessName);
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       line_items: [
@@ -104,7 +122,12 @@ export class OnlineMoneyService {
           quantity: 1,
         },
       ],
-      payment_intent_data: { transfer_group: bookingId, metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId } },
+      payment_intent_data: {
+        transfer_group: bookingId,
+        // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §235): meno contestazioni "non riconosco l'addebito".
+        ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+        metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
+      },
       success_url: `${back}&pagamento=completato`,
       cancel_url: back,
       metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },

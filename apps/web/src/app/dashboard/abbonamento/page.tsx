@@ -131,6 +131,21 @@ function AbbonamentoContent() {
     }
   }
 
+  // Carta e fatture nel Customer Portal di Stripe (docs/CHANGELOG.md §235).
+  const [portalPending, setPortalPending] = useState(false);
+  async function openPortal() {
+    if (!token) return;
+    setCheckoutError(null);
+    setPortalPending(true);
+    try {
+      const { url } = await apiClient.createBillingPortal(token);
+      window.location.href = url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setPortalPending(false);
+    }
+  }
+
   async function setRenewal(renew: boolean) {
     if (!token) return;
     setCheckoutError(null);
@@ -380,6 +395,18 @@ function AbbonamentoContent() {
                 </Button>
               </>
             )}
+          </Surface>
+        ) : null}
+
+        {sub?.checkoutAvailable ? (
+          <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              Carta e fatture
+            </Text>
+            <Text color={brand.grafite70}>Cambia la carta di pagamento e scarica le fatture di abbonamento e visibilità, su una pagina sicura di Stripe.</Text>
+            <Button variant="secondary" alignSelf="flex-start" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
+              {portalPending ? "Apertura..." : "Gestisci carta e fatture"}
+            </Button>
           </Surface>
         ) : null}
 

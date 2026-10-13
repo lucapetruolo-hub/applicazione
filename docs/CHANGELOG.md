@@ -18426,3 +18426,36 @@ rimborso della differenza) e due test in `bookings.service.test.ts`
 (percentuale e saldo diretto passati al pagamento, modo non offerto
 rifiutato). Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione
 applicata su un Postgres locale.
+
+## 235. Stripe: carta e fatture, conto Stripe del professionista, estratto conto
+
+**Richiesta esplicita dell'utente** (13/10/2026): "procedi con tutto con la
+priorità descritta da te" (terzo blocco del piano
+`analisi/stripe-revisione-integrazione.md`, punti B1, B2, B5, B9).
+
+**Decisione**:
+- **Un solo cliente Stripe per professionista** (`ProfessionalProfile.stripeCustomerId`,
+  migrazione `20261013170000_professional_stripe_customer`): creato alla prima
+  necessità con chiave di idempotenza e riusato per abbonamento, differenze di
+  livello e boost (prima ogni pagamento creava un cliente nuovo da
+  `customer_email`). Chi aveva già un abbonamento riprende il cliente di
+  quell'abbonamento.
+- **Carta e fatture** (`POST /billing/portal`, sezione in
+  `/dashboard/abbonamento`): apre il Customer Portal di Stripe per cambiare
+  carta e scaricare le fatture. Livelli e annullamento restano nel sito. Va
+  salvata la configurazione del portale in Dashboard (checklist di lancio).
+- **"Vedi accrediti e IBAN su Stripe"** (`POST /professionals/me/fiscal-profile/stripe-dashboard`,
+  in Dati fiscali e pagamenti quando i pagamenti sono attivi): link di accesso
+  alla Dashboard Express del professionista.
+- **Nome del professionista sull'estratto conto del cliente**:
+  `statement_descriptor_suffix` sugli acconti e saldi online (max 10
+  caratteri, senza accenti né caratteri vietati da Stripe), per ridurre le
+  contestazioni "non riconosco l'addebito".
+
+Non fatto, perché già coperto: l'avviso sui dati che Stripe chiede ancora
+c'è già in Dati fiscali e pagamenti (§233).
+
+**Verifica**: `billing/billing-customer.test.ts` (cliente creato una volta,
+riusato, ripreso dall'abbonamento esistente; suffisso dell'estratto conto).
+Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione applicata su
+un Postgres locale.

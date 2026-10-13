@@ -1406,6 +1406,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
+    createBillingPortal: (token: string) =>
+      request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
     createBoostCheckout: (token: string, type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO") =>
       request<{ url: string | null }>("/billing/boost/checkout", {
         method: "POST",
@@ -1776,6 +1780,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Onboarding Stripe Connect (gated — vedi CLAUDE.md §88): torna l'URL Stripe a cui reindirizzare, o lancia un errore chiaro se non configurato. */
     createStripeConnectLink: (token: string) =>
       request<{ url: string }>("/professionals/me/fiscal-profile/stripe-connect", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    /** Accesso alla Dashboard Express di Stripe del professionista (accrediti, bonifici, IBAN). */
+    createStripeDashboardLink: (token: string) =>
+      request<{ url: string }>("/professionals/me/fiscal-profile/stripe-dashboard", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

@@ -34,6 +34,12 @@ export class BillingController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post("portal")
+  createBillingPortal(@Req() req: AuthenticatedRequest) {
+    return this.billingService.createBillingPortal(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post("boost/checkout")
   createBoostCheckout(
     @Req() req: AuthenticatedRequest,
