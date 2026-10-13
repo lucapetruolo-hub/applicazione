@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -18,6 +18,8 @@ type RecentReview = {
 
 // Ogni quanto passa da sola alla recensione successiva.
 const ROTATE_MS = 6000;
+// Spostamento orizzontale minimo del dito per cambiare recensione.
+const SWIPE_MIN_PX = 50;
 // Sotto questo numero di recensioni la media non dice ancora molto: non la
 // mostriamo (docs/CHANGELOG.md §229).
 const MIN_REVIEWS_FOR_AVERAGE = 10;
@@ -62,6 +64,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
   const [cycle, setCycle] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     apiClient
@@ -91,6 +94,25 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
   function select(index: number) {
     setActive(index);
     setCycle((c) => c + 1);
+  }
+
+  // Da telefono si cambia recensione scorrendo col dito (docs/CHANGELOG.md
+  // §229): solo un gesto più orizzontale che verticale, così lo scorrimento
+  // della pagina resta com'è.
+  function onTouchStart(e: TouchEvent) {
+    const touch = e.touches[0];
+    touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    const start = touchStartRef.current;
+    const touch = e.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch || count < 2) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    select((active + (dx < 0 ? 1 : -1) + count) % count);
   }
 
   function pause() {
@@ -125,7 +147,13 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
           if (!rootRef.current?.contains(e.relatedTarget as Node | null)) resume();
         }}
       >
-        <article key={`${review.id}-${active}`} className="rr-feature" aria-live={rotating ? "off" : "polite"}>
+        <article
+          key={`${review.id}-${active}`}
+          className="rr-feature"
+          aria-live={rotating ? "off" : "polite"}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
           <Link href={profileHref} className="rr-feature-photo" aria-label={review.professional.businessName} style={{ backgroundColor: accent.bg }}>
             {review.professional.imageUrl ? (
               <Image src={review.professional.imageUrl} alt="" fill sizes="(min-width: 700px) 220px, 100vw" style={{ objectFit: "cover" }} />
@@ -235,6 +263,9 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
           overflow: hidden;
           min-width: 0;
           animation: rr-fade 420ms ease both;
+          /* Lo scorrimento orizzontale col dito lo gestiamo noi (cambio di
+             recensione): senza, il browser lo usa per "indietro". */
+          touch-action: pan-y;
         }
         @media (min-width: 700px) {
           .rr-feature {

@@ -44,3 +44,32 @@ describe("ReviewsService.create — recensione subito dopo \"Lavoro terminato\""
     expect(prisma.review.create).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Recensioni in home (docs/CHANGELOG.md §229): solo da 3 stelle in su, con
+ * un testo, di professionisti attivi (non in pausa, non in attesa di
+ * conferma), al massimo 6.
+ */
+describe("ReviewsService.getRecentPublic — filtri della home", () => {
+  it("chiede solo recensioni da 3 stelle, con testo, di profili attivi", async () => {
+    const { service, prisma } = buildService({});
+    await service.getRecentPublic();
+    const args = prisma.review.findMany.mock.calls[0]?.[0];
+    expect(args.take).toBe(6);
+    expect(args.where).toMatchObject({
+      hiddenAt: null,
+      rating: { gte: 3 },
+      comment: { not: null },
+      NOT: { comment: "" },
+      booking: {
+        professionalProfile: {
+          isDemo: false,
+          deletedAt: null,
+          suspendedAt: null,
+          pausedAt: null,
+          invitePendingAt: null,
+        },
+      },
+    });
+  });
+});

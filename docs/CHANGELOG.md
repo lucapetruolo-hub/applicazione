@@ -18231,3 +18231,16 @@ Terzo giro, quattro migliorie approvate dall'utente:
 
 **Verifica**: build e test dell'API verdi, tipi di `apps/web` verdi,
 schermate in locale su computer e telefono.
+
+Quarto giro, due migliorie approvate dall'utente:
+- Da telefono si cambia recensione scorrendo col dito (verso sinistra la
+  successiva, verso destra la precedente, gira in tondo). Conta solo un
+  gesto più orizzontale che verticale, di almeno 50px. `touch-action: pan-y`
+  sul riquadro: senza, Chrome usava lo stesso gesto per tornare alla pagina
+  precedente (riprodotto in locale con il tocco emulato).
+- Test automatici: i filtri di `getRecentPublic` (3 stelle, testo, profili
+  attivi, 6 al massimo) in `reviews.service.test.ts`, e la media delle
+  recensioni di `getPlatformStats` in `stats.service.test.ts`.
+
+**Verifica**: test dell'API verdi (293), tipi di `apps/web` verdi, gesto
+provato in Chromium con il tocco emulato su un telefono da 390px.
