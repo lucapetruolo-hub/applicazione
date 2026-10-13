@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminJobIssue } from "@professionisti/api-client";
-import { JOB_ISSUE_ESCALATION_LABEL, JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
+import { JOB_ISSUE_ESCALATION_LABEL, JOB_ISSUE_LABEL, JOB_ISSUE_SANCTION_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents } from "@professionisti/shared";
 import { AppealForm, DecisionForm, PhaseDeadline } from "./JobIssueForms";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -161,7 +161,7 @@ export default function AdminProblemiPage() {
                 <Block title="A lavoro terminato: professionista">
                   <Text fontSize={13} color={brand.grafite70}>
                     {row.professionalCompletedAt
-                      ? `Ha chiuso il lavoro il ${formatAdminDate(row.professionalCompletedAt, true)}${row.finalAmountEurCents !== null ? ` · €${(row.finalAmountEurCents / 100).toFixed(2)}` : ""}.`
+                      ? `Ha chiuso il lavoro il ${formatAdminDate(row.professionalCompletedAt, true)}${row.finalAmountEurCents !== null ? ` · ${formatEurCents(row.finalAmountEurCents)}` : ""}.`
                       : "Non ha chiuso il lavoro."}
                   </Text>
                   {row.completionChangeReason ? <Text fontSize={13} color={brand.grafite}>Motivo differenze: “{row.completionChangeReason}”</Text> : null}

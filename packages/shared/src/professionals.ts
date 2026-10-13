@@ -31,11 +31,7 @@ export type ProfessionalServiceItem = {
  * il simbolo non va mai a capo da solo.
  */
 export function formatServicePriceRange(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
-  const amount = (cents: number) => {
-    const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    const rest = cents % 100;
-    return rest === 0 ? euros : `${euros},${rest.toString().padStart(2, "0")}`;
-  };
+  const amount = (cents: number) => formatEurAmount(cents, cents % 100 !== 0);
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
     return `${amount(priceMinEurCents)}–${amount(priceMaxEurCents)}\u00A0€`;
   }
@@ -43,9 +39,23 @@ export function formatServicePriceRange(priceMinEurCents: number | null, priceMa
   return single !== null ? `${amount(single)}\u00A0€` : "Su richiesta";
 }
 
-/** Formatta un importo in centesimi come "12,50 €" — stesso pattern già usato in `formatServicePriceRange`. */
+/**
+ * Cifra in euro all'italiana, senza simbolo: punto per le migliaia, virgola
+ * per i decimali ("1.234,50"); con `withCents` falso solo la parte intera.
+ */
+function formatEurAmount(cents: number, withCents: boolean): string {
+  const sign = cents < 0 ? "-" : "";
+  const abs = Math.abs(Math.round(cents));
+  const euros = Math.floor(abs / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return withCents ? `${sign}${euros},${(abs % 100).toString().padStart(2, "0")}` : `${sign}${euros}`;
+}
+
+/**
+ * Importo esatto di un pagamento all'italiana, sempre con i centesimi:
+ * "1.234,50 €" (docs/CHANGELOG.md §229). Spazio indivisibile prima di "€".
+ */
 export function formatEurCents(cents: number): string {
-  return `${(cents / 100).toFixed(2)} €`;
+  return `${formatEurAmount(cents, true)}\u00A0€`;
 }
 
 /**

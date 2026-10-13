@@ -18186,7 +18186,16 @@ Secondo giro, migliorie approvate dall'utente:
   preventivi, calcolatore, notifiche): "30–50 €" invece di "30.00 € - 50.00 €",
   virgola per i decimali ("12,50 €"), punto per le migliaia, niente ",00"
   sugli importi tondi, spazio indivisibile prima di "€" così sul telefono il
-  simbolo non va più a capo da solo. `formatEurCents` (pagamenti) non cambia.
+  simbolo non va più a capo da solo. Stesso formato nella scheda dei
+  risultati di ricerca (`ProfessionalCard`, copia locale in `packages/ui`).
+- Terzo giro (approvato dall'utente): anche gli importi esatti dei pagamenti
+  all'italiana, sempre con i centesimi ("1.234,50 €"), con `formatEurCents`
+  in `packages/shared`: acconto/saldo/importo finale nelle schede, lordo,
+  commissione e netto nel calendario, finestra "Lavoro terminato", cronologia
+  della richiesta, pagine admin di finanza, pagamenti e problemi. Tolte le
+  copie locali (`euro()`, `eur()`, `€${...toFixed(2)}`). Restano col punto
+  solo i campi da compilare in `/dashboard/profilo` e l'XML DAC7, dove è il
+  formato richiesto.
 
 **Verifica**: anteprime prima/dopo su computer e telefono con dati di prova
 (`anteprime/profilo-pubblico/ordine-*.png`); typecheck di `apps/web` e

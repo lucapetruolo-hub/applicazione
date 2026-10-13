@@ -5,7 +5,7 @@ import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents } from "@professionisti/shared";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -209,7 +209,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
                 {item.name}
               </Text>
               <Text fontSize="$2" color={brand.grafite}>
-                €{(item.priceEurCents / 100).toFixed(2)}
+                {formatEurCents(item.priceEurCents)}
               </Text>
             </XStack>
           ))}
@@ -218,7 +218,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               Totale
             </Text>
             <Text fontSize="$2" fontWeight="700" color={brand.cianografiaScuro}>
-              €{(booking.finalAmountEurCents / 100).toFixed(2)}
+              {formatEurCents(booking.finalAmountEurCents)}
             </Text>
           </XStack>
           {booking.completionChangeReason ? (

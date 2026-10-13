@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
-import type { AdminUnpaidBalance } from "@professionisti/shared";
+import { formatEurCents, type AdminUnpaidBalance } from "@professionisti/shared";
 import Link from "next/link";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -229,7 +229,6 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const eur = (c: number) => `€${(c / 100).toFixed(2)}`;
 
   async function close() {
     setError(null);
@@ -251,10 +250,10 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
   return (
     <AdminCard>
       <Text fontWeight="800" color={brand.grafite}>
-        Saldo scoperto: {eur(row.dueEurCents)}
+        Saldo scoperto: {formatEurCents(row.dueEurCents)}
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
-        Importo finale {row.finalAmountEurCents !== null ? eur(row.finalAmountEurCents) : "—"} · pagato {eur(row.paidEurCents)} · dal{" "}
+        Importo finale {row.finalAmountEurCents !== null ? formatEurCents(row.finalAmountEurCents) : "—"} · pagato {formatEurCents(row.paidEurCents)} · dal{" "}
         {formatAdminDate(row.balanceUnpaidAt, true)}
       </Text>
       <Text fontSize={13} color={brand.grafite70}>
