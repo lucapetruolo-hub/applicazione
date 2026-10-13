@@ -24,7 +24,7 @@ export type ProfessionalServiceItem = {
 
 /**
  * Formatta il prezzo di una prestazione all'italiana (docs/CHANGELOG.md
- * §229): range ("50–90 €") se sono impostati sia il minimo che il massimo
+ * §231): range ("50–90 €") se sono impostati sia il minimo che il massimo
  * (e sono diversi), prezzo singolo ("12,50 €") se è impostato solo uno dei
  * due, "Su richiesta" se nessuno dei due lo è. Virgola per i decimali,
  * niente ",00" sugli importi tondi, spazio indivisibile prima di "€" così
@@ -52,7 +52,7 @@ function formatEurAmount(cents: number, withCents: boolean): string {
 
 /**
  * Importo esatto di un pagamento all'italiana, sempre con i centesimi:
- * "1.234,50 €" (docs/CHANGELOG.md §229). Spazio indivisibile prima di "€".
+ * "1.234,50 €" (docs/CHANGELOG.md §231). Spazio indivisibile prima di "€".
  */
 export function formatEurCents(cents: number): string {
   return `${formatEurAmount(cents, true)}\u00A0€`;
