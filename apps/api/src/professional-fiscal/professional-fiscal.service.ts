@@ -5,6 +5,7 @@ import { BRAND, FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput,
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
+import { readStripeConnectStatus } from "./stripe-connect-status";
 
 const FISCAL_FIELDS = [
   "entityType",
@@ -65,6 +66,12 @@ export class ProfessionalFiscalService {
 
   async getMine(userId: string) {
     const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { stripeConnectAccountId: true, stripePayoutsEnabled: true } });
+    // Di ritorno dalla verifica Stripe il webhook può non essere ancora
+    // arrivato: lo stato si rilegge da Stripe finché l'account non è attivo.
+    if (fiscalProfile?.stripeConnectAccountId && !fiscalProfile.stripePayoutsEnabled) {
+      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch(() => undefined);
+    }
     return this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
       include: { representative: true },
@@ -208,9 +215,16 @@ export class ProfessionalFiscalService {
    * Onboarding Stripe Connect — gated: senza STRIPE_SECRET_KEY risponde con
    * un errore chiaro invece di un crash, stesso pattern già in uso per
    * Stripe/Cloudinary in tutto il progetto (CLAUDE.md §9). Crea l'account
-   * Connect alla prima chiamata (Express, il tipo più semplice per un
-   * onboarding guidato da Stripe), poi genera sempre un nuovo Account Link
-   * (scadono dopo pochi minuti, mai riutilizzabile).
+   * alla prima chiamata, poi genera sempre un nuovo Account Link (scadono
+   * dopo pochi minuti, mai riutilizzabile).
+   *
+   * Account Stripe Accounts v2 (docs/CHANGELOG.md §233), non più il vecchio
+   * `type: "express"` che Stripe considera superato: configurazione
+   * "destinatario" (riceve i trasferimenti dalla piattaforma, non incassa
+   * carte), Dashboard Express, commissioni Stripe e perdite a carico della
+   * piattaforma (schema "separate charges and transfers" con custodia).
+   * Prima di creare il primo account va accettata la responsabilità delle
+   * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */
   async createStripeConnectOnboardingLink(userId: string) {
     if (!this.stripe) {
@@ -224,12 +238,18 @@ export class ProfessionalFiscalService {
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
     if (!stripeAccountId) {
-      const account = await this.stripe.accounts.create({
-        type: "express",
-        country: "IT",
-        email: profile?.user.email ?? undefined,
-        business_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual",
-      });
+      const account = await this.stripe.v2.core.accounts.create(
+        {
+          contact_email: profile?.user.email ?? undefined,
+          display_name: profile?.businessName ?? undefined,
+          dashboard: "express",
+          identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
+          configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
+          defaults: { currency: "eur", locales: ["it-IT"], responsibilities: { fees_collector: "application", losses_collector: "application" } },
+          metadata: { professionalProfileId },
+        },
+        { idempotencyKey: `connect-account-${professionalProfileId}` },
+      );
       stripeAccountId = account.id;
       fiscalProfile = fiscalProfile
         ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data: { stripeConnectAccountId: stripeAccountId } })
@@ -244,13 +264,28 @@ export class ProfessionalFiscalService {
       });
     }
 
-    const accountLink = await this.stripe.accountLinks.create({
+    const accountLink = await this.stripe.v2.core.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${this.frontendUrl()}/dashboard/profilo?stripeConnect=refresh`,
-      return_url: `${this.frontendUrl()}/dashboard/profilo?stripeConnect=completato`,
-      type: "account_onboarding",
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["recipient"],
+          refresh_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=refresh`,
+          return_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=completato`,
+        },
+      },
     });
     return { url: accountLink.url };
+  }
+
+  /**
+   * Rilegge da Stripe lo stato dell'account del professionista (webhook
+   * `account.updated`, ritorno dalla verifica) e lo salva.
+   */
+  async refreshStripeConnectStatus(stripeAccountId: string): Promise<void> {
+    if (!this.stripe) return;
+    const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
+    await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
   }
 
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */

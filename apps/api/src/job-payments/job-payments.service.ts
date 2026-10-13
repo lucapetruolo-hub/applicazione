@@ -152,6 +152,16 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleCheckoutCompleted(session);
   }
 
+  /** Contestazione in banca (`charge.dispute.*`): false se il pagamento non è di un lavoro. */
+  handleStripeDispute(dispute: Stripe.Dispute): Promise<boolean> {
+    return this.onlineMoneyService.handleStripeDispute(dispute);
+  }
+
+  /** Avviso agli admin Finanza per un evento Stripe che non riguarda un lavoro. */
+  notifyFinanceAdmins(type: string, payload: Record<string, unknown>): Promise<void> {
+    return this.onlineMoneyService.notifyFinanceAdmins(type, payload);
+  }
+
   /**
    * Annullamento di un lavoro pagato online (dal cliente o dal
    * professionista): l'acconto torna al cliente per intero.

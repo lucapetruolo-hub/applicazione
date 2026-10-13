@@ -18320,3 +18320,65 @@ Quarto giro, due migliorie approvate dall'utente:
 
 **Verifica**: test dell'API verdi (293), tipi di `apps/web` verdi, gesto
 provato in Chromium con il tocco emulato su un telefono da 390px.
+
+## 233. Stripe: correzioni prima di attivare i pagamenti veri
+
+**Richiesta dell'utente**: rivedere l'integrazione Stripe (Billing, Payments,
+Invoicing, Connect) secondo le buone pratiche e il pianificatore ufficiale di
+Stripe, poi procedere con le correzioni nell'ordine proposto. Analisi
+completa in `/mnt/project-files/analisi/stripe-revisione-integrazione.md`
+(file del progetto, non del repo).
+
+**Decisioni** (prima PR del piano, punti A1-A5, B6, B8):
+- **Due endpoint webhook, due chiavi**: gli eventi degli account dei
+  professionisti (`account.updated`) arrivano solo a un endpoint "Connect"
+  separato, con la sua chiave. `BillingService.verifiedEvent` prova
+  `STRIPE_WEBHOOK_SECRET` e poi `STRIPE_CONNECT_WEBHOOK_SECRET` (nuova
+  variabile su Render, stesso URL `/billing/webhook`). Firma non valida → 400
+  (prima un errore 500). Senza questo `stripePayoutsEnabled` restava sempre
+  falso e nessun professionista riceveva i soldi.
+- **Account Accounts v2** al posto di `type: "express"` (superato per
+  Stripe): configurazione `recipient` con `stripe_transfers`, Dashboard
+  Express, `fees_collector` e `losses_collector` = `application`, Account
+  Link v2. Prima di creare il primo account va accettata la responsabilità
+  delle perdite nella Dashboard Stripe. Lo stato si legge da
+  `configuration.recipient.capabilities.stripe_balance.stripe_transfers.status`
+  (`professional-fiscal/stripe-connect-status.ts`), non più da
+  `charges_enabled`/`payouts_enabled`, e si rilegge da Stripe: al webhook,
+  al ritorno dalla verifica (`GET /professional-fiscal/me`) e prima di ogni
+  trasferimento. Il ritorno dalla verifica ora porta a `/dashboard/fiscale`
+  (prima `/dashboard/profilo`, dove la sezione non c'è); il pulsante diventa
+  "Completa la verifica su Stripe" e mostra cosa chiede ancora Stripe.
+- **Saldo pagato in ritardo**: il trasferimento parte subito dopo il
+  pagamento, quando i soldi non sono ancora disponibili sul saldo della
+  piattaforma. Ora è legato all'addebito (`source_transaction`), così Stripe
+  lo esegue comunque.
+- **Pagamenti lenti** (addebito SEPA, bonifico): `checkout.session.completed`
+  con `payment_status: "unpaid"` non attiva più nulla; si attiva con
+  `checkout.session.async_payment_succeeded`. `async_payment_failed` solo
+  registrato nel log (il cliente può riprovare).
+- **Contestazioni in banca** (`charge.dispute.created/updated/closed`):
+  nuove colonne `JobPayment.stripeDisputeId/Status/DisputedAt` (migrazione
+  `20261013120000_job_payment_stripe_dispute`). Aperta → pagamento
+  `DISPUTED`, accredito bloccato, avviso a Finanza (`ADMIN_STRIPE_DISPUTE`)
+  e al professionista (`JOB_STRIPE_DISPUTE`), una volta all'apertura e una
+  alla chiusura. Vinta → l'accredito riparte. Persa → la cifra conta come
+  restituita al cliente (`refundedEurCents`). Se i soldi erano già passati
+  al professionista nessuno storno automatico: decide il team, perché il
+  contratto con i professionisti non prevede ancora la clausola (domanda 8
+  per l'avvocato). Contestazioni su abbonamenti e boost: solo avviso.
+- **`render.yaml`**: nomi dei prezzi corretti (`STRIPE_PRICE_BASE/PLUS/PRO`,
+  prima `PRO/BUSINESS` dei vecchi piani) e nuova `STRIPE_CONNECT_WEBHOOK_SECRET`.
+- **Tolto il pagamento "sblocco richiesta"** (`POST /billing/leads/:id/checkout`
+  e il suo ramo nel webhook): era il vecchio modello a lead, superato
+  dall'abbonamento a livelli (§160) e mai esposto nel sito. Il modello `Lead`
+  resta (serve allo smistamento).
+
+**Verifica**: test nuovi in `billing-webhook.test.ts` (pagamento lento,
+seconda chiave, firma non valida, contestazione non di un lavoro) e
+`job-payments/stripe-disputes.test.ts` (stato account riletto prima del
+trasferimento, blocco con contestazione aperta, avvisi una volta sola,
+contestazione persa parziale e totale). Test, tipi e lint di `apps/api` e
+tipi di `apps/web` verdi; migrazione applicata su un Postgres locale. Il
+connettore Stripe del progetto ha solo accesso in lettura all'ambiente di
+prova: prodotti, webhook e account di prova vanno creati dalla Dashboard.

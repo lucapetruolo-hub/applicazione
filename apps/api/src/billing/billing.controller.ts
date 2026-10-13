@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Headers, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Headers, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { Request } from "express";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -31,12 +31,6 @@ export class BillingController {
   @Post("subscription/resume")
   resumeSubscription(@Req() req: AuthenticatedRequest) {
     return this.billingService.setCancelAtPeriodEnd(req.user.userId, false);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post("leads/:leadId/checkout")
-  createLeadCheckout(@Req() req: AuthenticatedRequest, @Param("leadId") leadId: string) {
-    return this.billingService.createLeadCheckout(req.user.userId, leadId);
   }
 
   @UseGuards(JwtAuthGuard)

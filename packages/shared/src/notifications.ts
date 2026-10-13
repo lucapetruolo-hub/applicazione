@@ -79,6 +79,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
       "ADMIN_JOB_BALANCE_UNPAID",
+      // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §233).
+      "JOB_STRIPE_DISPUTE",
+      "ADMIN_STRIPE_DISPUTE",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",

@@ -122,6 +122,18 @@ function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabe
 }
 
 const clientRequests = () => ({ label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` });
+// Stati di una contestazione in banca (Stripe Dispute.status), docs/CHANGELOG.md §233.
+const DISPUTE_STATUS_LABEL: Record<string, string> = {
+  needs_response: "aperta, serve la nostra risposta",
+  warning_needs_response: "richiesta di informazioni, serve la nostra risposta",
+  under_review: "in esame dalla banca",
+  warning_under_review: "in esame dalla banca",
+  won: "vinta",
+  warning_closed: "chiusa senza contestazione",
+  prevented: "evitata",
+  lost: "persa",
+};
+
 const proRequests = (label = "Apri la richiesta") => ({ label, url: `${frontendUrl()}/dashboard/richieste` });
 const subscriptionPage = () => ({ label: "Apri la pagina Abbonamento", url: `${frontendUrl()}/dashboard/abbonamento` });
 
@@ -713,6 +725,29 @@ const BUILDERS: Record<string, Builder> = {
     title: "Lavoro non chiuso",
     paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora in custodia.`],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
+  }),
+  JOB_STRIPE_DISPUTE: (payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: payload.status && ["won", "lost", "warning_closed", "prevented"].includes(String(payload.status)) ? "Contestazione in banca chiusa" : "Un cliente ha contestato un pagamento in banca",
+    greeting: ctx.name,
+    title: "Contestazione in banca",
+    paragraphs: [
+      `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
+      "Decide la banca: finché la contestazione è aperta l'accredito resta sospeso. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+    ],
+    cta: proRequests("Apri il lavoro"),
+  }),
+  ADMIN_STRIPE_DISPUTE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Contestazione in banca su un pagamento",
+    title: "Contestazione in banca",
+    paragraphs: [
+      `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
+      payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",

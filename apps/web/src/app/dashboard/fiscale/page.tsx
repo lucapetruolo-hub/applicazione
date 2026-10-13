@@ -597,8 +597,17 @@ function DashboardFiscaleContent() {
             ) : (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">
                 <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>
-                  {stripeLoading ? "Attendere..." : `Attiva pagamenti tramite ${BRAND.name}`}
+                  {stripeLoading
+                    ? "Attendere..."
+                    : profile?.stripeConnectAccountId
+                      ? "Completa la verifica su Stripe"
+                      : `Attiva pagamenti tramite ${BRAND.name}`}
                 </Button>
+                {profile?.stripeConnectAccountId && profile.stripeRequirementsStatus && (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    Stripe ti chiede ancora: {profile.stripeRequirementsStatus}
+                  </Text>
+                )}
                 {stripeError && (
                   <Text fontSize={13} color={brand.urgenza}>
                     {stripeError}

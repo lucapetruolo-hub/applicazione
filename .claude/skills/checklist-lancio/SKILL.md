@@ -68,7 +68,15 @@ produzione):
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
    `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
    `customer.subscription.created`, `customer.subscription.updated`,
-   `customer.subscription.deleted`) e Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   `customer.subscription.deleted`, più `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`, `charge.dispute.created`,
+   `charge.dispute.updated`, `charge.dispute.closed`) e un **secondo
+   endpoint "Connect"** sullo stesso URL `/billing/webhook` con l'evento
+   `account.updated`, la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET`
+   (docs/CHANGELOG.md §233). In Dashboard Stripe prima del primo
+   professionista: accettare la responsabilità delle perdite (Impostazioni
+   Connect → profilo piattaforma) e attivare Radar for Platforms. Usare una
+   chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i

@@ -64,6 +64,11 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      # Chiave di firma del secondo endpoint webhook, quello "Connect" per gli
+      # eventi degli account dei professionisti (account.updated): stesso URL
+      # /billing/webhook, endpoint separato su Stripe (docs/CHANGELOG.md §233).
+      - key: STRIPE_CONNECT_WEBHOOK_SECRET
+        sync: false
       - key: ADMIN_BOOTSTRAP_SECRET
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
@@ -76,11 +81,13 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
-      # Prezzi Stripe dei piani Pro/Business (price_...), letti da
+      # Prezzi Stripe mensili dei livelli Base/Plus/Pro (price_...), letti da
       # apps/api/src/billing/billing.service.ts.
-      - key: STRIPE_PRICE_PRO
+      - key: STRIPE_PRICE_BASE
         sync: false
-      - key: STRIPE_PRICE_BUSINESS
+      - key: STRIPE_PRICE_PLUS
+        sync: false
+      - key: STRIPE_PRICE_PRO
         sync: false
       # Chiave server Google Maps (Geocoding API) per posizionare
       # l'indirizzo preciso del professionista sulla mappa

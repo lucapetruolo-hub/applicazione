@@ -1658,6 +1658,12 @@ model JobPayment {
   // Saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
   // caso arriva al nostro team.
   balanceUnpaidAt        DateTime?
+  // Contestazione aperta dal cliente presso la sua banca (chargeback,
+  // docs/CHANGELOG.md §233): finché è aperta i soldi non passano al
+  // professionista. Stato Stripe: needs_response, under_review, won, lost, ...
+  stripeDisputeId        String?   @unique
+  stripeDisputeStatus    String?
+  stripeDisputedAt       DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?

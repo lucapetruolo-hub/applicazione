@@ -663,6 +663,7 @@ export type ProfessionalFiscalProfile = {
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;
+  stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
 };
 
@@ -1398,12 +1399,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Annulla il rinnovo automatico (resta attivo fino alla scadenza) o lo riattiva. */
     setSubscriptionRenewal: (token: string, renew: boolean) =>
       request<{ ok: true }>(`/billing/subscription/${renew ? "resume" : "cancel"}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-
-    createLeadCheckout: (token: string, leadId: string) =>
-      request<{ url: string | null }>(`/billing/leads/${leadId}/checkout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
