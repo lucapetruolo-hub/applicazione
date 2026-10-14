@@ -18351,3 +18351,30 @@ Richiesta dell'utente: applicare ai pulsanti i dettagli di uno screenshot
   giardiniera, traslochi, tecnico dei condizionatori (`ProGallery`).
 - Le regole CSS usano `button.is_Button`: anche il testo interno del
   Button di Tamagui ha la classe `is_Button`.
+
+## 234. Promemoria del giorno prima con luogo e dati del cliente
+
+**Richiesta esplicita dell'utente**: nell'email di promemoria di un
+intervento il professionista deve trovare anche il luogo, nome e cognome e
+tutti i dati del cliente; al cliente bastano nome e cognome di chi va, data,
+ora, lavoro e descrizione.
+
+**Decisione**:
+- Al professionista (`bookingReminderProfessionalEmail`): righe Data, Ora
+  (con la fine della fascia se c'è), Luogo (indirizzo completo), Lavoro,
+  Descrizione, Cliente (nome e cognome), Telefono, Email. I dati vengono
+  nell'ordine dell'email "preventivo accettato" (§228): prima quelli scritti
+  all'accettazione (`Booking.recipient*`, indirizzo strutturato), poi
+  l'indirizzo della richiesta, infine quelli dell'account del cliente (per le
+  prenotazioni dirette dall'agenda). Mai i dati di un account cancellato.
+  Rispetta §5 punto 9: il promemoria parte solo per prenotazioni confermate.
+- Al cliente (`bookingReminderClientEmail`): Professionista (nome e cognome,
+  con il nome dell'attività tra parentesi se diverso), Data, Ora, Luogo,
+  Lavoro, Descrizione (il luogo anche al cliente su richiesta dell'utente).
+- Migliorie approvate dall'utente: il luogo è un link a Google Maps (in
+  entrambe le email), il telefono del cliente è un link `tel:` e la sua email
+  un link `mailto:`. Il riquadro
+  dei dettagli (`renderEmail`) accetta per questo un `url` facoltativo.
+
+**Verifica**: test in `apps/api/src/email/email-templates.test.ts`,
+typecheck di `apps/api`.

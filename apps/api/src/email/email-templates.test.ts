@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { notificationTopicOf } from "@professionisti/shared";
 import { renderEmail } from "./email-layout";
 import { EMAIL_BRAND } from "./email-brand";
+import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "./templates/job-emails";
 import { NOTIFICATION_EMAIL_TYPES, notificationEmail, type NotificationEmailContext } from "./templates/notification-emails";
 
 /** Modelli email (docs/CHANGELOG.md §185). */
@@ -170,3 +171,45 @@ describe("email delle notifiche", () => {
   });
 });
 
+
+describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
+  const scheduledAt = new Date("2026-10-15T09:00:00.000Z");
+  const scheduledEndAt = new Date("2026-10-15T11:00:00.000Z");
+
+  it("al professionista: luogo e tutti i contatti del cliente", () => {
+    const email = bookingReminderProfessionalEmail({
+      name: "Luigi",
+      clientName: "Anna Bianchi",
+      clientPhone: "+39 333 1234567",
+      clientEmail: "anna@example.it",
+      address: "Via Roma 10 — 00100 Roma (RM)",
+      scheduledAt,
+      scheduledEndAt,
+      category: "Idraulico",
+      city: "Roma",
+      description: "Perdita sotto il lavandino",
+    });
+    for (const value of ["Anna Bianchi", "+39 333 1234567", "anna@example.it", "Via Roma 10 — 00100 Roma (RM)", "Idraulico", "Perdita sotto il lavandino", "09:00–11:00"]) {
+      expect(email.text).toContain(value);
+    }
+    expect(email.html).toContain('href="tel:+393331234567"');
+    expect(email.html).toContain('href="mailto:anna@example.it"');
+    expect(email.html).toContain("https://www.google.com/maps/search/?api=1&amp;query=Via%20Roma%2010");
+  });
+
+  it("al cliente: nome e cognome di chi viene, data, ora, lavoro e descrizione", () => {
+    const email = bookingReminderClientEmail({
+      name: "Anna",
+      businessName: "Idraulica Rossi",
+      professionalFullName: "Luigi Rossi",
+      address: "Via Roma 10 — 00100 Roma (RM)",
+      scheduledAt,
+      scheduledEndAt,
+      category: "Idraulico",
+      description: "Perdita sotto il lavandino",
+    });
+    for (const value of ["Luigi Rossi (Idraulica Rossi)", "Via Roma 10 — 00100 Roma (RM)", "giovedì 15 ottobre", "09:00–11:00", "Idraulico", "Perdita sotto il lavandino"]) {
+      expect(email.text).toContain(value);
+    }
+  });
+});
