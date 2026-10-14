@@ -78,11 +78,12 @@ notification("QUOTE_DATE_CONFIRMED", "Cliente", "Preventivi e date");
 notification("QUOTE_DATE_REJECTED", "Cliente", "Preventivi e date");
 
 // Lavori
-add("promemoria-cliente", "Lavori e appuntamenti", "Cliente", bookingReminderClientEmail({ name: "Giulia", businessName: "Idraulica Rossi", scheduledAt: appointment, category: "Idraulico" }));
-add("promemoria-professionista", "Lavori e appuntamenti", "Professionista", bookingReminderProfessionalEmail({ name: "Marco", clientName: "Giulia", scheduledAt: appointment, category: "Idraulico", city: "Milano" }));
+add("promemoria-cliente", "Lavori e appuntamenti", "Cliente", bookingReminderClientEmail({ name: "Giulia", businessName: "Idraulica Rossi", professionalFullName: "Marco Rossi", address: "Via Roma 10 — 20100 Milano (MI)", scheduledAt: appointment, category: "Idraulico", calendarUrl: "https://calendar.google.com/calendar/render?action=TEMPLATE" }));
+add("promemoria-professionista", "Lavori e appuntamenti", "Professionista", bookingReminderProfessionalEmail({ name: "Marco", clientName: "Giulia Bianchi", clientPhone: "+39 333 1234567", clientEmail: "giulia@example.it", address: "Via Roma 10 — 20100 Milano (MI)", scheduledAt: appointment, category: "Idraulico", city: "Milano", calendarUrl: "https://calendar.google.com/calendar/render?action=TEMPLATE" }));
 notification("JOB_COMPLETED", "Cliente", "Lavori e appuntamenti", { finalAmountEurCents: 18000 });
 notification("NEW_REVIEW", "Professionista", "Lavori e appuntamenti", {});
 notification("BOOKING_CANCELED_BY_PROFESSIONAL", "Cliente", "Lavori e appuntamenti", { cancellationNote: "Imprevisto in cantiere, mi scuso." });
+notification("BOOKING_CANCELED_BY_CLIENT", "Professionista", "Lavori e appuntamenti");
 notification("BOOKING_REOPENED_BY_PROFESSIONAL", "Cliente", "Lavori e appuntamenti");
 notification("BOOKING_REOPENED_BY_CLIENT", "Professionista", "Lavori e appuntamenti");
 

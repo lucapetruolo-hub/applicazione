@@ -52,11 +52,13 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     activeChannels: ["inApp", "email"],
   },
   lavori: {
-    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni riaperte, segnalazioni." },
+    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
     client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
+      // Il cliente annulla: prima il professionista non riceveva nulla (docs/CHANGELOG.md §235).
+      "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
       "BOOKING_NO_SHOW_REPORTED",

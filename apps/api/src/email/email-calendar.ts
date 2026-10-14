@@ -16,6 +16,8 @@ export type CalendarEvent = {
   end?: Date | null;
   location?: string | null;
   description?: string | null;
+  /** Annullato: il calendario toglie l'evento con lo stesso `uid`. */
+  canceled?: boolean;
 };
 
 const DEFAULT_DURATION_MS = 60 * 60 * 1000;
@@ -49,6 +51,15 @@ function fold(line: string): string {
   return out.join("\r\n ");
 }
 
+/**
+ * Versione dell'evento: deve crescere a ogni nuova email sullo stesso
+ * appuntamento perché il calendario prenda l'ultima (annullato, riaperto).
+ * Secondi dal 1° gennaio 2026: crescono sempre, senza salvarli da nessuna parte.
+ */
+function sequence(): number {
+  return Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 1000));
+}
+
 /** File .ics con un solo evento, in ora italiana. */
 export function calendarIcs(event: CalendarEvent): string {
   const lines = [
@@ -56,7 +67,7 @@ export function calendarIcs(event: CalendarEvent): string {
     "VERSION:2.0",
     `PRODID:-//${icsText(EMAIL_BRAND.name)}//Promemoria//IT`,
     "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+    `METHOD:${event.canceled ? "CANCEL" : "PUBLISH"}`,
     "BEGIN:VTIMEZONE",
     "TZID:Europe/Rome",
     "BEGIN:DAYLIGHT",
@@ -76,6 +87,10 @@ export function calendarIcs(event: CalendarEvent): string {
     "END:VTIMEZONE",
     "BEGIN:VEVENT",
     `UID:${event.uid}`,
+    `SEQUENCE:${sequence()}`,
+    `STATUS:${event.canceled ? "CANCELLED" : "CONFIRMED"}`,
+    // Richiesto dallo standard per un annullamento (RFC 5546): l'assistenza.
+    `ORGANIZER;CN="${EMAIL_BRAND.name.replace(/"/g, "")}":mailto:${EMAIL_BRAND.supportEmail}`,
     `DTSTAMP:${new Date().toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`,
     `DTSTART;TZID=Europe/Rome:${wallClock(event.start)}`,
     `DTEND;TZID=Europe/Rome:${wallClock(endOf(event))}`,

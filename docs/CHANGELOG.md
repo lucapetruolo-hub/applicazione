@@ -18394,5 +18394,22 @@ parete" (vedi `email-format.ts`) scritti come ora italiana (`Europe/Rome`).
 Codice in `apps/api/src/email/email-calendar.ts`; `EmailService.send`
 accetta ora degli allegati.
 
+Migliorie approvate dall'utente nello stesso giro:
+- Il calendario arriva anche con l'email "preventivo accettato" al
+  professionista e con "prenotazione riaperta" (cliente o professionista).
+- Annullamento: le email di prenotazione annullata allegano
+  `appuntamento-annullato.ics` (`METHOD:CANCEL`, `STATUS:CANCELLED`, stesso
+  `UID`, `SEQUENCE` crescente) che toglie l'evento dal calendario (Apple
+  Calendar e Outlook lo fanno da soli; con Gmail dipende dal calendario).
+  Nuova notifica `BOOKING_CANCELED_BY_CLIENT` al professionista (argomento
+  "Lavori e appuntamenti"): prima, se il cliente annullava, il professionista
+  non riceveva nulla. Anche l'annullamento dall'agenda del professionista
+  (`updateStatus` a `CANCELED`) ora avvisa il cliente come `cancelByProfessional`.
+- "Spostato": oggi una prenotazione non cambia mai data (si annulla e se ne
+  crea un'altra), quindi basta l'annullamento.
+- Dati della prenotazione e calendario in un solo punto,
+  `apps/api/src/email/booking-calendar.ts`, usato dal promemoria e dalle
+  notifiche (`NotificationsService.bookingCalendarFor`).
+
 **Verifica**: `email-calendar.test.ts` e `email-templates.test.ts`,
-typecheck di `apps/api`.
+typecheck e lint di `apps/api`.

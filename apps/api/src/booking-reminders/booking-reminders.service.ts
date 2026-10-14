@@ -4,8 +4,8 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "../email/templates/job-emails";
-import { calendarIcs, googleCalendarUrl, type CalendarEvent } from "../email/email-calendar";
-import { formatBookingAddress, notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
+import { bookingCalendar, bookingPeople } from "../email/booking-calendar";
+import { notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
 
 function wantsReminderEmail(stored: unknown): boolean {
   return notificationChannelEnabled(resolveNotificationPreferences(stored), "BOOKING_REMINDER", "email");
@@ -73,50 +73,10 @@ export class BookingRemindersService {
     if (bookings.length === 0) return;
 
     for (const booking of bookings) {
-      const professionalName = booking.professionalProfile.businessName;
-      const category = booking.quote?.guidedRequest.category.label ?? null;
-      const description = booking.quote?.guidedRequest.description ?? null;
-      const professionalUser = booking.professionalProfile.user;
-      const professionalFullName = [professionalUser.name, professionalUser.surname].filter(Boolean).join(" ") || null;
-
-      // Dati del cliente per il professionista: il lavoro è confermato, quindi
-      // sono già sbloccati (CLAUDE.md §5 punto 9). Stesso ordine dell'email
-      // "preventivo accettato": prima i dati scritti all'accettazione, poi
-      // quelli della richiesta, infine quelli dell'account (prenotazioni
-      // dirette dall'agenda, docs/CHANGELOG.md §234).
-      const client = booking.client;
-      const clientName =
-        [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || [client.name, client.surname].filter(Boolean).join(" ") || null;
-      const requestAddress = booking.quote?.guidedRequest.address
-        ? `${booking.quote.guidedRequest.address}${booking.quote.guidedRequest.city ? `, ${booking.quote.guidedRequest.city}` : ""}`
-        : null;
-      const address = formatBookingAddress(booking) ?? requestAddress ?? (client.deletedAt ? null : formatBookingAddress(client));
-      const city = booking.city ?? booking.quote?.guidedRequest.city ?? null;
-
-      // "Aggiungi al calendario" (docs/CHANGELOG.md §235): stesso evento per
-      // entrambi, titolo diverso. Allegato .ics + link a Google Calendar.
-      const calendarFor = (title: string, eventDescription: string): CalendarEvent => ({
-        uid: `booking-${booking.id}@professionisti`,
-        title,
-        start: booking.scheduledAt,
-        end: booking.scheduledEndAt,
-        location: address ?? city,
-        description: eventDescription,
-      });
-      const withCalendar = (event: CalendarEvent) => ({
-        calendarUrl: googleCalendarUrl(event),
-        attachment: { filename: "appuntamento.ics", content: calendarIcs(event), contentType: "text/calendar; charset=utf-8" },
-      });
-      const job = [category, description].filter(Boolean).join(": ");
-      const clientCalendar = withCalendar(
-        calendarFor(`${category ?? "Intervento"} con ${professionalFullName ?? professionalName}`, job),
-      );
-      const professionalCalendar = withCalendar(
-        calendarFor(
-          `${category ?? "Intervento"}${clientName ? ` da ${clientName}` : ""}`,
-          [job, booking.recipientPhone ?? (client.deletedAt ? null : client.phone)].filter(Boolean).join("\n"),
-        ),
-      );
+      // Nome, contatti e luogo (docs/CHANGELOG.md §234) e calendario (§235).
+      const people = bookingPeople(booking);
+      const clientCalendar = bookingCalendar(booking, "client");
+      const professionalCalendar = bookingCalendar(booking, "professional");
 
       // Solo a chi non ha spento le email di "Lavori e appuntamenti" (docs/CHANGELOG.md §152).
       if (booking.client.email && wantsReminderEmail(booking.client.notificationPrefs)) {
@@ -125,14 +85,14 @@ export class BookingRemindersService {
           attachments: [clientCalendar.attachment],
           ...bookingReminderClientEmail({
             name: booking.client.name,
-            businessName: professionalName,
-            professionalFullName,
+            businessName: people.businessName,
+            professionalFullName: people.professionalFullName,
             scheduledAt: booking.scheduledAt,
             scheduledEndAt: booking.scheduledEndAt,
-            address,
-            city,
-            category,
-            description,
+            address: people.address,
+            city: people.city,
+            category: people.category,
+            description: people.description,
             calendarUrl: clientCalendar.calendarUrl,
           }),
         });
@@ -143,16 +103,15 @@ export class BookingRemindersService {
           attachments: [professionalCalendar.attachment],
           ...bookingReminderProfessionalEmail({
             name: booking.professionalProfile.user.name,
-            clientName,
-            clientPhone: booking.recipientPhone ?? (client.deletedAt ? null : client.phone),
-            // Mai l'email anonimizzata di un account cancellato.
-            clientEmail: client.deletedAt ? null : client.email,
-            address,
+            clientName: people.clientName,
+            clientPhone: people.clientPhone,
+            clientEmail: people.clientEmail,
+            address: people.address,
             scheduledAt: booking.scheduledAt,
             scheduledEndAt: booking.scheduledEndAt,
-            category,
-            city,
-            description,
+            category: people.category,
+            city: people.city,
+            description: people.description,
             calendarUrl: professionalCalendar.calendarUrl,
           }),
         });

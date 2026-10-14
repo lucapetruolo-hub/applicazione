@@ -1,3 +1,4 @@
+import { calendarDetail } from "../booking-calendar";
 import { frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
 import { descriptionDetail, formatAppointmentDay, formatAppointmentTime } from "../email-format";
@@ -129,11 +130,6 @@ function placeDetail(address: string | null | undefined, city: string | null | u
   const place = address?.trim() || city?.trim();
   if (!place) return [];
   return [{ label: "Luogo", value: place, url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` }];
-}
-
-/** Riga "Calendario": il file .ics è allegato all'email, il link serve a chi usa Google Calendar. */
-function calendarDetail(url: string | null | undefined): { label: string; value: string; url: string }[] {
-  return url ? [{ label: "Calendario", value: "Aggiungi a Google Calendar (o apri l'allegato)", url }] : [];
 }
 
 /** Righe "Data" e "Ora" (con la fine della fascia, se c'è). */
