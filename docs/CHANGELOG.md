@@ -18378,3 +18378,21 @@ ora, lavoro e descrizione.
 
 **Verifica**: test in `apps/api/src/email/email-templates.test.ts`,
 typecheck di `apps/api`.
+
+## 235. "Aggiungi al calendario" nei promemoria del giorno prima
+
+**Richiesta esplicita dell'utente**: miglioria proposta durante §234, da fare
+come lavoro a parte.
+
+**Decisione**: le due email di promemoria (cliente e professionista) hanno
+in allegato `appuntamento.ics` (Apple Calendar, Outlook e Gmail lo aprono e
+propongono di aggiungerlo) e una riga "Calendario" con il link a Google
+Calendar. Stesso evento con lo stesso `UID` per non duplicarlo: ora di
+inizio e fine (un'ora se manca la fine), luogo, lavoro e descrizione; per il
+professionista anche il telefono del cliente. Gli orari restano "ora di
+parete" (vedi `email-format.ts`) scritti come ora italiana (`Europe/Rome`).
+Codice in `apps/api/src/email/email-calendar.ts`; `EmailService.send`
+accetta ora degli allegati.
+
+**Verifica**: `email-calendar.test.ts` e `email-templates.test.ts`,
+typecheck di `apps/api`.

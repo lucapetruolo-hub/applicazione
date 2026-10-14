@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "../email/templates/job-emails";
+import { calendarIcs, googleCalendarUrl, type CalendarEvent } from "../email/email-calendar";
 import { formatBookingAddress, notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
 
 function wantsReminderEmail(stored: unknown): boolean {
@@ -90,11 +91,38 @@ export class BookingRemindersService {
         ? `${booking.quote.guidedRequest.address}${booking.quote.guidedRequest.city ? `, ${booking.quote.guidedRequest.city}` : ""}`
         : null;
       const address = formatBookingAddress(booking) ?? requestAddress ?? (client.deletedAt ? null : formatBookingAddress(client));
+      const city = booking.city ?? booking.quote?.guidedRequest.city ?? null;
+
+      // "Aggiungi al calendario" (docs/CHANGELOG.md §235): stesso evento per
+      // entrambi, titolo diverso. Allegato .ics + link a Google Calendar.
+      const calendarFor = (title: string, eventDescription: string): CalendarEvent => ({
+        uid: `booking-${booking.id}@professionisti`,
+        title,
+        start: booking.scheduledAt,
+        end: booking.scheduledEndAt,
+        location: address ?? city,
+        description: eventDescription,
+      });
+      const withCalendar = (event: CalendarEvent) => ({
+        calendarUrl: googleCalendarUrl(event),
+        attachment: { filename: "appuntamento.ics", content: calendarIcs(event), contentType: "text/calendar; charset=utf-8" },
+      });
+      const job = [category, description].filter(Boolean).join(": ");
+      const clientCalendar = withCalendar(
+        calendarFor(`${category ?? "Intervento"} con ${professionalFullName ?? professionalName}`, job),
+      );
+      const professionalCalendar = withCalendar(
+        calendarFor(
+          `${category ?? "Intervento"}${clientName ? ` da ${clientName}` : ""}`,
+          [job, booking.recipientPhone ?? (client.deletedAt ? null : client.phone)].filter(Boolean).join("\n"),
+        ),
+      );
 
       // Solo a chi non ha spento le email di "Lavori e appuntamenti" (docs/CHANGELOG.md §152).
       if (booking.client.email && wantsReminderEmail(booking.client.notificationPrefs)) {
         await this.emailService.send({
           to: booking.client.email,
+          attachments: [clientCalendar.attachment],
           ...bookingReminderClientEmail({
             name: booking.client.name,
             businessName: professionalName,
@@ -102,15 +130,17 @@ export class BookingRemindersService {
             scheduledAt: booking.scheduledAt,
             scheduledEndAt: booking.scheduledEndAt,
             address,
-            city: booking.city ?? booking.quote?.guidedRequest.city ?? null,
+            city,
             category,
             description,
+            calendarUrl: clientCalendar.calendarUrl,
           }),
         });
       }
       if (booking.professionalProfile.user.email && wantsReminderEmail(booking.professionalProfile.user.notificationPrefs)) {
         await this.emailService.send({
           to: booking.professionalProfile.user.email,
+          attachments: [professionalCalendar.attachment],
           ...bookingReminderProfessionalEmail({
             name: booking.professionalProfile.user.name,
             clientName,
@@ -121,8 +151,9 @@ export class BookingRemindersService {
             scheduledAt: booking.scheduledAt,
             scheduledEndAt: booking.scheduledEndAt,
             category,
-            city: booking.city ?? booking.quote?.guidedRequest.city ?? null,
+            city,
             description,
+            calendarUrl: professionalCalendar.calendarUrl,
           }),
         });
       }

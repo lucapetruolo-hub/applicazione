@@ -59,6 +59,8 @@ export function bookingReminderClientEmail(input: {
   city?: string | null;
   category: string | null;
   description?: string | null;
+  /** Link "Aggiungi a Google Calendar" (docs/CHANGELOG.md §235). */
+  calendarUrl?: string | null;
 }): RenderedEmail {
   const who = input.professionalFullName?.trim() || null;
   const showBusiness = who !== null && who.toLowerCase() !== input.businessName.trim().toLowerCase();
@@ -74,6 +76,7 @@ export function bookingReminderClientEmail(input: {
       ...placeDetail(input.address, input.city),
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
+      ...calendarDetail(input.calendarUrl),
     ],
     cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["Se non puoi più esserci, avvisa il professionista il prima possibile scrivendogli in chat dalla richiesta."],
@@ -97,6 +100,8 @@ export function bookingReminderProfessionalEmail(input: {
   category: string | null;
   city: string | null;
   description?: string | null;
+  /** Link "Aggiungi a Google Calendar" (docs/CHANGELOG.md §235). */
+  calendarUrl?: string | null;
 }): RenderedEmail {
   return renderEmail({
     kind: "notification",
@@ -112,6 +117,7 @@ export function bookingReminderProfessionalEmail(input: {
       ...(input.clientName ? [{ label: "Cliente", value: input.clientName }] : []),
       ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone, url: `tel:${input.clientPhone.replace(/[^\d+]/g, "")}` }] : []),
       ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail, url: `mailto:${input.clientEmail}` }] : []),
+      ...calendarDetail(input.calendarUrl),
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Trovi gli stessi dati anche nella scheda dell'appuntamento."],
@@ -123,6 +129,11 @@ function placeDetail(address: string | null | undefined, city: string | null | u
   const place = address?.trim() || city?.trim();
   if (!place) return [];
   return [{ label: "Luogo", value: place, url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` }];
+}
+
+/** Riga "Calendario": il file .ics è allegato all'email, il link serve a chi usa Google Calendar. */
+function calendarDetail(url: string | null | undefined): { label: string; value: string; url: string }[] {
+  return url ? [{ label: "Calendario", value: "Aggiungi a Google Calendar (o apri l'allegato)", url }] : [];
 }
 
 /** Righe "Data" e "Ora" (con la fine della fascia, se c'è). */
