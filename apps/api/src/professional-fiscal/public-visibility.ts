@@ -10,6 +10,9 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
  * per offrire l'acconto online e per il badge "Identità verificata da
  * Stripe" (`stripeVerified`).
  *
+ * Codice fiscale e P.IVA risultati inesistenti con il controllo Openapi
+ * (§243) tolgono il profilo dalla ricerca finché non si correggono.
+ *
  * Come la pausa dell'abbonamento (§162) vale solo con i pagamenti attivi su
  * questo ambiente (`STRIPE_SECRET_KEY`), cioè dal lancio. I profili
  * dimostrativi restano visibili.
@@ -21,15 +24,32 @@ export function fiscalDataRequired(): boolean {
 /** Filtro Prisma da aggiungere (in un `AND`) a ogni punto pubblico sui professionisti. */
 export function publicVisibilityWhere(): Prisma.ProfessionalProfileWhereInput {
   if (!fiscalDataRequired()) return {};
-  return { OR: [{ isDemo: true }, { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null } } } }] };
+  return {
+    OR: [
+      { isDemo: true },
+      // Codice fiscale o P.IVA inesistenti all'Agenzia delle Entrate (Openapi,
+      // docs/CHANGELOG.md §243): fuori finché non si correggono. Un controllo
+      // ancora in corso o non riuscito non blocca.
+      { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null }, taxIdChecks: { none: { status: "INVALID" } } } } },
+    ],
+  };
 }
 
 /** Selezione minima per `publicVisibilityMissing`. */
-export const PUBLIC_VISIBILITY_SELECT = { isDemo: true, fiscalProfile: { select: { fiscalDataCompleteAt: true } } } as const;
+export const PUBLIC_VISIBILITY_SELECT = {
+  isDemo: true,
+  fiscalProfile: { select: { fiscalDataCompleteAt: true, taxIdChecks: { where: { status: "INVALID" }, select: { status: true } } } },
+} as const;
 
-/** Il professionista deve ancora compilare i dati fiscali per essere visibile? */
-export function publicVisibilityMissing(profile: { isDemo: boolean; fiscalProfile: { fiscalDataCompleteAt: Date | null } | null }): boolean {
-  return fiscalDataRequired() && !profile.isDemo && !profile.fiscalProfile?.fiscalDataCompleteAt;
+/** Il professionista deve ancora compilare (o correggere) i dati fiscali per essere visibile? */
+export function publicVisibilityMissing(profile: {
+  isDemo: boolean;
+  fiscalProfile: { fiscalDataCompleteAt: Date | null; taxIdChecks?: { status: string }[] } | null;
+}): boolean {
+  if (!fiscalDataRequired() || profile.isDemo) return false;
+  const fiscal = profile.fiscalProfile;
+  if (!fiscal?.fiscalDataCompleteAt) return true;
+  return (fiscal.taxIdChecks ?? []).some((check) => check.status === "INVALID");
 }
 
 /** Account Stripe attivo: può ricevere l'acconto online e mostra il badge. */

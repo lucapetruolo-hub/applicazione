@@ -323,6 +323,8 @@ model ProfessionalProfile {
   feeRules               PlatformFeeRule[]
   revenueEntries         ManoviaRevenue[]
   dac7Records            Dac7Record[]
+  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §243): un tentativo per riga.
+  identityVerifications  IdentityVerification[]
 
   @@index([categoryId, city])
   @@map("professional_profiles")
@@ -1591,6 +1593,9 @@ model ProfessionalFiscalProfile {
 
   professionalProfile ProfessionalProfile   @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   representative      FiscalRepresentative?
+  // Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e al
+  // Registro Imprese (Openapi, docs/CHANGELOG.md §243).
+  taxIdChecks         TaxIdCheck[]
 
   @@map("professional_fiscal_profiles")
 }
@@ -1612,6 +1617,88 @@ model FiscalRepresentative {
   fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
 
   @@map("fiscal_representatives")
+}
+
+// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §243) -----------------
+// Decisioni dell'utente del 14/10/2026: profilo pubblico dopo i dati fiscali
+// e il controllo con Openapi; documento e selfie (Didit) obbligatori prima di
+// inviare preventivi; Didit al posto della verifica manuale, l'admin guarda
+// solo i casi dubbi. I fornitori sono sostituibili: un solo punto parla con
+// ciascuno (apps/api/src/tax-id-check, apps/api/src/identity-verification).
+
+enum TaxIdKind {
+  CODICE_FISCALE
+  PARTITA_IVA
+}
+
+enum TaxIdCheckStatus {
+  PENDING // da controllare: servizio non raggiungibile o non configurato, si riprova
+  VALID // esiste (CF) o è attiva (P.IVA)
+  INVALID // inesistente o cessata: il profilo non è pubblico finché non si corregge
+  REVIEW // non trovata nel registro (es. alcuni liberi professionisti): la guarda un admin, non blocca
+}
+
+// Un controllo per tipo di dato: si ripete (e si paga) solo se il valore cambia.
+model TaxIdCheck {
+  id              String           @id @default(uuid())
+  fiscalProfileId String
+  kind            TaxIdKind
+  // Il dato controllato, maiuscolo e senza spazi.
+  value           String
+  status          TaxIdCheckStatus @default(PENDING)
+  provider        String?
+  // Esito leggibile (es. "ATTIVA", "CESSATA") e ragione sociale ufficiale
+  // per la P.IVA, quando il registro la restituisce.
+  detail          String?
+  officialName    String?
+  attempts        Int              @default(0)
+  checkedAt       DateTime?
+  nextAttemptAt   DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([fiscalProfileId, kind])
+  @@index([status, nextAttemptAt])
+  @@map("tax_id_checks")
+}
+
+enum IdentityVerificationStatus {
+  STARTED // sessione creata, il professionista non ha ancora finito
+  PROCESSING // finita, il fornitore sta decidendo
+  APPROVED // documento e selfie validi e intestati alla persona dei dati fiscali
+  NEEDS_REVIEW // caso dubbio: decide un admin in /admin/verifiche
+  DECLINED // rifiutata dal fornitore o dall'admin: si può riprovare
+  EXPIRED // abbandonata o scaduta: si può riprovare
+}
+
+// Un tentativo di verifica. Foto e selfie restano sul fornitore: qui solo
+// esito, date e l'id della sessione per ritrovarla nella sua console.
+model IdentityVerification {
+  id                      String                     @id @default(uuid())
+  professionalProfileId   String
+  provider                String
+  providerSessionId       String                     @unique
+  sessionUrl              String?
+  status                  IdentityVerificationStatus @default(STARTED)
+  providerStatus          String?
+  // Perché è un caso dubbio o rifiutato, in parole semplici (mai i dati letti dal documento).
+  reason                  String?
+  // Consenso esplicito al trattamento del selfie (GDPR art. 9), con la versione del testo.
+  biometricConsentAt      DateTime
+  biometricConsentVersion String
+  decidedAt               DateTime?
+  reviewedByUserId        String?
+  reviewNote              String?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, createdAt])
+  @@index([status])
+  @@map("identity_verifications")
 }
 
 enum JobPaymentMethod {

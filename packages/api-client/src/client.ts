@@ -67,6 +67,8 @@ import type {
   PendingProfileInvite,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
+  MyVerificationStatus,
+  TaxIdCheckView,
   VerifyProfessionalInput,
   GeneralRequestAvailability,
   GeneralRequestsAdminOverview,
@@ -672,6 +674,8 @@ export type ProfessionalFiscalProfile = {
   stripePayoutsEnabled: boolean;
   stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
+  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §243). */
+  taxIdChecks?: TaxIdCheckView[];
 };
 
 export type AuditLogEntry = {
@@ -1527,6 +1531,22 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
+    /** Caso dubbio della verifica d'identità rifiutato: il motivo arriva al professionista (docs/CHANGELOG.md §243). */
+    adminDeclineIdentityVerification: (token: string, professionalProfileId: string, note: string) =>
+      request<{ professionalProfileId: string; status: "DECLINED" }>(
+        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/identity-decline`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) },
+      ),
+    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §243). */
+    myVerificationStatus: (token: string) =>
+      request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */
+    startIdentityVerification: (token: string) =>
+      request<{ url: string }>("/professionals/me/verification/identity", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ biometricConsent: true }),
+      }),
     adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>
       request<{ professionalProfileId: string; verified: boolean }>(
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/unverify`,

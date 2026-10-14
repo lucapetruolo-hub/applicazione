@@ -74,6 +74,7 @@ function RichiesteContent() {
   // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
   const [stripeVerified, setStripeVerified] = useState(true);
+  const [identityVerificationNeeded, setIdentityVerificationNeeded] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
   // Pallino rosso su "Contatta" (stesso significato già in uso su
   // /dashboard e /le-mie-richieste) — questa pagina è ora la destinazione
@@ -189,6 +190,7 @@ function RichiesteContent() {
         setMyProfileId(profile?.id ?? null);
         setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
         setStripeVerified(profile?.stripeVerified ?? true);
+        setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
       })
       .catch(() => setProfileMissing(true));
@@ -630,6 +632,7 @@ function RichiesteContent() {
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
                   stripeVerified={stripeVerified}
+                  identityVerificationNeeded={identityVerificationNeeded}
                   isOpen={openId === lead.id}
                   onToggle={() => {
                     const opening = openId !== lead.id;

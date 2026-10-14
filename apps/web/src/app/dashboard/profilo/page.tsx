@@ -121,9 +121,6 @@ export default function DashboardProfiloPage() {
   // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §200).
   const [verified, setVerified] = useState(false);
   // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
-  const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
-  const [requestingVerification, setRequestingVerification] = useState(false);
-  const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
   // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [city, setCity] = useState("");
@@ -215,7 +212,6 @@ export default function DashboardProfiloPage() {
         if (profile) {
           setBusinessName(profile.businessName);
           setVerified(profile.verified);
-          setVerificationRequestedAt(profile.verificationRequestedAt);
           setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
           setCity(profile.city);
           setAddress(profile.address ?? "");
@@ -528,20 +524,6 @@ export default function DashboardProfiloPage() {
     })
     .slice(0, 10);
 
-  async function requestVerification() {
-    if (!token) return;
-    setRequestingVerification(true);
-    setVerificationRequestError(null);
-    try {
-      const result = await apiClient.requestProfessionalVerification(token);
-      setVerificationRequestedAt(result.verificationRequestedAt);
-    } catch (err) {
-      setVerificationRequestError(err instanceof Error ? err.message : "Non siamo riusciti a inviare la richiesta. Riprova.");
-    } finally {
-      setRequestingVerification(false);
-    }
-  }
-
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
       <YStack width="100%" maxWidth={760} gap="$5">
@@ -566,18 +548,14 @@ export default function DashboardProfiloPage() {
             <Text color={brand.grafite70}>
               {verified
                 ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
-                : verificationRequestedAt
-                  ? `Richiesta inviata il ${new Date(verificationRequestedAt).toLocaleDateString("it-IT")}: ti ricontattiamo per controllare un tuo documento d'identità e la partita IVA (o il codice fiscale).`
-                  : "Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Chiedilo qui sotto: ti ricontattiamo per il controllo."}
+                : "Lo ottieni verificando la tua identità con un documento e un selfie, circa 2 minuti. Serve anche per inviare preventivi."}
             </Text>
-            {verified || verificationRequestedAt ? null : (
-              <XStack>
-                <Button size="$3" disabled={requestingVerification} onPress={() => void requestVerification()}>
-                  {requestingVerification ? "Invio…" : "Richiedi la verifica"}
-                </Button>
-              </XStack>
+            {/* Didit al posto della richiesta manuale (docs/CHANGELOG.md §243). */}
+            {verified ? null : (
+              <Link href="/dashboard/verifica-identita" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+                <Button size="$3">Verifica la tua identità</Button>
+              </Link>
             )}
-            {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
           </Surface>
         )}
 

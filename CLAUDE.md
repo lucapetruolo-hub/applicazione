@@ -54,6 +54,8 @@ Implicazioni tecniche dirette:
 | Notifiche | Expo Push, **Resend** (email), **Twilio** (SMS) | Promemoria automatici anti no-show |
 | Push in tempo reale (chat, notifiche in-app) | **Server-Sent Events** (`@Sse()` di NestJS lato server, `EventSource` nativo del browser lato client) — non Socket.io né WebSocket grezzo | Un solo servizio Render (nessuno scaling orizzontale, l'argomento Socket.io/adapter Redis non si applica), l'invio passa già per REST (serve solo un push server→client, mai bidirezionale), zero dipendenze nuove (`EventSource` è nativo, nessuna libreria client), riconnessione automatica alla caduta della connessione (Render free tier va in sleep/si riavvia). Limite noto e accettato: `EventSource` non può impostare header custom, il JWT passa come query string (`?token=...`, rischio minore ma reale di finire in log/cronologia). Stato in memoria (`RealtimeService`, `Map<userId, Subject>`) esplicitamente scoped a singola istanza — se il progetto scalasse orizzontalmente, va sostituito con un pub/sub condiviso (es. Redis, già nello stack per BullMQ) solo internamente a quel servizio, l'interfaccia pubblica non cambia. Dettagli in `docs/CHANGELOG.md` §115. Il polling esistente resta come rete di sicurezza, solo allungato dove SSE copre ormai il caso comune |
 | Anti-bot registrazione | **Cloudflare Turnstile** (`apps/web/src/components/TurnstileWidget.tsx`, `apps/api/src/auth/turnstile.ts`) | Deciso dall'utente il 06/10/2026, implementato in docs/CHANGELOG.md §204: sulla registrazione con email e password (`/registrati` e `InlineAuthGate`), su "Password dimenticata" e sul modulo `/contatti`; Google Sign-In escluso. Gratuito, senza cookie di profilazione (nessun consenso nel banner), citato nell'informativa privacy. Spento senza chiavi (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel, `TURNSTILE_SECRET_KEY` su Render). Se Cloudflare non risponde la registrazione passa (resta il limite di 5/min per IP). Nessun proxy/WAF Cloudflare davanti a Vercel |
+| Controllo codice fiscale e partita IVA | **Openapi** (`apps/api/src/tax-id-check/`, `OPENAPI_TOKEN` su Render) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §243): CF all'Agenzia delle Entrate, P.IVA al Registro Imprese. Un esito "non valido" toglie il profilo dalla ricerca (`publicVisibilityWhere`); Openapi irraggiungibile o senza chiave non blocca mai (riprova ogni 30 minuti). Fornitore sostituibile dietro `TaxIdProvider` |
+| Verifica identità (documento + selfie) | **Didit** (`apps/api/src/identity-verification/`, `DIDIT_API_KEY`/`DIDIT_WORKFLOW_ID`/`DIDIT_WEBHOOK_SECRET` su Render) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §243): obbligatoria prima del primo preventivo, sostituisce la verifica manuale (l'admin vede solo i casi dubbi). Consenso biometrico esplicito (art. 9 GDPR) prima di iniziare; si conserva solo l'esito, mai immagini. Fornitore sostituibile dietro `IdentityProvider`. Senza chiavi non è richiesta |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
 | Error tracking e statistiche | **Sentry** (solo `apps/api`, `SENTRY_DSN`) + **Vercel Web Analytics** (`apps/web`, senza cookie) | Decisi con l'utente (consiglio CEO, docs/CHANGELOG.md §132): prima un 500, un cron fallito o un'email non inviata non li vedeva nessuno, e non esisteva nessuna misura delle visite. Piani gratuiti, nessuna carta. Uptime: `.github/workflows/uptime.yml` |
@@ -200,7 +202,8 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     `apps/api/src/professional-fiscal/public-visibility.ts`, decisione
     dell'utente, docs/CHANGELOG.md §241: profilo pubblico con tipo e dati
     DAC7 compilati; la verifica KYC/KYB di Stripe serve solo per l'acconto
-    online e il badge "Identità verificata da Stripe", `stripeVerified`).
+    online e il badge "Identità verificata da Stripe", `stripeVerified`); in più un codice fiscale o una partita IVA che Openapi
+    dice non validi tolgono il profilo dalla ricerca (§243).
 12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
     qualunque admin.
@@ -398,7 +401,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
-- [x] Verifica manuale dei professionisti: badge "Verificato" assegnato da `/admin/verifiche` (documento + partita IVA)
+- [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per i casi dubbi (docs/CHANGELOG.md §243)
 
 ---
 

@@ -199,6 +199,28 @@
   la promozione del primissimo admin è protetta da un codice segreto solo
   in variabile d'ambiente (`ADMIN_BOOTSTRAP_SECRET`), mai committato.
 
+## 9-bis. Verifica fiscale e d'identità dei professionisti (docs/CHANGELOG.md §243)
+
+- **Finalità**: sapere che dietro un profilo c'è la persona (o l'azienda)
+  dei dati fiscali, prima che compaia nelle ricerche e prima che invii
+  preventivi; adempimenti DAC7.
+- **Base giuridica**: obbligo di legge (DAC7, D.Lgs. 32/2023) e legittimo
+  interesse per il controllo di CF e partita IVA; **consenso esplicito (art.
+  9.2.a GDPR)** per il confronto biometrico del selfie con il documento,
+  raccolto con casella dedicata, versionato (`BIOMETRIC_CONSENT_VERSION`) e
+  registrato nel registro azioni.
+- **Interessati**: professionisti (per le aziende, il legale rappresentante).
+- **Dati**: CF, partita IVA, esito del controllo e ragione sociale
+  ufficiale (`tax_id_checks`); esito della verifica identità, motivo di un
+  rifiuto, data del consenso (`identity_verifications`). Immagini del
+  documento e selfie restano a Didit: il sito non le riceve.
+- **Decisione automatizzata**: l'esito Didit sblocca l'invio dei preventivi;
+  i casi dubbi e le contestazioni li rivede una persona (`/admin/verifiche`).
+- **Conservazione**: esiti finché l'account esiste; immagini presso Didit
+  secondo i tempi concordati nel DPA [DA VERIFICARE].
+- **Prima del lancio**: valutazione d'impatto (DPIA, art. 35) per il dato
+  biometrico, DPA con Didit e Openapi.
+
 ## 10. Diritto di accesso e portabilità (art. 15/20 GDPR)
 
 - **Meccanismo**: `GET /auth/me/export` (`AuthService.exportMyData`)
@@ -223,6 +245,8 @@
 | **Google** (Maps JavaScript, Places, Geocoding) | Mappa dei risultati, suggerimenti di indirizzo, geocodifica server | Indirizzo testuale; nel browser dati tecnici di navigazione (IP), solo dopo consenso cookie | USA — DPF | [DA VERIFICARE: Google Maps Platform Data Processing Terms accettati sul progetto Google Cloud] |
 | **Sentry** | Error tracking di `apps/api` | Stack trace e contesto tecnico dell'errore; `sendDefaultPii: false` (niente IP, header, cookie) — un messaggio d'errore può comunque contenere un identificativo | USA — DPF o SCC [DA VERIFICARE] | [DA VERIFICARE: DPA standard di Sentry] |
 | **Stripe** | Pagamenti (abbonamenti, boost, pagamenti online dei lavori, Connect) | **Non ancora attivo** — codice pronto, nessuna chiave reale in produzione (CLAUDE.md §9). Una volta attivo: dati di pagamento, nome, email, importi | USA/Irlanda — DPF o SCC [DA VERIFICARE] | Da stipulare/verificare prima dell'attivazione |
+| **Openapi** | Controllo CF (Agenzia delle Entrate) e partita IVA (Registro Imprese) | CF, partita IVA | Italia — nessun trasferimento | [DA VERIFICARE: DPA di Openapi] |
+| **Didit** | Verifica identità con documento e selfie (dato biometrico) | Immagini del documento, selfie, dati letti dal documento; al sito torna solo l'esito | UE (Spagna) [DA VERIFICARE] | **Da stipulare prima del lancio** (DPA + DPIA) |
 | **Twilio** | SMS transazionali | **Non ancora integrato** nel codice (CLAUDE.md §9) | — | Da valutare quando introdotto |
 
 Nominatim/OpenStreetMap non è più usato (sostituito da Google Geocoding,

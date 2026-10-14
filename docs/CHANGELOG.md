@@ -18692,3 +18692,51 @@ base (pulsanti con freccia, promemoria): le voci di questa PR passano da
 **Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
 (attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
+
+## 243. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
+
+**Richiesta esplicita dell'utente** (14/10/2026): implementare il flusso in
+7 fasi discusso con un'altra IA (registrazione, codice email, dati fiscali,
+controllo Openapi, verifica biometrica Didit, DAC7, Stripe Connect), diviso
+in più thread; questo copre controllo fiscale e verifica d'identità. Con la
+regola "design curato, esperienza da esperto UX".
+
+**Decisioni** (dell'utente, thread "Verifica professionisti e DAC7"):
+- Codice fiscale controllato gratis sul server e nel form: formato, carattere
+  di controllo e **coerenza con nome, cognome e data di nascita** (anche
+  omocodia e donne con giorno +40); per le aziende anche il CF del legale
+  rappresentante (`fiscalFieldErrors` in `packages/shared`).
+- CF all'Agenzia delle Entrate e partita IVA al Registro Imprese con
+  **Openapi** (`TaxIdCheckService`): esito salvato in `tax_id_checks`. Un
+  esito "non valido" non blocca il salvataggio ma toglie il profilo dalla
+  ricerca e lo segna "Da correggere"; una partita IVA non trovata va a un
+  admin senza nascondere il profilo; Openapi irraggiungibile o senza chiave
+  non blocca mai e si riprova ogni 30 minuti (fino a 8 volte, attesa
+  crescente).
+- **Didit** (documento + selfie) obbligatorio prima del primo preventivo
+  (anche il reinvio dopo un rifiuto); non serve per comparire in ricerca.
+  Sostituisce la verifica manuale: esito approvato con nome e data uguali ai
+  dati fiscali (o il CF letto dal documento) dà il badge "Verificato" da
+  solo; se non coincidono va in `/admin/verifiche` come caso dubbio
+  (Verifica / Rifiuta con motivo). Cambiare i dati della persona nei dati
+  fiscali toglie il badge e chiede di rifarla.
+- Consenso biometrico esplicito con casella (testo versionato,
+  `BIOMETRIC_CONSENT_VERSION`), registrato nel registro azioni; si salva solo
+  l'esito, mai immagini o dati del documento. Webhook firmato (HMAC, finestra
+  di 5 minuti) e l'esito viene sempre riletto dall'API di Didit.
+- Fornitori sostituibili dietro `TaxIdProvider` e `IdentityProvider`; tutto
+  spento senza chiavi su Render (`OPENAPI_TOKEN`, `OPENAPI_SANDBOX`,
+  `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`).
+
+**Interfaccia**: nuova pagina `/dashboard/verifica-identita` (voce di menu
+"Verifica identità") con il riquadro "Verifica in 3 passi" (stesso riquadro
+in cima a Dati fiscali), cosa serve, consenso, stati di attesa ed esito con
+aggiornamento automatico al ritorno da Didit; errori in tempo reale sotto CF,
+data di nascita e partita IVA; nel modulo del preventivo un pannello "Verifica
+ora" al posto del modulo; banner in Home. Privacy: nuova sezione 8
+(`/privacy#verifica-identita`), registro dei trattamenti §9-bis.
+
+**Verifica**: test di `apps/api` (controlli fiscali, coerenza CF, firma del
+webhook, abbinamento documento-dati fiscali, blocco preventivi, filtro di
+visibilità), tipi e lint di `apps/api` e `apps/web` verdi; schermate da
+telefono e computer in `/mnt/project-files/anteprime/verifica-identita/`.

@@ -6,10 +6,10 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): un admin
- * controlla documento d'identità e partita IVA (o codice fiscale) fuori dal
- * sito e qui assegna o toglie il badge "Verificato". Ogni cambio finisce nel
- * registro azioni e il professionista riceve un avviso.
+ * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §243 lo assegna
+ * da sola la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
+ * all'admin restano i casi dubbi e la verifica manuale di riserva (§200).
+ * Ogni cambio finisce nel registro azioni e il professionista riceve un avviso.
  */
 @Injectable()
 export class ProfessionalVerificationService {
@@ -47,9 +47,16 @@ export class ProfessionalVerificationService {
       include: {
         category: { select: { label: true } },
         user: { select: { id: true, email: true, name: true, surname: true, phone: true } },
-        fiscalProfile: { select: { vatNumber: true, fiscalCodiceFiscale: true } },
+        fiscalProfile: { select: { vatNumber: true, fiscalCodiceFiscale: true, taxIdChecks: { orderBy: { kind: "asc" } } } },
+        identityVerifications: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
+    // Prima i casi dubbi (documento o P.IVA da guardare, docs/CHANGELOG.md §243), poi l'ordine di sempre.
+    if (filter === "pending") {
+      const needsLook = (p: (typeof profiles)[number]) =>
+        p.identityVerifications[0]?.status === "NEEDS_REVIEW" || !!p.fiscalProfile?.taxIdChecks.some((c) => c.status === "REVIEW");
+      profiles.sort((a, b) => Number(needsLook(b)) - Number(needsLook(a)));
+    }
     const verifierIds = [...new Set(profiles.map((p) => p.verifiedByUserId).filter((id): id is string => !!id))];
     const verifiers = verifierIds.length
       ? await this.prisma.user.findMany({ where: { id: { in: verifierIds } }, select: { id: true, name: true, surname: true, email: true } })
@@ -74,6 +81,17 @@ export class ProfessionalVerificationService {
       verifiedAt: profile.verifiedAt?.toISOString() ?? null,
       verifiedByName: profile.verifiedByUserId ? (verifierName.get(profile.verifiedByUserId) ?? null) : null,
       verificationNote: profile.verificationNote,
+      identity: profile.identityVerifications[0]
+        ? {
+            id: profile.identityVerifications[0].id,
+            status: profile.identityVerifications[0].status,
+            reason: profile.identityVerifications[0].reviewNote ?? profile.identityVerifications[0].reason,
+            provider: profile.identityVerifications[0].provider,
+            providerSessionId: profile.identityVerifications[0].providerSessionId,
+            updatedAt: profile.identityVerifications[0].updatedAt.toISOString(),
+          }
+        : null,
+      taxIdChecks: (profile.fiscalProfile?.taxIdChecks ?? []).map((c) => ({ kind: c.kind, status: c.status, detail: c.detail, officialName: c.officialName })),
     }));
   }
 
@@ -94,8 +112,35 @@ export class ProfessionalVerificationService {
       changedByUserId: adminUserId,
       reason: note || "Documento d'identità e partita IVA/codice fiscale controllati",
     });
+    // Un caso dubbio di Didit approvato da qui (docs/CHANGELOG.md §243).
+    await this.prisma.identityVerification.updateMany({
+      where: { professionalProfileId: profile.id, status: "NEEDS_REVIEW" },
+      data: { status: "APPROVED", reviewedByUserId: adminUserId, reviewNote: note || null, decidedAt: now },
+    });
     await this.notificationsService.notify(profile.userId, "PROFILE_VERIFIED", {});
     return { professionalProfileId: profile.id, verified: true, verifiedAt: now.toISOString() };
+  }
+
+  /**
+   * Documento e selfie approvati dal fornitore e intestati alla persona dei
+   * dati fiscali (docs/CHANGELOG.md §243): badge "Verificato" senza admin.
+   */
+  async markVerifiedByProvider(professionalProfileId: string, provider: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { id: true, userId: true, verified: true } });
+    if (!profile || profile.verified) return;
+    await this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: { verified: true, verifiedAt: new Date(), verifiedByUserId: null, verificationNote: null, verificationRequestedAt: null },
+    });
+    await this.auditLogService.record({
+      entityType: "ProfessionalProfile",
+      entityId: profile.id,
+      fieldName: "verified",
+      oldValue: false,
+      newValue: true,
+      reason: `Documento e selfie verificati da ${provider}, intestati alla persona dei dati fiscali`,
+    });
+    await this.notificationsService.notify(profile.userId, "PROFILE_VERIFIED", {});
   }
 
   async unverify(adminUserId: string, professionalProfileId: string, note: string) {
@@ -139,7 +184,17 @@ export class ProfessionalVerificationService {
   /** Richieste di verifica in attesa, per il numero nel menu admin. */
   countPendingRequests(): Promise<number> {
     return this.prisma.professionalProfile.count({
-      where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
+      where: {
+        verified: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        OR: [
+          { verificationRequestedAt: { not: null } },
+          // Casi dubbi della verifica automatica (docs/CHANGELOG.md §243).
+          { identityVerifications: { some: { status: "NEEDS_REVIEW" } } },
+          { fiscalProfile: { is: { taxIdChecks: { some: { status: "REVIEW" } } } } },
+        ],
+      },
     });
   }
 
