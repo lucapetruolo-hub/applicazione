@@ -18692,3 +18692,55 @@ base (pulsanti con freccia, promemoria): le voci di questa PR passano da
 **Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
 (attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
+
+## 243. DAC7: dichiarazione a "lavoro terminato", diretti e online, IBAN, avviso annuale
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7", piano in
+`/mnt/project-files/analisi/verifica-professionisti-dac7-piano.md`): fase 6
+del flusso (dichiarazione sull'importo, diretti separati dagli online per
+trimestre), IBAN solo per chi incassa online (decisione D4), avviso annuale.
+Il cliente non conferma l'importo dei lavori pagati in diretto.
+
+**Decisioni**:
+- "Lavoro terminato" chiede una spunta obbligatoria con il totale scritto
+  dentro: "Dichiaro sotto la mia esclusiva responsabilità che l'importo
+  indicato corrisponde a quanto effettivamente percepito, o da percepire...".
+  Privato: "ricevuta per prestazione occasionale"; partita IVA e azienda:
+  "fattura o altro documento fiscale"; senza dati fiscali il testo originale.
+  Salvate data e versione (`Booking.completionDeclarationAcceptedAt/Version`,
+  `completionDeclaration` in `packages/shared/src/dac7.ts`); il server
+  rifiuta una versione diversa da quella del tipo fiscale.
+- DAC7 (`dac7Entries`): il diretto conta quando il professionista dichiara
+  l'importo (prima solo dopo la conferma del cliente), l'online quando i
+  soldi passano al professionista, l'acconto online con saldo diretto si
+  divide nelle due parti (prima il saldo diretto mancava). Il trimestre si
+  decide da queste date, non più dall'ultima modifica del pagamento. Nuove
+  colonne `Dac7Record.directConsiderationEurCents`/`onlineConsiderationEurCents`;
+  chi non ha più importi torna a zero; l'export annuale ricalcola prima i
+  trimestri (il giro notturno lasciava fuori l'ultimo giorno di ognuno);
+  `missingFiscalData` guarda i dati compilati, non più la verifica manuale.
+  Nel file: commissioni per trimestre (`Fees`) e IBAN (`FinancialIdentifier`),
+  tag da verificare sul tracciato ufficiale come il ramo Entity.
+- IBAN (`ProfessionalPayoutAccount`, tabella a parte): chiesto in Dati
+  fiscali e pagamenti solo a chi ha avviato i pagamenti online, controllo
+  mod-97 e lunghezza del paese, salvato cifrato (AES-256-GCM, chiave
+  `FISCAL_DATA_KEY` su Render, ricade su `JWT_SECRET`), mostrato solo
+  mascherato, confrontato con paese e ultime 4 cifre del conto su Stripe
+  (`readStripeBankAccounts`, ricontrollato all'apertura della pagina). Un
+  esito diverso non blocca i pagamenti: lo segnala.
+- Avviso annuale: "Segna come inviato" sull'anno manda a ogni professionista
+  `DAC7_ANNUAL_NOTICE` (sito ed email, "Account e sicurezza", non si spegne),
+  rimandabile dall'admin dopo una correzione. Pagina
+  `/dashboard/fiscale/dac7` con i trimestri, diretti e online, commissioni,
+  stato dell'invio e IBAN comunicato.
+
+Da far vedere al commercialista: testo della dichiarazione; IBAN intero o
+ultime 4 cifre.
+
+**Verifica**: `dac7/dac7-entries.test.ts` (date e parti DAC7, IBAN,
+confronto con Stripe, testi, cifratura). Prova in locale su database vero:
+dichiarazione mancante o di versione sbagliata rifiutata, lavoro chiuso con
+versione salvata, IBAN sbagliato rifiutato e giusto salvato cifrato, export
+annuale con diretti/online/commissioni/IBAN, avviso partito a "Segna come
+inviato". Test, tipi e lint di `apps/api` e `apps/web` verdi.

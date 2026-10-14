@@ -2,10 +2,20 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
-import { completionDeviation, completionDeviationText, formatEurCents, formatServicePriceRange, type CompleteBookingInput } from "@professionisti/shared";
+import {
+  completionDeclaration,
+  completionDeviation,
+  completionDeviationText,
+  formatEurCents,
+  formatServicePriceRange,
+  type CompleteBookingInput,
+} from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 
 const MAX_COMPLETION_PHOTOS = 5;
 const MAX_NOTE_LENGTH = 1000;
@@ -68,6 +78,7 @@ export function CompleteJobModal({
   /** Upload di una foto/video del lavoro terminato (richiesta esplicita dell'utente), restituisce l'URL. */
   uploadPhoto: (file: File) => Promise<string>;
 }) {
+  const { token } = useAuth();
   const [quotedRows, setQuotedRows] = useState<QuotedRow[]>(
     quotedItems.length > 0
       ? quotedItems.map((item) => ({ name: item.name, hint: formatRangeHint(item.priceMinEurCents, item.priceMaxEurCents), price: "" }))
@@ -82,6 +93,27 @@ export function CompleteJobModal({
   const [isSaving, setIsSaving] = useState(false);
   const [note, setNote] = useState("");
   const [changeReason, setChangeReason] = useState("");
+  // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): il testo
+  // dipende dal tipo fiscale del professionista. `undefined` finché non è
+  // caricato; se il caricamento fallisce si usa il testo valido per tutti
+  // (il server rifiuta comunque una versione diversa dalla sua).
+  const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null | undefined>(undefined);
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  const [declarationError, setDeclarationError] = useState(false);
+  const declarationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    apiClient
+      .myFiscalProfile(token)
+      .then((profile) => !cancelled && setEntityType(profile?.entityType ?? null))
+      .catch(() => !cancelled && setEntityType(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+  const declaration = entityType === undefined ? null : completionDeclaration(entityType);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -168,6 +200,12 @@ export function CompleteJobModal({
       setError("Spiega il motivo delle differenze rispetto al preventivo.");
       return;
     }
+    if (!declaration) return;
+    if (!declarationAccepted) {
+      setDeclarationError(true);
+      declarationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -176,6 +214,7 @@ export function CompleteJobModal({
         photoUrls,
         note: note.trim() || undefined,
         changeReason: needsReason ? changeReason.trim() : undefined,
+        declarationVersion: declaration.version,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -412,6 +451,50 @@ export function CompleteJobModal({
           ) : null}
         </YStack>
 
+        {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): accanto
+            al pulsante, con il totale scritto dentro, così si sa cosa si
+            dichiara. Spunta obbligatoria, salvata con data e versione. */}
+        <div ref={declarationRef}>
+          <YStack
+            gap="$2"
+            padding="$3"
+            borderRadius="$3"
+            borderWidth={1}
+            borderColor={declarationError && !declarationAccepted ? brand.urgenza : brand.filetto}
+            backgroundColor={brand.gesso}
+          >
+            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+              Dichiarazione sull&apos;importo *
+            </Text>
+            {declaration ? (
+              <ConsentCheckbox
+                checked={declarationAccepted}
+                onToggle={() => {
+                  setDeclarationAccepted((v) => !v);
+                  setDeclarationError(false);
+                }}
+              >
+                {declaration.text.replace("l'importo indicato", `l'importo indicato (${formatEurCents(totalEurCents)})`)}
+              </ConsentCheckbox>
+            ) : (
+              <XStack alignItems="center" gap="$2" minHeight={36}>
+                <UploadingDots dotSize={6} />
+                <Text fontSize="$2" color={brand.grafite70}>
+                  Carico il testo della dichiarazione...
+                </Text>
+              </XStack>
+            )}
+            <Text fontSize="$1" color={brand.grafite70}>
+              L&apos;importo serve anche per la comunicazione annuale al fisco (DAC7).
+            </Text>
+            {declarationError && !declarationAccepted ? (
+              <Text fontSize="$2" color={brand.urgenza}>
+                Spunta la dichiarazione per confermare il lavoro terminato.
+              </Text>
+            ) : null}
+          </YStack>
+        </div>
+
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">
             {error}
@@ -419,7 +502,14 @@ export function CompleteJobModal({
         ) : null}
 
         <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploadingPhoto} opacity={isSaving ? 0.6 : 1}>
+          <Button
+            variant="primary"
+            size="$3"
+            height={44}
+            onPress={handleSubmit}
+            disabled={isSaving || isUploadingPhoto || !declaration}
+            opacity={isSaving || !declaration ? 0.6 : 1}
+          >
             {isSaving ? "Salvataggio..." : "Conferma completamento"}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>

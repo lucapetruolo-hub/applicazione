@@ -7,6 +7,7 @@ import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Bad
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
 import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
+import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
@@ -652,8 +653,38 @@ function DashboardFiscaleContent() {
                 )}
               </XStack>
             )}
+            {/* IBAN per la DAC7, solo per chi ha avviato i pagamenti online (docs/CHANGELOG.md §243). */}
+            {profile?.stripeConnectAccountId && token ? (
+              <PayoutIbanCard
+                token={token}
+                defaultHolderName={
+                  profile.entityType === "BUSINESS"
+                    ? (profile.businessName ?? "")
+                    : [profile.fiscalFirstName, profile.fiscalLastName].filter(Boolean).join(" ")
+                }
+              />
+            ) : null}
           </YStack>
         </Surface>
+
+        {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §243). */}
+        <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>
+          <Surface padding="$4" hoverStyle={{ backgroundColor: brand.gesso }} cursor="pointer">
+            <XStack alignItems="center" gap="$3">
+              <YStack flex={1} gap="$1">
+                <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+                  Riepilogo DAC7
+                </Text>
+                <Text fontSize={13} color={brand.grafite70}>
+                  I compensi che comunichiamo ogni anno all&apos;Agenzia delle Entrate, trimestre per trimestre, divisi tra pagamenti diretti e online.
+                </Text>
+              </YStack>
+              <Text fontSize={20} color={brand.cianografiaScuro} aria-hidden>
+                →
+              </Text>
+            </XStack>
+          </Surface>
+        </Link>
       </YStack>
     </Section>
   );

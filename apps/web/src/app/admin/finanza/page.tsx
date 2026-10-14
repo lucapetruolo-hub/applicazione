@@ -113,9 +113,23 @@ export default function AdminFinanzaPage() {
     if (!token) return;
     setError(null);
     try {
-      await apiClient.adminMarkDac7Submitted(token, id);
-      setActionMessage("Periodo segnato come inviato.");
+      const updated = await apiClient.adminMarkDac7Submitted(token, id);
+      setActionMessage(
+        updated.quarter === null ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7." : "Periodo segnato come inviato.",
+      );
       reloadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore.");
+    }
+  }
+
+  async function handleNotifySellers(id: string) {
+    if (!token) return;
+    setError(null);
+    try {
+      const { sent } = await apiClient.adminNotifyDac7Sellers(token, id);
+      setActionMessage(`Avviso DAC7 rimandato a ${sent} professionisti.`);
+      if (selectedPeriod?.id === id) openPeriod(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore.");
     }
@@ -291,7 +305,9 @@ export default function AdminFinanzaPage() {
             </Button>
           </XStack>
           <Text fontSize={12} color={brand.grafite70}>
-            L&apos;aggregazione riflette solo i pagamenti CONFERMATI (MANOVIA sempre, DIRETTI se previsto dalla regola DAC7 attiva). Nessun invio
+            L&apos;aggregazione conta gli online quando passano al professionista e i diretti appena il professionista dichiara l&apos;importo a
+            &quot;lavoro terminato&quot; (se previsto dalla regola DAC7 attiva), divisi nelle due colonne. &quot;Segna come inviato&quot; sull&apos;anno
+            manda a ogni professionista l&apos;avviso con i suoi dati. Nessun invio
             reale all&apos;Agenzia delle Entrate: &quot;Segna come inviato&quot; è un&apos;azione manuale di registrazione, non un&apos;integrazione
             reale con il Desktop Telematico.
           </Text>
@@ -336,6 +352,11 @@ export default function AdminFinanzaPage() {
                               Correggi
                             </Button>
                           )}
+                          {p.quarter === null && (p.status === "SUBMITTED" || p.status === "CORRECTED") && (
+                            <Button size="$2" variant="secondary" onPress={() => handleNotifySellers(p.id)}>
+                              Rimanda avviso ai professionisti
+                            </Button>
+                          )}
                         </XStack>
                       </td>
                     </tr>
@@ -351,7 +372,7 @@ export default function AdminFinanzaPage() {
                 Dettaglio {selectedPeriod.year} {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
               </Text>
               {selectedPeriod.records.length === 0 ? (
-                <Text color={brand.grafite70}>Nessun professionista con pagamenti confermati in questo periodo.</Text>
+                <Text color={brand.grafite70}>Nessun professionista con compensi in questo periodo.</Text>
               ) : (
                 selectedPeriod.records.map((r) => (
                   <XStack key={r.id} justifyContent="space-between" flexWrap="wrap" gap="$2">
@@ -359,7 +380,9 @@ export default function AdminFinanzaPage() {
                       {r.professionalProfileId} {r.missingFiscalData ? "· dati fiscali mancanti/non verificati" : ""}
                     </Text>
                     <Text fontSize={13} fontFamily="$mono">
-                      {formatEurCents(r.considerationEurCents)} · {r.numberOfTransactions} transazioni
+                      {formatEurCents(r.considerationEurCents)} (diretti {formatEurCents(r.directConsiderationEurCents)}, online{" "}
+                      {formatEurCents(r.onlineConsiderationEurCents)}) · {r.numberOfTransactions} lavori
+                      {r.sellerNotifiedAt ? " · avvisato" : ""}
                     </Text>
                   </XStack>
                 ))

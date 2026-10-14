@@ -23,6 +23,7 @@ import {
   type ReportJobIssueInput,
   PROFESSIONAL_JOB_PROBLEM_REASONS,
   formatEurCents,
+  completionDeclaration,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
@@ -432,6 +433,15 @@ export class BookingsService {
       throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
     }
 
+    // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): il testo
+    // dipende dal tipo fiscale; se nel frattempo è cambiato il professionista
+    // deve rileggerlo, mai salvare una versione che non ha visto.
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: professionalProfile.id }, select: { entityType: true } });
+    const declaration = completionDeclaration(fiscal?.entityType);
+    if (input.declarationVersion !== declaration.version) {
+      throw new BadRequestException("Il testo della dichiarazione è cambiato: chiudi e riapri \"Lavoro terminato\" per leggerlo di nuovo.");
+    }
+
     const finalAmountEurCents = input.items.reduce((sum, item) => sum + item.priceEurCents, 0);
     // Voci aggiunte o totale fuori dal preventivo vanno motivate
     // (docs/CHANGELOG.md §163): stessa regola del modulo, mai fidarsi del client.
@@ -455,6 +465,8 @@ export class BookingsService {
           professionalCompletionNote: input.note?.trim() || null,
           professionalCompletedAt: new Date(),
           completionChangeReason: deviation?.needsReason ? changeReason : null,
+          completionDeclarationAcceptedAt: new Date(),
+          completionDeclarationVersion: declaration.version,
         },
       }),
     ]);

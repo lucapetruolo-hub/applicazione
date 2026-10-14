@@ -17,7 +17,7 @@ import {
   type JobIssueType,
   type ModerationAction,
 } from "@professionisti/shared";
-import { frontendUrl } from "../email-brand";
+import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
 import { descriptionDetail, formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
@@ -880,6 +880,23 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
+  // Avviso annuale DAC7 (docs/CHANGELOG.md §243): obbligatorio per legge.
+  DAC7_ANNUAL_NOTICE: (payload, ctx) => {
+    const year = typeof payload.year === "number" ? payload.year : null;
+    const corrected = payload.corrected === true;
+    return {
+      kind: "account",
+      subject: corrected ? `Abbiamo corretto i dati DAC7 ${year ?? ""} comunicati al fisco` : `I tuoi dati DAC7 ${year ?? ""} comunicati al fisco`,
+      greeting: ctx.name,
+      title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
+      paragraphs: [
+        `Per legge (direttiva europea DAC7) ogni anno comunichiamo all'Agenzia delle Entrate i compensi che hai ricevuto per i lavori trovati su ${EMAIL_BRAND.name}, insieme ai tuoi dati fiscali${year ? `. Questa comunicazione riguarda il ${year}` : ""}.`,
+        "Nella pagina Riepilogo DAC7 trovi i dati inviati, trimestre per trimestre, divisi tra pagamenti diretti e online. Se qualcosa non torna, scrivici: possiamo inviare una correzione.",
+      ],
+      details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
+      cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
+    };
+  },
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
     kind: "account",
     subject: "Stripe ha sospeso i pagamenti online sul tuo account",

@@ -47,6 +47,9 @@ import type {
   ReviewInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
+  PayoutIbanInput,
+  PayoutIbanStripeCheck,
+  Dac7YearSummary,
   SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
@@ -719,7 +722,20 @@ export type Dac7Record = {
   considerationEurCents: number;
   numberOfTransactions: number;
   feesWithheldEurCents: number;
+  /** Di cui pagati direttamente e online (docs/CHANGELOG.md §243). */
+  directConsiderationEurCents: number;
+  onlineConsiderationEurCents: number;
   missingFiscalData: boolean;
+  sellerNotifiedAt: string | null;
+};
+
+/** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §243). */
+export type PayoutIbanView = {
+  maskedIban: string;
+  holderName: string;
+  stripeCheck: PayoutIbanStripeCheck | null;
+  stripeCheckedAt: string | null;
+  updatedAt: string;
 };
 
 export type PlatformDac7Settings = {
@@ -1788,6 +1804,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     createStripeDashboardLink: (token: string) =>
       request<{ url: string }>("/professionals/me/fiscal-profile/stripe-dashboard", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
+    myPayoutIban: (token: string) =>
+      request<PayoutIbanView | null>("/professionals/me/payout-iban", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    saveMyPayoutIban: (token: string, input: PayoutIbanInput) =>
+      request<PayoutIbanView>("/professionals/me/payout-iban", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    myDac7Summary: (token: string) =>
+      request<{ years: Dac7YearSummary[]; maskedIban: string | null }>("/professionals/me/dac7", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -1887,6 +1912,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminMarkDac7Submitted: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminNotifyDac7Sellers: (token: string, id: string) =>
+      request<{ sent: number }>(`/admin/dac7/periods/${id}/notify-sellers`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminCorrectDac7Period: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/correct`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

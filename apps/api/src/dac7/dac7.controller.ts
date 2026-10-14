@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { Dac7Service } from "./dac7.service";
 
@@ -57,8 +57,26 @@ export class Dac7Controller {
     return this.dac7Service.markSubmitted(id);
   }
 
+  /** Rimanda l'avviso annuale (es. dopo una correzione): normalmente parte da solo con "Segna come inviato". */
+  @Post("periods/:id/notify-sellers")
+  notifySellers(@Param("id") id: string) {
+    return this.dac7Service.notifySellers(id, { resend: true });
+  }
+
   @Post("periods/:id/correct")
   correctPeriod(@Param("id") id: string) {
     return this.dac7Service.correctPeriod(id);
+  }
+}
+
+/** Riepilogo DAC7 del professionista (docs/CHANGELOG.md §243): cosa comunichiamo al fisco su di lui. */
+@UseGuards(JwtAuthGuard)
+@Controller("professionals/me/dac7")
+export class ProfessionalDac7Controller {
+  constructor(private readonly dac7Service: Dac7Service) {}
+
+  @Get()
+  summary(@Req() req: AuthenticatedRequest) {
+    return this.dac7Service.summaryForProfessional(req.user.userId);
   }
 }

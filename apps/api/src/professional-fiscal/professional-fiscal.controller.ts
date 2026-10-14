@@ -1,9 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Put, Req, UseGuards } from "@nestjs/common";
-import { professionalFiscalProfileSchema, setFiscalVerificationSchema, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
+import {
+  payoutIbanSchema,
+  professionalFiscalProfileSchema,
+  setFiscalVerificationSchema,
+  type PayoutIbanInput,
+  type ProfessionalFiscalProfileInput,
+  type SetFiscalVerificationInput,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
+import { PayoutAccountService } from "./payout-account.service";
 
 @Controller("professionals/me/fiscal-profile")
 export class ProfessionalFiscalController {
@@ -53,5 +61,22 @@ export class AdminProfessionalFiscalController {
     @Body(new ZodValidationPipe(setFiscalVerificationSchema)) body: SetFiscalVerificationInput,
   ) {
     return this.fiscalService.setVerification(professionalProfileId, body, req.user.userId);
+  }
+}
+
+/** IBAN per la DAC7 di chi incassa online (docs/CHANGELOG.md §243). */
+@UseGuards(JwtAuthGuard)
+@Controller("professionals/me/payout-iban")
+export class PayoutIbanController {
+  constructor(private readonly payoutAccountService: PayoutAccountService) {}
+
+  @Get()
+  getMine(@Req() req: AuthenticatedRequest) {
+    return this.payoutAccountService.getMine(req.user.userId);
+  }
+
+  @Put()
+  saveMine(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(payoutIbanSchema)) body: PayoutIbanInput) {
+    return this.payoutAccountService.saveMine(req.user.userId, body);
   }
 }

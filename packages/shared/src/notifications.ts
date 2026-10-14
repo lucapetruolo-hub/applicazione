@@ -129,6 +129,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "STRIPE_ACCOUNT_ACTIVE",
       // Account Stripe sospeso: niente acconto online né badge finché non si sistema (§242).
       "STRIPE_ACCOUNT_RESTRICTED",
+      // Avviso annuale DAC7 con i dati comunicati al fisco: obbligo di legge (docs/CHANGELOG.md §243).
+      "DAC7_ANNUAL_NOTICE",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
       "SUBSCRIPTION_TRIAL_ENDING",

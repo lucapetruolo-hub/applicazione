@@ -49,6 +49,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
+  DAC7_ANNUAL_NOTICE: { icon: "🧾", message: "Abbiamo inviato al fisco la comunicazione DAC7 dell'anno: guarda i dati nel Riepilogo DAC7." },
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Dati fiscali e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Il tuo profilo è verificato: ora mostra il badge Verificato." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: controlla la tua email per il motivo." },
