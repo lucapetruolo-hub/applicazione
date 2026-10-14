@@ -122,6 +122,17 @@ model User {
   // (docs/CHANGELOG.md §217): precompilano il profilo in /dashboard/profilo,
   // dove poi vivono davvero (ProfessionalProfile.category/extraCategories).
   signupCategorySlugs    String[]    @default([])
+  // Tipo scelto da un professionista nella registrazione (privato, P.IVA,
+  // azienda, docs/CHANGELOG.md §243): precompila /dashboard/fiscale, dove
+  // poi vive davvero (ProfessionalFiscalProfile.entityType).
+  signupEntityType       ProfessionalEntityType?
+  // Codice di 6 cifre nella stessa email del link di conferma (§243):
+  // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
+  // invio solo dopo 60 secondi da `emailCodeSentAt`.
+  emailCodeHash          String?
+  emailCodeExpiresAt     DateTime?
+  emailCodeAttempts      Int         @default(0)
+  emailCodeSentAt        DateTime?
   emailTokenExpiresAt    DateTime?
   // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
   // mandato via email, valido 60 minuti e una volta sola.

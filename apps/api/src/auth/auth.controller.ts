@@ -12,6 +12,7 @@ import {
   passwordResetRequestSchema,
   registerSchema,
   updateAccountSchema,
+  verifyEmailCodeSchema,
   verifyEmailSchema,
   type ChangePasswordInput,
   type EmailPasswordInput,
@@ -21,6 +22,7 @@ import {
   type PasswordResetRequestInput,
   type RegisterInput,
   type UpdateAccountInput,
+  type VerifyEmailCodeInput,
   type VerifyEmailInput,
 } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
@@ -28,7 +30,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { PRISMA } from "../prisma/prisma.module";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
-import { AuthService } from "./auth.service";
+import { AuthService, emailCodeResendWait } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
@@ -53,7 +55,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs);
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType);
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -76,7 +78,7 @@ export class AuthController {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    }, body.categorySlugs);
+    }, body.categorySlugs, body.entityType);
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
@@ -102,6 +104,15 @@ export class AuthController {
   @Post("verify-email")
   async verifyEmail(@Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput) {
     return this.authService.verifyEmail(body.token);
+  }
+
+  // Codice di 6 cifre (docs/CHANGELOG.md §243): solo da account già
+  // entrato; i 5 tentativi per codice sono contati in AuthService.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post("verify-email/code")
+  async verifyEmailCode(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(verifyEmailCodeSchema)) body: VerifyEmailCodeInput) {
+    return this.authService.verifyEmailCode(req.user.userId, body.code);
   }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
@@ -160,7 +171,9 @@ export class AuthController {
     city: string | null;
     province: string | null;
     emailVerifiedAt: Date | null;
+    emailCodeSentAt: Date | null;
     signupCategorySlugs: string[];
+    signupEntityType: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null;
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
@@ -217,9 +230,13 @@ export class AuthController {
       // cliente è facoltativa, proposta da un riquadro in /account.
       emailVerified: user.emailVerifiedAt !== null,
       emailVerificationRequired: isEmailVerificationRequired(),
+      // Secondi prima di poter chiedere un nuovo codice (docs/CHANGELOG.md §243).
+      emailCodeResendInSeconds: user.emailVerifiedAt ? 0 : emailCodeResendWait(user.emailCodeSentAt),
       // Categorie scelte in registrazione (docs/CHANGELOG.md §217): solo per
       // precompilare il primo profilo in /dashboard/profilo.
       signupCategorySlugs: user.signupCategorySlugs,
+      // Privato, P.IVA o azienda scelto in registrazione (§243): precompila /dashboard/fiscale.
+      signupEntityType: user.signupEntityType,
     };
   }
 

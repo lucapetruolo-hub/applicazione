@@ -18692,3 +18692,53 @@ base (pulsanti con freccia, promemoria): le voci di questa PR passano da
 **Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
 (attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
+
+## 243. Registrazione del professionista con il tipo e codice di conferma via email
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Registrazione con
+i tre tipi e codice email", primo dei quattro nati dal piano
+`analisi/verifica-professionisti-dac7-piano.md`, fasi 1 e 2): scegliere
+alla registrazione se si lavora come privato, con Partita IVA o come
+azienda (decisione D1 = tre tipi) e confermare l'email con un codice di 6
+cifre, con Resend già integrato (niente SendGrid).
+
+**Decisione**:
+- Nuovo passo "Come lavori?" in `/registrati` (Passo 2 di 4) con tre
+  schede, il tipo nell'URL (`?tipo=privato|partita-iva|azienda`, così il
+  tasto indietro funziona) e un riepilogo con "Cambia" in cima al modulo.
+  Obbligatorio anche con Google (`NO_ENTITY_TYPE_MESSAGE`). Salvato in
+  `User.signupEntityType`, come le categorie (§217): precompila
+  `/dashboard/fiscale`, dove resta modificabile. Un nuovo account va quindi
+  dritto a `/dashboard/profilo`, non più a `/dashboard/tipo-attivita` (la
+  pagina resta, raggiungibile da Abbonamento).
+- Codice di 6 cifre **nella stessa email del link** (oggetto "123456 è il
+  tuo codice per …", così si legge già dalla notifica): valido 15 minuti,
+  al massimo 5 tentativi (contati prima del confronto, con `updateMany`
+  condizionato), nuovo invio dopo 60 secondi (controllato sul server,
+  `emailCodeSentAt`; `/auth/me` dà `emailCodeResendInSeconds`). Si salva
+  solo l'impronta SHA-256 legata all'account. Il link resta valido 48 ore:
+  da computer è più comodo il codice, da telefono anche il pulsante.
+- `EmailCodeForm` (`apps/web`): un solo `<input>` vero (incolla,
+  riempimento automatico `one-time-code`, tastiera numerica) sotto sei
+  caselle disegnate, invio automatico alla sesta cifra, errore con i
+  tentativi rimasti, spunta verde all'esito, conto alla rovescia per il
+  nuovo codice, "Email sbagliata? Correggila" (manda subito un codice al
+  nuovo indirizzo). Usato in tre punti: subito dopo la registrazione
+  (Passo 4 di 4), in `/conferma-email` senza `token` (dalla barra in alto
+  "Inserisci il codice") e nel riquadro facoltativo del cliente in
+  `/account`.
+- Chi entra con Google salta il codice (email già verificata da Google).
+- Finché `EMAIL_VERIFICATION_REQUIRED` è spenta (dominio Resend non ancora
+  verificato), la schermata del codice offre "Lo faccio dopo": altrimenti
+  chi prova il sito resterebbe bloccato su un'email che non gli arriva.
+- Checklist di lancio: Openapi e Didit da intestare all'azienda (6ter),
+  bonifici manuali sull'account Stripe vero (6quater), prova del codice da
+  telefono (23).
+
+**Verifica**: `auth/email-verification.test.ts` (codice nell'oggetto e nel
+testo, impronta, scadenza, tentativi, 60 secondi, tipo salvato),
+`auth/google-name.test.ts` (tipo obbligatorio con Google),
+`common/profile-categories.test.ts`. Migrazione provata su Postgres locale
+(`migrate deploy` + `migrate diff` senza differenze). Percorso completo
+provato nel browser da telefono e computer: scelta del tipo, registrazione,
+codice sbagliato, codice giusto, Dati fiscali precompilati.

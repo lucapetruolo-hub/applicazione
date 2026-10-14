@@ -3,15 +3,67 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Surface, Text, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { EmailCodeForm } from "@/components/EmailCodeForm";
 
 export default function ConfermaEmailPage() {
   return (
     <Suspense fallback={null}>
-      <ConfermaEmail />
+      <ConfermaEmailRouter />
     </Suspense>
+  );
+}
+
+/** Con `?token=` è il pulsante dell'email; senza, si scrive il codice di 6 cifre (docs/CHANGELOG.md §243). */
+function ConfermaEmailRouter() {
+  const token = useSearchParams().get("token");
+  return token ? <ConfermaEmail /> : <ConfermaConCodice />;
+}
+
+function ConfermaConCodice() {
+  const router = useRouter();
+  const { user, token, isLoading, refreshUser } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !user) router.replace("/accedi?redirect=/conferma-email");
+  }, [isLoading, user, router]);
+
+  if (!user || !token) return null;
+  const nextHref = user.isProfessional ? "/dashboard" : "/account";
+
+  return (
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
+      <Surface floating width="100%" maxWidth={440} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+          Conferma la tua email
+        </Text>
+        {user.emailVerified ? (
+          <YStack gap="$4" alignItems="center">
+            <Text color={brand.grafite70} textAlign="center">
+              L&apos;indirizzo <Text fontWeight="700">{user.email}</Text> è già confermato.
+            </Text>
+            <Link href={nextHref} style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+              Continua
+            </Link>
+          </YStack>
+        ) : (
+          <EmailCodeForm
+            token={token}
+            email={user.email ?? ""}
+            initialResendSeconds={user.emailCodeResendInSeconds ?? 0}
+            allowChangeEmail={user.isProfessional}
+            onEmailChanged={() => void refreshUser().catch(() => {})}
+            onVerified={async () => {
+              await refreshUser().catch(() => {});
+              router.push(nextHref);
+            }}
+          />
+        )}
+      </Surface>
+    </YStack>
   );
 }
 

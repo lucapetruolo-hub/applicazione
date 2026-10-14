@@ -25,6 +25,11 @@ export type EmailContent = {
   details?: { label: string; value: string; url?: string }[];
   /** Avviso urgente o scadenza: titolo e riquadro in rosso. */
   tone?: "default" | "urgent";
+  /**
+   * Codice da copiare (conferma email, docs/CHANGELOG.md §243): grande, a
+   * cifre distanziate, prima del pulsante.
+   */
+  code?: { label: string; value: string };
   cta?: { label: string; url: string };
   /** Testo dopo il pulsante, più piccolo (scadenze del link, "se non sei stato tu"...). */
   after?: string[];
@@ -77,6 +82,14 @@ export function renderEmail(content: EmailContent): RenderedEmail {
       `</td></tr></table>`
     : "";
 
+  const codeHtml = content.code
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:${c.primaryTint};border-radius:14px;">` +
+      `<tr><td align="center" style="padding:16px 18px;">` +
+      `<p style="margin:0 0 6px;font-family:${FONT};font-size:14px;color:${c.muted};">${escapeHtml(content.code.label)}</p>` +
+      `<p style="margin:0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;line-height:1.2;font-weight:800;letter-spacing:8px;color:${c.text};">${escapeHtml(content.code.value)}</p>` +
+      `</td></tr></table>`
+    : "";
+
   const ctaHtml = content.cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;"><tr><td style="border-radius:999px;background:${c.primary};">` +
       `<a href="${escapeHtml(content.cta.url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">${escapeHtml(content.cta.label)}</a>` +
@@ -106,6 +119,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     (greeting ? p(greeting) : "") +
     content.paragraphs.map((text) => p(text)).join("") +
     detailsHtml +
+    codeHtml +
     ctaHtml +
     (content.after ?? []).map((text) => p(text, 14, c.muted)).join("") +
     p(EMAIL_BRAND.signature, 15, c.muted).replace("margin:0 0 16px", "margin:8px 0 0") +
@@ -121,6 +135,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     ...(greeting ? [greeting] : []),
     ...content.paragraphs.map(plain),
     ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}${d.url && !/^(tel|mailto):/.test(d.url) ? ` (${d.url})` : ""}`).join("\n")] : []),
+    ...(content.code ? [`${content.code.label}: ${content.code.value}`] : []),
     ...(content.cta ? [`${content.cta.label}: ${content.cta.url}`] : []),
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,

@@ -94,7 +94,8 @@ function DashboardFiscaleContent() {
   // (stato locale, non ancora persistito); il salvataggio vero avviene solo
   // al click su "Salva dati fiscali", quando il messaggio d'errore guida
   // esplicitamente verso /dashboard/profilo se non ancora completato.
-  const prefillEntityType = searchParams.get("entityType");
+  // Senza parametro vale il tipo scelto in registrazione (docs/CHANGELOG.md §243).
+  const prefillEntityType = searchParams.get("entityType") ?? user?.signupEntityType ?? null;
   const [prefillApplied, setPrefillApplied] = useState(false);
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);

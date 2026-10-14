@@ -30,36 +30,49 @@ export function welcomeClientEmail(name: string | null): RenderedEmail {
  * Benvenuto del professionista: quando serve, contiene anche il link di
  * conferma dell'email (una sola email invece di due).
  */
-export function welcomeProfessionalEmail(name: string | null, verify: { link: string; hours: number } | null): RenderedEmail {
+/** Link e codice di conferma dell'email (docs/CHANGELOG.md §178, §243). */
+export type EmailVerification = { link: string; hours: number; code: string; codeMinutes: number };
+
+const COMPLETE_PROFILE_TEXT =
+  "**Poi bastano pochi minuti:** completa il profilo con la tua attività, la zona in cui lavori e qualche foto. Più è completo, più richieste ricevi.";
+
+export function welcomeProfessionalEmail(name: string | null, verify: EmailVerification | null): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
     kind: "account",
-    subject: verify ? `Benvenuto su ${EMAIL_BRAND.name}: conferma la tua email` : `Benvenuto su ${EMAIL_BRAND.name}`,
-    preheader: verify ? "Conferma il tuo indirizzo email per completare l'iscrizione." : "Completa il profilo per iniziare a ricevere richieste.",
+    subject: verify ? `${verify.code} è il tuo codice per ${EMAIL_BRAND.name}` : `Benvenuto su ${EMAIL_BRAND.name}`,
+    preheader: verify ? `Benvenuto! Inserisci il codice ${verify.code} per confermare la tua email.` : "Completa il profilo per iniziare a ricevere richieste.",
     greeting: name,
     title: `Benvenuto su ${EMAIL_BRAND.name}!`,
     paragraphs: [
       "Grazie per esserti iscritto. Qui i clienti della tua zona ti trovano, ti chiedono un preventivo e ti scelgono anche per le recensioni dei lavori fatti.",
-      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email** con il pulsante qui sotto: serve a proteggere il tuo account."] : []),
-      "**Poi bastano pochi minuti:** completa il profilo con la tua attività, la zona in cui lavori e qualche foto. Più è completo, più richieste ricevi.",
+      // Con la conferma il codice segue subito l'invito a scriverlo; il resto va dopo il pulsante.
+      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email:** scrivi questo codice sul sito, oppure premi il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT]),
     ],
+    ...(verify ? { code: { label: "Il tuo codice", value: verify.code } } : {}),
     cta: verify ? { label: "Conferma la mia email", url: verify.link } : { label: "Completa il profilo", url: `${site}/dashboard/profilo` },
     after: verify
-      ? [`Il link vale ${verify.hours} ore. Se non ti sei iscritto tu, ignora questo messaggio.`]
+      ? [verifyValidity(verify), COMPLETE_PROFILE_TEXT, "Se non ti sei iscritto tu, ignora questo messaggio."]
       : ["Se non ti sei iscritto tu, scrivici e chiuderemo l'account."],
   });
 }
 
+function verifyValidity(verify: EmailVerification): string {
+  return `Il codice vale ${verify.codeMinutes} minuti, il pulsante ${verify.hours} ore. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`;
+}
+
 /** Conferma dell'email rispedita, o dopo un cambio di indirizzo. */
-export function verifyEmailEmail(name: string | null, link: string, hours: number): RenderedEmail {
+export function verifyEmailEmail(name: string | null, verify: EmailVerification): RenderedEmail {
   return renderEmail({
     kind: "account",
-    subject: "Conferma il tuo indirizzo email",
+    subject: `${verify.code} è il tuo codice per ${EMAIL_BRAND.name}`,
+    preheader: `Inserisci il codice ${verify.code} per confermare la tua email.`,
     greeting: name,
     title: "Conferma il tuo indirizzo email",
-    paragraphs: ["Per completare l'operazione conferma che questo indirizzo è tuo con il pulsante qui sotto."],
-    cta: { label: "Conferma la mia email", url: link },
-    after: [`Il link vale ${hours} ore. Se non hai chiesto tu questa email, ignorala: il tuo account non cambia.`],
+    paragraphs: ["Per confermare che questo indirizzo è tuo scrivi il codice sul sito, oppure premi il pulsante qui sotto."],
+    code: { label: "Il tuo codice", value: verify.code },
+    cta: { label: "Conferma la mia email", url: verify.link },
+    after: [verifyValidity(verify), "Se non hai chiesto tu questa email, ignorala: il tuo account non cambia."],
   });
 }
 
