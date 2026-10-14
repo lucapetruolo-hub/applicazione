@@ -38,7 +38,14 @@ export class EmailService {
    * andare a buon fine anche se l'email non parte. Ritorna `true`/`false`
    * solo per permettere al chiamante di loggare/contare gli invii falliti.
    */
-  async send(params: { to: string; subject: string; html: string; text?: string }): Promise<boolean> {
+  async send(params: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+    /** Allegati, es. il file .ics dei promemoria (docs/CHANGELOG.md §235). */
+    attachments?: { filename: string; content: string; contentType?: string }[];
+  }): Promise<boolean> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY non configurata: email "${params.subject}" a ${params.to} non inviata.`);
       return false;
@@ -50,6 +57,7 @@ export class EmailService {
         subject: params.subject,
         html: params.html,
         ...(params.text ? { text: params.text } : {}),
+        ...(params.attachments?.length ? { attachments: params.attachments } : {}),
       });
       if (result.error) {
         this.logger.error(`Invio email fallito a ${params.to}: ${result.error.message}`);

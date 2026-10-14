@@ -183,7 +183,16 @@ export class BookingsService {
         ...(status === "COMPLETED" ? { professionalCompletedAt: new Date() } : {}),
       },
     });
-    if (status === "CANCELED") await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
+    if (status === "CANCELED") {
+      await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
+      // Annullata dall'agenda: il cliente va avvisato come da
+      // cancelByProfessional, e l'evento tolto dal suo calendario (docs/CHANGELOG.md §235).
+      await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
+        bookingId,
+        cancellationNote: null,
+        guidedRequestId: booking.quote?.guidedRequestId,
+      });
+    }
 
     // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
     // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
@@ -512,6 +521,15 @@ export class BookingsService {
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
     await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
+    // Prima il professionista non veniva avvisato; l'email toglie anche
+    // l'evento dal calendario (docs/CHANGELOG.md §235).
+    const professional = await this.prisma.professionalProfile.findUnique({ where: { id: booking.professionalProfileId }, select: { userId: true } });
+    if (professional) {
+      await this.notificationsService.notify(professional.userId, "BOOKING_CANCELED_BY_CLIENT", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+      });
+    }
     if (booking.quote) {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
     }

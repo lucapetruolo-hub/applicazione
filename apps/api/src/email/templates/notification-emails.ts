@@ -415,6 +415,18 @@ const BUILDERS: Record<string, Builder> = {
       after: ["Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta."],
     };
   },
+  // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
+  BOOKING_CANCELED_BY_CLIENT: (_payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il cliente ha annullato l'intervento",
+    greeting: ctx.name,
+    title: "Intervento annullato",
+    paragraphs: [`Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`],
+    details: proJobDetails(ctx),
+    cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+    after: ["Se il cliente la riapre ti avvisiamo noi."],
+  }),
   BOOKING_REOPENED_BY_PROFESSIONAL: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha riaperto la prenotazione`,
