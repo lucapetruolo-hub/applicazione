@@ -880,6 +880,17 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
+  STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Stripe ha sospeso i pagamenti online sul tuo account",
+    greeting: ctx.name,
+    title: "Pagamenti online sospesi",
+    paragraphs: [
+      "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
+      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Identità verificata da Stripe** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
+    ],
+    cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
   PROFILE_VERIFICATION_REMOVED: (payload, ctx) => {
     const note = str(payload.note);
     return {

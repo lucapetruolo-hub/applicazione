@@ -323,9 +323,12 @@ export class ProfessionalFiscalService {
       where: { id: fiscalProfile.id },
       data: { stripeChargesEnabled: chargesEnabled, stripePayoutsEnabled: payoutsEnabled, stripeRequirementsStatus: requirementsStatus },
     });
-    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §241).
+    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §241)
+    // o quando Stripe lo sospende (§242).
     if (payoutsEnabled && !fiscalProfile.stripePayoutsEnabled) {
       await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_ACTIVE", {});
+    } else if (!payoutsEnabled && fiscalProfile.stripePayoutsEnabled) {
+      await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_RESTRICTED", {});
     }
   }
 }

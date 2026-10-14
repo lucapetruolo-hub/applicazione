@@ -18673,3 +18673,22 @@ nel thread, non un parere legale).
 dati minimi per tipo, privato/professionista), `bookings.service.test.ts`
 (acconto online rifiutato senza verifica Stripe). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
+
+## 242. Avviso quando Stripe sospende l'account del professionista
+
+**Richiesta esplicita dell'utente** (14/10/2026): "effettua miglioria 2",
+tra quelle proposte prima di unire la PR #72.
+
+**Decisione**: quando il webhook `account.updated` (o la rilettura al
+ritorno dalla verifica) dice che un account prima attivo non può più
+ricevere pagamenti, il professionista riceve `STRIPE_ACCOUNT_RESTRICTED`
+(sito ed email, argomento "Account e sicurezza", come l'attivazione di
+§241): niente acconto online nei nuovi preventivi né badge finché non
+sistema i dati su Stripe; il profilo resta visibile e il pagamento diretto
+funziona; i soldi già pagati online restano in custodia. Unito anche il ramo
+base (pulsanti con freccia, promemoria): le voci di questa PR passano da
+§233-§238 a §236-§241.
+
+**Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
+(attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
+`apps/api` e `apps/web` verdi.
