@@ -1237,7 +1237,7 @@ export function RequestCard({
               ) : null}
 
               <XStack gap="$2" flexWrap="wrap">
-                <CardButton tone="primary" disabled={isSubmittingQuote} onPress={handleSendQuote}>
+                <CardButton tone="primary" arrow disabled={isSubmittingQuote} onPress={handleSendQuote}>
                   {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>

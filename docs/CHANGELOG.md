@@ -18320,3 +18320,27 @@ Quarto giro, due migliorie approvate dall'utente:
 
 **Verifica**: test dell'API verdi (293), tipi di `apps/web` verdi, gesto
 provato in Chromium con il tocco emulato su un telefono da 390px.
+
+## 233. Pulsanti "vivi", abbonamento in nero, foto di /per-professionisti
+
+Richiesta dell'utente: applicare ai pulsanti i dettagli di uno screenshot
+(misura, pillola, freccia che ruota, alone, magnete, pressione), dove servono.
+
+- Tutti i pulsanti (`packages/ui/src/Button.tsx`): altezza 44 invece di 48
+  (scelta dell'utente), forma a pillola piena, e si schiacciano (scale .97)
+  quando li premi (`.is_Button` in `globals.css`). Restano più bassi solo i
+  pulsanti con altezza scritta a mano (36/40, compatti).
+- Freccia in un cerchio che ruota di 45° in 350ms al passaggio del mouse
+  (`ButtonArrow`, `CardButton arrow`) solo sulle azioni principali:
+  Richiedi preventivo (home), Invia richiesta, Registrati, Invia
+  preventivo, Accetta preventivo.
+- Magnete e alone che segue il cursore (`MagneticButton`) solo sul
+  pulsante "Richiedi preventivo" della home, solo con un mouse e senza
+  "riduci movimento".
+- Pulsante di acquisto dell'abbonamento quasi nero con il puntino rosso
+  della freccia (variante `acquisto`): "Iscriviti con…" in
+  `/per-professionisti` e i livelli in `/dashboard/abbonamento`. Il rosso
+  resta altrove solo per l'urgenza.
+- `/per-professionisti`: "Compreso in ogni livello" spostato prima della
+  scelta dei livelli; foto principale cambiata (Pexels 28513061), con
+  altre quattro alternative proposte all'utente.
