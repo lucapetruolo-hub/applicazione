@@ -1,6 +1,6 @@
 import { frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
-import { descriptionDetail, formatAppointment } from "../email-format";
+import { descriptionDetail, formatAppointmentDay, formatAppointmentTime } from "../email-format";
 
 /**
  * Email legate a una richiesta o a un appuntamento che non nascono da una
@@ -47,32 +47,54 @@ export function requestSentEmail(input: {
 }
 
 /** Promemoria del giorno prima (anti no-show), al cliente. */
-export function bookingReminderClientEmail(input: { name: string | null; businessName: string; scheduledAt: Date; category: string | null; description?: string | null }): RenderedEmail {
+export function bookingReminderClientEmail(input: {
+  name: string | null;
+  businessName: string;
+  /** Nome e cognome di chi viene a fare il lavoro (docs/CHANGELOG.md §234). */
+  professionalFullName: string | null;
+  scheduledAt: Date;
+  scheduledEndAt?: Date | null;
+  category: string | null;
+  description?: string | null;
+}): RenderedEmail {
+  const who = input.professionalFullName?.trim() || null;
+  const showBusiness = who !== null && who.toLowerCase() !== input.businessName.trim().toLowerCase();
   return renderEmail({
     kind: "notification",
     subject: `Promemoria: domani l'appuntamento con ${input.businessName}`,
     greeting: input.name,
     title: "Domani hai un appuntamento",
-    paragraphs: [`Ti ricordiamo l'appuntamento con **${input.businessName}**.`],
+    paragraphs: [`Ti ricordiamo l'appuntamento con **${who ?? input.businessName}**.`],
     details: [
+      { label: "Professionista", value: who ? (showBusiness ? `${who} (${input.businessName})` : who) : input.businessName },
+      ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
-      { label: "Quando", value: formatAppointment(input.scheduledAt) },
     ],
     cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["Se non puoi più esserci, avvisa il professionista il prima possibile scrivendogli in chat dalla richiesta."],
   });
 }
 
-/** Promemoria del giorno prima (anti no-show), al professionista. */
+/**
+ * Promemoria del giorno prima (anti no-show), al professionista: con luogo e
+ * tutti i contatti del cliente, già sbloccati perché il lavoro è confermato
+ * (CLAUDE.md §5 punto 9).
+ */
 export function bookingReminderProfessionalEmail(input: {
   name: string | null;
   clientName: string | null;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  /** Indirizzo completo dell'intervento; se manca si mostra almeno la città. */
+  address?: string | null;
   scheduledAt: Date;
+  scheduledEndAt?: Date | null;
   category: string | null;
   city: string | null;
   description?: string | null;
 }): RenderedEmail {
+  const place = input.address?.trim() || input.city?.trim() || null;
   return renderEmail({
     kind: "notification",
     subject: `Promemoria: domani hai un intervento${input.category ? ` (${input.category})` : ""}`,
@@ -80,13 +102,26 @@ export function bookingReminderProfessionalEmail(input: {
     title: "Domani hai un intervento",
     paragraphs: [input.clientName ? `Ti ricordiamo l'appuntamento con **${input.clientName}**.` : "Ti ricordiamo l'appuntamento con il cliente."],
     details: [
-      ...(input.category ? [{ label: "Lavoro", value: input.city ? `${input.category}, ${input.city}` : input.category }] : []),
+      ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),
+      ...(place ? [{ label: "Luogo", value: place }] : []),
+      ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
-      { label: "Quando", value: formatAppointment(input.scheduledAt) },
+      ...(input.clientName ? [{ label: "Cliente", value: input.clientName }] : []),
+      ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone }] : []),
+      ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail }] : []),
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
-    after: ["Indirizzo e contatti del cliente sono nella scheda dell'appuntamento."],
+    after: ["Trovi gli stessi dati anche nella scheda dell'appuntamento."],
   });
+}
+
+/** Righe "Data" e "Ora" (con la fine della fascia, se c'è). */
+function appointmentDetails(scheduledAt: Date, scheduledEndAt?: Date | null): { label: string; value: string }[] {
+  const end = scheduledEndAt ? formatAppointmentTime(scheduledEndAt) : "";
+  return [
+    { label: "Data", value: formatAppointmentDay(scheduledAt) },
+    { label: "Ora", value: `${formatAppointmentTime(scheduledAt)}${end ? `–${end}` : ""}` },
+  ];
 }
 
 /** Avviso agli admin che moderano per ogni nuova segnalazione (docs/CHANGELOG.md §145). */
