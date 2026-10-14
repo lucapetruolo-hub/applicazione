@@ -20,7 +20,7 @@ export type EmailContent = {
   paragraphs: string[];
   /**
    * Riquadro con i dati principali (categoria, data, importo...). Con `url`
-   * il valore diventa un link (mappa, telefono: docs/CHANGELOG.md §234).
+   * il valore diventa un link (mappa, telefono, email: docs/CHANGELOG.md §234).
    */
   details?: { label: string; value: string; url?: string }[];
   /** Avviso urgente o scadenza: titolo e riquadro in rosso. */
@@ -120,7 +120,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     plain(content.title),
     ...(greeting ? [greeting] : []),
     ...content.paragraphs.map(plain),
-    ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}${d.url && !d.url.startsWith("tel:") ? ` (${d.url})` : ""}`).join("\n")] : []),
+    ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}${d.url && !/^(tel|mailto):/.test(d.url) ? ` (${d.url})` : ""}`).join("\n")] : []),
     ...(content.cta ? [`${content.cta.label}: ${content.cta.url}`] : []),
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,

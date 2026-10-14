@@ -111,7 +111,7 @@ export function bookingReminderProfessionalEmail(input: {
       ...descriptionDetail(input.description),
       ...(input.clientName ? [{ label: "Cliente", value: input.clientName }] : []),
       ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone, url: `tel:${input.clientPhone.replace(/[^\d+]/g, "")}` }] : []),
-      ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail }] : []),
+      ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail, url: `mailto:${input.clientEmail}` }] : []),
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Trovi gli stessi dati anche nella scheda dell'appuntamento."],

@@ -193,6 +193,7 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
       expect(email.text).toContain(value);
     }
     expect(email.html).toContain('href="tel:+393331234567"');
+    expect(email.html).toContain('href="mailto:anna@example.it"');
     expect(email.html).toContain("https://www.google.com/maps/search/?api=1&amp;query=Via%20Roma%2010");
   });
 

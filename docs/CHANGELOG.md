@@ -18372,7 +18372,8 @@ ora, lavoro e descrizione.
   con il nome dell'attività tra parentesi se diverso), Data, Ora, Luogo,
   Lavoro, Descrizione (il luogo anche al cliente su richiesta dell'utente).
 - Migliorie approvate dall'utente: il luogo è un link a Google Maps (in
-  entrambe le email) e il telefono del cliente è un link `tel:`. Il riquadro
+  entrambe le email), il telefono del cliente è un link `tel:` e la sua email
+  un link `mailto:`. Il riquadro
   dei dettagli (`renderEmail`) accetta per questo un `url` facoltativo.
 
 **Verifica**: test in `apps/api/src/email/email-templates.test.ts`,
