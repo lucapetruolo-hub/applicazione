@@ -232,10 +232,11 @@ function ProPhoto() {
   );
 }
 
-/** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 5463575. */
+/** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 7464702, 5463575. */
 const GALLERY: { src: string; alt: string; position: string }[] = [
   { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%" },
   { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%" },
+  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride porgendo uno scatolone", position: "45% 40%" },
   { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%" },
 ];
 
@@ -251,7 +252,7 @@ function ProGallery() {
               src={photo.src}
               alt={photo.alt}
               fill
-              sizes="(max-width: 768px) 100vw, 380px"
+              sizes="(max-width: 768px) 50vw, 290px"
               style={{ objectFit: "cover", objectPosition: photo.position }}
             />
           </div>

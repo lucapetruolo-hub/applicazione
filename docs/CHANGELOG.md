@@ -18347,7 +18347,7 @@ Richiesta dell'utente: applicare ai pulsanti i dettagli di uno screenshot
 - `/per-professionisti`: "Compreso in ogni livello" spostato prima della
   scelta dei livelli; foto principale cambiata (Pexels 4792521, scelta tra
   dieci alternative proposte all'utente) e nuova fila "Per ogni tipo di
-  lavoro" con tre foto di mestieri scelte dall'utente: pulizie, giardiniera,
-  tecnico dei condizionatori (`ProGallery`).
+  lavoro" con quattro foto di mestieri scelte dall'utente: pulizie,
+  giardiniera, traslochi, tecnico dei condizionatori (`ProGallery`).
 - Le regole CSS usano `button.is_Button`: anche il testo interno del
   Button di Tamagui ha la classe `is_Button`.

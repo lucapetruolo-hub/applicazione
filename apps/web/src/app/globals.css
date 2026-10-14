@@ -125,17 +125,17 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
 }
 
-/* Foto dei mestieri in /per-professionisti (ProGallery): una colonna su
-   telefono, tre da tablet in su. */
+/* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
+   telefono, 4 da tablet in su. */
 .pro-gallery {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 0 16px 24px;
 }
 @media (min-width: 768px) {
   .pro-gallery {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
     padding: 0 24px 32px;
   }
