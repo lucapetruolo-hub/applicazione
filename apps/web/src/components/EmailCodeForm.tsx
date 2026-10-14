@@ -235,15 +235,16 @@ export function EmailCodeForm({
           </Text>
         ) : null}
         {allowChangeEmail ? (
-          <Button
-            variant="ghost"
-            onPress={() => {
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
               setNewEmail(email);
               setEditingEmail(true);
             }}
           >
             Email sbagliata? Correggila
-          </Button>
+          </button>
         ) : null}
       </YStack>
 
