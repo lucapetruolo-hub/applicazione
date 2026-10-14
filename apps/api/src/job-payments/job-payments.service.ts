@@ -11,9 +11,9 @@ import { OnlineMoneyService } from "./online-money.service";
  * Pagamento del lavoro (JobPayment) — CLAUDE.md §88, docs/CHANGELOG.md §168.
  * Distinto da BillingService (pagamenti del PROFESSIONISTA verso Manovia:
  * abbonamento, boost). Il cliente sceglie il metodo accettando il
- * preventivo: online (MANOVIA: acconto del 20% subito, saldo a lavoro
- * chiuso, soldi in custodia e poi accreditati al professionista meno costo
- * Stripe e commissione, vedi OnlineMoneyService) o diretto (DIRECT:
+ * preventivo: online (MANOVIA: acconto subito, saldo a lavoro chiuso, soldi
+ * bloccati sul conto Stripe del professionista e sbloccati alla conferma,
+ * meno costo Stripe e commissione, vedi OnlineMoneyService) o diretto (DIRECT:
  * importo dichiarato dal professionista a lavoro chiuso e confermato dal
  * cliente, nessun movimento sul sito). Prenotazioni senza scelta (es.
  * dall'agenda) restano DIRECT.
@@ -184,6 +184,16 @@ export class JobPaymentsService {
   /** Contestazione in banca (`charge.dispute.*`): false se il pagamento non è di un lavoro. */
   handleStripeDispute(dispute: Stripe.Dispute): Promise<boolean> {
     return this.onlineMoneyService.handleStripeDispute(dispute);
+  }
+
+  /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§243). */
+  handlePayoutEvent(payout: Stripe.Payout): Promise<void> {
+    return this.onlineMoneyService.handlePayoutEvent(payout);
+  }
+
+  /** Conto Stripe del professionista aggiornato: riprova i bonifici in sospeso (§243). */
+  retryPayoutsForAccount(accountId: string): Promise<void> {
+    return this.onlineMoneyService.retryPayoutsForAccount(accountId);
   }
 
   /** Avviso agli admin Finanza per un evento Stripe che non riguarda un lavoro. */

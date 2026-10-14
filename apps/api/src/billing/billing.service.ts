@@ -463,8 +463,8 @@ export class BillingService {
 
       // Pagamento del lavoro (acconto o saldo, docs/CHANGELOG.md §168) —
       // distinto dai casi sopra, dove è il professionista che paga Manovia:
-      // qui il cliente paga il lavoro, i soldi restano in custodia e la
-      // commissione si trattiene trasferendo meno al professionista.
+      // qui il cliente paga il lavoro, i soldi restano bloccati sul conto
+      // Stripe del professionista e la commissione è la trattenuta (§243).
       if (metadata.kind === "quote_deposit") {
         await this.bookingsService.confirmQuoteDeposit(session);
       }
@@ -504,6 +504,14 @@ export class BillingService {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
       await this.professionalFiscalService.refreshStripeConnectStatus(account.id);
+      // Dati bancari sistemati dopo un bonifico non riuscito: si riprova subito (§243).
+      await this.jobPaymentsService.retryPayoutsForAccount(account.id);
+    }
+
+    // Bonifico dal conto Stripe del professionista alla sua banca (docs/CHANGELOG.md
+    // §243): arriva dall'endpoint Connect, come `account.updated`.
+    if (event.type === "payout.paid" || event.type === "payout.failed" || event.type === "payout.canceled") {
+      await this.jobPaymentsService.handlePayoutEvent(event.data.object as Stripe.Payout);
     }
 
     // Contestazione in banca (chargeback, docs/CHANGELOG.md §236).

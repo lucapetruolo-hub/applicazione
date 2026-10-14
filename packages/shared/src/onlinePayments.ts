@@ -89,6 +89,35 @@ export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
 export const ONLINE_RELEASE_DAYS = 7;
 /** Commissione Manovia sui pagamenti online, a carico del professionista (valore reale nelle regole di commissione in admin). */
 export const ONLINE_APP_FEE_PERCENT = 5;
+/**
+ * Costo massimo della carta su Stripe (carte extra europee, 3,25% + €0,25),
+ * usato per la trattenuta provvisoria sul pagamento: la differenza col costo
+ * reale torna al professionista appena Stripe lo comunica (docs/CHANGELOG.md §243).
+ */
+export const ONLINE_CARD_FEE_MAX_BASIS_POINTS = 325;
+export const ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS = 25;
+
+/**
+ * Trattenuta della piattaforma su un pagamento addebitato sul conto Stripe
+ * del professionista (application fee, docs/CHANGELOG.md §243): commissione
+ * più il costo massimo della carta. Il costo reale si conosce solo dopo il
+ * pagamento, quindi si trattiene il massimo e si restituisce la differenza.
+ */
+export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number {
+  const commission = Math.round((amountEurCents * ONLINE_APP_FEE_PERCENT) / 100);
+  const cardFeeMax = Math.ceil((amountEurCents * ONLINE_CARD_FEE_MAX_BASIS_POINTS) / 10_000) + ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS;
+  return Math.max(0, Math.min(amountEurCents, commission + cardFeeMax));
+}
+
+/**
+ * Bonifico verso la banca del professionista (docs/CHANGELOG.md §243):
+ * - `BLOCKED`: soldi sul suo conto Stripe, bloccati fino alla conferma del cliente o ai 7 giorni;
+ * - `WAITING_FUNDS`: sbloccati, il bonifico parte appena Stripe li rende disponibili;
+ * - `SENT`: bonifico partito verso la banca;
+ * - `PAID`: bonifico arrivato;
+ * - `FAILED`: bonifico non riuscito (dati bancari da controllare), si riprova.
+ */
+export type JobPayoutStatus = "BLOCKED" | "WAITING_FUNDS" | "SENT" | "PAID" | "FAILED";
 
 export type JobPaymentOnlineStage = "AWAITING_DEPOSIT" | "DEPOSIT_PAID" | "AWAITING_BALANCE" | "PAID" | "RELEASED" | "REFUNDED";
 
@@ -99,8 +128,8 @@ export function jobPaymentChoiceCopy(choice: JobPaymentChoice, depositPercent: n
       title: depositPercent >= 100 ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
       body:
         depositPercent >= 100
-          ? "Paghi con Stripe l'intero importo ora: il lavoro è confermato appena il pagamento va a buon fine. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo."
-          : `Paghi con Stripe: un acconto del ${depositPercent}% ora, che conferma il lavoro, e il saldo a lavoro finito. Teniamo noi i soldi finché non confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
+          ? "Paghi con Stripe l'intero importo ora: il lavoro è confermato appena il pagamento va a buon fine. I soldi restano bloccati e il professionista li riceve solo dopo che confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo."
+          : `Paghi con Stripe: un acconto del ${depositPercent}% ora, che conferma il lavoro, e il saldo a lavoro finito. I soldi restano bloccati e il professionista li riceve solo dopo che confermi che il lavoro è fatto: se qualcosa va storto ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
     };
   }
   if (choice === "MIXED") {
@@ -124,8 +153,8 @@ export const JOB_PAYMENT_STAGE_LABEL: Record<JobPaymentOnlineStage, string> = {
   AWAITING_DEPOSIT: "Acconto da pagare",
   DEPOSIT_PAID: "Acconto pagato",
   AWAITING_BALANCE: "Saldo da pagare",
-  PAID: "Pagato, in custodia fino alla conferma",
-  RELEASED: "Pagamento passato al professionista",
+  PAID: "Pagato, bloccato fino alla conferma",
+  RELEASED: "Sbloccato al professionista",
   REFUNDED: "Rimborsato",
 };
 
@@ -204,6 +233,10 @@ export type JobPaymentSummary = {
   appFeeEurCents?: number;
   stripeFeeEurCents?: number;
   payoutEurCents?: number;
+  /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
+  payoutStatus?: JobPayoutStatus | null;
+  /** Solo per il professionista: motivo del bonifico non riuscito, in parole di Stripe. */
+  payoutFailureMessage?: string | null;
 };
 
 /** Accettazione di un preventivo con il metodo di pagamento scelto. */
@@ -238,7 +271,24 @@ type JobPaymentRow = {
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
+  stripeDestinationAccountId?: string | null;
+  payoutPendingEurCents?: number;
+  payoutSentEurCents?: number;
+  payoutPaidAt?: Date | null;
+  payoutFailedAt?: Date | null;
+  payoutFailureMessage?: string | null;
 };
+
+/** Dov'è il bonifico del professionista (docs/CHANGELOG.md §243). */
+export function jobPayoutStatus(jp: JobPaymentRow): JobPayoutStatus | null {
+  if (jp.paymentMethod !== "MANOVIA" || jp.onlineStage === "REFUNDED" || jp.onlineStage === "AWAITING_DEPOSIT") return null;
+  if (!jp.releasedAt) return jp.paidEurCents - jp.refundedEurCents > 0 ? "BLOCKED" : null;
+  // Vecchio modello (soldi in custodia, trasferimento allo sblocco): Stripe paga da solo.
+  if (!jp.stripeDestinationAccountId) return jp.netAmountEurCents > 0 ? "SENT" : null;
+  if ((jp.payoutPendingEurCents ?? 0) > 0) return jp.payoutFailedAt ? "FAILED" : "WAITING_FUNDS";
+  if ((jp.payoutSentEurCents ?? 0) <= 0) return null;
+  return jp.payoutPaidAt ? "PAID" : "SENT";
+}
 
 /** Riepilogo del pagamento; con `forProfessional` anche commissione, costo Stripe e quanto riceve. */
 export function toJobPaymentSummary(
@@ -275,6 +325,8 @@ export function toJobPaymentSummary(
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    summary.payoutStatus = jobPayoutStatus(jp);
+    summary.payoutFailureMessage = summary.payoutStatus === "FAILED" ? (jp.payoutFailureMessage ?? null) : null;
   }
   return summary;
 }

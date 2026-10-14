@@ -124,7 +124,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Anche le notifiche delle controversie (§167): senza `audience` sono del professionista.
   if (type === "JOB_ISSUE_SANCTION") return "/dashboard/richieste";
   // Pagamenti online dei lavori (§168).
-  if (type === "JOB_PAYOUT_ACCOUNT_NEEDED") return "/dashboard/fiscale";
+  if (type === "JOB_PAYOUT_ACCOUNT_NEEDED" || type === "JOB_PAYOUT_FAILED") return "/dashboard/fiscale";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE") return "/admin/pagamenti";
   if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");

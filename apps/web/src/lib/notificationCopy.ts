@@ -67,7 +67,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_BALANCE_PAID: { icon: "💳", message: "Il cliente ha pagato il saldo online: riceverai l'accredito alla sua conferma o entro 7 giorni." },
   JOB_BALANCE_DUE: { icon: "💳", message: "Il lavoro è chiuso: paga il saldo online per completare il pagamento." },
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
-  JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
+  JOB_PAYOUT_SENT: { icon: "✅", message: "Il pagamento di un lavoro è sbloccato: il bonifico verso la tua banca è in arrivo." },
+  JOB_PAYOUT_FAILED: { icon: "🏦", message: "Il bonifico di un lavoro non è arrivato alla tua banca: controlla i dati bancari nel conto Stripe." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: l'accredito è sospeso finché la banca non decide." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rispondi con le prove dalla Dashboard Stripe." },
@@ -77,7 +78,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
   JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro confermato dal cliente." },
-  ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora in custodia." },
+  ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora bloccati." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).

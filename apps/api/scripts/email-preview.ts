@@ -94,6 +94,7 @@ notification("JOB_BALANCE_PAID", "Professionista", "Pagamenti dei lavori", { amo
 notification("JOB_BALANCE_UNPAID", "Cliente", "Pagamenti dei lavori");
 notification("JOB_PAYOUT_SENT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 16380 });
 notification("JOB_PAYOUT_ACCOUNT_NEEDED", "Professionista", "Pagamenti dei lavori");
+notification("JOB_PAYOUT_FAILED", "Professionista", "Pagamenti dei lavori", { amountEurCents: 16380 });
 notification("ADMIN_JOB_BALANCE_UNPAID", "Admin", "Pagamenti dei lavori");
 notification("JOB_STRIPE_DISPUTE", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_DISPUTE", "Admin", "Pagamenti dei lavori");

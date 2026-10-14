@@ -18692,3 +18692,63 @@ base (pulsanti con freccia, promemoria): le voci di questa PR passano da
 **Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
 (attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
+
+## 243. Soldi dei pagamenti online bloccati sul conto Stripe del professionista
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7"): "Scelgo di bloccare i soldi dal Professionista" (opzione B
+del piano `analisi/verifica-professionisti-dac7-piano.md` §6): i soldi
+pagati online non devono restare in custodia sul conto della piattaforma.
+Prima del lancio si passerà a un account Stripe vero; sviluppo e prove
+sull'ambiente di prova.
+
+**Decisione**:
+- Acconto e saldo si addebitano "a destinazione" sul conto Stripe del
+  professionista (destination charges: `transfer_data.destination`), con
+  la trattenuta della piattaforma come application fee: commissione del 5%
+  più il costo massimo della carta (3,25% + €0,25,
+  `onlineApplicationFeeHoldEurCents`), perché il costo reale si conosce
+  solo dopo il pagamento. Appena Stripe lo dà, la differenza torna al
+  professionista (rimborso dell'application fee); allo sblocco si fa il
+  conguaglio con la commissione sull'importo finale.
+- Prima del primo pagamento il sito mette in manuale i bonifici del conto
+  del professionista verso la sua banca (`balanceSettings`,
+  `stripeManualPayoutsAt`). Se non ci riesce, o il conto non può ricevere
+  soldi, il pagamento non parte: meglio un errore chiaro che soldi non
+  bloccati.
+- Sblocco come prima (conferma del cliente, o 7 giorni dalla chiusura,
+  niente segnalazioni o contestazioni aperte): niente più trasferimento,
+  parte il bonifico (`payouts.create` sul conto del professionista). Il
+  bonifico parte solo se sul conto ci sono soldi disponibili senza toccare
+  quelli ancora bloccati per altri lavori; altrimenti si riprova ogni ora
+  (`payoutPendingEurCents`). Esito dal webhook Connect `payout.paid` /
+  `payout.failed` / `payout.canceled`: se la banca rifiuta, i soldi tornano
+  sul conto Stripe, il professionista riceve `JOB_PAYOUT_FAILED` e si
+  riprova ogni giorno o appena aggiorna il conto (`account.updated`).
+- Rimborsi prima dello sblocco ripresi dal suo conto (`reverse_transfer`);
+  la trattenuta che supera quanto resta pagato torna al professionista, così
+  il suo conto non va mai in negativo (con un rimborso totale il costo della
+  carta resta a carico della piattaforma, come prima). Dopo lo sblocco si
+  riprende al massimo quanto ricevuto. Contestazione in banca persa con i
+  soldi ancora bloccati: la cifra si riprende dal suo conto.
+- I pagamenti registrati prima di questa modifica
+  (`stripeDestinationAccountId` vuoto) restano sul vecchio modello fino
+  alla fine, saldo compreso.
+- Stato del pagamento rifatto per cliente e professionista
+  (`JobPaymentStatus`): titolo con lo stato, passaggi Pagato → Bloccato →
+  Sbloccato (→ In banca per il professionista), importi in colonna, una sola
+  azione (pagare, o "Controlla i dati bancari" se il bonifico non riesce).
+  Testi aggiornati in Termini (punto 5), email, avvisi, pagina pagamenti per
+  i professionisti e Dati fiscali e pagamenti.
+
+**Limite**: per le regole di Stripe i soldi non restano bloccati oltre 90
+giorni dal pagamento (un acconto versato mesi prima del lavoro passa al
+professionista anche senza conferma); scritto nei Termini. Se una regola di
+commissione in admin supera il 5% + costo carta, la differenza resta a
+carico della piattaforma (scritto nei log).
+
+**Verifica**: `job-payments/destination-charges.test.ts` (trattenuta,
+bonifici manuali prima del primo pagamento, conguaglio della carta, bonifico
+una volta sola e mai con i soldi bloccati di altri lavori, bonifico
+rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
+`billing-webhook.test.ts`; i test del vecchio modello restano verdi.

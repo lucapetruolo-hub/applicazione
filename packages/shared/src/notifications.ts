@@ -82,6 +82,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
+      // Bonifico dal conto Stripe del professionista non riuscito (docs/CHANGELOG.md §243).
+      "JOB_PAYOUT_FAILED",
       "ADMIN_JOB_BALANCE_UNPAID",
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",

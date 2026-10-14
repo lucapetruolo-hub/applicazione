@@ -71,9 +71,13 @@ produzione):
    `customer.subscription.deleted`, più `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`, `charge.dispute.created`,
    `charge.dispute.updated`, `charge.dispute.closed`) e un **secondo
-   endpoint "Connect"** sullo stesso URL `/billing/webhook` con l'evento
-   `account.updated`, la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET`
-   (docs/CHANGELOG.md §236). In Dashboard Stripe prima del primo
+   endpoint "Connect"** sullo stesso URL `/billing/webhook` con gli eventi
+   `account.updated`, `payout.paid`, `payout.failed` e `payout.canceled`
+   (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §243),
+   la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
+   Se la chiave è limitata (`rk_`) deve avere anche i permessi su
+   application fee, bonifici (payouts), saldo e impostazioni del saldo
+   degli account collegati. In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
    Connect → profilo piattaforma) e attivare Radar for Platforms. Salvare la
    configurazione del Customer Portal (Impostazioni → Fatturazione → Portale
