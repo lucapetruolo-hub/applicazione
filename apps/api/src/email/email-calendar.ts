@@ -31,7 +31,7 @@ function wallClock(date: Date): string {
 
 /** Testo per un campo iCalendar: barre, virgole, punti e virgola e a capo scappati. */
 function icsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 /** Righe oltre 75 byte spezzate come vuole lo standard (RFC 5545 §3.1). */

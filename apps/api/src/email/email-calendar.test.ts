@@ -18,7 +18,7 @@ describe("calendario dei promemoria", () => {
     expect(ics).toContain("DTEND;TZID=Europe/Rome:20261015T110000");
     expect(ics).toContain("UID:booking-1@professionisti");
     expect(ics).toContain("LOCATION:Via Roma 10\\, 00100 Roma (RM)");
-    expect(ics).toContain("DESCRIPTION:Perdita\; sotto il lavandino\\nurgente");
+    expect(ics).toContain("DESCRIPTION:Perdita\\; sotto il lavandino\\nurgente");
     expect(ics.split("\r\n").every((line) => Buffer.byteLength(line) <= 75)).toBe(true);
   });
 
