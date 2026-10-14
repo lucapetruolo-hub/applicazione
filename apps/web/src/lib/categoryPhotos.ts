@@ -30,7 +30,7 @@
  * - dogsitter: pexels.com/photo/7210537
  * - babysitter: pexels.com/photo/6986430
  *
- * - per-professionisti (pagina): pexels.com/photo/4792521, galleria 7464699, 6050244, 6231851, 7218563
+ * - per-professionisti (pagina): pexels.com/photo/4792521, galleria 6195125, 6231851, 5463575
  *
  * Le foto di `/registrati` e `/per-professionisti` sono copie separate in
  * `public/page-photos/`, così cambiare la foto di una categoria non cambia

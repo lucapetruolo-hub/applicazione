@@ -232,12 +232,11 @@ function ProPhoto() {
   );
 }
 
-/** Foto Pexels dei lavori (docs/CHANGELOG.md §233): 7464699, 6050244, 6231851, 7218563. */
+/** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 5463575. */
 const GALLERY: { src: string; alt: string; position: string }[] = [
-  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride portando una pianta e uno scatolone", position: "70% 30%" },
-  { src: "/page-photos/per-professionisti-galleria-tuttofare.webp", alt: "Un tuttofare sorridente con la cassetta degli attrezzi", position: "35% 30%" },
+  { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%" },
   { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%" },
-  { src: "/page-photos/per-professionisti-galleria-imbianchino.webp", alt: "Due imbianchini dipingono una parete con il rullo", position: "50% 40%" },
+  { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%" },
 ];
 
 /** Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi. */
@@ -252,7 +251,7 @@ function ProGallery() {
               src={photo.src}
               alt={photo.alt}
               fill
-              sizes="(max-width: 768px) 50vw, 290px"
+              sizes="(max-width: 768px) 100vw, 380px"
               style={{ objectFit: "cover", objectPosition: photo.position }}
             />
           </div>
