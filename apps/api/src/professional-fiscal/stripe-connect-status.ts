@@ -9,7 +9,7 @@ export interface StripeConnectStatus {
 
 /**
  * Stato dell'account Stripe del professionista letto con le API Accounts v2
- * (docs/CHANGELOG.md §233): per un marketplace che tiene i soldi e poi li
+ * (docs/CHANGELOG.md §236): per un marketplace che tiene i soldi e poi li
  * trasferisce conta solo `configuration.recipient...stripe_transfers.status`,
  * non i vecchi `charges_enabled`/`payouts_enabled`. Si rilegge da Stripe
  * prima di ogni trasferimento e quando il professionista torna dalla

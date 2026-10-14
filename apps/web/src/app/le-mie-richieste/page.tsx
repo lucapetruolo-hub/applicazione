@@ -287,7 +287,7 @@ function LeMieRichiesteContent() {
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.
   useLiveRefresh(reload, Boolean(token), null);
 
-  // Ritorno dal pagamento dell'acconto (docs/CHANGELOG.md §237): il lavoro
+  // Ritorno dal pagamento dell'acconto (docs/CHANGELOG.md §240): il lavoro
   // nasce quando arriva la conferma di Stripe, di solito pochi secondi dopo.
   const depositPaid = searchParams.get("pagamento") === "completato";
   useEffect(() => {
@@ -313,7 +313,7 @@ function LeMieRichiesteContent() {
   // caricamento ed errore; qui basta propagare la chiamata reale e
   // ricaricare l'elenco al successo.
   // Con l'acconto online si va al checkout Stripe: il lavoro si conferma
-  // solo a pagamento riuscito (docs/CHANGELOG.md §237), fino ad allora il
+  // solo a pagamento riuscito (docs/CHANGELOG.md §240), fino ad allora il
   // preventivo resta da accettare.
   async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");

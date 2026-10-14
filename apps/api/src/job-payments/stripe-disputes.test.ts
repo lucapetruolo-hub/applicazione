@@ -3,7 +3,7 @@ import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Contestazioni in banca e stato dell'account del professionista
- * (docs/CHANGELOG.md §233): con una contestazione aperta i soldi non
+ * (docs/CHANGELOG.md §236): con una contestazione aperta i soldi non
  * partono, e prima di ogni trasferimento lo stato dell'account si rilegge
  * da Stripe (Accounts v2) invece di fidarsi solo del webhook.
  */

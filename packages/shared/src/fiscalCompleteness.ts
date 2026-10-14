@@ -1,6 +1,6 @@
 /**
  * Dati fiscali minimi per essere pubblici (decisione dell'utente del
- * 13/10/2026, docs/CHANGELOG.md §238): il profilo compare in ricerca appena
+ * 13/10/2026, docs/CHANGELOG.md §241): il profilo compare in ricerca appena
  * il professionista ha scelto il tipo (privato, professionista con P.IVA,
  * azienda) e compilato i dati che la DAC7 ci chiede di raccogliere per
  * tutti, anche per chi incassa solo in diretto: nome o ragione sociale,
@@ -47,7 +47,7 @@ export function fiscalDataMissing(p: FiscalCompletenessInput | null): string[] {
 
 /**
  * Come si presenta il professionista al cliente (Codice del consumo, art.
- * 49-bis, docs/CHANGELOG.md §238): con un privato senza P.IVA il cliente non
+ * 49-bis, docs/CHANGELOG.md §241): con un privato senza P.IVA il cliente non
  * ha i diritti del consumatore verso di lui, e glielo dobbiamo dire.
  */
 export type ProfessionalTraderStatus = "PRIVATE" | "TRADER";
@@ -69,7 +69,7 @@ export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: strin
   },
 };
 
-/** Testo del badge per chi ha completato la verifica di identità su Stripe (§238). */
+/** Testo del badge per chi ha completato la verifica di identità su Stripe (§241). */
 export const STRIPE_VERIFIED_BADGE = {
   label: "Identità verificata da Stripe",
   note: "Stripe, il fornitore dei pagamenti, ha verificato l'identità del professionista. Non è una garanzia sulla qualità del lavoro.",

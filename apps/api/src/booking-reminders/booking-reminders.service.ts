@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "../email/templates/job-emails";
+import { bookingCalendar, bookingPeople } from "../email/booking-calendar";
 import { notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
 
 function wantsReminderEmail(stored: unknown): boolean {
@@ -49,35 +50,69 @@ export class BookingRemindersService {
     const bookings = await this.prisma.booking.findMany({
       where: { status: "CONFIRMED", reminderSentAt: null, scheduledAt: { gte: windowStart, lte: windowEnd } },
       include: {
-        client: { select: { email: true, name: true, notificationPrefs: true } },
-        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, name: true, notificationPrefs: true } } } },
-        quote: { select: { guidedRequest: { select: { city: true, description: true, category: { select: { label: true } } } } } },
+        client: {
+          select: {
+            email: true,
+            name: true,
+            surname: true,
+            phone: true,
+            deletedAt: true,
+            notificationPrefs: true,
+            street: true,
+            houseNumber: true,
+            addressExtra: true,
+            postalCode: true,
+            city: true,
+            province: true,
+          },
+        },
+        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, name: true, surname: true, notificationPrefs: true } } } },
+        quote: { select: { guidedRequest: { select: { city: true, address: true, description: true, category: { select: { label: true } } } } } },
       },
     });
     if (bookings.length === 0) return;
 
     for (const booking of bookings) {
-      const professionalName = booking.professionalProfile.businessName;
-      const category = booking.quote?.guidedRequest.category.label ?? null;
-      const description = booking.quote?.guidedRequest.description ?? null;
+      // Nome, contatti e luogo (docs/CHANGELOG.md §234) e calendario (§235).
+      const people = bookingPeople(booking);
+      const clientCalendar = bookingCalendar(booking, "client");
+      const professionalCalendar = bookingCalendar(booking, "professional");
 
       // Solo a chi non ha spento le email di "Lavori e appuntamenti" (docs/CHANGELOG.md §152).
       if (booking.client.email && wantsReminderEmail(booking.client.notificationPrefs)) {
         await this.emailService.send({
           to: booking.client.email,
-          ...bookingReminderClientEmail({ name: booking.client.name, businessName: professionalName, scheduledAt: booking.scheduledAt, category, description }),
+          attachments: [clientCalendar.attachment],
+          ...bookingReminderClientEmail({
+            name: booking.client.name,
+            businessName: people.businessName,
+            professionalFullName: people.professionalFullName,
+            scheduledAt: booking.scheduledAt,
+            scheduledEndAt: booking.scheduledEndAt,
+            address: people.address,
+            city: people.city,
+            category: people.category,
+            description: people.description,
+            calendarUrl: clientCalendar.calendarUrl,
+          }),
         });
       }
       if (booking.professionalProfile.user.email && wantsReminderEmail(booking.professionalProfile.user.notificationPrefs)) {
         await this.emailService.send({
           to: booking.professionalProfile.user.email,
+          attachments: [professionalCalendar.attachment],
           ...bookingReminderProfessionalEmail({
             name: booking.professionalProfile.user.name,
-            clientName: booking.client.name,
+            clientName: people.clientName,
+            clientPhone: people.clientPhone,
+            clientEmail: people.clientEmail,
+            address: people.address,
             scheduledAt: booking.scheduledAt,
-            category,
-            city: booking.city ?? booking.quote?.guidedRequest.city ?? null,
-            description,
+            scheduledEndAt: booking.scheduledEndAt,
+            category: people.category,
+            city: people.city,
+            description: people.description,
+            calendarUrl: professionalCalendar.calendarUrl,
           }),
         });
       }

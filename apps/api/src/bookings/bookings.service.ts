@@ -65,11 +65,11 @@ export class BookingsService {
       throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
     }
     // Con l'acconto online il lavoro si conferma solo a pagamento riuscito
-    // (decisione dell'utente, docs/CHANGELOG.md §237): fino ad allora il
+    // (decisione dell'utente, docs/CHANGELOG.md §240): fino ad allora il
     // preventivo resta in attesa e i contatti del cliente restano nascosti
     // (CLAUDE.md §5 punto 9). La prenotazione la crea `confirmQuoteDeposit`.
     if (paymentChoiceIsOnline(paymentMethod)) {
-      // Solo un professionista verificato su Stripe può ricevere l'acconto (§238).
+      // Solo un professionista verificato su Stripe può ricevere l'acconto (§241).
       const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
         where: { professionalProfileId: quote.professionalProfileId },
         select: { stripePayoutsEnabled: true },
@@ -118,7 +118,7 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
-    // Il cliente sceglie solo tra i modi offerti dal professionista nel preventivo (docs/CHANGELOG.md §234).
+    // Il cliente sceglie solo tra i modi offerti dal professionista nel preventivo (docs/CHANGELOG.md §237).
     const offer = quotePaymentOffer(quote);
     if (!offer.paymentOptions.includes(paymentMethod)) {
       throw new BadRequestException("Il professionista non ha offerto questo modo di pagamento: scegline uno tra quelli del preventivo.");
@@ -128,7 +128,7 @@ export class BookingsService {
   }
 
   /**
-   * Webhook Stripe dell'acconto pagato accettando il preventivo (§237):
+   * Webhook Stripe dell'acconto pagato accettando il preventivo (§240):
    * crea il lavoro e registra l'acconto. Se nel frattempo il preventivo è
    * cambiato, è stato ritirato o il cliente ha già scelto un altro
    * professionista, l'acconto torna tutto al cliente. Idempotente sul
@@ -204,7 +204,7 @@ export class BookingsService {
       },
     });
 
-    // Metodo di pagamento scelto dal cliente (§168, §234): acconto online
+    // Metodo di pagamento scelto dal cliente (§168, §237): acconto online
     // con la percentuale del professionista sull'importo massimo, saldo
     // online o diretto; oppure tutto diretto al professionista.
     await this.jobPaymentsService.createAtAcceptance({
@@ -292,7 +292,16 @@ export class BookingsService {
         ...(status === "COMPLETED" ? { professionalCompletedAt: new Date() } : {}),
       },
     });
-    if (status === "CANCELED") await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
+    if (status === "CANCELED") {
+      await this.jobPaymentsService.refundOnCancel(bookingId, professionalUserId);
+      // Annullata dall'agenda: il cliente va avvisato come da
+      // cancelByProfessional, e l'evento tolto dal suo calendario (docs/CHANGELOG.md §235).
+      await this.notificationsService.notify(booking.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
+        bookingId,
+        cancellationNote: null,
+        guidedRequestId: booking.quote?.guidedRequestId,
+      });
+    }
 
     // Metriche di affidabilità (CLAUDE.md §15): evento 4 (lavoro completato)
     // ed evento 6 (appuntamento onorato/mancato) — CANCELED non conta come
@@ -621,6 +630,15 @@ export class BookingsService {
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
     await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
+    // Prima il professionista non veniva avvisato; l'email toglie anche
+    // l'evento dal calendario (docs/CHANGELOG.md §235).
+    const professional = await this.prisma.professionalProfile.findUnique({ where: { id: booking.professionalProfileId }, select: { userId: true } });
+    if (professional) {
+      await this.notificationsService.notify(professional.userId, "BOOKING_CANCELED_BY_CLIENT", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId,
+      });
+    }
     if (booking.quote) {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
     }

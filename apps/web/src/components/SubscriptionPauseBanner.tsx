@@ -45,7 +45,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
   let tone: "stop" | "warn" = "stop";
   let href = "/dashboard/abbonamento#livelli";
 
-  // Prima di tutto i dati fiscali: senza, il profilo non è pubblico (docs/CHANGELOG.md §238).
+  // Prima di tutto i dati fiscali: senza, il profilo non è pubblico (docs/CHANGELOG.md §241).
   if (sub.fiscalDataNeeded) {
     title = "Il tuo profilo non è ancora visibile";
     body =

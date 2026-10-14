@@ -447,6 +447,7 @@ export function QuoteCard({
               <XStack gap="$2" flexWrap="wrap">
                 <CardButton
                   tone="primary"
+                  arrow
                   onPress={handleAccept}
                   disabled={isAccepting || !selectablePaymentChoices(quote.paymentOptions, onlinePayments).includes(paymentMethod)}
                 >

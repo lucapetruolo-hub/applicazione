@@ -71,9 +71,9 @@ export function RequestCard({
   token: string;
   availableSlots: ProfessionalAvailableSlot[];
   myProfileId: string | null;
-  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236); null = valori di sistema. */
+  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239); null = valori di sistema. */
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
-  /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §238). */
+  /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -114,9 +114,9 @@ export function RequestCard({
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
-  // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §234).
+  // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §237).
   const onlinePaymentsActive = useOnlinePayments();
-  // L'acconto online lo offre solo chi ha completato la verifica su Stripe (§238).
+  // L'acconto online lo offre solo chi ha completato la verifica su Stripe (§241).
   const onlinePayments = onlinePaymentsActive && stripeVerified;
   const [paymentOptions, setPaymentOptions] = useState<JobPaymentChoice[]>(defaultPaymentOffer?.paymentOptions ?? DEFAULT_QUOTE_PAYMENT_OPTIONS);
   const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
@@ -1297,7 +1297,7 @@ export function RequestCard({
                 </YStack>
               )}
 
-              {/* Come vuole essere pagato (docs/CHANGELOG.md §234): uno o più modi, il cliente sceglie tra questi. */}
+              {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
               <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
                 <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                   Come vuoi essere pagato?{onlinePayments ? " Puoi sceglierne più di uno: il cliente decide tra questi." : ""}
@@ -1373,7 +1373,7 @@ export function RequestCard({
               ) : null}
 
               <XStack gap="$2" flexWrap="wrap">
-                <CardButton tone="primary" disabled={isSubmittingQuote} onPress={handleSendQuote}>
+                <CardButton tone="primary" arrow disabled={isSubmittingQuote} onPress={handleSendQuote}>
                   {isSubmittingQuote ? "Invio..." : "Invia preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setShowQuoteForm(false)}>Annulla</CardButton>

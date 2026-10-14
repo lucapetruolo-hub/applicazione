@@ -6,6 +6,7 @@ import { SearchBar, YStack, brand, type ProfessionalSuggestion, type SearchMode 
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { MagneticButton } from "./MagneticButton";
 
 export function SearchHeader({
   initialQuery,
@@ -54,6 +55,7 @@ export function SearchHeader({
     >
       <YStack width="100%" maxWidth={680}>
         <SearchBar
+          wrapSearchButton={(button) => <MagneticButton>{button}</MagneticButton>}
           onSearch={handleSearch}
           initialQuery={initialQuery}
           initialCity={initialCity}

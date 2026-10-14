@@ -173,12 +173,12 @@ model ProfessionalProfile {
   subTags                      String[]
   businessName                 String
   // Cliente Stripe del professionista per abbonamento e boost, uno solo e
-  // riusato (docs/CHANGELOG.md §235): carta, fatture e Customer Portal in un
+  // riusato (docs/CHANGELOG.md §238): carta, fatture e Customer Portal in un
   // unico posto. Distinto dall'account Connect con cui riceve i pagamenti.
   stripeCustomerId             String?   @unique
   // Modi di pagamento proposti di serie nei nuovi preventivi, salvati dal
   // modulo del preventivo con "usa anche per i prossimi" (docs/CHANGELOG.md
-  // §236). Vuoto = diretto + online con acconto del 20%.
+  // §239). Vuoto = diretto + online con acconto del 20%.
   defaultPaymentOptions        String[]  @default([])
   defaultDepositPercent        Int?
   city                         String
@@ -856,7 +856,7 @@ model Quote {
   estimatedEndDate        DateTime?
   // Modi di pagamento offerti dal professionista (JobPaymentChoice in
   // packages/shared: DIRECT, ONLINE, MIXED) e percentuale dell'acconto online
-  // (1-100), docs/CHANGELOG.md §234. Vuoto/null nei preventivi più vecchi:
+  // (1-100), docs/CHANGELOG.md §237. Vuoto/null nei preventivi più vecchi:
   // valgono online con acconto del 20% e diretto.
   paymentOptions          String[]    @default([])
   depositPercent          Int?
@@ -1576,7 +1576,7 @@ model ProfessionalFiscalProfile {
   fiscalDeclarationAcceptedAt DateTime?
   fiscalDeclarationVersion    String?
 
-  // Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §238,
+  // Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241,
   // `fiscalDataMissing` in packages/shared): aggiornato a ogni salvataggio.
   fiscalDataCompleteAt DateTime?
 
@@ -1667,7 +1667,7 @@ model JobPayment {
   onlineStage            String?
   depositEurCents        Int?
   // Acconto online e saldo pagato direttamente al professionista (MIXED,
-  // docs/CHANGELOG.md §234): da Stripe passa solo l'acconto.
+  // docs/CHANGELOG.md §237): da Stripe passa solo l'acconto.
   balanceDirect          Boolean   @default(false)
   depositPaidAt          DateTime?
   balancePaymentIntentId String?   @unique
@@ -1681,7 +1681,7 @@ model JobPayment {
   // caso arriva al nostro team.
   balanceUnpaidAt        DateTime?
   // Contestazione aperta dal cliente presso la sua banca (chargeback,
-  // docs/CHANGELOG.md §233): finché è aperta i soldi non passano al
+  // docs/CHANGELOG.md §236): finché è aperta i soldi non passano al
   // professionista. Stato Stripe: needs_response, under_review, won, lost, ...
   stripeDisputeId        String?   @unique
   stripeDisputeStatus    String?

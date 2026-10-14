@@ -14,7 +14,7 @@ import { CompletionDeadlineService } from "./completion-deadline.service";
   imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule, SubscriptionsModule, JobIssuesModule],
   controllers: [BookingsController],
   providers: [BookingsService, CompletionDeadlineService],
-  // Il webhook Stripe (BillingService) conferma il lavoro quando arriva l'acconto (docs/CHANGELOG.md §237).
+  // Il webhook Stripe (BillingService) conferma il lavoro quando arriva l'acconto (docs/CHANGELOG.md §240).
   exports: [BookingsService],
 })
 export class BookingsModule {}

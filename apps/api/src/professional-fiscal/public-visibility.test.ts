@@ -17,7 +17,7 @@ const complete = {
   registeredPostalCode: "04100",
 };
 
-describe("visibilità pubblica con i dati fiscali (§238)", () => {
+describe("visibilità pubblica con i dati fiscali (§241)", () => {
   afterEach(() => {
     delete process.env.STRIPE_SECRET_KEY;
   });

@@ -3,7 +3,7 @@ import { BillingService } from "./billing.service";
 import { statementSuffix } from "../job-payments/online-money.service";
 
 /**
- * Un solo cliente Stripe per professionista (docs/CHANGELOG.md §235):
+ * Un solo cliente Stripe per professionista (docs/CHANGELOG.md §238):
  * creato una volta, riusato per abbonamento, boost e Customer Portal.
  */
 function buildService(profileOverrides: Record<string, unknown> = {}) {

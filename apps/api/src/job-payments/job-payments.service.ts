@@ -36,7 +36,7 @@ export class JobPaymentsService {
   async createAtAcceptance(params: {
     bookingId: string;
     choice: JobPaymentChoice;
-    /** Percentuale dell'acconto online scelta dal professionista nel preventivo (§234). */
+    /** Percentuale dell'acconto online scelta dal professionista nel preventivo (§237). */
     depositPercent?: number;
     quoteMaxEurCents: number;
     clientUserId: string;
@@ -91,7 +91,7 @@ export class JobPaymentsService {
 
     if (existing?.paymentMethod === "MANOVIA") {
       const rule = await this.feeRulesService.resolveRule({ professionalProfileId: existing.booking.professionalProfileId, categoryId: null });
-      // Col saldo diretto la commissione vale solo sulla parte pagata online (§234).
+      // Col saldo diretto la commissione vale solo sulla parte pagata online (§237).
       const appFee = this.feeRulesService.computeFee(onlineTargetEurCents(params.grossAmountEurCents, existing), rule);
       if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
       const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee);
@@ -162,7 +162,7 @@ export class JobPaymentsService {
     return this.onlineMoneyService.createCheckout(clientUserId, bookingId, part);
   }
 
-  /** Checkout dell'acconto che conferma il lavoro all'accettazione del preventivo (§237). */
+  /** Checkout dell'acconto che conferma il lavoro all'accettazione del preventivo (§240). */
   createQuoteDepositCheckout(params: Parameters<OnlineMoneyService["createQuoteDepositCheckout"]>[0]) {
     return this.onlineMoneyService.createQuoteDepositCheckout(params);
   }

@@ -1026,7 +1026,7 @@ export class AdminService {
         clientNote: booking.clientCompletionNote,
         professionalPhotoUrls: booking.professionalCompletionPhotoUrls,
         clientPhotoUrls: booking.clientCompletionPhotoUrls,
-        // Come è stato pagato, saldo diretto compreso (docs/CHANGELOG.md §236).
+        // Come è stato pagato, saldo diretto compreso (docs/CHANGELOG.md §239).
         paymentLabel: jobPaymentAdminLabel(toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents)),
       };
     });

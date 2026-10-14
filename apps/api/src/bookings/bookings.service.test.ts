@@ -132,7 +132,7 @@ describe("BookingsService.createFromQuote", () => {
 });
 
 describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
-  it("con l'acconto online apre il pagamento e non crea ancora la prenotazione (§237)", async () => {
+  it("con l'acconto online apre il pagamento e non crea ancora la prenotazione (§240)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService, notificationsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
@@ -148,7 +148,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     delete process.env.STRIPE_SECRET_KEY;
   });
 
-  it("usa la percentuale di acconto scelta dal professionista (§234)", async () => {
+  it("usa la percentuale di acconto scelta dal professionista (§237)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["MIXED", "DIRECT"], depositPercent: 35 }));
@@ -159,7 +159,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     delete process.env.STRIPE_SECRET_KEY;
   });
 
-  it("rifiuta l'acconto online se il professionista non è verificato su Stripe (§238)", async () => {
+  it("rifiuta l'acconto online se il professionista non è verificato su Stripe (§241)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
@@ -170,7 +170,7 @@ describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () =
     delete process.env.STRIPE_SECRET_KEY;
   });
 
-  it("rifiuta un modo di pagamento che il professionista non ha offerto (§234)", async () => {
+  it("rifiuta un modo di pagamento che il professionista non ha offerto (§237)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["DIRECT"] }));
@@ -274,7 +274,7 @@ describe("BookingsService.reportProblemByProfessional", () => {
   });
 });
 
-describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'acconto (§237)", () => {
+describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'acconto (§240)", () => {
   function session(overrides: Record<string, unknown> = {}) {
     return {
       payment_intent: "pi_1",

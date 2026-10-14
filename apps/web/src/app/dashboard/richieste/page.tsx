@@ -71,7 +71,7 @@ function RichiesteContent() {
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
-  // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236).
+  // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
   const [stripeVerified, setStripeVerified] = useState(true);
   const [profileMissing, setProfileMissing] = useState(false);

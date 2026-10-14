@@ -4,8 +4,8 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 /**
  * Profilo pubblico appena il professionista ha scelto il tipo e compilato i
  * dati fiscali minimi (`fiscalDataMissing`, decisione dell'utente del
- * 13/10/2026, docs/CHANGELOG.md §238, che sostituisce la verifica Stripe
- * obbligatoria di §236): la DAC7 ci chiede quei dati per tutti, anche per
+ * 13/10/2026, docs/CHANGELOG.md §241, che sostituisce la verifica Stripe
+ * obbligatoria di §239): la DAC7 ci chiede quei dati per tutti, anche per
  * chi incassa solo in diretto. La verifica su Stripe (KYC/KYB) serve solo
  * per offrire l'acconto online e per il badge "Identità verificata da
  * Stripe" (`stripeVerified`).

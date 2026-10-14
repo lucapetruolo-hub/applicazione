@@ -90,7 +90,7 @@ export function JobPaymentStatus({
     lines.push(`Importo finale: ${eur(payment.finalAmountEurCents)}`);
   if (payment.paidEurCents > 0)
     lines.push(`Pagato online: ${eur(payment.paidEurCents)}`);
-  // Acconto online e saldo diretto (docs/CHANGELOG.md §234).
+  // Acconto online e saldo diretto (docs/CHANGELOG.md §237).
   if (payment.balanceDirect)
     lines.push(
       payment.directBalanceEurCents !== null

@@ -23,7 +23,7 @@ function eur(cents: number): string {
  * (docs/CHANGELOG.md §170).
  *
  * Il cliente vede solo i modi offerti dal professionista nel preventivo,
- * con la sua percentuale di acconto (docs/CHANGELOG.md §234).
+ * con la sua percentuale di acconto (docs/CHANGELOG.md §237).
  */
 
 /** Modi che il cliente può davvero scegliere: quelli offerti, senza gli online se Stripe non è attivo. */

@@ -66,7 +66,7 @@ services:
         sync: false
       # Chiave di firma del secondo endpoint webhook, quello "Connect" per gli
       # eventi degli account dei professionisti (account.updated): stesso URL
-      # /billing/webhook, endpoint separato su Stripe (docs/CHANGELOG.md §233).
+      # /billing/webhook, endpoint separato su Stripe (docs/CHANGELOG.md §236).
       - key: STRIPE_CONNECT_WEBHOOK_SECRET
         sync: false
       - key: ADMIN_BOOTSTRAP_SECRET

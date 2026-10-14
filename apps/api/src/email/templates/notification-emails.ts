@@ -123,7 +123,7 @@ function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabe
 }
 
 const clientRequests = () => ({ label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` });
-// Stati di una contestazione in banca (Stripe Dispute.status), docs/CHANGELOG.md §233.
+// Stati di una contestazione in banca (Stripe Dispute.status), docs/CHANGELOG.md §236.
 const DISPUTE_STATUS_LABEL: Record<string, string> = {
   needs_response: "aperta, serve la nostra risposta",
   warning_needs_response: "richiesta di informazioni, serve la nostra risposta",
@@ -279,7 +279,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: clientRequests(),
   }),
-  // Acconto pagato su un preventivo non più disponibile (docs/CHANGELOG.md §237).
+  // Acconto pagato su un preventivo non più disponibile (docs/CHANGELOG.md §240).
   QUOTE_DEPOSIT_REFUNDED: (payload, ctx) => ({
     kind: "notification",
     subject: "Ti abbiamo rimborsato l'acconto",
@@ -368,7 +368,7 @@ const BUILDERS: Record<string, Builder> = {
         ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
           ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
           : []),
-        // Modi di pagamento offerti (docs/CHANGELOG.md §236).
+        // Modi di pagamento offerti (docs/CHANGELOG.md §239).
         ...(typeof payload.paymentOffer === "string" ? [`Come puoi pagare: ${payload.paymentOffer}.`] : []),
         ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
@@ -438,6 +438,18 @@ const BUILDERS: Record<string, Builder> = {
       after: ["Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta."],
     };
   },
+  // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
+  BOOKING_CANCELED_BY_CLIENT: (_payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il cliente ha annullato l'intervento",
+    greeting: ctx.name,
+    title: "Intervento annullato",
+    paragraphs: [`Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`],
+    details: proJobDetails(ctx),
+    cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+    after: ["Se il cliente la riapre ti avvisiamo noi."],
+  }),
   BOOKING_REOPENED_BY_PROFESSIONAL: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha riaperto la prenotazione`,

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { Button, Text, brand } from "@professionisti/ui";
+import { Button, ButtonArrow, Text, XStack, brand } from "@professionisti/ui";
 
 /**
  * Pulsante delle azioni in fondo alle schede delle richieste ("Richieste e
@@ -25,13 +25,15 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
   compact?: boolean;
   /** Versione piccola solo su telefono, per le file di pulsanti delle schede (docs/CHANGELOG.md §228). */
   compactOnPhone?: boolean;
+  /** Freccia che ruota al passaggio del mouse, solo sulle azioni principali (docs/CHANGELOG.md §233). */
+  arrow?: boolean;
   children: ReactNode;
 };
 
 export const CARD_BUTTON_HEIGHT = 40;
 const CARD_BUTTON_HEIGHT_COMPACT = 34;
 
-export function CardButton({ tone = "outline", fill, compact, compactOnPhone, children, disabled, ...rest }: CardButtonProps) {
+export function CardButton({ tone = "outline", fill, compact, compactOnPhone, arrow, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;
   const toneProps: ComponentProps<typeof Button> = fill
     ? { variant: "secondary", backgroundColor: fill, borderColor: fill, hoverStyle: { backgroundColor: fill, opacity: 0.88 }, pressStyle: { backgroundColor: fill, opacity: 0.8 } }
@@ -42,6 +44,15 @@ export function CardButton({ tone = "outline", fill, compact, compactOnPhone, ch
         : tone === "danger"
           ? { variant: "secondary", borderColor: brand.urgenza, hoverStyle: { backgroundColor: brand.urgenzaVelo }, pressStyle: { backgroundColor: brand.urgenzaVelo } }
           : { variant: "secondary" };
+
+  const label =
+    typeof children === "string" ? (
+      <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
+        {children}
+      </Text>
+    ) : (
+      children
+    );
 
   return (
     // `toneProps` prima di misura e altezza: in Tamagui vince la prop scritta
@@ -56,12 +67,13 @@ export function CardButton({ tone = "outline", fill, compact, compactOnPhone, ch
       {...(compactOnPhone && !compact ? { $xs: { height: CARD_BUTTON_HEIGHT_COMPACT, paddingHorizontal: 14 } } : {})}
       {...rest}
     >
-      {typeof children === "string" ? (
-        <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
-          {children}
-        </Text>
+      {arrow ? (
+        <XStack alignItems="center" gap="$2">
+          {label}
+          <ButtonArrow size={compact ? 20 : 24} />
+        </XStack>
       ) : (
-        children
+        label
       )}
     </Button>
   );

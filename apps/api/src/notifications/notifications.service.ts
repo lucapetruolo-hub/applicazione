@@ -11,6 +11,7 @@ import {
   type NotificationPreferences,
 } from "@professionisti/shared";
 import { renderEmail } from "../email/email-layout";
+import { BOOKING_CALENDAR_INCLUDE, bookingCalendar, withCalendar, type BookingCalendar } from "../email/booking-calendar";
 import { adminNewReportEmail, requestSentEmail } from "../email/templates/job-emails";
 import {
   EMPTY_EMAIL_CONTEXT,
@@ -26,6 +27,15 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   }
   return null;
 }
+
+/** Notifiche che aggiungono o tolgono l'appuntamento dal calendario (docs/CHANGELOG.md §235). */
+const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
+  QUOTE_ACCEPTED: "add",
+  BOOKING_REOPENED_BY_CLIENT: "add",
+  BOOKING_REOPENED_BY_PROFESSIONAL: "add",
+  BOOKING_CANCELED_BY_PROFESSIONAL: "cancel",
+  BOOKING_CANCELED_BY_CLIENT: "cancel",
+};
 
 @Injectable()
 export class NotificationsService {
@@ -110,10 +120,32 @@ export class NotificationsService {
       const context = { ...(await this.emailContext(data)), name: user.name };
       const content = notificationEmail(type, data, context);
       if (!content) return;
-      await this.emailService.send({ to: user.email, ...renderEmail(content) });
+      const calendar = await this.bookingCalendarFor(userId, type, data);
+      await this.emailService.send({
+        to: user.email,
+        ...renderEmail(calendar ? withCalendar(content, calendar) : content),
+        ...(calendar ? { attachments: [calendar.attachment] } : {}),
+      });
     })().catch((err: unknown) => {
       this.logger.error(`Email della notifica ${type} non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
+  }
+
+  /**
+   * Calendario nelle email di un appuntamento (docs/CHANGELOG.md §235):
+   * aggiunge l'evento quando nasce o torna valido, lo toglie quando viene
+   * annullato. Solo per chi è davvero cliente o professionista della prenotazione.
+   */
+  private async bookingCalendarFor(userId: string, type: string, payload: Record<string, unknown>): Promise<BookingCalendar | null> {
+    const action = CALENDAR_NOTIFICATION_TYPES[type];
+    const bookingId = typeof payload.bookingId === "string" ? payload.bookingId : null;
+    if (!action || !bookingId) return null;
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
+    if (!booking) return null;
+    const role = booking.clientId === userId ? "client" : booking.professionalProfile.userId === userId ? "professional" : null;
+    if (!role) return null;
+    if (action === "add" && booking.status !== "CONFIRMED" && booking.status !== "PENDING") return null;
+    return bookingCalendar(booking, role, { canceled: action === "cancel" });
   }
 
   /** Categoria, città, attività e data del lavoro a cui si riferisce il payload. */

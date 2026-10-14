@@ -4,7 +4,7 @@ import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Modi di pagamento scelti dal professionista nel preventivo
- * (docs/CHANGELOG.md §234): acconto online a percentuale libera, saldo
+ * (docs/CHANGELOG.md §237): acconto online a percentuale libera, saldo
  * online o diretto. Col saldo diretto da Stripe passa solo l'acconto.
  */
 describe("quotePaymentOffer", () => {

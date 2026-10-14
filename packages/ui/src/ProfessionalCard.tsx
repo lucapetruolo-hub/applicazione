@@ -78,7 +78,7 @@ export type ProfessionalCardProps = {
   /** "Ha completato N interventi questo mese" (richiesta esplicita dell'utente) — dato reale (Booking COMPLETED nel mese corrente), 0/assente non mostra nulla. */
   completedThisMonth?: number;
   verified?: boolean;
-  /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §238): badge distinto da "Verificato". */
+  /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §241): badge distinto da "Verificato". */
   stripeVerified?: boolean;
   /**
    * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale

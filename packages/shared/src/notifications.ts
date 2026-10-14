@@ -48,17 +48,19 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
-      // Acconto pagato ma lavoro non più confermabile: rimborsato (docs/CHANGELOG.md §237).
+      // Acconto pagato ma lavoro non più confermabile: rimborsato (docs/CHANGELOG.md §240).
       "QUOTE_DEPOSIT_REFUNDED",
     ],
     activeChannels: ["inApp", "email"],
   },
   lavori: {
-    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni riaperte, segnalazioni." },
+    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
     client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
+      // Il cliente annulla: prima il professionista non riceveva nulla (docs/CHANGELOG.md §235).
+      "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
       "BOOKING_NO_SHOW_REPORTED",
@@ -81,7 +83,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
       "ADMIN_JOB_BALANCE_UNPAID",
-      // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §233).
+      // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
@@ -123,7 +125,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Badge "Verificato" assegnato o tolto da un admin (docs/CHANGELOG.md §200).
       "PROFILE_VERIFIED",
       "PROFILE_VERIFICATION_REMOVED",
-      // Account Stripe attivato: acconto online e badge (docs/CHANGELOG.md §238).
+      // Account Stripe attivato: acconto online e badge (docs/CHANGELOG.md §241).
       "STRIPE_ACCOUNT_ACTIVE",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",

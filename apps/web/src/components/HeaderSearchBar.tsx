@@ -6,6 +6,7 @@ import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@profes
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { MagneticButton } from "./MagneticButton";
 
 /**
  * Versione condensata della ricerca, montata nella barra fissa in alto
@@ -44,6 +45,7 @@ export function HeaderSearchBar() {
 
   return (
     <SearchBar
+      wrapSearchButton={(button) => <MagneticButton>{button}</MagneticButton>}
       // Forza il remount quando cambiano pathname/query params (es. click
       // su un'altra categoria): SearchBar tiene query/città/modalità in
       // uno stato locale inizializzato una sola volta al mount — senza

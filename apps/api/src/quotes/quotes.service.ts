@@ -102,10 +102,10 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
     }
 
-    // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §234). Senza
+    // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §237). Senza
     // pagamenti online attivi deve restare almeno il pagamento diretto, o il
     // cliente non potrebbe accettare. L'acconto online lo offre solo chi ha
-    // completato la verifica su Stripe (§238): per gli altri il valore di
+    // completato la verifica su Stripe (§241): per gli altri il valore di
     // serie è il solo pagamento diretto.
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId: professionalProfile.id },

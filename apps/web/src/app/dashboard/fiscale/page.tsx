@@ -293,7 +293,7 @@ function DashboardFiscaleContent() {
     }
   }
 
-  // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §235).
+  // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §238).
   async function handleStripeDashboard() {
     if (!token) return;
     setStripeLoading(true);
@@ -330,7 +330,7 @@ function DashboardFiscaleContent() {
           anche per chi si fa pagare solo direttamente. Il tuo profilo compare nelle ricerche quando li hai compilati. Ai clienti mostriamo solo se
           sei un privato o un professionista con partita IVA.
         </Text>
-        {/* Cosa manca per essere pubblici (docs/CHANGELOG.md §238). */}
+        {/* Cosa manca per essere pubblici (docs/CHANGELOG.md §241). */}
         {missingForVisibility.length > 0 ? (
           <Text fontSize={13} color={brand.urgenza}>
             Per rendere visibile il profilo manca: {missingForVisibility.join(", ")}.

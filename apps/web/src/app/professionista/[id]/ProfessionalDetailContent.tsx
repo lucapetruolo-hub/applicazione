@@ -317,7 +317,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                   {professional.businessName}
                 </Text>
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
-                {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §238). */}
+                {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
                 {professional.stripeVerified ? (
                   <span title={STRIPE_VERIFIED_BADGE.note}>
                     <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
@@ -340,7 +340,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                 {(professional.categories?.length ? professional.categories.map((category) => category.label) : [professional.categoryLabel]).join(" · ")} ·{" "}
                 {professional.city}
               </Text>
-              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §238). */}
+              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241). */}
               {professional.traderStatus ? (
                 <YStack gap={2}>
                   <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite}>

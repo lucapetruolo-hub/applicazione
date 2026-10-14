@@ -3,9 +3,9 @@ import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
-  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §236). */
+  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239). */
   defaultPaymentOffer: { paymentOptions: JobPaymentChoice[]; depositPercent: number };
-  /** Verifica su Stripe completata: può offrire l'acconto online e ha il badge (docs/CHANGELOG.md §238). */
+  /** Verifica su Stripe completata: può offrire l'acconto online e ha il badge (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
   businessName: string;
   /** Categoria principale (la prima di `categorySlugs`). */
@@ -127,7 +127,7 @@ export type ProfessionalLead = {
     clientNote: string | null;
     /** Nota facoltativa lasciata dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
-    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §234). */
+    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */

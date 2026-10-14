@@ -125,7 +125,7 @@ export class ProfessionalFiscalService {
     let fiscalProfile = existing
       ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data })
       : await this.prisma.professionalFiscalProfile.create({ data: { professionalProfileId, ...data } });
-    // Dati minimi per essere pubblici (docs/CHANGELOG.md §238).
+    // Dati minimi per essere pubblici (docs/CHANGELOG.md §241).
     const complete = fiscalDataMissing(fiscalProfile).length === 0;
     if (complete !== !!fiscalProfile.fiscalDataCompleteAt) {
       fiscalProfile = await this.prisma.professionalFiscalProfile.update({
@@ -228,7 +228,7 @@ export class ProfessionalFiscalService {
    * alla prima chiamata, poi genera sempre un nuovo Account Link (scadono
    * dopo pochi minuti, mai riutilizzabile).
    *
-   * Account Stripe Accounts v2 (docs/CHANGELOG.md §233), non più il vecchio
+   * Account Stripe Accounts v2 (docs/CHANGELOG.md §236), non più il vecchio
    * `type: "express"` che Stripe considera superato: configurazione
    * "destinatario" (riceve i trasferimenti dalla piattaforma, non incassa
    * carte), Dashboard Express, commissioni Stripe e perdite a carico della
@@ -237,7 +237,7 @@ export class ProfessionalFiscalService {
    * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */
   /**
-   * Accesso alla Dashboard Express di Stripe (docs/CHANGELOG.md §235): il
+   * Accesso alla Dashboard Express di Stripe (docs/CHANGELOG.md §238): il
    * professionista vede accrediti e bonifici sul suo conto e cambia l'IBAN,
    * senza scrivere a noi. Solo con la verifica avviata.
    */
@@ -323,7 +323,7 @@ export class ProfessionalFiscalService {
       where: { id: fiscalProfile.id },
       data: { stripeChargesEnabled: chargesEnabled, stripePayoutsEnabled: payoutsEnabled, stripeRequirementsStatus: requirementsStatus },
     });
-    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §238).
+    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §241).
     if (payoutsEnabled && !fiscalProfile.stripePayoutsEnabled) {
       await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_ACTIVE", {});
     }

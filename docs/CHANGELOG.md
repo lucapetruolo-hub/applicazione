@@ -18321,7 +18321,100 @@ Quarto giro, due migliorie approvate dall'utente:
 **Verifica**: test dell'API verdi (293), tipi di `apps/web` verdi, gesto
 provato in Chromium con il tocco emulato su un telefono da 390px.
 
-## 233. Stripe: correzioni prima di attivare i pagamenti veri
+## 233. Pulsanti "vivi", abbonamento in nero, foto di /per-professionisti
+
+Richiesta dell'utente: applicare ai pulsanti i dettagli di uno screenshot
+(misura, pillola, freccia che ruota, alone, magnete, pressione), dove servono.
+
+- Tutti i pulsanti (`packages/ui/src/Button.tsx`): altezza 44 invece di 48
+  (scelta dell'utente), forma a pillola piena, e si schiacciano (scale .97)
+  quando li premi (`.is_Button` in `globals.css`). Restano più bassi solo i
+  pulsanti con altezza scritta a mano (36/40, compatti).
+- Freccia in un cerchio che ruota di 45° in 350ms al passaggio del mouse
+  (`ButtonArrow`, `CardButton arrow`) solo sulle azioni principali:
+  Richiedi preventivo (home), Invia richiesta, Registrati, Invia
+  preventivo, Accetta preventivo.
+- Magnete e alone che segue il cursore (`MagneticButton`) solo sul
+  pulsante "Richiedi preventivo" della home, solo con un mouse e senza
+  "riduci movimento".
+- Pulsante di acquisto dell'abbonamento quasi nero con il puntino rosso
+  della freccia (variante `acquisto`): "Iscriviti con…" in
+  `/per-professionisti` e i livelli in `/dashboard/abbonamento`. Il rosso
+  resta altrove solo per l'urgenza.
+- Magnete e alone anche sul pulsante "Cerca" di tutte le barre di ricerca
+  (`SearchBar` accetta `wrapSearchButton`, il web lo avvolge in
+  `MagneticButton`; su telefono resta a tutta larghezza).
+- `/per-professionisti`: "Compreso in ogni livello" spostato prima della
+  scelta dei livelli; foto principale cambiata (Pexels 4792521, scelta tra
+  dieci alternative proposte all'utente) e nuova fila "Per ogni tipo di
+  lavoro" con quattro foto di mestieri scelte dall'utente: pulizie,
+  giardiniera, traslochi, tecnico dei condizionatori (`ProGallery`).
+- Le regole CSS usano `button.is_Button`: anche il testo interno del
+  Button di Tamagui ha la classe `is_Button`.
+
+## 234. Promemoria del giorno prima con luogo e dati del cliente
+
+**Richiesta esplicita dell'utente**: nell'email di promemoria di un
+intervento il professionista deve trovare anche il luogo, nome e cognome e
+tutti i dati del cliente; al cliente bastano nome e cognome di chi va, data,
+ora, lavoro e descrizione.
+
+**Decisione**:
+- Al professionista (`bookingReminderProfessionalEmail`): righe Data, Ora
+  (con la fine della fascia se c'è), Luogo (indirizzo completo), Lavoro,
+  Descrizione, Cliente (nome e cognome), Telefono, Email. I dati vengono
+  nell'ordine dell'email "preventivo accettato" (§228): prima quelli scritti
+  all'accettazione (`Booking.recipient*`, indirizzo strutturato), poi
+  l'indirizzo della richiesta, infine quelli dell'account del cliente (per le
+  prenotazioni dirette dall'agenda). Mai i dati di un account cancellato.
+  Rispetta §5 punto 9: il promemoria parte solo per prenotazioni confermate.
+- Al cliente (`bookingReminderClientEmail`): Professionista (nome e cognome,
+  con il nome dell'attività tra parentesi se diverso), Data, Ora, Luogo,
+  Lavoro, Descrizione (il luogo anche al cliente su richiesta dell'utente).
+- Migliorie approvate dall'utente: il luogo è un link a Google Maps (in
+  entrambe le email), il telefono del cliente è un link `tel:` e la sua email
+  un link `mailto:`. Il riquadro
+  dei dettagli (`renderEmail`) accetta per questo un `url` facoltativo.
+
+**Verifica**: test in `apps/api/src/email/email-templates.test.ts`,
+typecheck di `apps/api`.
+
+## 235. "Aggiungi al calendario" nei promemoria del giorno prima
+
+**Richiesta esplicita dell'utente**: miglioria proposta durante §234, da fare
+come lavoro a parte.
+
+**Decisione**: le due email di promemoria (cliente e professionista) hanno
+in allegato `appuntamento.ics` (Apple Calendar, Outlook e Gmail lo aprono e
+propongono di aggiungerlo) e una riga "Calendario" con il link a Google
+Calendar. Stesso evento con lo stesso `UID` per non duplicarlo: ora di
+inizio e fine (un'ora se manca la fine), luogo, lavoro e descrizione; per il
+professionista anche il telefono del cliente. Gli orari restano "ora di
+parete" (vedi `email-format.ts`) scritti come ora italiana (`Europe/Rome`).
+Codice in `apps/api/src/email/email-calendar.ts`; `EmailService.send`
+accetta ora degli allegati.
+
+Migliorie approvate dall'utente nello stesso giro:
+- Il calendario arriva anche con l'email "preventivo accettato" al
+  professionista e con "prenotazione riaperta" (cliente o professionista).
+- Annullamento: le email di prenotazione annullata allegano
+  `appuntamento-annullato.ics` (`METHOD:CANCEL`, `STATUS:CANCELLED`, stesso
+  `UID`, `SEQUENCE` crescente) che toglie l'evento dal calendario (Apple
+  Calendar e Outlook lo fanno da soli; con Gmail dipende dal calendario).
+  Nuova notifica `BOOKING_CANCELED_BY_CLIENT` al professionista (argomento
+  "Lavori e appuntamenti"): prima, se il cliente annullava, il professionista
+  non riceveva nulla. Anche l'annullamento dall'agenda del professionista
+  (`updateStatus` a `CANCELED`) ora avvisa il cliente come `cancelByProfessional`.
+- "Spostato": oggi una prenotazione non cambia mai data (si annulla e se ne
+  crea un'altra), quindi basta l'annullamento.
+- Dati della prenotazione e calendario in un solo punto,
+  `apps/api/src/email/booking-calendar.ts`, usato dal promemoria e dalle
+  notifiche (`NotificationsService.bookingCalendarFor`).
+
+**Verifica**: `email-calendar.test.ts` e `email-templates.test.ts`,
+typecheck e lint di `apps/api`.
+
+## 236. Stripe: correzioni prima di attivare i pagamenti veri
 
 **Richiesta dell'utente**: rivedere l'integrazione Stripe (Billing, Payments,
 Invoicing, Connect) secondo le buone pratiche e il pianificatore ufficiale di
@@ -18383,7 +18476,7 @@ tipi di `apps/web` verdi; migrazione applicata su un Postgres locale. Il
 connettore Stripe del progetto ha solo accesso in lettura all'ambiente di
 prova: prodotti, webhook e account di prova vanno creati dalla Dashboard.
 
-## 234. Il professionista sceglie nel preventivo come farsi pagare
+## 237. Il professionista sceglie nel preventivo come farsi pagare
 
 **Richiesta esplicita dell'utente** (13/10/2026): "in fase di invio del
 preventivo il professionista seleziona già il metodo di pagamento scelto
@@ -18427,7 +18520,7 @@ rimborso della differenza) e due test in `bookings.service.test.ts`
 rifiutato). Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione
 applicata su un Postgres locale.
 
-## 235. Stripe: carta e fatture, conto Stripe del professionista, estratto conto
+## 238. Stripe: carta e fatture, conto Stripe del professionista, estratto conto
 
 **Richiesta esplicita dell'utente** (13/10/2026): "procedi con tutto con la
 priorità descritta da te" (terzo blocco del piano
@@ -18453,14 +18546,14 @@ priorità descritta da te" (terzo blocco del piano
   contestazioni "non riconosco l'addebito".
 
 Non fatto, perché già coperto: l'avviso sui dati che Stripe chiede ancora
-c'è già in Dati fiscali e pagamenti (§233).
+c'è già in Dati fiscali e pagamenti (§236).
 
 **Verifica**: `billing/billing-customer.test.ts` (cliente creato una volta,
 riusato, ripreso dall'abbonamento esistente; suffisso dell'estratto conto).
 Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione applicata su
 un Postgres locale.
 
-## 236. Profilo visibile solo dopo la verifica su Stripe, e tre migliorie ai modi di pagamento
+## 239. Profilo visibile solo dopo la verifica su Stripe, e tre migliorie ai modi di pagamento
 
 **Richiesta esplicita dell'utente** (13/10/2026): "l'account del
 professionista, che sia privato con codice fiscale, privato con P.IVA o
@@ -18502,7 +18595,7 @@ Regola da seguire per i nuovi punti pubblici: aggiungere `stripeKycWhere()`
 Stripe, account attivo richiesto, profili dimostrativi; testi e confronti
 dei modi di pagamento). Test, tipi e lint di `apps/api` e `apps/web` verdi.
 
-## 237. Lavoro confermato solo dopo l'acconto online
+## 240. Lavoro confermato solo dopo l'acconto online
 
 **Richiesta esplicita dell'utente** (13/10/2026), dalla domanda "il cliente
 per accettare il preventivo deve anche pagare?": scelta "Solo dopo
@@ -18533,7 +18626,7 @@ prenotazione, percentuale dell'acconto, conferma col webhook, evento
 ripetuto, rimborso per preventivo ritirato, importo cambiato o altro
 preventivo già accettato). Test, tipi e lint di `apps/api` e `apps/web` verdi.
 
-## 238. Profilo pubblico con i dati fiscali, Stripe solo per l'acconto online e il badge
+## 241. Profilo pubblico con i dati fiscali, Stripe solo per l'acconto online e il badge
 
 **Richiesta esplicita dell'utente** (13/10/2026): "tutti gli account
 professionali che si registrano scelgono solo che tipo sono dei 3 (privato
@@ -18543,7 +18636,7 @@ online o avere il badge verificato (da Stripe) devono fare il percorso
 tramite Stripe, così Stripe fa il KYC o KYB". Scelta "Sì, cambia" sulla
 scheda di decisione dopo il controllo legale. Poi: "effettua le 3 migliorie".
 
-**Decisione** (sostituisce la verifica Stripe obbligatoria di §236):
+**Decisione** (sostituisce la verifica Stripe obbligatoria di §239):
 - Profilo pubblico (ricerca, smistamento, richieste dirette, agenda, pagina
   pubblica, recensioni in home) quando il professionista ha scelto il tipo e
   compilato i dati minimi DAC7 (`fiscalDataMissing` in

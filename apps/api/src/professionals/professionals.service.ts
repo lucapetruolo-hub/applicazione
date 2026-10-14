@@ -107,7 +107,7 @@ export class ProfessionalsService {
       // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
       AND: [
         ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
-        // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §238).
+        // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §241).
         publicVisibilityWhere(),
       ],
       ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
@@ -418,7 +418,7 @@ export class ProfessionalsService {
       },
     });
 
-    // Senza dati fiscali la pagina non è ancora pubblica (docs/CHANGELOG.md §238).
+    // Senza dati fiscali la pagina non è ancora pubblica (docs/CHANGELOG.md §241).
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
@@ -443,7 +443,7 @@ export class ProfessionalsService {
       address: profile.address,
       verified: profile.verified,
       stripeVerified: stripeVerified(profile.fiscalProfile),
-      // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §238).
+      // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: traderStatusOf(profile.fiscalProfile?.entityType),
       rating,
       reviewCount,
@@ -514,7 +514,7 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       demotedUntil: profile.demotedUntil && profile.demotedUntil > new Date() ? profile.demotedUntil.toISOString() : null,
       requestsBlockedUntil: profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date() ? profile.requestsBlockedUntil.toISOString() : null,
-      // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §236).
+      // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(profile.fiscalProfile),
     };
@@ -988,7 +988,7 @@ export class ProfessionalsService {
               // Nota del cliente senza cambio di data (docs/CHANGELOG.md §196).
               clientNote: quote.clientNote,
               rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
-              // Modi di pagamento offerti (docs/CHANGELOG.md §234), coi valori di serie per i preventivi vecchi.
+              // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di serie per i preventivi vecchi.
               ...quotePaymentOffer(quote),
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla

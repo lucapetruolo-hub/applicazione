@@ -21,7 +21,7 @@ import { z } from "zod";
 /**
  * Modi di pagamento che il professionista offre nel preventivo e tra cui il
  * cliente sceglie accettandolo (decisione dell'utente del 13/10/2026,
- * docs/CHANGELOG.md §234): il professionista ne spunta uno o più.
+ * docs/CHANGELOG.md §237): il professionista ne spunta uno o più.
  * - `DIRECT`: tutto direttamente al professionista;
  * - `ONLINE`: acconto online (percentuale scelta dal professionista) e saldo online;
  * - `MIXED`: acconto online e saldo direttamente al professionista.
@@ -34,7 +34,7 @@ export const ONLINE_DEPOSIT_PERCENT = 20;
 export const MIN_DEPOSIT_PERCENT = 1;
 export const MAX_DEPOSIT_PERCENT = 100;
 
-/** Modi di pagamento offerti di serie: i preventivi inviati prima di §234 non li hanno salvati. */
+/** Modi di pagamento offerti di serie: i preventivi inviati prima di §237 non li hanno salvati. */
 export const DEFAULT_QUOTE_PAYMENT_OPTIONS: JobPaymentChoice[] = ["ONLINE", "DIRECT"];
 
 /** Modi offerti da un preventivo e percentuale dell'acconto, con i valori di serie per i preventivi vecchi. */
@@ -51,7 +51,7 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
 }
 
 /**
- * Modi che il cliente può davvero scegliere (docs/CHANGELOG.md §238): senza
+ * Modi che il cliente può davvero scegliere (docs/CHANGELOG.md §241): senza
  * la verifica su Stripe del professionista l'acconto online sparisce. Se
  * restasse vuoto si mostra l'offerta com'è e l'accettazione spiega il perché.
  */
@@ -186,7 +186,7 @@ export function onlineCanRelease(input: {
 export type JobPaymentSummary = {
   /** ONLINE anche con saldo diretto: l'acconto passa comunque da Stripe (vedi `balanceDirect`). */
   method: "ONLINE" | "DIRECT";
-  /** Acconto online e saldo pagato direttamente al professionista (§234). */
+  /** Acconto online e saldo pagato direttamente al professionista (§237). */
   balanceDirect: boolean;
   /** Col saldo diretto: quanto il cliente paga direttamente al professionista (null finché l'importo finale non è noto). */
   directBalanceEurCents: number | null;
@@ -211,7 +211,7 @@ export const acceptQuoteSchema = z.object({
   paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
 });
 
-/** Modi di pagamento scelti dal professionista nel preventivo (§234). */
+/** Modi di pagamento scelti dal professionista nel preventivo (§237). */
 export const quotePaymentOfferSchema = {
   paymentOptions: z.array(z.enum(jobPaymentChoices)).min(1, "Scegli almeno un modo di pagamento.").max(jobPaymentChoices.length).optional(),
   depositPercent: z
@@ -220,7 +220,7 @@ export const quotePaymentOfferSchema = {
     .min(MIN_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
     .max(MAX_DEPOSIT_PERCENT, `L'acconto va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%.`)
     .optional(),
-  /** Salva questi modi come proposta di serie per i prossimi preventivi (§236). */
+  /** Salva questi modi come proposta di serie per i prossimi preventivi (§239). */
   rememberPaymentOffer: z.boolean().optional(),
 };
 export type AcceptQuoteInput = z.infer<typeof acceptQuoteSchema>;
@@ -279,7 +279,7 @@ export function toJobPaymentSummary(
   return summary;
 }
 
-/** Come è stato pagato un lavoro, in una riga per l'area admin (docs/CHANGELOG.md §236). */
+/** Come è stato pagato un lavoro, in una riga per l'area admin (docs/CHANGELOG.md §239). */
 export function jobPaymentAdminLabel(summary: JobPaymentSummary | null): string {
   if (!summary || summary.method === "DIRECT") return "Pagamento diretto al professionista";
   const eur = (cents: number) => `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}`;

@@ -490,9 +490,9 @@ export class GuidedRequestsService {
           professionalCounterNote: quote.professionalCounterNote,
           // Nota del rifiuto e nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188).
           rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
-          // Modi di pagamento offerti (docs/CHANGELOG.md §234), coi valori di
+          // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di
           // serie per i preventivi vecchi; senza la verifica su Stripe del
-          // professionista l'acconto online non si può scegliere (§238).
+          // professionista l'acconto online non si può scegliere (§241).
           ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile)),
           resentAt: quote.resentAt?.toISOString() ?? null,
           notes: quote.notes,
@@ -734,7 +734,7 @@ export class GuidedRequestsService {
     const candidates = await this.prisma.professionalProfile.findMany({
       where: {
         // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
-        // Solo professionisti verificati su Stripe (docs/CHANGELOG.md §236).
+        // Solo professionisti verificati su Stripe (docs/CHANGELOG.md §239).
         AND: [{ OR: [{ categoryId }, { extraCategories: { some: { id: categoryId } } }] }, publicVisibilityWhere()],
         deletedAt: null,
         suspendedAt: null,

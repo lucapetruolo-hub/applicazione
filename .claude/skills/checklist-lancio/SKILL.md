@@ -73,14 +73,14 @@ produzione):
    `charge.dispute.updated`, `charge.dispute.closed`) e un **secondo
    endpoint "Connect"** sullo stesso URL `/billing/webhook` con l'evento
    `account.updated`, la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET`
-   (docs/CHANGELOG.md §233). In Dashboard Stripe prima del primo
+   (docs/CHANGELOG.md §236). In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
    Connect → profilo piattaforma) e attivare Radar for Platforms. Salvare la
    configurazione del Customer Portal (Impostazioni → Fatturazione → Portale
    clienti: metodi di pagamento e fatture sì, cambio piano e annullamento no,
    li gestisce il sito) e impostare un descrittore abbreviato corto (max 10
    caratteri, es. il marchio) per il nome del professionista sull'estratto
-   conto (docs/CHANGELOG.md §235). Usare una
+   conto (docs/CHANGELOG.md §238). Usare una
    chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +

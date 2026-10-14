@@ -404,7 +404,7 @@ export const quoteSchema = z.object({
    */
   estimatedEndDate: z.string().datetime().optional(),
   notes: z.string().max(2000).optional(),
-  /** Modi di pagamento offerti al cliente e percentuale dell'acconto online (docs/CHANGELOG.md §234); assenti = valori di serie. */
+  /** Modi di pagamento offerti al cliente e percentuale dell'acconto online (docs/CHANGELOG.md §237); assenti = valori di serie. */
   ...quotePaymentOfferSchema,
 });
 export type QuoteInput = z.infer<typeof quoteSchema>;

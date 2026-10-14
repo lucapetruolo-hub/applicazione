@@ -11,7 +11,7 @@ import {
   type MySubscription,
   type SubscriptionTier,
 } from "@professionisti/shared";
-import { Button, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SubscriptionPauseBanner, upgradeCostText } from "@/components/SubscriptionPauseBanner";
@@ -131,7 +131,7 @@ function AbbonamentoContent() {
     }
   }
 
-  // Carta e fatture nel Customer Portal di Stripe (docs/CHANGELOG.md §235).
+  // Carta e fatture nel Customer Portal di Stripe (docs/CHANGELOG.md §238).
   const [portalPending, setPortalPending] = useState(false);
   async function openPortal() {
     if (!token) return;
@@ -336,12 +336,21 @@ function AbbonamentoContent() {
                     </Text>
                   ) : null}
                   <Button
-                    variant={current ? "secondary" : "primary"}
+                    variant={current ? "secondary" : "acquisto"}
                     disabled={disabled}
                     opacity={disabled ? 0.6 : 1}
                     onPress={() => chooseTier(tier.tier)}
                   >
-                    {label}
+                    {current ? (
+                      label
+                    ) : (
+                      <XStack alignItems="center" gap="$2">
+                        <Text color="white" fontFamily="$body" fontWeight="600">
+                          {label}
+                        </Text>
+                        <ButtonArrow tone="red" />
+                      </XStack>
+                    )}
                   </Button>
                 </Surface>
               );

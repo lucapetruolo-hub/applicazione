@@ -95,7 +95,7 @@ export class OnlineMoneyService {
       amount = jp.depositEurCents;
     } else {
       if (booking.finalAmountEurCents === null) throw new BadRequestException("Il saldo si paga quando il professionista chiude il lavoro con l'importo finale.");
-      // Col saldo diretto (§234) online si paga al massimo l'acconto: il resto va al professionista.
+      // Col saldo diretto (§237) online si paga al massimo l'acconto: il resto va al professionista.
       amount = onlineBalanceDueEurCents(onlineTargetEurCents(booking.finalAmountEurCents, jp), jp.paidEurCents - jp.refundedEurCents);
       // Dopo l'accredito il saldo si può ancora pagare se era rimasto scoperto (§168).
       const closed = jp.onlineStage === "REFUNDED" || (jp.onlineStage === "RELEASED" && !jp.balanceUnpaidAt);
@@ -124,7 +124,7 @@ export class OnlineMoneyService {
       ],
       payment_intent_data: {
         transfer_group: bookingId,
-        // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §235): meno contestazioni "non riconosco l'addebito".
+        // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §238): meno contestazioni "non riconosco l'addebito".
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
         metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
       },
@@ -137,7 +137,7 @@ export class OnlineMoneyService {
 
   /**
    * Checkout dell'acconto al momento dell'accettazione del preventivo
-   * (docs/CHANGELOG.md §237): il lavoro non esiste ancora, nasce solo quando
+   * (docs/CHANGELOG.md §240): il lavoro non esiste ancora, nasce solo quando
    * Stripe conferma il pagamento (`BookingsService.confirmQuoteDeposit`).
    * Scade dopo un'ora: un pagamento così tardivo su un preventivo cambiato
    * nel frattempo verrebbe comunque rimborsato.
@@ -362,7 +362,7 @@ export class OnlineMoneyService {
    */
   async afterCompletion(jobPaymentId: string, finalAmountEurCents: number, appFeeEurCents: number): Promise<{ balanceDueEurCents: number }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
-    // Col saldo diretto (§234) da Stripe passa solo l'acconto: il saldo online è già a zero.
+    // Col saldo diretto (§237) da Stripe passa solo l'acconto: il saldo online è già a zero.
     const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
     const due = onlineBalanceDueEurCents(onlineTarget, jp.paidEurCents - jp.refundedEurCents);
     await this.prisma.jobPayment.update({
@@ -425,7 +425,7 @@ export class OnlineMoneyService {
     }
     const stripe = this.stripe;
     const balanceUnpaid = jp.onlineStage === "AWAITING_BALANCE";
-    // Col saldo diretto (§234) il dovuto online è solo l'acconto: se l'importo
+    // Col saldo diretto (§237) il dovuto online è solo l'acconto: se l'importo
     // finale è più basso, la differenza torna al cliente.
     const onlineTarget = onlineTargetEurCents(booking.finalAmountEurCents, jp);
     const { payout, refundToClient } = onlinePayoutEurCents({
@@ -500,7 +500,7 @@ export class OnlineMoneyService {
   /**
    * Prima di ogni trasferimento si rilegge da Stripe se l'account del
    * professionista può riceverlo (buona pratica Stripe, docs/CHANGELOG.md
-   * §233): il webhook può essere in ritardo o non arrivare. Se Stripe non
+   * §236): il webhook può essere in ritardo o non arrivare. Se Stripe non
    * risponde vale l'ultimo stato salvato.
    */
   private async transfersActive(accountId: string, saved: boolean): Promise<boolean> {
@@ -522,7 +522,7 @@ export class OnlineMoneyService {
 
   /**
    * Contestazione presso la banca del cliente (chargeback) su un acconto o un
-   * saldo (webhook `charge.dispute.*`, docs/CHANGELOG.md §233). Decide la
+   * saldo (webhook `charge.dispute.*`, docs/CHANGELOG.md §236). Decide la
    * banca, non noi né Stripe: finché è aperta l'accredito al professionista
    * resta bloccato e il nostro team deve mandare le prove dalla Dashboard
    * Stripe (preventivo accettato, chat, foto). Se la contestazione è persa la

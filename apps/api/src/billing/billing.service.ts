@@ -86,7 +86,7 @@ export class BillingService {
 
   /**
    * Cliente Stripe del professionista, creato una volta e poi riusato per
-   * abbonamento, differenze di livello e boost (docs/CHANGELOG.md §235):
+   * abbonamento, differenze di livello e boost (docs/CHANGELOG.md §238):
    * così carta, fatture e Customer Portal stanno in un posto solo. Chi aveva
    * già un abbonamento riprende il cliente di quell'abbonamento.
    */
@@ -120,7 +120,7 @@ export class BillingService {
   }
 
   /**
-   * Customer Portal di Stripe (docs/CHANGELOG.md §235): il professionista
+   * Customer Portal di Stripe (docs/CHANGELOG.md §238): il professionista
    * cambia la carta e scarica le fatture di abbonamento e boost. Livelli e
    * annullamento restano nella pagina Abbonamento del sito.
    */
@@ -378,7 +378,7 @@ export class BillingService {
   }
 
   /**
-   * Due endpoint Stripe arrivano qui (docs/CHANGELOG.md §233), ognuno con la
+   * Due endpoint Stripe arrivano qui (docs/CHANGELOG.md §236), ognuno con la
    * sua chiave di firma: quello del nostro account (`STRIPE_WEBHOOK_SECRET`)
    * e quello Connect per gli eventi degli account dei professionisti, come
    * `account.updated` (`STRIPE_CONNECT_WEBHOOK_SECRET`). Firma non valida → 400.
@@ -506,7 +506,7 @@ export class BillingService {
       await this.professionalFiscalService.refreshStripeConnectStatus(account.id);
     }
 
-    // Contestazione in banca (chargeback, docs/CHANGELOG.md §233).
+    // Contestazione in banca (chargeback, docs/CHANGELOG.md §236).
     if (event.type === "charge.dispute.created" || event.type === "charge.dispute.updated" || event.type === "charge.dispute.closed") {
       const dispute = event.data.object as Stripe.Dispute;
       const jobPayment = await this.jobPaymentsService.handleStripeDispute(dispute);

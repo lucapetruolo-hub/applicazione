@@ -237,7 +237,7 @@ export type ClientGuidedRequest = {
     professionalCounterNote: string | null;
     /** Nota facoltativa scritta dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
-    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §234). */
+    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
@@ -477,7 +477,7 @@ export type AdminCompletedJob = {
   clientNote: string | null;
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
-  /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §236). */
+  /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §239). */
   paymentLabel: string;
 };
 
@@ -665,7 +665,7 @@ export type ProfessionalFiscalProfile = {
   verificationNote: string | null;
   verifiedAt: string | null;
   fiscalDeclarationAcceptedAt: string | null;
-  /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §238). */
+  /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241). */
   fiscalDataCompleteAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
