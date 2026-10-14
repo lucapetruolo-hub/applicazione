@@ -54,6 +54,9 @@ export function bookingReminderClientEmail(input: {
   professionalFullName: string | null;
   scheduledAt: Date;
   scheduledEndAt?: Date | null;
+  /** Indirizzo completo dell'intervento; se manca si mostra almeno la città. */
+  address?: string | null;
+  city?: string | null;
   category: string | null;
   description?: string | null;
 }): RenderedEmail {
@@ -68,6 +71,7 @@ export function bookingReminderClientEmail(input: {
     details: [
       { label: "Professionista", value: who ? (showBusiness ? `${who} (${input.businessName})` : who) : input.businessName },
       ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),
+      ...placeDetail(input.address, input.city),
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
     ],
@@ -94,7 +98,6 @@ export function bookingReminderProfessionalEmail(input: {
   city: string | null;
   description?: string | null;
 }): RenderedEmail {
-  const place = input.address?.trim() || input.city?.trim() || null;
   return renderEmail({
     kind: "notification",
     subject: `Promemoria: domani hai un intervento${input.category ? ` (${input.category})` : ""}`,
@@ -103,16 +106,23 @@ export function bookingReminderProfessionalEmail(input: {
     paragraphs: [input.clientName ? `Ti ricordiamo l'appuntamento con **${input.clientName}**.` : "Ti ricordiamo l'appuntamento con il cliente."],
     details: [
       ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),
-      ...(place ? [{ label: "Luogo", value: place }] : []),
+      ...placeDetail(input.address, input.city),
       ...(input.category ? [{ label: "Lavoro", value: input.category }] : []),
       ...descriptionDetail(input.description),
       ...(input.clientName ? [{ label: "Cliente", value: input.clientName }] : []),
-      ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone }] : []),
+      ...(input.clientPhone ? [{ label: "Telefono", value: input.clientPhone, url: `tel:${input.clientPhone.replace(/[^\d+]/g, "")}` }] : []),
       ...(input.clientEmail ? [{ label: "Email", value: input.clientEmail }] : []),
     ],
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Trovi gli stessi dati anche nella scheda dell'appuntamento."],
   });
+}
+
+/** Riga "Luogo" con il link a Google Maps (indirizzo completo, o almeno la città). */
+function placeDetail(address: string | null | undefined, city: string | null | undefined): { label: string; value: string; url: string }[] {
+  const place = address?.trim() || city?.trim();
+  if (!place) return [];
+  return [{ label: "Luogo", value: place, url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` }];
 }
 
 /** Righe "Data" e "Ora" (con la fine della fascia, se c'è). */

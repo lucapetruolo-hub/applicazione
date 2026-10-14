@@ -192,6 +192,8 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     for (const value of ["Anna Bianchi", "+39 333 1234567", "anna@example.it", "Via Roma 10 — 00100 Roma (RM)", "Idraulico", "Perdita sotto il lavandino", "09:00–11:00"]) {
       expect(email.text).toContain(value);
     }
+    expect(email.html).toContain('href="tel:+393331234567"');
+    expect(email.html).toContain("https://www.google.com/maps/search/?api=1&amp;query=Via%20Roma%2010");
   });
 
   it("al cliente: nome e cognome di chi viene, data, ora, lavoro e descrizione", () => {
@@ -199,12 +201,13 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
       name: "Anna",
       businessName: "Idraulica Rossi",
       professionalFullName: "Luigi Rossi",
+      address: "Via Roma 10 — 00100 Roma (RM)",
       scheduledAt,
       scheduledEndAt,
       category: "Idraulico",
       description: "Perdita sotto il lavandino",
     });
-    for (const value of ["Luigi Rossi (Idraulica Rossi)", "giovedì 15 ottobre", "09:00–11:00", "Idraulico", "Perdita sotto il lavandino"]) {
+    for (const value of ["Luigi Rossi (Idraulica Rossi)", "Via Roma 10 — 00100 Roma (RM)", "giovedì 15 ottobre", "09:00–11:00", "Idraulico", "Perdita sotto il lavandino"]) {
       expect(email.text).toContain(value);
     }
   });

@@ -18,8 +18,11 @@ export type EmailContent = {
   greeting?: string | null;
   title: string;
   paragraphs: string[];
-  /** Riquadro con i dati principali (categoria, data, importo...). */
-  details?: { label: string; value: string }[];
+  /**
+   * Riquadro con i dati principali (categoria, data, importo...). Con `url`
+   * il valore diventa un link (mappa, telefono: docs/CHANGELOG.md §234).
+   */
+  details?: { label: string; value: string; url?: string }[];
   /** Avviso urgente o scadenza: titolo e riquadro in rosso. */
   tone?: "default" | "urgent";
   cta?: { label: string; url: string };
@@ -68,7 +71,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
       content.details
         .map(
           (d) =>
-            `<p style="margin:4px 0;font-family:${FONT};font-size:15px;line-height:1.45;color:${c.text};"><span style="color:${c.muted};">${escapeHtml(d.label)}:</span> <strong>${escapeHtml(d.value)}</strong></p>`,
+            `<p style="margin:4px 0;font-family:${FONT};font-size:15px;line-height:1.45;color:${c.text};"><span style="color:${c.muted};">${escapeHtml(d.label)}:</span> <strong>${d.url ? `<a href="${escapeHtml(d.url)}" style="color:${c.text};">${escapeHtml(d.value)}</a>` : escapeHtml(d.value)}</strong></p>`,
         )
         .join("") +
       `</td></tr></table>`
@@ -117,7 +120,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     plain(content.title),
     ...(greeting ? [greeting] : []),
     ...content.paragraphs.map(plain),
-    ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}`).join("\n")] : []),
+    ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}${d.url && !d.url.startsWith("tel:") ? ` (${d.url})` : ""}`).join("\n")] : []),
     ...(content.cta ? [`${content.cta.label}: ${content.cta.url}`] : []),
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,

@@ -101,6 +101,8 @@ export class BookingRemindersService {
             professionalFullName,
             scheduledAt: booking.scheduledAt,
             scheduledEndAt: booking.scheduledEndAt,
+            address,
+            city: booking.city ?? booking.quote?.guidedRequest.city ?? null,
             category,
             description,
           }),

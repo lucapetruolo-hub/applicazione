@@ -18369,8 +18369,11 @@ ora, lavoro e descrizione.
   prenotazioni dirette dall'agenda). Mai i dati di un account cancellato.
   Rispetta §5 punto 9: il promemoria parte solo per prenotazioni confermate.
 - Al cliente (`bookingReminderClientEmail`): Professionista (nome e cognome,
-  con il nome dell'attività tra parentesi se diverso), Data, Ora, Lavoro,
-  Descrizione.
+  con il nome dell'attività tra parentesi se diverso), Data, Ora, Luogo,
+  Lavoro, Descrizione (il luogo anche al cliente su richiesta dell'utente).
+- Migliorie approvate dall'utente: il luogo è un link a Google Maps (in
+  entrambe le email) e il telefono del cliente è un link `tel:`. Il riquadro
+  dei dettagli (`renderEmail`) accetta per questo un `url` facoltativo.
 
 **Verifica**: test in `apps/api/src/email/email-templates.test.ts`,
 typecheck di `apps/api`.
