@@ -19,7 +19,7 @@ const POINTS = [
     comingSoon: false,
   },
   {
-    text: "Pagamento online protetto: acconto del 20% e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",
+    text: "Pagamento online protetto: acconto subito e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",
     comingSoon: false,
     online: true,
   },

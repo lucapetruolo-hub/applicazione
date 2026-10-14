@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatServicePriceRange, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
-import { PaymentChoice } from "@/components/PaymentChoice";
+import { formatServicePriceRange, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -412,7 +412,8 @@ export function QuoteCard({
               <CardButton
                 tone="primary"
                 onPress={() => {
-                  setPaymentMethod(onlinePayments ? "ONLINE" : "DIRECT");
+                  // Preselezionato il primo modo offerto dal professionista (online per primo, se c'è).
+                  setPaymentMethod(selectablePaymentChoices(quote.paymentOptions, onlinePayments)[0] ?? "DIRECT");
                   setChoosingPayment(true);
                 }}
               >
@@ -440,10 +441,17 @@ export function QuoteCard({
                 onChange={setPaymentMethod}
                 quoteMaxEurCents={priceTotals.totalMaxEurCents}
                 onlineAvailable={onlinePayments}
+                offered={quote.paymentOptions}
+                depositPercent={quote.depositPercent}
               />
               <XStack gap="$2" flexWrap="wrap">
-                <CardButton tone="primary" arrow onPress={handleAccept} disabled={isAccepting}>
-                  {isAccepting ? "Accettazione..." : paymentMethod === "ONLINE" ? "Accetta e paga l'acconto" : "Accetta preventivo"}
+                <CardButton
+                  tone="primary"
+                  arrow
+                  onPress={handleAccept}
+                  disabled={isAccepting || !selectablePaymentChoices(quote.paymentOptions, onlinePayments).includes(paymentMethod)}
+                >
+                  {isAccepting ? "Accettazione..." : paymentChoiceIsOnline(paymentMethod) ? "Accetta e paga l'acconto" : "Accetta preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
                   Annulla

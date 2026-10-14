@@ -3,9 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { buildWhatsAppLink, formatBookingAddress, formatEurCents, quotePriceTotals, scheduleChangeBetween, scheduleChangeOf, type CompleteBookingInput, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import {
+  DEFAULT_QUOTE_PAYMENT_OPTIONS,
+  MAX_DEPOSIT_PERCENT,
+  MIN_DEPOSIT_PERCENT,
+  ONLINE_DEPOSIT_PERCENT,
+  QUOTE_PAYMENT_OPTION_LABEL,
+  jobPaymentChoices,
+  paymentChoiceIsOnline,
+  type JobPaymentChoice,
+  buildWhatsAppLink,
+  formatBookingAddress,
+  formatEurCents,
+  quotePriceTotals,
+  scheduleChangeBetween,
+  scheduleChangeOf,
+  type CompleteBookingInput,
+  type ProfessionalAvailableSlot,
+  type ProfessionalBooking,
+  type ProfessionalLead,
+} from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useOnlinePayments } from "@/lib/onlinePayments";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -34,6 +54,8 @@ export function RequestCard({
   token,
   availableSlots,
   myProfileId,
+  defaultPaymentOffer,
+  stripeVerified = true,
   isOpen,
   onToggle,
   onChanged,
@@ -49,6 +71,10 @@ export function RequestCard({
   token: string;
   availableSlots: ProfessionalAvailableSlot[];
   myProfileId: string | null;
+  /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239); null = valori di sistema. */
+  defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
+  /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
+  stripeVerified?: boolean;
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -88,6 +114,20 @@ export function RequestCard({
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
+  // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §237).
+  const onlinePaymentsActive = useOnlinePayments();
+  // L'acconto online lo offre solo chi ha completato la verifica su Stripe (§241).
+  const onlinePayments = onlinePaymentsActive && stripeVerified;
+  const [paymentOptions, setPaymentOptions] = useState<JobPaymentChoice[]>(defaultPaymentOffer?.paymentOptions ?? DEFAULT_QUOTE_PAYMENT_OPTIONS);
+  const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
+  const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
+  // Il profilo arriva dopo la scheda: si applicano i valori di serie finché il modulo non è aperto.
+  useEffect(() => {
+    if (!defaultPaymentOffer || showQuoteForm) return;
+    setPaymentOptions(defaultPaymentOffer.paymentOptions);
+    setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultPaymentOffer]);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
 
@@ -268,9 +308,27 @@ export function RequestCard({
       }
     }
 
+    // Senza pagamenti online attivi resta solo il diretto (le altre caselle non si vedono).
+    const offered = onlinePayments ? paymentOptions : (["DIRECT"] as JobPaymentChoice[]);
+    if (offered.length === 0) return setQuoteError("Scegli almeno un modo di pagamento.");
+    const depositPercent = Number(depositPercentDraft.trim());
+    if (offered.some(paymentChoiceIsOnline) && (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT)) {
+      return setQuoteError(`L'acconto online va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%, senza decimali.`);
+    }
+
     setIsSubmittingQuote(true);
     try {
-      await apiClient.createQuote(token, { requestId: gr.id, items: parsed, estimatedStartDate, estimatedEndDate, notes: quoteNotes.trim() || undefined });
+      await apiClient.createQuote(token, {
+        requestId: gr.id,
+        items: parsed,
+        estimatedStartDate,
+        estimatedEndDate,
+        notes: quoteNotes.trim() || undefined,
+        paymentOptions: offered,
+        ...(offered.some(paymentChoiceIsOnline) ? { depositPercent } : {}),
+        ...(rememberPaymentOffer ? { rememberPaymentOffer: true } : {}),
+      });
+      setRememberPaymentOffer(false);
       setShowQuoteForm(false);
       onChanged();
     } catch (err) {
@@ -427,6 +485,8 @@ export function RequestCard({
     });
     setItems(lead.quote.items.map((it) => ({ name: it.name, priceMin: it.priceMinEurCents != null ? (it.priceMinEurCents / 100).toString() : "", priceMax: it.priceMaxEurCents != null ? (it.priceMaxEurCents / 100).toString() : "" })));
     setQuoteNotes(lead.quote.notes ?? "");
+    setPaymentOptions(lead.quote.paymentOptions);
+    setDepositPercentDraft(String(lead.quote.depositPercent));
     setShowQuoteForm(true);
   }
 
@@ -917,6 +977,15 @@ export function RequestCard({
                   </Text>
                 </XStack>
               ) : null}
+              {stage !== "accettata" && stage !== "completata" && stage !== "annullata" ? (
+                <Text fontSize={12.5} color={brand.grafite70}>
+                  Pagamento offerto:{" "}
+                  {lead.quote.paymentOptions
+                    .map((choice) => QUOTE_PAYMENT_OPTION_LABEL[choice].toLowerCase())
+                    .join("; ")}
+                  {lead.quote.paymentOptions.some(paymentChoiceIsOnline) ? ` (acconto online ${lead.quote.depositPercent}%)` : ""}
+                </Text>
+              ) : null}
             </YStack>
           ) : null}
 
@@ -1227,6 +1296,73 @@ export function RequestCard({
                   ) : null}
                 </YStack>
               )}
+
+              {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
+              <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
+                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                  Come vuoi essere pagato?{onlinePayments ? " Puoi sceglierne più di uno: il cliente decide tra questi." : ""}
+                </Text>
+                {onlinePayments ? (
+                  <>
+                    {jobPaymentChoices.map((choice) => (
+                      <label key={choice} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 14 }}>
+                        <input
+                          type="checkbox"
+                          checked={paymentOptions.includes(choice)}
+                          onChange={(e) =>
+                            setPaymentOptions((prev) =>
+                              e.target.checked ? jobPaymentChoices.filter((c) => c === choice || prev.includes(c)) : prev.filter((c) => c !== choice),
+                            )
+                          }
+                          style={{ accentColor: brand.verificato }}
+                        />
+                        {QUOTE_PAYMENT_OPTION_LABEL[choice]}
+                      </label>
+                    ))}
+                    {paymentOptions.some(paymentChoiceIsOnline) ? (
+                      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                        <Text fontSize={13} color={brand.grafite}>
+                          Acconto online
+                        </Text>
+                        <input
+                          aria-label="Percentuale dell'acconto online"
+                          type="number"
+                          inputMode="numeric"
+                          min={MIN_DEPOSIT_PERCENT}
+                          max={MAX_DEPOSIT_PERCENT}
+                          step={1}
+                          value={depositPercentDraft}
+                          onChange={(e) => setDepositPercentDraft(e.target.value)}
+                          style={{ ...smallInputStyle, width: 72 }}
+                        />
+                        <Text fontSize={13} color={brand.grafite}>
+                          % dell&apos;importo massimo
+                        </Text>
+                      </XStack>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    {onlinePaymentsActive ? (
+                      <>
+                        Il cliente ti paga direttamente. Per offrire anche l&apos;acconto online completa la verifica su Stripe in{" "}
+                        <a href="/dashboard/fiscale" style={{ color: brand.verificato }}>
+                          Dati fiscali e pagamenti
+                        </a>
+                        .
+                      </>
+                    ) : (
+                      "Il cliente ti paga direttamente: il pagamento online arriverà a breve."
+                    )}
+                  </Text>
+                )}
+                {onlinePayments ? (
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 13, color: brand.grafite70 }}>
+                    <input type="checkbox" checked={rememberPaymentOffer} onChange={(e) => setRememberPaymentOffer(e.target.checked)} style={{ accentColor: brand.verificato }} />
+                    Proponi questi modi anche nei prossimi preventivi
+                  </label>
+                ) : null}
+              </YStack>
 
               <textarea aria-label="Messaggio per il cliente" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />
 

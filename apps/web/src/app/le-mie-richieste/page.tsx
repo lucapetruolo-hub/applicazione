@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { JobPaymentChoice } from "@professionisti/shared";
+import { type JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -287,6 +287,15 @@ function LeMieRichiesteContent() {
   // del popup), senza aspettare il poll qui sopra; i pallini restano al poll.
   useLiveRefresh(reload, Boolean(token), null);
 
+  // Ritorno dal pagamento dell'acconto (docs/CHANGELOG.md §240): il lavoro
+  // nasce quando arriva la conferma di Stripe, di solito pochi secondi dopo.
+  const depositPaid = searchParams.get("pagamento") === "completato";
+  useEffect(() => {
+    if (!depositPaid) return;
+    const timers = [3000, 8000].map((ms) => window.setTimeout(reload, ms));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [depositPaid, reload]);
+
   // "Nuovo" su una card raggiunta solo tramite la propria Booking (un
   // aggiornamento sul lavoro, non sulla richiesta in sé) — tradotto nella
   // stessa chiave `request.id` usata dalla card unificata.
@@ -303,22 +312,15 @@ function LeMieRichiesteContent() {
   // crea subito la prenotazione. QuoteCard gestisce da sé stato di
   // caricamento ed errore; qui basta propagare la chiamata reale e
   // ricaricare l'elenco al successo.
-  // Con il pagamento online si va subito al checkout Stripe dell'acconto
-  // (§168); se non parte, la prenotazione resta e l'acconto si paga dalla
-  // scheda del lavoro.
+  // Con l'acconto online si va al checkout Stripe: il lavoro si conferma
+  // solo a pagamento riuscito (docs/CHANGELOG.md §240), fino ad allora il
+  // preventivo resta da accettare.
   async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
-    if (paymentMethod === "ONLINE") {
-      try {
-        const { url } = await apiClient.jobPaymentCheckout(token, bookingId, "deposit");
-        if (url) {
-          window.location.href = url;
-          return;
-        }
-      } catch {
-        // la scheda del lavoro mostra "Paga l'acconto"
-      }
+    const { checkoutUrl } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
+      return;
     }
     reload();
   }
@@ -348,6 +350,12 @@ function LeMieRichiesteContent() {
         </Text>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+
+        {depositPaid ? (
+          <Text color={brand.grafite} fontSize="$3">
+            Pagamento ricevuto: il lavoro viene confermato appena Stripe ce lo comunica, di solito in pochi secondi.
+          </Text>
+        ) : null}
 
         {requests !== null && requests.length > 0 ? (
           <>

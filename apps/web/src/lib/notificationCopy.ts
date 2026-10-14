@@ -13,7 +13,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_ACCEPTED: { icon: "🥳", message: "Wow, hanno accettato un tuo preventivo!" },
   QUOTE_DATE_PROPOSED: { icon: "🗓️", message: "Il cliente ha proposto un'altra data per il preventivo." },
   QUOTE_DATE_CHANGED: { icon: "🗓️", message: "Il professionista ha modificato la data del tuo preventivo." },
-  QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo, senza cambiare data e orario." },
+  QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
   QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto!" },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
@@ -21,6 +21,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un intervento." },
   QUOTE_REJECTED: { icon: "😕", message: "Il cliente ha rifiutato il tuo preventivo." },
   QUOTE_WITHDRAWN: { icon: "↩️", message: "Il professionista ha ritirato il preventivo." },
+  QUOTE_DEPOSIT_REFUNDED: { icon: "↩️", message: "Il preventivo non si poteva più confermare: ti abbiamo rimborsato l'acconto." },
   LEAD_DECLINED: { icon: "🙁", message: "Un professionista ha rifiutato la tua richiesta." },
   GUIDED_REQUEST_EXPIRED: { icon: "⏱️", message: "La tua richiesta è scaduta senza risposte." },
   // Richiesta diretta inoltrata ad altri dopo nessuna risposta (docs/CHANGELOG.md §154).
@@ -47,6 +48,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
+  STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
+  STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Dati fiscali e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Il tuo profilo è verificato: ora mostra il badge Verificato." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: controlla la tua email per il motivo." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
@@ -66,6 +69,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
   JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
+  JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: l'accredito è sospeso finché la banca non decide." },
+  ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rispondi con le prove dalla Dashboard Stripe." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: { icon: "⏳", message: "Il professionista ha terminato un lavoro: confermalo o segnala un problema." },

@@ -78,6 +78,8 @@ export type ProfessionalCardProps = {
   /** "Ha completato N interventi questo mese" (richiesta esplicita dell'utente) — dato reale (Booking COMPLETED nel mese corrente), 0/assente non mostra nulla. */
   completedThisMonth?: number;
   verified?: boolean;
+  /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §241): badge distinto da "Verificato". */
+  stripeVerified?: boolean;
   /**
    * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale
    * di Conformità" — trasparenza sul ranking sponsorizzato, art. 26 DSA):
@@ -164,6 +166,7 @@ export function ProfessionalCard({
   reviewCount,
   completedThisMonth,
   verified,
+  stripeVerified,
   boosted,
   isNewProfile,
   hasLiabilityInsurance,
@@ -304,6 +307,22 @@ export function ProfessionalCard({
                   <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
                     Verificato
+                  </Text>
+                </XStack>
+              ) : null}
+              {stripeVerified ? (
+                <XStack
+                  alignItems="center"
+                  gap={4}
+                  paddingHorizontal="$2"
+                  paddingVertical={2}
+                  borderRadius="$10"
+                  backgroundColor={brand.cianografiaVelo}
+                  accessibilityHint="Stripe, il fornitore dei pagamenti, ha verificato l'identità del professionista. Non è una garanzia sulla qualità del lavoro."
+                >
+                  <Icon name="shield-check" size={13} color={brand.verificato} strokeWidth={2} />
+                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
+                    Identità verificata da Stripe
                   </Text>
                 </XStack>
               ) : null}

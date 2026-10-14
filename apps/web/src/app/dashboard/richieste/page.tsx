@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { type MyProfessionalProfile, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -71,6 +71,9 @@ function RichiesteContent() {
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   const [availableSlots, setAvailableSlots] = useState<ProfessionalAvailableSlot[]>([]);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
+  const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
+  const [stripeVerified, setStripeVerified] = useState(true);
   const [profileMissing, setProfileMissing] = useState(false);
   // Pallino rosso su "Contatta" (stesso significato già in uso su
   // /dashboard e /le-mie-richieste) — questa pagina è ora la destinazione
@@ -184,6 +187,8 @@ function RichiesteContent() {
         setBookings(b);
         setAvailableSlots(slots);
         setMyProfileId(profile?.id ?? null);
+        setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
+        setStripeVerified(profile?.stripeVerified ?? true);
         if (!profile) setProfileMissing(true);
       })
       .catch(() => setProfileMissing(true));
@@ -623,6 +628,8 @@ function RichiesteContent() {
                   token={token}
                   availableSlots={availableSlots}
                   myProfileId={myProfileId}
+                  defaultPaymentOffer={defaultPaymentOffer}
+                  stripeVerified={stripeVerified}
                   isOpen={openId === lead.id}
                   onToggle={() => {
                     const opening = openId !== lead.id;

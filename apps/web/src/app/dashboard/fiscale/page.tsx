@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
-import { BRAND, checkFiscalId, professionalFiscalProfileSchema } from "@professionisti/shared";
+import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -293,6 +293,20 @@ function DashboardFiscaleContent() {
     }
   }
 
+  // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §238).
+  async function handleStripeDashboard() {
+    if (!token) return;
+    setStripeLoading(true);
+    setStripeError(null);
+    try {
+      const { url } = await apiClient.createStripeDashboardLink(token);
+      window.location.href = url;
+    } catch (e) {
+      setStripeError(e instanceof Error ? e.message : "Impossibile aprire il tuo conto Stripe.");
+      setStripeLoading(false);
+    }
+  }
+
   if (isLoading || profile === undefined) {
     return (
       <Section title="Dati fiscali e pagamenti">
@@ -302,6 +316,7 @@ function DashboardFiscaleContent() {
   }
 
   const verification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
+  const missingForVisibility = fiscalDataMissing(profile);
   // Validazione in tempo reale (mai bloccante: un formato non riconosciuto
   // resta comunque salvabile, solo segnalato — CLAUDE.md, fiscalValidation.ts).
   const cfCheck = checkFiscalId(fields.fiscalCodiceFiscale ?? "", fields.fiscalIdIssuingCountry, "codiceFiscale");
@@ -311,10 +326,20 @@ function DashboardFiscaleContent() {
     <Section title="Dati fiscali e pagamenti" maxWidth={760}>
       <YStack gap="$5">
         <Text fontSize={14} color={brand.grafite70}>
-          Questi dati non sono mai visibili pubblicamente — servono solo per la rendicontazione fiscale (DAC7) e, se scegli di attivarli, per i
-          pagamenti tramite {BRAND.name}. Non è mai obbligatorio compilarli per usare la piattaforma: puoi continuare a farti pagare direttamente dai
-          tuoi clienti.
+          Questi dati non sono mai visibili pubblicamente: servono per la rendicontazione fiscale (DAC7), che la legge ci chiede per tutti,
+          anche per chi si fa pagare solo direttamente. Il tuo profilo compare nelle ricerche quando li hai compilati. Ai clienti mostriamo solo se
+          sei un privato o un professionista con partita IVA.
         </Text>
+        {/* Cosa manca per essere pubblici (docs/CHANGELOG.md §241). */}
+        {missingForVisibility.length > 0 ? (
+          <Text fontSize={13} color={brand.urgenza}>
+            Per rendere visibile il profilo manca: {missingForVisibility.join(", ")}.
+          </Text>
+        ) : profile ? (
+          <Text fontSize={13} color={brand.verificato}>
+            Dati fiscali completi: il tuo profilo può comparire nelle ricerche.
+          </Text>
+        ) : null}
 
         {profile && (
           <XStack alignItems="center" gap="$2">
@@ -587,18 +612,39 @@ function DashboardFiscaleContent() {
               Pagamenti tramite {BRAND.name}
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
-              I clienti che scelgono il pagamento online versano un acconto del 20% e il saldo a lavoro finito. Teniamo noi i soldi e te li
+              Nel preventivo scegli tu come farti pagare: diretto, acconto online (la percentuale la decidi tu) con saldo online, o acconto
+              online con saldo diretto. Quello che il cliente paga online lo teniamo noi e te lo
               accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
               la commissione {BRAND.name} del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
-              I clienti che scelgono il pagamento diretto ti pagano come vi accordate.
+              Quello che il cliente paga direttamente te lo dà come vi accordate. La verifica su Stripe serve solo per offrire
+              l&apos;acconto online: quando è completata il tuo profilo mostra anche il badge &quot;Identità verificata da Stripe&quot;.
             </Text>
             {profile?.stripeChargesEnabled ? (
-              <Badge variant="verificato">Pagamenti attivi</Badge>
+              <XStack gap="$3" alignItems="center" flexWrap="wrap">
+                <Badge variant="verificato">Pagamenti attivi</Badge>
+                <Button variant="secondary" onPress={handleStripeDashboard} disabled={stripeLoading}>
+                  {stripeLoading ? "Attendere..." : "Vedi accrediti e IBAN su Stripe"}
+                </Button>
+                {stripeError && (
+                  <Text fontSize={13} color={brand.urgenza}>
+                    {stripeError}
+                  </Text>
+                )}
+              </XStack>
             ) : (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">
                 <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>
-                  {stripeLoading ? "Attendere..." : `Attiva pagamenti tramite ${BRAND.name}`}
+                  {stripeLoading
+                    ? "Attendere..."
+                    : profile?.stripeConnectAccountId
+                      ? "Completa la verifica su Stripe"
+                      : `Attiva pagamenti tramite ${BRAND.name}`}
                 </Button>
+                {profile?.stripeConnectAccountId && profile.stripeRequirementsStatus && (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    Stripe ti chiede ancora: {profile.stripeRequirementsStatus}
+                  </Text>
+                )}
                 {stripeError && (
                   <Text fontSize={13} color={brand.urgenza}>
                     {stripeError}

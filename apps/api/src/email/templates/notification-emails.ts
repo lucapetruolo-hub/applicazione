@@ -9,6 +9,7 @@ import {
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
+  quoteChangeWhat,
   scheduleChangeAlternative,
   scheduleChangeObject,
   type ContentReportTargetType,
@@ -122,6 +123,18 @@ function changeDetails(ctx: NotificationEmailContext, payload: Payload, fromLabe
 }
 
 const clientRequests = () => ({ label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` });
+// Stati di una contestazione in banca (Stripe Dispute.status), docs/CHANGELOG.md §236.
+const DISPUTE_STATUS_LABEL: Record<string, string> = {
+  needs_response: "aperta, serve la nostra risposta",
+  warning_needs_response: "richiesta di informazioni, serve la nostra risposta",
+  under_review: "in esame dalla banca",
+  warning_under_review: "in esame dalla banca",
+  won: "vinta",
+  warning_closed: "chiusa senza contestazione",
+  prevented: "evitata",
+  lost: "persa",
+};
+
 const proRequests = (label = "Apri la richiesta") => ({ label, url: `${frontendUrl()}/dashboard/richieste` });
 const subscriptionPage = () => ({ label: "Apri la pagina Abbonamento", url: `${frontendUrl()}/dashboard/abbonamento` });
 
@@ -266,6 +279,19 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: clientRequests(),
   }),
+  // Acconto pagato su un preventivo non più disponibile (docs/CHANGELOG.md §240).
+  QUOTE_DEPOSIT_REFUNDED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Ti abbiamo rimborsato l'acconto",
+    greeting: ctx.name,
+    title: "Acconto rimborsato",
+    paragraphs: [
+      `Il preventivo di **${pro(ctx)}** per **${job(ctx)}** non si poteva più confermare quando è arrivato il tuo pagamento: per esempio era cambiato o era stato ritirato.`,
+      "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
   QUOTE_DATE_PROPOSED: (payload, ctx) => {
     // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
     // (docs/CHANGELOG.md §196).
@@ -330,13 +356,8 @@ const BUILDERS: Record<string, Builder> = {
   // Preventivo aggiornato (voci o note) senza cambio di data (docs/CHANGELOG.md §196).
   QUOTE_UPDATED: (payload, ctx) => {
     const what =
-      payload.itemsChanged === true && payload.notesChanged === true
-        ? "le voci e le note"
-        : payload.itemsChanged === true
-          ? "le voci"
-          : payload.notesChanged === true
-            ? "le note"
-            : "il contenuto";
+      quoteChangeWhat({ itemsChanged: payload.itemsChanged === true, notesChanged: payload.notesChanged === true, paymentChanged: payload.paymentChanged === true }) ??
+      "il contenuto";
     return {
       kind: "notification",
       subject: `${pro(ctx)} ha aggiornato il preventivo`,
@@ -347,6 +368,8 @@ const BUILDERS: Record<string, Builder> = {
         ...(typeof payload.priceBefore === "string" && typeof payload.priceAfter === "string"
           ? [`Il totale indicativo passa da ${payload.priceBefore} a **${payload.priceAfter}**.`]
           : []),
+        // Modi di pagamento offerti (docs/CHANGELOG.md §239).
+        ...(typeof payload.paymentOffer === "string" ? [`Come puoi pagare: ${payload.paymentOffer}.`] : []),
         ...noteChange(payload, "Note di prima", "Note nuove"),
         "Rileggilo prima di accettarlo.",
       ],
@@ -726,6 +749,29 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora in custodia.`],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
   }),
+  JOB_STRIPE_DISPUTE: (payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: payload.status && ["won", "lost", "warning_closed", "prevented"].includes(String(payload.status)) ? "Contestazione in banca chiusa" : "Un cliente ha contestato un pagamento in banca",
+    greeting: ctx.name,
+    title: "Contestazione in banca",
+    paragraphs: [
+      `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
+      "Decide la banca: finché la contestazione è aperta l'accredito resta sospeso. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+    ],
+    cta: proRequests("Apri il lavoro"),
+  }),
+  ADMIN_STRIPE_DISPUTE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Contestazione in banca su un pagamento",
+    title: "Contestazione in banca",
+    paragraphs: [
+      `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
+      payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",
@@ -822,6 +868,28 @@ const BUILDERS: Record<string, Builder> = {
       "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
     ],
     cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },
+  }),
+  STRIPE_ACCOUNT_ACTIVE: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Stripe ha verificato la tua identità",
+    greeting: ctx.name,
+    title: "Pagamenti online attivi",
+    paragraphs: [
+      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Identità verificata da Stripe**.",
+      "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
+    ],
+    cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
+  STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Stripe ha sospeso i pagamenti online sul tuo account",
+    greeting: ctx.name,
+    title: "Pagamenti online sospesi",
+    paragraphs: [
+      "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
+      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Identità verificata da Stripe** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
+    ],
+    cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
   PROFILE_VERIFICATION_REMOVED: (payload, ctx) => {
     const note = str(payload.note);

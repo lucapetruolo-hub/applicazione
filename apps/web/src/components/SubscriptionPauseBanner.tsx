@@ -43,8 +43,17 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
   let body: string;
   let action: string;
   let tone: "stop" | "warn" = "stop";
+  let href = "/dashboard/abbonamento#livelli";
 
-  if (sub.pausedReason === "LIMIT_REACHED") {
+  // Prima di tutto i dati fiscali: senza, il profilo non è pubblico (docs/CHANGELOG.md §241).
+  if (sub.fiscalDataNeeded) {
+    title = "Il tuo profilo non è ancora visibile";
+    body =
+      "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila i dati fiscali: " +
+      "la legge ci chiede di raccoglierli per tutti. Per farti pagare l'acconto online serve poi anche la verifica su Stripe.";
+    action = "Compila i dati fiscali";
+    href = "/dashboard/fiscale";
+  } else if (sub.pausedReason === "LIMIT_REACHED") {
     const limit = sub.usage.monthlyLimit ?? 0;
     const next = nextTierOf(sub);
     title = `Hai raggiunto i ${limit} lavori compresi ${sub.state === "TRIAL" ? "nel mese gratuito" : `nel livello ${sub.tier ? subscriptionTierInfo(sub.tier).label : ""}`}`;
@@ -80,7 +89,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
         <Text color={brand.grafite70}>{body}</Text>
       </YStack>
       {showAction ? (
-        <Link href="/dashboard/abbonamento#livelli" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+        <Link href={href} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
           <Button variant="primary">{action}</Button>
         </Link>
       ) : null}

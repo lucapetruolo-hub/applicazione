@@ -90,6 +90,13 @@ export function JobPaymentStatus({
     lines.push(`Importo finale: ${eur(payment.finalAmountEurCents)}`);
   if (payment.paidEurCents > 0)
     lines.push(`Pagato online: ${eur(payment.paidEurCents)}`);
+  // Acconto online e saldo diretto (docs/CHANGELOG.md §237).
+  if (payment.balanceDirect)
+    lines.push(
+      payment.directBalanceEurCents !== null
+        ? `Saldo diretto al professionista: ${eur(payment.directBalanceEurCents)}`
+        : "Saldo diretto al professionista",
+    );
   if (payment.refundedEurCents > 0)
     lines.push(`Rimborsato al cliente: ${eur(payment.refundedEurCents)}`);
 
@@ -99,7 +106,9 @@ export function JobPaymentStatus({
       stage === "AWAITING_DEPOSIT"
         ? "Paga l'acconto per completare la prenotazione con il pagamento online."
         : stage === "DEPOSIT_PAID"
-          ? "Il saldo si paga quando il professionista chiude il lavoro con l'importo finale."
+          ? payment.balanceDirect
+            ? "Il saldo lo paghi direttamente al professionista, a lavoro finito."
+            : "Il saldo si paga quando il professionista chiude il lavoro con l'importo finale."
           : stage === "AWAITING_BALANCE"
             ? payment.balanceUnpaid
               ? "Il saldo non risulta pagato: pagalo ora. Il nostro team è stato avvisato."
@@ -120,7 +129,9 @@ export function JobPaymentStatus({
       stage === "AWAITING_DEPOSIT"
         ? "Il cliente ha scelto il pagamento online e deve ancora pagare l'acconto."
         : stage === "DEPOSIT_PAID"
-          ? `Acconto pagato (${eur(collected)}). Il saldo lo paga il cliente quando chiudi il lavoro con l'importo finale.`
+          ? payment.balanceDirect
+            ? `Acconto pagato online (${eur(collected)}). Il saldo te lo paga il cliente direttamente.`
+            : `Acconto pagato (${eur(collected)}). Il saldo lo paga il cliente quando chiudi il lavoro con l'importo finale.`
           : stage === "AWAITING_BALANCE"
             ? `In attesa del saldo del cliente.${payout} Se entro 7 giorni non paga, ricevi quanto già pagato e il nostro team lo sollecita.`
             : stage === "PAID"
@@ -133,7 +144,7 @@ export function JobPaymentStatus({
   return box(
     <>
       <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
-        Pagamento online con Stripe
+        {payment.balanceDirect ? "Acconto online con Stripe, saldo diretto" : "Pagamento online con Stripe"}
         {stage ? ` · ${JOB_PAYMENT_STAGE_LABEL[stage]}` : ""}
       </Text>
       {lines.length > 0 ? (

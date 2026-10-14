@@ -26,6 +26,12 @@ export class ProfessionalFiscalController {
   createStripeConnectLink(@Req() req: AuthenticatedRequest) {
     return this.fiscalService.createStripeConnectOnboardingLink(req.user.userId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("stripe-dashboard")
+  createStripeDashboardLink(@Req() req: AuthenticatedRequest) {
+    return this.fiscalService.createStripeDashboardLink(req.user.userId);
+  }
 }
 
 /** Vista/azioni admin sui dati fiscali di un professionista specifico — CLAUDE.md §88. */

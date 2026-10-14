@@ -61,7 +61,7 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
       netAmountEurCents: 0,
       releaseDueAt: now,
       releasedAt: null,
-      balanceUnpaidAt: null,
+      balanceUnpaidAt: null, balanceDirect: false,
     };
     const pro = toJobPaymentSummary(jp, 42000, true)!;
     expect(pro.method).toBe("ONLINE");

@@ -18413,3 +18413,282 @@ Migliorie approvate dall'utente nello stesso giro:
 
 **Verifica**: `email-calendar.test.ts` e `email-templates.test.ts`,
 typecheck e lint di `apps/api`.
+
+## 236. Stripe: correzioni prima di attivare i pagamenti veri
+
+**Richiesta dell'utente**: rivedere l'integrazione Stripe (Billing, Payments,
+Invoicing, Connect) secondo le buone pratiche e il pianificatore ufficiale di
+Stripe, poi procedere con le correzioni nell'ordine proposto. Analisi
+completa in `/mnt/project-files/analisi/stripe-revisione-integrazione.md`
+(file del progetto, non del repo).
+
+**Decisioni** (prima PR del piano, punti A1-A5, B6, B8):
+- **Due endpoint webhook, due chiavi**: gli eventi degli account dei
+  professionisti (`account.updated`) arrivano solo a un endpoint "Connect"
+  separato, con la sua chiave. `BillingService.verifiedEvent` prova
+  `STRIPE_WEBHOOK_SECRET` e poi `STRIPE_CONNECT_WEBHOOK_SECRET` (nuova
+  variabile su Render, stesso URL `/billing/webhook`). Firma non valida → 400
+  (prima un errore 500). Senza questo `stripePayoutsEnabled` restava sempre
+  falso e nessun professionista riceveva i soldi.
+- **Account Accounts v2** al posto di `type: "express"` (superato per
+  Stripe): configurazione `recipient` con `stripe_transfers`, Dashboard
+  Express, `fees_collector` e `losses_collector` = `application`, Account
+  Link v2. Prima di creare il primo account va accettata la responsabilità
+  delle perdite nella Dashboard Stripe. Lo stato si legge da
+  `configuration.recipient.capabilities.stripe_balance.stripe_transfers.status`
+  (`professional-fiscal/stripe-connect-status.ts`), non più da
+  `charges_enabled`/`payouts_enabled`, e si rilegge da Stripe: al webhook,
+  al ritorno dalla verifica (`GET /professional-fiscal/me`) e prima di ogni
+  trasferimento. Il ritorno dalla verifica ora porta a `/dashboard/fiscale`
+  (prima `/dashboard/profilo`, dove la sezione non c'è); il pulsante diventa
+  "Completa la verifica su Stripe" e mostra cosa chiede ancora Stripe.
+- **Saldo pagato in ritardo**: il trasferimento parte subito dopo il
+  pagamento, quando i soldi non sono ancora disponibili sul saldo della
+  piattaforma. Ora è legato all'addebito (`source_transaction`), così Stripe
+  lo esegue comunque.
+- **Pagamenti lenti** (addebito SEPA, bonifico): `checkout.session.completed`
+  con `payment_status: "unpaid"` non attiva più nulla; si attiva con
+  `checkout.session.async_payment_succeeded`. `async_payment_failed` solo
+  registrato nel log (il cliente può riprovare).
+- **Contestazioni in banca** (`charge.dispute.created/updated/closed`):
+  nuove colonne `JobPayment.stripeDisputeId/Status/DisputedAt` (migrazione
+  `20261013120000_job_payment_stripe_dispute`). Aperta → pagamento
+  `DISPUTED`, accredito bloccato, avviso a Finanza (`ADMIN_STRIPE_DISPUTE`)
+  e al professionista (`JOB_STRIPE_DISPUTE`), una volta all'apertura e una
+  alla chiusura. Vinta → l'accredito riparte. Persa → la cifra conta come
+  restituita al cliente (`refundedEurCents`). Se i soldi erano già passati
+  al professionista nessuno storno automatico: decide il team, perché il
+  contratto con i professionisti non prevede ancora la clausola (domanda 8
+  per l'avvocato). Contestazioni su abbonamenti e boost: solo avviso.
+- **`render.yaml`**: nomi dei prezzi corretti (`STRIPE_PRICE_BASE/PLUS/PRO`,
+  prima `PRO/BUSINESS` dei vecchi piani) e nuova `STRIPE_CONNECT_WEBHOOK_SECRET`.
+- **Tolto il pagamento "sblocco richiesta"** (`POST /billing/leads/:id/checkout`
+  e il suo ramo nel webhook): era il vecchio modello a lead, superato
+  dall'abbonamento a livelli (§160) e mai esposto nel sito. Il modello `Lead`
+  resta (serve allo smistamento).
+
+**Verifica**: test nuovi in `billing-webhook.test.ts` (pagamento lento,
+seconda chiave, firma non valida, contestazione non di un lavoro) e
+`job-payments/stripe-disputes.test.ts` (stato account riletto prima del
+trasferimento, blocco con contestazione aperta, avvisi una volta sola,
+contestazione persa parziale e totale). Test, tipi e lint di `apps/api` e
+tipi di `apps/web` verdi; migrazione applicata su un Postgres locale. Il
+connettore Stripe del progetto ha solo accesso in lettura all'ambiente di
+prova: prodotti, webhook e account di prova vanno creati dalla Dashboard.
+
+## 237. Il professionista sceglie nel preventivo come farsi pagare
+
+**Richiesta esplicita dell'utente** (13/10/2026): "in fase di invio del
+preventivo il professionista seleziona già il metodo di pagamento scelto
+[...] direttamente o una percentuale di pagamento subito (da 1 a 100) o un
+mix di entrambe [...] può anche fare più di una selezione, così da poter far
+scegliere al cliente".
+
+**Decisione**: nel modulo del preventivo (`RequestCard`, dashboard
+richieste) la sezione "Come vuoi essere pagato?" con tre caselle, anche più
+di una insieme:
+- **Tutto diretto** (`DIRECT`);
+- **Acconto online e saldo online** (`ONLINE`, il flusso di §168);
+- **Acconto online e saldo diretto** (`MIXED`, nuovo).
+
+Una sola percentuale per l'acconto online, da 1 a 100% dell'importo massimo
+del preventivo (intero). Valori di serie scelti da me: diretto + online con
+acconto del 20%, cioè quanto valeva prima per tutti; i preventivi già
+inviati restano così (`quotePaymentOffer` in `packages/shared`). Senza
+pagamenti online attivi il modulo mostra solo il diretto e l'API rifiuta un
+preventivo senza il diretto. Accettando, il cliente vede solo i modi offerti
+con l'acconto calcolato (`PaymentChoice`); l'API rifiuta un modo non offerto.
+
+**Saldo diretto** (`JobPayment.balanceDirect`): da Stripe passa solo
+l'acconto (`onlineTargetEurCents` = acconto, al massimo l'importo finale).
+A lavoro chiuso non c'è saldo online da pagare; la commissione del 5% vale
+solo sulla parte pagata online; se l'importo finale è sotto l'acconto la
+differenza torna al cliente come prima. Assistenza e rimborso valgono solo
+per l'acconto (scritto anche nei Termini, da far vedere all'avvocato).
+
+**Database**: migrazione `20261013150000_quote_payment_options`
+(`quotes.paymentOptions`, `quotes.depositPercent`, `job_payments.balanceDirect`).
+
+**Testi aggiornati**: Termini (§5 pagamenti), pagina "Pagamenti" per i
+professionisti, Dati fiscali e pagamenti, garanzia della piattaforma (non
+dice più "20%").
+
+**Verifica**: `job-payments/quote-payment-options.test.ts` (valori di serie,
+limiti 1-100, saldo diretto: nessun saldo online, accredito dell'acconto,
+rimborso della differenza) e due test in `bookings.service.test.ts`
+(percentuale e saldo diretto passati al pagamento, modo non offerto
+rifiutato). Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione
+applicata su un Postgres locale.
+
+## 238. Stripe: carta e fatture, conto Stripe del professionista, estratto conto
+
+**Richiesta esplicita dell'utente** (13/10/2026): "procedi con tutto con la
+priorità descritta da te" (terzo blocco del piano
+`analisi/stripe-revisione-integrazione.md`, punti B1, B2, B5, B9).
+
+**Decisione**:
+- **Un solo cliente Stripe per professionista** (`ProfessionalProfile.stripeCustomerId`,
+  migrazione `20261013170000_professional_stripe_customer`): creato alla prima
+  necessità con chiave di idempotenza e riusato per abbonamento, differenze di
+  livello e boost (prima ogni pagamento creava un cliente nuovo da
+  `customer_email`). Chi aveva già un abbonamento riprende il cliente di
+  quell'abbonamento.
+- **Carta e fatture** (`POST /billing/portal`, sezione in
+  `/dashboard/abbonamento`): apre il Customer Portal di Stripe per cambiare
+  carta e scaricare le fatture. Livelli e annullamento restano nel sito. Va
+  salvata la configurazione del portale in Dashboard (checklist di lancio).
+- **"Vedi accrediti e IBAN su Stripe"** (`POST /professionals/me/fiscal-profile/stripe-dashboard`,
+  in Dati fiscali e pagamenti quando i pagamenti sono attivi): link di accesso
+  alla Dashboard Express del professionista.
+- **Nome del professionista sull'estratto conto del cliente**:
+  `statement_descriptor_suffix` sugli acconti e saldi online (max 10
+  caratteri, senza accenti né caratteri vietati da Stripe), per ridurre le
+  contestazioni "non riconosco l'addebito".
+
+Non fatto, perché già coperto: l'avviso sui dati che Stripe chiede ancora
+c'è già in Dati fiscali e pagamenti (§236).
+
+**Verifica**: `billing/billing-customer.test.ts` (cliente creato una volta,
+riusato, ripreso dall'abbonamento esistente; suffisso dell'estratto conto).
+Test, tipi e lint di `apps/api` e `apps/web` verdi; migrazione applicata su
+un Postgres locale.
+
+## 239. Profilo visibile solo dopo la verifica su Stripe, e tre migliorie ai modi di pagamento
+
+**Richiesta esplicita dell'utente** (13/10/2026): "l'account del
+professionista, che sia privato con codice fiscale, privato con P.IVA o
+azienda, si attiva e viene reso pubblico solamente una volta che effettua
+l'attivazione a Stripe, poiché vogliamo che Stripe gli effettui il KYC o
+KYB". Insieme: "effettua le tre migliorie" proposte prima di unire la PR #72.
+
+**Decisione — verifica su Stripe** (`apps/api/src/professional-fiscal/stripe-kyc.ts`):
+finché l'account Stripe del professionista non può ricevere i pagamenti
+(`ProfessionalFiscalProfile.stripePayoutsEnabled`, aggiornato dal webhook
+`account.updated` e riletto quando torna dalla verifica) il profilo non
+compare in ricerca, non entra nello smistamento né nella coda di riserva,
+non riceve richieste dirette né prenotazioni dall'agenda, la sua pagina dà
+"non trovato" e le sue recensioni non vanno in home. Vale per tutti, anche
+per chi vuole solo il pagamento diretto. Banner "Il tuo profilo non è
+ancora visibile" in Home e Abbonamento con il link a Dati fiscali e
+pagamenti. Il tipo di account Stripe segue il tipo fiscale già scelto
+(privato e ditta individuale come persona, azienda come società).
+Scelte mie: come la pausa dell'abbonamento (§162) vale solo con
+`STRIPE_SECRET_KEY` impostata, altrimenti nessuno potrebbe verificarsi e la
+ricerca resterebbe vuota; i profili dimostrativi restano visibili; se Stripe
+in seguito sospende l'account il profilo torna nascosto.
+
+Regola da seguire per i nuovi punti pubblici: aggiungere `stripeKycWhere()`
+(o `stripeKycMissing`) accanto ai filtri di CLAUDE.md §5 punto 11.
+
+**Migliorie**:
+- Avviso al cliente anche quando cambiano solo i modi di pagamento di un
+  preventivo già inviato (`QUOTE_UPDATED` con `paymentChanged`, riga nella
+  cronologia ed email "Come puoi pagare: ...").
+- Area admin, Lavori terminati: una riga su come è stato pagato il lavoro
+  (diretto, online, acconto online e saldo diretto con gli importi).
+- "Proponi questi modi anche nei prossimi preventivi" nel modulo del
+  preventivo: salva i modi e la percentuale come proposta di serie
+  (`ProfessionalProfile.defaultPaymentOptions/defaultDepositPercent`,
+  migrazione `20261013190000_professional_default_payment`).
+
+**Verifica**: `professional-fiscal/stripe-kyc.test.ts` (filtro spento senza
+Stripe, account attivo richiesto, profili dimostrativi; testi e confronti
+dei modi di pagamento). Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 240. Lavoro confermato solo dopo l'acconto online
+
+**Richiesta esplicita dell'utente** (13/10/2026), dalla domanda "il cliente
+per accettare il preventivo deve anche pagare?": scelta "Solo dopo
+l'acconto" sulla scheda di decisione.
+
+**Decisione**: se il cliente sceglie un modo con acconto online (tutto
+online, oppure acconto online e saldo diretto), accettare il preventivo apre
+solo il pagamento Stripe (`OnlineMoneyService.createQuoteDepositCheckout`,
+metadati `kind: "quote_deposit"`, scade dopo un'ora). La prenotazione, la
+chiusura della richiesta, l'avviso "preventivo accettato" al professionista
+e quindi i contatti del cliente (CLAUDE.md §5 punto 9, principio invariato:
+si sbloccano con la `Booking`) arrivano solo quando il webhook conferma il
+pagamento (`BookingsService.confirmQuoteDeposit`), che registra subito
+l'acconto sul pagamento del lavoro. Fino ad allora il preventivo resta da
+accettare e il cliente può riprovare. Col pagamento diretto non cambia nulla.
+
+Scelte mie: se al pagamento il preventivo è stato ritirato o rifiutato, ha
+cambiato importo, oppure il cliente ha già accettato un altro preventivo
+della stessa richiesta, l'acconto viene rimborsato per intero con avviso
+`QUOTE_DEPOSIT_REFUNDED` (argomento "preventivi") e riga in cronologia. Il
+webhook è idempotente sul payment intent. Al ritorno da Stripe la pagina "Le
+mie richieste" avvisa che il lavoro si sta confermando e si ricarica. Le
+prenotazioni online create prima di questa modifica continuano a pagare
+l'acconto dalla scheda del lavoro come prima. Termini §5 aggiornati.
+
+**Verifica**: `bookings.service.test.ts` (pagamento aperto senza
+prenotazione, percentuale dell'acconto, conferma col webhook, evento
+ripetuto, rimborso per preventivo ritirato, importo cambiato o altro
+preventivo già accettato). Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 241. Profilo pubblico con i dati fiscali, Stripe solo per l'acconto online e il badge
+
+**Richiesta esplicita dell'utente** (13/10/2026): "tutti gli account
+professionali che si registrano scelgono solo che tipo sono dei 3 (privato
+senza P.IVA, privato con P.IVA, società/azienda), poi sono subito pubblicati
+ma possono usare solo i pagamenti diretti; se invece vogliono essere pagati
+online o avere il badge verificato (da Stripe) devono fare il percorso
+tramite Stripe, così Stripe fa il KYC o KYB". Scelta "Sì, cambia" sulla
+scheda di decisione dopo il controllo legale. Poi: "effettua le 3 migliorie".
+
+**Decisione** (sostituisce la verifica Stripe obbligatoria di §239):
+- Profilo pubblico (ricerca, smistamento, richieste dirette, agenda, pagina
+  pubblica, recensioni in home) quando il professionista ha scelto il tipo e
+  compilato i dati minimi DAC7 (`fiscalDataMissing` in
+  `packages/shared/src/fiscalCompleteness.ts`: nome o ragione sociale,
+  codice fiscale o P.IVA, data di nascita per le persone, indirizzo,
+  dichiarazione). Salvato in `ProfessionalFiscalProfile.fiscalDataCompleteAt`
+  a ogni salvataggio (migrazione `20261013210000_fiscal_data_complete`, che
+  lo calcola anche per i profili già compilati). Filtro in
+  `apps/api/src/professional-fiscal/public-visibility.ts`
+  (`publicVisibilityWhere`/`publicVisibilityMissing`), come prima attivo
+  solo con `STRIPE_SECRET_KEY`. Banner e pagina Dati fiscali dicono cosa
+  manca.
+- Acconto online solo con l'account Stripe attivo (`stripeVerified`): nel
+  modulo del preventivo le caselle online non compaiono, con il link alla
+  verifica; il server rifiuta un preventivo con acconto online e
+  l'accettazione online; al cliente si mostrano solo i modi che può usare.
+- Badge "Identità verificata da Stripe" nella ricerca, nei salvati e sul
+  profilo, distinto dal "Verificato" del nostro team (§200), con la nota
+  "non è una garanzia sulla qualità del lavoro" (rischio di pratica
+  ingannevole se fosse un "Verificato" generico).
+
+**Migliorie**:
+- Avviso al professionista (sito ed email, argomento "Account e
+  sicurezza") quando Stripe attiva l'account: `STRIPE_ACCOUNT_ACTIVE`.
+- Dati fiscali obbligatori per essere pubblici (sopra), come chiede la DAC7.
+- Sul profilo pubblico "Privato senza partita IVA" o "Professionista con
+  partita IVA" (Codice del consumo art. 49-bis), e per il privato la nota che
+  i diritti del consumatore non si applicano (`TRADER_STATUS_COPY`).
+
+Da far confermare al commercialista e all'avvocato prima del lancio (analisi
+nel thread, non un parere legale).
+
+**Verifica**: `professional-fiscal/public-visibility.test.ts` (filtro,
+dati minimi per tipo, privato/professionista), `bookings.service.test.ts`
+(acconto online rifiutato senza verifica Stripe). Test, tipi e lint di
+`apps/api` e `apps/web` verdi.
+
+## 242. Avviso quando Stripe sospende l'account del professionista
+
+**Richiesta esplicita dell'utente** (14/10/2026): "effettua miglioria 2",
+tra quelle proposte prima di unire la PR #72.
+
+**Decisione**: quando il webhook `account.updated` (o la rilettura al
+ritorno dalla verifica) dice che un account prima attivo non può più
+ricevere pagamenti, il professionista riceve `STRIPE_ACCOUNT_RESTRICTED`
+(sito ed email, argomento "Account e sicurezza", come l'attivazione di
+§241): niente acconto online nei nuovi preventivi né badge finché non
+sistema i dati su Stripe; il profilo resta visibile e il pagamento diretto
+funziona; i soldi già pagati online restano in custodia. Unito anche il ramo
+base (pulsanti con freccia, promemoria): le voci di questa PR passano da
+§233-§238 a §236-§241.
+
+**Verifica**: `professional-fiscal/stripe-account-notifications.test.ts`
+(attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
+`apps/api` e `apps/web` verdi.

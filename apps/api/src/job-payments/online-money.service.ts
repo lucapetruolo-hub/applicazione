@@ -6,6 +6,7 @@ import {
   ONLINE_APP_FEE_PERCENT,
   ONLINE_RELEASE_DAYS,
   onlineBalanceDueEurCents,
+  onlineTargetEurCents,
   onlineCanRelease,
   onlinePayoutEurCents,
   type JobPaymentOnlineStage,
@@ -13,9 +14,16 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
+// Esiti finali di una contestazione in banca (Stripe Dispute.status).
+const CLOSED_DISPUTE_STATUSES = ["won", "lost", "warning_closed", "prevented"];
+
+function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: string | null }): boolean {
+  return !!jp.stripeDisputeId && !CLOSED_DISPUTE_STATUSES.includes(jp.stripeDisputeStatus ?? "");
+}
 
 /**
  * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168): acconto e
@@ -29,6 +37,23 @@ const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
  * lo usano sia i pagamenti sia le segnalazioni, senza dipendenze circolari.
  * La commissione arriva già calcolata in `JobPayment.platformFeeEurCents`.
  */
+/**
+ * Suffisso dell'estratto conto per i pagamenti con carta: solo lettere,
+ * cifre e spazi (Stripe rifiuta < > \ ' " *), almeno una lettera, al massimo
+ * 10 caratteri perché prefisso e suffisso insieme stanno in 22.
+ */
+export function statementSuffix(businessName: string): string | null {
+  const clean = businessName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 10)
+    .trim();
+  return /[A-Za-z]/.test(clean) ? clean.toUpperCase() : null;
+}
+
 @Injectable()
 export class OnlineMoneyService {
   private readonly logger = new Logger(OnlineMoneyService.name);
@@ -70,15 +95,19 @@ export class OnlineMoneyService {
       amount = jp.depositEurCents;
     } else {
       if (booking.finalAmountEurCents === null) throw new BadRequestException("Il saldo si paga quando il professionista chiude il lavoro con l'importo finale.");
-      amount = onlineBalanceDueEurCents(booking.finalAmountEurCents, jp.paidEurCents - jp.refundedEurCents);
+      // Col saldo diretto (§237) online si paga al massimo l'acconto: il resto va al professionista.
+      amount = onlineBalanceDueEurCents(onlineTargetEurCents(booking.finalAmountEurCents, jp), jp.paidEurCents - jp.refundedEurCents);
       // Dopo l'accredito il saldo si può ancora pagare se era rimasto scoperto (§168).
       const closed = jp.onlineStage === "REFUNDED" || (jp.onlineStage === "RELEASED" && !jp.balanceUnpaidAt);
-      if (amount <= 0 || closed) throw new BadRequestException("Non c'è nessun saldo da pagare.");
+      if (amount <= 0 || closed) {
+        throw new BadRequestException(jp.balanceDirect ? "Il saldo lo paghi direttamente al professionista." : "Non c'è nessun saldo da pagare.");
+      }
     }
 
     const back = booking.quote
       ? `${this.frontendUrl()}/le-mie-richieste?tab=lavori&open=${booking.quote.guidedRequestId}`
       : `${this.frontendUrl()}/le-mie-richieste?tab=lavori`;
+    const suffix = statementSuffix(booking.professionalProfile.businessName);
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       line_items: [
@@ -93,7 +122,12 @@ export class OnlineMoneyService {
           quantity: 1,
         },
       ],
-      payment_intent_data: { transfer_group: bookingId, metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId } },
+      payment_intent_data: {
+        transfer_group: bookingId,
+        // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §238): meno contestazioni "non riconosco l'addebito".
+        ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+        metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
+      },
       success_url: `${back}&pagamento=completato`,
       cancel_url: back,
       metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
@@ -101,30 +135,91 @@ export class OnlineMoneyService {
     return { url: session.url };
   }
 
+  /**
+   * Checkout dell'acconto al momento dell'accettazione del preventivo
+   * (docs/CHANGELOG.md §240): il lavoro non esiste ancora, nasce solo quando
+   * Stripe conferma il pagamento (`BookingsService.confirmQuoteDeposit`).
+   * Scade dopo un'ora: un pagamento così tardivo su un preventivo cambiato
+   * nel frattempo verrebbe comunque rimborsato.
+   */
+  async createQuoteDepositCheckout(params: {
+    clientUserId: string;
+    quoteId: string;
+    guidedRequestId: string;
+    paymentMethod: string;
+    amountEurCents: number;
+    businessName: string;
+  }): Promise<{ url: string | null }> {
+    const back = `${this.frontendUrl()}/le-mie-richieste?open=${params.guidedRequestId}`;
+    const suffix = statementSuffix(params.businessName);
+    const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod };
+    const session = await this.requireStripe().checkout.sessions.create({
+      mode: "payment",
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            unit_amount: params.amountEurCents,
+            product_data: { name: `Acconto del lavoro con ${params.businessName}` },
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+        metadata,
+      },
+      success_url: `${back}&pagamento=completato`,
+      cancel_url: back,
+      metadata,
+    });
+    return { url: session.url };
+  }
+
+  /** Acconto pagato su un preventivo che non si può più confermare: torna tutto al cliente. */
+  async refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
+    await this.requireStripe().refunds.create(
+      { payment_intent: paymentIntentId, metadata: { reason: reason.slice(0, 450) } },
+      { idempotencyKey: `quote-deposit-refund-${paymentIntentId}` },
+    );
+    this.logger.warn(`Acconto ${paymentIntentId} rimborsato: ${reason}`);
+  }
+
   /** Webhook `checkout.session.completed` di un acconto o saldo. Idempotente sul payment intent. */
   async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
     const jobPaymentId = session.metadata?.jobPaymentId;
     const part = session.metadata?.part === "balance" ? "balance" : "deposit";
+    if (!jobPaymentId) return;
+    await this.recordCheckoutPayment(jobPaymentId, part, session, { notify: true });
+  }
+
+  /**
+   * Registra un acconto o saldo pagato con Checkout sul pagamento del lavoro.
+   * `notify: false` per l'acconto che conferma il lavoro: il professionista
+   * riceve già l'avviso "preventivo accettato".
+   */
+  async recordCheckoutPayment(jobPaymentId: string, part: "deposit" | "balance", session: Stripe.Checkout.Session, opts: { notify: boolean }): Promise<void> {
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-    if (!jobPaymentId || !paymentIntentId) return;
+    if (!paymentIntentId) return;
     const jp = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, include: { booking: true } });
     if (!jp) return;
     if (jp.stripePaymentIntentId === paymentIntentId || jp.balancePaymentIntentId === paymentIntentId) return;
 
     const amount = session.amount_total ?? 0;
-    const stripeFee = await this.stripeFeeOf(paymentIntentId);
+    const { fee: stripeFee, chargeId } = await this.chargeOf(paymentIntentId);
 
     // Saldo pagato in ritardo, dopo che l'acconto era già passato al
     // professionista: gli giriamo subito anche questa parte.
     if (part === "balance" && jp.releasedAt && jp.balanceUnpaidAt) {
-      await this.settleLateBalance(jp.id, paymentIntentId, amount, stripeFee);
+      await this.settleLateBalance(jp.id, paymentIntentId, amount, stripeFee, chargeId);
       return;
     }
     const paid = jp.paidEurCents + amount;
     const final = jp.booking.finalAmountEurCents;
     let stage: JobPaymentOnlineStage;
     if (final === null) stage = "DEPOSIT_PAID";
-    else stage = onlineBalanceDueEurCents(final, paid - jp.refundedEurCents) > 0 ? "AWAITING_BALANCE" : "PAID";
+    else stage = onlineBalanceDueEurCents(onlineTargetEurCents(final, jp), paid - jp.refundedEurCents) > 0 ? "AWAITING_BALANCE" : "PAID";
 
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
@@ -145,7 +240,7 @@ export class OnlineMoneyService {
     });
     const pro = await this.prisma.professionalProfile.findUnique({ where: { id: jp.booking.professionalProfileId }, select: { userId: true } });
     const quote = jp.booking.quoteId ? await this.prisma.quote.findUnique({ where: { id: jp.booking.quoteId }, select: { guidedRequestId: true } }) : null;
-    if (pro) {
+    if (pro && opts.notify) {
       await this.notificationsService.notify(pro.userId, part === "deposit" ? "JOB_DEPOSIT_PAID" : "JOB_BALANCE_PAID", {
         bookingId: jp.bookingId,
         guidedRequestId: quote?.guidedRequestId ?? null,
@@ -155,7 +250,7 @@ export class OnlineMoneyService {
     if (stage === "PAID") await this.releaseIfDue(jp.id);
   }
 
-  private async settleLateBalance(jobPaymentId: string, paymentIntentId: string, amount: number, stripeFee: number): Promise<void> {
+  private async settleLateBalance(jobPaymentId: string, paymentIntentId: string, amount: number, stripeFee: number, chargeId: string | null): Promise<void> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({
       where: { id: jobPaymentId },
       include: {
@@ -173,7 +268,10 @@ export class OnlineMoneyService {
     const transfer =
       payout > 0 && destination
         ? await this.requireStripe().transfers.create(
-            { amount: payout, currency: "eur", destination, transfer_group: jp.bookingId },
+            // Legato al pagamento appena arrivato (`source_transaction`): Stripe
+            // lo esegue anche se quei soldi non sono ancora disponibili sul
+            // saldo della piattaforma (in Italia restano in attesa alcuni giorni).
+            { amount: payout, currency: "eur", destination, transfer_group: jp.bookingId, ...(chargeId ? { source_transaction: chargeId } : {}) },
             { idempotencyKey: `job-late-balance-${paymentIntentId}` },
           )
         : null;
@@ -234,7 +332,7 @@ export class OnlineMoneyService {
       balanceUnpaidAt: jp.balanceUnpaidAt!.toISOString(),
       finalAmountEurCents: jp.booking.finalAmountEurCents,
       paidEurCents: jp.paidEurCents - jp.refundedEurCents,
-      dueEurCents: onlineBalanceDueEurCents(jp.booking.finalAmountEurCents ?? 0, jp.paidEurCents - jp.refundedEurCents),
+      dueEurCents: onlineBalanceDueEurCents(onlineTargetEurCents(jp.booking.finalAmountEurCents ?? 0, jp), jp.paidEurCents - jp.refundedEurCents),
       client: {
         userId: jp.booking.client.id,
         name: [jp.booking.client.name, jp.booking.client.surname].filter(Boolean).join(" ") || null,
@@ -244,17 +342,17 @@ export class OnlineMoneyService {
     }));
   }
 
-  /** Costo Stripe reale del pagamento (dalla balance transaction), 0 se non disponibile. */
-  private async stripeFeeOf(paymentIntentId: string): Promise<number> {
-    if (!this.stripe) return 0;
+  /** Costo Stripe reale del pagamento (dalla balance transaction, 0 se non disponibile) e id dell'addebito. */
+  private async chargeOf(paymentIntentId: string): Promise<{ fee: number; chargeId: string | null }> {
+    if (!this.stripe) return { fee: 0, chargeId: null };
     try {
       const pi = await this.stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge.balance_transaction"] });
       const charge = pi.latest_charge as Stripe.Charge | null;
       const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null;
-      return bt?.fee ?? 0;
+      return { fee: bt?.fee ?? 0, chargeId: charge?.id ?? null };
     } catch (err) {
       this.logger.warn(`Costo Stripe non letto per ${paymentIntentId}: ${(err as Error).message}`);
-      return 0;
+      return { fee: 0, chargeId: null };
     }
   }
 
@@ -264,13 +362,15 @@ export class OnlineMoneyService {
    */
   async afterCompletion(jobPaymentId: string, finalAmountEurCents: number, appFeeEurCents: number): Promise<{ balanceDueEurCents: number }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
-    const due = onlineBalanceDueEurCents(finalAmountEurCents, jp.paidEurCents - jp.refundedEurCents);
+    // Col saldo diretto (§237) da Stripe passa solo l'acconto: il saldo online è già a zero.
+    const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
+    const due = onlineBalanceDueEurCents(onlineTarget, jp.paidEurCents - jp.refundedEurCents);
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
         grossAmountEurCents: finalAmountEurCents,
         platformFeeEurCents: appFeeEurCents,
-        netAmountEurCents: Math.max(0, finalAmountEurCents - appFeeEurCents - jp.stripeFeeEurCents),
+        netAmountEurCents: Math.max(0, onlineTarget - appFeeEurCents - jp.stripeFeeEurCents),
         onlineStage: due > 0 ? "AWAITING_BALANCE" : "PAID",
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
@@ -305,9 +405,12 @@ export class OnlineMoneyService {
       now,
     });
     if (!can || booking.finalAmountEurCents === null) return false;
+    // Contestazione in banca aperta: i soldi restano da noi finché la banca non decide.
+    if (disputeOpen(jp)) return false;
 
     const account = booking.professionalProfile.fiscalProfile;
-    if (!account?.stripeConnectAccountId || !account.stripePayoutsEnabled) {
+    const transfersActive = account?.stripeConnectAccountId ? await this.transfersActive(account.stripeConnectAccountId, account.stripePayoutsEnabled) : false;
+    if (!account?.stripeConnectAccountId || !transfersActive) {
       // Senza conto Stripe attivo i soldi restano in custodia: lo avvisiamo
       // e riproviamo al giro successivo.
       await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_PAYOUT_ACCOUNT_NEEDED", {
@@ -322,13 +425,16 @@ export class OnlineMoneyService {
     }
     const stripe = this.stripe;
     const balanceUnpaid = jp.onlineStage === "AWAITING_BALANCE";
+    // Col saldo diretto (§237) il dovuto online è solo l'acconto: se l'importo
+    // finale è più basso, la differenza torna al cliente.
+    const onlineTarget = onlineTargetEurCents(booking.finalAmountEurCents, jp);
     const { payout, refundToClient } = onlinePayoutEurCents({
-      finalAmountEurCents: booking.finalAmountEurCents,
+      finalAmountEurCents: onlineTarget,
       paidEurCents: jp.paidEurCents,
       refundedEurCents: jp.refundedEurCents,
       stripeFeeEurCents: jp.stripeFeeEurCents,
       appFeeEurCents: balanceUnpaid
-        ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, booking.finalAmountEurCents))
+        ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, onlineTarget))
         : jp.platformFeeEurCents,
     });
 
@@ -391,16 +497,111 @@ export class OnlineMoneyService {
     }
   }
 
-  /** Saldo non pagato (decisione dell'utente): avviso al cliente e al nostro team. */
-  private async reportUnpaidBalance(bookingId: string, clientId: string, guidedRequestId: string | null): Promise<void> {
-    await this.notificationsService.notify(clientId, "JOB_BALANCE_UNPAID", { bookingId, guidedRequestId, audience: "CLIENT" });
+  /**
+   * Prima di ogni trasferimento si rilegge da Stripe se l'account del
+   * professionista può riceverlo (buona pratica Stripe, docs/CHANGELOG.md
+   * §236): il webhook può essere in ritardo o non arrivare. Se Stripe non
+   * risponde vale l'ultimo stato salvato.
+   */
+  private async transfersActive(accountId: string, saved: boolean): Promise<boolean> {
+    if (!this.stripe) return saved;
+    try {
+      const status = await readStripeConnectStatus(this.stripe, accountId);
+      if (status.transfersActive !== saved) {
+        await this.prisma.professionalFiscalProfile.updateMany({
+          where: { stripeConnectAccountId: accountId },
+          data: { stripeChargesEnabled: status.transfersActive, stripePayoutsEnabled: status.transfersActive, stripeRequirementsStatus: status.requirements },
+        });
+      }
+      return status.transfersActive;
+    } catch (err) {
+      this.logger.warn(`Stato Stripe non letto per ${accountId}: ${(err as Error).message}`);
+      return saved;
+    }
+  }
+
+  /**
+   * Contestazione presso la banca del cliente (chargeback) su un acconto o un
+   * saldo (webhook `charge.dispute.*`, docs/CHANGELOG.md §236). Decide la
+   * banca, non noi né Stripe: finché è aperta l'accredito al professionista
+   * resta bloccato e il nostro team deve mandare le prove dalla Dashboard
+   * Stripe (preventivo accettato, chat, foto). Se la contestazione è persa la
+   * cifra vale come restituita al cliente. Se i soldi erano già passati al
+   * professionista, il recupero è una decisione del team (Finanza).
+   * Restituisce false se il pagamento non è di un lavoro.
+   */
+  async handleStripeDispute(dispute: Stripe.Dispute): Promise<boolean> {
+    const paymentIntentId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
+    if (!paymentIntentId) return false;
+    const jp = await this.prisma.jobPayment.findFirst({
+      where: { OR: [{ stripePaymentIntentId: paymentIntentId }, { balancePaymentIntentId: paymentIntentId }] },
+      include: { booking: { select: { id: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp) return false;
+
+    const opened = !jp.stripeDisputeId;
+    const closed = CLOSED_DISPUTE_STATUSES.includes(dispute.status);
+    const justClosed = closed && !CLOSED_DISPUTE_STATUSES.includes(jp.stripeDisputeStatus ?? "");
+    const lost = dispute.status === "lost";
+    // Contestazione persa: la banca ha restituito la cifra al cliente.
+    const lostAmount = justClosed && lost ? Math.min(dispute.amount, jp.paidEurCents - jp.refundedEurCents) : 0;
+    const refunded = jp.refundedEurCents + lostAmount;
+    let statusData: Record<string, unknown> = {};
+    if (!closed) statusData = { status: "DISPUTED" };
+    else if (justClosed && lostAmount > 0 && refunded >= jp.paidEurCents) {
+      statusData = { status: "REFUNDED", onlineStage: "REFUNDED", releasedAt: jp.releasedAt ?? new Date() };
+    } else if (justClosed) statusData = { status: jp.releasedAt ? "CONFIRMED" : "PENDING" };
+    await this.prisma.jobPayment.update({
+      where: { id: jp.id },
+      data: {
+        stripeDisputeId: dispute.id,
+        stripeDisputeStatus: dispute.status,
+        stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
+        refundedEurCents: refunded,
+        ...statusData,
+      },
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jp.id,
+      fieldName: "stripeDisputeStatus",
+      oldValue: jp.stripeDisputeStatus,
+      newValue: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountEurCents: dispute.amount, lostAmount },
+      reason: closed ? `Contestazione in banca chiusa: ${dispute.status}.` : "Contestazione aperta dal cliente presso la sua banca.",
+    });
+
+    // Avvisiamo una volta all'apertura e una alla chiusura, non a ogni cambio intermedio.
+    if (opened || justClosed) {
+      const payload = {
+        bookingId: jp.bookingId,
+        guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+        amountEurCents: dispute.amount,
+        status: dispute.status,
+        alreadyReleased: !!jp.releasedAt,
+      };
+      await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", payload);
+      await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE", payload);
+    }
+    // Contestazione vinta: se era il momento, l'accredito parte subito.
+    if (justClosed && !lost) await this.releaseIfDue(jp.id).catch(() => false);
+    return true;
+  }
+
+  /** Avviso agli admin Finanza (o senza ruoli specifici / SUPER). */
+  async notifyFinanceAdmins(type: string, payload: Record<string, unknown>): Promise<void> {
     const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
     for (const admin of admins) {
       const roles = admin.adminRoles ?? [];
       if (roles.length === 0 || roles.includes("SUPER") || roles.includes("FINANCE")) {
-        await this.notificationsService.notify(admin.id, "ADMIN_JOB_BALANCE_UNPAID", { bookingId });
+        await this.notificationsService.notify(admin.id, type, payload as never);
       }
     }
+  }
+
+  /** Saldo non pagato (decisione dell'utente): avviso al cliente e al nostro team. */
+  private async reportUnpaidBalance(bookingId: string, clientId: string, guidedRequestId: string | null): Promise<void> {
+    await this.notificationsService.notify(clientId, "JOB_BALANCE_UNPAID", { bookingId, guidedRequestId, audience: "CLIENT" });
+    await this.notifyFinanceAdmins("ADMIN_JOB_BALANCE_UNPAID", { bookingId });
   }
 
   /** Ogni ora: i pagamenti online arrivati al momento dell'accredito. */

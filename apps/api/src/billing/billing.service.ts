@@ -1,10 +1,11 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { SUBSCRIPTION_TIERS, subscriptionTierInfo, tierPriceDifferenceEurCents, type SubscriptionTier } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialEndFor } from "../subscriptions/subscription-rules";
+import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
@@ -49,11 +50,13 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 
 @Injectable()
 export class BillingService {
+  private readonly logger = new Logger(BillingService.name);
   private readonly stripe: Stripe | null;
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly jobPaymentsService: JobPaymentsService,
+    private readonly bookingsService: BookingsService,
     private readonly professionalFiscalService: ProfessionalFiscalService,
     private readonly subscriptionsService: SubscriptionsService,
   ) {
@@ -79,6 +82,58 @@ export class BillingService {
       throw new NotFoundException("Completa prima il tuo profilo professionista.");
     }
     return profile;
+  }
+
+  /**
+   * Cliente Stripe del professionista, creato una volta e poi riusato per
+   * abbonamento, differenze di livello e boost (docs/CHANGELOG.md §238):
+   * così carta, fatture e Customer Portal stanno in un posto solo. Chi aveva
+   * già un abbonamento riprende il cliente di quell'abbonamento.
+   */
+  private async ensureCustomer(stripe: Stripe, profile: { id: string; businessName: string; stripeCustomerId: string | null; user: { email: string | null } }): Promise<string> {
+    if (profile.stripeCustomerId) return profile.stripeCustomerId;
+    const current = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id }, select: { stripeSubscriptionId: true } });
+    let customerId: string | null = null;
+    if (current?.stripeSubscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(current.stripeSubscriptionId).catch(() => null);
+      if (subscription) customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+    }
+    if (!customerId) {
+      const customer = await stripe.customers.create(
+        {
+          email: profile.user.email ?? undefined,
+          name: profile.businessName,
+          preferred_locales: ["it"],
+          metadata: { professionalProfileId: profile.id },
+        },
+        { idempotencyKey: `professional-customer-${profile.id}` },
+      );
+      customerId = customer.id;
+    }
+    // Update condizionato: con due richieste insieme vince la prima e l'altra rilegge.
+    const saved = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, stripeCustomerId: null }, data: { stripeCustomerId: customerId } });
+    if (saved.count === 0) {
+      const fresh = await this.prisma.professionalProfile.findUnique({ where: { id: profile.id }, select: { stripeCustomerId: true } });
+      if (fresh?.stripeCustomerId) return fresh.stripeCustomerId;
+    }
+    return customerId;
+  }
+
+  /**
+   * Customer Portal di Stripe (docs/CHANGELOG.md §238): il professionista
+   * cambia la carta e scarica le fatture di abbonamento e boost. Livelli e
+   * annullamento restano nella pagina Abbonamento del sito.
+   */
+  async createBillingPortal(userId: string): Promise<{ url: string }> {
+    const stripe = this.requireStripe();
+    const profile = await this.requireMyProfile(userId);
+    const customer = await this.ensureCustomer(stripe, profile);
+    const session = await stripe.billingPortal.sessions.create({
+      customer,
+      locale: "it",
+      return_url: `${this.frontendUrl()}/dashboard/abbonamento`,
+    });
+    return { url: session.url };
   }
 
   private tierOfPrice(priceId: string | undefined): SubscriptionTier | null {
@@ -167,7 +222,7 @@ export class BillingService {
           : []),
       ],
       subscription_data: { ...(trialEnd ? { trial_end: trialEnd } : {}), metadata: { professionalProfileId: profile.id } },
-      customer_email: profile.user.email ?? undefined,
+      customer: await this.ensureCustomer(stripe, profile),
       success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
       cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
       metadata: { kind: "subscription", professionalProfileId: profile.id, plan },
@@ -251,49 +306,6 @@ export class BillingService {
     return { ok: true };
   }
 
-  async createLeadCheckout(userId: string, leadId: string) {
-    const stripe = this.requireStripe();
-    const profile = await this.requireMyProfile(userId);
-
-    const lead = await this.prisma.lead.findUnique({ where: { id: leadId } });
-    if (!lead || lead.professionalProfileId !== profile.id) {
-      throw new ForbiddenException("Questo lead non è tuo.");
-    }
-    if (lead.status === "PAID" || lead.status === "CONVERTED") {
-      throw new BadRequestException("Questo lead è già stato sbloccato.");
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            unit_amount: lead.priceEurCents,
-            product_data: { name: "Sblocco richiesta cliente" },
-          },
-          quantity: 1,
-        },
-      ],
-      customer_email: profile.user.email ?? undefined,
-      success_url: `${this.frontendUrl()}/dashboard?lead=sbloccato`,
-      cancel_url: `${this.frontendUrl()}/dashboard`,
-      metadata: { kind: "lead", leadId: lead.id, professionalProfileId: profile.id },
-      // Genera una ricevuta/fattura Stripe reale, scaricabile dal
-      // professionista (CEO, consiglio esperti: "attivare invoice_creation
-      // sulle Checkout Session di pagamento singolo") — plumbing tecnico
-      // pronto da subito, ma NON sostituisce una fattura elettronica SDI:
-      // finché l'account Stripe di Manovia non ha i dati societari reali
-      // (P.IVA/sede legale, oggi `[DA COMPILARE]`, CLAUDE.md §10 checklist
-      // punto 1), il documento generato porta comunque i dati provvisori
-      // dell'account Stripe corrente. Vedi promemoria pre-lancio in
-      // CLAUDE.md §10.
-      invoice_creation: { enabled: true },
-    });
-
-    return { url: session.url };
-  }
-
   async createBoostCheckout(userId: string, boostType: string) {
     const stripe = this.requireStripe();
     const profile = await this.requireMyProfile(userId);
@@ -315,13 +327,14 @@ export class BillingService {
           quantity: 1,
         },
       ],
-      customer_email: profile.user.email ?? undefined,
+      customer: await this.ensureCustomer(stripe, profile),
       success_url: `${this.frontendUrl()}/dashboard?boost=attivato`,
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "boost", boostType, professionalProfileId: profile.id },
-      // Stessa scelta e stesso promemoria pre-lancio di createLeadCheckout
-      // sopra: ricevuta Stripe reale da subito, fattura elettronica SDI
-      // solo dopo i dati societari reali di Manovia.
+      // Genera una ricevuta Stripe reale, scaricabile dal professionista
+      // (CEO, consiglio esperti). NON sostituisce la fattura elettronica SDI:
+      // finché l'account Stripe di Manovia non ha i dati societari reali
+      // (checklist di lancio, punto 1) il documento porta i dati provvisori.
       invoice_creation: { enabled: true },
     });
 
@@ -343,7 +356,7 @@ export class BillingService {
       throw new BadRequestException("STRIPE_WEBHOOK_SECRET non configurato.");
     }
 
-    const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    const event = this.verifiedEvent(stripe, rawBody, signature, webhookSecret);
 
     try {
       await this.prisma.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
@@ -364,9 +377,36 @@ export class BillingService {
     return { received: true };
   }
 
+  /**
+   * Due endpoint Stripe arrivano qui (docs/CHANGELOG.md §236), ognuno con la
+   * sua chiave di firma: quello del nostro account (`STRIPE_WEBHOOK_SECRET`)
+   * e quello Connect per gli eventi degli account dei professionisti, come
+   * `account.updated` (`STRIPE_CONNECT_WEBHOOK_SECRET`). Firma non valida → 400.
+   */
+  private verifiedEvent(stripe: Stripe, rawBody: Buffer, signature: string, webhookSecret: string): Stripe.Event {
+    const secrets = [webhookSecret, process.env.STRIPE_CONNECT_WEBHOOK_SECRET].filter((secret): secret is string => Boolean(secret));
+    for (const secret of secrets) {
+      try {
+        return stripe.webhooks.constructEvent(rawBody, signature, secret);
+      } catch (err) {
+        if (!(err instanceof Stripe.errors.StripeSignatureVerificationError)) throw err;
+      }
+    }
+    throw new BadRequestException("Firma Stripe non valida.");
+  }
+
   private async applyWebhookEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
-    if (event.type === "checkout.session.completed") {
+    // Con i metodi di pagamento lenti (addebito SEPA, bonifico) il Checkout si
+    // chiude prima che i soldi arrivino (`payment_status: "unpaid"`): si
+    // attiva solo a pagamento riuscito, con `async_payment_succeeded`.
+    if (event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      this.logger.warn(`Pagamento non riuscito per il Checkout ${session.id} (${session.metadata?.kind ?? "?"}).`);
+      return;
+    }
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.payment_status === "unpaid") return;
       const metadata = session.metadata ?? {};
 
       if (metadata.kind === "subscription" && metadata.professionalProfileId && metadata.plan) {
@@ -421,24 +461,13 @@ export class BillingService {
         });
       }
 
-      if (metadata.kind === "lead" && metadata.leadId) {
-        const lead = await this.prisma.lead.update({ where: { id: metadata.leadId }, data: { status: "PAID" } });
-        await this.prisma.payment.create({
-          data: {
-            professionalProfileId: lead.professionalProfileId,
-            type: "LEAD",
-            amountEurCents: session.amount_total ?? 0,
-            status: "SUCCEEDED",
-            stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-          },
-        });
+      // Pagamento del lavoro (acconto o saldo, docs/CHANGELOG.md §168) —
+      // distinto dai casi sopra, dove è il professionista che paga Manovia:
+      // qui il cliente paga il lavoro, i soldi restano in custodia e la
+      // commissione si trattiene trasferendo meno al professionista.
+      if (metadata.kind === "quote_deposit") {
+        await this.bookingsService.confirmQuoteDeposit(session);
       }
-
-      // Pagamento del lavoro tramite Manovia (CLAUDE.md §88) — distinto dai
-      // tre casi sopra (che sono sempre il professionista che paga Manovia):
-      // qui è il cliente che paga il lavoro, la piattaforma trattiene la
-      // commissione via Stripe Connect (application_fee_amount, già
-      // impostato alla creazione della Checkout Session).
       if (metadata.kind === "job_payment") {
         await this.jobPaymentsService.handleManoviaCheckoutCompleted(session);
       }
@@ -470,17 +499,21 @@ export class BillingService {
     // Sincronizza lo stato di onboarding Stripe Connect (CLAUDE.md §88):
     // Stripe emette questo evento ad ogni cambiamento di requirements/
     // charges_enabled/payouts_enabled durante e dopo l'onboarding guidato.
+    // Arriva dall'endpoint Connect. Lo stato vero si rilegge con le API
+    // Accounts v2 (trasferimenti attivi), non dai vecchi campi v1.
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
-      const requirementsStatus = account.requirements?.currently_due?.length
-        ? account.requirements.currently_due.join(", ")
-        : null;
-      await this.professionalFiscalService.syncStripeConnectStatus(
-        account.id,
-        Boolean(account.charges_enabled),
-        Boolean(account.payouts_enabled),
-        requirementsStatus,
-      );
+      await this.professionalFiscalService.refreshStripeConnectStatus(account.id);
+    }
+
+    // Contestazione in banca (chargeback, docs/CHANGELOG.md §236).
+    if (event.type === "charge.dispute.created" || event.type === "charge.dispute.updated" || event.type === "charge.dispute.closed") {
+      const dispute = event.data.object as Stripe.Dispute;
+      const jobPayment = await this.jobPaymentsService.handleStripeDispute(dispute);
+      // Abbonamento o pacchetto di visibilità contestato: solo avviso al team.
+      if (!jobPayment && (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed")) {
+        await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", { amountEurCents: dispute.amount, status: dispute.status, bookingId: null });
+      }
     }
 
     // Ciclo di vita dell'abbonamento (docs/CHANGELOG.md §161-§162): rinnovo

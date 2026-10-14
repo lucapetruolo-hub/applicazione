@@ -1,10 +1,12 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
-import { BRAND, FISCAL_DECLARATION_VERSION, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
+import { BRAND, FISCAL_DECLARATION_VERSION, fiscalDataMissing, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
+import { readStripeConnectStatus } from "./stripe-connect-status";
 
 const FISCAL_FIELDS = [
   "entityType",
@@ -49,6 +51,7 @@ export class ProfessionalFiscalService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -65,6 +68,12 @@ export class ProfessionalFiscalService {
 
   async getMine(userId: string) {
     const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { stripeConnectAccountId: true, stripePayoutsEnabled: true } });
+    // Di ritorno dalla verifica Stripe il webhook può non essere ancora
+    // arrivato: lo stato si rilegge da Stripe finché l'account non è attivo.
+    if (fiscalProfile?.stripeConnectAccountId && !fiscalProfile.stripePayoutsEnabled) {
+      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch(() => undefined);
+    }
     return this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
       include: { representative: true },
@@ -113,9 +122,17 @@ export class ProfessionalFiscalService {
       data.fiscalDeclarationVersion = FISCAL_DECLARATION_VERSION;
     }
 
-    const fiscalProfile = existing
+    let fiscalProfile = existing
       ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data })
       : await this.prisma.professionalFiscalProfile.create({ data: { professionalProfileId, ...data } });
+    // Dati minimi per essere pubblici (docs/CHANGELOG.md §241).
+    const complete = fiscalDataMissing(fiscalProfile).length === 0;
+    if (complete !== !!fiscalProfile.fiscalDataCompleteAt) {
+      fiscalProfile = await this.prisma.professionalFiscalProfile.update({
+        where: { professionalProfileId },
+        data: { fiscalDataCompleteAt: complete ? new Date() : null },
+      });
+    }
 
     for (const field of FISCAL_FIELDS) {
       if (input[field] === undefined) continue;
@@ -208,10 +225,31 @@ export class ProfessionalFiscalService {
    * Onboarding Stripe Connect — gated: senza STRIPE_SECRET_KEY risponde con
    * un errore chiaro invece di un crash, stesso pattern già in uso per
    * Stripe/Cloudinary in tutto il progetto (CLAUDE.md §9). Crea l'account
-   * Connect alla prima chiamata (Express, il tipo più semplice per un
-   * onboarding guidato da Stripe), poi genera sempre un nuovo Account Link
-   * (scadono dopo pochi minuti, mai riutilizzabile).
+   * alla prima chiamata, poi genera sempre un nuovo Account Link (scadono
+   * dopo pochi minuti, mai riutilizzabile).
+   *
+   * Account Stripe Accounts v2 (docs/CHANGELOG.md §236), non più il vecchio
+   * `type: "express"` che Stripe considera superato: configurazione
+   * "destinatario" (riceve i trasferimenti dalla piattaforma, non incassa
+   * carte), Dashboard Express, commissioni Stripe e perdite a carico della
+   * piattaforma (schema "separate charges and transfers" con custodia).
+   * Prima di creare il primo account va accettata la responsabilità delle
+   * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */
+  /**
+   * Accesso alla Dashboard Express di Stripe (docs/CHANGELOG.md §238): il
+   * professionista vede accrediti e bonifici sul suo conto e cambia l'IBAN,
+   * senza scrivere a noi. Solo con la verifica avviata.
+   */
+  async createStripeDashboardLink(userId: string): Promise<{ url: string }> {
+    if (!this.stripe) throw new BadRequestException(`I pagamenti tramite ${BRAND.name} non sono ancora configurati su questo ambiente.`);
+    const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
+    if (!fiscalProfile?.stripeConnectAccountId) throw new BadRequestException("Attiva prima i pagamenti con Stripe.");
+    const link = await this.stripe.accounts.createLoginLink(fiscalProfile.stripeConnectAccountId);
+    return { url: link.url };
+  }
+
   async createStripeConnectOnboardingLink(userId: string) {
     if (!this.stripe) {
       throw new BadRequestException(
@@ -224,12 +262,18 @@ export class ProfessionalFiscalService {
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
     if (!stripeAccountId) {
-      const account = await this.stripe.accounts.create({
-        type: "express",
-        country: "IT",
-        email: profile?.user.email ?? undefined,
-        business_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual",
-      });
+      const account = await this.stripe.v2.core.accounts.create(
+        {
+          contact_email: profile?.user.email ?? undefined,
+          display_name: profile?.businessName ?? undefined,
+          dashboard: "express",
+          identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
+          configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
+          defaults: { currency: "eur", locales: ["it-IT"], responsibilities: { fees_collector: "application", losses_collector: "application" } },
+          metadata: { professionalProfileId },
+        },
+        { idempotencyKey: `connect-account-${professionalProfileId}` },
+      );
       stripeAccountId = account.id;
       fiscalProfile = fiscalProfile
         ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data: { stripeConnectAccountId: stripeAccountId } })
@@ -244,22 +288,47 @@ export class ProfessionalFiscalService {
       });
     }
 
-    const accountLink = await this.stripe.accountLinks.create({
+    const accountLink = await this.stripe.v2.core.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${this.frontendUrl()}/dashboard/profilo?stripeConnect=refresh`,
-      return_url: `${this.frontendUrl()}/dashboard/profilo?stripeConnect=completato`,
-      type: "account_onboarding",
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["recipient"],
+          refresh_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=refresh`,
+          return_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=completato`,
+        },
+      },
     });
     return { url: accountLink.url };
   }
 
+  /**
+   * Rilegge da Stripe lo stato dell'account del professionista (webhook
+   * `account.updated`, ritorno dalla verifica) e lo salva.
+   */
+  async refreshStripeConnectStatus(stripeAccountId: string): Promise<void> {
+    if (!this.stripe) return;
+    const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
+    await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
+  }
+
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */
   async syncStripeConnectStatus(stripeAccountId: string, chargesEnabled: boolean, payoutsEnabled: boolean, requirementsStatus: string | null) {
-    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { stripeConnectAccountId: stripeAccountId } });
+    const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { stripeConnectAccountId: stripeAccountId },
+      include: { professionalProfile: { select: { userId: true } } },
+    });
     if (!fiscalProfile) return;
     await this.prisma.professionalFiscalProfile.update({
       where: { id: fiscalProfile.id },
       data: { stripeChargesEnabled: chargesEnabled, stripePayoutsEnabled: payoutsEnabled, stripeRequirementsStatus: requirementsStatus },
     });
+    // Avviso al professionista quando l'account diventa attivo (docs/CHANGELOG.md §241)
+    // o quando Stripe lo sospende (§242).
+    if (payoutsEnabled && !fiscalProfile.stripePayoutsEnabled) {
+      await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_ACTIVE", {});
+    } else if (!payoutsEnabled && fiscalProfile.stripePayoutsEnabled) {
+      await this.notificationsService.notify(fiscalProfile.professionalProfile.userId, "STRIPE_ACCOUNT_RESTRICTED", {});
+    }
   }
 }

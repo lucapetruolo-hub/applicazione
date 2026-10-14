@@ -195,7 +195,12 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
 11. **Filtri obbligatori nei nuovi punti pubblici**: ogni punto che mostra
     profili o recensioni filtra `deletedAt`/`suspendedAt`/`hiddenAt`; ogni
     punto che mostra professionisti o assegna richieste filtra anche
-    `pausedAt` e `requestsBlockedUntil`.
+    `pausedAt` e `requestsBlockedUntil`, e i dati fiscali compilati
+    (`publicVisibilityWhere()`/`publicVisibilityMissing` in
+    `apps/api/src/professional-fiscal/public-visibility.ts`, decisione
+    dell'utente, docs/CHANGELOG.md §241: profilo pubblico con tipo e dati
+    DAC7 compilati; la verifica KYC/KYB di Stripe serve solo per l'acconto
+    online e il badge "Identità verificata da Stripe", `stripeVerified`).
 12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
     qualunque admin.
@@ -282,8 +287,10 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 - Prezzi e limiti da rivedere sui dati dei primi mesi.
 - Si incassa solo con P.IVA/società e parere del commercialista (checklist
   §10). **Pagamento dei lavori** (decisioni dell'utente, docs/CHANGELOG.md
-  §168): accettando il preventivo il cliente sceglie **online con Stripe**
-  (acconto del 20% del massimo, saldo a lavoro chiuso, soldi in custodia
+  §168): nel preventivo il professionista offre uno o più modi (§237: diretto,
+  acconto online con percentuale sua 1-100% e saldo online o diretto) e
+  accettando il cliente sceglie tra questi: **online con Stripe**
+  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi in custodia
   fino alla conferma o per 7 giorni, poi al professionista meno costo Stripe
   e commissione del 5%; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni

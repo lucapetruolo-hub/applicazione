@@ -237,6 +237,9 @@ export type ClientGuidedRequest = {
     professionalCounterNote: string | null;
     /** Nota facoltativa scritta dal cliente rifiutando il preventivo (solo in REJECTED, docs/CHANGELOG.md §188). */
     rejectionNote: string | null;
+    /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
+    paymentOptions: JobPaymentChoice[];
+    depositPercent: number;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
     resentAt: string | null;
     notes: string | null;
@@ -474,6 +477,8 @@ export type AdminCompletedJob = {
   clientNote: string | null;
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
+  /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §239). */
+  paymentLabel: string;
 };
 
 /** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */
@@ -660,9 +665,12 @@ export type ProfessionalFiscalProfile = {
   verificationNote: string | null;
   verifiedAt: string | null;
   fiscalDeclarationAcceptedAt: string | null;
+  /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241). */
+  fiscalDataCompleteAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;
+  stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
 };
 
@@ -1211,7 +1219,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
      * pagamento scelto dal cliente (§168).
      */
     acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
-      request<{ bookingId: string; paymentMethod: JobPaymentChoice }>(`/bookings/from-quote/${quoteId}`, {
+      request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ paymentMethod }),
@@ -1402,11 +1410,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
 
-    createLeadCheckout: (token: string, leadId: string) =>
-      request<{ url: string | null }>(`/billing/leads/${leadId}/checkout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }),
+    /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
+    createBillingPortal: (token: string) =>
+      request<{ url: string }>("/billing/portal", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     createBoostCheckout: (token: string, type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO") =>
       request<{ url: string | null }>("/billing/boost/checkout", {
@@ -1778,6 +1784,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Onboarding Stripe Connect (gated — vedi CLAUDE.md §88): torna l'URL Stripe a cui reindirizzare, o lancia un errore chiaro se non configurato. */
     createStripeConnectLink: (token: string) =>
       request<{ url: string }>("/professionals/me/fiscal-profile/stripe-connect", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    /** Accesso alla Dashboard Express di Stripe del professionista (accrediti, bonifici, IBAN). */
+    createStripeDashboardLink: (token: string) =>
+      request<{ url: string }>("/professionals/me/fiscal-profile/stripe-dashboard", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

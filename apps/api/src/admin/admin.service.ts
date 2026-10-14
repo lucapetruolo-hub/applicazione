@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -985,6 +985,7 @@ export class AdminService {
       take: 200,
       include: {
         finalItems: true,
+        jobPayment: true,
         professionalProfile: { select: { id: true, userId: true, businessName: true } },
         client: { select: { id: true, name: true, surname: true, deletedAt: true } },
         quote: {
@@ -1025,6 +1026,8 @@ export class AdminService {
         clientNote: booking.clientCompletionNote,
         professionalPhotoUrls: booking.professionalCompletionPhotoUrls,
         clientPhotoUrls: booking.clientCompletionPhotoUrls,
+        // Come è stato pagato, saldo diretto compreso (docs/CHANGELOG.md §239).
+        paymentLabel: jobPaymentAdminLabel(toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents)),
       };
     });
   }
@@ -1390,6 +1393,7 @@ export type AdminCompletedJobRow = {
   clientNote: string | null;
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
+  paymentLabel: string;
 };
 
 export type AdminJobIssueRow = {

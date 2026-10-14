@@ -3,6 +3,11 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   formatServicePriceRange,
+  describePaymentOffer,
+  paymentChoiceIsOnline,
+  paymentOfferChanged,
+  quoteChangeWhat,
+  quotePaymentOffer,
   quotePriceTotals,
   scheduleChangeAlternative,
   scheduleChangeBetween,
@@ -17,6 +22,8 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { stripeVerified } from "../professional-fiscal/public-visibility";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -95,7 +102,37 @@ export class QuotesService {
       throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
     }
 
+    // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §237). Senza
+    // pagamenti online attivi deve restare almeno il pagamento diretto, o il
+    // cliente non potrebbe accettare. L'acconto online lo offre solo chi ha
+    // completato la verifica su Stripe (§241): per gli altri il valore di
+    // serie è il solo pagamento diretto.
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { professionalProfileId: professionalProfile.id },
+      select: { stripePayoutsEnabled: true },
+    });
+    const canOfferOnline = !onlinePaymentsEnabled() || stripeVerified(fiscal);
+    const offer = quotePaymentOffer({
+      paymentOptions: input.paymentOptions ?? (canOfferOnline ? undefined : ["DIRECT"]),
+      depositPercent: input.depositPercent,
+    });
+    if (!onlinePaymentsEnabled() && !offer.paymentOptions.includes("DIRECT")) {
+      throw new BadRequestException("Il pagamento online non è ancora attivo: lascia anche il pagamento diretto.");
+    }
+    if (!canOfferOnline && offer.paymentOptions.some(paymentChoiceIsOnline)) {
+      throw new BadRequestException("Per offrire l'acconto online completa prima la verifica su Stripe in Dati fiscali e pagamenti.");
+    }
+
+    if (input.rememberPaymentOffer) {
+      await this.prisma.professionalProfile.update({
+        where: { id: professionalProfile.id },
+        data: { defaultPaymentOptions: offer.paymentOptions, defaultDepositPercent: offer.depositPercent },
+      });
+    }
+
     const data = {
+      paymentOptions: offer.paymentOptions,
+      depositPercent: offer.paymentOptions.some(paymentChoiceIsOnline) ? offer.depositPercent : null,
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,
@@ -125,6 +162,8 @@ export class QuotesService {
         .join("|");
     const itemsChanged = !!existingQuote && itemsKey(existingQuote.items) !== itemsKey(input.items);
     const notesChanged = !!existingQuote && (existingQuote.notes ?? "").trim() !== (input.notes ?? "").trim();
+    // Anche un cambio dei soli modi di pagamento si avvisa al cliente.
+    const paymentChanged = !!existingQuote && paymentOfferChanged(quotePaymentOffer(existingQuote), offer);
     // Totale prima e dopo: se cambia, il cliente vede il vecchio sbarrato
     // accanto al nuovo (docs/CHANGELOG.md §196).
     const totalsBefore = existingQuote ? quotePriceTotals(existingQuote.items) : null;
@@ -233,7 +272,7 @@ export class QuotesService {
       // ora il cliente viene avvisato se voci o note cambiano davvero
       // (docs/CHANGELOG.md §196, richiesta dell'utente); resta comunque un
       // evento della cronologia.
-      const what = itemsChanged && notesChanged ? "le voci e le note" : itemsChanged ? "le voci" : notesChanged ? "le note" : null;
+      const what = quoteChangeWhat({ itemsChanged, notesChanged, paymentChanged });
       if (what) {
         const notes = input.notes?.trim();
         await this.notificationsService.notify(lead.guidedRequest.clientId, "QUOTE_UPDATED", {
@@ -242,6 +281,8 @@ export class QuotesService {
           businessName: professionalProfile.businessName,
           itemsChanged,
           notesChanged,
+          paymentChanged,
+          ...(paymentChanged ? { paymentOffer: describePaymentOffer(offer) } : {}),
           ...(notesChanged && notes ? { note: notes } : {}),
           // Note di prima nell'email (docs/CHANGELOG.md §228).
           ...(notesChanged && existingQuote.notes?.trim() ? { previousNote: existingQuote.notes.trim() } : {}),
@@ -258,12 +299,13 @@ export class QuotesService {
           ? ` Totale: da ${formatServicePriceRange(totalsBefore.totalMinEurCents, totalsBefore.totalMaxEurCents)} a ${formatServicePriceRange(totalsAfter.totalMinEurCents, totalsAfter.totalMaxEurCents)}.`
           : "";
       const noteText = notesChanged && input.notes?.trim() ? ` Nota: "${input.notes.trim()}"` : "";
+      const paymentText = paymentChanged ? ` Pagamento offerto: ${describePaymentOffer(offer)}.` : "";
       await this.timelineService.log(
         lead.guidedRequestId,
         professionalProfile.id,
         "PROFESSIONAL",
         what
-          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${noteText}`
+          ? `Il professionista ha aggiornato ${what} del preventivo, senza cambiare data e orario.${priceText}${paymentText}${noteText}`
           : "Il professionista ha modificato il preventivo.",
       );
     }
