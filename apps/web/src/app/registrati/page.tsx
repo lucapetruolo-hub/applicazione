@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { NO_CATEGORY_MESSAGE, parseSubscriptionTier, registerSchema, type ProfessionalCategorySlug } from "@professionisti/shared";
-import { Button, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
+import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -660,7 +660,12 @@ function RegistratiForm() {
             disabled={isSubmitting || !canSubmitConsent}
             opacity={isSubmitting || !canSubmitConsent ? 0.6 : 1}
           >
-            {isSubmitting ? "Creazione account..." : "Registrati"}
+            <XStack alignItems="center" gap="$2">
+              <Text color="white" fontFamily="$body" fontWeight="600">
+                {isSubmitting ? "Creazione account..." : "Registrati"}
+              </Text>
+              <ButtonArrow />
+            </XStack>
           </Button>
         </YStack>
       </form>

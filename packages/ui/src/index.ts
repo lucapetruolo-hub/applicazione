@@ -1,6 +1,8 @@
 export { tamaguiConfig } from "./config";
 export type { AppTamaguiConfig } from "./config";
-export { Button } from "./Button";
+export { Button, BUTTON_HEIGHT } from "./Button";
+export { ButtonArrow } from "./ButtonArrow";
+export type { ButtonArrowProps } from "./ButtonArrow";
 export { ProfessionalCard } from "./ProfessionalCard";
 export { CategoryCard } from "./CategoryCard";
 export { SearchBar } from "./SearchBar";

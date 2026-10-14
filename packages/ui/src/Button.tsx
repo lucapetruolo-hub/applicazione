@@ -1,5 +1,10 @@
 import { Button as TamaguiButton, styled } from "tamagui";
-import { brand, radiusDoc } from "./tokens";
+import { brand } from "./tokens";
+
+export const BUTTON_HEIGHT = 44;
+const PILL = 999;
+/** Quasi nero caldo del pulsante di acquisto dell'abbonamento. */
+const INCHIOSTRO = "#1A1513";
 
 /**
  * `variant` è opzionale: senza di esso il bottone si comporta esattamente
@@ -10,7 +15,11 @@ import { brand, radiusDoc } from "./tokens";
  */
 export const Button = styled(TamaguiButton, {
   name: "Button",
-  borderRadius: "$4",
+  // Pulsanti "vivi" (docs/CHANGELOG.md §233, scelta dell'utente): forma a
+  // pillola piena e altezza 44 (minimo per il tocco). La pressione (scale
+  // .97) è in CSS su `.is_Button` in apps/web/src/app/globals.css, così ha
+  // una transizione morbida senza driver di animazione Tamagui.
+  borderRadius: PILL,
   backgroundColor: "$blue10",
   color: "white",
 
@@ -24,9 +33,9 @@ export const Button = styled(TamaguiButton, {
   variants: {
     variant: {
       primary: {
-        height: 48,
+        height: BUTTON_HEIGHT,
         paddingHorizontal: 24,
-        borderRadius: radiusDoc,
+        borderRadius: PILL,
         backgroundColor: brand.cianografia,
         color: "white",
         fontFamily: "$body",
@@ -37,9 +46,9 @@ export const Button = styled(TamaguiButton, {
         focusStyle: { outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 2 },
       },
       secondary: {
-        height: 48,
+        height: BUTTON_HEIGHT,
         paddingHorizontal: 24,
-        borderRadius: radiusDoc,
+        borderRadius: PILL,
         backgroundColor: "transparent",
         borderWidth: 1,
         borderColor: brand.grafite,
@@ -51,9 +60,9 @@ export const Button = styled(TamaguiButton, {
         focusStyle: { outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 2 },
       },
       ghost: {
-        height: 48,
+        height: BUTTON_HEIGHT,
         paddingHorizontal: 24,
-        borderRadius: radiusDoc,
+        borderRadius: PILL,
         backgroundColor: "transparent",
         borderWidth: 0,
         color: brand.grafite,
@@ -65,9 +74,9 @@ export const Button = styled(TamaguiButton, {
       },
       // Solo nel flusso urgenza (CLAUDE.md, colore semantico: mai decorativo altrove).
       urgent: {
-        height: 48,
+        height: BUTTON_HEIGHT,
         paddingHorizontal: 24,
-        borderRadius: radiusDoc,
+        borderRadius: PILL,
         backgroundColor: brand.urgenza,
         color: "white",
         fontFamily: "$body",
@@ -76,6 +85,21 @@ export const Button = styled(TamaguiButton, {
         hoverStyle: { backgroundColor: "#A82A21" },
         pressStyle: { backgroundColor: "#A82A21" },
         focusStyle: { outlineWidth: 2, outlineColor: brand.urgenza, outlineStyle: "solid", outlineOffset: 2 },
+      },
+      // Solo per comprare l'abbonamento (scelta dell'utente, §233): quasi
+      // nero con il cerchio rosso della freccia (`ButtonArrow tone="red"`).
+      acquisto: {
+        height: BUTTON_HEIGHT,
+        paddingHorizontal: 24,
+        borderRadius: PILL,
+        backgroundColor: INCHIOSTRO,
+        color: "white",
+        fontFamily: "$body",
+        fontWeight: "600",
+        borderWidth: 0,
+        hoverStyle: { backgroundColor: brand.grafite },
+        pressStyle: { backgroundColor: brand.grafite },
+        focusStyle: { outlineWidth: 2, outlineColor: INCHIOSTRO, outlineStyle: "solid", outlineOffset: 2 },
       },
     },
   } as const,

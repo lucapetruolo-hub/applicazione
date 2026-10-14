@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
-import { Button, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
@@ -45,6 +45,7 @@ export function PerProfessionistiContent() {
       <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ProPhoto />
       <ProBenefits />
+      <ProGallery />
       <ProSteps />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} />
       <ProFaq />
@@ -217,15 +218,46 @@ function ProPhoto() {
           }}
         >
           <Image
-            src="/page-photos/per-professionisti-imbianchino.webp"
-            alt="Un imbianchino sorride mentre lavora in un appartamento"
+            // Foto Pexels (pexels.com/photo/4792521), docs/CHANGELOG.md §233.
+            src="/page-photos/per-professionisti-elettricista.webp"
+            alt="Un elettricista monta una lampada al soffitto"
             fill
             priority
             sizes="(max-width: 1200px) 100vw, 1160px"
-            style={{ objectFit: "cover" }}
+            style={{ objectFit: "cover", objectPosition: "50% 25%" }}
           />
         </div>
       </YStack>
+    </Band>
+  );
+}
+
+/** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 7464702, 5463575. */
+const GALLERY: { src: string; alt: string; position: string }[] = [
+  { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%" },
+  { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%" },
+  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride porgendo uno scatolone", position: "45% 40%" },
+  { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%" },
+];
+
+/** Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi. */
+function ProGallery() {
+  return (
+    <Band>
+      <SectionTitle lead="Idraulici, elettricisti, pulizie, traslochi, giardinieri e molti altri mestieri.">Per ogni tipo di lavoro</SectionTitle>
+      <div className="pro-gallery">
+        {GALLERY.map((photo) => (
+          <div key={photo.src} className="pro-gallery-item" style={{ border: `1px solid ${LINE}`, borderRadius: radiusDoc }}>
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              fill
+              sizes="(max-width: 768px) 50vw, 290px"
+              style={{ objectFit: "cover", objectPosition: photo.position }}
+            />
+          </div>
+        ))}
+      </div>
     </Band>
   );
 }
@@ -373,6 +405,23 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
       <SectionTitle lead="I livelli cambiano solo per quanti lavori accettati al mese sono compresi. Un lavoro è accettato quando il cliente accetta il tuo preventivo o prenota dalla tua agenda.">
         Un solo abbonamento, tutte le funzioni
       </SectionTitle>
+      <YStack borderBottomWidth={1} borderColor={LINE} padding="$5" paddingTop={0} gap="$3" $gtMd={{ padding: "$6", paddingTop: 0 }}>
+        <CellTitle>Compreso in ogni livello</CellTitle>
+        <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
+          {SUBSCRIPTION_FEATURES.map((feature) => (
+            <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
+              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
+              <Text color={brand.grafite70} flex={1}>
+                {feature}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+        <Text color={brand.grafite70} marginTop="$2" maxWidth={720} lineHeight={22}>
+          Se ti avvicini al limite del tuo livello ti avvisiamo prima, e puoi passare al livello superiore pagando solo la differenza.
+          L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
+        </Text>
+      </YStack>
       <Grid>
         {SUBSCRIPTION_TIERS.map((tier) => {
           const selected = selectedTier === tier.tier;
@@ -445,8 +494,13 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
       <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$2" alignItems="center" $gtMd={{ padding: "$6" }}>
         {continueHref ? (
           <Link href={continueHref} style={{ textDecoration: "none" }}>
-            <Button variant="primary" size="$5">
-              {isProfessional ? `Continua con ${selectedLabel}` : `Iscriviti con ${selectedLabel}`}
+            <Button variant="acquisto" size="$5">
+              <XStack alignItems="center" gap="$2">
+                <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$5">
+                  {isProfessional ? `Continua con ${selectedLabel}` : `Iscriviti con ${selectedLabel}`}
+                </Text>
+                <ButtonArrow tone="red" />
+              </XStack>
             </Button>
           </Link>
         ) : (
@@ -456,23 +510,6 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
         )}
         <Text fontSize="$3" color={brand.grafite70} textAlign="center">
           {continueHref ? "Poi confermi il livello e il pagamento." : "Tocca uno dei livelli qui sopra per continuare."}
-        </Text>
-      </YStack>
-      <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$3" $gtMd={{ padding: "$6" }}>
-        <CellTitle>Compreso in ogni livello</CellTitle>
-        <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
-          {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
-              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
-              <Text color={brand.grafite70} flex={1}>
-                {feature}
-              </Text>
-            </XStack>
-          ))}
-        </YStack>
-        <Text color={brand.grafite70} marginTop="$2" maxWidth={720} lineHeight={22}>
-          Se ti avvicini al limite del tuo livello ti avvisiamo prima, e puoi passare al livello superiore pagando solo la differenza.
-          L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
         </Text>
       </YStack>
     </Band>

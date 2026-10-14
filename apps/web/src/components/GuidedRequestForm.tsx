@@ -17,7 +17,7 @@ import {
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
 } from "@professionisti/shared";
-import { Autocomplete, Button, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -1213,7 +1213,12 @@ export function GuidedRequestForm({
               flexGrow={2}
               flexBasis={200}
             >
-              {isSubmitting ? submittingLabel : submitLabel}
+              <XStack alignItems="center" gap="$2">
+                <Text color="white" fontFamily="$body" fontWeight="600">
+                  {isSubmitting ? submittingLabel : submitLabel}
+                </Text>
+                <ButtonArrow />
+              </XStack>
             </Button>
           )}
         </XStack>

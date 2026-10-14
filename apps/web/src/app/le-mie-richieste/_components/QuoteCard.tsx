@@ -442,7 +442,7 @@ export function QuoteCard({
                 onlineAvailable={onlinePayments}
               />
               <XStack gap="$2" flexWrap="wrap">
-                <CardButton tone="primary" onPress={handleAccept} disabled={isAccepting}>
+                <CardButton tone="primary" arrow onPress={handleAccept} disabled={isAccepting}>
                   {isAccepting ? "Accettazione..." : paymentMethod === "ONLINE" ? "Accetta e paga l'acconto" : "Accetta preventivo"}
                 </CardButton>
                 <CardButton onPress={() => setChoosingPayment(false)} disabled={isAccepting}>
