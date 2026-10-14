@@ -93,6 +93,7 @@ export function HomeHero() {
 
           <YStack width="100%" marginTop="$4">
             <SearchBar
+              wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
               professionalSuggestions={professionalSuggestions}
               citySuggestions={ALL_ITALIAN_CITY_NAMES}

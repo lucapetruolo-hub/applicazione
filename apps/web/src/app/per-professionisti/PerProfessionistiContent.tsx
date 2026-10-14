@@ -45,6 +45,7 @@ export function PerProfessionistiContent() {
       <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ProPhoto />
       <ProBenefits />
+      <ProGallery />
       <ProSteps />
       <ProPricing isProfessional={Boolean(user?.isProfessional)} />
       <ProFaq />
@@ -217,16 +218,46 @@ function ProPhoto() {
           }}
         >
           <Image
-            // Foto Pexels (pexels.com/photo/28513061), docs/CHANGELOG.md §233.
-            src="/page-photos/per-professionisti-falegname.webp"
-            alt="Un falegname al lavoro nella sua bottega"
+            // Foto Pexels (pexels.com/photo/4792521), docs/CHANGELOG.md §233.
+            src="/page-photos/per-professionisti-elettricista.webp"
+            alt="Un elettricista monta una lampada al soffitto"
             fill
             priority
             sizes="(max-width: 1200px) 100vw, 1160px"
-            style={{ objectFit: "cover", objectPosition: "50% 30%" }}
+            style={{ objectFit: "cover", objectPosition: "50% 25%" }}
           />
         </div>
       </YStack>
+    </Band>
+  );
+}
+
+/** Foto Pexels dei lavori (docs/CHANGELOG.md §233): 7464699, 6050244, 6231851, 7218563. */
+const GALLERY: { src: string; alt: string; position: string }[] = [
+  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride portando una pianta e uno scatolone", position: "70% 30%" },
+  { src: "/page-photos/per-professionisti-galleria-tuttofare.webp", alt: "Un tuttofare sorridente con la cassetta degli attrezzi", position: "35% 30%" },
+  { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%" },
+  { src: "/page-photos/per-professionisti-galleria-imbianchino.webp", alt: "Due imbianchini dipingono una parete con il rullo", position: "50% 40%" },
+];
+
+/** Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi. */
+function ProGallery() {
+  return (
+    <Band>
+      <SectionTitle lead="Idraulici, elettricisti, pulizie, traslochi, giardinieri e molti altri mestieri.">Per ogni tipo di lavoro</SectionTitle>
+      <div className="pro-gallery">
+        {GALLERY.map((photo) => (
+          <div key={photo.src} className="pro-gallery-item" style={{ border: `1px solid ${LINE}`, borderRadius: radiusDoc }}>
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              fill
+              sizes="(max-width: 768px) 50vw, 290px"
+              style={{ objectFit: "cover", objectPosition: photo.position }}
+            />
+          </div>
+        ))}
+      </div>
     </Band>
   );
 }

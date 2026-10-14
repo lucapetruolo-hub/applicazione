@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
@@ -43,6 +43,11 @@ export type SearchBarProps = {
    * bottone più piccoli, nessun testo di aiuto sotto.
    */
   compact?: boolean;
+  /**
+   * Avvolge il pulsante "Cerca" (es. con l'effetto magnete del web,
+   * docs/CHANGELOG.md §233). Senza, il pulsante resta com'è.
+   */
+  wrapSearchButton?: (button: ReactNode) => ReactNode;
 };
 
 const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
@@ -59,6 +64,7 @@ export function SearchBar({
   citySuggestions = [],
   searchOnModeChange = false,
   compact = false,
+  wrapSearchButton = (button) => button,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -124,21 +130,23 @@ export function SearchBar({
             minChars={3}
           />
         </XStack>
-        <Button
-          variant="primary"
-          size="$3"
-          height={36}
-          onPress={() =>
-            onSearch({
-              query,
-              city,
-              mode,
-              professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
-            })
-          }
-        >
-          Cerca
-        </Button>
+        {wrapSearchButton(
+          <Button
+            variant="primary"
+            size="$3"
+            height={36}
+            onPress={() =>
+              onSearch({
+                query,
+                city,
+                mode,
+                professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+              })
+            }
+          >
+            Cerca
+          </Button>
+        )}
       </XStack>
     );
   }
@@ -238,19 +246,21 @@ export function SearchBar({
           size="$5"
           minChars={3}
         />
-        <Button
-          variant="primary"
-          onPress={() =>
-            onSearch({
-              query,
-              city,
-              mode,
-              professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
-            })
-          }
-        >
-          Cerca
-        </Button>
+        {wrapSearchButton(
+          <Button
+            variant="primary"
+            onPress={() =>
+              onSearch({
+                query,
+                city,
+                mode,
+                professional: selectedProfessional?.name === query ? selectedProfessional : undefined,
+              })
+            }
+          >
+            Cerca
+          </Button>
+        )}
       </YStack>
       {mode === "online" ? (
         <Text fontSize="$2" color={brand.grafite70}>

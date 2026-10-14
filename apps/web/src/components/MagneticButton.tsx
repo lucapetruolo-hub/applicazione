@@ -13,7 +13,7 @@ const MAX_PULL = 6;
  * movimento": su telefono e tablet non succede nulla. Lo stile vive in
  * globals.css (`.magnet`), qui si aggiornano solo le variabili CSS.
  */
-export function MagneticButton({ children }: { children: ReactNode }) {
+export function MagneticButton({ children, block = false }: { children: ReactNode; /** Il pulsante occupa tutta la larghezza disponibile (es. "Cerca" su telefono). */ block?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
 
   const enabled = () =>
@@ -45,7 +45,7 @@ export function MagneticButton({ children }: { children: ReactNode }) {
   };
 
   return (
-    <span ref={ref} className="magnet" onPointerMove={onMove} onPointerLeave={onLeave} style={{ "--tx": "0px", "--ty": "0px" } as CSSProperties}>
+    <span ref={ref} className={block ? "magnet magnet--block" : "magnet"} onPointerMove={onMove} onPointerLeave={onLeave} style={{ "--tx": "0px", "--ty": "0px" } as CSSProperties}>
       {children}
     </span>
   );

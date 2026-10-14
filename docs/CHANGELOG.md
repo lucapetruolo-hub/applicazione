@@ -18341,6 +18341,12 @@ Richiesta dell'utente: applicare ai pulsanti i dettagli di uno screenshot
   della freccia (variante `acquisto`): "Iscriviti con…" in
   `/per-professionisti` e i livelli in `/dashboard/abbonamento`. Il rosso
   resta altrove solo per l'urgenza.
+- Magnete e alone anche sul pulsante "Cerca" di tutte le barre di ricerca
+  (`SearchBar` accetta `wrapSearchButton`, il web lo avvolge in
+  `MagneticButton`; su telefono resta a tutta larghezza).
 - `/per-professionisti`: "Compreso in ogni livello" spostato prima della
-  scelta dei livelli; foto principale cambiata (Pexels 28513061), con
-  altre quattro alternative proposte all'utente.
+  scelta dei livelli; foto principale cambiata (Pexels 4792521, scelta tra
+  dieci alternative proposte all'utente) e nuova fila "Per ogni tipo di
+  lavoro" con quattro foto di mestieri (`ProGallery`).
+- Le regole CSS usano `button.is_Button`: anche il testo interno del
+  Button di Tamagui ha la classe `is_Button`.
