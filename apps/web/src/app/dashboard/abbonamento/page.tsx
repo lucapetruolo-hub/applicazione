@@ -262,7 +262,7 @@ function AbbonamentoContent() {
               {justRegistered ? (
                 <Text color={brand.grafite}>
                   Poi{" "}
-                  <Link href="/dashboard/tipo-attivita" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                  <Link href="/dashboard/profilo" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
                     completa il tuo profilo
                   </Link>{" "}
                   per comparire nelle ricerche.

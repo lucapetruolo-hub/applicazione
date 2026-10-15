@@ -54,6 +54,7 @@ function ConfermaConCodice() {
             token={token}
             email={user.email ?? ""}
             initialResendSeconds={user.emailCodeResendInSeconds ?? 0}
+            initialValidForSeconds={user.emailCodeValidForSeconds ?? 0}
             allowChangeEmail={user.isProfessional}
             onEmailChanged={() => void refreshUser().catch(() => {})}
             onVerified={async () => {

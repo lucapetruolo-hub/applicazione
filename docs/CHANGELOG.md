@@ -18742,3 +18742,31 @@ testo, impronta, scadenza, tentativi, 60 secondi, tipo salvato),
 (`migrate deploy` + `migrate diff` senza differenze). Percorso completo
 provato nel browser da telefono e computer: scelta del tipo, registrazione,
 codice sbagliato, codice giusto, Dati fiscali precompilati.
+
+## 244. Codice di conferma: scaduto, chiesto due volte, "Lavoro occasionale"
+
+**Richiesta esplicita dell'utente** (15/10/2026, sul thread della PR #78):
+"effettua le migliorie; dalla scheda come lavori, elimina la dicitura sotto
+privato, senza partita iva e inserisci solo "lavoro occasionale"".
+
+**Decisioni e modifiche:**
+- "Come lavori?": sotto "Privato, senza Partita IVA" ora c'è solo
+  "Lavoro occasionale" (titolo della scheda invariato).
+- Codice scaduto: `/auth/me` restituisce `emailCodeValidForSeconds`
+  (`emailCodeValidFor` in `auth.service.ts`: 0 se scaduto, mai mandato o
+  con i tentativi finiti). `EmailCodeForm` ne chiede subito uno nuovo se
+  arriva con un codice che non vale più ("Il codice di prima era scaduto: te
+  ne abbiamo mandato uno nuovo."), e se scade con la pagina aperta disattiva
+  le caselle (tratteggiate) e mette in primo piano "Mandami un nuovo codice".
+- Riquadro del cliente in /account: se il codice è stato mandato da meno di
+  60 secondi, invece di "Invio non riuscito" apre il campo per scriverlo; per
+  gli altri errori mostra il messaggio vero del server.
+- `/dashboard/tipo-attivita` tolta: il tipo si sceglie in registrazione.
+  L'indirizzo rimanda a `/dashboard/fiscale` (con `?entityType=` se c'era)
+  per i link già salvati; il link in Abbonamento porta a `/dashboard/profilo`.
+
+**Verifica:** 354 test API verdi (nuovi casi per `emailCodeValidFor`),
+typecheck ed eslint puliti. Provato nel browser: codice scaduto all'arrivo
+(nuovo codice mandato e valido sul database), codice che scade a pagina
+aperta (orologio simulato), secondo clic del cliente entro 60 secondi,
+vecchio indirizzo che rimanda ai Dati fiscali.

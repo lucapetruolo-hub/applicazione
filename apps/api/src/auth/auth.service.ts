@@ -47,6 +47,19 @@ export function emailCodeResendWait(sentAt: Date | null, now = new Date()): numb
   return Math.max(0, Math.ceil((sentAt.getTime() + EMAIL_CODE_RESEND_SECONDS * 1000 - now.getTime()) / 1000));
 }
 
+/**
+ * Secondi di validità che restano al codice in corso (0 = nessun codice
+ * valido: mai mandato, scaduto o tentativi finiti). Il sito lo usa per dire
+ * subito che il codice è scaduto invece di farlo scoprire al primo errore.
+ */
+export function emailCodeValidFor(
+  user: { emailCodeHash: string | null; emailCodeExpiresAt: Date | null; emailCodeAttempts: number },
+  now = new Date(),
+): number {
+  if (!user.emailCodeHash || !user.emailCodeExpiresAt || user.emailCodeAttempts >= EMAIL_CODE_MAX_ATTEMPTS) return 0;
+  return Math.max(0, Math.floor((user.emailCodeExpiresAt.getTime() - now.getTime()) / 1000));
+}
+
 /** Campi da azzerare quando l'email risulta confermata, in qualunque modo. */
 const CLEARED_EMAIL_CHECKS = {
   emailTokenHash: null,

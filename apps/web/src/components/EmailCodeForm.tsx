@@ -8,11 +8,17 @@ import { apiClient } from "@/lib/apiClient";
 
 type CheckState = "idle" | "checking" | "error" | "done";
 
+/** Validità di un codice appena mandato, come `EMAIL_CODE_MINUTES` in apps/api. */
+const CODE_VALID_SECONDS = 15 * 60;
+
 /**
  * Inserimento del codice di 6 cifre arrivato con l'email di conferma
  * (docs/CHANGELOG.md §243). Un solo `<input>` vero (incolla, riempimento
  * automatico da iPhone con `one-time-code`, tastiera numerica) sotto sei
  * caselle solo disegnate. Il codice parte da solo alla sesta cifra.
+ *
+ * Se il codice in corso è già scaduto (o non c'è) ne chiede subito uno nuovo,
+ * e se scade mentre la pagina è aperta lo dice prima che si scriva.
  *
  * Usato dopo la registrazione del professionista, in /conferma-email e nel
  * riquadro facoltativo del cliente in /account.
@@ -21,6 +27,7 @@ export function EmailCodeForm({
   token,
   email,
   initialResendSeconds,
+  initialValidForSeconds,
   onVerified,
   allowChangeEmail = false,
   onEmailChanged,
@@ -29,6 +36,8 @@ export function EmailCodeForm({
   email: string;
   /** Secondi prima di poter chiedere un nuovo codice, come li dà /auth/me. */
   initialResendSeconds: number;
+  /** Secondi di validità del codice in corso, da /auth/me. Assente: appena mandato. */
+  initialValidForSeconds?: number;
   onVerified: (email: string) => void;
   /** Solo dove cambiare l'email manda subito un nuovo codice (account professionista). */
   allowChangeEmail?: boolean;
@@ -39,25 +48,46 @@ export function EmailCodeForm({
   const [message, setMessage] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [resendIn, setResendIn] = useState(initialResendSeconds);
-  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  const [validFor, setValidFor] = useState(initialValidForSeconds ?? CODE_VALID_SECONDS);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "renewed">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState(email);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [savingEmail, setSavingEmail] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autoResent = useRef(false);
+  const expired = validFor <= 0 && state !== "done";
 
   // Cursore già nel campo: il codice si scrive (o si incolla) subito.
-  // Di nuovo dopo un codice sbagliato, quando il campo torna attivo.
+  // Di nuovo dopo un codice sbagliato o dopo un codice nuovo, quando il
+  // campo torna attivo.
   useEffect(() => {
-    if (state === "idle" || state === "error") inputRef.current?.focus();
-  }, [state]);
+    if (!expired && (state === "idle" || state === "error")) inputRef.current?.focus();
+  }, [state, expired]);
+
 
   useEffect(() => {
     if (resendIn <= 0) return;
     const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [resendIn]);
+
+  useEffect(() => {
+    if (validFor <= 0) return;
+    const timer = window.setTimeout(() => setValidFor((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [validFor]);
+
+  // Codice già scaduto all'arrivo (email vecchia, tentativi finiti): invece
+  // di far scrivere un codice che non può funzionare, ne mandiamo subito uno
+  // nuovo. Una volta sola, e solo se l'attesa tra due invii è passata.
+  useEffect(() => {
+    if (autoResent.current || validFor > 0 || resendIn > 0) return;
+    autoResent.current = true;
+    void resend(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function submit(value: string) {
     if (value.length !== EMAIL_CODE_LENGTH || state === "checking" || state === "done") return;
@@ -69,8 +99,11 @@ export function EmailCodeForm({
       // Un attimo per vedere la spunta verde prima di andare avanti.
       window.setTimeout(() => onVerified(result.email), 700);
     } catch (err) {
+      const text = err instanceof Error ? err.message : "Non siamo riusciti a controllare il codice, riprova.";
+      // Scaduto o tentativi finiti: si può solo chiederne uno nuovo.
+      if (/scaduto|troppe volte/i.test(text)) setValidFor(0);
       setState("error");
-      setMessage(err instanceof Error ? err.message : "Non siamo riusciti a controllare il codice, riprova.");
+      setMessage(text);
       setCode("");
     }
   }
@@ -82,13 +115,14 @@ export function EmailCodeForm({
     if (digits.length === EMAIL_CODE_LENGTH) void submit(digits);
   }
 
-  async function resend() {
+  async function resend(afterExpiry = false) {
     setResendState("sending");
     setResendError(null);
     try {
       await apiClient.resendVerificationEmail(token);
-      setResendState("sent");
+      setResendState(afterExpiry ? "renewed" : "sent");
       setResendIn(60);
+      setValidFor(CODE_VALID_SECONDS);
       setCode("");
       setState("idle");
       setMessage(null);
@@ -115,6 +149,7 @@ export function EmailCodeForm({
       await apiClient.updateAccount(token, { email: next });
       setEditingEmail(false);
       setResendIn(60);
+      setValidFor(CODE_VALID_SECONDS);
       setResendState("sent");
       setCode("");
       setState("idle");
@@ -129,7 +164,7 @@ export function EmailCodeForm({
 
   const minutes = Math.floor(resendIn / 60);
   const seconds = String(resendIn % 60).padStart(2, "0");
-  const boxesClass = `email-code-boxes${state === "error" ? " is-error" : ""}${state === "done" ? " is-done" : ""}`;
+  const boxesClass = `email-code-boxes${expired ? " is-expired" : ""}${state === "error" ? " is-error" : ""}${state === "done" ? " is-done" : ""}`;
 
   if (editingEmail) {
     return (
@@ -182,13 +217,13 @@ export function EmailCodeForm({
           aria-label={`Codice di ${EMAIL_CODE_LENGTH} cifre`}
           aria-invalid={state === "error" ? true : undefined}
           aria-describedby="email-code-status"
-          disabled={state === "checking" || state === "done"}
+          disabled={state === "checking" || state === "done" || expired}
         />
         <div className={boxesClass} aria-hidden="true">
           {Array.from({ length: EMAIL_CODE_LENGTH }, (_, i) => (
             <span
               key={i}
-              className={`email-code-box${code[i] ? " is-filled" : ""}${focused && i === Math.min(code.length, EMAIL_CODE_LENGTH - 1) && state === "idle" ? " is-active" : ""}`}
+              className={`email-code-box${code[i] ? " is-filled" : ""}${focused && !expired && i === Math.min(code.length, EMAIL_CODE_LENGTH - 1) && state === "idle" ? " is-active" : ""}`}
             >
               {code[i] ?? ""}
             </span>
@@ -208,9 +243,21 @@ export function EmailCodeForm({
               Email confermata
             </Text>
           </XStack>
+        ) : resendState === "sending" && validFor <= 0 ? (
+          <Text fontSize="$3" color={brand.grafite70}>
+            Il codice di prima è scaduto: te ne mandiamo uno nuovo...
+          </Text>
         ) : message ? (
           <Text fontSize="$3" color={brand.urgenza}>
             {message}
+          </Text>
+        ) : expired ? (
+          <Text fontSize="$3" color={brand.urgenza}>
+            Il codice è scaduto. Chiedine uno nuovo qui sotto.
+          </Text>
+        ) : resendState === "renewed" ? (
+          <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
+            Il codice di prima era scaduto: te ne abbiamo mandato uno nuovo.
           </Text>
         ) : resendState === "sent" ? (
           <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
@@ -225,7 +272,7 @@ export function EmailCodeForm({
             Puoi chiedere un nuovo codice tra {minutes}:{seconds}
           </Text>
         ) : (
-          <Button variant="ghost" onPress={resend} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
+          <Button variant={expired ? "primary" : "ghost"} onPress={() => void resend()} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
             {resendState === "sending" ? "Invio..." : "Mandami un nuovo codice"}
           </Button>
         )}

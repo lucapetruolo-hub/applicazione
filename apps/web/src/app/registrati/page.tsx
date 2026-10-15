@@ -199,7 +199,7 @@ const ENTITY_CHOICES: {
   label: string;
   description: string;
 }[] = [
-  { value: "PRIVATE_INDIVIDUAL", param: "privato", icon: "user-round", label: "Privato, senza Partita IVA", description: "Lavori ogni tanto, con ricevuta per prestazione occasionale." },
+  { value: "PRIVATE_INDIVIDUAL", param: "privato", icon: "user-round", label: "Privato, senza Partita IVA", description: "Lavoro occasionale" },
   { value: "SOLE_PROPRIETOR", param: "partita-iva", icon: "briefcase", label: "Con Partita IVA", description: "Libero professionista o ditta individuale, anche forfettario." },
   { value: "BUSINESS", param: "azienda", icon: "building-2", label: "Azienda", description: "Società con dipendenti o soci: SRL, SNC, SAS, SPA." },
 ];
@@ -534,11 +534,8 @@ function RegistratiForm() {
   // dritto in Dashboard — bug reale segnalato dall'utente, prima si
   // finiva sempre su /dashboard/profilo anche da loggati.
   function afterAuth(isNewUser: boolean) {
-    // Richiesta esplicita dell'utente: un account professionista appena
-    // creato apre subito la schermata "Come fornirai i tuoi servizi?"
-    // (/dashboard/tipo-attivita, skippabile) prima del profilo pubblico —
-    // un professionista che accede di nuovo (non isNewUser) va invece
-    // dritto in Dashboard come già prima.
+    // Un professionista che accede di nuovo (non isNewUser) va dritto in
+    // Dashboard come già prima.
     if (chosenTier) {
       router.push(`/dashboard/abbonamento?livello=${chosenTier}${isNewUser ? "&nuovo=1" : ""}`);
       return;

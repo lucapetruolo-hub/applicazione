@@ -2463,6 +2463,10 @@ a.admin-kpi:hover {
   background: #189a63;
   animation: email-code-caret 1s steps(1) infinite;
 }
+.email-code-boxes.is-expired .email-code-box {
+  border-style: dashed;
+  background: #f3f2ef;
+}
 .email-code-boxes.is-error .email-code-box {
   border-color: #c8362b;
   background: #fbeae7;

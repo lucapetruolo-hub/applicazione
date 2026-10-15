@@ -598,6 +598,8 @@ export type CurrentUser = {
   emailVerificationRequired: boolean;
   /** Secondi prima di poter chiedere un nuovo codice di conferma (docs/CHANGELOG.md §243). */
   emailCodeResendInSeconds: number;
+  /** Secondi di validità del codice in corso: 0 se scaduto, finito o mai mandato. */
+  emailCodeValidForSeconds: number;
   /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
   signupEntityType: ProfessionalEntityTypeValue | null;
 };

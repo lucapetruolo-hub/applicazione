@@ -15,15 +15,28 @@ import { EmailCodeForm } from "@/components/EmailCodeForm";
 export function ClientEmailVerificationCard() {
   const { user, token, refreshUser } = useAuth();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [timing, setTiming] = useState<{ resendIn: number; validFor?: number }>({ resendIn: 60 });
 
   if (!user || !token || user.isProfessional || user.emailVerified || !user.email) return null;
 
   const send = async () => {
     setState("sending");
+    setError(null);
     try {
       await apiClient.resendVerificationEmail(token);
+      setTiming({ resendIn: 60 });
       setState("sent");
-    } catch {
+    } catch (err) {
+      // Un codice mandato da poco (es. da un'altra scheda) è ancora buono:
+      // si apre il riquadro per scriverlo invece di un errore senza uscita.
+      const me = await apiClient.me(token).catch(() => null);
+      if (me && me.emailCodeValidForSeconds > 0) {
+        setTiming({ resendIn: me.emailCodeResendInSeconds, validFor: me.emailCodeValidForSeconds });
+        setState("sent");
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Invio non riuscito, riprova tra qualche minuto.");
       setState("error");
     }
   };
@@ -43,7 +56,8 @@ export function ClientEmailVerificationCard() {
         <EmailCodeForm
           token={token}
           email={user.email}
-          initialResendSeconds={60}
+          initialResendSeconds={timing.resendIn}
+          initialValidForSeconds={timing.validFor}
           onVerified={() => void refreshUser().catch(() => {})}
         />
       ) : (
@@ -53,7 +67,7 @@ export function ClientEmailVerificationCard() {
           </Button>
           {state === "error" ? (
             <Text color={brand.urgenza} fontSize="$3">
-              Invio non riuscito, riprova tra qualche minuto.
+              {error}
             </Text>
           ) : null}
         </YStack>

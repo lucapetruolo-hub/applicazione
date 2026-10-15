@@ -85,9 +85,8 @@ function DashboardFiscaleContent() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Categoria scelta nella schermata precedente (/dashboard/tipo-attivita,
-  // subito dopo la registrazione) — arriva qui via query param, mai già
-  // salvata: un account appena creato non ha ancora un ProfessionalProfile
+  // Tipo scelto in registrazione (o via ?entityType= dai vecchi link a
+  // /dashboard/tipo-attivita), mai già salvato: un account appena creato non ha ancora un ProfessionalProfile
   // (creato solo al primo salvataggio di /dashboard/profilo), quindi
   // ProfessionalFiscalProfile — che vi si aggancia 1:1 — non può esistere
   // prima di allora. Il picker qui sotto arriva solo PRE-selezionato

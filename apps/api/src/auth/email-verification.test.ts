@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, ForbiddenException, HttpException } from "@nestjs/common";
 import { createHash } from "node:crypto";
-import { AuthService } from "./auth.service";
+import { AuthService, emailCodeValidFor } from "./auth.service";
 import { VerifiedEmailGuard } from "./verified-email.guard";
 
 /**
@@ -178,5 +178,20 @@ describe("conferma email", () => {
       await expect(service.resendVerificationEmail("u-1")).resolves.toEqual({ alreadyVerified: false });
       expect(emailService.send).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("validità del codice per /auth/me (§244)", () => {
+  const now = new Date("2026-10-15T10:00:00Z");
+  const base = { emailCodeHash: "h", emailCodeExpiresAt: new Date(now.getTime() + 90_000), emailCodeAttempts: 0 };
+
+  it("restituisce i secondi che restano a un codice valido", () => {
+    expect(emailCodeValidFor(base, now)).toBe(90);
+  });
+
+  it("vale 0 per un codice scaduto, mai mandato o con i tentativi finiti", () => {
+    expect(emailCodeValidFor({ ...base, emailCodeExpiresAt: new Date(now.getTime() - 1000) }, now)).toBe(0);
+    expect(emailCodeValidFor({ ...base, emailCodeHash: null }, now)).toBe(0);
+    expect(emailCodeValidFor({ ...base, emailCodeAttempts: 5 }, now)).toBe(0);
   });
 });
