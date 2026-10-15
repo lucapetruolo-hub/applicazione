@@ -9,7 +9,7 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
  * "Scopri di più" sui pagamenti da /per-professionisti (docs/CHANGELOG.md
  * §174, richiesta dell'utente): spiega al professionista come viene pagato.
  * Stesse regole dei Termini (punto 5) e di /dashboard/fiscale (§168):
- * acconto 20% del massimo, saldo a lavoro chiuso, custodia fino alla
+ * acconto 20% del massimo, saldo a lavoro chiuso, soldi bloccati fino alla
  * conferma o 7 giorni, accredito meno costo Stripe e commissione del 5%;
  * pagamento diretto senza commissione. Finché Stripe non è attivo la pagina
  * dice "in arrivo" invece di promettere un pagamento che non c'è.
@@ -81,18 +81,18 @@ export function PagamentiContent() {
             Quando chiudi il lavoro indichi l&apos;importo finale e il cliente paga la differenza, online o direttamente a te secondo il
             modo scelto. Se l&apos;acconto supera l&apos;importo finale, la parte in più torna al cliente.
           </Point>
-          <Point n={3} title="Accredito">
-            Teniamo noi i soldi in custodia e te li accreditiamo sul tuo conto Stripe quando il cliente conferma che il lavoro è finito,
-            oppure 7 giorni dopo la chiusura se non conferma e non segnala problemi. Con una segnalazione aperta restano bloccati finché
-            non si chiude.
+          <Point n={3} title="Soldi bloccati, poi il bonifico">
+            Quello che il cliente paga online arriva subito sul tuo conto Stripe, ma resta bloccato: non lo teniamo noi. Lo sblocchiamo
+            quando il cliente conferma che il lavoro è finito, oppure 7 giorni dopo la chiusura se non conferma e non segnala problemi, e
+            parte il bonifico verso la tua banca. Con una segnalazione aperta resta bloccato finché non si chiude.
           </Point>
           <Point n={4} title="Costi">
             Da quanto il cliente paga online togliamo il costo del servizio di pagamento Stripe e una commissione del 5%. Su quanto ti
             paga direttamente non c&apos;è commissione. Il cliente non paga costi in più.
           </Point>
           <P>
-            Per ricevere gli accrediti attivi i pagamenti in Dati fiscali e pagamenti, nella tua area. Finché non lo fai, i soldi restano
-            in custodia.
+            Per offrire l&apos;acconto online attiva i pagamenti in Dati fiscali e pagamenti, nella tua area: Stripe ti chiede i dati e
+            il conto bancario su cui ricevere i bonifici.
           </P>
         </Block>
 

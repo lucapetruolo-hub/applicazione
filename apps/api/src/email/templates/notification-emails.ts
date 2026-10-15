@@ -6,6 +6,8 @@ import {
   JOB_ISSUE_PRO_REPLY_HOURS,
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
+  ONLINE_LONG_HOLD_ALERT_DAYS,
+  ONLINE_MAX_HOLD_DAYS,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -631,7 +633,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Acconto pagato",
     paragraphs: [
       `Il cliente ha pagato online l'acconto per il lavoro **${job(ctx)}**.`,
-      "Resta in custodia fino alla chiusura del lavoro e ti arriva insieme al saldo.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }] : []),
     cta: proRequests("Apri il lavoro"),
@@ -643,7 +645,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Saldo pagato",
     paragraphs: [
       `Il cliente ha pagato online il saldo per il lavoro **${job(ctx)}**.`,
-      "Riceverai l'accredito quando il cliente conferma che è tutto a posto, o comunque entro 7 giorni.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
@@ -655,7 +657,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Paga il saldo",
     paragraphs: [
       `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**. Paga il saldo online per completare il pagamento.`,
-      "Teniamo i soldi in custodia: arrivano al professionista quando confermi che è tutto a posto, o comunque dopo 7 giorni.",
+      "Il professionista riceve i soldi quando confermi il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
@@ -672,16 +674,30 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Soldi sbloccati sul conto Stripe del professionista (§243): parte il bonifico.
   JOB_PAYOUT_SENT: (payload, ctx) => ({
     kind: "notification",
-    subject: `Ti abbiamo accreditato ${formatEur(payload.amountEurCents) || "un pagamento"}`,
+    subject: `Pagamento sbloccato: ${formatEur(payload.amountEurCents) || "un bonifico"} in arrivo`,
     greeting: ctx.name,
-    title: "Pagamento accreditato",
+    title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo accreditato sul tuo conto Stripe il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e dei costi di pagamento.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e del costo della carta.`,
+      "Il bonifico arriva in banca in pochi giorni lavorativi.",
     ],
-    details: typeof payload.amountEurCents === "number" ? [{ label: "Accredito", value: formatEur(payload.amountEurCents) }] : undefined,
-    cta: { label: "Vedi i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: proRequests("Apri il lavoro"),
+  }),
+  JOB_PAYOUT_FAILED: (payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il bonifico verso la tua banca non è riuscito",
+    greeting: ctx.name,
+    title: "Bonifico non riuscito",
+    paragraphs: [
+      `Il bonifico${typeof payload.amountEurCents === "number" ? ` di ${formatEur(payload.amountEurCents)}` : ""} per il lavoro **${job(ctx)}** non è arrivato alla tua banca. I soldi sono al sicuro sul tuo conto Stripe.`,
+      "Controlla il conto bancario: il bonifico riparte da solo.",
+    ],
+    cta: { label: "Controlla i dati bancari", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
   JOB_PAYOUT_ACCOUNT_NEEDED: (_payload, ctx) => ({
     kind: "notification",
@@ -746,7 +762,7 @@ const BUILDERS: Record<string, Builder> = {
     tone: "urgent",
     subject: "Lavoro pagato online non chiuso dal professionista",
     title: "Lavoro non chiuso",
-    paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora in custodia.`],
+    paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora bloccati.`],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
   }),
   JOB_STRIPE_DISPUTE: (payload, ctx) => ({
@@ -769,6 +785,17 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
       payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  ADMIN_JOB_PAYMENT_LONG_HOLD: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Pagamento online bloccato da quasi 90 giorni",
+    title: "Pagamento bloccato da troppo tempo",
+    paragraphs: [
+      `Un pagamento online è bloccato da ${typeof payload.days === "number" ? payload.days : ONLINE_LONG_HOLD_ALERT_DAYS} giorni. Dopo ${ONLINE_MAX_HOLD_DAYS} giorni Stripe lo manda comunque in banca al professionista.`,
+      "Decidi prima se sbloccarlo o rimborsare il cliente.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),

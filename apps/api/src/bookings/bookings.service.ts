@@ -84,6 +84,7 @@ export class BookingsService {
         paymentMethod,
         amountEurCents: this.quoteDepositEurCents(quote),
         businessName: quote.professionalProfile.businessName,
+        professionalProfileId: quote.professionalProfileId,
       });
       if (!url) throw new BadRequestException("Il pagamento online non è partito: riprova tra poco.");
       return { bookingId: null, paymentMethod, checkoutUrl: url };
