@@ -126,6 +126,15 @@ describe("BillingService.handleWebhookEvent", () => {
     expect(jobPaymentsService.retryPayoutsForAccount).toHaveBeenCalledWith("acct_1", { skipFailed: true });
   });
 
+  it("quando il professionista cambia il conto bancario su Stripe rilegge il conto e riprova i bonifici", async () => {
+    const { service, stripe, professionalFiscalService, jobPaymentsService } = buildService();
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_9", type: "account.external_account.updated", account: "acct_1", data: { object: { id: "ba_1" } } });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(professionalFiscalService.refreshStripeConnectStatus).toHaveBeenCalledWith("acct_1");
+    expect(jobPaymentsService.retryPayoutsForAccount).toHaveBeenCalledWith("acct_1");
+  });
+
   it("risponde 400 se la firma non corrisponde a nessuna chiave", async () => {
     const { service, stripe } = buildService();
     stripe.webhooks.constructEvent.mockImplementation(() => {

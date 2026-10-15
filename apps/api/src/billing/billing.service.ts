@@ -508,6 +508,13 @@ export class BillingService {
       await this.jobPaymentsService.retryPayoutsForAccount(account.id);
     }
 
+    // Il professionista ha aggiunto o cambiato il conto bancario su Stripe
+    // (§243): si rilegge lo stato del conto e si riprovano i bonifici in sospeso.
+    if ((event.type === "account.external_account.created" || event.type === "account.external_account.updated") && event.account) {
+      await this.professionalFiscalService.refreshStripeConnectStatus(event.account);
+      await this.jobPaymentsService.retryPayoutsForAccount(event.account);
+    }
+
     // Bonifico dal conto Stripe del professionista alla sua banca (docs/CHANGELOG.md
     // §243): arriva dall'endpoint Connect, come `account.updated`.
     if (event.type === "payout.paid" || event.type === "payout.failed" || event.type === "payout.canceled") {

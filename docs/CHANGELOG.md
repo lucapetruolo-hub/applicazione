@@ -18786,3 +18786,7 @@ rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
   pulsante; dopo l'attivazione mostra "Attivi", i totali dei bonifici e
   "Apri il conto Stripe" (`OnlinePaymentsCard`, con `children` per quanto
   serve solo a pagamenti attivi, es. il conto bancario dei bonifici).
+- *Conto bancario cambiato su Stripe*: i webhook Connect
+  `account.external_account.created/updated` rileggono lo stato del conto
+  del professionista e riprovano i bonifici in sospeso (serve anche al
+  ricontrollo dell'IBAN del thread DAC7).
