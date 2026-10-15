@@ -71,10 +71,11 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
 
   it.each(["CLIENT", "PROFESSIONAL"] as const)("registrazione %s: nome, cognome, foto ed email confermata", async (role) => {
     const { service, prisma } = setup(null);
-    await service.verifyGoogleToken("token", role, true, { acceptedLegalTerms: true, declaredAdult: true }, ["idraulico", "fabbro"]);
+    await service.verifyGoogleToken("token", role, true, { acceptedLegalTerms: true, declaredAdult: true }, ["idraulico", "fabbro"], "BUSINESS");
     const data = prisma.user.create.mock.calls[0]?.[0].data;
-    // Categorie scelte in registrazione: solo per un professionista (§217).
+    // Categorie e tipo scelti in registrazione: solo per un professionista (§217, §243).
     expect(data.signupCategorySlugs).toEqual(role === "PROFESSIONAL" ? ["idraulico", "fabbro"] : []);
+    expect(data.signupEntityType).toBe(role === "PROFESSIONAL" ? "BUSINESS" : null);
     expect(data).toMatchObject({
       name: "Mario",
       surname: "De Luca",
@@ -87,8 +88,16 @@ describe("AuthService.verifyGoogleToken — campi del nuovo account", () => {
 
   it("nuovo professionista con Google senza categorie: rifiutato, nessun account creato", async () => {
     const { service, prisma } = setup(null);
-    await expect(service.verifyGoogleToken("token", "PROFESSIONAL", true, { acceptedLegalTerms: true, declaredAdult: true })).rejects.toThrow(
-      "Scegli almeno una categoria.",
+    await expect(
+      service.verifyGoogleToken("token", "PROFESSIONAL", true, { acceptedLegalTerms: true, declaredAdult: true }, [], "PRIVATE_INDIVIDUAL"),
+    ).rejects.toThrow("Scegli almeno una categoria.");
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("nuovo professionista con Google senza tipo (privato, P.IVA, azienda): rifiutato", async () => {
+    const { service, prisma } = setup(null);
+    await expect(service.verifyGoogleToken("token", "PROFESSIONAL", true, { acceptedLegalTerms: true, declaredAdult: true }, ["idraulico"])).rejects.toThrow(
+      "Scegli se lavori come privato",
     );
     expect(prisma.user.create).not.toHaveBeenCalled();
   });

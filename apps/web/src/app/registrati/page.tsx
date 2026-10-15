@@ -4,9 +4,16 @@ import { Suspense, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { NO_CATEGORY_MESSAGE, parseSubscriptionTier, registerSchema, type ProfessionalCategorySlug } from "@professionisti/shared";
+import {
+  NO_CATEGORY_MESSAGE,
+  parseSubscriptionTier,
+  registerSchema,
+  type ProfessionalCategorySlug,
+  type ProfessionalEntityTypeValue,
+} from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
+import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -28,7 +35,7 @@ export default function RegistratiPage() {
 /** Badge circolare con icona su sfondo a gradiente — in cima ad ogni card
  * di questa pagina, stesso principio "un tocco di profondità in più" già
  * usato per il pannello della campanella notifiche. */
-function AuthIconBadge({ icon }: { icon: "sparkles" | "search" | "hard-hat" }) {
+function AuthIconBadge({ icon }: { icon: "sparkles" | "search" | "hard-hat" | "briefcase" | "mail" }) {
   return (
     <div
       style={{
@@ -95,7 +102,7 @@ function RoleChoiceScreen({
           <AuthIconBadge icon="sparkles" />
           <YStack alignItems="center" gap="$1">
             <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-              Passo 1 di 2
+              Passo 1
             </Text>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
               Come vuoi registrarti?
@@ -180,6 +187,119 @@ function RoleChoiceScreen({
   );
 }
 
+/**
+ * Tipo del professionista scelto in registrazione (docs/CHANGELOG.md §243,
+ * decisione dell'utente: tre tipi). Nell'URL con parole leggibili, così il
+ * tasto "indietro" del telefono torna alla scelta.
+ */
+const ENTITY_CHOICES: {
+  value: ProfessionalEntityTypeValue;
+  param: string;
+  icon: IconName;
+  label: string;
+  description: string;
+}[] = [
+  { value: "PRIVATE_INDIVIDUAL", param: "privato", icon: "user-round", label: "Privato, senza Partita IVA", description: "Lavoro occasionale" },
+  { value: "SOLE_PROPRIETOR", param: "partita-iva", icon: "briefcase", label: "Con Partita IVA", description: "Libero professionista o ditta individuale, anche forfettario." },
+  { value: "BUSINESS", param: "azienda", icon: "building-2", label: "Azienda", description: "Società con dipendenti o soci: SRL, SNC, SAS, SPA." },
+];
+
+function entityChoiceFromParam(param: string | null) {
+  return ENTITY_CHOICES.find((choice) => choice.param === param) ?? null;
+}
+
+function StepLabel({ children }: { children: ReactNode }) {
+  return (
+    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+      {children}
+    </Text>
+  );
+}
+
+function EntityTypeScreen({ onChoose, onBack }: { onChoose: (param: string) => void; onBack: () => void }) {
+  return (
+    <AuthPageBackground>
+      <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon="briefcase" />
+          <YStack alignItems="center" gap="$1">
+            <StepLabel>Passo 2 di 4</StepLabel>
+            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              Come lavori?
+            </Text>
+            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+              Così ti chiediamo solo i dati fiscali che servono a te.
+            </Text>
+          </YStack>
+        </YStack>
+
+        <YStack gap="$3" role="list">
+          {ENTITY_CHOICES.map((choice) => (
+            <XStack
+              key={choice.value}
+              role="listitem"
+              className="auth-role-card"
+              alignItems="center"
+              gap="$3"
+              padding="$4"
+              backgroundColor={brand.calce}
+              borderWidth={1}
+              borderColor={brand.filetto}
+              borderRadius="$4"
+              cursor="pointer"
+              onPress={() => onChoose(choice.param)}
+              accessibilityRole="button"
+            >
+              <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                <Icon name={choice.icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
+              </XStack>
+              <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
+                <Text fontWeight="700" color={brand.grafite}>
+                  {choice.label}
+                </Text>
+                <Text fontSize="$2" color={brand.grafite70}>
+                  {choice.description}
+                </Text>
+              </YStack>
+              <Icon name="chevron-right" size={18} color={brand.grafite70} />
+            </XStack>
+          ))}
+        </YStack>
+
+        <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+          Non sai cosa scegliere? Se non hai una Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo più avanti da Dati fiscali.
+        </Text>
+
+        <XStack justifyContent="center">
+          <Button variant="ghost" onPress={onBack}>
+            Indietro
+          </Button>
+        </XStack>
+      </Surface>
+    </AuthPageBackground>
+  );
+}
+
+/** Riepilogo del tipo scelto in cima al modulo, con "Cambia" per tornare alla scelta. */
+function EntityTypeSummary({ choice, onChange }: { choice: (typeof ENTITY_CHOICES)[number]; onChange: () => void }) {
+  return (
+    <XStack alignItems="center" gap="$3" padding="$3" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
+      <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
+      <YStack flex={1} flexBasis={0} minWidth={0}>
+        <Text fontSize={11} fontWeight="700" color={brand.grafite70}>
+          Ti iscrivi come
+        </Text>
+        <Text fontWeight="700" color={brand.grafite}>
+          {choice.label}
+        </Text>
+      </YStack>
+      <button type="button" className="link-button" onClick={onChange} aria-label="Cambia il modo in cui lavori">
+        Cambia
+      </button>
+    </XStack>
+  );
+}
+
 const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
   { icon: "map-pin", title: "Richieste dalla tua zona", text: "Clienti vicino a te che cercano proprio il tuo mestiere." },
   { icon: "calendar", title: "Agenda e promemoria", text: "Appuntamenti in ordine e meno clienti che non si presentano." },
@@ -193,26 +313,42 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
  * vantaggi restano, sotto la scheda. La presentazione completa è in
  * /per-professionisti.
  */
-function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
+function ProfessionalSignupLayout({
+  children,
+  step = "Passo 3 di 4",
+  icon = "hard-hat",
+  title = "Iscriviti come professionista",
+  subtitle = "Crea l'account, poi completi il profilo e inizi a ricevere richieste.",
+  showFooter = true,
+}: {
+  children: ReactNode;
+  step?: string;
+  icon?: "hard-hat" | "mail";
+  title?: string;
+  subtitle?: string;
+  /** Link al cliente, foto e vantaggi: non nella schermata del codice. */
+  showFooter?: boolean;
+}) {
   return (
     <AuthPageBackground>
       <YStack width="100%" maxWidth={480} gap="$6">
         <Surface className="auth-card-in" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
           <YStack alignItems="center" gap="$3">
-            <AuthIconBadge icon="hard-hat" />
+            <AuthIconBadge icon={icon} />
             <YStack alignItems="center" gap="$1">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                Passo 2 di 2
-              </Text>
+              <StepLabel>{step}</StepLabel>
               <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-                Iscriviti come professionista
+                {title}
               </Text>
-              <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-                Crea l&apos;account, poi completi il profilo e inizi a ricevere richieste.
-              </Text>
+              {subtitle ? (
+                <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+                  {subtitle}
+                </Text>
+              ) : null}
             </YStack>
           </YStack>
           {children}
+          {showFooter ? (
           <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
             Cerchi un professionista?{" "}
             <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
@@ -221,8 +357,10 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
               </Text>
             </Link>
           </Text>
+          ) : null}
         </Surface>
 
+        {showFooter ? (
         <YStack width="100%" gap="$5">
           <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 2", borderRadius: radiusDocLg, overflow: "hidden" }}>
             <Image
@@ -256,6 +394,7 @@ function ProfessionalSignupLayout({ children }: { children: ReactNode }) {
             </Text>
           </Link>
         </YStack>
+        ) : null}
       </YStack>
     </AuthPageBackground>
   );
@@ -315,7 +454,7 @@ function ClientSignup({ onAuthenticated }: { onAuthenticated: () => void }) {
 function RegistratiForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, refreshUser } = useAuth();
 
   const roleParam = searchParams.get("ruolo");
   const isProfessional = roleParam === "professionista";
@@ -323,6 +462,7 @@ function RegistratiForm() {
   // l'iscrizione si va dritti al pagamento di quel livello.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
+  const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
 
   // Tutti gli hook prima del return condizionale sotto (regola degli hook:
   // stesso numero/ordine di hook ad ogni render).
@@ -356,11 +496,19 @@ function RegistratiForm() {
   // `pendingGoogleIdToken` valorizzato = popup aperto, in attesa di conferma.
   const [pendingGoogleIdToken, setPendingGoogleIdToken] = useState<string | null>(null);
   const [googleConsentError, setGoogleConsentError] = useState<string | null>(null);
+  // Dopo la registrazione con email e password: schermata del codice
+  // (docs/CHANGELOG.md §243). Chi entra con Google non la vede mai.
+  const [codeStep, setCodeStep] = useState<{ token: string; email: string; resendIn: number; required: boolean } | null>(null);
+
+  function setParam(key: string, value: string | null, mode: "push" | "replace" = "replace") {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === null) params.delete(key);
+    else params.set(key, value);
+    router[mode](`/registrati?${params.toString()}`);
+  }
 
   function chooseRole(choice: "cliente" | "professionista") {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("ruolo", choice);
-    router.replace(`/registrati?${params.toString()}`);
+    setParam("ruolo", choice);
   }
 
   if (roleParam !== "professionista" && roleParam !== "cliente") {
@@ -373,6 +521,10 @@ function RegistratiForm() {
     return <ClientSignup onAuthenticated={() => router.push("/")} />;
   }
 
+  if (!entityChoice) {
+    return <EntityTypeScreen onChoose={(param) => setParam("tipo", param, "push")} onBack={() => setParam("ruolo", null)} />;
+  }
+
   // Con Google Sign-In questa pagina può autenticare anche un account
   // professionista già esistente (es. cliccando "Iscriviti gratis" da
   // /per-professionisti pur avendo già un profilo) — non solo una vera
@@ -382,16 +534,14 @@ function RegistratiForm() {
   // dritto in Dashboard — bug reale segnalato dall'utente, prima si
   // finiva sempre su /dashboard/profilo anche da loggati.
   function afterAuth(isNewUser: boolean) {
-    // Richiesta esplicita dell'utente: un account professionista appena
-    // creato apre subito la schermata "Come fornirai i tuoi servizi?"
-    // (/dashboard/tipo-attivita, skippabile) prima del profilo pubblico —
-    // un professionista che accede di nuovo (non isNewUser) va invece
-    // dritto in Dashboard come già prima.
+    // Un professionista che accede di nuovo (non isNewUser) va dritto in
+    // Dashboard come già prima.
     if (chosenTier) {
       router.push(`/dashboard/abbonamento?livello=${chosenTier}${isNewUser ? "&nuovo=1" : ""}`);
       return;
     }
-    router.push(isNewUser ? "/dashboard/tipo-attivita" : "/dashboard");
+    // Il tipo è già scelto (§243): un nuovo account va dritto al profilo.
+    router.push(isNewUser ? "/dashboard/profilo" : "/dashboard");
   }
 
   async function handleRegister() {
@@ -407,6 +557,7 @@ function RegistratiForm() {
       acceptedLegalTerms,
       declaredAdult,
       categorySlugs,
+      entityType: entityChoice?.value,
     });
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Dati non validi.");
@@ -428,8 +579,14 @@ function RegistratiForm() {
         result.data.declaredAdult,
         turnstileToken ?? undefined,
         result.data.categorySlugs,
+        result.data.entityType,
       );
-      await login(token);
+      const me = await login(token);
+      if (isNewUser && me && !me.emailVerified) {
+        setCodeStep({ token, email: me.email ?? result.data.email, resendIn: me.emailCodeResendInSeconds ?? 60, required: me.emailVerificationRequired });
+        window.scrollTo({ top: 0 });
+        return;
+      }
       afterAuth(isNewUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -443,7 +600,7 @@ function RegistratiForm() {
   async function completeGoogleAuth(idToken: string, accepted: boolean, adult: boolean, viaModal: boolean) {
     setIsSubmitting(true);
     try {
-      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs);
+      const { token, isNewUser } = await apiClient.verifyGoogle(idToken, role, undefined, accepted, adult, categorySlugs, entityChoice?.value);
       await login(token);
       afterAuth(isNewUser);
     } catch (err) {
@@ -499,10 +656,40 @@ function RegistratiForm() {
     setGoogleConsentError(null);
   }
 
+  if (codeStep) {
+    return (
+      <ProfessionalSignupLayout step="Passo 4 di 4" icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
+        <EmailCodeForm
+          token={codeStep.token}
+          email={codeStep.email}
+          initialResendSeconds={codeStep.resendIn}
+          allowChangeEmail
+          onEmailChanged={() => void refreshUser().catch(() => {})}
+          onVerified={async () => {
+            await refreshUser().catch(() => {});
+            afterAuth(true);
+          }}
+        />
+        {/* Finché il dominio d'invio non è verificato su Resend la conferma
+            non è obbligatoria (EMAIL_VERIFICATION_REQUIRED): si può andare
+            avanti e confermare dopo dalla barra in alto. */}
+        {!codeStep.required ? (
+          <XStack justifyContent="center">
+            <Button variant="ghost" onPress={() => afterAuth(true)}>
+              Lo faccio dopo
+            </Button>
+          </XStack>
+        ) : null}
+      </ProfessionalSignupLayout>
+    );
+  }
+
   // Google, campi, consensi e pulsante del professionista (il cliente usa
   // ClientSignup, sopra).
   const formFields = (
     <>
+      <EntityTypeSummary choice={entityChoice} onChange={() => setParam("tipo", null)} />
+
       <div>
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
           Che lavori fai? (fino a 3 scelte)

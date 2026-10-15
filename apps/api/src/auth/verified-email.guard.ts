@@ -4,7 +4,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import type { AuthenticatedRequest } from "./jwt-auth.guard";
 
 export const EMAIL_NOT_VERIFIED_MESSAGE =
-  "Conferma prima il tuo indirizzo email: apri il link che ti abbiamo inviato (puoi farlo rispedire dalla barra in alto).";
+  "Conferma prima il tuo indirizzo email con il codice che ti abbiamo mandato: premi \"Inserisci il codice\" nella barra in alto.";
 
 /**
  * Conferma email obbligatoria (docs/CHANGELOG.md §178) solo con
