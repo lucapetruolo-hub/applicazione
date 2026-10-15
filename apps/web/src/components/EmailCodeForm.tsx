@@ -20,8 +20,9 @@ const CODE_VALID_SECONDS = 15 * 60;
  * Se il codice in corso è già scaduto (o non c'è) ne chiede subito uno nuovo,
  * e se scade mentre la pagina è aperta lo dice prima che si scriva.
  *
- * Usato dopo la registrazione del professionista, in /conferma-email e nel
- * riquadro facoltativo del cliente in /account.
+ * Usato dopo la registrazione del professionista, in /conferma-email, nel
+ * riquadro facoltativo del cliente in /account e, con `submitCode` e
+ * `onRequestNewCode`, in "Password dimenticata" (§245).
  */
 export function EmailCodeForm({
   token,
@@ -31,6 +32,11 @@ export function EmailCodeForm({
   onVerified,
   allowChangeEmail = false,
   onEmailChanged,
+  submitCode,
+  onRequestNewCode,
+  intro = "Abbiamo mandato un codice di",
+  doneLabel = "Email confermata",
+  tip = "Non la trovi? Guarda anche in Spam o Promozioni. Nella stessa email c'è anche un pulsante che conferma con un tocco.",
 }: {
   token: string;
   email: string;
@@ -42,6 +48,14 @@ export function EmailCodeForm({
   /** Solo dove cambiare l'email manda subito un nuovo codice (account professionista). */
   allowChangeEmail?: boolean;
   onEmailChanged?: () => void;
+  /** Controllo del codice diverso dalla conferma email (es. recupero password). */
+  submitCode?: (code: string) => Promise<void>;
+  /** Al posto del nuovo invio automatico: dove serve di nuovo il controllo anti-bot. */
+  onRequestNewCode?: () => void;
+  /** Inizio della frase sopra le caselle, seguito da "6 cifre a <email>". */
+  intro?: string;
+  doneLabel?: string;
+  tip?: string;
 }) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<CheckState>("idle");
@@ -94,14 +108,16 @@ export function EmailCodeForm({
     setState("checking");
     setMessage(null);
     try {
-      const result = await apiClient.verifyEmailCode(token, value);
+      let confirmedEmail = email;
+      if (submitCode) await submitCode(value);
+      else confirmedEmail = (await apiClient.verifyEmailCode(token, value)).email;
       setState("done");
       // Un attimo per vedere la spunta verde prima di andare avanti.
-      window.setTimeout(() => onVerified(result.email), 700);
+      window.setTimeout(() => onVerified(confirmedEmail), 700);
     } catch (err) {
       const text = err instanceof Error ? err.message : "Non siamo riusciti a controllare il codice, riprova.";
       // Scaduto o tentativi finiti: si può solo chiederne uno nuovo.
-      if (/scaduto|troppe volte/i.test(text)) setValidFor(0);
+      if (/^Il codice è scaduto|troppe volte|finito i tentativi/.test(text)) setValidFor(0);
       setState("error");
       setMessage(text);
       setCode("");
@@ -116,6 +132,10 @@ export function EmailCodeForm({
   }
 
   async function resend(afterExpiry = false) {
+    if (onRequestNewCode) {
+      onRequestNewCode();
+      return;
+    }
     setResendState("sending");
     setResendError(null);
     try {
@@ -196,7 +216,7 @@ export function EmailCodeForm({
   return (
     <YStack gap="$4">
       <Text fontSize="$4" color={brand.grafite70} textAlign="center">
-        Abbiamo mandato un codice di {EMAIL_CODE_LENGTH} cifre a<br />
+        {intro} {EMAIL_CODE_LENGTH} cifre a<br />
         <Text fontWeight="700" color={brand.grafite}>
           {email}
         </Text>
@@ -240,7 +260,7 @@ export function EmailCodeForm({
           <XStack gap="$2" alignItems="center" justifyContent="center">
             <Icon name="check" size={18} color={brand.cianografiaScuro} strokeWidth={2.5} />
             <Text fontSize="$3" fontWeight="700" color={brand.cianografiaScuro}>
-              Email confermata
+              {doneLabel}
             </Text>
           </XStack>
         ) : resendState === "sending" && validFor <= 0 ? (
@@ -296,7 +316,7 @@ export function EmailCodeForm({
       </YStack>
 
       <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-        Non la trovi? Guarda anche in Spam o Promozioni. Nella stessa email c&apos;è anche un pulsante che conferma con un tocco.
+        {tip}
       </Text>
     </YStack>
   );

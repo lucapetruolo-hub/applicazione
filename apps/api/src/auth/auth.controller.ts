@@ -8,6 +8,7 @@ import {
   emailStatusSchema,
   googleVerifySchema,
   normalizeAdminRoles,
+  passwordResetCodeSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
   registerSchema,
@@ -18,6 +19,7 @@ import {
   type EmailPasswordInput,
   type EmailStatusInput,
   type GoogleVerifyInput,
+  type PasswordResetCodeInput,
   type PasswordResetConfirmInput,
   type PasswordResetRequestInput,
   type RegisterInput,
@@ -90,6 +92,14 @@ export class AuthController {
     await assertTurnstile(body.turnstileToken, req.ip);
     await this.authService.requestPasswordReset(body.email);
     return { success: true };
+  }
+
+  // Codice di 6 cifre al posto del link (§245): limite stretto, oltre ai 5
+  // tentativi per codice.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("password-reset/code")
+  async exchangePasswordResetCode(@Body(new ZodValidationPipe(passwordResetCodeSchema)) body: PasswordResetCodeInput) {
+    return this.authService.exchangePasswordResetCode(body.email, body.code);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

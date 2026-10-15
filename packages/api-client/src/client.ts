@@ -890,6 +890,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     requestPasswordReset: (email: string, turnstileToken?: string) =>
       request<{ success: boolean }>("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email, turnstileToken }) }),
 
+    /** Codice di 6 cifre della stessa email (§245): se è giusto dà il link per la nuova password. */
+    exchangePasswordResetCode: (email: string, code: string) =>
+      request<{ token: string }>("/auth/password-reset/code", { method: "POST", body: JSON.stringify({ email, code }) }),
+
     confirmPasswordReset: (token: string, password: string) =>
       request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
 

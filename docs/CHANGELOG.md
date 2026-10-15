@@ -18770,3 +18770,36 @@ typecheck ed eslint puliti. Provato nel browser: codice scaduto all'arrivo
 (nuovo codice mandato e valido sul database), codice che scade a pagina
 aperta (orologio simulato), secondo clic del cliente entro 60 secondi,
 vecchio indirizzo che rimanda ai Dati fiscali.
+
+## 245. Codice di 6 cifre anche per "Password dimenticata"
+
+**Richiesta esplicita dell'utente** (15/10/2026, thread della PR #78):
+"effettua le migliorie", sulla miglioria proposta di usare il codice anche
+nel recupero password.
+
+**Decisioni e modifiche:**
+- L'email "Reimposta la tua password" porta, oltre al pulsante (60 minuti),
+  un codice di 6 cifre (15 minuti) anche nell'oggetto: "482913 è il codice
+  per reimpostare la password". Serve quando l'email si legge sul telefono e
+  la password si cambia dal computer.
+- Nuovi campi `User.passwordResetCodeHash`/`passwordResetCodeExpiresAt`/
+  `passwordResetCodeAttempts` (migrazione `20261015100000_password_reset_code`),
+  distinti dal codice di conferma email: un codice non vale per l'altro.
+- `POST /auth/password-reset/code` (`{ email, code }`, 10/min): al massimo 5
+  tentativi per codice, contati prima del confronto. Se il codice è giusto
+  annulla codice e link dell'email e restituisce un link nuovo, con cui il
+  sito apre la solita pagina `/reimposta-password`. Ogni errore (codice
+  sbagliato, scaduto, tentativi finiti, indirizzo sconosciuto) dà lo stesso
+  messaggio, per non far capire se un account esiste.
+- `/password-dimenticata`: dopo l'invio mostra le stesse caselle del codice
+  di conferma (`EmailCodeForm`, ora con `submitCode` e `onRequestNewCode`).
+  Un nuovo codice si chiede rifacendo la richiesta, per passare di nuovo dal
+  controllo anti-bot.
+- Registrazione con tipo e codice nell'app per telefono: rimandata, l'app
+  non ha ancora accesso né registrazione (stessa scelta fatta per la verifica
+  d'identità).
+
+**Verifica:** test API (`auth/password-reset.test.ts`: codice nell'oggetto,
+impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
+Provato nel browser da telefono e computer: richiesta, codice sbagliato,
+codice giusto, nuova password, accesso con la nuova password.

@@ -234,6 +234,15 @@ export const passwordResetConfirmSchema = z.object({
 });
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
 
+/**
+ * Recupero password con il codice di 6 cifre della stessa email (§245): se è
+ * giusto, il server restituisce un link nuovo per scegliere la password.
+ */
+export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
+  email: z.string().trim().email("Email non valida"),
+});
+export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
   .object({

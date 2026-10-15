@@ -76,17 +76,23 @@ export function verifyEmailEmail(name: string | null, verify: EmailVerification)
   });
 }
 
-export function passwordResetEmail(name: string | null, link: string, minutes: number): RenderedEmail {
+export type PasswordResetEmail = { link: string; minutes: number; code: string; codeMinutes: number };
+
+/** Recupero password: codice da scrivere sul sito oppure pulsante (§185, codice dal §245). */
+export function passwordResetEmail(name: string | null, reset: PasswordResetEmail): RenderedEmail {
   return renderEmail({
     kind: "account",
-    subject: "Reimposta la tua password",
-    preheader: "Hai chiesto di reimpostare la password del tuo account.",
+    subject: `${reset.code} è il codice per reimpostare la password`,
+    preheader: `Inserisci il codice ${reset.code} per scegliere una nuova password.`,
     greeting: name,
     title: "Reimposta la tua password",
-    paragraphs: ["Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Scegline una nuova con il pulsante qui sotto."],
-    cta: { label: "Scegli una nuova password", url: link },
+    paragraphs: [
+      "Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Scrivi il codice sul sito, oppure premi il pulsante qui sotto.",
+    ],
+    code: { label: "Il tuo codice", value: reset.code },
+    cta: { label: "Scegli una nuova password", url: reset.link },
     after: [
-      `Il link vale ${minutes} minuti e si può usare una volta sola.`,
+      `Il codice vale ${reset.codeMinutes} minuti, il pulsante ${reset.minutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`,
       "Se non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.",
     ],
   });

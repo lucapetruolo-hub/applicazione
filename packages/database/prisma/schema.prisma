@@ -34,25 +34,25 @@ enum UserRole {
 }
 
 model User {
-  id                     String      @id @default(uuid())
-  role                   UserRole    @default(CLIENT)
+  id                         String                  @id @default(uuid())
+  role                       UserRole                @default(CLIENT)
   // Login via email+password o Google (CLAUDE.md §8): con l'email+password
   // passwordHash è popolato; con Google resta nullo (nessuna password da
   // gestire per quell'account).
-  email                  String?     @unique
-  passwordHash           String?
-  phone                  String?     @unique
-  googleId               String?     @unique
+  email                      String?                 @unique
+  passwordHash               String?
+  phone                      String?                 @unique
+  googleId                   String?                 @unique
   // Nullable: al primo accesso (Google senza scope profilo) il nome
   // potrebbe non essere noto, va completato in un secondo momento.
-  name                   String?
-  surname                String?
-  birthDate              DateTime?
+  name                       String?
+  surname                    String?
+  birthDate                  DateTime?
   // Immagine profilo, facoltativa — richiesta esplicita dell'utente: prima
   // solo ProfessionalProfile.imageUrl esisteva, i client non potevano
   // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
   // nessun nuovo servizio di storage.
-  imageUrl               String?
+  imageUrl                   String?
   // Indirizzo di default dell'account (richiesta esplicita dell'utente:
   // "possono essere inserite nella finestra impostazioni dell'account, in
   // modo che quando si richiede un preventivo escano automaticamente
@@ -61,14 +61,14 @@ model User {
   // sempre modificabili per singola richiesta (un cliente può avere lavori
   // in indirizzi diversi da una richiesta all'altra, stesso principio già
   // documentato per GuidedRequest.address prima di questo campo).
-  street                 String?
-  houseNumber            String?
-  addressExtra           String?
-  postalCode             String?
-  city                   String?
-  province               String?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
+  street                     String?
+  houseNumber                String?
+  addressExtra               String?
+  postalCode                 String?
+  city                       String?
+  province                   String?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
   // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
   // prenotazioni/recensioni create da questo utente hanno FK dirette su
@@ -79,27 +79,27 @@ model User {
   // password) al posto della delete: la riga resta solo come ancora per le
   // FK, il login torna impossibile (email non più corrispondente, password
   // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
-  deletedAt              DateTime?
+  deletedAt                  DateTime?
   // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
   // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
   // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
   // ("Annulla misura"), a differenza di `deletedAt`.
-  suspendedAt            DateTime?
+  suspendedAt                DateTime?
   // Motivazione dell'ultima sospensione decisa dalla scheda utente (senza
   // segnalazione, docs/CHANGELOG.md §145) — mostrata all'admin; all'utente
   // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
   // motivazione sta su ContentReport).
-  suspensionNote         String?
+  suspensionNote             String?
   // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
   // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
   // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
   // [MODERATOR, FINANCE] vede entrambe. Lista vuota su un ADMIN vale come
   // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
-  adminRoles             AdminRole[] @default([])
+  adminRoles                 AdminRole[]             @default([])
   // Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152):
   // JSON validato da `notificationPreferencesSchema` (packages/shared),
   // null = valori predefiniti (`resolveNotificationPreferences`).
-  notificationPrefs      Json?
+  notificationPrefs          Json?
   // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
   // di registrazione (richiesta esplicita dell'utente, "Verbale di
   // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
@@ -110,34 +110,39 @@ model User {
   // in quel momento su /privacy e /termini (LegalPage.updatedAt) — se le
   // informative cambiano, la versione accettata resta tracciata per quella
   // specifica registrazione, non sovrascritta.
-  legalConsentAt         DateTime?
-  legalConsentVersion    String?
+  legalConsentAt             DateTime?
+  legalConsentVersion        String?
   // Conferma dell'indirizzo email (docs/CHANGELOG.md §178): nullo finché
   // l'utente non apre il link ricevuto. Gli account Google e quelli creati
   // da un operatore risultano già confermati. Del link si salva solo
   // l'impronta SHA-256, come per ProfileInvite.
-  emailVerifiedAt        DateTime?
-  emailTokenHash         String?     @unique
+  emailVerifiedAt            DateTime?
+  emailTokenHash             String?                 @unique
   // Categorie (da 1 a 3) scelte da un professionista nella registrazione
   // (docs/CHANGELOG.md §217): precompilano il profilo in /dashboard/profilo,
   // dove poi vivono davvero (ProfessionalProfile.category/extraCategories).
-  signupCategorySlugs    String[]    @default([])
+  signupCategorySlugs        String[]                @default([])
   // Tipo scelto da un professionista nella registrazione (privato, P.IVA,
   // azienda, docs/CHANGELOG.md §243): precompila /dashboard/fiscale, dove
   // poi vive davvero (ProfessionalFiscalProfile.entityType).
-  signupEntityType       ProfessionalEntityType?
+  signupEntityType           ProfessionalEntityType?
   // Codice di 6 cifre nella stessa email del link di conferma (§243):
   // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
   // invio solo dopo 60 secondi da `emailCodeSentAt`.
-  emailCodeHash          String?
-  emailCodeExpiresAt     DateTime?
-  emailCodeAttempts      Int         @default(0)
-  emailCodeSentAt        DateTime?
-  emailTokenExpiresAt    DateTime?
+  emailCodeHash              String?
+  emailCodeExpiresAt         DateTime?
+  emailCodeAttempts          Int                     @default(0)
+  emailCodeSentAt            DateTime?
+  emailTokenExpiresAt        DateTime?
   // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
   // mandato via email, valido 60 minuti e una volta sola.
-  passwordResetTokenHash String?     @unique
-  passwordResetExpiresAt DateTime?
+  passwordResetTokenHash     String?                 @unique
+  passwordResetExpiresAt     DateTime?
+  // Codice di 6 cifre nella stessa email (§245): si scrive sul sito in
+  // alternativa al link. Impronta SHA-256, 15 minuti, al massimo 5 tentativi.
+  passwordResetCodeHash      String?
+  passwordResetCodeExpiresAt DateTime?
+  passwordResetCodeAttempts  Int                     @default(0)
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -854,32 +859,32 @@ enum QuoteStatus {
 }
 
 model Quote {
-  id                      String      @id @default(uuid())
-  guidedRequestId         String
-  professionalProfileId   String
-  estimatedStartDate      DateTime
+  id                       String      @id @default(uuid())
+  guidedRequestId          String
+  professionalProfileId    String
+  estimatedStartDate       DateTime
   // Fine della fascia scelta dall'agenda del professionista (richiesta
   // esplicita dell'utente: "non visualizzare solo il primo orario ma
   // tutta la fascia d'orario") — nullable: null quando la data è stata
   // indicata a mano (nessuna agenda impostata, vecchio input libero) o per
   // i preventivi creati prima di questa funzionalità, casi in cui non
   // esiste una fascia con fine nota.
-  estimatedEndDate        DateTime?
+  estimatedEndDate         DateTime?
   // Modi di pagamento offerti dal professionista (JobPaymentChoice in
   // packages/shared: DIRECT, ONLINE, MIXED) e percentuale dell'acconto online
   // (1-100), docs/CHANGELOG.md §237. Vuoto/null nei preventivi più vecchi:
   // valgono online con acconto del 20% e diretto.
-  paymentOptions          String[]    @default([])
-  depositPercent          Int?
+  paymentOptions           String[]    @default([])
+  depositPercent           Int?
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
-  clientProposedDate      DateTime?
+  clientProposedDate       DateTime?
   // Fine della fascia proposta dal cliente, stesso motivo di estimatedEndDate.
-  clientProposedEndDate   DateTime?
+  clientProposedEndDate    DateTime?
   // Dettagli facoltativi scritti dal cliente insieme alla data proposta
   // (es. "posso solo dopo le 17" o "meglio se venite con il furgone"),
   // mostrati al professionista quando deve confermare/rifiutare.
-  clientProposedNote      String?
+  clientProposedNote       String?
   // Nota lasciata dal professionista quando modifica direttamente
   // l'orario proposto dal cliente durante la trattativa (invece di
   // confermarlo o rifiutarlo semplicemente) — richiesta esplicita
@@ -888,12 +893,12 @@ model Quote {
   // del preventivo, mai sovrascritti da questo flusso). Azzerata quando il
   // cliente propone una nuova data (negoziazione ripartita da capo) o
   // quando il professionista modifica di nuovo (sostituita).
-  professionalCounterNote String?
+  professionalCounterNote  String?
   // Nota del cliente scritta con "Modifica" senza cambiare data e orario
   // (docs/CHANGELOG.md §196): il preventivo resta SENT, quindi il cliente
   // può ancora accettarlo. Azzerata quando una delle due parti cambia
   // davvero data o orario.
-  clientNote              String?
+  clientNote               String?
   // Totale indicativo prima dell'ultima modifica dei prezzi da parte del
   // professionista: il cliente vede il vecchio sbarrato accanto al nuovo e
   // non accetta un aumento senza accorgersene (docs/CHANGELOG.md §196).
@@ -903,21 +908,21 @@ model Quote {
   // (docs/CHANGELOG.md §188), mostrata al professionista. Valorizzata solo
   // in REJECTED: azzerata quando il professionista invia un nuovo
   // preventivo (resta comunque nella cronologia della conversazione).
-  rejectionNote           String?
+  rejectionNote            String?
   // Quando il professionista ha inviato l'ultimo nuovo preventivo dopo un
   // rifiuto del cliente (docs/CHANGELOG.md §188). `createdAt` resta il
   // primo invio: i tempi della richiesta si contano sempre dal suo invio.
-  resentAt                DateTime?
+  resentAt                 DateTime?
   // Appuntamento che il professionista ha appena sostituito (modifica del
   // preventivo o risposta a una proposta del cliente): il cliente vede
   // "prima → ora" come il professionista vede la proposta del cliente
   // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
-  previousStartDate       DateTime?
-  previousEndDate         DateTime?
-  notes                   String?
-  status                  QuoteStatus @default(SENT)
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @default(now()) @updatedAt
+  previousStartDate        DateTime?
+  previousEndDate          DateTime?
+  notes                    String?
+  status                   QuoteStatus @default(SENT)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @default(now()) @updatedAt
 
   guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -1110,13 +1115,13 @@ model Booking {
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
-  issue        JobIssue?
-  review       Review?
+  issue      JobIssue?
+  review     Review?
   // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
   // JobPayment in fondo a questo file. Nullable: una Booking creata prima
   // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
   // dormiente da CLAUDE.md §20), può non averne ancora una.
-  jobPayment   JobPayment?
+  jobPayment JobPayment?
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
@@ -1177,18 +1182,18 @@ model ExternalJob {
 }
 
 model Review {
-  id          String    @id @default(uuid())
-  bookingId   String    @unique
-  rating      Int
-  comment     String?
+  id        String    @id @default(uuid())
+  bookingId String    @unique
+  rating    Int
+  comment   String?
   // Foto del lavoro svolto, opzionali (fino a 3, stesso limite/pattern di
   // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
   // della recensione, mostrate poi nella sezione recensioni del professionista.
-  photoUrls   String[]  @default([])
+  photoUrls String[]  @default([])
   // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
-  hiddenAt    DateTime?
-  createdAt   DateTime  @default(now())
+  hiddenAt  DateTime?
+  createdAt DateTime  @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

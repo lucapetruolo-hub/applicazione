@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type EmailStatus, type ProfessionalEntityTypeValue } from "@professionisti/shared";
+import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type EmailStatus, type ProfessionalEntityTypeValue } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -27,6 +27,8 @@ const BCRYPT_SALT_ROUNDS = 10;
 const EMAIL_TOKEN_HOURS = 48;
 /** Validità del link per reimpostare la password (docs/CHANGELOG.md §185). */
 const PASSWORD_RESET_MINUTES = 60;
+/** Stesso messaggio per ogni errore del codice: non dice se l'account esiste (§245). */
+const PASSWORD_RESET_CODE_ERROR = "Codice non corretto o scaduto. Controlla l'ultima email ricevuta oppure chiedine uno nuovo.";
 /** Codice di 6 cifre nella stessa email del link (docs/CHANGELOG.md §243). */
 export const EMAIL_CODE_MINUTES = 15;
 export const EMAIL_CODE_MAX_ATTEMPTS = 5;
@@ -473,12 +475,66 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user?.email || user.deletedAt !== null) return;
     const token = randomBytes(32).toString("base64url");
+    // Anche un codice da scrivere sul sito (§245): utile quando l'email si
+    // legge sul telefono e la password si cambia dal computer.
+    const code = randomInt(0, 1_000_000).toString().padStart(EMAIL_CODE_LENGTH, "0");
+    const now = Date.now();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordResetTokenHash: hashEmailToken(token), passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000) },
+      data: {
+        passwordResetTokenHash: hashEmailToken(token),
+        passwordResetExpiresAt: new Date(now + PASSWORD_RESET_MINUTES * 60 * 1000),
+        passwordResetCodeHash: hashEmailCode(user.id, code),
+        passwordResetCodeExpiresAt: new Date(now + EMAIL_CODE_MINUTES * 60 * 1000),
+        passwordResetCodeAttempts: 0,
+      },
     });
     const link = `${frontendUrl()}/reimposta-password?token=${encodeURIComponent(token)}`;
-    await this.emailService.send({ to: user.email, ...passwordResetEmail(user.name, link, PASSWORD_RESET_MINUTES) });
+    await this.emailService.send({
+      to: user.email,
+      ...passwordResetEmail(user.name, { link, minutes: PASSWORD_RESET_MINUTES, code, codeMinutes: EMAIL_CODE_MINUTES }),
+    });
+  }
+
+  /**
+   * Codice di 6 cifre del recupero password (§245): se è giusto annulla il
+   * codice e il link dell'email e restituisce un link nuovo, con cui il sito
+   * apre la scelta della nuova password. Senza account, per indirizzi
+   * sconosciuti la risposta d'errore è la stessa di un codice sbagliato.
+   * Tentativi contati prima del confronto, come per la conferma email.
+   */
+  async exchangePasswordResetCode(email: string, code: string): Promise<{ token: string }> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (
+      !user?.email ||
+      user.deletedAt !== null ||
+      !user.passwordResetCodeHash ||
+      !user.passwordResetCodeExpiresAt ||
+      user.passwordResetCodeExpiresAt < new Date()
+    ) {
+      throw new BadRequestException(PASSWORD_RESET_CODE_ERROR);
+    }
+    const counted = await this.prisma.user.updateMany({
+      where: { id: user.id, passwordResetCodeAttempts: { lt: EMAIL_CODE_MAX_ATTEMPTS } },
+      data: { passwordResetCodeAttempts: { increment: 1 } },
+    });
+    const expected = Buffer.from(user.passwordResetCodeHash, "hex");
+    const actual = Buffer.from(hashEmailCode(user.id, code), "hex");
+    if (counted.count === 0 || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      throw new BadRequestException(PASSWORD_RESET_CODE_ERROR);
+    }
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetTokenHash: hashEmailToken(token),
+        passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000),
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetCodeAttempts: 0,
+      },
+    });
+    return { token };
   }
 
   /**
@@ -497,6 +553,9 @@ export class AuthService {
         passwordHash,
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetCodeAttempts: 0,
         emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
         ...CLEARED_EMAIL_CHECKS,
       },
@@ -549,6 +608,7 @@ export class AuthService {
         birthDate: null,
         imageUrl: null,
         passwordResetTokenHash: null,
+        passwordResetCodeHash: null,
       },
     });
     // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).
