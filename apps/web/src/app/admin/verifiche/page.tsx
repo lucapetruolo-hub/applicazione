@@ -37,7 +37,12 @@ const TAX_TEXT: Record<Row["taxIdChecks"][number]["status"], string> = {
 /** Esiti dei controlli automatici: documento e selfie (Didit), codice fiscale e partita IVA (VIES, Openapi). */
 function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?: () => void; rechecking?: boolean }) {
   if (!row.identity && row.taxIdChecks.length === 0) return null;
-  const identity = row.identity ? IDENTITY_LABEL[row.identity.status] : null;
+  // Servizio di verifica irraggiungibile all'avvio: id provvisorio "standby-…" (§246).
+  const identity = row.identity
+    ? row.identity.status === "STARTED" && row.identity.providerSessionId.startsWith("standby-")
+      ? { text: "Documento e selfie: in attesa del servizio", tone: "neutral" as const }
+      : IDENTITY_LABEL[row.identity.status]
+    : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, marginTop: 4 }}>
       {row.taxIdChecks.map((check) => (

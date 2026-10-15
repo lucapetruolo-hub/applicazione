@@ -1542,7 +1542,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */
     startIdentityVerification: (token: string) =>
-      request<{ url: string }>("/professionals/me/verification/identity", {
+      request<{ url: string | null; standby: boolean }>("/professionals/me/verification/identity", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ biometricConsent: true }),

@@ -129,6 +129,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",
+      // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§246).
+      "IDENTITY_VERIFICATION_READY",
+      "IDENTITY_VERIFICATION_REMINDER",
       // Account Stripe attivato: acconto online e badge (docs/CHANGELOG.md §241).
       "STRIPE_ACCOUNT_ACTIVE",
       // Account Stripe sospeso: niente acconto online né badge finché non si sistema (§242).

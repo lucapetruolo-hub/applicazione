@@ -61,6 +61,8 @@ export type MyVerificationStatus = {
     /** Perché è stata rifiutata o è in controllo, in parole semplici. */
     reason: string | null;
     updatedAt: string | null;
+    /** Il servizio di verifica non rispondeva: in attesa, avvisiamo noi appena si può continuare (§246). */
+    standby: boolean;
     /** Si può iniziare (o ripetere) adesso. */
     canStart: boolean;
     /** Se non si può iniziare, perché. */

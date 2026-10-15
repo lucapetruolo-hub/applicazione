@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
-import { IdentityVerificationService, expectedPerson } from "./identity-verification.service";
+import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, reminderDue } from "./identity-verification.service";
 
 /** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §243). */
 describe("Didit", () => {
@@ -132,5 +132,82 @@ describe("esito applicato", () => {
     expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_DECLINED", expect.anything());
     const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null });
     expect(inReview.status).toBe("DECLINED");
+  });
+});
+
+describe("servizio di verifica che non risponde (§246)", () => {
+  const fiscal = { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Mario", fiscalLastName: "Rossi", dateOfBirth: new Date("1980-01-01"), fiscalCodiceFiscale: "RSSMRA80A01H501U", fiscalDataCompleteAt: new Date(), fiscalDeclarationAcceptedAt: new Date(), foreignTin: null, businessName: null, vatNumber: null, registeredStreet: "Via Roma 1", registeredCity: "Milano", registeredPostalCode: "20100", taxIdChecks: [], representative: null };
+
+  function build(createSession: () => Promise<{ sessionId: string; url: string }>) {
+    const rows: Record<string, unknown>[] = [];
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pp-1", userId: "u-1", isDemo: false, verified: false, deletedAt: null, fiscalProfile: fiscal }) },
+      identityVerification: {
+        findFirst: vi.fn(async () => rows[rows.length - 1] ?? null),
+        count: vi.fn().mockResolvedValue(0),
+        create: vi.fn(async ({ data }) => {
+          const row = { id: `iv-${rows.length + 1}`, status: "STARTED", createdAt: new Date(), updatedAt: new Date(), ...data };
+          rows.push(row);
+          return row;
+        }),
+        update: vi.fn(async ({ where, data }) => Object.assign(rows.find((r) => r.id === where.id) ?? {}, data)),
+        findMany: vi.fn(async ({ where }) =>
+          where.providerStatus === STANDBY_PROVIDER_STATUS
+            ? rows.filter((r) => r.providerStatus === STANDBY_PROVIDER_STATUS).map((r) => ({ ...r, professionalProfile: { userId: "u-1", verified: false, deletedAt: null } }))
+            : [],
+        ),
+      },
+    };
+    const notifications = { notify: vi.fn() };
+    const service = new IdentityVerificationService(prisma as never, { record: vi.fn() } as never, notifications as never, {} as never);
+    const provider = { name: "didit", createSession: vi.fn(createSession), getDecision: vi.fn(), verifyWebhook: vi.fn(), consoleUrl: () => null };
+    (service as unknown as { provider: unknown }).provider = provider;
+    return { service, rows, provider, notifications };
+  }
+
+  it("non dà errore: la verifica resta in attesa e si riprende appena il servizio torna, con un avviso", async () => {
+    let up = false;
+    const { service, rows, provider, notifications } = build(async () => {
+      if (!up) throw new Error("down");
+      return { sessionId: "sess-9", url: "https://didit/sess-9" };
+    });
+    await expect(service.start("u-1")).resolves.toEqual({ url: null, standby: true });
+    expect(rows[0]).toMatchObject({ providerStatus: STANDBY_PROVIDER_STATUS, sessionUrl: null });
+
+    await service.followUp();
+    expect(notifications.notify).not.toHaveBeenCalled();
+
+    up = true;
+    await service.followUp();
+    expect(rows[0]).toMatchObject({ providerSessionId: "sess-9", sessionUrl: "https://didit/sess-9", providerStatus: null });
+    expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_READY", {});
+    expect(rows).toHaveLength(1);
+    expect(provider.createSession).toHaveBeenCalledTimes(3);
+  });
+
+  it("riprovando a mano dalla pagina si riusa lo stesso tentativo", async () => {
+    let up = false;
+    const { service, rows } = build(async () => {
+      if (!up) throw new Error("down");
+      return { sessionId: "sess-2", url: "https://didit/sess-2" };
+    });
+    await service.start("u-1");
+    up = true;
+    await expect(service.start("u-1")).resolves.toEqual({ url: "https://didit/sess-2", standby: false });
+    expect(rows).toHaveLength(1);
+  });
+});
+
+describe("promemoria a chi non ha fatto la verifica (§246)", () => {
+  const day = 24 * 60 * 60_000;
+  const now = new Date("2026-10-20T10:00:00Z");
+  const ago = (days: number) => new Date(now.getTime() - days * day);
+
+  it("il primo dopo 3 giorni, il secondo dopo un'altra settimana, poi basta", () => {
+    expect(reminderDue({ profileCreatedAt: ago(2), sent: 0, lastSentAt: null, now })).toBe(false);
+    expect(reminderDue({ profileCreatedAt: ago(3), sent: 0, lastSentAt: null, now })).toBe(true);
+    expect(reminderDue({ profileCreatedAt: ago(8), sent: 1, lastSentAt: ago(5), now })).toBe(false);
+    expect(reminderDue({ profileCreatedAt: ago(10), sent: 1, lastSentAt: ago(7), now })).toBe(true);
+    expect(reminderDue({ profileCreatedAt: ago(30), sent: 2, lastSentAt: ago(20), now })).toBe(false);
   });
 });

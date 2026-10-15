@@ -36,6 +36,7 @@ function VerificaIdentitaContent() {
   const [consent, setConsent] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const pollStartedAt = useRef<number | null>(returned ? Date.now() : null);
 
   useEffect(() => {
@@ -58,7 +59,8 @@ function VerificaIdentitaContent() {
 
   // Di ritorno da Didit, o con l'esito in arrivo: si aggiorna da sola.
   const identityStatus = status?.identity.status;
-  const waiting = identityStatus === "PROCESSING" || (returned && identityStatus === "STARTED");
+  const standby = status?.identity.standby ?? false;
+  const waiting = !standby && (identityStatus === "PROCESSING" || (returned && identityStatus === "STARTED"));
   useEffect(() => {
     if (!waiting) return;
     if (pollStartedAt.current === null) pollStartedAt.current = Date.now();
@@ -68,16 +70,22 @@ function VerificaIdentitaContent() {
   }, [waiting, status, load]);
 
   async function start() {
-    if (!token || !consent) return;
+    if (!token || (!consent && !standby)) return;
     setStarting(true);
     setStartError(null);
     try {
       const { url } = await apiClient.startIdentityVerification(token);
-      window.location.href = url;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      // Il servizio non risponde: la richiesta resta in attesa (§246).
+      setRetrying(standby);
+      load();
     } catch (err) {
       setStartError(err instanceof Error ? err.message : "Non siamo riusciti ad avviare la verifica. Riprova.");
-      setStarting(false);
     }
+    setStarting(false);
   }
 
   if (isLoading || (!status && !loadError)) {
@@ -114,7 +122,16 @@ function VerificaIdentitaContent() {
           Tre passi per comparire nelle ricerche e inviare preventivi. I clienti vedono solo il badge Verificato, mai i tuoi documenti.
         </Text>
         <VerificationSteps status={status} here="verifica" />
-        <ActionPanel status={status} waiting={waiting} consent={consent} onConsent={setConsent} starting={starting} startError={startError} onStart={start} />
+        <ActionPanel
+          status={status}
+          waiting={waiting}
+          stillDown={retrying}
+          consent={consent}
+          onConsent={setConsent}
+          starting={starting}
+          startError={startError}
+          onStart={start}
+        />
       </YStack>
     </Section>
   );
@@ -151,6 +168,7 @@ function Need({ icon, children }: { icon: IconName; children: React.ReactNode })
 function ActionPanel({
   status,
   waiting,
+  stillDown,
   consent,
   onConsent,
   starting,
@@ -159,6 +177,7 @@ function ActionPanel({
 }: {
   status: MyVerificationStatus;
   waiting: boolean;
+  stillDown: boolean;
   consent: boolean;
   onConsent: (value: boolean) => void;
   starting: boolean;
@@ -196,6 +215,31 @@ function ActionPanel({
         <Link href="/dashboard/fiscale" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
           <Button variant="primary">{status.fiscalDataComplete ? "Correggi i dati fiscali" : "Compila i dati fiscali"}</Button>
         </Link>
+      </Panel>
+    );
+  }
+
+  if (identity.standby) {
+    return (
+      <Panel icon="clock" tone="warn" title="Verifica in attesa">
+        <Text color={brand.grafite70}>
+          Il servizio di verifica non risponde in questo momento. Non devi fare nulla: ti avvisiamo con una notifica e un&apos;email appena puoi continuare.
+        </Text>
+        <YStack gap="$2">
+          <Button variant="secondary" alignSelf="flex-start" disabled={starting} onPress={onStart}>
+            {starting ? "Riprovo…" : "Riprova adesso"}
+          </Button>
+          {stillDown && !starting ? (
+            <Text fontSize={13.5} color={brand.grafite70} role="status">
+              Ancora non risponde: ti avvisiamo noi.
+            </Text>
+          ) : null}
+          {startError ? (
+            <Text fontSize={13.5} color={brand.urgenza} role="alert">
+              {startError}
+            </Text>
+          ) : null}
+        </YStack>
       </Panel>
     );
   }

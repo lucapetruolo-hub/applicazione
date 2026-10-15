@@ -922,6 +922,26 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Riprova la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
+  // Verifica in attesa ripresa e promemoria (§246).
+  IDENTITY_VERIFICATION_READY: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Puoi continuare la verifica dell'identità",
+    greeting: ctx.name,
+    title: "La verifica è di nuovo disponibile",
+    paragraphs: ["Prima il servizio di verifica non rispondeva, ora funziona: riprendi da dove eri, servono circa 2 minuti."],
+    cta: { label: "Continua la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+  }),
+  IDENTITY_VERIFICATION_REMINDER: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Ti manca solo la verifica dell'identità",
+    greeting: ctx.name,
+    title: "Completa la verifica per inviare preventivi",
+    paragraphs: [
+      "Per inviare il tuo primo preventivo serve una verifica veloce con documento e selfie: circa 2 minuti, una volta sola.",
+      "Così i clienti vedono il badge **Verificato** sul tuo profilo.",
+    ],
+    cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+  }),
   TAX_ID_INVALID: (payload, ctx) => {
     const isVat = payload.kind === "PARTITA_IVA";
     return {

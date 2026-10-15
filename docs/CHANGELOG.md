@@ -18799,3 +18799,33 @@ controlli gratuiti, senza Openapi.
 **Verifica**: test aggiornati (documento che non coincide → da rifare con
 avviso; "In Review" → da rifare; CF del rappresentante non va a Openapi).
 Tipi, lint e test di tutto il monorepo verdi.
+
+## 246. Verifica in attesa se il servizio non risponde; promemoria a chi non l'ha fatta
+
+**Richiesta esplicita dell'utente** (15/10/2026): "se didit non funziona lo
+mettiamo in standby fino a che non viene elaborato il documento e verrà
+avvisato con una notifica ed email"; in più il promemoria via email a chi
+non ha ancora fatto la verifica dopo qualche giorno.
+
+**Decisione**:
+- Didit irraggiungibile all'avvio: nessun errore. Il tentativo resta "in
+  attesa" (`providerStatus = "Standby"`, id provvisorio `standby-…`, nessun
+  link) con il consenso già registrato. La pagina mostra "Verifica in
+  attesa" con "Riprova adesso". Ogni 10 minuti `followUp()` riprova e, appena
+  Didit risponde, avvisa con notifica ed email `IDENTITY_VERIFICATION_READY`.
+  Riprovare a mano riusa lo stesso tentativo, che non conta come nuovo.
+- Esito che non arriva (Didit lento o webhook perso): lo stesso controllo
+  chiede l'esito delle verifiche finite (`PROCESSING`, per 7 giorni) e di
+  quelle iniziate nelle ultime 24 ore. Esito positivo o da rifare arriva con
+  notifica ed email (`PROFILE_VERIFIED` / `IDENTITY_VERIFICATION_DECLINED`).
+- Promemoria `IDENTITY_VERIFICATION_REMINDER` (ogni giorno alle 10): a chi non
+  è verificato, al massimo due, il primo 3 giorni dopo l'iscrizione e il
+  secondo una settimana dopo; mai a chi ha una verifica in attesa o un esito
+  in arrivo, ai profili demo, sospesi o creati da un operatore e non ancora
+  confermati. Solo con Didit attivo.
+- I due nuovi tipi stanno in "Account e sicurezza" (sito ed email).
+- `/admin/verifiche` mostra "in attesa del servizio" per i tentativi in attesa.
+
+**Verifica**: test nuovi (servizio giù → in attesa senza errore, ripresa
+con avviso, nessun tentativo in più riprovando a mano; regole del
+promemoria). Tipi, lint e test di tutto il monorepo.

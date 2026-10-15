@@ -1,4 +1,6 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import type { IdentityVerification, Prisma, PrismaClient, TaxIdCheck } from "@professionisti/database";
 import {
   BIOMETRIC_CONSENT_VERSION,
@@ -22,6 +24,30 @@ export const MAX_IDENTITY_ATTEMPTS_PER_DAY = 5;
 const REUSE_SESSION_MS = 50 * 60_000;
 /** Mentre si aspetta l'esito, la pagina chiede lo stato al fornitore al massimo ogni 10 secondi. */
 const REFRESH_EVERY_MS = 10_000;
+/**
+ * Fornitore irraggiungibile all'avvio (§246, decisione dell'utente): il
+ * tentativo resta "in attesa" con questo stato, senza link. Il controllo
+ * periodico riprova e, appena il fornitore risponde, avvisa il professionista.
+ */
+export const STANDBY_PROVIDER_STATUS = "Standby";
+/** Per quanti giorni si riprova un tentativo in attesa o si chiede un esito mai arrivato. */
+const FOLLOW_UP_DAYS = 7;
+/** Promemoria a chi non ha fatto la verifica: il primo dopo 3 giorni, l'ultimo una settimana dopo. */
+const REMINDER_FIRST_AFTER_DAYS = 3;
+const REMINDER_AGAIN_AFTER_DAYS = 7;
+const MAX_REMINDERS = 2;
+const DAY_MS = 24 * 60 * 60_000;
+
+export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
+  !!row && row.status === "STARTED" && row.providerStatus === STANDBY_PROVIDER_STATUS && !row.sessionUrl;
+
+/** Va mandato un promemoria? Al massimo due: dopo 3 giorni dall'iscrizione, poi dopo un'altra settimana. */
+export function reminderDue(input: { profileCreatedAt: Date; sent: number; lastSentAt: Date | null; now: Date }): boolean {
+  if (input.sent >= MAX_REMINDERS) return false;
+  if (input.now.getTime() - input.profileCreatedAt.getTime() < REMINDER_FIRST_AFTER_DAYS * DAY_MS) return false;
+  if (input.sent === 0 || !input.lastSentAt) return true;
+  return input.now.getTime() - input.lastSentAt.getTime() >= REMINDER_AGAIN_AFTER_DAYS * DAY_MS;
+}
 
 const UNCLEAR_REASON =
   "Non siamo riusciti a confermare il documento. Rifai la verifica con un documento valido, inquadrato per intero, con buona luce e senza riflessi.";
@@ -35,8 +61,8 @@ type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: ty
 /**
  * Verifica di documento e selfie (docs/CHANGELOG.md §243, decisioni
  * dell'utente del 14/10/2026): obbligatoria prima di inviare preventivi,
- * sostituisce la verifica manuale di /admin/verifiche (all'admin restano i
- * casi dubbi). Il confronto è con il codice fiscale e i dati fiscali (per le
+ * sostituisce la verifica manuale di /admin/verifiche (nessun caso passa
+ * all'admin, §245). Il confronto è con il codice fiscale e i dati fiscali (per le
  * aziende con il legale rappresentante). Foto e selfie restano al fornitore.
  */
 @Injectable()
@@ -74,7 +100,7 @@ export class IdentityVerificationService {
     const profile = await this.loadMine(userId);
     let latest = await this.latest(profile.id);
     // Di ritorno dalla pagina del fornitore il webhook può non essere ancora arrivato.
-    if (latest && this.provider && (latest.status === "STARTED" || latest.status === "PROCESSING") && Date.now() - latest.updatedAt.getTime() > REFRESH_EVERY_MS) {
+    if (latest && this.provider && !isStandby(latest) && (latest.status === "STARTED" || latest.status === "PROCESSING") && Date.now() - latest.updatedAt.getTime() > REFRESH_EVERY_MS) {
       latest = await this.refresh(latest).catch((error) => {
         this.logger.warn(`Stato della verifica non aggiornato: ${String(error)}`);
         return latest;
@@ -123,6 +149,7 @@ export class IdentityVerificationService {
         status,
         reason: profile.verified ? null : (latest?.reason ?? null),
         updatedAt: latest?.updatedAt.toISOString() ?? null,
+        standby: !profile.verified && isStandby(latest),
         canStart: !profile.verified && blockedReason === null,
         blockedReason,
       },
@@ -135,37 +162,39 @@ export class IdentityVerificationService {
     };
   }
 
-  async start(userId: string): Promise<{ url: string }> {
+  /**
+   * Avvia (o riprende) la verifica. Se il fornitore non risponde il tentativo
+   * resta in attesa (`standby`): niente errore, il professionista viene
+   * avvisato con una notifica e un'email appena può continuare.
+   */
+  async start(userId: string): Promise<{ url: string | null; standby: boolean }> {
     const profile = await this.loadMine(userId);
     const latest = await this.latest(profile.id);
     const status = this.buildStatus(profile, latest);
     if (!status.identity.canStart || !this.provider) {
       throw new BadRequestException(status.identity.blockedReason ?? "Il tuo profilo è già verificato.");
     }
-    if (latest?.status === "STARTED" && latest.sessionUrl && Date.now() - latest.createdAt.getTime() < REUSE_SESSION_MS) {
-      return { url: latest.sessionUrl };
+    if (latest && isStandby(latest)) {
+      const url = await this.resumeStandby(latest);
+      return { url, standby: url === null };
+    }
+    if (latest?.status === "STARTED" && latest.sessionUrl && Date.now() - latest.updatedAt.getTime() < REUSE_SESSION_MS) {
+      return { url: latest.sessionUrl, standby: false };
     }
     const since = new Date(Date.now() - 24 * 60 * 60_000);
     const attemptsToday = await this.prisma.identityVerification.count({ where: { professionalProfileId: profile.id, createdAt: { gte: since } } });
     if (attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
       throw new BadRequestException(`Hai già fatto ${MAX_IDENTITY_ATTEMPTS_PER_DAY} tentativi oggi: riprova domani, oppure scrivici dalla pagina Contatti e ti aiutiamo.`);
     }
-    let session: { sessionId: string; url: string };
-    try {
-      session = await this.provider.createSession({
-        reference: profile.id,
-        callbackUrl: `${this.frontendUrl()}/dashboard/verifica-identita?ritorno=1`,
-      });
-    } catch (error) {
-      this.logger.error("Sessione di verifica non creata", error);
-      throw new ServiceUnavailableException("Il servizio di verifica non risponde in questo momento. Riprova tra qualche minuto.");
-    }
+    const session = await this.createSession(profile.id);
     const row = await this.prisma.identityVerification.create({
       data: {
         professionalProfileId: profile.id,
         provider: this.provider.name,
-        providerSessionId: session.sessionId,
-        sessionUrl: session.url,
+        // In attesa: un id provvisorio, sostituito da quello vero appena il fornitore risponde.
+        providerSessionId: session?.sessionId ?? `standby-${randomUUID()}`,
+        sessionUrl: session?.url ?? null,
+        providerStatus: session ? null : STANDBY_PROVIDER_STATUS,
         biometricConsentAt: new Date(),
         biometricConsentVersion: BIOMETRIC_CONSENT_VERSION,
       },
@@ -176,9 +205,106 @@ export class IdentityVerificationService {
       fieldName: "biometricConsent",
       newValue: BIOMETRIC_CONSENT_VERSION,
       changedByUserId: userId,
-      reason: "Consenso al confronto del selfie e avvio della verifica.",
+      reason: session ? "Consenso al confronto del selfie e avvio della verifica." : "Consenso al confronto del selfie; verifica in attesa, il servizio non risponde.",
     });
-    return { url: session.url };
+    return { url: session?.url ?? null, standby: !session };
+  }
+
+  private async createSession(professionalProfileId: string): Promise<{ sessionId: string; url: string } | null> {
+    if (!this.provider) return null;
+    try {
+      return await this.provider.createSession({
+        reference: professionalProfileId,
+        callbackUrl: `${this.frontendUrl()}/dashboard/verifica-identita?ritorno=1`,
+      });
+    } catch (error) {
+      this.logger.warn(`Sessione di verifica non creata, resta in attesa: ${String(error)}`);
+      return null;
+    }
+  }
+
+  /** Riprova un tentativo in attesa: torna il link se il fornitore ora risponde, altrimenti null. */
+  private async resumeStandby(row: IdentityVerification): Promise<string | null> {
+    const session = await this.createSession(row.professionalProfileId);
+    if (!session) return null;
+    await this.prisma.identityVerification.update({
+      where: { id: row.id },
+      data: { providerSessionId: session.sessionId, sessionUrl: session.url, providerStatus: null },
+    });
+    return session.url;
+  }
+
+  /**
+   * Controllo periodico (§246): riprende i tentativi in attesa quando il
+   * fornitore torna e avvisa il professionista; chiede l'esito delle
+   * verifiche finite il cui webhook non è arrivato (l'esito, positivo o no,
+   * arriva comunque con una notifica e un'email).
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async followUp(now: Date = new Date()): Promise<void> {
+    if (!this.provider) return;
+    const since = new Date(now.getTime() - FOLLOW_UP_DAYS * DAY_MS);
+    const waiting = await this.prisma.identityVerification.findMany({
+      where: { status: "STARTED", providerStatus: STANDBY_PROVIDER_STATUS, sessionUrl: null, createdAt: { gte: since } },
+      orderBy: { createdAt: "asc" },
+      take: 20,
+      include: { professionalProfile: { select: { userId: true, verified: true, deletedAt: true } } },
+    });
+    for (const row of waiting) {
+      if (row.professionalProfile.verified || row.professionalProfile.deletedAt) continue;
+      const url = await this.resumeStandby(row);
+      // Il fornitore non risponde ancora: inutile insistere con gli altri.
+      if (!url) break;
+      await this.notificationsService.notify(row.professionalProfile.userId, "IDENTITY_VERIFICATION_READY", {});
+    }
+
+    // Finite ma senza esito, e iniziate nelle ultime 24 ore (il professionista
+    // può aver finito sul telefono senza tornare alla pagina).
+    const quietSince = new Date(now.getTime() - 10 * 60_000);
+    const processing = await this.prisma.identityVerification.findMany({
+      where: { status: "PROCESSING", createdAt: { gte: since }, updatedAt: { lte: quietSince } },
+      orderBy: { updatedAt: "asc" },
+      take: 50,
+    });
+    const started = await this.prisma.identityVerification.findMany({
+      where: { status: "STARTED", sessionUrl: { not: null }, createdAt: { gte: new Date(now.getTime() - DAY_MS) }, updatedAt: { lte: quietSince } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    for (const row of [...processing, ...started]) {
+      await this.refresh(row).catch((error) => this.logger.warn(`Esito della verifica non ancora disponibile: ${String(error)}`));
+    }
+  }
+
+  /** Promemoria a chi non ha ancora fatto la verifica (§246): notifica ed email, al massimo due. */
+  @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
+  async remindUnverified(now: Date = new Date()): Promise<void> {
+    if (!this.provider) return;
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: {
+        verified: false,
+        isDemo: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        suspendedAt: null,
+        user: { suspendedAt: null },
+        createdAt: { lte: new Date(now.getTime() - REMINDER_FIRST_AFTER_DAYS * DAY_MS) },
+      },
+      select: { id: true, userId: true, createdAt: true },
+      take: 200,
+    });
+    for (const profile of profiles) {
+      const latest = await this.latest(profile.id);
+      // Esito in arrivo o in attesa del servizio: c'è già chi lo avvisa.
+      if (latest && (latest.status === "PROCESSING" || isStandby(latest))) continue;
+      const sent = await this.prisma.notification.findMany({
+        where: { userId: profile.userId, type: "IDENTITY_VERIFICATION_REMINDER" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (!reminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
+      await this.notificationsService.notify(profile.userId, "IDENTITY_VERIFICATION_REMINDER", {});
+    }
   }
 
   /** Webhook del fornitore: firma verificata, poi l'esito si rilegge dalla sua API (mai fidarsi del solo contenuto). */
