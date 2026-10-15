@@ -514,6 +514,13 @@ export class BillingService {
       await this.jobPaymentsService.handlePayoutEvent(event.data.object as Stripe.Payout);
     }
 
+    // Soldi del professionista diventati disponibili su Stripe (docs/CHANGELOG.md
+    // §243): i bonifici già sbloccati partono subito invece che al giro orario.
+    // I bonifici non riusciti aspettano invece che sistemi i dati bancari.
+    if (event.type === "balance.available" && event.account) {
+      await this.jobPaymentsService.retryPayoutsForAccount(event.account, { skipFailed: true });
+    }
+
     // Contestazione in banca (chargeback, docs/CHANGELOG.md §236).
     if (event.type === "charge.dispute.created" || event.type === "charge.dispute.updated" || event.type === "charge.dispute.closed") {
       const dispute = event.data.object as Stripe.Dispute;

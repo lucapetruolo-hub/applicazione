@@ -331,6 +331,43 @@ export function toJobPaymentSummary(
   return summary;
 }
 
+/**
+ * Giorni dopo il primo pagamento oltre i quali avvisiamo il team Finanza di
+ * un pagamento ancora bloccato: Stripe non tiene i soldi bloccati più di
+ * 90 giorni e poi li manda comunque in banca al professionista
+ * (docs/CHANGELOG.md §243).
+ */
+export const ONLINE_LONG_HOLD_ALERT_DAYS = 80;
+export const ONLINE_MAX_HOLD_DAYS = 90;
+
+/** Totali dei pagamenti online del professionista, per stato del bonifico (Dati fiscali e pagamenti, §243). */
+export type ProfessionalPayoutTotals = {
+  /** Pagati dal cliente, bloccati fino alla conferma. */
+  blockedEurCents: number;
+  /** Sbloccati, bonifico in preparazione (o da riprovare). */
+  preparingEurCents: number;
+  /** Bonifico partito, non ancora arrivato. */
+  sentEurCents: number;
+  /** Arrivati in banca. */
+  paidEurCents: number;
+  /** Almeno un bonifico non è riuscito: dati bancari da controllare. */
+  hasFailed: boolean;
+};
+
+export function professionalPayoutTotals(summaries: Array<JobPaymentSummary | null>): ProfessionalPayoutTotals {
+  const totals: ProfessionalPayoutTotals = { blockedEurCents: 0, preparingEurCents: 0, sentEurCents: 0, paidEurCents: 0, hasFailed: false };
+  for (const summary of summaries) {
+    const amount = summary?.payoutEurCents ?? 0;
+    if (!summary || amount <= 0) continue;
+    if (summary.payoutStatus === "BLOCKED") totals.blockedEurCents += amount;
+    else if (summary.payoutStatus === "WAITING_FUNDS" || summary.payoutStatus === "FAILED") totals.preparingEurCents += amount;
+    else if (summary.payoutStatus === "SENT") totals.sentEurCents += amount;
+    else if (summary.payoutStatus === "PAID") totals.paidEurCents += amount;
+    if (summary.payoutStatus === "FAILED") totals.hasFailed = true;
+  }
+  return totals;
+}
+
 /** Come è stato pagato un lavoro, in una riga per l'area admin (docs/CHANGELOG.md §239). */
 export function jobPaymentAdminLabel(summary: JobPaymentSummary | null): string {
   if (!summary || summary.method === "DIRECT") return "Pagamento diretto al professionista";

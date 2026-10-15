@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
   ONLINE_APP_FEE_PERCENT,
+  ONLINE_LONG_HOLD_ALERT_DAYS,
   ONLINE_RELEASE_DAYS,
   onlineApplicationFeeHoldEurCents,
   onlineBalanceDueEurCents,
@@ -784,9 +785,16 @@ export class OnlineMoneyService {
     await this.notificationsService.notify(userId, "JOB_PAYOUT_FAILED", { bookingId, guidedRequestId, amountEurCents });
   }
 
-  /** Il professionista ha aggiornato il suo conto Stripe: riprova subito i bonifici in sospeso. */
-  async retryPayoutsForAccount(accountId: string): Promise<void> {
-    const rows = await this.prisma.jobPayment.findMany({ where: { stripeDestinationAccountId: accountId, payoutPendingEurCents: { gt: 0 } }, select: { id: true } });
+  /**
+   * Riprova subito i bonifici in sospeso di un conto: quando il professionista
+   * aggiorna il conto Stripe (anche quelli non riusciti) o quando Stripe rende
+   * disponibili i suoi soldi (`skipFailed`: solo quelli in attesa, §243).
+   */
+  async retryPayoutsForAccount(accountId: string, options: { skipFailed?: boolean } = {}): Promise<void> {
+    const rows = await this.prisma.jobPayment.findMany({
+      where: { stripeDestinationAccountId: accountId, payoutPendingEurCents: { gt: 0 }, ...(options.skipFailed ? { payoutFailedAt: null } : {}) },
+      select: { id: true },
+    });
     for (const row of rows) await this.sendPayout(row.id).catch((err) => this.logger.warn(`Bonifico rimandato per ${row.id}: ${(err as Error).message}`));
   }
 
@@ -920,7 +928,38 @@ export class OnlineMoneyService {
       }
     }
     await this.runPayouts(now);
+    await this.alertLongHolds(now);
     return released;
+  }
+
+  /**
+   * Soldi bloccati da più di 80 giorni sul conto del professionista
+   * (docs/CHANGELOG.md §243): Stripe non li tiene oltre 90 e poi li manda
+   * comunque in banca, quindi il team Finanza decide prima se sbloccarli o
+   * rimborsare il cliente. Un solo avviso per pagamento.
+   */
+  async alertLongHolds(now: Date = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - ONLINE_LONG_HOLD_ALERT_DAYS * DAY_MS);
+    const rows = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDestinationAccountId: { not: null },
+        releasedAt: null,
+        longHoldAlertedAt: null,
+        onlineStage: { notIn: ["REFUNDED", "AWAITING_DEPOSIT"] },
+        OR: [{ depositPaidAt: { lte: cutoff } }, { depositPaidAt: null, balancePaidAt: { lte: cutoff } }],
+      },
+      select: { id: true, bookingId: true, depositPaidAt: true, balancePaidAt: true, booking: { select: { quote: { select: { guidedRequestId: true } } } } },
+    });
+    let alerted = 0;
+    for (const row of rows) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: row.id, longHoldAlertedAt: null }, data: { longHoldAlertedAt: now } });
+      if (claimed.count === 0) continue;
+      const firstPaidAt = row.depositPaidAt ?? row.balancePaidAt ?? now;
+      const days = Math.floor((now.getTime() - firstPaidAt.getTime()) / DAY_MS);
+      await this.notifyFinanceAdmins("ADMIN_JOB_PAYMENT_LONG_HOLD", { bookingId: row.bookingId, guidedRequestId: row.booking.quote?.guidedRequestId ?? null, days });
+      alerted += 1;
+    }
+    return alerted;
   }
 
   /** Bonifici sbloccati ma non ancora partiti; quelli non riusciti si riprovano una volta al giorno. */

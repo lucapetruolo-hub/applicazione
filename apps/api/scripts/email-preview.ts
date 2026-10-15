@@ -98,6 +98,7 @@ notification("JOB_PAYOUT_FAILED", "Professionista", "Pagamenti dei lavori", { am
 notification("ADMIN_JOB_BALANCE_UNPAID", "Admin", "Pagamenti dei lavori");
 notification("JOB_STRIPE_DISPUTE", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_DISPUTE", "Admin", "Pagamenti dei lavori");
+notification("ADMIN_JOB_PAYMENT_LONG_HOLD", "Admin", "Pagamenti dei lavori");
 
 // Segnalazioni sul lavoro
 notification("JOB_ISSUE_REPORTED", "Professionista", "Segnalazioni sul lavoro", { issueType: "BAD_WORK", assisted: true });

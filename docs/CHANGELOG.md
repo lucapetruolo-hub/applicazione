@@ -18752,3 +18752,29 @@ bonifici manuali prima del primo pagamento, conguaglio della carta, bonifico
 una volta sola e mai con i soldi bloccati di altri lavori, bonifico
 rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
 `billing-webhook.test.ts`; i test del vecchio modello restano verdi.
+
+**Seguito (15/10/2026, richieste dell'utente)**:
+- *Scritte al minimo*: "la dichiarazione [...] è troppo lunga ed aggressiva
+  [...] controlla tutte le diciture e rendile al minimo indispensabile",
+  "con una frase semplice con un tasto a fianco con scritto 'scopri di più'".
+  Ogni stato del pagamento ha una frase sola più "Scopri di più" (cliente →
+  `/termini#pagamenti`, nuova ancora di `LegalPage`; professionista →
+  `/per-professionisti/pagamenti`); tolta la frase sulla sospensione
+  dell'account dal saldo non pagato e il messaggio tecnico di Stripe dal
+  bonifico non riuscito; scelta del pagamento, Dati fiscali, email e avvisi
+  accorciati. Termini e pagina pagamenti restano completi: sono il "Scopri
+  di più".
+- *Migliorie approvate* ("effettua le 3 migliorie tranne l'ultima"):
+  avviso al team Finanza per un pagamento ancora bloccato 80 giorni dopo il
+  primo pagamento (`ADMIN_JOB_PAYMENT_LONG_HOLD`, una volta sola,
+  `JobPayment.longHoldAlertedAt`, migrazione
+  `20261015090000_job_payments_long_hold_alert`), perché dopo 90 Stripe paga
+  comunque; riepilogo "Bloccati / Sbloccati / In arrivo in banca / Arrivati
+  in banca" in Dati fiscali e pagamenti (`PayoutSummary`,
+  `GET /professionals/me/online-payments/summary`, compare solo con
+  pagamenti online); bonifico subito al webhook Connect `balance.available`
+  invece che al giro orario (solo i bonifici in attesa, non quelli
+  rifiutati dalla banca, che aspettano i dati bancari corretti). Scartata
+  dall'utente la commissione minima per i lavori piccoli.
+- *Verifica*: test di avviso (una volta sola), nuovo tentativo con
+  `skipFailed`, webhook `balance.available` e totali per stato.

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { onlineApplicationFeeHoldEurCents } from "@professionisti/shared";
+import { onlineApplicationFeeHoldEurCents, professionalPayoutTotals, type JobPaymentSummary } from "@professionisti/shared";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
@@ -222,5 +222,54 @@ describe("OnlineMoneyService.refundOnline con i soldi sul conto del professionis
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 10000, reverse_transfer: true }), expect.anything());
     expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 675 }), expect.anything());
     expect(stripe.transfers.createReversal).not.toHaveBeenCalled();
+  });
+});
+
+describe("OnlineMoneyService.alertLongHolds", () => {
+  it("avvisa una volta il team Finanza dei soldi bloccati da più di 80 giorni", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    const now = new Date("2026-12-31T10:00:00Z");
+    prisma.jobPayment.findMany.mockResolvedValueOnce([
+      { id: "jp-1", bookingId: "bk-1", depositPaidAt: new Date("2026-10-10T10:00:00Z"), balancePaidAt: null, booking: { quote: { guidedRequestId: "gr-1" } } },
+    ]);
+    prisma.user.findMany.mockResolvedValue([{ id: "admin-1", adminRoles: ["FINANCE"] }]);
+
+    await expect(service.alertLongHolds(now)).resolves.toBe(1);
+    expect(prisma.jobPayment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ releasedAt: null, longHoldAlertedAt: null }) }));
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", longHoldAlertedAt: null }, data: { longHoldAlertedAt: now } });
+    expect(notificationsService.notify).toHaveBeenCalledWith("admin-1", "ADMIN_JOB_PAYMENT_LONG_HOLD", { bookingId: "bk-1", guidedRequestId: "gr-1", days: 82 });
+  });
+
+  it("non avvisa due volte se un altro giro l'ha già fatto", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.jobPayment.findMany.mockResolvedValueOnce([{ id: "jp-1", bookingId: "bk-1", depositPaidAt: new Date("2026-10-01"), balancePaidAt: null, booking: { quote: null } }]);
+    prisma.jobPayment.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.alertLongHolds(new Date("2026-12-31"))).resolves.toBe(0);
+    expect(notificationsService.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("OnlineMoneyService.retryPayoutsForAccount", () => {
+  it("con i soldi appena disponibili riprova solo i bonifici in attesa, non quelli rifiutati dalla banca", async () => {
+    const { service, prisma } = buildService();
+    await service.retryPayoutsForAccount("acct_1", { skipFailed: true });
+    expect(prisma.jobPayment.findMany).toHaveBeenCalledWith({
+      where: { stripeDestinationAccountId: "acct_1", payoutPendingEurCents: { gt: 0 }, payoutFailedAt: null },
+      select: { id: true },
+    });
+  });
+});
+
+describe("professionalPayoutTotals", () => {
+  it("somma quanto riceve il professionista per stato del bonifico", () => {
+    const row = (payoutStatus: JobPaymentSummary["payoutStatus"], payoutEurCents: number) => ({ payoutStatus, payoutEurCents }) as JobPaymentSummary;
+    expect(professionalPayoutTotals([row("BLOCKED", 1000), row("WAITING_FUNDS", 500), row("FAILED", 200), row("SENT", 300), row("PAID", 400), row("PAID", 100), null])).toEqual({
+      blockedEurCents: 1000,
+      preparingEurCents: 700,
+      sentEurCents: 300,
+      paidEurCents: 500,
+      hasFailed: true,
+    });
   });
 });

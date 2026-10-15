@@ -118,6 +118,14 @@ describe("BillingService.handleWebhookEvent", () => {
     expect(jobPaymentsService.handlePayoutEvent).toHaveBeenCalledWith(payout);
   });
 
+  it("quando i soldi del professionista diventano disponibili fa partire subito i bonifici in attesa", async () => {
+    const { service, stripe, jobPaymentsService } = buildService();
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_8", type: "balance.available", account: "acct_1", data: { object: {} } });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(jobPaymentsService.retryPayoutsForAccount).toHaveBeenCalledWith("acct_1", { skipFailed: true });
+  });
+
   it("risponde 400 se la firma non corrisponde a nessuna chiave", async () => {
     const { service, stripe } = buildService();
     stripe.webhooks.constructEvent.mockImplementation(() => {

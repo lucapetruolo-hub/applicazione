@@ -6,6 +6,8 @@ import {
   JOB_ISSUE_PRO_REPLY_HOURS,
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
+  ONLINE_LONG_HOLD_ALERT_DAYS,
+  ONLINE_MAX_HOLD_DAYS,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -783,6 +785,17 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: [
       `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
       payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  ADMIN_JOB_PAYMENT_LONG_HOLD: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Pagamento online bloccato da quasi 90 giorni",
+    title: "Pagamento bloccato da troppo tempo",
+    paragraphs: [
+      `Un pagamento online è bloccato da ${typeof payload.days === "number" ? payload.days : ONLINE_LONG_HOLD_ALERT_DAYS} giorni. Dopo ${ONLINE_MAX_HOLD_DAYS} giorni Stripe lo manda comunque in banca al professionista.`,
+      "Decidi prima se sbloccarlo o rimborsare il cliente.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),

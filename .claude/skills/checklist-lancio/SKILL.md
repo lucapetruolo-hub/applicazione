@@ -72,8 +72,9 @@ produzione):
    `checkout.session.async_payment_failed`, `charge.dispute.created`,
    `charge.dispute.updated`, `charge.dispute.closed`) e un **secondo
    endpoint "Connect"** sullo stesso URL `/billing/webhook` con gli eventi
-   `account.updated`, `payout.paid`, `payout.failed` e `payout.canceled`
-   (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §243),
+   `account.updated`, `payout.paid`, `payout.failed`, `payout.canceled`
+   (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §243) e
+   `balance.available` (bonifico appena i soldi sono disponibili, §243),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo

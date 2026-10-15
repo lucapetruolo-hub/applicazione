@@ -8,6 +8,7 @@ import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@profe
 import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { PayoutSummary } from "@/components/PayoutSummary";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
 // su urgenza, verde solo su verificato" — mai un colore libero), non un
@@ -618,6 +619,7 @@ function DashboardFiscaleContent() {
                 Scopri di più
               </Link>
             </Text>
+            <PayoutSummary />
             {profile?.stripeChargesEnabled ? (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">
                 <Badge variant="verificato">Pagamenti attivi</Badge>

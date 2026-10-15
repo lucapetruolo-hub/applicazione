@@ -1708,6 +1708,8 @@ model JobPayment {
   payoutPaidAt               DateTime?
   payoutFailedAt             DateTime?
   payoutFailureMessage       String?
+  /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §243).
+  longHoldAlertedAt          DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?

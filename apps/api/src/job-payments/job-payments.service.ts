@@ -4,7 +4,15 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
-import { onlineDepositEurCents, onlineTargetEurCents, paymentChoiceIsOnline, type JobPaymentChoice } from "@professionisti/shared";
+import {
+  onlineDepositEurCents,
+  onlineTargetEurCents,
+  paymentChoiceIsOnline,
+  professionalPayoutTotals,
+  toJobPaymentSummary,
+  type JobPaymentChoice,
+  type ProfessionalPayoutTotals,
+} from "@professionisti/shared";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
@@ -192,8 +200,8 @@ export class JobPaymentsService {
   }
 
   /** Conto Stripe del professionista aggiornato: riprova i bonifici in sospeso (§243). */
-  retryPayoutsForAccount(accountId: string): Promise<void> {
-    return this.onlineMoneyService.retryPayoutsForAccount(accountId);
+  retryPayoutsForAccount(accountId: string, options: { skipFailed?: boolean } = {}): Promise<void> {
+    return this.onlineMoneyService.retryPayoutsForAccount(accountId, options);
   }
 
   /** Avviso agli admin Finanza per un evento Stripe che non riguarda un lavoro. */
@@ -254,5 +262,27 @@ export class JobPaymentsService {
       })),
       jobPaymentsByStatus: jobPaymentsByStatus.map((r) => ({ status: r.status, count: r._count._all })),
     };
+  }
+
+  /**
+   * Riepilogo dei pagamenti online del professionista per stato del bonifico
+   * (bloccati, in preparazione, in arrivo, arrivati in banca), in Dati fiscali
+   * e pagamenti (docs/CHANGELOG.md §243).
+   */
+  async professionalPayoutSummary(userId: string): Promise<ProfessionalPayoutTotals> {
+    const bookings = await this.prisma.booking.findMany({
+      where: { professionalProfile: { userId }, jobPayment: { paymentMethod: "MANOVIA" } },
+      select: { finalAmountEurCents: true, jobPayment: true },
+    });
+    return professionalPayoutTotals(
+      bookings.map((booking) => {
+        const summary = toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true);
+        // Vecchio modello (trasferimento allo sblocco): Stripe ha già pagato da solo.
+        if (summary && booking.jobPayment?.releasedAt && !booking.jobPayment.stripeDestinationAccountId && summary.payoutStatus === "SENT") {
+          summary.payoutStatus = "PAID";
+        }
+        return summary;
+      }),
+    );
   }
 }
