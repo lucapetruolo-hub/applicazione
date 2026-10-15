@@ -55,7 +55,7 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
   else if (!identity.available) step3 = { icon: "id-card", title: "Documento e selfie", tone: "upcoming", text: "Non ancora attiva: ti avvisiamo noi quando puoi farla." };
   else if (identity.status === "PROCESSING") step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: "Stiamo aspettando l'esito: di solito bastano pochi minuti." };
   else if (identity.status === "DECLINED" || identity.status === "EXPIRED")
-    step3 = { icon: "id-card", title: "Documento e selfie", tone: "error", text: identity.reason ?? "Non è andata a buon fine: puoi riprovare.", action: verifyAction };
+    step3 = { icon: "id-card", title: "Documento e selfie", tone: "error", text: here === "verifica" ? "Da rifare: qui sotto trovi cosa correggere." : (identity.reason ?? "Non è andata a buon fine: puoi riprovare."), action: verifyAction };
   else if (!status.fiscalDataComplete || status.taxIdState === "TO_FIX")
     step3 = { icon: "id-card", title: "Documento e selfie", tone: "upcoming", text: "Serve prima di inviare il tuo primo preventivo. Circa 2 minuti." };
   else
