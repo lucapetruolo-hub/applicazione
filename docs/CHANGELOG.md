@@ -18778,3 +18778,11 @@ rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
   dall'utente la commissione minima per i lavori piccoli.
 - *Verifica*: test di avviso (una volta sola), nuovo tentativo con
   `skipFailed`, webhook `balance.available` e totali per stato.
+- *Riquadro pagamenti in Dati fiscali* (richiesta dell'utente: "il riquadro
+  'pagamenti tramite professionisti' appesantisce [...] lasciargli un banner
+  con una scritta semplice del tipo 'attiva i pagamenti online'"): finché i
+  pagamenti non sono attivi è un banner con una frase ("Fatti pagare un
+  acconto online prima ancora di iniziare il lavoro."), "Scopri di più" e un
+  pulsante; dopo l'attivazione mostra "Attivi", i totali dei bonifici e
+  "Apri il conto Stripe" (`OnlinePaymentsCard`, con `children` per quanto
+  serve solo a pagamenti attivi, es. il conto bancario dei bonifici).

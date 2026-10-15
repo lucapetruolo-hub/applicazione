@@ -8,7 +8,7 @@ import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@profe
 import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { PayoutSummary } from "@/components/PayoutSummary";
+import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
 // su urgenza, verde solo su verificato" — mai un colore libero), non un
@@ -607,54 +607,15 @@ function DashboardFiscaleContent() {
           )}
         </XStack>
 
-        <Surface padding="$4">
-          <YStack gap="$3">
-            <Text fontSize={15} fontWeight="700">
-              Pagamenti tramite {BRAND.name}
-            </Text>
-            <Text fontSize={13} color={brand.grafite70}>
-              Attiva i pagamenti con Stripe per offrire l&apos;acconto online: ricevi i soldi in banca quando il cliente conferma il
-              lavoro, meno il 5% di commissione e il costo della carta.{" "}
-              <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
-                Scopri di più
-              </Link>
-            </Text>
-            <PayoutSummary />
-            {profile?.stripeChargesEnabled ? (
-              <XStack gap="$3" alignItems="center" flexWrap="wrap">
-                <Badge variant="verificato">Pagamenti attivi</Badge>
-                <Button variant="secondary" onPress={handleStripeDashboard} disabled={stripeLoading}>
-                  {stripeLoading ? "Attendere..." : "Vedi accrediti e IBAN su Stripe"}
-                </Button>
-                {stripeError && (
-                  <Text fontSize={13} color={brand.urgenza}>
-                    {stripeError}
-                  </Text>
-                )}
-              </XStack>
-            ) : (
-              <XStack gap="$3" alignItems="center" flexWrap="wrap">
-                <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>
-                  {stripeLoading
-                    ? "Attendere..."
-                    : profile?.stripeConnectAccountId
-                      ? "Completa la verifica su Stripe"
-                      : `Attiva pagamenti tramite ${BRAND.name}`}
-                </Button>
-                {profile?.stripeConnectAccountId && profile.stripeRequirementsStatus && (
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Stripe ti chiede ancora: {profile.stripeRequirementsStatus}
-                  </Text>
-                )}
-                {stripeError && (
-                  <Text fontSize={13} color={brand.urgenza}>
-                    {stripeError}
-                  </Text>
-                )}
-              </XStack>
-            )}
-          </YStack>
-        </Surface>
+        <OnlinePaymentsCard
+          active={!!profile?.stripeChargesEnabled}
+          started={!!profile?.stripeConnectAccountId}
+          requirements={profile?.stripeRequirementsStatus}
+          loading={stripeLoading}
+          error={stripeError}
+          onActivate={handleStripeConnect}
+          onOpenStripe={handleStripeDashboard}
+        />
       </YStack>
     </Section>
   );
