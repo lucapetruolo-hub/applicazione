@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BRAND,
@@ -50,55 +51,37 @@ function clientView(payment: JobPaymentSummary): View {
     return {
       tone: "blocked",
       icon: "lock",
-      title: "Acconto pagato, bloccato",
+      title: "Acconto pagato",
       body: payment.balanceDirect
-        ? "Il professionista lo riceve solo dopo che confermi il lavoro. Il saldo lo paghi direttamente a lui, a lavoro finito."
-        : "Il professionista lo riceve solo dopo che confermi il lavoro. Il saldo si paga quando chiude il lavoro con l'importo finale.",
+        ? "Arriva al professionista quando confermi il lavoro. Il saldo lo paghi a lui."
+        : "Arriva al professionista quando confermi il lavoro.",
       step: 1,
     };
   }
   if (stage === "AWAITING_BALANCE") {
     return payment.balanceUnpaid
-      ? { tone: "danger", icon: "credit-card", title: "Saldo non pagato", body: "Pagalo ora: il nostro team è stato avvisato.", step: 1 }
-      : {
-          tone: "action",
-          icon: "credit-card",
-          title: "Saldo da pagare",
-          body: `${until ? `Pagalo entro ${until}. ` : ""}Anche il saldo resta bloccato fino alla tua conferma del lavoro.`,
-          step: 1,
-        };
+      ? { tone: "danger", icon: "credit-card", title: "Saldo da pagare", body: "Pagalo ora per chiudere il lavoro.", step: 1 }
+      : { tone: "action", icon: "credit-card", title: "Saldo da pagare", body: until ? `Pagalo entro ${until}.` : "Pagalo per chiudere il lavoro.", step: 1 };
   }
   if (stage === "PAID") {
     return {
       tone: "blocked",
       icon: "lock",
-      title: "Pagato, bloccato fino alla tua conferma",
-      body: `Il professionista riceve i soldi quando confermi che il lavoro è fatto${until ? `, oppure da soli il ${until}` : ""}. Se qualcosa non va segnalalo prima: ti assistiamo e, se la segnalazione è accolta, ti rimborsiamo.`,
+      title: "Pagato",
+      body: `Arriva al professionista quando confermi il lavoro${until ? `, o da solo il ${until}` : ""}.`,
       step: 1,
     };
   }
   if (stage === "RELEASED") {
     return payment.balanceUnpaid
-      ? {
-          tone: "danger",
-          icon: "credit-card",
-          title: "Saldo non pagato",
-          body: `Il saldo (${eur(payment.balanceDueEurCents)}) non risulta pagato: pagalo ora. Il nostro team è stato avvisato e può sospendere l'account.`,
-          step: 2,
-        }
-      : {
-          tone: "done",
-          icon: "check",
-          title: "Pagamento concluso",
-          body: "I soldi sono stati sbloccati al professionista. Con il pagamento online hai comunque la nostra assistenza sulle segnalazioni.",
-          step: 3,
-        };
+      ? { tone: "danger", icon: "credit-card", title: "Saldo da pagare", body: "Pagalo ora per chiudere il lavoro.", step: 2 }
+      : { tone: "done", icon: "check", title: "Pagamento concluso", body: "Il professionista ha ricevuto il pagamento.", step: 3 };
   }
   return {
     tone: "neutral",
     icon: "rotate-ccw",
     title: "Rimborsato",
-    body: `Ti abbiamo rimborsato ${eur(payment.refundedEurCents)} sul metodo di pagamento usato: di solito arriva in 5-10 giorni lavorativi.`,
+    body: `${eur(payment.refundedEurCents)} tornano sulla tua carta in 5-10 giorni lavorativi.`,
     step: null,
   };
 }
@@ -107,70 +90,52 @@ function professionalView(payment: JobPaymentSummary): View {
   const stage = payment.stage;
   const until = payment.releaseDueAt ? formatIssueDeadline(payment.releaseDueAt) : null;
   if (stage === "AWAITING_DEPOSIT") {
-    return { tone: "neutral", icon: "clock", title: "In attesa dell'acconto", body: "Il cliente ha scelto il pagamento online e deve ancora pagare l'acconto.", step: 0 };
+    return { tone: "neutral", icon: "clock", title: "In attesa dell'acconto", body: "Il cliente deve ancora pagare l'acconto.", step: 0 };
   }
   if (stage === "REFUNDED") {
-    return { tone: "neutral", icon: "rotate-ccw", title: "Rimborsato al cliente", body: "Il pagamento è stato restituito al cliente e ripreso dal tuo conto Stripe.", step: null };
+    return { tone: "neutral", icon: "rotate-ccw", title: "Rimborsato al cliente", body: "Il pagamento è tornato al cliente.", step: null };
   }
   if (stage === "DEPOSIT_PAID") {
     return {
       tone: "blocked",
       icon: "lock",
-      title: "Acconto ricevuto, bloccato",
+      title: "Acconto ricevuto",
       body: payment.balanceDirect
-        ? "È sul tuo conto Stripe ma bloccato: lo sblocchiamo quando il cliente conferma il lavoro, o 7 giorni dopo che lo chiudi. Il saldo te lo paga il cliente direttamente."
-        : "È sul tuo conto Stripe ma bloccato: lo sblocchiamo insieme al saldo quando il cliente conferma il lavoro, o 7 giorni dopo che lo chiudi.",
+        ? "Lo ricevi in banca quando il cliente conferma il lavoro. Il saldo te lo paga lui."
+        : "Lo ricevi in banca col saldo, quando il cliente conferma il lavoro.",
       step: 1,
     };
   }
   if (stage === "AWAITING_BALANCE") {
-    return {
-      tone: "blocked",
-      icon: "clock",
-      title: "In attesa del saldo",
-      body: "Se il cliente non paga entro 7 giorni, ti sblocchiamo quanto ha già pagato e il nostro team lo sollecita.",
-      step: 1,
-    };
+    return { tone: "blocked", icon: "clock", title: "In attesa del saldo", body: "Il cliente deve pagare il saldo.", step: 1 };
   }
   if (stage === "PAID") {
     return {
       tone: "blocked",
       icon: "lock",
-      title: "Bloccato fino alla conferma del cliente",
-      body: `Lo sblocchiamo quando il cliente conferma il lavoro${until ? `, oppure da solo il ${until}` : ""}. Con una segnalazione aperta resta bloccato finché non si chiude.`,
+      title: "Pagato dal cliente",
+      body: `Lo ricevi in banca quando il cliente conferma il lavoro${until ? `, o da solo il ${until}` : ""}.`,
       step: 1,
     };
   }
   // Sbloccato: dov'è il bonifico verso la banca (docs/CHANGELOG.md §243).
-  const unpaid = payment.balanceUnpaid ? " Il cliente non ha pagato il saldo: se ne occupa il nostro team." : "";
+  const unpaid = payment.balanceUnpaid ? " Del saldo mancante ci occupiamo noi." : "";
   switch (payment.payoutStatus) {
     case "FAILED":
       return {
         tone: "danger",
         icon: "landmark",
         title: "Bonifico non riuscito",
-        body: `La tua banca non ha accettato il bonifico${payment.payoutFailureMessage ? ` (${payment.payoutFailureMessage.replace(/\.$/, "")})` : ""}. I soldi sono al sicuro sul tuo conto Stripe: controlla il conto bancario e il bonifico riparte da solo.`,
+        body: "La banca non l'ha accettato. Controlla il conto bancario: il bonifico riparte da solo.",
         step: 3,
         stepError: true,
       };
     case "WAITING_FUNDS":
-      return {
-        tone: "blocked",
-        icon: "lock-open",
-        title: "Sbloccato, bonifico in preparazione",
-        body: `Il bonifico verso la tua banca parte appena Stripe rende disponibili i soldi, di solito pochi giorni dopo il pagamento.${unpaid}`,
-        step: 3,
-      };
+      return { tone: "blocked", icon: "lock-open", title: "Bonifico in preparazione", body: `Parte appena Stripe rende disponibili i soldi.${unpaid}`, step: 3 };
     case "PAID":
-      return { tone: "done", icon: "check", title: "Bonifico arrivato", body: `Il pagamento è arrivato sul tuo conto bancario.${unpaid}`, step: 4 };
+      return { tone: "done", icon: "check", title: "Bonifico arrivato", body: `È sul tuo conto bancario.${unpaid}`, step: 4 };
     default:
-      return {
-        tone: "done",
-        icon: "landmark",
-        title: "Bonifico partito",
-        body: `Arriva sul tuo conto bancario in 1-4 giorni lavorativi.${unpaid}`,
-        step: 3,
-      };
+      return { tone: "done", icon: "landmark", title: "Bonifico partito", body: `Arriva in banca in 1-4 giorni lavorativi.${unpaid}`, step: 3 };
   }
 }
 
@@ -303,7 +268,13 @@ export function JobPaymentStatus({
       ) : null}
 
       <Text fontSize="$2" color={brand.grafite70} lineHeight={20}>
-        {view.body}
+        {view.body}{" "}
+        <Link
+          href={audience === "client" ? "/termini#pagamenti" : "/per-professionisti/pagamenti"}
+          style={{ color: brand.cianografiaScuro, fontWeight: 600, whiteSpace: "nowrap" }}
+        >
+          Scopri di più
+        </Link>
       </Text>
 
       {rows.length > 0 ? (

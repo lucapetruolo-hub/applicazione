@@ -32,6 +32,7 @@ export default function TerminiPage() {
         },
         {
           heading: "5. Pagamento dei lavori",
+          id: "pagamenti",
           body: (
             <>
               <OnlinePaymentsTermsNote />

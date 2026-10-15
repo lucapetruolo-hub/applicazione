@@ -612,12 +612,11 @@ function DashboardFiscaleContent() {
               Pagamenti tramite {BRAND.name}
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
-              Nel preventivo scegli tu come farti pagare: diretto, acconto online (la percentuale la decidi tu) con saldo online, o acconto
-              online con saldo diretto. Quello che il cliente paga online arriva subito sul tuo conto Stripe, meno il costo della carta e
-              la commissione {BRAND.name} del 5%, e resta bloccato: lo sblocchiamo quando il cliente conferma il lavoro, o 7 giorni dopo la
-              chiusura, e parte il bonifico verso la tua banca. Per offrire l&apos;acconto online attiva i pagamenti qui sotto.
-              Quello che il cliente paga direttamente te lo dà come vi accordate. La verifica su Stripe serve solo per offrire
-              l&apos;acconto online: quando è completata il tuo profilo mostra anche il badge &quot;Identità verificata da Stripe&quot;.
+              Attiva i pagamenti con Stripe per offrire l&apos;acconto online: ricevi i soldi in banca quando il cliente conferma il
+              lavoro, meno il 5% di commissione e il costo della carta.{" "}
+              <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
+                Scopri di più
+              </Link>
             </Text>
             {profile?.stripeChargesEnabled ? (
               <XStack gap="$3" alignItems="center" flexWrap="wrap">

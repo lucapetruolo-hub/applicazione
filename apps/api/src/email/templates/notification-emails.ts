@@ -631,7 +631,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Acconto pagato",
     paragraphs: [
       `Il cliente ha pagato online l'acconto per il lavoro **${job(ctx)}**.`,
-      "È già sul tuo conto Stripe, bloccato: lo sblocchiamo insieme al saldo quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }] : []),
     cta: proRequests("Apri il lavoro"),
@@ -643,7 +643,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Saldo pagato",
     paragraphs: [
       `Il cliente ha pagato online il saldo per il lavoro **${job(ctx)}**.`,
-      "È sul tuo conto Stripe, bloccato: lo sblocchiamo quando il cliente conferma che è tutto a posto, o comunque 7 giorni dopo la chiusura, e parte il bonifico verso la tua banca.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
@@ -655,7 +655,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Paga il saldo",
     paragraphs: [
       `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**. Paga il saldo online per completare il pagamento.`,
-      "I soldi restano bloccati: il professionista li riceve quando confermi che è tutto a posto, o comunque dopo 7 giorni.",
+      "Il professionista riceve i soldi quando confermi il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
@@ -680,7 +680,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamento sbloccato",
     paragraphs: [
       `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e del costo della carta.`,
-      "Il bonifico verso la tua banca parte appena Stripe rende disponibili i soldi: di solito arriva in 1-4 giorni lavorativi.",
+      "Il bonifico arriva in banca in pochi giorni lavorativi.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
@@ -693,7 +693,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Bonifico non riuscito",
     paragraphs: [
       `Il bonifico${typeof payload.amountEurCents === "number" ? ` di ${formatEur(payload.amountEurCents)}` : ""} per il lavoro **${job(ctx)}** non è arrivato alla tua banca. I soldi sono al sicuro sul tuo conto Stripe.`,
-      "Controlla il conto bancario nel tuo conto Stripe (Dati fiscali e pagamenti → Apri il conto Stripe): appena è corretto, il bonifico riparte da solo.",
+      "Controlla il conto bancario: il bonifico riparte da solo.",
     ],
     cta: { label: "Controlla i dati bancari", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
