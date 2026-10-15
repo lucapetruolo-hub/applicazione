@@ -32,16 +32,19 @@ function sameNames(a: string | null, b: string | null): boolean {
  * di nascita. Quello che non torna va a un admin, non viene rifiutato.
  */
 export function matchDocumentToFiscal(document: DocumentPerson | null, expected: ExpectedPerson): { matched: boolean; reason: string | null } {
-  if (!document) return { matched: false, reason: "Il fornitore non ha restituito i dati del documento." };
+  if (!document) return { matched: false, reason: "Non siamo riusciti a leggere i dati del documento: rifai la verifica con una foto più nitida, con buona luce e senza riflessi." };
   const cf = (expected.codiceFiscale ?? "").toUpperCase().replace(/\s/g, "");
   const personal = (document.personalNumber ?? "").toUpperCase().replace(/\s/g, "");
   if (cf && personal && cf === personal) return { matched: true, reason: null };
-  if (!expected.firstName || !expected.lastName) return { matched: false, reason: "Nei dati fiscali mancano nome e cognome da confrontare." };
+  if (!expected.firstName || !expected.lastName) return { matched: false, reason: "Completa nome e cognome nei dati fiscali, poi rifai la verifica." };
   const mismatches: string[] = [];
   if (!sameNames(document.lastName, expected.lastName)) mismatches.push("cognome");
   if (!sameNames(document.firstName, expected.firstName)) mismatches.push("nome");
   if (expected.dateOfBirth && document.dateOfBirth && expected.dateOfBirth.slice(0, 10) !== document.dateOfBirth.slice(0, 10)) mismatches.push("data di nascita");
   if (expected.dateOfBirth && !document.dateOfBirth) mismatches.push("data di nascita (non letta)");
   if (mismatches.length === 0) return { matched: true, reason: null };
-  return { matched: false, reason: `Sul documento ${mismatches.join(", ")} non coincidono con i dati fiscali.` };
+  return {
+    matched: false,
+    reason: `Il documento non coincide con i dati fiscali (${mismatches.join(", ")}). Se nei dati fiscali c'è un errore correggilo scrivendoli come sul documento, poi rifai la verifica.`,
+  };
 }

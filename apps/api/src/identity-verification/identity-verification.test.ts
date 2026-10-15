@@ -113,23 +113,24 @@ describe("esito applicato", () => {
     expect(verification.markVerifiedByProvider).toHaveBeenCalledWith("pp-1", "didit");
   });
 
-  it("documento di un'altra persona: va all'admin, niente badge", async () => {
-    const { service, row, verification } = build();
+  it("documento che non coincide: niente badge, il professionista sa cosa correggere (nessun admin)", async () => {
+    const { service, row, verification, notifications } = build();
     const updated = await service.apply(row as never, {
       providerStatus: "Approved",
       outcome: "APPROVED",
       person: { firstName: "Luigi", lastName: "Bianchi", dateOfBirth: "1985-02-02", personalNumber: null },
     });
-    expect(updated.status).toBe("NEEDS_REVIEW");
+    expect(updated.status).toBe("DECLINED");
+    expect(updated.reason).toContain("correggilo");
     expect(verification.markVerifiedByProvider).not.toHaveBeenCalled();
+    expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_DECLINED", expect.anything());
   });
 
-  it("rifiutata: avviso al professionista; decisione dell'admin mai sovrascritta", async () => {
-    const { service, row, notifications, prisma } = build();
+  it("rifiutata o da rivedere per il fornitore: avviso al professionista, che riprova da solo", async () => {
+    const { service, row, notifications } = build();
     await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null });
     expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_DECLINED", expect.anything());
-    prisma.identityVerification.update.mockClear();
-    await service.apply({ ...row, reviewedByUserId: "admin" } as never, { providerStatus: "Approved", outcome: "APPROVED", person: null });
-    expect(prisma.identityVerification.update).not.toHaveBeenCalled();
+    const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null });
+    expect(inReview.status).toBe("DECLINED");
   });
 });

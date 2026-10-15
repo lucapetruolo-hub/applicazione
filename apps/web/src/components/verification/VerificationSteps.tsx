@@ -31,7 +31,7 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
       };
 
   const taxTitle = taxIdStepTitle(status.taxIdChecks.map((check) => check.kind));
-  const problems = status.taxIdChecks.filter((check) => check.status === "INVALID" || check.status === "REVIEW" || check.status === "PENDING");
+  const problems = status.taxIdChecks.filter((check) => check.status === "INVALID" || check.status === "PENDING");
   const step2: Step = !status.fiscalDataComplete
     ? { icon: "landmark", title: taxTitle, tone: "upcoming", text: "Parte da sola quando salvi i dati fiscali." }
     : status.taxIdState === "TO_FIX"
@@ -46,13 +46,7 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
         ? { icon: "landmark", title: taxTitle, tone: "waiting", text: problems.map(taxIdCheckMessage).join(" ") }
         : status.taxIdState === "NOT_NEEDED"
           ? { icon: "landmark", title: taxTitle, tone: "done", text: "Non serve per i tuoi dati." }
-          : {
-              icon: "landmark",
-              title: taxTitle,
-              // Partita IVA non trovata nel registro: la guarda un admin, non blocca.
-              tone: problems.length > 0 ? "waiting" : "done",
-              text: problems.length > 0 ? problems.map(taxIdCheckMessage).join(" ") : "Dati confermati.",
-            };
+          : { icon: "landmark", title: taxTitle, tone: "done", text: "Dati confermati." };
 
   const identity = status.identity;
   const verifyAction = here === "verifica" ? undefined : { href: "/dashboard/verifica-identita", label: "Verifica la tua identità" };
@@ -60,7 +54,6 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
   if (status.verified) step3 = { icon: "id-card", title: "Documento e selfie", tone: "done", text: "Identità verificata: hai il badge Verificato." };
   else if (!identity.available) step3 = { icon: "id-card", title: "Documento e selfie", tone: "upcoming", text: "Non ancora attiva: ti avvisiamo noi quando puoi farla." };
   else if (identity.status === "PROCESSING") step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: "Stiamo aspettando l'esito: di solito bastano pochi minuti." };
-  else if (identity.status === "NEEDS_REVIEW") step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: "La sta controllando il nostro team: ti scriviamo appena è fatto." };
   else if (identity.status === "DECLINED" || identity.status === "EXPIRED")
     step3 = { icon: "id-card", title: "Documento e selfie", tone: "error", text: identity.reason ?? "Non è andata a buon fine: puoi riprovare.", action: verifyAction };
   else if (!status.fiscalDataComplete || status.taxIdState === "TO_FIX")

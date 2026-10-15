@@ -354,7 +354,6 @@ function DashboardFiscaleContent() {
   };
   const cfOfficial = officialCheck("CODICE_FISCALE", fields.fiscalCodiceFiscale);
   const vatOfficial = officialCheck("PARTITA_IVA", fields.vatNumber);
-  const repCfOfficial = officialCheck("REPRESENTATIVE_CODICE_FISCALE", repFields.codiceFiscale);
   const hasLiveErrors = liveErrors.length > 0;
 
   return (
@@ -555,8 +554,8 @@ function DashboardFiscaleContent() {
                 value={repFields.codiceFiscale}
                 onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v }))}
                 autoCapitalize="characters"
-                error={liveError("representative.codiceFiscale") ?? repCfOfficial.error}
-                hint={repCfOfficial.hint ? `${repCfOfficial.hint} È lui che farà la verifica con documento e selfie.` : "È lui che farà la verifica con documento e selfie."}
+                error={liveError("representative.codiceFiscale")}
+                hint="È lui che farà la verifica con documento e selfie."
               />
               <Field label="Ruolo" accessibilityLabel="Ruolo del legale rappresentante" value={repFields.role} onChangeText={(v) => setRepFields((p) => ({ ...p, role: v }))} placeholder="es. Amministratore unico" />
             </YStack>

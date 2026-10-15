@@ -10,27 +10,26 @@ import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatA
 import { SkeletonTableRows } from "@/components/Skeleton";
 
 type Row = ProfessionalVerificationRow;
-type Action = "verify" | "unverify" | "decline";
 
 const IDENTITY_LABEL: Record<NonNullable<Row["identity"]>["status"], { text: string; tone: "ok" | "warn" | "danger" | "neutral" }> = {
   STARTED: { text: "Documento e selfie: iniziata", tone: "neutral" },
   PROCESSING: { text: "Documento e selfie: in attesa di esito", tone: "neutral" },
   APPROVED: { text: "Documento e selfie: approvata", tone: "ok" },
-  NEEDS_REVIEW: { text: "Documento e selfie: caso dubbio", tone: "warn" },
+  NEEDS_REVIEW: { text: "Documento e selfie: da rifare", tone: "danger" },
   DECLINED: { text: "Documento e selfie: rifiutata", tone: "danger" },
   EXPIRED: { text: "Documento e selfie: scaduta", tone: "neutral" },
 };
 
 const TAX_TONE: Record<Row["taxIdChecks"][number]["status"], "ok" | "warn" | "danger" | "neutral"> = {
   VALID: "ok",
-  REVIEW: "warn",
+  REVIEW: "neutral",
   INVALID: "danger",
   PENDING: "neutral",
 };
 
 const TAX_TEXT: Record<Row["taxIdChecks"][number]["status"], string> = {
   VALID: "confermato",
-  REVIEW: "da controllare",
+  REVIEW: "non nel registro imprese",
   INVALID: "non valido",
   PENDING: "in controllo",
 };
@@ -74,11 +73,11 @@ function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?:
 }
 
 /**
- * Verifica dei professionisti (docs/CHANGELOG.md §200, §243): documento e
- * selfie li controlla Didit in automatico e il badge arriva da solo. Qui
- * l'admin guarda solo i casi dubbi (nome o data che non tornano, partita IVA
- * non trovata nel registro), confermandoli o rifiutandoli, e può togliere il
- * badge. Nessun documento viene caricato o conservato sul sito.
+ * Verifica dei professionisti (docs/CHANGELOG.md §200, §243, §245): tutto
+ * automatico, documento e selfie con Didit, codice fiscale e P.IVA con VIES
+ * e Openapi. L'admin non accetta né rifiuta nessuno (decisione dell'utente):
+ * qui vede a che punto è ciascuno, può ricontrollare i dati fiscali e
+ * togliere il badge. Nessun documento viene caricato o conservato sul sito.
  */
 export default function AdminVerifichePage() {
   const { token } = useAuth();
@@ -88,9 +87,6 @@ export default function AdminVerifichePage() {
   const [listError, setListError] = useState<string | null>(null);
   // Riga su cui si sta agendo: il pannello di conferma compare sopra l'elenco.
   const [selected, setSelected] = useState<Row | null>(null);
-  const [action, setAction] = useState<Action>("verify");
-  const [identityChecked, setIdentityChecked] = useState(false);
-  const [taxIdChecked, setTaxIdChecked] = useState(false);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -133,11 +129,8 @@ export default function AdminVerifichePage() {
     }
   }
 
-  function open(row: Row, nextAction: Action) {
+  function open(row: Row) {
     setSelected(row);
-    setAction(nextAction);
-    setIdentityChecked(false);
-    setTaxIdChecked(false);
     setNote("");
     setActionError(null);
     setDone(null);
@@ -148,32 +141,12 @@ export default function AdminVerifichePage() {
     setSaving(true);
     setActionError(null);
     try {
-      if (action === "decline") {
-        if (note.trim().length < 3) {
-          setActionError("Scrivi cosa deve correggere: arriva al professionista.");
-          return;
-        }
-        await apiClient.adminDeclineIdentityVerification(token, selected.professionalProfileId, note.trim());
-        setDone(`Verifica d'identità di ${selected.businessName} rifiutata: gli abbiamo scritto il motivo.`);
-      } else if (action === "unverify") {
-        if (note.trim().length < 3) {
-          setActionError("Scrivi il motivo: arriva al professionista.");
-          return;
-        }
-        await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
-        setDone(`Verifica tolta a ${selected.businessName}.`);
-      } else {
-        if (!identityChecked || !taxIdChecked) {
-          setActionError("Spunta entrambi i controlli prima di verificare.");
-          return;
-        }
-        await apiClient.adminVerifyProfessional(token, selected.professionalProfileId, {
-          identityChecked: true,
-          taxIdChecked: true,
-          note: note.trim() || undefined,
-        });
-        setDone(`${selected.businessName} ora ha il badge Verificato.`);
+      if (note.trim().length < 3) {
+        setActionError("Scrivi il motivo: arriva al professionista.");
+        return;
       }
+      await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
+      setDone(`Verifica tolta a ${selected.businessName}.`);
       setSelected(null);
       load();
     } catch (err) {
@@ -187,12 +160,12 @@ export default function AdminVerifichePage() {
     <YStack gap="$4">
       <AdminPageHeader
         title="Verifica profili"
-        description="Documento e selfie li controlla Didit: se tutto torna il badge Verificato arriva da solo. Qui trovi in cima i casi dubbi (nome o data che non coincidono, partita IVA non trovata): guarda la sessione nella console Didit, poi conferma o rifiuta. Sul sito non si carica nessun documento."
+        description="La verifica è tutta automatica: documento e selfie con Didit, codice fiscale e partita IVA con VIES e Openapi. Se qualcosa non torna il professionista riceve il motivo e la rifà da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
       />
 
       <AdminTabs
         tabs={[
-          { key: "pending", label: "Da verificare" },
+          { key: "pending", label: "Non ancora verificati" },
           { key: "verified", label: "Verificati" },
         ]}
         value={filter}
@@ -209,46 +182,20 @@ export default function AdminVerifichePage() {
         <AdminCard highlight>
           <YStack gap="$3">
             <Text fontWeight="700" color={brand.grafite}>
-              {action === "unverify"
-                ? `Togli la verifica a ${selected.businessName}`
-                : action === "decline"
-                  ? `Rifiuta la verifica d'identità di ${selected.businessName}`
-                  : `Verifica ${selected.businessName}`}
+              Togli la verifica a {selected.businessName}
             </Text>
-            <AutomaticChecks row={selected} />
-            {action !== "verify" ? null : (
-              <YStack gap="$2">
-                <Text fontSize={14} color={brand.grafite70}>
-                  Titolare: {selected.ownerName || "non indicato"} · Partita IVA: {selected.vatNumber ?? "non inserita"} · Codice fiscale:{" "}
-                  {selected.codiceFiscale ?? "non inserito"}
-                </Text>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={identityChecked} onChange={(e) => setIdentityChecked(e.target.checked)} />
-                  <Text fontSize={14}>Ho controllato un documento d&apos;identità valido del titolare</Text>
-                </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={taxIdChecked} onChange={(e) => setTaxIdChecked(e.target.checked)} />
-                  <Text fontSize={14}>Ho controllato la partita IVA (o il codice fiscale) e corrisponde al titolare</Text>
-                </label>
-              </YStack>
-            )}
-            <textarea aria-label={action === "verify" ? "Nota interna" : "Motivo"}
+            <textarea
+              aria-label="Motivo"
               className="admin-input"
               rows={2}
-              placeholder={
-                action === "verify"
-                  ? "Nota interna (facoltativa, es. come hai fatto il controllo)"
-                  : action === "decline"
-                    ? "Cosa deve correggere (lo riceve il professionista, es. \"il nome sul documento non è quello dei dati fiscali\") *"
-                    : "Motivo (lo riceve il professionista) *"
-              }
+              placeholder="Motivo (lo riceve il professionista) *"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
             {actionError ? <Text color={brand.urgenza}>{actionError}</Text> : null}
             <XStack gap="$2">
-              <Button size="$3" disabled={saving} backgroundColor={action === "verify" ? undefined : brand.urgenza} onPress={() => void confirm()}>
-                {saving ? "…" : action === "unverify" ? "Togli verifica" : action === "decline" ? "Rifiuta e avvisa" : "Segna come verificato"}
+              <Button size="$3" disabled={saving} backgroundColor={brand.urgenza} onPress={() => void confirm()}>
+                {saving ? "…" : "Togli verifica"}
               </Button>
               <Button variant="secondary" size="$3" onPress={() => setSelected(null)}>
                 Annulla
@@ -269,7 +216,7 @@ export default function AdminVerifichePage() {
       {rows === null && !listError ? (
         <SkeletonTableRows rows={4} cols={5} />
       ) : rows && rows.length === 0 ? (
-        <Text color={brand.grafite70}>{filter === "pending" ? "Nessun profilo da verificare." : "Nessun profilo verificato."}</Text>
+        <Text color={brand.grafite70}>{filter === "pending" ? "Tutti i professionisti sono verificati." : "Nessun profilo verificato."}</Text>
       ) : rows ? (
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -330,16 +277,11 @@ export default function AdminVerifichePage() {
                     )}
                   </td>
                   <td>
-                    <XStack gap="$1.5" flexWrap="wrap">
-                      <Button variant="secondary" size="$2" onPress={() => open(row, row.verified ? "unverify" : "verify")}>
-                        {row.verified ? "Togli verifica" : "Verifica"}
+                    {row.verified ? (
+                      <Button variant="secondary" size="$2" onPress={() => open(row)}>
+                        Togli verifica
                       </Button>
-                      {!row.verified && row.identity?.status === "NEEDS_REVIEW" ? (
-                        <Button variant="secondary" size="$2" onPress={() => open(row, "decline")}>
-                          Rifiuta
-                        </Button>
-                      ) : null}
-                    </XStack>
+                    ) : null}
                   </td>
                 </tr>
               ))}

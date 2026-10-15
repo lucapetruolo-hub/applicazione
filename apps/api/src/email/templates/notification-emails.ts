@@ -932,9 +932,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         isVat
           ? "Abbiamo verificato la partita IVA che hai inserito nei dati fiscali e non risulta attiva."
-          : payload.kind === "REPRESENTATIVE_CODICE_FISCALE"
-            ? "Il codice fiscale del legale rappresentante che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura."
-            : "Il codice fiscale che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura.",
+          : "Il codice fiscale che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura.",
         "Finché non lo correggi il tuo profilo non compare nelle ricerche. Se il dato è giusto, scrivici dal modulo Contatti e lo controlliamo insieme.",
       ],
       cta: { label: "Correggi i dati fiscali", url: `${frontendUrl()}/dashboard/fiscale` },

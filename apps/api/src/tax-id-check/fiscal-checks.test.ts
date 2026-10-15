@@ -66,7 +66,7 @@ describe("controlli Openapi", () => {
   });
 });
 
-/** Partita IVA prima con VIES, poi Openapi; CF del legale rappresentante (docs/CHANGELOG.md §244). */
+/** Partita IVA prima con VIES, poi Openapi (docs/CHANGELOG.md §244-§245). */
 describe("VIES prima di Openapi", () => {
   const openapi = {
     name: "openapi",
@@ -108,21 +108,9 @@ describe("VIES prima di Openapi", () => {
     expect(await viesLookup("12485671007", down)).toBeNull();
   });
 
-  it("per un'azienda verifica anche il codice fiscale del legale rappresentante", () => {
-    expect(
-      wantedTaxIdChecks({
-        entityType: "BUSINESS",
-        fiscalIdIssuingCountry: "IT",
-        fiscalCodiceFiscale: null,
-        vatNumber: "12485671007",
-        representative: { codiceFiscale: "rssmra80a01h501u" },
-      }),
-    ).toEqual([
+  it("il codice fiscale del legale rappresentante non va a Openapi: lo conferma il documento", () => {
+    expect(wantedTaxIdChecks({ entityType: "BUSINESS", fiscalIdIssuingCountry: "IT", fiscalCodiceFiscale: null, vatNumber: "12485671007" })).toEqual([
       { kind: "PARTITA_IVA", value: "12485671007" },
-      { kind: "REPRESENTATIVE_CODICE_FISCALE", value: "RSSMRA80A01H501U" },
     ]);
-    expect(
-      wantedTaxIdChecks({ entityType: "SOLE_PROPRIETOR", fiscalIdIssuingCountry: "IT", fiscalCodiceFiscale: null, vatNumber: null, representative: { codiceFiscale: "RSSMRA80A01H501U" } }),
-    ).toEqual([]);
   });
 });

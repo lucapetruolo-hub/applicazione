@@ -28,12 +28,7 @@ export const startIdentityVerificationSchema = z.object({
 });
 export type StartIdentityVerificationInput = z.infer<typeof startIdentityVerificationSchema>;
 
-export const declineIdentityVerificationSchema = z.object({
-  note: z.string().trim().min(3, "Scrivi cosa deve correggere: arriva al professionista.").max(500),
-});
-export type DeclineIdentityVerificationInput = z.infer<typeof declineIdentityVerificationSchema>;
-
-export type TaxIdKind = "CODICE_FISCALE" | "PARTITA_IVA" | "REPRESENTATIVE_CODICE_FISCALE";
+export type TaxIdKind = "CODICE_FISCALE" | "PARTITA_IVA";
 export type TaxIdCheckStatus = "PENDING" | "VALID" | "INVALID" | "REVIEW";
 
 export type TaxIdCheckView = {
@@ -82,7 +77,6 @@ export type MyVerificationStatus = {
 export const TAX_ID_KIND_LABEL: Record<TaxIdKind, string> = {
   CODICE_FISCALE: "Codice fiscale",
   PARTITA_IVA: "Partita IVA",
-  REPRESENTATIVE_CODICE_FISCALE: "Codice fiscale del legale rappresentante",
 };
 
 /**
@@ -91,7 +85,7 @@ export const TAX_ID_KIND_LABEL: Record<TaxIdKind, string> = {
  */
 export function taxIdStepTitle(kinds: TaxIdKind[]): string {
   const hasVat = kinds.includes("PARTITA_IVA");
-  const hasCf = kinds.some((kind) => kind !== "PARTITA_IVA");
+  const hasCf = kinds.includes("CODICE_FISCALE");
   if (hasVat && hasCf) return "Verifica codice fiscale e P.IVA";
   if (hasVat) return "Verifica P.IVA";
   if (hasCf) return "Verifica codice fiscale";
@@ -110,7 +104,9 @@ export function taxIdCheckMessage(check: Pick<TaxIdCheckView, "kind" | "status" 
         ? `La partita IVA risulta ${check.detail ? check.detail.toLowerCase() : "non attiva"}: controlla il numero o scrivici se è un errore.`
         : `Non riusciamo a verificare il ${label.charAt(0).toLowerCase()}${label.slice(1)}: controlla di averlo scritto bene.`;
     case "REVIEW":
-      return `${label}: la verifichiamo noi, intanto il profilo resta visibile.`;
+      // P.IVA giusta nella forma ma non nel registro delle imprese (es. libero
+      // professionista): non blocca e non passa all'admin (§245).
+      return `${label}: numero corretto.`;
     default:
       return `${label}: verifica in corso, intanto il profilo resta visibile.`;
   }

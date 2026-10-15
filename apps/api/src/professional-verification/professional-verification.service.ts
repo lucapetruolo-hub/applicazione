@@ -51,12 +51,6 @@ export class ProfessionalVerificationService {
         identityVerifications: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
-    // Prima i casi dubbi (documento o P.IVA da guardare, docs/CHANGELOG.md §243), poi l'ordine di sempre.
-    if (filter === "pending") {
-      const needsLook = (p: (typeof profiles)[number]) =>
-        p.identityVerifications[0]?.status === "NEEDS_REVIEW" || !!p.fiscalProfile?.taxIdChecks.some((c) => c.status === "REVIEW");
-      profiles.sort((a, b) => Number(needsLook(b)) - Number(needsLook(a)));
-    }
     const verifierIds = [...new Set(profiles.map((p) => p.verifiedByUserId).filter((id): id is string => !!id))];
     const verifiers = verifierIds.length
       ? await this.prisma.user.findMany({ where: { id: { in: verifierIds } }, select: { id: true, name: true, surname: true, email: true } })
@@ -184,17 +178,9 @@ export class ProfessionalVerificationService {
   /** Richieste di verifica in attesa, per il numero nel menu admin. */
   countPendingRequests(): Promise<number> {
     return this.prisma.professionalProfile.count({
-      where: {
-        verified: false,
-        deletedAt: null,
-        invitePendingAt: null,
-        OR: [
-          { verificationRequestedAt: { not: null } },
-          // Casi dubbi della verifica automatica (docs/CHANGELOG.md §243).
-          { identityVerifications: { some: { status: "NEEDS_REVIEW" } } },
-          { fiscalProfile: { is: { taxIdChecks: { some: { status: "REVIEW" } } } } },
-        ],
-      },
+      // Nessun caso dubbio passa all'admin (docs/CHANGELOG.md §245): restano
+      // solo le vecchie richieste manuali.
+      where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
     });
   }
 

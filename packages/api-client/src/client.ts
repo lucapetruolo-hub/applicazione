@@ -1531,12 +1531,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
-    /** Caso dubbio della verifica d'identità rifiutato: il motivo arriva al professionista (docs/CHANGELOG.md §243). */
-    adminDeclineIdentityVerification: (token: string, professionalProfileId: string, note: string) =>
-      request<{ professionalProfileId: string; status: "DECLINED" }>(
-        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/identity-decline`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) },
-      ),
     /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §244). */
     adminRecheckTaxIds: (token: string, professionalProfileId: string) =>
       request<TaxIdCheckView[]>(`/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/tax-recheck`, {

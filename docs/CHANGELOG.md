@@ -18741,7 +18741,7 @@ webhook, abbinamento documento-dati fiscali, blocco preventivi, filtro di
 visibilità), tipi e lint di `apps/api` e `apps/web` verdi; schermate da
 telefono e computer in `/mnt/project-files/anteprime/verifica-identita/`.
 
-## 244. Partita IVA prima con VIES, testi più leggeri, CF del legale rappresentante, "Ricontrolla ora"
+## 244. Partita IVA prima con VIES, testi più leggeri, "Ricontrolla ora"
 
 **Richiesta esplicita dell'utente** (15/10/2026), sulla PR di §243: "aggiungi
 prima il controllo vies, e se lento o non risp o da negativo facciamo
@@ -18761,14 +18761,41 @@ nell'app mobile si fa quando si inizia l'app.
   "Verifica codice fiscale e P.IVA" (`taxIdStepTitle`); messaggi, notifica,
   email e banner senza nominare enti. La privacy resta precisa (dice VIES,
   Openapi, Agenzia delle Entrate e Registro Imprese).
-- Nuovo tipo `REPRESENTATIVE_CODICE_FISCALE` (migrazione
-  `20261015090000_representative_tax_id_check`): per le aziende si verifica
-  con Openapi anche il CF del legale rappresentante; esito sotto il campo.
 - `/admin/verifiche`: "Ricontrolla ora" (`POST
   /admin/professional-verifications/:id/tax-recheck`, scope MODERATION)
   rifà subito tutte le verifiche fiscali del professionista.
 
 **Verifica**: test su VIES che conferma (Openapi non chiamato), VIES
-negativa o giù (Openapi chiamato), CF sempre a Openapi, lettura della
-risposta VIES e CF del legale rappresentante; risposta reale di VIES
+negativa o giù (Openapi chiamato), CF sempre a Openapi e lettura della
+risposta VIES; risposta reale di VIES
 controllata. Tipi, lint e test di `apps/api` e `apps/web` verdi.
+
+## 245. Nessun caso dubbio all'admin; niente Openapi sul legale rappresentante
+
+**Richiesta esplicita dell'utente** (15/10/2026): "non voglio che l'admin
+controlli i casi dubbi, se non passa con i controlli automatici [...]
+dovrebbe risolvere sempre [il professionista] per far in modo che gli
+accetti"; e per il codice fiscale del legale rappresentante bastano i
+controlli gratuiti, senza Openapi.
+
+**Decisione**:
+- Documento e selfie: se Didit non conferma ("In Review") o il documento non
+  coincide con i dati fiscali, la verifica è "da rifare" (`DECLINED`) con il
+  motivo in parole semplici e cosa fare (correggere i dati fiscali come sul
+  documento, o rifare la foto); avviso sul sito e via email, link "Controlla
+  i dati fiscali" accanto al motivo. Lo stato `NEEDS_REVIEW` non viene più
+  usato (resta nell'enum per non toccare la migrazione).
+- `/admin/verifiche` solo per guardare: niente "Verifica" o "Rifiuta" a mano
+  (tolta la rotta `identity-decline`); restano "Ricontrolla ora" e "Togli
+  verifica". Il numero nel menu admin non conta più i casi dubbi.
+- Partita IVA giusta nella forma ma non trovata nel registro delle imprese
+  (es. libero professionista): "numero corretto", non blocca e non va
+  all'admin.
+- Codice fiscale del legale rappresentante: solo forma e coerenza con nome e
+  cognome (gratis); la persona la conferma il documento. Tolti il tipo
+  `REPRESENTATIVE_CODICE_FISCALE` e la sua migrazione di §244, mai applicata
+  (PR non ancora unita).
+
+**Verifica**: test aggiornati (documento che non coincide → da rifare con
+avviso; "In Review" → da rifare; CF del rappresentante non va a Openapi).
+Tipi, lint e test di tutto il monorepo verdi.

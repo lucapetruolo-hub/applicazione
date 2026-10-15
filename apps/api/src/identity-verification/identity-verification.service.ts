@@ -23,6 +23,9 @@ const REUSE_SESSION_MS = 50 * 60_000;
 /** Mentre si aspetta l'esito, la pagina chiede lo stato al fornitore al massimo ogni 10 secondi. */
 const REFRESH_EVERY_MS = 10_000;
 
+const UNCLEAR_REASON =
+  "Non siamo riusciti a confermare il documento. Rifai la verifica con un documento valido, inquadrato per intero, con buona luce e senza riflessi.";
+
 const DECLINED_REASON =
   "Il documento o il selfie non sono stati accettati. Usa un documento valido e non scaduto, con buona luce e senza riflessi, e riprova.";
 
@@ -108,9 +111,7 @@ export class IdentityVerificationService {
             ? "Correggi prima il codice fiscale o la partita IVA nei dati fiscali."
             : status === "PROCESSING"
               ? "Stiamo aspettando l'esito della verifica che hai appena fatto."
-              : status === "NEEDS_REVIEW"
-                ? "La tua verifica è in controllo da parte del nostro team."
-                : null;
+              : null;
     return {
       isBusiness: fiscal?.entityType === "BUSINESS",
       fiscalDataComplete,
@@ -120,7 +121,7 @@ export class IdentityVerificationService {
       identity: {
         available,
         status,
-        reason: profile.verified ? null : (latest?.reviewNote ?? latest?.reason ?? null),
+        reason: profile.verified ? null : (latest?.reason ?? null),
         updatedAt: latest?.updatedAt.toISOString() ?? null,
         canStart: !profile.verified && blockedReason === null,
         blockedReason,
@@ -204,8 +205,6 @@ export class IdentityVerificationService {
 
   /** Esito del fornitore → stato del tentativo e, se tutto torna, badge "Verificato". */
   async apply(row: IdentityVerification, decision: IdentityDecision): Promise<IdentityVerification> {
-    // Una decisione presa da un admin non la cambia più il fornitore.
-    if (row.reviewedByUserId) return row;
     const owner = await this.prisma.professionalProfile.findUnique({
       where: { id: row.professionalProfileId },
       select: { id: true, userId: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
@@ -226,17 +225,20 @@ export class IdentityVerificationService {
       case "DECLINED":
         next = { status: "DECLINED", reason: DECLINED_REASON };
         break;
+      // Nessun caso passa all'admin (decisione dell'utente, §245): se il
+      // controllo automatico non conferma, il professionista sa cosa
+      // correggere e rifà la verifica da solo.
       case "REVIEW":
-        next = { status: "NEEDS_REVIEW", reason: "Il fornitore ha chiesto un controllo in più sul documento." };
+        next = { status: "DECLINED", reason: UNCLEAR_REASON };
         break;
       case "APPROVED": {
         const match = matchDocumentToFiscal(decision.person, expectedPerson(owner.fiscalProfile));
-        next = match.matched ? { status: "APPROVED", reason: null } : { status: "NEEDS_REVIEW", reason: match.reason };
+        next = match.matched ? { status: "APPROVED", reason: null } : { status: "DECLINED", reason: match.reason };
         break;
       }
     }
     if (next.status === row.status && decision.providerStatus === row.providerStatus) return row;
-    const decided = next.status === "APPROVED" || next.status === "DECLINED" || next.status === "NEEDS_REVIEW";
+    const decided = next.status === "APPROVED" || next.status === "DECLINED";
     const updated = await this.prisma.identityVerification.update({
       where: { id: row.id },
       data: { status: next.status, reason: next.reason, providerStatus: decision.providerStatus, decidedAt: decided ? new Date() : row.decidedAt },
@@ -257,31 +259,6 @@ export class IdentityVerificationService {
       }
     }
     return updated;
-  }
-
-  /** Caso dubbio rifiutato da un admin: il professionista riceve il motivo e può riprovare. */
-  async declineReview(adminUserId: string, professionalProfileId: string, note: string) {
-    const row = await this.prisma.identityVerification.findFirst({
-      where: { professionalProfileId, status: "NEEDS_REVIEW" },
-      orderBy: { createdAt: "desc" },
-      include: { professionalProfile: { select: { userId: true } } },
-    });
-    if (!row) throw new NotFoundException("Nessuna verifica da controllare per questo professionista.");
-    await this.prisma.identityVerification.update({
-      where: { id: row.id },
-      data: { status: "DECLINED", reviewedByUserId: adminUserId, reviewNote: note, decidedAt: new Date() },
-    });
-    await this.auditLogService.record({
-      entityType: "IdentityVerification",
-      entityId: row.id,
-      fieldName: "status",
-      oldValue: "NEEDS_REVIEW",
-      newValue: "DECLINED",
-      changedByUserId: adminUserId,
-      reason: note,
-    });
-    await this.notificationsService.notify(row.professionalProfile.userId, "IDENTITY_VERIFICATION_DECLINED", { reason: note });
-    return { professionalProfileId, status: "DECLINED" as const };
   }
 }
 

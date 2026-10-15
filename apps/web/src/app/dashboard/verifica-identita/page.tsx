@@ -214,17 +214,6 @@ function ActionPanel({
     );
   }
 
-  if (identity.status === "NEEDS_REVIEW") {
-    return (
-      <Panel icon="shield-check" tone="warn" title="La controlliamo noi">
-        <Text color={brand.grafite70}>
-          {identity.reason ? `${identity.reason} ` : ""}Un membro del nostro team guarda la tua verifica, di solito entro un giorno lavorativo. Non
-          devi fare nulla: ti scriviamo appena è fatto.
-        </Text>
-      </Panel>
-    );
-  }
-
   const retry = identity.status === "DECLINED" || identity.status === "EXPIRED";
   const resume = identity.status === "STARTED";
   return (
@@ -233,7 +222,15 @@ function ActionPanel({
       tone={retry ? "error" : "neutral"}
       title={retry ? "Riprova la verifica" : resume ? "Finisci la verifica" : "Verifica la tua identità"}
     >
-      {retry && identity.reason ? <Text color={brand.urgenza}>{identity.reason}</Text> : null}
+      {retry && identity.reason ? (
+        <YStack gap="$1.5">
+          <Text color={brand.urgenza}>{identity.reason}</Text>
+          {/* Il professionista si corregge da solo, nessun admin in mezzo (§245). */}
+          <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14, textDecoration: "underline", alignSelf: "flex-start" }}>
+            Controlla i dati fiscali →
+          </Link>
+        </YStack>
+      ) : null}
       <Text color={brand.grafite70}>
         Serve una sola volta, prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti.
       </Text>

@@ -1629,8 +1629,6 @@ model FiscalRepresentative {
 enum TaxIdKind {
   CODICE_FISCALE
   PARTITA_IVA
-  // Codice fiscale del legale rappresentante di un'azienda (docs/CHANGELOG.md §244).
-  REPRESENTATIVE_CODICE_FISCALE
 }
 
 enum TaxIdCheckStatus {

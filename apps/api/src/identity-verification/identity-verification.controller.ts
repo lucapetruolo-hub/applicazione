@@ -1,11 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
-import {
-  declineIdentityVerificationSchema,
-  startIdentityVerificationSchema,
-  type DeclineIdentityVerificationInput,
-} from "@professionisti/shared";
+import { startIdentityVerificationSchema } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
@@ -48,10 +44,7 @@ export class IdentityVerificationWebhookController {
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/professional-verifications")
 export class AdminIdentityVerificationController {
-  constructor(
-    private readonly identityVerificationService: IdentityVerificationService,
-    private readonly taxIdCheckService: TaxIdCheckService,
-  ) {}
+  constructor(private readonly taxIdCheckService: TaxIdCheckService) {}
 
   /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (§244). */
   @RequireAdminScope("MODERATION")
@@ -59,11 +52,5 @@ export class AdminIdentityVerificationController {
   async recheckTaxIds(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     const checks = await this.taxIdCheckService.recheckNow(id, req.user.userId);
     return checks.map(toTaxIdCheckView);
-  }
-
-  @RequireAdminScope("MODERATION")
-  @Post(":id/identity-decline")
-  decline(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(declineIdentityVerificationSchema)) body: DeclineIdentityVerificationInput) {
-    return this.identityVerificationService.declineReview(req.user.userId, id, body.note);
   }
 }

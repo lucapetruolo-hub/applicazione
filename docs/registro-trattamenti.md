@@ -215,7 +215,7 @@
   rifiuto, data del consenso (`identity_verifications`). Immagini del
   documento e selfie restano a Didit: il sito non le riceve.
 - **Decisione automatizzata**: l'esito Didit sblocca l'invio dei preventivi;
-  i casi dubbi e le contestazioni li rivede una persona (`/admin/verifiche`).
+  il professionista riceve il motivo e la rifà da solo; su sua richiesta scritta una persona la rivede (art. 22 GDPR, §245).
 - **Conservazione**: esiti finché l'account esiste; immagini presso Didit
   secondo i tempi concordati nel DPA [DA VERIFICARE].
 - **Prima del lancio**: valutazione d'impatto (DPIA, art. 35) per il dato

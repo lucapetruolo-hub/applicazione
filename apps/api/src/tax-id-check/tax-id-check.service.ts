@@ -23,16 +23,16 @@ type FiscalIds = {
   fiscalIdIssuingCountry: string | null;
   fiscalCodiceFiscale: string | null;
   vatNumber: string | null;
-  representative?: { codiceFiscale: string | null } | null;
 };
 
 const clean = (value: string | null | undefined) => (value ?? "").trim().toUpperCase().replace(/[\s-]/g, "");
 
 /**
  * Quali dati verificare: il codice fiscale delle persone (privato,
- * professionista), la partita IVA di professionisti e aziende e il codice
- * fiscale del legale rappresentante delle aziende (§244), solo se italiani e
- * già corretti nella forma.
+ * professionista) e la partita IVA di professionisti e aziende, solo se
+ * italiani e già corretti nella forma. Il CF del legale rappresentante resta
+ * ai controlli gratuiti (forma e coerenza col nome): la persona la conferma
+ * già il documento (decisione dell'utente, §245).
  */
 export function wantedTaxIdChecks(fiscal: FiscalIds): { kind: TaxIdKind; value: string }[] {
   const italian = !fiscal.fiscalIdIssuingCountry || fiscal.fiscalIdIssuingCountry.trim().toUpperCase() === "IT";
@@ -46,17 +46,12 @@ export function wantedTaxIdChecks(fiscal: FiscalIds): { kind: TaxIdKind; value: 
   if ((fiscal.entityType === "SOLE_PROPRIETOR" || fiscal.entityType === "BUSINESS") && isValidPartitaIva(vat)) {
     wanted.push({ kind: "PARTITA_IVA", value: vat });
   }
-  const representativeCf = clean(fiscal.representative?.codiceFiscale);
-  if (fiscal.entityType === "BUSINESS" && isValidCodiceFiscale(representativeCf)) {
-    wanted.push({ kind: "REPRESENTATIVE_CODICE_FISCALE", value: representativeCf });
-  }
   return wanted;
 }
 
 const AUDIT_FIELD: Record<TaxIdKind, string> = {
   CODICE_FISCALE: "taxIdCheck.codiceFiscale",
   PARTITA_IVA: "taxIdCheck.partitaIva",
-  REPRESENTATIVE_CODICE_FISCALE: "taxIdCheck.representativeCodiceFiscale",
 };
 
 export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
@@ -98,7 +93,7 @@ export class TaxIdCheckService {
 
   /** Allinea i controlli ai dati fiscali appena salvati e controlla subito quelli nuovi o cambiati. */
   async syncForFiscalProfile(fiscalProfileId: string, changedByUserId: string | null): Promise<TaxIdCheck[]> {
-    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { id: fiscalProfileId }, include: { taxIdChecks: true, representative: { select: { codiceFiscale: true } } } });
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { id: fiscalProfileId }, include: { taxIdChecks: true } });
     if (!fiscal) return [];
     const wanted = wantedTaxIdChecks(fiscal);
     await this.prisma.taxIdCheck.deleteMany({ where: { fiscalProfileId, kind: { notIn: wanted.map((w) => w.kind) } } });

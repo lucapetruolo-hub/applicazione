@@ -52,5 +52,5 @@ export type ProfessionalVerificationRow = {
     updatedAt: string;
   } | null;
   /** Verifiche di codice fiscale e partita IVA (VIES, Openapi). */
-  taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA" | "REPRESENTATIVE_CODICE_FISCALE"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
+  taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
 };
