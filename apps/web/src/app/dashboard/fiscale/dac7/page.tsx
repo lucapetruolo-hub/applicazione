@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BRAND, dac7AnnualDeadline, formatEurCents, type Dac7YearSummary } from "@professionisti/shared";
+import { dac7AnnualDeadline, formatEurCents, type Dac7YearSummary } from "@professionisti/shared";
 import { Badge, Button, EmptyState, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -19,16 +20,16 @@ function yearStatus(summary: Dac7YearSummary): { variant: "verificato" | "nuovo"
     return {
       variant: "verificato",
       label: "Comunicato al fisco",
-      detail: `Inviato all'Agenzia delle Entrate il ${formatDate(summary.submittedAt)}.`,
+      detail: `Inviato il ${formatDate(summary.submittedAt)}.`,
     };
   }
   if (summary.year >= currentYear) {
-    return { variant: "nuovo", label: "Anno in corso", detail: "I dati si aggiornano ogni notte con i lavori che chiudi." };
+    return { variant: "nuovo", label: "Anno in corso", detail: "Si aggiorna ogni notte." };
   }
   return {
     variant: "nuovo",
     label: "In preparazione",
-    detail: `Li comunichiamo entro il ${formatDate(dac7AnnualDeadline(summary.year))} e ti avvisiamo per email.`,
+    detail: `Da comunicare entro il ${formatDate(dac7AnnualDeadline(summary.year))}.`,
   };
 }
 
@@ -60,7 +61,6 @@ export default function Dac7SummaryPage() {
 
   const summary = data?.years.find((y) => y.year === selectedYear) ?? null;
   const hasOnline = summary?.quarters.some((q) => q.onlineEurCents > 0) ?? false;
-  const hasFees = summary?.quarters.some((q) => q.feesEurCents > 0) ?? false;
 
   return (
     <Section title="Riepilogo DAC7" maxWidth={760}>
@@ -69,11 +69,16 @@ export default function Dac7SummaryPage() {
           ← Dati fiscali e pagamenti
         </Link>
 
-        <Text fontSize={14} color={brand.grafite70}>
-          Per legge (direttiva europea DAC7) ogni anno, entro il 31 gennaio, comunichiamo all&apos;Agenzia delle Entrate i compensi che hai
-          ricevuto per i lavori trovati su {BRAND.name}, insieme ai tuoi dati fiscali. Qui vedi esattamente cosa comunichiamo: gli importi sono
-          quelli che hai indicato a &quot;lavoro terminato&quot;, al netto della nostra commissione.
-        </Text>
+        <LearnMore fontSize={14} summary="I compensi che comunichiamo ogni anno all'Agenzia delle Entrate.">
+          <Text fontSize={13} color={brand.grafite70}>
+            Lo chiede la direttiva europea DAC7: entro il 31 gennaio comunichiamo i compensi dell&apos;anno prima, insieme ai tuoi dati fiscali,
+            e ti avvisiamo per email.
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            Gli importi sono quelli che indichi a &quot;Lavoro terminato&quot;. Quelli online sono al netto della commissione, che comunichiamo a
+            parte.
+          </Text>
+        </LearnMore>
 
         {isLoading || data === undefined ? (
           <YStack gap="$3" aria-busy>
@@ -88,7 +93,7 @@ export default function Dac7SummaryPage() {
           <EmptyState
             icon="coins"
             title="Ancora nessun compenso da comunicare"
-            description="Quando chiudi un lavoro con &quot;Lavoro terminato&quot;, l'importo compare qui nel trimestre giusto."
+            description="Compaiono qui quando chiudi un lavoro."
           />
         ) : (
           <YStack gap="$4">
@@ -160,29 +165,20 @@ export default function Dac7SummaryPage() {
               })}
             </div>
 
-            {hasFees ? (
-              <Text fontSize={12} color={brand.grafite70}>
-                Le commissioni sono già tolte dagli importi pagati online: le comunichiamo a parte, come chiede la legge.
-              </Text>
-            ) : null}
-
             {hasOnline ? (
               data.maskedIban ? (
                 <Text fontSize={13} color={brand.grafite70}>
-                  Conto comunicato per i pagamenti online: <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
+                  Conto dei pagamenti online: <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
                 </Text>
               ) : (
-                <YStack gap="$2" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
+                <XStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">
                   <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                    Manca l&apos;IBAN del conto su cui ricevi i pagamenti online
-                  </Text>
-                  <Text fontSize={13} color={brand.grafite70}>
-                    La comunicazione al fisco lo richiede. Aggiungilo in Dati fiscali e pagamenti, sezione Pagamenti.
+                    Manca l&apos;IBAN dei pagamenti online
                   </Text>
                   <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14 }}>
-                    Aggiungi l&apos;IBAN →
+                    Aggiungilo →
                   </Link>
-                </YStack>
+                </XStack>
               )
             ) : null}
           </YStack>
@@ -193,7 +189,6 @@ export default function Dac7SummaryPage() {
           <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scrivici
           </Link>
-          : possiamo correggere i dati prima dell&apos;invio, o mandare una correzione se sono già stati inviati.
         </Text>
       </YStack>
     </Section>

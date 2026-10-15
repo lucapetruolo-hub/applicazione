@@ -772,6 +772,14 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  ADMIN_DAC7_NEEDS_CORRECTION: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: `DAC7 ${typeof payload.year === "number" ? payload.year : ""}: importi cambiati dopo l'invio`,
+    title: "DAC7 da correggere",
+    paragraphs: ["Dopo l'invio all'Agenzia delle Entrate alcuni importi sono cambiati (rimborso o lavoro riaperto). Usa \"Correggi\" sull'anno, poi esporta e invia la correzione."],
+    cta: { label: "Apri Finanza e DAC7", url: `${frontendUrl()}/admin/finanza` },
+  }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",
@@ -890,13 +898,33 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
       paragraphs: [
-        `Per legge (direttiva europea DAC7) ogni anno comunichiamo all'Agenzia delle Entrate i compensi che hai ricevuto per i lavori trovati su ${EMAIL_BRAND.name}, insieme ai tuoi dati fiscali${year ? `. Questa comunicazione riguarda il ${year}` : ""}.`,
-        "Nella pagina Riepilogo DAC7 trovi i dati inviati, trimestre per trimestre, divisi tra pagamenti diretti e online. Se qualcosa non torna, scrivici: possiamo inviare una correzione.",
+        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} all'Agenzia delle Entrate i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nel Riepilogo DAC7.`,
       ],
       details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
       cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
     };
   },
+  // Promemoria di novembre (docs/CHANGELOG.md §244).
+  DAC7_DATA_REMINDER: (payload, ctx) => {
+    const year = typeof payload.year === "number" ? payload.year : null;
+    const missing = [payload.missingFiscalData === true ? "i dati fiscali" : null, payload.missingIban === true ? "l'IBAN dei pagamenti online" : null].filter(Boolean).join(" e ");
+    return {
+      kind: "account",
+      subject: `Completa ${missing || "i tuoi dati"} entro dicembre`,
+      greeting: ctx.name,
+      title: "Mancano dei dati per il fisco",
+      paragraphs: [`A gennaio comunichiamo all'Agenzia delle Entrate i compensi${year ? ` del ${year}` : ""} (DAC7): completa ${missing || "i tuoi dati"} entro dicembre.`],
+      cta: { label: "Completa i dati", url: `${frontendUrl()}/dashboard/fiscale` },
+    };
+  },
+  PAYOUT_IBAN_MISMATCH: (_payload, ctx) => ({
+    kind: "account",
+    subject: "L'IBAN non corrisponde al conto su Stripe",
+    greeting: ctx.name,
+    title: "Controlla l'IBAN",
+    paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Dati fiscali e pagamenti."],
+    cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
     kind: "account",
     subject: "Stripe ha sospeso i pagamenti online sul tuo account",

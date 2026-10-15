@@ -439,7 +439,7 @@ export class BookingsService {
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: professionalProfile.id }, select: { entityType: true } });
     const declaration = completionDeclaration(fiscal?.entityType);
     if (input.declarationVersion !== declaration.version) {
-      throw new BadRequestException("Il testo della dichiarazione è cambiato: chiudi e riapri \"Lavoro terminato\" per leggerlo di nuovo.");
+      throw new BadRequestException("La pagina non è aggiornata: chiudi e riapri \"Lavoro terminato\".");
     }
 
     const finalAmountEurCents = input.items.reduce((sum, item) => sum + item.priceEurCents, 0);

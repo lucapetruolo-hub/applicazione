@@ -148,7 +148,10 @@ export type Dac7Entry = {
  *   terminato" (il cliente non lo conferma, decisione di Luca del
  *   14/10/2026), nel giorno della dichiarazione.
  * - Online: conta quando i soldi passano al professionista (`releasedAt`),
- *   al netto della commissione.
+ *   al netto della commissione. Un rimborso dopo l'accredito riduce
+ *   `netAmountEurCents` (quota ripresa al professionista): l'importo resta
+ *   nel trimestre dell'accredito, ridotto; un rimborso totale lo toglie
+ *   (docs/CHANGELOG.md §244).
  * - Acconto online e saldo diretto: l'acconto conta come online, il resto
  *   dell'importo finale come diretto, nel giorno del lavoro terminato.
  *
@@ -165,10 +168,14 @@ export function dac7Entries(jp: Dac7PaymentInput, includeDirectPayments: boolean
     return [{ professionalProfileId, date: completedAt, directEurCents: jp.netAmountEurCents, onlineEurCents: 0, feesEurCents: 0 }];
   }
 
-  if (jp.status !== "CONFIRMED") return [];
-  const entries: Dac7Entry[] = [
-    { professionalProfileId, date: jp.releasedAt ?? jp.updatedAt, directEurCents: 0, onlineEurCents: jp.netAmountEurCents, feesEurCents: jp.platformFeeEurCents },
-  ];
+  // Online rimborsato del tutto: niente da comunicare per la parte online
+  // (resta l'eventuale saldo pagato direttamente).
+  const fullyRefunded = jp.status === "REFUNDED";
+  if (jp.status !== "CONFIRMED" && !fullyRefunded) return [];
+  const entries: Dac7Entry[] = [];
+  if (!fullyRefunded && (jp.netAmountEurCents > 0 || jp.platformFeeEurCents > 0)) {
+    entries.push({ professionalProfileId, date: jp.releasedAt ?? jp.updatedAt, directEurCents: 0, onlineEurCents: Math.max(0, jp.netAmountEurCents), feesEurCents: jp.platformFeeEurCents });
+  }
   if (includeDirectPayments && jp.balanceDirect && jp.booking.finalAmountEurCents !== null) {
     const directPart = jp.booking.finalAmountEurCents - Math.min(jp.booking.finalAmountEurCents, jp.depositEurCents ?? 0);
     if (directPart > 0) {

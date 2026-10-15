@@ -676,7 +676,7 @@ function DashboardFiscaleContent() {
                   Riepilogo DAC7
                 </Text>
                 <Text fontSize={13} color={brand.grafite70}>
-                  I compensi che comunichiamo ogni anno all&apos;Agenzia delle Entrate, trimestre per trimestre, divisi tra pagamenti diretti e online.
+                  I compensi che comunichiamo ogni anno al fisco.
                 </Text>
               </YStack>
               <Text fontSize={20} color={brand.cianografiaScuro} aria-hidden>

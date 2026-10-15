@@ -714,6 +714,8 @@ export type Dac7ReportingPeriod = {
   reportVersion: number;
   generatedAt: string | null;
   submittedAt: string | null;
+  /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §244). */
+  needsCorrectionAt: string | null;
 };
 
 export type Dac7Record = {
@@ -727,6 +729,9 @@ export type Dac7Record = {
   onlineConsiderationEurCents: number;
   missingFiscalData: boolean;
   sellerNotifiedAt: string | null;
+  /** Solo nel dettaglio admin (docs/CHANGELOG.md §244). */
+  businessName?: string;
+  missingIban?: boolean;
 };
 
 /** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §243). */

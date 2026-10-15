@@ -11,7 +11,7 @@ import {
   type CompleteBookingInput,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import { LearnMoreToggle } from "@/components/LearnMore";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { apiClient } from "@/lib/apiClient";
@@ -93,14 +93,13 @@ export function CompleteJobModal({
   const [isSaving, setIsSaving] = useState(false);
   const [note, setNote] = useState("");
   const [changeReason, setChangeReason] = useState("");
-  // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): il testo
-  // dipende dal tipo fiscale del professionista. `undefined` finché non è
-  // caricato; se il caricamento fallisce si usa il testo valido per tutti
-  // (il server rifiuta comunque una versione diversa dalla sua).
+  // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243-§244): si
+  // accetta premendo "Conferma", il testo completo è dietro "Scopri di più".
+  // Il testo dipende dal tipo fiscale del professionista: `undefined` finché
+  // non è caricato; se il caricamento fallisce si usa il testo valido per
+  // tutti (il server rifiuta comunque una versione diversa dalla sua).
   const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null | undefined>(undefined);
-  const [declarationAccepted, setDeclarationAccepted] = useState(false);
-  const [declarationError, setDeclarationError] = useState(false);
-  const declarationRef = useRef<HTMLDivElement>(null);
+  const [declarationOpen, setDeclarationOpen] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -201,11 +200,6 @@ export function CompleteJobModal({
       return;
     }
     if (!declaration) return;
-    if (!declarationAccepted) {
-      setDeclarationError(true);
-      declarationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
 
     setIsSaving(true);
     try {
@@ -266,7 +260,7 @@ export function CompleteJobModal({
             Lavoro terminato
           </Text>
           <Text fontSize="$3" color={brand.grafite70}>
-            Inserisci l&apos;importo preciso per ogni voce del preventivo. I campi con * sono obbligatori.
+            Scrivi l&apos;importo finale di ogni voce.
           </Text>
         </YStack>
 
@@ -363,7 +357,7 @@ export function CompleteJobModal({
               {completionDeviationText(deviation)}: spiega il motivo *
             </Text>
             <Text fontSize="$2" color={brand.grafite70}>
-              Preventivo: {formatServicePriceRange(deviation.quoteMinEurCents, deviation.quoteMaxEurCents)}. Il motivo lo legge anche il cliente e resta agli atti in caso di contestazione.
+              Preventivo: {formatServicePriceRange(deviation.quoteMinEurCents, deviation.quoteMaxEurCents)}. Lo legge anche il cliente.
             </Text>
             <textarea
               value={changeReason}
@@ -451,56 +445,28 @@ export function CompleteJobModal({
           ) : null}
         </YStack>
 
-        {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): accanto
-            al pulsante, con il totale scritto dentro, così si sa cosa si
-            dichiara. Spunta obbligatoria, salvata con data e versione. */}
-        <div ref={declarationRef}>
-          <YStack
-            gap="$2"
-            padding="$3"
-            borderRadius="$3"
-            borderWidth={1}
-            borderColor={declarationError && !declarationAccepted ? brand.urgenza : brand.filetto}
-            backgroundColor={brand.gesso}
-          >
-            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
-              Dichiarazione sull&apos;importo *
-            </Text>
-            {declaration ? (
-              <ConsentCheckbox
-                checked={declarationAccepted}
-                onToggle={() => {
-                  setDeclarationAccepted((v) => !v);
-                  setDeclarationError(false);
-                }}
-              >
-                {declaration.text.replace("l'importo indicato", `l'importo indicato (${formatEurCents(totalEurCents)})`)}
-              </ConsentCheckbox>
-            ) : (
-              <XStack alignItems="center" gap="$2" minHeight={36}>
-                <UploadingDots dotSize={6} />
-                <Text fontSize="$2" color={brand.grafite70}>
-                  Carico il testo della dichiarazione...
-                </Text>
-              </XStack>
-            )}
-            <Text fontSize="$1" color={brand.grafite70}>
-              L&apos;importo serve anche per la comunicazione annuale al fisco (DAC7).
-            </Text>
-            {declarationError && !declarationAccepted ? (
-              <Text fontSize="$2" color={brand.urgenza}>
-                Spunta la dichiarazione per confermare il lavoro terminato.
-              </Text>
-            ) : null}
-          </YStack>
-        </div>
-
         {error ? (
           <Text color={brand.urgenza} fontSize="$3">
             {error}
           </Text>
         ) : null}
 
+        {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §244): una
+            riga accanto al pulsante, accettata premendo "Conferma" e salvata
+            con data e versione; il testo completo dietro "Scopri di più". */}
+        <YStack gap="$2">
+          <Text fontSize="$2" color={brand.grafite70}>
+            Confermando dichiari che {formatEurCents(totalEurCents)} è l&apos;importo che ricevi per questo lavoro.{" "}
+            <LearnMoreToggle open={declarationOpen} onToggle={() => setDeclarationOpen((v) => !v)} controls="completion-declaration" />
+          </Text>
+          {declarationOpen ? (
+            <YStack id="completion-declaration" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+              <Text fontSize="$2" color={brand.grafite70}>
+                {declaration ? declaration.text : "Carico il testo..."}
+              </Text>
+            </YStack>
+          ) : null}
+        </YStack>
         <XStack gap="$2" flexWrap="wrap">
           <Button
             variant="primary"
@@ -510,15 +476,12 @@ export function CompleteJobModal({
             disabled={isSaving || isUploadingPhoto || !declaration}
             opacity={isSaving || !declaration ? 0.6 : 1}
           >
-            {isSaving ? "Salvataggio..." : "Conferma completamento"}
+            {isSaving ? "Salvataggio..." : "Conferma"}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
             Annulla
           </Button>
         </XStack>
-        <Text fontSize="$2" color={brand.grafite70}>
-          * Campo obbligatorio.
-        </Text>
       </YStack>
     </div>
   );

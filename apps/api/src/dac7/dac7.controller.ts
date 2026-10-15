@@ -44,7 +44,7 @@ export class Dac7Controller {
 
   @Get("periods/:id")
   getPeriod(@Param("id") id: string) {
-    return this.dac7Service.getPeriod(id);
+    return this.dac7Service.getPeriodForAdmin(id);
   }
 
   @Post("periods/:id/export")

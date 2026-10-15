@@ -4,6 +4,7 @@ import type { PrismaClient } from "@professionisti/database";
 import { checkIban, maskIban, type PayoutIbanInput, type PayoutIbanStripeCheck } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { encryptFiscal } from "../common/fiscal-crypto";
 
 /** Ricontrollo con Stripe al massimo ogni 10 minuti (esito non definitivo) o ogni giorno (esito già positivo). */
@@ -52,6 +53,7 @@ export class PayoutAccountService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -95,6 +97,25 @@ export class PayoutAccountService {
       return this.view(updated);
     }
     return this.view(account);
+  }
+
+  /**
+   * Ricontrollo quando Stripe avvisa che l'account è cambiato (webhook
+   * `account.updated`, docs/CHANGELOG.md §244): se il conto non corrisponde
+   * più, il professionista lo sa subito invece che alla prossima visita.
+   */
+  async recheckForStripeAccount(stripeAccountId: string): Promise<void> {
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { stripeConnectAccountId: stripeAccountId },
+      include: { payoutAccount: true, professionalProfile: { select: { userId: true } } },
+    });
+    const account = fiscal?.payoutAccount;
+    if (!fiscal || !account) return;
+    const check = await this.stripeCheck(stripeAccountId, { country: account.ibanCountry, last4: account.ibanLast4 });
+    await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { stripeCheck: check, stripeCheckedAt: new Date() } });
+    if (check === "MISMATCH" && account.stripeCheck !== "MISMATCH") {
+      await this.notificationsService.notify(fiscal.professionalProfile.userId, "PAYOUT_IBAN_MISMATCH", {});
+    }
   }
 
   async saveMine(userId: string, input: PayoutIbanInput): Promise<PayoutAccountView> {

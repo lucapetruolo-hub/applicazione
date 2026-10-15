@@ -305,11 +305,8 @@ export default function AdminFinanzaPage() {
             </Button>
           </XStack>
           <Text fontSize={12} color={brand.grafite70}>
-            L&apos;aggregazione conta gli online quando passano al professionista e i diretti appena il professionista dichiara l&apos;importo a
-            &quot;lavoro terminato&quot; (se previsto dalla regola DAC7 attiva), divisi nelle due colonne. &quot;Segna come inviato&quot; sull&apos;anno
-            manda a ogni professionista l&apos;avviso con i suoi dati. Nessun invio
-            reale all&apos;Agenzia delle Entrate: &quot;Segna come inviato&quot; è un&apos;azione manuale di registrazione, non un&apos;integrazione
-            reale con il Desktop Telematico.
+            Online contati all&apos;accredito, diretti a &quot;lavoro terminato&quot;. &quot;Segna come inviato&quot; registra l&apos;invio fatto a mano
+            all&apos;Agenzia delle Entrate e, sull&apos;anno, avvisa i professionisti.
           </Text>
           {periods === null ? (
             <SkeletonTableRows rows={3} cols={4} />
@@ -332,7 +329,14 @@ export default function AdminFinanzaPage() {
                       <td>
                         {p.year} {p.quarter ? `Q${p.quarter}` : "(anno intero)"}
                       </td>
-                      <td>{p.status}</td>
+                      <td>
+                        {p.status}
+                        {p.needsCorrectionAt ? (
+                          <Text display="flex" fontSize={12} fontWeight="700" color={brand.urgenza}>
+                            Da correggere
+                          </Text>
+                        ) : null}
+                      </td>
                       <td>{p.reportVersion}</td>
                       <td>
                         <XStack gap="$2" flexWrap="wrap">
@@ -371,13 +375,22 @@ export default function AdminFinanzaPage() {
               <Text fontWeight="700">
                 Dettaglio {selectedPeriod.year} {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
               </Text>
+              {selectedPeriod.needsCorrectionAt ? (
+                <Text fontSize={13} color={brand.urgenza}>
+                  Importi cambiati dopo l&apos;invio: usa &quot;Correggi&quot;, poi esporta e invia di nuovo.
+                </Text>
+              ) : null}
               {selectedPeriod.records.length === 0 ? (
                 <Text color={brand.grafite70}>Nessun professionista con compensi in questo periodo.</Text>
               ) : (
                 selectedPeriod.records.map((r) => (
                   <XStack key={r.id} justifyContent="space-between" flexWrap="wrap" gap="$2">
                     <Text fontSize={13}>
-                      {r.professionalProfileId} {r.missingFiscalData ? "· dati fiscali mancanti/non verificati" : ""}
+                      <Text fontSize={13} fontWeight="700">
+                        {r.businessName ?? r.professionalProfileId}
+                      </Text>
+                      {r.missingFiscalData ? <Text fontSize={13} color={brand.urgenza}> · dati fiscali mancanti</Text> : null}
+                      {r.missingIban ? <Text fontSize={13} color={brand.urgenza}> · IBAN mancante</Text> : null}
                     </Text>
                     <Text fontSize={13} fontFamily="$mono">
                       {formatEurCents(r.considerationEurCents)} (diretti {formatEurCents(r.directConsiderationEurCents)}, online{" "}

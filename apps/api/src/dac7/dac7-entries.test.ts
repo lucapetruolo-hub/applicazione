@@ -50,6 +50,22 @@ describe("dac7Entries", () => {
     expect(dac7Entries(payment({ paymentMethod: "MANOVIA", status: "REFUNDED" }), true)).toEqual([]);
   });
 
+  it("rimborso dopo l'accredito: l'online resta nel trimestre dell'accredito, ridotto", () => {
+    const entries = dac7Entries(
+      payment({ paymentMethod: "MANOVIA", status: "CONFIRMED", netAmountEurCents: 8000, platformFeeEurCents: 1000, releasedAt: mar31, updatedAt: apr, directReportedAt: null }),
+      true,
+    );
+    expect(entries).toEqual([{ professionalProfileId: "pro-1", date: mar31, directEurCents: 0, onlineEurCents: 8000, feesEurCents: 1000 }]);
+  });
+
+  it("acconto rimborsato del tutto: resta solo il saldo pagato direttamente", () => {
+    const entries = dac7Entries(
+      payment({ paymentMethod: "MANOVIA", status: "REFUNDED", balanceDirect: true, depositEurCents: 4000, netAmountEurCents: 0, releasedAt: mar31, directReportedAt: null }),
+      true,
+    );
+    expect(entries).toEqual([{ professionalProfileId: "pro-1", date: jan, directEurCents: 16000, onlineEurCents: 0, feesEurCents: 0 }]);
+  });
+
   it("acconto online e saldo diretto: separa le due parti", () => {
     const entries = dac7Entries(
       payment({

@@ -1822,6 +1822,9 @@ model Dac7ReportingPeriod {
   generatedAt   DateTime?
   submittedAt   DateTime?
   exportFileUrl String?
+  // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
+  // (docs/CHANGELOG.md §244). Si azzera con la correzione.
+  needsCorrectionAt DateTime?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 

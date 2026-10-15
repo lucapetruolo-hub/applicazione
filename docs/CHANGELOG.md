@@ -18744,3 +18744,48 @@ dichiarazione mancante o di versione sbagliata rifiutata, lavoro chiuso con
 versione salvata, IBAN sbagliato rifiutato e giusto salvato cifrato, export
 annuale con diretti/online/commissioni/IBAN, avviso partito a "Segna come
 inviato". Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 244. DAC7: testi ridotti al minimo e quattro migliorie
+
+**Richiesta di Luca (15/10/2026)**: la dichiarazione a "lavoro terminato" è
+troppo lunga e aggressiva; basta accettarla premendo "Conferma", con una frase
+semplice e un "Scopri di più" per il testo completo. Anche le altre
+spiegazioni vanno ridotte al minimo (i termini sono già stati accettati). Poi
+fare le quattro migliorie proposte.
+
+**Testi**:
+- "Lavoro terminato": niente più casella da spuntare. Sopra il pulsante una
+  riga ("Confermando dichiari che 120,00 € è l'importo che ricevi per questo
+  lavoro. Scopri di più"); il testo completo (invariato, stessa versione) si
+  apre sotto. Premere "Conferma" vale come accettazione, salvata con data e
+  versione come prima.
+- Nuovo `apps/web/src/components/LearnMore.tsx` ("Scopri di più" che apre il
+  dettaglio sul posto), usato anche da IBAN e Riepilogo DAC7.
+- IBAN, Riepilogo DAC7, email e notifica dell'avviso annuale, testo admin:
+  una riga ciascuno, il resto dietro "Scopri di più" o tolto.
+
+**Migliorie**:
+1. Rimborsi dopo l'accredito: `dac7Entries` conta l'online al netto attuale
+   (ridotto dal rimborso, PR #76 decrementa `netAmountEurCents`), nel
+   trimestre dell'accredito; online rimborsato del tutto = nessun importo
+   online, resta l'eventuale saldo diretto. Ogni notte (2:00)
+   `checkSubmittedYears` confronta gli anni già comunicati con i dati di oggi:
+   se cambiano, l'anno è segnato "Da correggere" (`needsCorrectionAt`,
+   migrazione `20261015100000_dac7_needs_correction`) e la Finanza riceve
+   `ADMIN_DAC7_NEEDS_CORRECTION`. "Correggi" sull'anno ricalcola anche i
+   trimestri; il nuovo "Segna come inviato" rimanda l'avviso a tutti come
+   "dati corretti".
+2. IBAN ricontrollato con Stripe al webhook `account.updated`
+   (`PayoutAccountService.recheckForStripeAccount`); se diventa diverso, il
+   professionista riceve `PAYOUT_IBAN_MISMATCH`.
+3. Admin Finanza: nel dettaglio di un periodo nome del professionista, "dati
+   fiscali mancanti" e "IBAN mancante"; il dettaglio non restituisce più
+   tutti i dati fiscali (`getPeriodForAdmin`).
+4. Promemoria del 1° novembre (`sendYearEndReminders`, `DAC7_DATA_REMINDER`)
+   a chi ha compensi nell'anno ma senza dati fiscali o senza IBAN dei
+   pagamenti online.
+
+**Verifica**: test API (357), tipi di api e web; in locale su database vero:
+rimborso simulato dopo l'invio → anno segnato e Finanza avvisata una volta,
+correzione → versione 2 e segno tolto, dettaglio admin con nome, promemoria a
+un professionista senza dati fiscali.

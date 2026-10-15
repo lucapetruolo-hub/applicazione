@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { PayoutIbanView } from "@professionisti/api-client";
 import { checkIban, formatIban } from "@professionisti/shared";
-import { Badge, Button, Field, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Badge, Button, Field, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
 
 const CHECK_LABEL = {
@@ -14,8 +15,8 @@ const CHECK_LABEL = {
 
 const CHECK_HINT = {
   MATCH: null,
-  MISMATCH: "Le ultime 4 cifre non sono quelle del conto che hai indicato a Stripe. Se hai cambiato conto, aggiorna l'IBAN qui o su Stripe.",
-  UNAVAILABLE: "Lo confrontiamo con il conto che hai indicato a Stripe appena la verifica su Stripe è completa.",
+  MISMATCH: "Le ultime 4 cifre non sono quelle del conto su Stripe: correggi qui o su Stripe.",
+  UNAVAILABLE: null,
 } as const;
 
 /**
@@ -63,7 +64,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
       return;
     }
     if (holderName.trim().length < 2) {
-      setError("Scrivi il nome del titolare del conto, come compare in banca.");
+      setError("Scrivi il nome del titolare del conto.");
       return;
     }
     setSaving(true);
@@ -87,12 +88,17 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
     <YStack gap="$3" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto}>
       <YStack gap="$1">
         <Text fontSize={15} fontWeight="700">
-          IBAN per la comunicazione al fisco
+          IBAN dei pagamenti online
         </Text>
-        <Text fontSize={13} color={brand.grafite70}>
-          Stripe non ci mostra il tuo IBAN, ma la legge (DAC7) ci chiede di comunicarlo ogni anno insieme ai pagamenti online che ricevi. Scrivi
-          lo stesso conto che hai indicato a Stripe.
-        </Text>
+        <LearnMore summary="Lo stesso conto che hai indicato a Stripe.">
+          <Text fontSize={13} color={brand.grafite70}>
+            Per legge (DAC7) comunichiamo ogni anno all&apos;Agenzia delle Entrate i pagamenti online che ricevi e il conto su cui arrivano.
+            Stripe non ci mostra l&apos;IBAN, per questo te lo chiediamo.
+          </Text>
+          <Text fontSize={13} color={brand.grafite70}>
+            Lo conserviamo cifrato e lo usiamo solo per questa comunicazione. Dopo il salvataggio vedi solo le ultime 4 cifre.
+          </Text>
+        </LearnMore>
       </YStack>
 
       {saved === undefined ? (
@@ -115,7 +121,6 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
             autoCapitalize="characters"
             autoCorrect={false}
             error={ibanError}
-            hint="Lo trovi nell'app o nell'estratto conto della banca."
           />
           <Field
             label="Titolare del conto"
@@ -126,14 +131,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
               setError(null);
             }}
             placeholder="Nome e cognome o ragione sociale"
-            hint="Come compare in banca."
           />
-          <XStack gap="$2" alignItems="flex-start">
-            <Icon name="shield" size={14} color={brand.grafite70} />
-            <Text fontSize={12} color={brand.grafite70} flex={1}>
-              Lo conserviamo cifrato e lo usiamo solo per la comunicazione al fisco. Dopo il salvataggio vedrai solo le ultime 4 cifre.
-            </Text>
-          </XStack>
           {error ? (
             <Text fontSize={13} color={brand.urgenza} role="alert">
               {error}
@@ -141,7 +139,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
           ) : null}
           {loadError ? (
             <Text fontSize={13} color={brand.grafite70}>
-              Non riusciamo a leggere l&apos;IBAN salvato: se lo avevi già indicato, salvarlo di nuovo lo sostituisce.
+              Non riusciamo a leggere l&apos;IBAN salvato: riprova più tardi.
             </Text>
           ) : null}
           <XStack gap="$2" flexWrap="wrap">
