@@ -54,7 +54,7 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
   if (status.verified) step3 = { icon: "id-card", title: "Documento e selfie", tone: "done", text: "Identità verificata: hai il badge Verificato." };
   else if (!identity.available) step3 = { icon: "id-card", title: "Documento e selfie", tone: "upcoming", text: "Non ancora attiva: ti avvisiamo noi quando puoi farla." };
   else if (identity.standby)
-    step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: "In attesa: ti avvisiamo con una notifica e un'email appena puoi continuare." };
+    step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: here === "verifica" ? "In attesa del servizio di verifica." : "In attesa: ti avvisiamo con una notifica e un'email appena puoi continuare." };
   else if (identity.status === "PROCESSING") step3 = { icon: "id-card", title: "Documento e selfie", tone: "waiting", text: "Stiamo aspettando l'esito: di solito bastano pochi minuti." };
   else if (identity.status === "DECLINED" || identity.status === "EXPIRED")
     step3 = { icon: "id-card", title: "Documento e selfie", tone: "error", text: here === "verifica" ? "Da rifare: qui sotto trovi cosa correggere." : (identity.reason ?? "Non è andata a buon fine: puoi riprovare."), action: verifyAction };
