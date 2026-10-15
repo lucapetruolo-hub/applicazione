@@ -30,10 +30,14 @@ describe("visibilità pubblica con i dati fiscali (§241)", () => {
 
   it("con i pagamenti attivi servono i dati fiscali, non la verifica Stripe", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
-    expect(publicVisibilityWhere()).toEqual({ OR: [{ isDemo: true }, { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null } } } }] });
+    expect(publicVisibilityWhere()).toEqual({
+      OR: [{ isDemo: true }, { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null }, taxIdChecks: { none: { status: "INVALID" } } } } }],
+    });
     expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: null })).toBe(true);
     expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: { fiscalDataCompleteAt: new Date() } })).toBe(false);
     expect(publicVisibilityMissing({ isDemo: true, fiscalProfile: null })).toBe(false);
+    // Codice fiscale o P.IVA inesistenti per Openapi: fuori dalla ricerca (§243).
+    expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: { fiscalDataCompleteAt: new Date(), taxIdChecks: [{ status: "INVALID" }] } })).toBe(true);
     expect(stripeVerified({ stripePayoutsEnabled: false })).toBe(false);
     expect(stripeVerified({ stripePayoutsEnabled: true })).toBe(true);
   });

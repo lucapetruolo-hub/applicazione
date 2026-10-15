@@ -1,11 +1,19 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
-import { BRAND, FISCAL_DECLARATION_VERSION, fiscalDataMissing, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
+import {
+  BRAND,
+  FISCAL_DECLARATION_VERSION,
+  fiscalDataMissing,
+  fiscalFieldErrors,
+  type ProfessionalFiscalProfileInput,
+  type SetFiscalVerificationInput,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
+import { TaxIdCheckService } from "../tax-id-check/tax-id-check.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
 
 const FISCAL_FIELDS = [
@@ -52,6 +60,7 @@ export class ProfessionalFiscalService {
     private readonly auditLogService: AuditLogService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
     private readonly notificationsService: NotificationsService,
+    private readonly taxIdCheckService: TaxIdCheckService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -76,7 +85,7 @@ export class ProfessionalFiscalService {
     }
     return this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
-      include: { representative: true },
+      include: { representative: true, taxIdChecks: true },
     });
   }
 
@@ -97,6 +106,21 @@ export class ProfessionalFiscalService {
       where: { professionalProfileId },
       include: { representative: true },
     });
+
+    // Stessi controlli del browser anche qui (docs/CHANGELOG.md §243): forma
+    // di codice fiscale e P.IVA e coerenza del codice fiscale con nome,
+    // cognome e data di nascita. Prima una chiamata diretta all'API li saltava.
+    const fieldErrors = fiscalFieldErrors({
+      entityType: input.entityType ?? existing?.entityType,
+      fiscalIdIssuingCountry: input.fiscalIdIssuingCountry ?? existing?.fiscalIdIssuingCountry,
+      fiscalFirstName: input.fiscalFirstName ?? existing?.fiscalFirstName,
+      fiscalLastName: input.fiscalLastName ?? existing?.fiscalLastName,
+      fiscalCodiceFiscale: input.fiscalCodiceFiscale ?? existing?.fiscalCodiceFiscale,
+      dateOfBirth: input.dateOfBirth ?? existing?.dateOfBirth,
+      vatNumber: input.vatNumber ?? existing?.vatNumber,
+      representative: input.representative ?? existing?.representative,
+    });
+    if (fieldErrors.length > 0) throw new BadRequestException(fieldErrors[0]?.message);
 
     const data: Record<string, unknown> = {};
     for (const field of FISCAL_FIELDS) {
@@ -149,16 +173,26 @@ export class ProfessionalFiscalService {
       });
     }
 
-    // Badge "Verificato" (docs/CHANGELOG.md §200): controllato sui dati
-    // fiscali vecchi, si toglie se cambiano partita IVA o codice fiscale.
-    const taxIdChanged = (["vatNumber", "fiscalCodiceFiscale"] as const).some(
-      (field) => existing && input[field] !== undefined && (existing[field] ?? null) !== (fiscalProfile[field] ?? null),
-    );
-    if (taxIdChanged) {
+    // Badge "Verificato": documento e selfie valgono per la persona dei dati
+    // fiscali di allora (docs/CHANGELOG.md §243). Se cambia la persona (nome,
+    // cognome, data di nascita, codice fiscale, tipo o legale rappresentante)
+    // la verifica va rifatta; la sola P.IVA la ricontrolla Openapi qui sotto.
+    const personChanged =
+      !!existing &&
+      ((["entityType", "fiscalFirstName", "fiscalLastName", "fiscalCodiceFiscale"] as const).some(
+        (field) => input[field] !== undefined && (existing[field] ?? null) !== (fiscalProfile[field] ?? null),
+      ) ||
+        (input.dateOfBirth !== undefined && (existing.dateOfBirth?.getTime() ?? null) !== (fiscalProfile.dateOfBirth?.getTime() ?? null)) ||
+        (input.representative !== undefined &&
+          fiscalProfile.entityType === "BUSINESS" &&
+          (existing.representative?.firstName !== input.representative.firstName ||
+            existing.representative?.lastName !== input.representative.lastName ||
+            (existing.representative?.codiceFiscale ?? null) !== (input.representative.codiceFiscale || null))));
+    if (personChanged) {
       await this.professionalVerificationService.revokeAfterOwnChange(
         professionalProfileId,
         userId,
-        "Hai cambiato partita IVA o codice fiscale: dobbiamo ricontrollarli.",
+        "Hai cambiato i dati della persona nei dati fiscali: rifai la verifica dell'identità con documento e selfie.",
       );
     }
 
@@ -194,7 +228,11 @@ export class ProfessionalFiscalService {
       });
     }
 
-    return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true } });
+    // Codice fiscale e P.IVA all'Agenzia delle Entrate / Registro Imprese
+    // (Openapi, §243): subito, e solo per i dati nuovi o cambiati.
+    await this.taxIdCheckService.syncForFiscalProfile(fiscalProfile.id, userId);
+
+    return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true, taxIdChecks: true } });
   }
 
   async setVerification(professionalProfileId: string, input: SetFiscalVerificationInput, adminUserId: string) {

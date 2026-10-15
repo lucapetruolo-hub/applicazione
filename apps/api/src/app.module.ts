@@ -33,6 +33,8 @@ import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.mo
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
+import { TaxIdCheckModule } from "./tax-id-check/tax-id-check.module";
+import { IdentityVerificationModule } from "./identity-verification/identity-verification.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
@@ -98,6 +100,9 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
     ProfessionalVerificationModule,
+    // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §243.
+    TaxIdCheckModule,
+    IdentityVerificationModule,
     GeneralRequestsAdminModule,
   ],
   controllers: [HealthController],

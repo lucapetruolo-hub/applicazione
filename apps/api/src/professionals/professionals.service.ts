@@ -33,6 +33,7 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
@@ -517,6 +518,7 @@ export class ProfessionalsService {
       // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(profile.fiscalProfile),
+      identityVerificationNeeded: identityVerificationNeeded(profile),
     };
   }
 
@@ -731,6 +733,7 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: profile.id }, select: { stripePayoutsEnabled: true } })),
+      identityVerificationNeeded: identityVerificationNeeded(profile),
     };
   }
 

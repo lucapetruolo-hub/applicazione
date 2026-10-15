@@ -66,6 +66,13 @@ import {
   UserRound,
   Briefcase,
   Building2,
+  IdCard,
+  ScanFace,
+  Sun,
+  Smartphone,
+  Landmark,
+  TriangleAlert,
+  Lock,
   ArrowRight,
 } from "lucide-react";
 
@@ -133,6 +140,14 @@ export const ICONS = {
   briefcase: Briefcase,
   "arrow-right": ArrowRight,
   "building-2": Building2,
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §243).
+  "id-card": IdCard,
+  "scan-face": ScanFace,
+  sun: Sun,
+  smartphone: Smartphone,
+  landmark: Landmark,
+  "triangle-alert": TriangleAlert,
+  lock: Lock,
 } as const;
 
 export type IconName = keyof typeof ICONS;

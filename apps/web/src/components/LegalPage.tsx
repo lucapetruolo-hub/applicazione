@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { Text, YStack, brand } from "@professionisti/ui";
 
-type LegalSection = { heading: string; body: ReactNode };
+/** `id` serve per i link diretti a una sezione (es. /privacy#verifica-identita). */
+type LegalSection = { heading: string; body: ReactNode; id?: string };
 
 /**
  * Layout condiviso delle pagine legali (Privacy, Termini, Cookie) — testo
@@ -26,7 +27,7 @@ export function LegalPage({ title, updatedAt, sections }: { title: string; updat
           </Text>
         </YStack>
         {sections.map((section) => (
-          <YStack key={section.heading} gap="$2">
+          <YStack key={section.heading} id={section.id} gap="$2" style={{ scrollMarginTop: 96 }}>
             <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
               {section.heading}
             </Text>

@@ -95,4 +95,6 @@ export type MySubscription = {
   checkoutAvailable: boolean;
   /** Profilo non visibile finché non compila tipo e dati fiscali (docs/CHANGELOG.md §241). */
   fiscalDataNeeded: boolean;
+  /** Deve verificare l'identità prima di inviare preventivi (docs/CHANGELOG.md §243). */
+  identityVerificationNeeded: boolean;
 };

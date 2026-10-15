@@ -11,6 +11,7 @@ import { ProfessionalVerificationService } from "./professional-verification.ser
 function buildService() {
   const prisma = {
     professionalProfile: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}), count: vi.fn() },
+    identityVerification: { updateMany: vi.fn() },
   };
   const auditLogService = { record: vi.fn() };
   const notificationsService = { notify: vi.fn() };
@@ -32,6 +33,18 @@ describe("ProfessionalVerificationService", () => {
       data: expect.objectContaining({ verified: true, verifiedByUserId: "admin-1", verificationNote: "Videochiamata" }),
     });
     expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ entityId: "p-1", newValue: true, changedByUserId: "admin-1" }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFIED", {});
+    // Un caso dubbio della verifica automatica si chiude con l'approvazione (§243).
+    expect(prisma.identityVerification.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { professionalProfileId: "p-1", status: "NEEDS_REVIEW" }, data: expect.objectContaining({ status: "APPROVED" }) }),
+    );
+  });
+
+  it("documento e selfie approvati dal fornitore: badge senza admin (§243)", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue(activeProfile);
+    await service.markVerifiedByProvider("p-1", "didit");
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: expect.objectContaining({ verified: true, verifiedByUserId: null }) });
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFIED", {});
   });
 

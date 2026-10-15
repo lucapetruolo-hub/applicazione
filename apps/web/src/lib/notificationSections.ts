@@ -125,6 +125,9 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "JOB_ISSUE_SANCTION") return "/dashboard/richieste";
   // Pagamenti online dei lavori (§168).
   if (type === "JOB_PAYOUT_ACCOUNT_NEEDED") return "/dashboard/fiscale";
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §243).
+  if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
+  if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE") return "/admin/pagamenti";
   if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
