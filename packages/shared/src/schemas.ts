@@ -487,6 +487,12 @@ export const completeBookingSchema = z.object({
   note: z.string().trim().max(1000).optional(),
   /** Motivo di voci aggiunte o totale fuori dal preventivo: obbligatorio in quel caso (`completionDeviation`). */
   changeReason: z.string().trim().max(1000).optional(),
+  /**
+   * Versione della dichiarazione sull'importo accettata con la spunta
+   * (`completionDeclaration` in dac7.ts, docs/CHANGELOG.md §243): il server
+   * la confronta con quella del tipo fiscale del professionista.
+   */
+  declarationVersion: z.string({ required_error: "Conferma la dichiarazione sull'importo." }).trim().min(1, "Conferma la dichiarazione sull'importo.").max(60),
 });
 export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
 

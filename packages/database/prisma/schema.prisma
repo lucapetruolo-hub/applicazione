@@ -1024,6 +1024,11 @@ model Booking {
   // Quando il professionista ha segnato il lavoro come terminato: parte da
   // qui la finestra per segnalare un lavoro fatto male (docs/CHANGELOG.md §164).
   professionalCompletedAt         DateTime?
+  // Dichiarazione del professionista sull'importo a "lavoro terminato"
+  // (DAC7, docs/CHANGELOG.md §243): data e versione del testo accettato,
+  // testo diverso per privato e partita IVA (`completionDeclaration`).
+  completionDeclarationAcceptedAt DateTime?
+  completionDeclarationVersion    String?
   // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
   // richiesta esplicita dell'utente ("servono i completed da entrambi").
   // Indipendente da `status` (che resta COMPLETED solo grazie
@@ -1591,6 +1596,7 @@ model ProfessionalFiscalProfile {
 
   professionalProfile ProfessionalProfile   @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   representative      FiscalRepresentative?
+  payoutAccount       ProfessionalPayoutAccount?
 
   @@map("professional_fiscal_profiles")
 }
@@ -1612,6 +1618,30 @@ model FiscalRepresentative {
   fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
 
   @@map("fiscal_representatives")
+}
+
+// IBAN del conto su cui il professionista riceve i pagamenti online
+// (DAC7, docs/CHANGELOG.md §243): chiesto solo a chi attiva i pagamenti
+// online. Tabella a parte perché non finisca per sbaglio nelle risposte che
+// leggono i dati fiscali: l'IBAN intero è solo cifrato (AES-256-GCM, chiave
+// `FISCAL_DATA_KEY`) e si legge in chiaro solo per il file DAC7.
+model ProfessionalPayoutAccount {
+  id              String    @id @default(uuid())
+  fiscalProfileId String    @unique
+  ibanEncrypted   String
+  ibanCountry     String
+  ibanLast4       String
+  holderName      String
+  // Confronto con il conto indicato a Stripe (paese e ultime 4 cifre):
+  // MATCH, MISMATCH o UNAVAILABLE (Stripe non risponde o non ha ancora il conto).
+  stripeCheck     String?
+  stripeCheckedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_payout_accounts")
 }
 
 enum JobPaymentMethod {
@@ -1792,6 +1822,9 @@ model Dac7ReportingPeriod {
   generatedAt   DateTime?
   submittedAt   DateTime?
   exportFileUrl String?
+  // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
+  // (docs/CHANGELOG.md §244). Si azzera con la correzione.
+  needsCorrectionAt DateTime?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
@@ -1815,7 +1848,12 @@ model Dac7Record {
   considerationEurCents Int      @default(0)
   numberOfTransactions  Int      @default(0)
   feesWithheldEurCents  Int      @default(0)
+  // Di cui pagati direttamente al professionista e online (docs/CHANGELOG.md §243).
+  directConsiderationEurCents Int @default(0)
+  onlineConsiderationEurCents Int @default(0)
   missingFiscalData     Boolean  @default(false)
+  // Avviso annuale al professionista con i dati comunicati (solo sulle righe dell'anno).
+  sellerNotifiedAt      DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
