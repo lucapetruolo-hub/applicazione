@@ -18740,3 +18740,35 @@ ora" al posto del modulo; banner in Home. Privacy: nuova sezione 8
 webhook, abbinamento documento-dati fiscali, blocco preventivi, filtro di
 visibilità), tipi e lint di `apps/api` e `apps/web` verdi; schermate da
 telefono e computer in `/mnt/project-files/anteprime/verifica-identita/`.
+
+## 244. Partita IVA prima con VIES, testi più leggeri, CF del legale rappresentante, "Ricontrolla ora"
+
+**Richiesta esplicita dell'utente** (15/10/2026), sulla PR di §243: "aggiungi
+prima il controllo vies, e se lento o non risp o da negativo facciamo
+controllo subito con openapi"; non usare "controllo all'Agenzia delle
+Entrate" nella verifica perché "potrebbe intimorire"; fare le migliorie 2
+(CF del legale rappresentante) e 3 (ricontrollo dall'admin). La verifica
+nell'app mobile si fa quando si inizia l'app.
+
+**Decisione**:
+- Partita IVA: prima VIES (`vies-tax-id.provider.ts`, REST della Commissione
+  europea, gratis, 5 secondi al massimo); se non conferma (non valida, lenta,
+  errore) si chiama subito Openapi. Un "non valida" di VIES da solo non
+  basta: in Italia ci sono solo le partite IVA abilitate agli scambi UE. Nel
+  registro azioni e in `tax_id_checks.provider` resta chi ha dato l'esito.
+  Attivo solo con `OPENAPI_TOKEN` (senza, nessun controllo come prima).
+- Testi: il passo si chiama "Verifica P.IVA", "Verifica codice fiscale" o
+  "Verifica codice fiscale e P.IVA" (`taxIdStepTitle`); messaggi, notifica,
+  email e banner senza nominare enti. La privacy resta precisa (dice VIES,
+  Openapi, Agenzia delle Entrate e Registro Imprese).
+- Nuovo tipo `REPRESENTATIVE_CODICE_FISCALE` (migrazione
+  `20261015090000_representative_tax_id_check`): per le aziende si verifica
+  con Openapi anche il CF del legale rappresentante; esito sotto il campo.
+- `/admin/verifiche`: "Ricontrolla ora" (`POST
+  /admin/professional-verifications/:id/tax-recheck`, scope MODERATION)
+  rifà subito tutte le verifiche fiscali del professionista.
+
+**Verifica**: test su VIES che conferma (Openapi non chiamato), VIES
+negativa o giù (Openapi chiamato), CF sempre a Openapi, lettura della
+risposta VIES e CF del legale rappresentante; risposta reale di VIES
+controllata. Tipi, lint e test di `apps/api` e `apps/web` verdi.

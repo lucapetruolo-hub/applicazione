@@ -35,8 +35,8 @@ const TAX_TEXT: Record<Row["taxIdChecks"][number]["status"], string> = {
   PENDING: "in controllo",
 };
 
-/** Esiti dei controlli automatici: documento e selfie (Didit) e Agenzia delle Entrate (Openapi). */
-function AutomaticChecks({ row }: { row: Row }) {
+/** Esiti dei controlli automatici: documento e selfie (Didit), codice fiscale e partita IVA (VIES, Openapi). */
+function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?: () => void; rechecking?: boolean }) {
   if (!row.identity && row.taxIdChecks.length === 0) return null;
   const identity = row.identity ? IDENTITY_LABEL[row.identity.status] : null;
   return (
@@ -50,6 +50,16 @@ function AutomaticChecks({ row }: { row: Row }) {
           {check.officialName ? <div style={{ color: brand.grafite70, fontSize: 13 }}>Registro: {check.officialName}</div> : null}
         </div>
       ))}
+      {onRecheck && row.taxIdChecks.length > 0 ? (
+        <button
+          type="button"
+          onClick={onRecheck}
+          disabled={rechecking}
+          style={{ background: "none", border: "none", padding: 0, color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13, textDecoration: "underline", cursor: rechecking ? "wait" : "pointer" }}
+        >
+          {rechecking ? "Verifica in corso…" : "Ricontrolla ora"}
+        </button>
+      ) : null}
       {identity && row.identity ? (
         <div>
           <AdminPill tone={identity.tone}>{identity.text}</AdminPill>
@@ -85,6 +95,8 @@ export default function AdminVerifichePage() {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // Profilo su cui è in corso "Ricontrolla ora" (§244).
+  const [recheckingId, setRecheckingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -100,6 +112,26 @@ export default function AdminVerifichePage() {
     const timer = setTimeout(load, 250);
     return () => clearTimeout(timer);
   }, [load]);
+
+  async function recheck(row: Row) {
+    if (!token) return;
+    setRecheckingId(row.professionalProfileId);
+    setListError(null);
+    try {
+      const checks = await apiClient.adminRecheckTaxIds(token, row.professionalProfileId);
+      const pending = checks.filter((check) => check.status === "PENDING").length;
+      setDone(
+        pending > 0
+          ? `${row.businessName}: il servizio non ha risposto, riproviamo da soli tra poco.`
+          : `${row.businessName}: codice fiscale e partita IVA verificati di nuovo.`,
+      );
+      load();
+    } catch (err) {
+      setListError(errorMessage(err));
+    } finally {
+      setRecheckingId(null);
+    }
+  }
 
   function open(row: Row, nextAction: Action) {
     setSelected(row);
@@ -277,7 +309,7 @@ export default function AdminVerifichePage() {
                       <AdminPill tone="warn">Non compilati</AdminPill>
                     )}
                     {row.hasLiabilityInsurance ? <div style={{ color: brand.grafite70, fontSize: 13 }}>RC dichiarata</div> : null}
-                    <AutomaticChecks row={row} />
+                    <AutomaticChecks row={row} onRecheck={() => void recheck(row)} rechecking={recheckingId === row.professionalProfileId} />
                   </td>
                   <td>
                     {row.verified ? (

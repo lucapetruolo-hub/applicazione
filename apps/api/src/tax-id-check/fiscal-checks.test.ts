@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { birthDateFromCodiceFiscale, codiceFiscaleMismatches, codiceFiscaleMismatchMessage, fiscalFieldErrors } from "@professionisti/shared";
 import { nextTaxIdAttempt, wantedTaxIdChecks, MAX_TAX_ID_ATTEMPTS } from "./tax-id-check.service";
 import { partitaIvaOutcome } from "./openapi-tax-id.provider";
+import { ViesFirstTaxIdProvider, viesLookup } from "./vies-tax-id.provider";
 
 /** Controlli gratuiti e scelta dei controlli Openapi (docs/CHANGELOG.md §243). */
 describe("coerenza del codice fiscale con nome, cognome e data di nascita", () => {
@@ -62,5 +63,66 @@ describe("controlli Openapi", () => {
     expect(nextTaxIdAttempt(3, now)?.toISOString()).toBe("2026-10-14T11:00:00.000Z");
     expect(nextTaxIdAttempt(7, now)?.toISOString()).toBe("2026-10-14T22:00:00.000Z");
     expect(nextTaxIdAttempt(MAX_TAX_ID_ATTEMPTS, now)).toBeNull();
+  });
+});
+
+/** Partita IVA prima con VIES, poi Openapi; CF del legale rappresentante (docs/CHANGELOG.md §244). */
+describe("VIES prima di Openapi", () => {
+  const openapi = {
+    name: "openapi",
+    checkCodiceFiscale: vi.fn(async () => ({ outcome: "VALID" as const })),
+    checkPartitaIva: vi.fn(async () => ({ outcome: "VALID" as const, detail: "ATTIVA", officialName: "ROSSI MARIO" })),
+  };
+
+  it("se VIES conferma non chiama Openapi", async () => {
+    openapi.checkPartitaIva.mockClear();
+    const provider = new ViesFirstTaxIdProvider(openapi, async () => ({ outcome: "VALID", detail: "ATTIVA", source: "vies" }));
+    expect(await provider.checkPartitaIva("12485671007")).toMatchObject({ outcome: "VALID", source: "vies" });
+    expect(openapi.checkPartitaIva).not.toHaveBeenCalled();
+  });
+
+  it("se VIES dice non valida, è lenta o non risponde passa subito a Openapi", async () => {
+    openapi.checkPartitaIva.mockClear();
+    const provider = new ViesFirstTaxIdProvider(openapi, async () => null);
+    expect(await provider.checkPartitaIva("12485671007")).toMatchObject({ outcome: "VALID", officialName: "ROSSI MARIO" });
+    expect(openapi.checkPartitaIva).toHaveBeenCalledOnce();
+  });
+
+  it("il codice fiscale va sempre a Openapi", async () => {
+    openapi.checkCodiceFiscale.mockClear();
+    const lookup = vi.fn(async () => null);
+    await new ViesFirstTaxIdProvider(openapi, lookup).checkCodiceFiscale("RSSMRA80A01H501U");
+    expect(openapi.checkCodiceFiscale).toHaveBeenCalledOnce();
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("legge la risposta di VIES: valida con nome, oppure nessun esito", async () => {
+    const reply = (body: unknown, ok = true) => (async () => ({ ok, json: async () => body })) as unknown as typeof fetch;
+    expect(await viesLookup("12485671007", reply({ isValid: true, name: "ROSSI MARIO" }))).toEqual({ outcome: "VALID", detail: "ATTIVA", officialName: "ROSSI MARIO", source: "vies" });
+    expect(await viesLookup("12485671007", reply({ isValid: true, name: "---" }))).toMatchObject({ officialName: null });
+    expect(await viesLookup("12485671007", reply({ isValid: false }))).toBeNull();
+    expect(await viesLookup("12485671007", reply({}, false))).toBeNull();
+    const down = (async () => {
+      throw new Error("timeout");
+    }) as unknown as typeof fetch;
+    expect(await viesLookup("12485671007", down)).toBeNull();
+  });
+
+  it("per un'azienda verifica anche il codice fiscale del legale rappresentante", () => {
+    expect(
+      wantedTaxIdChecks({
+        entityType: "BUSINESS",
+        fiscalIdIssuingCountry: "IT",
+        fiscalCodiceFiscale: null,
+        vatNumber: "12485671007",
+        representative: { codiceFiscale: "rssmra80a01h501u" },
+      }),
+    ).toEqual([
+      { kind: "PARTITA_IVA", value: "12485671007" },
+      { kind: "REPRESENTATIVE_CODICE_FISCALE", value: "RSSMRA80A01H501U" },
+    ]);
+    expect(
+      wantedTaxIdChecks({ entityType: "SOLE_PROPRIETOR", fiscalIdIssuingCountry: "IT", fiscalCodiceFiscale: null, vatNumber: null, representative: { codiceFiscale: "RSSMRA80A01H501U" } }),
+    ).toEqual([]);
   });
 });

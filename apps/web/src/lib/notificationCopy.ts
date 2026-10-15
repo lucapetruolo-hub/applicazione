@@ -54,7 +54,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §243).
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
-  TAX_ID_INVALID: { icon: "⚠️", message: "Il codice fiscale o la partita IVA non risultano all'Agenzia delle Entrate: correggili nei dati fiscali." },
+  TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
   JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
   JOB_ISSUE_SETTLED: { icon: "🤝", message: "Il cliente ha indicato che il problema è stato risolto con te." },

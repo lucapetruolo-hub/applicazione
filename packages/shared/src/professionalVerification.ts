@@ -51,6 +51,6 @@ export type ProfessionalVerificationRow = {
     providerSessionId: string;
     updatedAt: string;
   } | null;
-  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi). */
-  taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
+  /** Verifiche di codice fiscale e partita IVA (VIES, Openapi). */
+  taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA" | "REPRESENTATIVE_CODICE_FISCALE"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
 };

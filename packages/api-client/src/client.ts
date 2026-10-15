@@ -1537,6 +1537,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/identity-decline`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ note }) },
       ),
+    /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §244). */
+    adminRecheckTaxIds: (token: string, professionalProfileId: string) =>
+      request<TaxIdCheckView[]>(`/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/tax-recheck`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §243). */
     myVerificationStatus: (token: string) =>
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { taxIdCheckMessage, type MyVerificationStatus } from "@professionisti/shared";
+import { taxIdCheckMessage, taxIdStepTitle, type MyVerificationStatus } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 
 type StepTone = "done" | "current" | "waiting" | "error" | "upcoming";
@@ -17,7 +17,7 @@ const TONE: Record<StepTone, { color: string; background: string; label: string 
 
 type Step = { icon: IconName; title: string; tone: StepTone; text: string; extra?: ReactNode; action?: { href: string; label: string } };
 
-/** I tre passi in parole semplici, con lo stato di ciascuno (docs/CHANGELOG.md §243). */
+/** I tre passi in parole semplici (titoli senza nomi di enti, §244), con lo stato di ciascuno (docs/CHANGELOG.md §243). */
 export function verificationSteps(status: MyVerificationStatus, here: "fiscale" | "verifica"): Step[] {
   const fiscalHref = "/dashboard/fiscale";
   const step1: Step = status.fiscalDataComplete
@@ -30,24 +30,25 @@ export function verificationSteps(status: MyVerificationStatus, here: "fiscale" 
         action: here === "fiscale" ? undefined : { href: fiscalHref, label: "Compila i dati fiscali" },
       };
 
+  const taxTitle = taxIdStepTitle(status.taxIdChecks.map((check) => check.kind));
   const problems = status.taxIdChecks.filter((check) => check.status === "INVALID" || check.status === "REVIEW" || check.status === "PENDING");
   const step2: Step = !status.fiscalDataComplete
-    ? { icon: "landmark", title: "Controllo all'Agenzia delle Entrate", tone: "upcoming", text: "Parte da solo quando salvi i dati fiscali." }
+    ? { icon: "landmark", title: taxTitle, tone: "upcoming", text: "Parte da sola quando salvi i dati fiscali." }
     : status.taxIdState === "TO_FIX"
       ? {
           icon: "landmark",
-          title: "Controllo all'Agenzia delle Entrate",
+          title: taxTitle,
           tone: "error",
           text: problems.filter((c) => c.status === "INVALID").map(taxIdCheckMessage).join(" "),
           action: here === "fiscale" ? undefined : { href: fiscalHref, label: "Correggi i dati fiscali" },
         }
       : status.taxIdState === "CHECKING"
-        ? { icon: "landmark", title: "Controllo all'Agenzia delle Entrate", tone: "waiting", text: problems.map(taxIdCheckMessage).join(" ") }
+        ? { icon: "landmark", title: taxTitle, tone: "waiting", text: problems.map(taxIdCheckMessage).join(" ") }
         : status.taxIdState === "NOT_NEEDED"
-          ? { icon: "landmark", title: "Controllo all'Agenzia delle Entrate", tone: "done", text: "Non serve per i tuoi dati." }
+          ? { icon: "landmark", title: taxTitle, tone: "done", text: "Non serve per i tuoi dati." }
           : {
               icon: "landmark",
-              title: "Controllo all'Agenzia delle Entrate",
+              title: taxTitle,
               // Partita IVA non trovata nel registro: la guarda un admin, non blocca.
               tone: problems.length > 0 ? "waiting" : "done",
               text: problems.length > 0 ? problems.map(taxIdCheckMessage).join(" ") : "Dati confermati.",
@@ -88,8 +89,8 @@ function Outcome({ ok, children }: { ok: boolean; children: ReactNode }) {
 }
 
 /**
- * Riquadro "Verifica in 3 passi": dati fiscali, controllo all'Agenzia delle
- * Entrate, documento e selfie. Usato in Verifica identità e in cima a Dati
+ * Riquadro "Verifica in 3 passi": dati fiscali, verifica di codice fiscale e
+ * P.IVA, documento e selfie. Usato in Verifica identità e in cima a Dati
  * fiscali, così il professionista vede sempre a che punto è e cosa sblocca.
  */
 export function VerificationSteps({ status, here }: { status: MyVerificationStatus; here: "fiscale" | "verifica" }) {

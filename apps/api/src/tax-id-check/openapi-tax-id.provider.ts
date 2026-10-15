@@ -1,4 +1,5 @@
 import { TaxIdProviderUnavailableError, type TaxIdLookup, type TaxIdProvider } from "./tax-id-provider";
+import { ViesFirstTaxIdProvider } from "./vies-tax-id.provider";
 
 const TIMEOUT_MS = 8000;
 
@@ -72,9 +73,13 @@ function readPath(value: unknown, path: string[]): unknown {
   return current;
 }
 
-/** Il fornitore configurato su questo ambiente, o `null` se mancano le chiavi (nessun controllo, nessun blocco). */
-export function taxIdProviderFromEnv(): OpenapiTaxIdProvider | null {
+/**
+ * Il fornitore configurato su questo ambiente, o `null` se mancano le chiavi
+ * (nessun controllo, nessun blocco). La partita IVA passa prima da VIES
+ * (gratis) e arriva a Openapi solo se VIES non la conferma (§244).
+ */
+export function taxIdProviderFromEnv(): TaxIdProvider | null {
   const token = process.env.OPENAPI_TOKEN?.trim();
   if (!token) return null;
-  return new OpenapiTaxIdProvider(token, process.env.OPENAPI_SANDBOX === "true");
+  return new ViesFirstTaxIdProvider(new OpenapiTaxIdProvider(token, process.env.OPENAPI_SANDBOX === "true"));
 }

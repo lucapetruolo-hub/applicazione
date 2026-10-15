@@ -5,8 +5,8 @@ import { z } from "zod";
  * decisioni dell'utente del 14/10/2026):
  * 1. dati fiscali compilati e controllati gratis (formato, coerenza del
  *    codice fiscale con nome e data di nascita);
- * 2. codice fiscale e partita IVA controllati all'Agenzia delle Entrate e al
- *    Registro Imprese (Openapi): da qui il profilo è pubblico;
+ * 2. codice fiscale e partita IVA verificati (VIES e Openapi, §244): da qui
+ *    il profilo è pubblico;
  * 3. documento e selfie (Didit): obbligatori prima di inviare preventivi, e
  *    danno il badge "Verificato". L'admin guarda solo i casi dubbi.
  */
@@ -33,7 +33,7 @@ export const declineIdentityVerificationSchema = z.object({
 });
 export type DeclineIdentityVerificationInput = z.infer<typeof declineIdentityVerificationSchema>;
 
-export type TaxIdKind = "CODICE_FISCALE" | "PARTITA_IVA";
+export type TaxIdKind = "CODICE_FISCALE" | "PARTITA_IVA" | "REPRESENTATIVE_CODICE_FISCALE";
 export type TaxIdCheckStatus = "PENDING" | "VALID" | "INVALID" | "REVIEW";
 
 export type TaxIdCheckView = {
@@ -55,7 +55,7 @@ export type MyVerificationStatus = {
   /** Passo 1: dati fiscali compilati; `fiscalMissing` dice cosa manca. */
   fiscalDataComplete: boolean;
   fiscalMissing: string[];
-  /** Passo 2: controllo all'Agenzia delle Entrate. */
+  /** Passo 2: verifica di codice fiscale e partita IVA. */
   taxIdState: "NOT_NEEDED" | "CHECKING" | "OK" | "TO_FIX";
   taxIdChecks: TaxIdCheckView[];
   /** Passo 3: documento e selfie. */
@@ -82,22 +82,37 @@ export type MyVerificationStatus = {
 export const TAX_ID_KIND_LABEL: Record<TaxIdKind, string> = {
   CODICE_FISCALE: "Codice fiscale",
   PARTITA_IVA: "Partita IVA",
+  REPRESENTATIVE_CODICE_FISCALE: "Codice fiscale del legale rappresentante",
 };
 
-/** Frase per lo stato di un controllo all'Agenzia delle Entrate / Registro Imprese. */
+/**
+ * Titolo del passo 2 secondo i dati da verificare (decisione dell'utente,
+ * §244: parole semplici, senza nominare enti che possano intimorire).
+ */
+export function taxIdStepTitle(kinds: TaxIdKind[]): string {
+  const hasVat = kinds.includes("PARTITA_IVA");
+  const hasCf = kinds.some((kind) => kind !== "PARTITA_IVA");
+  if (hasVat && hasCf) return "Verifica codice fiscale e P.IVA";
+  if (hasVat) return "Verifica P.IVA";
+  if (hasCf) return "Verifica codice fiscale";
+  return "Verifica dati fiscali";
+}
+
+/** Frase per lo stato di una verifica di codice fiscale o partita IVA. */
 export function taxIdCheckMessage(check: Pick<TaxIdCheckView, "kind" | "status" | "detail">): string {
   const label = TAX_ID_KIND_LABEL[check.kind];
+  const isVat = check.kind === "PARTITA_IVA";
   switch (check.status) {
     case "VALID":
-      return check.kind === "CODICE_FISCALE" ? "Codice fiscale confermato dall'Agenzia delle Entrate." : "Partita IVA attiva.";
+      return isVat ? "Partita IVA attiva." : `${label} verificato.`;
     case "INVALID":
-      return check.kind === "CODICE_FISCALE"
-        ? "L'Agenzia delle Entrate non trova questo codice fiscale: controlla di averlo scritto bene."
-        : `La partita IVA risulta ${check.detail ? check.detail.toLowerCase() : "non attiva"}: controlla il numero o scrivici se è un errore.`;
+      return isVat
+        ? `La partita IVA risulta ${check.detail ? check.detail.toLowerCase() : "non attiva"}: controlla il numero o scrivici se è un errore.`
+        : `Non riusciamo a verificare il ${label.charAt(0).toLowerCase()}${label.slice(1)}: controlla di averlo scritto bene.`;
     case "REVIEW":
-      return `${label} non trovata nel registro: la controlliamo noi, intanto il profilo resta visibile.`;
+      return `${label}: la verifichiamo noi, intanto il profilo resta visibile.`;
     default:
-      return `${label} in controllo: ci vuole poco, il profilo intanto resta visibile.`;
+      return `${label}: verifica in corso, intanto il profilo resta visibile.`;
   }
 }
 

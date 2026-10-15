@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient, TaxIdCheck } from "@professionisti/database";
 import { isValidCodiceFiscale, isValidPartitaIva, type TaxIdCheckView, type TaxIdKind } from "@professionisti/shared";
@@ -23,14 +23,16 @@ type FiscalIds = {
   fiscalIdIssuingCountry: string | null;
   fiscalCodiceFiscale: string | null;
   vatNumber: string | null;
+  representative?: { codiceFiscale: string | null } | null;
 };
 
 const clean = (value: string | null | undefined) => (value ?? "").trim().toUpperCase().replace(/[\s-]/g, "");
 
 /**
- * Quali dati controllare all'Agenzia delle Entrate / Registro Imprese: il
- * codice fiscale delle persone (privato, professionista) e la partita IVA di
- * professionisti e aziende, solo se italiani e già corretti nella forma.
+ * Quali dati verificare: il codice fiscale delle persone (privato,
+ * professionista), la partita IVA di professionisti e aziende e il codice
+ * fiscale del legale rappresentante delle aziende (§244), solo se italiani e
+ * già corretti nella forma.
  */
 export function wantedTaxIdChecks(fiscal: FiscalIds): { kind: TaxIdKind; value: string }[] {
   const italian = !fiscal.fiscalIdIssuingCountry || fiscal.fiscalIdIssuingCountry.trim().toUpperCase() === "IT";
@@ -44,8 +46,18 @@ export function wantedTaxIdChecks(fiscal: FiscalIds): { kind: TaxIdKind; value: 
   if ((fiscal.entityType === "SOLE_PROPRIETOR" || fiscal.entityType === "BUSINESS") && isValidPartitaIva(vat)) {
     wanted.push({ kind: "PARTITA_IVA", value: vat });
   }
+  const representativeCf = clean(fiscal.representative?.codiceFiscale);
+  if (fiscal.entityType === "BUSINESS" && isValidCodiceFiscale(representativeCf)) {
+    wanted.push({ kind: "REPRESENTATIVE_CODICE_FISCALE", value: representativeCf });
+  }
   return wanted;
 }
+
+const AUDIT_FIELD: Record<TaxIdKind, string> = {
+  CODICE_FISCALE: "taxIdCheck.codiceFiscale",
+  PARTITA_IVA: "taxIdCheck.partitaIva",
+  REPRESENTATIVE_CODICE_FISCALE: "taxIdCheck.representativeCodiceFiscale",
+};
 
 export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
   return {
@@ -59,8 +71,9 @@ export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
 }
 
 /**
- * Controllo di codice fiscale e partita IVA con Openapi (docs/CHANGELOG.md
- * §243, decisione dell'utente: profilo pubblico dopo dati fiscali + Openapi).
+ * Verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §243-§244,
+ * decisione dell'utente: profilo pubblico dopo dati fiscali + verifica; la
+ * partita IVA prima con VIES, gratis, poi Openapi se VIES non conferma).
  * - Un controllo a pagamento per dato: si ripete solo se il dato cambia.
  * - "Inesistente" o "cessata" toglie il profilo dalla ricerca finché non si
  *   corregge; "servizio che non risponde" non blocca: si riprova dopo.
@@ -85,7 +98,7 @@ export class TaxIdCheckService {
 
   /** Allinea i controlli ai dati fiscali appena salvati e controlla subito quelli nuovi o cambiati. */
   async syncForFiscalProfile(fiscalProfileId: string, changedByUserId: string | null): Promise<TaxIdCheck[]> {
-    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { id: fiscalProfileId }, include: { taxIdChecks: true } });
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { id: fiscalProfileId }, include: { taxIdChecks: true, representative: { select: { codiceFiscale: true } } } });
     if (!fiscal) return [];
     const wanted = wantedTaxIdChecks(fiscal);
     await this.prisma.taxIdCheck.deleteMany({ where: { fiscalProfileId, kind: { notIn: wanted.map((w) => w.kind) } } });
@@ -109,6 +122,22 @@ export class TaxIdCheckService {
     return this.prisma.taxIdCheck.findMany({ where: { fiscalProfileId }, orderBy: { kind: "asc" } });
   }
 
+  /**
+   * "Ricontrolla ora" dall'admin (§244): rifà subito tutte le verifiche dei
+   * dati fiscali di un professionista, anche quelle già concluse o ferme dopo
+   * troppi tentativi.
+   */
+  async recheckNow(professionalProfileId: string, adminUserId: string): Promise<TaxIdCheck[]> {
+    if (!this.provider) throw new ServiceUnavailableException("La verifica di codice fiscale e partita IVA non è attiva su questo ambiente.");
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { id: true } });
+    if (!fiscal) throw new NotFoundException("Questo professionista non ha ancora compilato i dati fiscali.");
+    await this.prisma.taxIdCheck.updateMany({
+      where: { fiscalProfileId: fiscal.id },
+      data: { status: "PENDING", attempts: 0, nextAttemptAt: null },
+    });
+    return this.syncForFiscalProfile(fiscal.id, adminUserId);
+  }
+
   /** Nuovo tentativo per i controlli rimasti in sospeso (servizio irraggiungibile o chiavi aggiunte dopo). */
   @Cron(CronExpression.EVERY_30_MINUTES)
   async retryPending(): Promise<void> {
@@ -129,7 +158,7 @@ export class TaxIdCheckService {
     const now = new Date();
     let lookup;
     try {
-      lookup = row.kind === "CODICE_FISCALE" ? await this.provider.checkCodiceFiscale(row.value) : await this.provider.checkPartitaIva(row.value);
+      lookup = row.kind === "PARTITA_IVA" ? await this.provider.checkPartitaIva(row.value) : await this.provider.checkCodiceFiscale(row.value);
     } catch (error) {
       const attempts = row.attempts + 1;
       this.logger.warn(`${row.kind} non controllato (tentativo ${attempts}): ${error instanceof TaxIdProviderUnavailableError ? error.message : String(error)}`);
@@ -141,7 +170,7 @@ export class TaxIdCheckService {
         status: lookup.outcome,
         detail: lookup.detail ?? null,
         officialName: lookup.officialName ?? null,
-        provider: this.provider.name,
+        provider: lookup.source ?? this.provider.name,
         checkedAt: now,
         attempts: row.attempts + 1,
         nextAttemptAt: null,
@@ -151,11 +180,11 @@ export class TaxIdCheckService {
     await this.auditLogService.record({
       entityType: "ProfessionalFiscalProfile",
       entityId: row.fiscalProfileId,
-      fieldName: row.kind === "CODICE_FISCALE" ? "taxIdCheck.codiceFiscale" : "taxIdCheck.partitaIva",
+      fieldName: AUDIT_FIELD[row.kind],
       oldValue: row.status,
       newValue: lookup.outcome,
       changedByUserId,
-      reason: `Controllo ${this.provider.name}${lookup.detail ? `: ${lookup.detail}` : ""}`,
+      reason: `Controllo ${lookup.source ?? this.provider.name}${lookup.detail ? `: ${lookup.detail}` : ""}`,
     });
     if (notifyIfInvalid && lookup.outcome === "INVALID") {
       const owner = await this.prisma.professionalFiscalProfile.findUnique({

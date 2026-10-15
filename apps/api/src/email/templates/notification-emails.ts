@@ -928,11 +928,13 @@ const BUILDERS: Record<string, Builder> = {
       kind: "account",
       subject: isVat ? "Controlla la tua partita IVA" : "Controlla il tuo codice fiscale",
       greeting: ctx.name,
-      title: isVat ? "La partita IVA non risulta attiva" : "Il codice fiscale non risulta all'Agenzia delle Entrate",
+      title: isVat ? "La partita IVA non risulta attiva" : "Non riusciamo a verificare il codice fiscale",
       paragraphs: [
         isVat
-          ? "Abbiamo controllato la partita IVA che hai inserito nei dati fiscali e non risulta attiva."
-          : "Abbiamo controllato il codice fiscale che hai inserito nei dati fiscali e l'Agenzia delle Entrate non lo trova.",
+          ? "Abbiamo verificato la partita IVA che hai inserito nei dati fiscali e non risulta attiva."
+          : payload.kind === "REPRESENTATIVE_CODICE_FISCALE"
+            ? "Il codice fiscale del legale rappresentante che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura."
+            : "Il codice fiscale che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura.",
         "Finché non lo correggi il tuo profilo non compare nelle ricerche. Se il dato è giusto, scrivici dal modulo Contatti e lo controlliamo insieme.",
       ],
       cta: { label: "Correggi i dati fiscali", url: `${frontendUrl()}/dashboard/fiscale` },

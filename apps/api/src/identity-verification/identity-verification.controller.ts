@@ -10,6 +10,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { IdentityVerificationService } from "./identity-verification.service";
+import { TaxIdCheckService, toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 
 /** Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §243). */
 @Controller("professionals/me/verification")
@@ -47,7 +48,18 @@ export class IdentityVerificationWebhookController {
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/professional-verifications")
 export class AdminIdentityVerificationController {
-  constructor(private readonly identityVerificationService: IdentityVerificationService) {}
+  constructor(
+    private readonly identityVerificationService: IdentityVerificationService,
+    private readonly taxIdCheckService: TaxIdCheckService,
+  ) {}
+
+  /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (§244). */
+  @RequireAdminScope("MODERATION")
+  @Post(":id/tax-recheck")
+  async recheckTaxIds(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    const checks = await this.taxIdCheckService.recheckNow(id, req.user.userId);
+    return checks.map(toTaxIdCheckView);
+  }
 
   @RequireAdminScope("MODERATION")
   @Post(":id/identity-decline")
