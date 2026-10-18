@@ -34,7 +34,7 @@ function yearStatus(summary: Dac7YearSummary): { variant: "verificato" | "nuovo"
 }
 
 /**
- * Riepilogo DAC7 per il professionista (docs/CHANGELOG.md §243): cosa
+ * Riepilogo DAC7 per il professionista (docs/CHANGELOG.md §246): cosa
  * comunichiamo al fisco su di lui, anno per anno e trimestre per trimestre,
  * con diretti e online separati. È anche la pagina a cui porta l'avviso
  * annuale che la direttiva ci chiede di mandare.

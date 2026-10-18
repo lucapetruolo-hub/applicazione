@@ -69,7 +69,7 @@ export class Dac7Controller {
   }
 }
 
-/** Riepilogo DAC7 del professionista (docs/CHANGELOG.md §243): cosa comunichiamo al fisco su di lui. */
+/** Riepilogo DAC7 del professionista (docs/CHANGELOG.md §246): cosa comunichiamo al fisco su di lui. */
 @UseGuards(JwtAuthGuard)
 @Controller("professionals/me/dac7")
 export class ProfessionalDac7Controller {

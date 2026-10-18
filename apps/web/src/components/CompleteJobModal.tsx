@@ -93,7 +93,7 @@ export function CompleteJobModal({
   const [isSaving, setIsSaving] = useState(false);
   const [note, setNote] = useState("");
   const [changeReason, setChangeReason] = useState("");
-  // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243-§244): si
+  // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §246-§247): si
   // accetta premendo "Conferma", il testo completo è dietro "Scopri di più".
   // Il testo dipende dal tipo fiscale del professionista: `undefined` finché
   // non è caricato; se il caricamento fallisce si usa il testo valido per
@@ -451,7 +451,7 @@ export function CompleteJobModal({
           </Text>
         ) : null}
 
-        {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §244): una
+        {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §247): una
             riga accanto al pulsante, accettata premendo "Conferma" e salvata
             con data e versione; il testo completo dietro "Scopri di più". */}
         <YStack gap="$2">

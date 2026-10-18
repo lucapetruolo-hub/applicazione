@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 /**
- * Cifratura dei dati fiscali più delicati (IBAN, docs/CHANGELOG.md §243):
+ * Cifratura dei dati fiscali più delicati (IBAN, docs/CHANGELOG.md §246):
  * AES-256-GCM con una chiave dedicata `FISCAL_DATA_KEY` (su Render), non
  * legata a `JWT_SECRET`: ruotare la chiave delle sessioni non deve rendere
  * illeggibili gli IBAN. Senza la variabile (sviluppo) si ricade su

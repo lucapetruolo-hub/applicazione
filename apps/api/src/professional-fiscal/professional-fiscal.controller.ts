@@ -64,7 +64,7 @@ export class AdminProfessionalFiscalController {
   }
 }
 
-/** IBAN per la DAC7 di chi incassa online (docs/CHANGELOG.md §243). */
+/** IBAN per la DAC7 di chi incassa online (docs/CHANGELOG.md §246). */
 @UseGuards(JwtAuthGuard)
 @Controller("professionals/me/payout-iban")
 export class PayoutIbanController {

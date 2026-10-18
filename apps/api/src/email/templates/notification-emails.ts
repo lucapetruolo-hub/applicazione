@@ -888,7 +888,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
-  // Avviso annuale DAC7 (docs/CHANGELOG.md §243): obbligatorio per legge.
+  // Avviso annuale DAC7 (docs/CHANGELOG.md §246): obbligatorio per legge.
   DAC7_ANNUAL_NOTICE: (payload, ctx) => {
     const year = typeof payload.year === "number" ? payload.year : null;
     const corrected = payload.corrected === true;
@@ -904,7 +904,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
     };
   },
-  // Promemoria di novembre (docs/CHANGELOG.md §244).
+  // Promemoria di novembre (docs/CHANGELOG.md §247).
   DAC7_DATA_REMINDER: (payload, ctx) => {
     const year = typeof payload.year === "number" ? payload.year : null;
     const missing = [payload.missingFiscalData === true ? "i dati fiscali" : null, payload.missingIban === true ? "l'IBAN dei pagamenti online" : null].filter(Boolean).join(" e ");

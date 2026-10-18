@@ -123,7 +123,7 @@ export class Dac7Service implements OnModuleInit {
    * Ricalcola da zero le righe Dac7Record di un periodo (trimestre o anno)
    * — mai un incremento in place: ogni run riflette lo stato reale corrente
    * dei JobPayment, evitando derive da eventuali ricalcoli parziali persi.
-   * Diretti e online separati (docs/CHANGELOG.md §243); le regole su cosa
+   * Diretti e online separati (docs/CHANGELOG.md §246); le regole su cosa
    * conta e in quale giorno stanno in `dac7Entries` (packages/shared).
    */
   private async aggregate(range: { start: Date; end: Date }, includeDirectPayments: boolean) {
@@ -355,7 +355,7 @@ export class Dac7Service implements OnModuleInit {
       const feesEurCents = quarterAmounts(breakdown.fees);
 
       // Conto su cui riceve i pagamenti online (DAC7 "identificativo del
-      // conto finanziario", docs/CHANGELOG.md §243). Chi incassa solo in
+      // conto finanziario", docs/CHANGELOG.md §246). Chi incassa solo in
       // diretto non ce l'ha: lì il campo resta vuoto.
       const payout = payoutByProfessional.get(r.professionalProfileId);
       const iban = payout ? decryptFiscal(payout.ibanEncrypted) : null;
@@ -458,7 +458,7 @@ export class Dac7Service implements OnModuleInit {
     }
     const updated = await this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
     // Comunicazione annuale inviata: ogni professionista riceve l'avviso
-    // con i suoi dati, come chiede la direttiva (docs/CHANGELOG.md §243).
+    // con i suoi dati, come chiede la direttiva (docs/CHANGELOG.md §246).
     // Dopo una correzione l'avviso riparte per tutti, come "dati corretti".
     if (updated.quarter === null) await this.notifySellers(id, { resend: updated.reportVersion > 1 });
     return updated;
@@ -565,7 +565,7 @@ export class Dac7Service implements OnModuleInit {
 
   /**
    * Periodo per l'area admin: nome del professionista e IBAN mancante per
-   * riga (docs/CHANGELOG.md §244), senza i dati fiscali completi.
+   * riga (docs/CHANGELOG.md §247), senza i dati fiscali completi.
    */
   async getPeriodForAdmin(id: string) {
     const period = await this.prisma.dac7ReportingPeriod.findUnique({
@@ -592,7 +592,7 @@ export class Dac7Service implements OnModuleInit {
    * Ogni notte: un anno già comunicato i cui importi oggi risultano diversi
    * (rimborso dopo l'accredito, lavoro riaperto) va corretto. Si segna e si
    * avvisa la Finanza una volta; la correzione resta un'azione dell'admin
-   * (docs/CHANGELOG.md §244).
+   * (docs/CHANGELOG.md §247).
    */
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async checkSubmittedYears(): Promise<number[]> {
@@ -626,7 +626,7 @@ export class Dac7Service implements OnModuleInit {
   }
 
   /**
-   * Promemoria del 1° novembre (docs/CHANGELOG.md §244): a chi ha compensi
+   * Promemoria del 1° novembre (docs/CHANGELOG.md §247): a chi ha compensi
    * nell'anno ma non ha ancora i dati fiscali o l'IBAN dei pagamenti online,
    * così li sistema prima della comunicazione di gennaio.
    */

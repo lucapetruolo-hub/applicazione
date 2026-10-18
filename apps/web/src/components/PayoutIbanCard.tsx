@@ -20,7 +20,7 @@ const CHECK_HINT = {
 } as const;
 
 /**
- * IBAN per la DAC7 (decisione di Luca, docs/CHANGELOG.md §243): solo per chi
+ * IBAN per la DAC7 (decisione di Luca, docs/CHANGELOG.md §246): solo per chi
  * ha attivato i pagamenti online. Stripe non ci dà l'IBAN in chiaro, ma la
  * comunicazione annuale al fisco lo chiede. Mai mostrato intero dopo il
  * salvataggio: torna solo mascherato, con l'esito del confronto con Stripe.

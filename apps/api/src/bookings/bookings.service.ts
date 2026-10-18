@@ -433,7 +433,7 @@ export class BookingsService {
       throw new BadRequestException("Solo un lavoro confermato può essere segnalato come terminato.");
     }
 
-    // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §243): il testo
+    // Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §246): il testo
     // dipende dal tipo fiscale; se nel frattempo è cambiato il professionista
     // deve rileggerlo, mai salvare una versione che non ha visto.
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: professionalProfile.id }, select: { entityType: true } });

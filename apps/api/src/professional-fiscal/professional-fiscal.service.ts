@@ -314,7 +314,7 @@ export class ProfessionalFiscalService {
     if (!this.stripe) return;
     const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
     await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
-    // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§244): mai bloccante.
+    // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
     await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {
       this.logger.warn(`IBAN non ricontrollato per ${stripeAccountId}: ${err instanceof Error ? err.message : String(err)}`);
     });

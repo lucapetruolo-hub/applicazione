@@ -38,7 +38,7 @@ export function compareWithStripe(iban: { country: string; last4: string }, stri
 }
 
 /**
- * IBAN per la DAC7 (decisione D4 di Luca, docs/CHANGELOG.md §243): lo scrive
+ * IBAN per la DAC7 (decisione D4 di Luca, docs/CHANGELOG.md §246): lo scrive
  * solo chi attiva i pagamenti online, perché Stripe non ce lo dà in chiaro.
  * Controllato (mod-97), salvato cifrato, mai restituito intero: al
  * professionista torna solo mascherato. Confrontato con le ultime 4 cifre
@@ -101,7 +101,7 @@ export class PayoutAccountService {
 
   /**
    * Ricontrollo quando Stripe avvisa che l'account è cambiato (webhook
-   * `account.updated`, docs/CHANGELOG.md §244): se il conto non corrisponde
+   * `account.updated`, docs/CHANGELOG.md §247): se il conto non corrisponde
    * più, il professionista lo sa subito invece che alla prossima visita.
    */
   async recheckForStripeAccount(stripeAccountId: string): Promise<void> {

@@ -1,4 +1,4 @@
--- Dichiarazione a "lavoro terminato" (docs/CHANGELOG.md §243)
+-- Dichiarazione a "lavoro terminato" (docs/CHANGELOG.md §246)
 ALTER TABLE "bookings" ADD COLUMN "completionDeclarationAcceptedAt" TIMESTAMP(3),
 ADD COLUMN "completionDeclarationVersion" TEXT;
 

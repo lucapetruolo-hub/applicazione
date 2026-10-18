@@ -78,7 +78,7 @@ export type Dac7XmlSeller = {
   professionalProfileId: string;
   individual: Dac7XmlIndividual | null;
   entity: Dac7XmlEntity | null;
-  /** IBAN e titolare del conto su cui riceve i pagamenti online, se lo ha indicato (docs/CHANGELOG.md §243). */
+  /** IBAN e titolare del conto su cui riceve i pagamenti online, se lo ha indicato (docs/CHANGELOG.md §246). */
   financialIdentifier?: { iban: string; holderName: string } | null;
   considerationEurCents: Dac7XmlQuarterAmounts;
   numberOfActivities: Dac7XmlQuarterAmounts;

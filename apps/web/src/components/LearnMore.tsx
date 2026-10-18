@@ -5,7 +5,7 @@ import { Text, YStack, brand } from "@professionisti/ui";
 
 /**
  * Link "Scopri di più" che apre il dettaglio sotto la riga, senza cambiare
- * pagina (docs/CHANGELOG.md §244): le spiegazioni restano a portata di mano
+ * pagina (docs/CHANGELOG.md §247): le spiegazioni restano a portata di mano
  * ma fuori dalla vista finché non servono.
  */
 export function LearnMoreToggle({ open, onToggle, controls }: { open: boolean; onToggle: () => void; controls: string }) {

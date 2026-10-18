@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * DAC7 lato professionista (docs/CHANGELOG.md §243): dichiarazione a
+ * DAC7 lato professionista (docs/CHANGELOG.md §246): dichiarazione a
  * "lavoro terminato", IBAN per chi incassa online, riepilogo annuale.
  */
 
@@ -151,7 +151,7 @@ export type Dac7Entry = {
  *   al netto della commissione. Un rimborso dopo l'accredito riduce
  *   `netAmountEurCents` (quota ripresa al professionista): l'importo resta
  *   nel trimestre dell'accredito, ridotto; un rimborso totale lo toglie
- *   (docs/CHANGELOG.md §244).
+ *   (docs/CHANGELOG.md §247).
  * - Acconto online e saldo diretto: l'acconto conta come online, il resto
  *   dell'importo finale come diretto, nel giorno del lavoro terminato.
  *

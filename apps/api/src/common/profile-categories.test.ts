@@ -22,10 +22,12 @@ describe("categorie del professionista", () => {
     expect(professionalProfileSelfSchema.safeParse({ ...profile, categorySlugs: ["inventata"] }).success).toBe(false);
   });
 
-  it("in registrazione il professionista sceglie almeno una categoria, il cliente nessuna", () => {
-    expect(registerSchema.safeParse({ ...registration, role: "PROFESSIONAL" }).success).toBe(false);
-    expect(registerSchema.safeParse({ ...registration, role: "PROFESSIONAL", categorySlugs: ["idraulico"] }).success).toBe(true);
-    expect(registerSchema.safeParse({ ...registration, role: "PROFESSIONAL", categorySlugs: ["idraulico", "fabbro", "elettricista", "pulizie"] }).success).toBe(false);
+  it("in registrazione il professionista sceglie almeno una categoria e il tipo, il cliente nessuno dei due", () => {
+    const pro = { ...registration, role: "PROFESSIONAL", entityType: "SOLE_PROPRIETOR" };
+    expect(registerSchema.safeParse(pro).success).toBe(false);
+    expect(registerSchema.safeParse({ ...pro, categorySlugs: ["idraulico"] }).success).toBe(true);
+    expect(registerSchema.safeParse({ ...pro, entityType: undefined, categorySlugs: ["idraulico"] }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...pro, categorySlugs: ["idraulico", "fabbro", "elettricista", "pulizie"] }).success).toBe(false);
     expect(registerSchema.safeParse({ ...registration, role: "CLIENT" }).success).toBe(true);
   });
 

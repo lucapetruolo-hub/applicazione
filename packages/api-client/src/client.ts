@@ -1,5 +1,6 @@
 import type {
   EmailStatus,
+  ProfessionalEntityTypeValue,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -598,6 +599,12 @@ export type CurrentUser = {
   emailVerified: boolean;
   /** Vero quando l'API blocca le azioni principali finché l'email non è confermata. */
   emailVerificationRequired: boolean;
+  /** Secondi prima di poter chiedere un nuovo codice di conferma (docs/CHANGELOG.md §243). */
+  emailCodeResendInSeconds: number;
+  /** Secondi di validità del codice in corso: 0 se scaduto, finito o mai mandato. */
+  emailCodeValidForSeconds: number;
+  /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
+  signupEntityType: ProfessionalEntityTypeValue | null;
 };
 
 /** Recensione scritta dal cliente a un professionista, vista dal cliente stesso. */
@@ -714,7 +721,7 @@ export type Dac7ReportingPeriod = {
   reportVersion: number;
   generatedAt: string | null;
   submittedAt: string | null;
-  /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §244). */
+  /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §247). */
   needsCorrectionAt: string | null;
 };
 
@@ -724,17 +731,17 @@ export type Dac7Record = {
   considerationEurCents: number;
   numberOfTransactions: number;
   feesWithheldEurCents: number;
-  /** Di cui pagati direttamente e online (docs/CHANGELOG.md §243). */
+  /** Di cui pagati direttamente e online (docs/CHANGELOG.md §246). */
   directConsiderationEurCents: number;
   onlineConsiderationEurCents: number;
   missingFiscalData: boolean;
   sellerNotifiedAt: string | null;
-  /** Solo nel dettaglio admin (docs/CHANGELOG.md §244). */
+  /** Solo nel dettaglio admin (docs/CHANGELOG.md §247). */
   businessName?: string;
   missingIban?: boolean;
 };
 
-/** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §243). */
+/** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §246). */
 export type PayoutIbanView = {
   maskedIban: string;
   holderName: string;
@@ -862,10 +869,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       declaredAdult: boolean,
       turnstileToken?: string,
       categorySlugs?: string[],
+      entityType?: ProfessionalEntityTypeValue,
     ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType }),
       }),
 
     emailStatus: (email: string) =>
@@ -892,21 +900,34 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       acceptedLegalTerms?: boolean,
       declaredAdult?: boolean,
       categorySlugs?: string[],
+      entityType?: ProfessionalEntityTypeValue,
     ) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
     requestPasswordReset: (email: string, turnstileToken?: string) =>
       request<{ success: boolean }>("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email, turnstileToken }) }),
 
+    /** Codice di 6 cifre della stessa email (§245): se è giusto dà il link per la nuova password. */
+    exchangePasswordResetCode: (email: string, code: string) =>
+      request<{ token: string }>("/auth/password-reset/code", { method: "POST", body: JSON.stringify({ email, code }) }),
+
     confirmPasswordReset: (token: string, password: string) =>
       request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
 
     verifyEmail: (token: string) =>
       request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+
+    /** Codice di 6 cifre arrivato con l'email di conferma (docs/CHANGELOG.md §243). */
+    verifyEmailCode: (token: string, code: string) =>
+      request<{ email: string }>("/auth/verify-email/code", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
 
     resendVerificationEmail: (token: string) =>
       request<{ alreadyVerified: boolean }>("/auth/verify-email/resend", {
