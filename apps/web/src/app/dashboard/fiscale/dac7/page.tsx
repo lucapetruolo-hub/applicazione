@@ -69,7 +69,7 @@ export default function Dac7SummaryPage() {
           ← Dati fiscali e pagamenti
         </Link>
 
-        <LearnMore fontSize={14} summary="I compensi che comunichiamo ogni anno all'Agenzia delle Entrate.">
+        <LearnMore fontSize={14} summary="I compensi che comunichiamo ogni anno al fisco.">
           <Text fontSize={13} color={brand.grafite70}>
             Lo chiede la direttiva europea DAC7: entro il 31 gennaio comunichiamo i compensi dell&apos;anno prima, insieme ai tuoi dati fiscali,
             e ti avvisiamo per email.

@@ -898,7 +898,7 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
       paragraphs: [
-        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} all'Agenzia delle Entrate i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nel Riepilogo DAC7.`,
+        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nel Riepilogo DAC7.`,
       ],
       details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
       cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
@@ -913,7 +913,7 @@ const BUILDERS: Record<string, Builder> = {
       subject: `Completa ${missing || "i tuoi dati"} entro dicembre`,
       greeting: ctx.name,
       title: "Mancano dei dati per il fisco",
-      paragraphs: [`A gennaio comunichiamo all'Agenzia delle Entrate i compensi${year ? ` del ${year}` : ""} (DAC7): completa ${missing || "i tuoi dati"} entro dicembre.`],
+      paragraphs: [`A gennaio comunichiamo al fisco i compensi${year ? ` del ${year}` : ""} (DAC7): completa ${missing || "i tuoi dati"} entro dicembre.`],
       cta: { label: "Completa i dati", url: `${frontendUrl()}/dashboard/fiscale` },
     };
   },

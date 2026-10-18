@@ -92,7 +92,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
         </Text>
         <LearnMore summary="Lo stesso conto che hai indicato a Stripe.">
           <Text fontSize={13} color={brand.grafite70}>
-            Per legge (DAC7) comunichiamo ogni anno all&apos;Agenzia delle Entrate i pagamenti online che ricevi e il conto su cui arrivano.
+            Per legge (DAC7) comunichiamo ogni anno al fisco i pagamenti online che ricevi e il conto su cui arrivano.
             Stripe non ci mostra l&apos;IBAN, per questo te lo chiediamo.
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
