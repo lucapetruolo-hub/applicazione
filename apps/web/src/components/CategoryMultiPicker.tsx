@@ -8,6 +8,8 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
  * §217): usata in registrazione e in /dashboard/profilo. La prima scelta è
  * la principale, e con più di una si può cambiare quale. Raggiunto il
  * massimo, le altre non si possono toccare finché non se ne toglie una.
+ * La principale ha un bordo dorato animato e una stellina (docs/CHANGELOG.md
+ * §246, richiesta dell'utente): togliendola, la successiva prende il suo posto.
  */
 export function CategoryMultiPicker({
   value,
@@ -31,10 +33,13 @@ export function CategoryMultiPicker({
       <YStack flexDirection="row" flexWrap="wrap" gap="$2">
         {PROFESSIONAL_CATEGORIES.map((category) => {
           const active = value.includes(category.slug);
+          const isPrimary = value[0] === category.slug;
           const disabled = !active && isFull;
+          const textColor = isPrimary ? brand.ottoneScuro : active ? brand.cianografiaScuro : brand.grafite;
           return (
             <XStack
               key={category.slug}
+              className={isPrimary ? "category-chip-primary" : undefined}
               alignItems="center"
               gap="$2"
               paddingHorizontal="$3"
@@ -48,9 +53,10 @@ export function CategoryMultiPicker({
               onPress={() => toggle(category.slug)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: active, disabled }}
+              accessibilityLabel={isPrimary ? `${category.label}, principale` : category.label}
             >
-              <Icon name={active ? "check" : category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
-              <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
+              <Icon name={isPrimary ? "star" : active ? "check" : category.icon} size={15} color={textColor} />
+              <Text color={textColor} fontWeight="600">
                 {category.label}
               </Text>
             </XStack>
@@ -60,7 +66,7 @@ export function CategoryMultiPicker({
       <Text fontSize="$2" color={brand.grafite70}>
         {isFull
           ? `Hai scelto ${MAX_PROFESSIONAL_CATEGORIES} categorie, il massimo: togline una per sceglierne un'altra.`
-          : `Scegline fino a ${MAX_PROFESSIONAL_CATEGORIES} (${value.length} su ${MAX_PROFESSIONAL_CATEGORIES}).`}
+          : `Scegline fino a ${MAX_PROFESSIONAL_CATEGORIES} (${value.length} su ${MAX_PROFESSIONAL_CATEGORIES}). La prima è la principale.`}
       </Text>
       {value.length > 1 ? (
         <XStack alignItems="center" gap="$2" flexWrap="wrap">
@@ -80,14 +86,14 @@ export function CategoryMultiPicker({
                 paddingVertical={4}
                 borderRadius="$2"
                 borderWidth={1}
-                borderColor={isPrimary ? brand.cianografia : brand.filetto}
-                backgroundColor={isPrimary ? brand.cianografia : brand.calce}
+                borderColor={isPrimary ? brand.ottone : brand.filetto}
+                backgroundColor={isPrimary ? brand.ottoneVelo : brand.calce}
                 cursor={isPrimary ? "default" : "pointer"}
                 onPress={isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)])}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isPrimary }}
               >
-                <Text fontSize="$2" fontWeight="600" color={isPrimary ? "white" : brand.grafite}>
+                <Text fontSize="$2" fontWeight="600" color={isPrimary ? brand.ottoneScuro : brand.grafite}>
                   {category.label}
                 </Text>
               </XStack>

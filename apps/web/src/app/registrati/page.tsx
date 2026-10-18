@@ -489,6 +489,10 @@ function RegistratiForm() {
   const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
   const [declaredAdult, setDeclaredAdult] = useState(false);
   const canSubmitConsent = acceptedLegalTerms && declaredAdult;
+  // "Registrati" resta sempre premibile (docs/CHANGELOG.md §246): senza le
+  // due spunte le caselle mancanti diventano rosse. Il numero cambia a ogni
+  // tentativo per far ripartire la scossa.
+  const [consentAttempt, setConsentAttempt] = useState(0);
   // Richiesta esplicita dell'utente: "Continua con Google" deve restare
   // sempre cliccabile fin da subito (prima disabilitato finché non si
   // spuntavano le due caselle qui sotto) — il consenso, quando non ancora
@@ -546,6 +550,13 @@ function RegistratiForm() {
 
   async function handleRegister() {
     setError(null);
+    if (!canSubmitConsent) {
+      setConsentAttempt((n) => n + 1);
+      const firstMissing = document.getElementById(acceptedLegalTerms ? "consenso-eta" : "consenso-termini");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      firstMissing?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Le password non coincidono.");
       return;
@@ -816,8 +827,13 @@ function RegistratiForm() {
           {/* Due dichiarazioni obbligatorie richieste esplicitamente
               dall'utente ("Verbale di Conformità") — valgono anche per il
               pulsante Google sopra, non solo per questo form. */}
-          <YStack gap="$2">
-            <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
+          <YStack key={consentAttempt} gap="$2">
+            <ConsentCheckbox
+              id="consenso-termini"
+              checked={acceptedLegalTerms}
+              invalid={consentAttempt > 0}
+              onToggle={() => setAcceptedLegalTerms((v) => !v)}
+            >
               Ho letto e accetto la{" "}
               <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                 Privacy Policy
@@ -828,9 +844,14 @@ function RegistratiForm() {
               </Link>
               .
             </ConsentCheckbox>
-            <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
+            <ConsentCheckbox id="consenso-eta" checked={declaredAdult} invalid={consentAttempt > 0} onToggle={() => setDeclaredAdult((v) => !v)}>
               Dichiaro di avere almeno 18 anni.
             </ConsentCheckbox>
+            {consentAttempt > 0 && !canSubmitConsent ? (
+              <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
+                {acceptedLegalTerms || declaredAdult ? "Spunta anche questa casella per continuare." : "Spunta le due caselle per continuare."}
+              </Text>
+            ) : null}
           </YStack>
 
           <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
@@ -844,8 +865,8 @@ function RegistratiForm() {
           <Button
             variant="primary"
             onPress={handleRegister}
-            disabled={isSubmitting || !canSubmitConsent}
-            opacity={isSubmitting || !canSubmitConsent ? 0.6 : 1}
+            disabled={isSubmitting}
+            opacity={isSubmitting ? 0.6 : 1}
           >
             <XStack alignItems="center" gap="$2">
               <Text color="white" fontFamily="$body" fontWeight="600">

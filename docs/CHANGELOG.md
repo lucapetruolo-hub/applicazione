@@ -18803,3 +18803,35 @@ nel recupero password.
 impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
 Provato nel browser da telefono e computer: richiesta, codice sbagliato,
 codice giusto, nuova password, accesso con la nuova password.
+
+## 246. Registrazione: caselle mancanti in rosso, categoria principale dorata
+
+**Richiesta esplicita dell'utente** (15/10/2026): "se clicca su registrati
+senza aver spuntato le due caselle illuminagliele di rosso in modo che
+capisce che deve selezionarle, poi la prima categoria che seleziona rendiamola
+più speciale, ad esempio con un bordo che si illumina dorato animato".
+
+**Decisioni e modifiche:**
+- "Registrati" del professionista non è più disattivato finché non si
+  spuntano privacy/termini e maggiore età: premendolo senza spunte le caselle
+  mancanti diventano rosse (bordo e sfondo `urgenza`/`urgenzaVelo`) con una
+  breve scossa, la pagina scorre fino alla prima mancante e sotto compare
+  "Spunta le due caselle per continuare." (o "Spunta anche questa casella"
+  se ne manca una). Spuntandola il rosso sparisce subito. Prima il pulsante
+  era solo sbiadito e non si capiva perché non rispondeva.
+- `ConsentCheckbox` ha le prop `invalid` e `id` (usate solo in
+  registrazione; `/completa-profilo` ha lo stesso componente, invariato
+  nel comportamento).
+- `CategoryMultiPicker`: la categoria principale (la prima scelta) ha un
+  bordo dorato di 2px con un riflesso che gira piano e un alone leggero
+  (`.category-chip-primary` in `globals.css`, `@property --gold-angle`),
+  testo e stellina in `brand.ottoneScuro` (nuovo token, `#8A5A00`, leggibile
+  sul chiaro). Anche "Principale:" sotto le scelte è dorato. Togliendo la
+  principale, l'oro passa alla successiva. Vale ovunque si usa il componente
+  (registrazione, `/dashboard/profilo`, `/admin/professionisti`), per
+  coerenza. Con "riduci movimento" il bordo resta dorato ma fermo.
+- Al conteggio "Scegline fino a 3" si aggiunge "La prima è la principale.".
+
+**Verifica:** typecheck ed eslint puliti; build di produzione e foto con
+Playwright a 390px e 1280px (bordo che gira, caselle rosse con una o due
+mancanti, oro che passa alla successiva togliendo la prima).
