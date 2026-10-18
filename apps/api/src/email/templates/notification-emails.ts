@@ -907,7 +907,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §243).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §246).
   IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
     const reason = str(payload.reason);
     return {
@@ -922,7 +922,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Riprova la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
-  // Verifica in attesa ripresa e promemoria (§246).
+  // Verifica in attesa ripresa e promemoria (§249).
   IDENTITY_VERIFICATION_READY: (_payload, ctx) => ({
     kind: "account",
     subject: "Puoi continuare la verifica dell'identità",

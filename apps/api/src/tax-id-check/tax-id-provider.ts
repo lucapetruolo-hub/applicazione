@@ -1,6 +1,6 @@
 /**
  * Fornitore del controllo di codice fiscale e partita IVA (docs/CHANGELOG.md
- * §243-§244). Oggi VIES per la partita IVA e Openapi per il resto; per
+ * §246-§247). Oggi VIES per la partita IVA e Openapi per il resto; per
  * cambiarlo basta un'altra classe con questa forma, scelta in
  * `taxIdProviderFromEnv`.
  */

@@ -86,16 +86,16 @@ function DashboardFiscaleContent() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Categoria scelta nella schermata precedente (/dashboard/tipo-attivita,
-  // subito dopo la registrazione) — arriva qui via query param, mai già
-  // salvata: un account appena creato non ha ancora un ProfessionalProfile
+  // Tipo scelto in registrazione (o via ?entityType= dai vecchi link a
+  // /dashboard/tipo-attivita), mai già salvato: un account appena creato non ha ancora un ProfessionalProfile
   // (creato solo al primo salvataggio di /dashboard/profilo), quindi
   // ProfessionalFiscalProfile — che vi si aggancia 1:1 — non può esistere
   // prima di allora. Il picker qui sotto arriva solo PRE-selezionato
   // (stato locale, non ancora persistito); il salvataggio vero avviene solo
   // al click su "Salva dati fiscali", quando il messaggio d'errore guida
   // esplicitamente verso /dashboard/profilo se non ancora completato.
-  const prefillEntityType = searchParams.get("entityType");
+  // Senza parametro vale il tipo scelto in registrazione (docs/CHANGELOG.md §243).
+  const prefillEntityType = searchParams.get("entityType") ?? user?.signupEntityType ?? null;
   const [prefillApplied, setPrefillApplied] = useState(false);
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
@@ -119,7 +119,7 @@ function DashboardFiscaleContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
-  // Verifica in 3 passi (docs/CHANGELOG.md §243): si ricarica a ogni salvataggio.
+  // Verifica in 3 passi (docs/CHANGELOG.md §246): si ricarica a ogni salvataggio.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   const [verificationKey, setVerificationKey] = useState(0);
 
@@ -330,7 +330,7 @@ function DashboardFiscaleContent() {
 
   const adminVerification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
   // Controlli in tempo reale, gli stessi che rifà il server al salvataggio
-  // (docs/CHANGELOG.md §243): forma, e coerenza del codice fiscale con nome,
+  // (docs/CHANGELOG.md §246): forma, e coerenza del codice fiscale con nome,
   // cognome e data di nascita.
   const cfCheck = checkFiscalId(fields.fiscalCodiceFiscale ?? "", fields.fiscalIdIssuingCountry, "codiceFiscale");
   const pivaCheck = checkFiscalId(fields.vatNumber ?? "", fields.fiscalIdIssuingCountry, "vatNumber");
@@ -364,7 +364,7 @@ function DashboardFiscaleContent() {
           anche per chi si fa pagare solo direttamente. Il tuo profilo compare nelle ricerche quando li hai compilati. Ai clienti mostriamo solo se
           sei un privato o un professionista con partita IVA.
         </Text>
-        {/* Cosa manca per essere pubblici e per inviare preventivi (docs/CHANGELOG.md §241, §243). */}
+        {/* Cosa manca per essere pubblici e per inviare preventivi (docs/CHANGELOG.md §241, §246). */}
         {verification ? <VerificationSteps status={verification} here="fiscale" /> : null}
 
         {/* Esito della revisione manuale dell'admin (area Finanza), solo se c'è qualcosa da fare. */}

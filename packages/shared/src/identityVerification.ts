@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 /**
- * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §243,
+ * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §246,
  * decisioni dell'utente del 14/10/2026):
  * 1. dati fiscali compilati e controllati gratis (formato, coerenza del
  *    codice fiscale con nome e data di nascita);
- * 2. codice fiscale e partita IVA verificati (VIES e Openapi, §244): da qui
+ * 2. codice fiscale e partita IVA verificati (VIES e Openapi, §247): da qui
  *    il profilo è pubblico;
  * 3. documento e selfie (Didit): obbligatori prima di inviare preventivi, e
  *    danno il badge "Verificato". L'admin guarda solo i casi dubbi.
@@ -61,7 +61,7 @@ export type MyVerificationStatus = {
     /** Perché è stata rifiutata o è in controllo, in parole semplici. */
     reason: string | null;
     updatedAt: string | null;
-    /** Il servizio di verifica non rispondeva: in attesa, avvisiamo noi appena si può continuare (§246). */
+    /** Il servizio di verifica non rispondeva: in attesa, avvisiamo noi appena si può continuare (§249). */
     standby: boolean;
     /** Si può iniziare (o ripetere) adesso. */
     canStart: boolean;
@@ -83,7 +83,7 @@ export const TAX_ID_KIND_LABEL: Record<TaxIdKind, string> = {
 
 /**
  * Titolo del passo 2 secondo i dati da verificare (decisione dell'utente,
- * §244: parole semplici, senza nominare enti che possano intimorire).
+ * §247: parole semplici, senza nominare enti che possano intimorire).
  */
 export function taxIdStepTitle(kinds: TaxIdKind[]): string {
   const hasVat = kinds.includes("PARTITA_IVA");
@@ -107,7 +107,7 @@ export function taxIdCheckMessage(check: Pick<TaxIdCheckView, "kind" | "status" 
         : `Non riusciamo a verificare il ${label.charAt(0).toLowerCase()}${label.slice(1)}: controlla di averlo scritto bene.`;
     case "REVIEW":
       // P.IVA giusta nella forma ma non nel registro delle imprese (es. libero
-      // professionista): non blocca e non passa all'admin (§245).
+      // professionista): non blocca e non passa all'admin (§248).
       return `${label}: numero corretto.`;
     default:
       return `${label}: verifica in corso, intanto il profilo resta visibile.`;

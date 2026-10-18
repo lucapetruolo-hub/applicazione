@@ -550,7 +550,7 @@ export default function DashboardProfiloPage() {
                 ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
                 : "Lo ottieni verificando la tua identità con un documento e un selfie, circa 2 minuti. Serve anche per inviare preventivi."}
             </Text>
-            {/* Didit al posto della richiesta manuale (docs/CHANGELOG.md §243). */}
+            {/* Didit al posto della richiesta manuale (docs/CHANGELOG.md §246). */}
             {verified ? null : (
               <Link href="/dashboard/verifica-identita" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
                 <Button size="$3">Verifica la tua identità</Button>

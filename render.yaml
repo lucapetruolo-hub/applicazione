@@ -72,13 +72,13 @@ services:
       - key: ADMIN_BOOTSTRAP_SECRET
         sync: false
       # Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e
-      # al Registro Imprese (Openapi, docs/CHANGELOG.md §243). Senza token il
+      # al Registro Imprese (Openapi, docs/CHANGELOG.md §246). Senza token il
       # controllo è saltato e non blocca nulla; OPENAPI_SANDBOX=true per le prove.
       - key: OPENAPI_TOKEN
         sync: false
       - key: OPENAPI_SANDBOX
         sync: false
-      # Verifica documento + selfie (Didit, docs/CHANGELOG.md §243). Senza
+      # Verifica documento + selfie (Didit, docs/CHANGELOG.md §246). Senza
       # chiave e workflow la verifica non è richiesta per i preventivi.
       # Webhook su Didit: <URL API>/identity-verification/webhook.
       - key: DIDIT_API_KEY

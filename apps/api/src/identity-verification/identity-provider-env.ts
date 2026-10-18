@@ -11,7 +11,7 @@ export function identityProviderFromEnv(): IdentityProvider | null {
 
 /**
  * Documento e selfie obbligatori prima di inviare preventivi (decisione
- * dell'utente, docs/CHANGELOG.md §243): solo dove la verifica è attiva,
+ * dell'utente, docs/CHANGELOG.md §246): solo dove la verifica è attiva,
  * altrimenti nessuno potrebbe più lavorare. I profili dimostrativi e quelli
  * già verificati a mano restano liberi.
  */

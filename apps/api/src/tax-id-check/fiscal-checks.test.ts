@@ -4,7 +4,7 @@ import { nextTaxIdAttempt, wantedTaxIdChecks, MAX_TAX_ID_ATTEMPTS } from "./tax-
 import { partitaIvaOutcome } from "./openapi-tax-id.provider";
 import { ViesFirstTaxIdProvider, viesLookup } from "./vies-tax-id.provider";
 
-/** Controlli gratuiti e scelta dei controlli Openapi (docs/CHANGELOG.md §243). */
+/** Controlli gratuiti e scelta dei controlli Openapi (docs/CHANGELOG.md §246). */
 describe("coerenza del codice fiscale con nome, cognome e data di nascita", () => {
   it("accetta i dati giusti, anche con omocodia, più nomi e donne (giorno + 40)", () => {
     expect(codiceFiscaleMismatches("RSSMRA80A01H501U", { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01" })).toEqual([]);
@@ -66,7 +66,7 @@ describe("controlli Openapi", () => {
   });
 });
 
-/** Partita IVA prima con VIES, poi Openapi (docs/CHANGELOG.md §244-§245). */
+/** Partita IVA prima con VIES, poi Openapi (docs/CHANGELOG.md §247-§248). */
 describe("VIES prima di Openapi", () => {
   const openapi = {
     name: "openapi",

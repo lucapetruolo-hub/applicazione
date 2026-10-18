@@ -32,7 +32,7 @@ const clean = (value: string | null | undefined) => (value ?? "").trim().toUpper
  * professionista) e la partita IVA di professionisti e aziende, solo se
  * italiani e già corretti nella forma. Il CF del legale rappresentante resta
  * ai controlli gratuiti (forma e coerenza col nome): la persona la conferma
- * già il documento (decisione dell'utente, §245).
+ * già il documento (decisione dell'utente, §248).
  */
 export function wantedTaxIdChecks(fiscal: FiscalIds): { kind: TaxIdKind; value: string }[] {
   const italian = !fiscal.fiscalIdIssuingCountry || fiscal.fiscalIdIssuingCountry.trim().toUpperCase() === "IT";
@@ -66,7 +66,7 @@ export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
 }
 
 /**
- * Verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §243-§244,
+ * Verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §246-§247,
  * decisione dell'utente: profilo pubblico dopo dati fiscali + verifica; la
  * partita IVA prima con VIES, gratis, poi Openapi se VIES non conferma).
  * - Un controllo a pagamento per dato: si ripete solo se il dato cambia.
@@ -118,7 +118,7 @@ export class TaxIdCheckService {
   }
 
   /**
-   * "Ricontrolla ora" dall'admin (§244): rifà subito tutte le verifiche dei
+   * "Ricontrolla ora" dall'admin (§247): rifà subito tutte le verifiche dei
    * dati fiscali di un professionista, anche quelle già concluse o ferme dopo
    * troppi tentativi.
    */

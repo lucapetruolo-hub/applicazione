@@ -110,7 +110,7 @@ export function checkFiscalId(value: string, issuingCountry: string | undefined,
 }
 
 // --- Coerenza del codice fiscale con nome, cognome e data di nascita ------
-// (docs/CHANGELOG.md §243) Gratis, nel browser e sul server: blocca chi
+// (docs/CHANGELOG.md §246) Gratis, nel browser e sul server: blocca chi
 // scrive un codice fiscale non suo o sbaglia una lettera del nome. Il sesso
 // non lo chiediamo, quindi per il giorno di nascita valgono sia il giorno sia
 // il giorno + 40 (donne). Gestisce l'omocodia (cifre sostituite da lettere).
@@ -219,7 +219,7 @@ export type FiscalValidationInput = {
 
 /**
  * Tutti i controlli gratuiti sui dati fiscali, uguali nel browser e sul
- * server (docs/CHANGELOG.md §243): prima il server non li ripeteva e una
+ * server (docs/CHANGELOG.md §246): prima il server non li ripeteva e una
  * chiamata diretta all'API poteva salvare un codice sbagliato.
  */
 export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldError[] {

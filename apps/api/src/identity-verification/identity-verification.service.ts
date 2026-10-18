@@ -25,7 +25,7 @@ const REUSE_SESSION_MS = 50 * 60_000;
 /** Mentre si aspetta l'esito, la pagina chiede lo stato al fornitore al massimo ogni 10 secondi. */
 const REFRESH_EVERY_MS = 10_000;
 /**
- * Fornitore irraggiungibile all'avvio (§246, decisione dell'utente): il
+ * Fornitore irraggiungibile all'avvio (§249, decisione dell'utente): il
  * tentativo resta "in attesa" con questo stato, senza link. Il controllo
  * periodico riprova e, appena il fornitore risponde, avvisa il professionista.
  */
@@ -59,10 +59,10 @@ const FISCAL_INCLUDE = { taxIdChecks: true, representative: true } satisfies Pri
 type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: typeof FISCAL_INCLUDE }>;
 
 /**
- * Verifica di documento e selfie (docs/CHANGELOG.md §243, decisioni
+ * Verifica di documento e selfie (docs/CHANGELOG.md §246, decisioni
  * dell'utente del 14/10/2026): obbligatoria prima di inviare preventivi,
  * sostituisce la verifica manuale di /admin/verifiche (nessun caso passa
- * all'admin, §245). Il confronto è con il codice fiscale e i dati fiscali (per le
+ * all'admin, §248). Il confronto è con il codice fiscale e i dati fiscali (per le
  * aziende con il legale rappresentante). Foto e selfie restano al fornitore.
  */
 @Injectable()
@@ -235,7 +235,7 @@ export class IdentityVerificationService {
   }
 
   /**
-   * Controllo periodico (§246): riprende i tentativi in attesa quando il
+   * Controllo periodico (§249): riprende i tentativi in attesa quando il
    * fornitore torna e avvisa il professionista; chiede l'esito delle
    * verifiche finite il cui webhook non è arrivato (l'esito, positivo o no,
    * arriva comunque con una notifica e un'email).
@@ -276,7 +276,7 @@ export class IdentityVerificationService {
     }
   }
 
-  /** Promemoria a chi non ha ancora fatto la verifica (§246): notifica ed email, al massimo due. */
+  /** Promemoria a chi non ha ancora fatto la verifica (§249): notifica ed email, al massimo due. */
   @Cron("0 10 * * *", { timeZone: "Europe/Rome" })
   async remindUnverified(now: Date = new Date()): Promise<void> {
     if (!this.provider) return;
@@ -351,7 +351,7 @@ export class IdentityVerificationService {
       case "DECLINED":
         next = { status: "DECLINED", reason: DECLINED_REASON };
         break;
-      // Nessun caso passa all'admin (decisione dell'utente, §245): se il
+      // Nessun caso passa all'admin (decisione dell'utente, §248): se il
       // controllo automatico non conferma, il professionista sa cosa
       // correggere e rifà la verifica da solo.
       case "REVIEW":

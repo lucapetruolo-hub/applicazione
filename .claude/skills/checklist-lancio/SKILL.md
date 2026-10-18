@@ -122,6 +122,20 @@ produzione):
    aggiornare l'account Stripe se il ruolo fiscale di Manovia
    nell'intermediazione non è ancora stato chiarito con un
    commercialista.
+6ter. **Openapi e Didit intestati all'azienda** (decisione dell'utente del
+   14/10/2026, docs/CHANGELOG.md §243): gli account Openapi (controllo di
+   codice fiscale e P.IVA) e Didit (documento e selfie) sono aperti da Luca a
+   nome personale **solo per le prove**. Prima del lancio: aprirli o
+   intestarli all'azienda (fatture all'azienda, accordo DPA con Didit per i
+   dati biometrici), generare chiavi nuove e sostituirle su Render; poi
+   revocare quelle di prova.
+6quater. **Bonifici manuali dei professionisti sull'account Stripe vero**
+   (scelta dell'utente del 14/10/2026: soldi bloccati sul conto Stripe del
+   professionista fino alla conferma del cliente, al massimo 90 giorni):
+   sull'account Stripe definitivo impostare i bonifici dei conti collegati in
+   manuale (Impostazioni Connect → bonifici), come sull'account di prova, e
+   verificare con un pagamento di prova che il bonifico parta solo alla
+   conferma.
 
 **Fiscale — richiede la firma di un vero commercialista/avvocato
 tributario, non solo lavoro tecnico** (le 5 domande del CFO, dettagliate in
@@ -228,6 +242,11 @@ prima del lancio"):
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
+    Dal §243 la stessa email porta anche un **codice di 6 cifre**, che il
+    professionista scrive subito dopo la registrazione: provarlo da telefono
+    con una casella Gmail e una Outlook (arrivo in pochi secondi, codice
+    visibile nell'anteprima della notifica, niente spam). Finché la variabile
+    è spenta, la schermata del codice mostra "Lo faccio dopo".
 24. **Cloudflare Turnstile anti-bot** (registrazione, recupero password, contatti) — codice fatto
     (docs/CHANGELOG.md §204), resta spento finché non si mettono le chiavi:
     1. Cloudflare (account gratuito) → Turnstile → Add widget, modalità

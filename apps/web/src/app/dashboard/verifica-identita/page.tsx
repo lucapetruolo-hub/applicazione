@@ -14,7 +14,7 @@ const POLL_MS = 4000;
 const POLL_LIMIT_MS = 3 * 60_000;
 
 /**
- * Verifica identità (docs/CHANGELOG.md §243): i tre passi in alto, sotto una
+ * Verifica identità (docs/CHANGELOG.md §246): i tre passi in alto, sotto una
  * sola azione alla volta. Documento e selfie si fanno sulla pagina di Didit
  * (dal computer Didit mostra un codice QR per continuare dal telefono); al
  * ritorno questa pagina aspetta l'esito e lo mostra.
@@ -79,7 +79,7 @@ function VerificaIdentitaContent() {
         window.location.href = url;
         return;
       }
-      // Il servizio non risponde: la richiesta resta in attesa (§246).
+      // Il servizio non risponde: la richiesta resta in attesa (§249).
       setRetrying(standby);
       load();
     } catch (err) {
@@ -269,7 +269,7 @@ function ActionPanel({
       {retry && identity.reason ? (
         <YStack gap="$1.5">
           <Text color={brand.urgenza}>{identity.reason}</Text>
-          {/* Il professionista si corregge da solo, nessun admin in mezzo (§245). */}
+          {/* Il professionista si corregge da solo, nessun admin in mezzo (§248). */}
           <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14, textDecoration: "underline", alignSelf: "flex-start" }}>
             Controlla i dati fiscali →
           </Link>

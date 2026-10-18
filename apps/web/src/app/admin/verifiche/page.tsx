@@ -37,7 +37,7 @@ const TAX_TEXT: Record<Row["taxIdChecks"][number]["status"], string> = {
 /** Esiti dei controlli automatici: documento e selfie (Didit), codice fiscale e partita IVA (VIES, Openapi). */
 function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?: () => void; rechecking?: boolean }) {
   if (!row.identity && row.taxIdChecks.length === 0) return null;
-  // Servizio di verifica irraggiungibile all'avvio: id provvisorio "standby-…" (§246).
+  // Servizio di verifica irraggiungibile all'avvio: id provvisorio "standby-…" (§249).
   const identity = row.identity
     ? row.identity.status === "STARTED" && row.identity.providerSessionId.startsWith("standby-")
       ? { text: "Documento e selfie: in attesa del servizio", tone: "neutral" as const }
@@ -78,7 +78,7 @@ function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?:
 }
 
 /**
- * Verifica dei professionisti (docs/CHANGELOG.md §200, §243, §245): tutto
+ * Verifica dei professionisti (docs/CHANGELOG.md §200, §246, §248): tutto
  * automatico, documento e selfie con Didit, codice fiscale e P.IVA con VIES
  * e Openapi. L'admin non accetta né rifiuta nessuno (decisione dell'utente):
  * qui vede a che punto è ciascuno, può ricontrollare i dati fiscali e
@@ -96,7 +96,7 @@ export default function AdminVerifichePage() {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  // Profilo su cui è in corso "Ricontrolla ora" (§244).
+  // Profilo su cui è in corso "Ricontrolla ora" (§247).
   const [recheckingId, setRecheckingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
