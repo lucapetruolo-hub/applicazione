@@ -18803,3 +18803,19 @@ nel recupero password.
 impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
 Provato nel browser da telefono e computer: richiesta, codice sbagliato,
 codice giusto, nuova password, accesso con la nuova password.
+
+## 246. Durata del codice accanto al conto alla rovescia
+
+**Richiesta esplicita dell'utente** (15/10/2026): "1 minuto sembra troppo poco
+per validare la mail, facciamoli 2 minuti". Il minuto era solo l'attesa prima
+di poter chiedere un nuovo codice (il codice vale 15 minuti), ma la schermata
+non lo diceva e il conto alla rovescia sembrava una scadenza.
+
+**Decisione:** proposta all'utente con una scheda: si resta a 60 secondi di
+attesa (allungarla fa aspettare di più chi non riceve l'email) e
+`EmailCodeForm` mostra sopra il conto alla rovescia "Il codice vale ancora N
+minuti." (dalla validità vera, `emailCodeValidForSeconds`), con il conto alla
+rovescia riscritto in "Non arriva? Puoi chiederne un altro tra 0:57".
+
+**Verifica:** tipi e lint; schermata del codice provata nel browser da
+telefono e computer.
