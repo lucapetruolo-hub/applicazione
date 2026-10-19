@@ -70,7 +70,7 @@ export class GuidedRequestsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(guidedRequestSchema)) body: GuidedRequestInput) {
-    return this.guidedRequestsService.create(req.user.userId, body);
+    return this.guidedRequestsService.createForCategories(req.user.userId, body);
   }
 
   // Una chiamata per foto/video (fino a 5, vedi guidedRequestSchema.photoUrls

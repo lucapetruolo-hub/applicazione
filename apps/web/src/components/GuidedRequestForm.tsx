@@ -8,6 +8,7 @@ import {
   ALL_ITALIAN_CITY_NAMES,
   CATEGORY_DESCRIPTION_EXAMPLES,
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
+  MAX_REQUEST_CATEGORIES,
   PROFESSIONAL_CATEGORIES,
   findComuneByName,
   isPlausiblePhoneNumber,
@@ -271,10 +272,24 @@ export function GuidedRequestForm({
       ? [urlSlot, ...pickableSlots]
       : pickableSlots;
 
-  const [categorySlug, setCategorySlug] = useState<ProfessionalCategorySlug | "">(
-    initialCategory && isProfessionalCategorySlug(initialCategory) ? initialCategory : "",
+  // Più categorie insieme in una richiesta generale (docs/CHANGELOG.md
+  // §253): all'invio diventa una richiesta per categoria. La prima scelta
+  // guida l'esempio della descrizione.
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(
+    initialCategory && isProfessionalCategorySlug(initialCategory) ? [initialCategory] : [],
   );
-  const selectedCategory = categorySlug ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlug) : undefined;
+  const categorySlug: ProfessionalCategorySlug | "" = categorySlugs[0] ?? "";
+  const selectedCategories = categorySlugs
+    .map((slug) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug))
+    .filter((c): c is (typeof PROFESSIONAL_CATEGORIES)[number] => Boolean(c));
+  const selectedCategory = selectedCategories[0];
+  function toggleCategory(slug: ProfessionalCategorySlug) {
+    setCategorySlugs((current) =>
+      current.includes(slug) ? current.filter((s) => s !== slug) : current.length < MAX_REQUEST_CATEGORIES ? [...current, slug] : current,
+    );
+  }
+  // Categoria per cui le richieste generali sono chiuse in questa città (§211).
+  const [closedCategorySlug, setClosedCategorySlug] = useState<ProfessionalCategorySlug | null>(null);
 
   // Dati del professionista scelto caricati dal suo id (docs/CHANGELOG.md
   // §154): prima dipendevano dai parametri del link (nome, foto,
@@ -289,9 +304,9 @@ export function GuidedRequestForm({
         setProfessional(detail);
         // Con più categorie (docs/CHANGELOG.md §217) resta quella del link
         // se è una delle sue, altrimenti la principale.
-        setCategorySlug((current) =>
+        setCategorySlugs(([current]) => [
           current && detail.categories?.some((category) => category.slug === current) ? current : detail.categorySlug,
-        );
+        ]);
       })
       .catch(() => undefined);
   }, [professionalProfileId]);
@@ -313,7 +328,8 @@ export function GuidedRequestForm({
   // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
   useEffect(() => {
     setGeneralClosed((current) => (current === "ZONE" ? null : current));
-  }, [city, categorySlug]);
+    setClosedCategorySlug(null);
+  }, [city, categorySlugs]);
   // Facoltativa solo per una consulenza online a un professionista scelto (§210).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
@@ -378,7 +394,7 @@ export function GuidedRequestForm({
   const [defaultsError, setDefaultsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<{ matchedProfessionals: number } | null>(null);
+  const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
   // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
   // resta locale — anteprima via `URL.createObjectURL`, mai caricata su
   // Cloudinary finché non esiste un token — e viene caricata solo al
@@ -427,14 +443,16 @@ export function GuidedRequestForm({
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
-            Richiesta inviata!
+            {result.requestsCount > 1 ? `${result.requestsCount} richieste inviate!` : "Richiesta inviata!"}
           </Text>
           <Text color={brand.grafite70} textAlign="center">
             {result.matchedProfessionals > 0
               ? professionalProfileId
                 ? `La tua richiesta è stata inviata a ${shownProfessionalName ?? "il professionista che hai scelto"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai il preventivo qui appena arriva.`
-                : `La tua richiesta è stata inviata ai professionisti della tua zona${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
-              : "Al momento non ci sono professionisti disponibili per questa categoria/città, ma la richiesta è stata registrata: te lo faremo sapere appena se ne iscrive uno."}
+                : result.requestsCount > 1
+                  ? `Una per ogni categoria, inviate ai professionisti della tua zona${isUrgent ? " e segnate come urgenti" : ""}. Le trovi separate in Le mie richieste.`
+                  : `La tua richiesta è stata inviata ai professionisti della tua zona${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
+              : `Al momento non ci sono professionisti disponibili per ${result.requestsCount > 1 ? "queste categorie" : "questa categoria"} in questa città, ma ${result.requestsCount > 1 ? "le richieste sono state registrate" : "la richiesta è stata registrata"}: te lo faremo sapere appena se ne iscrive uno.`}
           </Text>
           {accountDataDiffers && !defaultsDeclined ? (
             <YStack
@@ -516,7 +534,7 @@ export function GuidedRequestForm({
   /** Controlli del passo 1 (il lavoro) e del passo 2 (dove): null se tutto a posto. */
   function validateStep(which: 1 | 2): string | null {
     if (which === 1) {
-      if (!categorySlug) return "Seleziona una categoria.";
+      if (!categorySlug) return "Scegli almeno una categoria.";
       if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
       return null;
     }
@@ -550,11 +568,14 @@ export function GuidedRequestForm({
         return;
       }
     }
-    if (next === 3 && !professionalProfileId && categorySlug) {
-      const availability = await apiClient.generalRequestAvailability(categorySlug, city).catch(() => null);
-      const closed = availability && !availability.open ? availability.closedScope : null;
-      setGeneralClosed(closed);
-      if (closed) return;
+    if (next === 3 && !professionalProfileId) {
+      for (const slug of categorySlugs) {
+        const availability = await apiClient.generalRequestAvailability(slug, city).catch(() => null);
+        const closed = availability && !availability.open ? availability.closedScope : null;
+        setGeneralClosed(closed);
+        setClosedCategorySlug(closed ? slug : null);
+        if (closed) return;
+      }
     }
     setStep(next);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -596,6 +617,7 @@ export function GuidedRequestForm({
       }
       const response = await apiClient.createGuidedRequest(activeToken, {
         categorySlug: categorySlug as ProfessionalCategorySlug,
+        extraCategorySlugs: professionalProfileId ? [] : categorySlugs.slice(1),
         description: description.trim(),
         city: city.trim() || undefined,
         address: street.trim() || undefined,
@@ -637,7 +659,7 @@ export function GuidedRequestForm({
         const differs = !snapshot || Object.keys(current).some((key) => comparable(key, current[key]!) !== comparable(key, snapshot[key] ?? ""));
         setAccountDataDiffers(differs);
       }
-      setResult({ matchedProfessionals: response.matchedProfessionals });
+      setResult({ matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -750,7 +772,16 @@ export function GuidedRequestForm({
         </YStack>
 
         {generalClosed ? (
-          <GeneralRequestsClosedNotice scope={generalClosed} categorySlug={categorySlug || null} categoryLabel={selectedCategory?.label ?? null} city={city} />
+          <GeneralRequestsClosedNotice
+            scope={generalClosed}
+            categorySlug={closedCategorySlug ?? (categorySlug || null)}
+            categoryLabel={PROFESSIONAL_CATEGORIES.find((c) => c.slug === (closedCategorySlug ?? categorySlug))?.label ?? null}
+            city={city}
+            canRemove={Boolean(closedCategorySlug) && categorySlugs.length > 1}
+            onRemove={() => {
+              if (closedCategorySlug) toggleCategory(closedCategorySlug);
+            }}
+          />
         ) : null}
 
         {generalClosed === "GLOBAL" ? null : (
@@ -766,49 +797,21 @@ export function GuidedRequestForm({
           null
         ) : (
           <YStack gap="$2">
-            <FieldLabel>Categoria</FieldLabel>
-            {/* Menu a tendina come scorciatoia alla griglia sotto, ma non
-                più visibile insieme ad essa (Verbale Cognitivo F2.1: la
-                stessa scelta presentata due volte nello stesso istante
-                raddoppia il carico percettivo iniziale) — nascosto via CSS
-                sopra una soglia di larghezza dove la griglia intera è già
-                comoda, mostrato solo sotto come scorciatoia mobile. */}
-            <div className="guided-category-select">
-              <select aria-label="Categoria"
-                value={categorySlug}
-                onChange={(e) => setCategorySlug(e.target.value as ProfessionalCategorySlug | "")}
-                style={{
-                  padding: 12,
-                  borderRadius: 4,
-                  border: `1px solid ${brand.filetto}`,
-                  fontSize: 15,
-                  fontFamily: "inherit",
-                  backgroundColor: brand.calce,
-                  color: brand.grafite,
-                  width: "100%",
-                }}
-              >
-                <option value="">Seleziona una categoria...</option>
-                {PROFESSIONAL_CATEGORIES.map((category) => (
-                  <option key={category.slug} value={category.slug}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-              <style jsx>{`
-                .guided-category-select {
-                  display: block;
-                }
-                @media (min-width: 700px) {
-                  .guided-category-select {
-                    display: none;
-                  }
-                }
-              `}</style>
-            </div>
-            <YStack flexDirection="row" flexWrap="wrap" gap="$2">
+            <XStack justifyContent="space-between" alignItems="baseline" gap="$2">
+              <FieldLabel>Categorie</FieldLabel>
+              <Text fontSize="$2" color={brand.grafite70} aria-live="polite">
+                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Fino a ${MAX_REQUEST_CATEGORIES}`}
+              </Text>
+            </XStack>
+            {/* Più categorie insieme (docs/CHANGELOG.md §253): ogni pillola si
+                accende e si spegne; arrivati al massimo le altre si
+                attenuano. Il menu a tendina per telefono (F2.1) è stato tolto:
+                non permette una scelta multipla e le pillole vanno a capo
+                anche su schermi stretti. */}
+            <YStack flexDirection="row" flexWrap="wrap" gap="$2" role="group" aria-label="Categorie">
               {PROFESSIONAL_CATEGORIES.map((category) => {
-                const active = categorySlug === category.slug;
+                const active = categorySlugs.includes(category.slug);
+                const full = !active && categorySlugs.length >= MAX_REQUEST_CATEGORIES;
                 return (
                   <XStack
                     key={category.slug}
@@ -820,18 +823,28 @@ export function GuidedRequestForm({
                     borderWidth={1}
                     borderColor={active ? brand.cianografia : brand.filetto}
                     backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                    cursor="pointer"
-                    onPress={() => setCategorySlug(category.slug)}
-                    accessibilityRole="button"
+                    opacity={full ? 0.45 : 1}
+                    cursor={full ? "not-allowed" : "pointer"}
+                    onPress={() => !full && toggleCategory(category.slug)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: active, disabled: full }}
+                    aria-checked={active}
+                    aria-disabled={full}
                   >
                     <Icon name={category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
                     <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
                       {category.label}
                     </Text>
+                    {active ? <Icon name="check" size={14} color={brand.cianografiaScuro} /> : null}
                   </XStack>
                 );
               })}
             </YStack>
+            {categorySlugs.length > 1 ? (
+              <Text fontSize="$2" color={brand.grafite70}>
+                Riceverai una richiesta separata per ogni categoria.
+              </Text>
+            ) : null}
           </YStack>
         )}
 
@@ -1166,7 +1179,7 @@ export function GuidedRequestForm({
           <RequestSummary
             isUrgent={isUrgent}
             professionalName={professionalProfileId ? shownProfessionalName ?? "il professionista" : null}
-            categoryLabel={selectedCategory?.label ?? ""}
+            categoryLabels={selectedCategories.map((c) => c.label)}
             serviceMode={serviceMode}
             description={description}
             city={[postalCode, city].filter((v) => v.trim()).join(" ") + (province.trim() && city.trim() ? ` (${province.trim()})` : "")}
@@ -1246,11 +1259,16 @@ function GeneralRequestsClosedNotice({
   categorySlug,
   categoryLabel,
   city,
+  canRemove = false,
+  onRemove,
 }: {
   scope: "GLOBAL" | "ZONE";
   categorySlug: string | null;
   categoryLabel: string | null;
   city: string;
+  /** Con più categorie scelte si può togliere solo quella chiusa (docs/CHANGELOG.md §253). */
+  canRemove?: boolean;
+  onRemove?: () => void;
 }) {
   const searchHref = categorySlug ? `/cerca/${categorySlug}${city.trim() ? `?citta=${encodeURIComponent(city.trim())}` : ""}` : "/cerca";
   return (
@@ -1263,11 +1281,16 @@ function GeneralRequestsClosedNotice({
           ? "Per ora le richieste si inviano direttamente a un professionista: cercalo, guarda profilo e recensioni e scrivigli dalla sua pagina."
           : `I professionisti${categoryLabel ? ` di ${categoryLabel}` : ""} di questa zona ricevono già molte richieste: per avere risposte più rapide scegline uno e scrivigli dalla sua pagina.`}
       </Text>
-      <Link href={searchHref}>
-        <Button variant="primary" alignSelf="flex-start">
-          Cerca un professionista
-        </Button>
-      </Link>
+      <XStack gap="$2" flexWrap="wrap">
+        <Link href={searchHref}>
+          <Button variant="primary">Cerca un professionista</Button>
+        </Link>
+        {canRemove && categoryLabel ? (
+          <Button variant="secondary" onPress={onRemove}>
+            {`Togli ${categoryLabel}`}
+          </Button>
+        ) : null}
+      </XStack>
     </YStack>
   );
 }
@@ -1308,7 +1331,7 @@ function StepIndicator({ step, onGo }: { step: 1 | 2 | 3; onGo: (next: 1 | 2 | 3
 function RequestSummary({
   isUrgent,
   professionalName,
-  categoryLabel,
+  categoryLabels,
   serviceMode,
   description,
   city,
@@ -1322,7 +1345,7 @@ function RequestSummary({
 }: {
   isUrgent: boolean;
   professionalName: string | null;
-  categoryLabel: string;
+  categoryLabels: string[];
   serviceMode: "HOME" | "ONLINE";
   description: string;
   city: string;
@@ -1339,6 +1362,8 @@ function RequestSummary({
   // ad altri parte dopo questo tempo (docs/CHANGELOG.md §209).
   const forwardTime = isUrgent ? "60 minuti" : "6 ore (contate dalle 8 alle 21)";
   const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
+  const categoriesText = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(categoryLabels);
+  const multiple = categoryLabels.length > 1;
   return (
     <YStack gap="$4">
       <div className="guided-next">
@@ -1353,10 +1378,17 @@ function RequestSummary({
           </ul>
         ) : (
           <ul>
-            <li>
-              La mandiamo subito a tutti i professionisti di {categoryLabel} che lavorano nella tua zona
-              {isUrgent ? ", segnata come urgente" : ""}.
-            </li>
+            {multiple ? (
+              <li>
+                Diventa {categoryLabels.length} richieste separate, una per categoria: ognuna arriva subito ai professionisti di quella
+                categoria nella tua zona{isUrgent ? ", segnata come urgente" : ""}.
+              </li>
+            ) : (
+              <li>
+                La mandiamo subito a tutti i professionisti di {categoriesText} che lavorano nella tua zona
+                {isUrgent ? ", segnata come urgente" : ""}.
+              </li>
+            )}
             <li>Possono risponderti finché la richiesta è aperta: al massimo {isUrgent ? "30" : "60"} giorni.</li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
@@ -1381,7 +1413,7 @@ function RequestSummary({
           </button>
         </div>
         <p>
-          <strong>{categoryLabel}</strong> · {serviceMode === "HOME" ? "A domicilio" : "Online"}
+          <strong>{categoriesText}</strong> · {serviceMode === "HOME" ? "A domicilio" : "Online"}
           {isUrgent ? " · Urgente" : ""}
           {slotLabel ? ` · ${slotLabel}` : ""}
         </p>

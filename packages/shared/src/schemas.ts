@@ -243,10 +243,20 @@ export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
 });
 export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 
+/** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §253). */
+export const MAX_REQUEST_CATEGORIES = 3;
+const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
+
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
   .object({
     categorySlug: professionalCategorySlugSchema,
+    /**
+     * Altre categorie della stessa richiesta generale (docs/CHANGELOG.md
+     * §253, richiesta dell'utente): diventa una richiesta separata per
+     * ognuna, con gli stessi dati. Mai in una richiesta diretta.
+     */
+    extraCategorySlugs: z.array(professionalCategorySlugSchema).max(MAX_REQUEST_CATEGORIES - 1, tooManyRequestCategoriesMessage).default([]),
     description: z.string().min(10).max(2000),
     /**
      * Facoltativa (richiesta esplicita dell'utente: "in tutte le richieste
@@ -321,6 +331,14 @@ export const guidedRequestSchema = z
   .refine((data) => !data.preferredDate || Boolean(data.professionalProfileId), {
     message: "Una fascia oraria preferita richiede un professionista specifico.",
     path: ["professionalProfileId"],
+  })
+  .refine((data) => !data.professionalProfileId || data.extraCategorySlugs.length === 0, {
+    message: "Una richiesta a un professionista scelto ha una sola categoria.",
+    path: ["extraCategorySlugs"],
+  })
+  .refine((data) => new Set([data.categorySlug, ...data.extraCategorySlugs]).size === data.extraCategorySlugs.length + 1, {
+    message: "Ogni categoria va scelta una volta sola.",
+    path: ["extraCategorySlugs"],
   })
   // Indirizzo/destinatario obbligatori solo per un intervento "a domicilio"
   // (vedi commento sui singoli campi sopra) — stessi messaggi già in uso

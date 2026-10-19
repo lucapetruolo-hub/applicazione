@@ -1076,7 +1076,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     createGuidedRequest: (token: string, input: GuidedRequestInput) =>
-      request<{ guidedRequestId: string; matchedProfessionals: number }>("/guided-requests", {
+      request<{
+        guidedRequestId: string;
+        matchedProfessionals: number;
+        /** Una richiesta per categoria (docs/CHANGELOG.md §253). */
+        requests: { guidedRequestId: string; categorySlug: string; matchedProfessionals: number }[];
+      }>("/guided-requests", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

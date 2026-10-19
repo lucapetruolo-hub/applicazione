@@ -19140,3 +19140,35 @@ sempre.
   la foto invece di restare in una colonna stretta accanto.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
+
+---
+
+## 253. Richiesta di preventivo con più categorie
+
+**Richiesta dell'utente:** "nella richiesta preventivo, dai la possibilità di
+selezionare più categorie, e poi visualizzale come fossero richieste
+differenti per ogni categoria".
+
+**Decisione:**
+- Nel modulo `/preventivo` (e `/urgente`) le pillole delle categorie si
+  accendono e spengono: fino a 3 (`MAX_REQUEST_CATEGORIES`), arrivati al
+  massimo le altre si attenuano, contatore "2 di 3". Tolto il menu a
+  tendina per telefono (§F2.1): non permette una scelta multipla e le
+  pillole vanno già a capo sugli schermi stretti.
+- All'invio il server crea una `GuidedRequest` separata per ogni
+  categoria, con gli stessi dati (descrizione, foto, indirizzo, urgenza):
+  ognuna arriva ai professionisti della sua categoria, con le sue
+  notifiche ed email, e il cliente la vede come richiesta a sé in "Le mie
+  richieste". Nessuna migrazione.
+- `guidedRequestSchema.extraCategorySlugs` (default `[]`): la prima
+  categoria resta `categorySlug`, così app e chiamate vecchie funzionano
+  come prima. `GuidedRequestsService.createForCategories` controlla tutte
+  le categorie, la zona aperta (§211) e l'indirizzo (§214) prima di crearne
+  una, così non resta mai solo una parte delle richieste.
+- Richiesta a un professionista scelto: resta a una sola categoria
+  (decisione §217), lo schema rifiuta categorie in più.
+- Se le richieste generali sono chiuse in zona per una delle categorie,
+  l'avviso la nomina e offre "Togli <categoria>".
+
+**Verifica:** `tsc` su api e web, test dello schema (vitest), Playwright a
+390px e 1280px (scelta categorie e riepilogo).

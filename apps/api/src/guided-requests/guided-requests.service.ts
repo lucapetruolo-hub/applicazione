@@ -70,16 +70,41 @@ export class GuidedRequestsService {
   ) {}
 
   /**
-   * `opts.excludeProfileId`: professionista da escludere dallo smistamento
-   * (richiesta rinviata ad altri dopo una mancata presentazione accolta,
-   * docs/CHANGELOG.md §167).
+   * Richiesta del modulo, con una o più categorie (docs/CHANGELOG.md §253):
+   * una richiesta separata per ogni categoria, con gli stessi dati. I
+   * controlli (categorie, zona aperta, indirizzo) si fanno tutti prima di
+   * crearne una, così non resta mai una parte delle richieste a metà.
    */
-  async create(clientId: string, input: GuidedRequestInput, opts: { excludeProfileId?: string } = {}) {
-    let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
-    if (!category) {
+  async createForCategories(clientId: string, input: GuidedRequestInput) {
+    const { extraCategorySlugs, ...rest } = input;
+    const slugs = [input.categorySlug, ...(extraCategorySlugs ?? [])];
+    if (slugs.length === 1) {
+      const created = await this.create(clientId, rest);
+      return { ...created, requests: [{ ...created, categorySlug: input.categorySlug }] };
+    }
+    const categories = await this.prisma.category.findMany({ where: { slug: { in: slugs } } });
+    if (categories.length !== slugs.length) {
       throw new BadRequestException("Categoria non valida.");
     }
-    // Indirizzo vero e nel comune indicato (docs/CHANGELOG.md §214).
+    for (const slug of slugs) {
+      const category = categories.find((c) => c.slug === slug)!;
+      await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
+    }
+    await this.assertAddressInCity(input);
+    const requests: { guidedRequestId: string; matchedProfessionals: number; categorySlug: string }[] = [];
+    for (const slug of slugs) {
+      const created = await this.create(clientId, { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"] }, { checksDone: true });
+      requests.push({ ...created, categorySlug: slug });
+    }
+    return {
+      guidedRequestId: requests[0]!.guidedRequestId,
+      matchedProfessionals: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
+      requests,
+    };
+  }
+
+  /** Indirizzo vero e nel comune indicato (docs/CHANGELOG.md §214). */
+  private async assertAddressInCity(input: Pick<GuidedRequestInput, "serviceMode" | "address" | "houseNumber" | "postalCode" | "city">) {
     if (input.serviceMode === "HOME" && input.address?.trim() && input.city?.trim()) {
       await this.geocodingService?.assertAddressInCity({
         street: input.address,
@@ -88,18 +113,43 @@ export class GuidedRequestsService {
         city: input.city,
       });
     }
-    // Richieste generali chiuse per tutto il sito o per questa categoria in
-    // questa città (docs/CHANGELOG.md §211). Non vale per il rinvio fatto dal
-    // sistema dopo una mancata presentazione (excludeProfileId, §167).
-    if (!input.professionalProfileId && !opts.excludeProfileId) {
-      const availability = await this.generalRequestsService.availability(category.id, input.city ?? null);
-      if (!availability.open) {
-        throw new ForbiddenException(
-          availability.closedScope === "GLOBAL"
-            ? "Le richieste generali non sono attive: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo."
-            : "In questa zona le richieste generali per questa categoria sono chiuse: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo.",
-        );
-      }
+  }
+
+  /**
+   * Richieste generali chiuse per tutto il sito o per questa categoria in
+   * questa città (docs/CHANGELOG.md §211).
+   */
+  private async assertGeneralRequestsOpen(category: { id: string; label: string }, city: string | null, nameCategory = false) {
+    const availability = await this.generalRequestsService.availability(category.id, city);
+    if (!availability.open) {
+      throw new ForbiddenException(
+        availability.closedScope === "GLOBAL"
+          ? "Le richieste generali non sono attive: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo."
+          : `In questa zona le richieste generali per ${nameCategory ? category.label : "questa categoria"} sono chiuse: scegli un professionista dalla ricerca e invia la richiesta dal suo profilo.`,
+      );
+    }
+  }
+
+  /**
+   * `opts.excludeProfileId`: professionista da escludere dallo smistamento
+   * (richiesta rinviata ad altri dopo una mancata presentazione accolta,
+   * docs/CHANGELOG.md §167). `opts.checksDone`: zona e indirizzo già
+   * controllati da createForCategories.
+   */
+  async create(
+    clientId: string,
+    input: Omit<GuidedRequestInput, "extraCategorySlugs">,
+    opts: { excludeProfileId?: string; checksDone?: boolean } = {},
+  ) {
+    let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
+    if (!category) {
+      throw new BadRequestException("Categoria non valida.");
+    }
+    if (!opts.checksDone) await this.assertAddressInCity(input);
+    // Non vale per il rinvio fatto dal sistema dopo una mancata
+    // presentazione (excludeProfileId, §167).
+    if (!input.professionalProfileId && !opts.excludeProfileId && !opts.checksDone) {
+      await this.assertGeneralRequestsOpen(category, input.city ?? null);
     }
 
     let targetProfile: {
