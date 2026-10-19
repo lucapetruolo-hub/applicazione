@@ -3,14 +3,15 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
+import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
-import { checkFiscalId, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
+import { checkFiscalId, findComuneByName, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
 // su urgenza, verde solo su verificato" — mai un colore libero), non un
@@ -69,6 +70,20 @@ const FISCAL_FIELD_LABELS: Record<string, string> = {
   "representative.lastName": "Cognome del legale rappresentante",
   "representative.codiceFiscale": "Codice fiscale del legale rappresentante",
   "representative.role": "Ruolo del legale rappresentante",
+};
+
+// Stesso aspetto dei campi `Field` per i campi nativi (suggerimenti di Google, calendario).
+const addressInputStyle = {
+  width: "100%",
+  height: 50,
+  boxSizing: "border-box" as const,
+  padding: "0 12px",
+  borderRadius: radiusDoc,
+  border: `1px solid ${brand.filetto}`,
+  background: brand.calce,
+  fontSize: 15,
+  fontFamily: "inherit",
+  color: brand.grafite,
 };
 
 function fiscalFieldLabel(path: (string | number)[]): string {
@@ -431,6 +446,8 @@ function DashboardFiscaleContent() {
   }
   if (abroad && !filled("taxResidenceCountry")) step1Missing.push("Paese");
   const step2Missing = ["registeredStreet", "registeredPostalCode", "registeredCity"].filter((key) => !filled(key));
+  // Provincia in sigla di 2 lettere (richiesta dell'utente, docs/CHANGELOG.md §262).
+  if (!abroad && !/^[A-Z]{2}$/.test(fields.registeredProvince ?? "")) step2Missing.push("registeredProvince");
 
   const fiscalComplete = verification?.fiscalDataComplete ?? false;
   const toFix = verification?.taxIdState === "TO_FIX";
@@ -540,22 +557,33 @@ function DashboardFiscaleContent() {
                 {isPerson ? (
                   <>
                     <XStack gap="$3" flexWrap="wrap">
-                      <YStack flex={1} minWidth={200}>
+                      <YStack flex={1} flexBasis={0} minWidth={200}>
                         <Field label="Nome" accessibilityLabel="Nome" value={fields.fiscalFirstName ?? ""} onChangeText={(v) => setField("fiscalFirstName", v)} />
                       </YStack>
-                      <YStack flex={1} minWidth={200}>
+                      <YStack flex={1} flexBasis={0} minWidth={200}>
                         <Field label="Cognome" accessibilityLabel="Cognome" value={fields.fiscalLastName ?? ""} onChangeText={(v) => setField("fiscalLastName", v)} />
                       </YStack>
                     </XStack>
                     {cfField}
-                    <Field
-                      label="Data di nascita"
-                      accessibilityLabel="Data di nascita"
-                      value={fields.dateOfBirth ?? ""}
-                      onChangeText={(v) => setField("dateOfBirth", v)}
-                      placeholder="AAAA-MM-GG"
-                      error={liveError("dateOfBirth")}
-                    />
+                    {/* Calendario del telefono o del browser (docs/CHANGELOG.md §262). */}
+                    <YStack gap="$2">
+                      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                        Data di nascita
+                      </Text>
+                      <input
+                        type="date"
+                        aria-label="Data di nascita"
+                        value={fields.dateOfBirth ?? ""}
+                        max={new Date().toISOString().slice(0, 10)}
+                        onChange={(event) => setField("dateOfBirth", event.target.value)}
+                        style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.filetto }}
+                      />
+                      {liveError("dateOfBirth") ? (
+                        <Text fontSize={13} color={brand.urgenza}>
+                          {liveError("dateOfBirth")}
+                        </Text>
+                      ) : null}
+                    </YStack>
                     {entityType === "SOLE_PROPRIETOR" ? vatField : null}
                   </>
                 ) : null}
@@ -581,10 +609,10 @@ function DashboardFiscaleContent() {
                       </Text>
                     </YStack>
                     <XStack gap="$3" flexWrap="wrap">
-                      <YStack flex={1} minWidth={200}>
+                      <YStack flex={1} flexBasis={0} minWidth={200}>
                         <Field label="Nome" accessibilityLabel="Nome del legale rappresentante" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
                       </YStack>
-                      <YStack flex={1} minWidth={200}>
+                      <YStack flex={1} flexBasis={0} minWidth={200}>
                         <Field label="Cognome" accessibilityLabel="Cognome del legale rappresentante" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
                       </YStack>
                     </XStack>
@@ -648,20 +676,69 @@ function DashboardFiscaleContent() {
             ) : (
               <YStack gap="$3">
                 <XStack gap="$3" flexWrap="wrap">
-                  <YStack flex={3} minWidth={200}>
-                    <Field label="Via o piazza" accessibilityLabel="Via o piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
+                  <YStack flex={3} flexBasis={0} minWidth={180}>
+                    {abroad ? (
+                      <Field label="Via o piazza" accessibilityLabel="Via o piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
+                    ) : (
+                      // Suggerimenti di Google mentre si scrive: la scelta compila
+                      // anche civico, CAP, comune e provincia (docs/CHANGELOG.md §262).
+                      <YStack gap="$2">
+                        <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                          Via o piazza
+                        </Text>
+                        <AddressAutocompleteInput
+                          value={fields.registeredStreet ?? ""}
+                          onChange={(v) => setField("registeredStreet", v)}
+                          onSelect={(selected) => {
+                            const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+                            setFields((prev) => ({
+                              ...prev,
+                              registeredStreet: selected.street ?? selected.address,
+                              registeredHouseNumber: selected.houseNumber ?? prev.registeredHouseNumber ?? "",
+                              registeredPostalCode: selected.postalCode ?? prev.registeredPostalCode ?? "",
+                              registeredCity: comune?.name ?? selected.locality ?? prev.registeredCity ?? "",
+                              registeredProvince: selected.province ?? comune?.province ?? prev.registeredProvince ?? "",
+                            }));
+                          }}
+                          placeholder="Inizia a scrivere"
+                          style={addressInputStyle}
+                        />
+                      </YStack>
+                    )}
                   </YStack>
-                  <YStack flex={1} minWidth={90}>
+                  <YStack flex={1} flexBasis={0} minWidth={80}>
                     <Field label="Civico" accessibilityLabel="Numero civico" value={fields.registeredHouseNumber ?? ""} onChangeText={(v) => setField("registeredHouseNumber", v)} />
                   </YStack>
                 </XStack>
                 <XStack gap="$3" flexWrap="wrap">
-                  <YStack flex={1} minWidth={110}>
+                  <YStack flex={1} flexBasis={0} minWidth={80}>
                     <Field label="CAP" accessibilityLabel="CAP" value={fields.registeredPostalCode ?? ""} onChangeText={(v) => setField("registeredPostalCode", v)} inputMode={abroad ? undefined : "numeric"} />
                   </YStack>
-                  <YStack flex={3} minWidth={200}>
-                    <Field label="Comune" accessibilityLabel="Comune" value={fields.registeredCity ?? ""} onChangeText={(v) => setField("registeredCity", v)} />
+                  <YStack flex={2} flexBasis={0} minWidth={100}>
+                    <Field
+                      label="Comune"
+                      accessibilityLabel="Comune"
+                      value={fields.registeredCity ?? ""}
+                      onChangeText={(v) => {
+                        // La provincia si ricava dal comune (elenco ISTAT), si può comunque correggere.
+                        const comune = abroad ? undefined : findComuneByName(v);
+                        setFields((prev) => ({ ...prev, registeredCity: v, ...(comune ? { registeredProvince: comune.province } : {}) }));
+                      }}
+                    />
                   </YStack>
+                  {abroad ? null : (
+                    <YStack width={72} flexShrink={0}>
+                      <Field
+                        label="Prov."
+                        accessibilityLabel="Provincia (sigla)"
+                        value={fields.registeredProvince ?? ""}
+                        onChangeText={(v) => setField("registeredProvince", v.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
+                        autoCapitalize="characters"
+                        maxLength={2}
+                        placeholder="RM"
+                      />
+                    </YStack>
+                  )}
                 </XStack>
 
                 <XStack
@@ -770,7 +847,7 @@ function DashboardFiscaleContent() {
                   {[isPerson ? fields.fiscalCodiceFiscale : null, fields.vatNumber ? `P.IVA ${fields.vatNumber}` : null].filter(Boolean).join(" · ")}
                 </Text>
                 <Text color={brand.grafite70}>
-                  {[[fields.registeredStreet, fields.registeredHouseNumber].filter(Boolean).join(" "), [fields.registeredPostalCode, fields.registeredCity].filter(Boolean).join(" ")]
+                  {[[fields.registeredStreet, fields.registeredHouseNumber].filter(Boolean).join(" "), [fields.registeredPostalCode, fields.registeredCity, fields.registeredProvince ? `(${fields.registeredProvince})` : null].filter(Boolean).join(" ")]
                     .filter(Boolean)
                     .join(", ")}
                 </Text>

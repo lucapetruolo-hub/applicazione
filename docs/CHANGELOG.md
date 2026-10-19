@@ -19341,3 +19341,13 @@ blocca nulla, come prima.
 **Motivo**: prima le stesse cose comparivano in tre riquadri diversi con link a passi non ancora possibili; ora c'è sempre una sola cosa da fare e il modulo chiede solo quello che usiamo davvero.
 
 **Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 262. Dati fiscali: calendario, indirizzo con suggerimenti, provincia in sigla
+
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua le 3 migliorie, la provincia serve in 2 cifre e vedi se si riesce a ricavare tramite altri inserimenti in automatico" (migliorie proposte dopo §261).
+
+**Decisione presa**: in Dati fiscali la data di nascita si sceglie dal calendario del telefono o del browser (campo `date` nativo, niente più "AAAA-MM-GG"). La via usa `AddressAutocompleteInput` come nel profilo (§141): scegliendo un suggerimento si compilano anche civico, CAP, comune e provincia. Torna il campo **Prov.** (sigla di 2 lettere, obbligatoria in Italia), che si compila da solo dal comune (elenco ISTAT `findComuneByName`) o dal suggerimento di Google e resta correggibile. La provincia entra anche nell'indirizzo della DAC7 (`buildAddressFree`, "00183 Roma (RM)"). Chi risiede all'estero ha i campi semplici senza provincia.
+
+**Motivo**: meno da scrivere a mano e un indirizzo completo come lo vuole il fisco.
+
+**Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate `dati-fiscali-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
