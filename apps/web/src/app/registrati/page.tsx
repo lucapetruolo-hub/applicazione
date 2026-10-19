@@ -675,7 +675,10 @@ function RegistratiForm() {
           email={codeStep.email}
           initialResendSeconds={codeStep.resendIn}
           allowChangeEmail
-          onEmailChanged={() => void refreshUser().catch(() => {})}
+          onEmailChanged={(next) => {
+            setCodeStep((step) => (step ? { ...step, email: next } : step));
+            void refreshUser().catch(() => {});
+          }}
           onVerified={async () => {
             await refreshUser().catch(() => {});
             afterAuth(true);

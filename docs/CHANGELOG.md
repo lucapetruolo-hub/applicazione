@@ -18804,6 +18804,36 @@ impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
 Provato nel browser da telefono e computer: richiesta, codice sbagliato,
 codice giusto, nuova password, accesso con la nuova password.
 
+## 250. Durata del codice accanto al conto alla rovescia
+
+**Richiesta esplicita dell'utente** (15/10/2026): "1 minuto sembra troppo poco
+per validare la mail, facciamoli 2 minuti". Il minuto era solo l'attesa prima
+di poter chiedere un nuovo codice (il codice vale 15 minuti), ma la schermata
+non lo diceva e il conto alla rovescia sembrava una scadenza.
+
+**Decisione:** proposta all'utente con una scheda: si resta a 60 secondi di
+attesa (allungarla fa aspettare di più chi non riceve l'email) e
+`EmailCodeForm` mostra sopra il conto alla rovescia "Il codice vale ancora N
+minuti." (dalla validità vera, `emailCodeValidForSeconds`), con il conto alla
+rovescia riscritto in "Non arriva? Puoi chiederne un altro tra 0:57".
+
+**Verifica:** tipi e lint; schermata del codice provata nel browser da
+telefono e computer.
+
+## 251. Correzione dell'email: il codice compare sull'indirizzo nuovo
+
+**Segnalazione di Luca** (19/10/2026): dopo "Email sbagliata? Correggila" e
+l'indirizzo giusto, il popup successivo mostrava ancora quello vecchio. Il
+server mandava il codice a quello nuovo, ma la schermata di registrazione
+conservava l'indirizzo di partenza.
+
+**Correzione:** `EmailCodeForm` passa il nuovo indirizzo a `onEmailChanged`, e
+la registrazione lo salva nello stato del passo del codice. Gli altri punti
+d'uso (conferma in `/conferma-email`, riquadro cliente) leggono già l'account
+aggiornato.
+
+**Verifica:** typecheck ed eslint puliti; da provare nel browser sul
+registrati dopo la correzione.
 ## 246. DAC7: dichiarazione a "lavoro terminato", diretti e online, IBAN, avviso annuale
 
 **Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica

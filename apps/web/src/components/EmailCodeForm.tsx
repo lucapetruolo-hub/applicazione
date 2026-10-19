@@ -47,7 +47,8 @@ export function EmailCodeForm({
   onVerified: (email: string) => void;
   /** Solo dove cambiare l'email manda subito un nuovo codice (account professionista). */
   allowChangeEmail?: boolean;
-  onEmailChanged?: () => void;
+  /** Riceve il nuovo indirizzo, che il genitore mostra al posto del vecchio (§251). */
+  onEmailChanged?: (newEmail: string) => void;
   /** Controllo del codice diverso dalla conferma email (es. recupero password). */
   submitCode?: (code: string) => Promise<void>;
   /** Al posto del nuovo invio automatico: dove serve di nuovo il controllo anti-bot. */
@@ -174,7 +175,7 @@ export function EmailCodeForm({
       setCode("");
       setState("idle");
       setMessage(null);
-      onEmailChanged?.();
+      onEmailChanged?.(next);
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : "Non siamo riusciti a cambiare l'email, riprova.");
     } finally {
@@ -182,6 +183,7 @@ export function EmailCodeForm({
     }
   }
 
+  const validMinutes = Math.max(1, Math.ceil(validFor / 60));
   const minutes = Math.floor(resendIn / 60);
   const seconds = String(resendIn % 60).padStart(2, "0");
   const boxesClass = `email-code-boxes${expired ? " is-expired" : ""}${state === "error" ? " is-error" : ""}${state === "done" ? " is-done" : ""}`;
@@ -287,9 +289,16 @@ export function EmailCodeForm({
       </div>
 
       <YStack gap="$2" alignItems="center">
+        {/* La durata accanto al conto alla rovescia: senza, il minuto di
+            attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
+        {!expired && state !== "done" ? (
+          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            Il codice vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}.
+          </Text>
+        ) : null}
         {resendIn > 0 ? (
-          <Text fontSize="$3" color={brand.grafite70}>
-            Puoi chiedere un nuovo codice tra {minutes}:{seconds}
+          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            Non arriva? Puoi chiederne un altro tra {minutes}:{seconds}
           </Text>
         ) : (
           <Button variant={expired ? "primary" : "ghost"} onPress={() => void resend()} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
