@@ -85,7 +85,7 @@ export class CompletionDeadlineService {
    * Il cliente ha chiuso, il professionista tace: promemoria, poi la
    * recensione del cliente non aspetta più. Il lavoro resta aperto perché
    * l'importo finale lo inserisce solo il professionista: se ci sono soldi
-   * online in custodia lo diciamo al nostro team.
+   * online bloccati lo diciamo al nostro team.
    */
   private async professionalSilent(now: Date): Promise<void> {
     const bookings = await this.prisma.booking.findMany({

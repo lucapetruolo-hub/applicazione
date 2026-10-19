@@ -52,3 +52,15 @@ export class JobPaymentsController {
     return this.disputesService.open(req.user.userId, bookingId, body.reason);
   }
 }
+
+/** Pagamenti online ricevuti dal professionista, per stato del bonifico (docs/CHANGELOG.md §249). */
+@Controller("professionals/me/online-payments")
+export class ProfessionalOnlinePaymentsController {
+  constructor(private readonly jobPaymentsService: JobPaymentsService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get("summary")
+  summary(@Req() req: AuthenticatedRequest) {
+    return this.jobPaymentsService.professionalPayoutSummary(req.user.userId);
+  }
+}

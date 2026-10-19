@@ -18939,3 +18939,101 @@ lo stesso comportamento delle caselle rosse anche in `/completa-profilo`
 popup del consenso dopo l'accesso con Google (`GoogleConsentModal`, che ora
 usa il `ConsentCheckbox` condiviso invece di una sua copia). Provati con
 Playwright a 390px e 1280px.
+
+## 249. Soldi dei pagamenti online bloccati sul conto Stripe del professionista
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7"): "Scelgo di bloccare i soldi dal Professionista" (opzione B
+del piano `analisi/verifica-professionisti-dac7-piano.md` §6): i soldi
+pagati online non devono restare in custodia sul conto della piattaforma.
+Prima del lancio si passerà a un account Stripe vero; sviluppo e prove
+sull'ambiente di prova.
+
+**Decisione**:
+- Acconto e saldo si addebitano "a destinazione" sul conto Stripe del
+  professionista (destination charges: `transfer_data.destination`), con
+  la trattenuta della piattaforma come application fee: commissione del 5%
+  più il costo massimo della carta (3,25% + €0,25,
+  `onlineApplicationFeeHoldEurCents`), perché il costo reale si conosce
+  solo dopo il pagamento. Appena Stripe lo dà, la differenza torna al
+  professionista (rimborso dell'application fee); allo sblocco si fa il
+  conguaglio con la commissione sull'importo finale.
+- Prima del primo pagamento il sito mette in manuale i bonifici del conto
+  del professionista verso la sua banca (`balanceSettings`,
+  `stripeManualPayoutsAt`). Se non ci riesce, o il conto non può ricevere
+  soldi, il pagamento non parte: meglio un errore chiaro che soldi non
+  bloccati.
+- Sblocco come prima (conferma del cliente, o 7 giorni dalla chiusura,
+  niente segnalazioni o contestazioni aperte): niente più trasferimento,
+  parte il bonifico (`payouts.create` sul conto del professionista). Il
+  bonifico parte solo se sul conto ci sono soldi disponibili senza toccare
+  quelli ancora bloccati per altri lavori; altrimenti si riprova ogni ora
+  (`payoutPendingEurCents`). Esito dal webhook Connect `payout.paid` /
+  `payout.failed` / `payout.canceled`: se la banca rifiuta, i soldi tornano
+  sul conto Stripe, il professionista riceve `JOB_PAYOUT_FAILED` e si
+  riprova ogni giorno o appena aggiorna il conto (`account.updated`).
+- Rimborsi prima dello sblocco ripresi dal suo conto (`reverse_transfer`);
+  la trattenuta che supera quanto resta pagato torna al professionista, così
+  il suo conto non va mai in negativo (con un rimborso totale il costo della
+  carta resta a carico della piattaforma, come prima). Dopo lo sblocco si
+  riprende al massimo quanto ricevuto. Contestazione in banca persa con i
+  soldi ancora bloccati: la cifra si riprende dal suo conto.
+- I pagamenti registrati prima di questa modifica
+  (`stripeDestinationAccountId` vuoto) restano sul vecchio modello fino
+  alla fine, saldo compreso.
+- Stato del pagamento rifatto per cliente e professionista
+  (`JobPaymentStatus`): titolo con lo stato, passaggi Pagato → Bloccato →
+  Sbloccato (→ In banca per il professionista), importi in colonna, una sola
+  azione (pagare, o "Controlla i dati bancari" se il bonifico non riesce).
+  Testi aggiornati in Termini (punto 5), email, avvisi, pagina pagamenti per
+  i professionisti e Dati fiscali e pagamenti.
+
+**Limite**: per le regole di Stripe i soldi non restano bloccati oltre 90
+giorni dal pagamento (un acconto versato mesi prima del lavoro passa al
+professionista anche senza conferma); scritto nei Termini. Se una regola di
+commissione in admin supera il 5% + costo carta, la differenza resta a
+carico della piattaforma (scritto nei log).
+
+**Verifica**: `job-payments/destination-charges.test.ts` (trattenuta,
+bonifici manuali prima del primo pagamento, conguaglio della carta, bonifico
+una volta sola e mai con i soldi bloccati di altri lavori, bonifico
+rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
+`billing-webhook.test.ts`; i test del vecchio modello restano verdi.
+
+**Seguito (15/10/2026, richieste dell'utente)**:
+- *Scritte al minimo*: "la dichiarazione [...] è troppo lunga ed aggressiva
+  [...] controlla tutte le diciture e rendile al minimo indispensabile",
+  "con una frase semplice con un tasto a fianco con scritto 'scopri di più'".
+  Ogni stato del pagamento ha una frase sola più "Scopri di più" (cliente →
+  `/termini#pagamenti`, nuova ancora di `LegalPage`; professionista →
+  `/per-professionisti/pagamenti`); tolta la frase sulla sospensione
+  dell'account dal saldo non pagato e il messaggio tecnico di Stripe dal
+  bonifico non riuscito; scelta del pagamento, Dati fiscali, email e avvisi
+  accorciati. Termini e pagina pagamenti restano completi: sono il "Scopri
+  di più".
+- *Migliorie approvate* ("effettua le 3 migliorie tranne l'ultima"):
+  avviso al team Finanza per un pagamento ancora bloccato 80 giorni dopo il
+  primo pagamento (`ADMIN_JOB_PAYMENT_LONG_HOLD`, una volta sola,
+  `JobPayment.longHoldAlertedAt`, migrazione
+  `20261015090000_job_payments_long_hold_alert`), perché dopo 90 Stripe paga
+  comunque; riepilogo "Bloccati / Sbloccati / In arrivo in banca / Arrivati
+  in banca" in Dati fiscali e pagamenti (`PayoutSummary`,
+  `GET /professionals/me/online-payments/summary`, compare solo con
+  pagamenti online); bonifico subito al webhook Connect `balance.available`
+  invece che al giro orario (solo i bonifici in attesa, non quelli
+  rifiutati dalla banca, che aspettano i dati bancari corretti). Scartata
+  dall'utente la commissione minima per i lavori piccoli.
+- *Verifica*: test di avviso (una volta sola), nuovo tentativo con
+  `skipFailed`, webhook `balance.available` e totali per stato.
+- *Riquadro pagamenti in Dati fiscali* (richiesta dell'utente: "il riquadro
+  'pagamenti tramite professionisti' appesantisce [...] lasciargli un banner
+  con una scritta semplice del tipo 'attiva i pagamenti online'"): finché i
+  pagamenti non sono attivi è un banner con una frase ("Fatti pagare un
+  acconto online prima ancora di iniziare il lavoro."), "Scopri di più" e un
+  pulsante; dopo l'attivazione mostra "Attivi", i totali dei bonifici e
+  "Apri il conto Stripe" (`OnlinePaymentsCard`, con `children` per quanto
+  serve solo a pagamenti attivi, es. il conto bancario dei bonifici).
+- *Conto bancario cambiato su Stripe*: i webhook Connect
+  `account.external_account.created/updated` rileggono lo stato del conto
+  del professionista e riprovano i bonifici in sospeso (serve anche al
+  ricontrollo dell'IBAN del thread DAC7).
