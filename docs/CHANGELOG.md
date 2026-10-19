@@ -18804,7 +18804,104 @@ impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
 Provato nel browser da telefono e computer: richiesta, codice sbagliato,
 codice giusto, nuova password, accesso con la nuova password.
 
-## 246. Registrazione: caselle mancanti in rosso, categoria principale dorata
+## 246. DAC7: dichiarazione a "lavoro terminato", diretti e online, IBAN, avviso annuale
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7", piano in
+`/mnt/project-files/analisi/verifica-professionisti-dac7-piano.md`): fase 6
+del flusso (dichiarazione sull'importo, diretti separati dagli online per
+trimestre), IBAN solo per chi incassa online (decisione D4), avviso annuale.
+Il cliente non conferma l'importo dei lavori pagati in diretto.
+
+**Decisioni**:
+- "Lavoro terminato" chiede una spunta obbligatoria con il totale scritto
+  dentro: "Dichiaro sotto la mia esclusiva responsabilità che l'importo
+  indicato corrisponde a quanto effettivamente percepito, o da percepire...".
+  Privato: "ricevuta per prestazione occasionale"; partita IVA e azienda:
+  "fattura o altro documento fiscale"; senza dati fiscali il testo originale.
+  Salvate data e versione (`Booking.completionDeclarationAcceptedAt/Version`,
+  `completionDeclaration` in `packages/shared/src/dac7.ts`); il server
+  rifiuta una versione diversa da quella del tipo fiscale.
+- DAC7 (`dac7Entries`): il diretto conta quando il professionista dichiara
+  l'importo (prima solo dopo la conferma del cliente), l'online quando i
+  soldi passano al professionista, l'acconto online con saldo diretto si
+  divide nelle due parti (prima il saldo diretto mancava). Il trimestre si
+  decide da queste date, non più dall'ultima modifica del pagamento. Nuove
+  colonne `Dac7Record.directConsiderationEurCents`/`onlineConsiderationEurCents`;
+  chi non ha più importi torna a zero; l'export annuale ricalcola prima i
+  trimestri (il giro notturno lasciava fuori l'ultimo giorno di ognuno);
+  `missingFiscalData` guarda i dati compilati, non più la verifica manuale.
+  Nel file: commissioni per trimestre (`Fees`) e IBAN (`FinancialIdentifier`),
+  tag da verificare sul tracciato ufficiale come il ramo Entity.
+- IBAN (`ProfessionalPayoutAccount`, tabella a parte): chiesto in Dati
+  fiscali e pagamenti solo a chi ha avviato i pagamenti online, controllo
+  mod-97 e lunghezza del paese, salvato cifrato (AES-256-GCM, chiave
+  `FISCAL_DATA_KEY` su Render, ricade su `JWT_SECRET`), mostrato solo
+  mascherato, confrontato con paese e ultime 4 cifre del conto su Stripe
+  (`readStripeBankAccounts`, ricontrollato all'apertura della pagina). Un
+  esito diverso non blocca i pagamenti: lo segnala.
+- Avviso annuale: "Segna come inviato" sull'anno manda a ogni professionista
+  `DAC7_ANNUAL_NOTICE` (sito ed email, "Account e sicurezza", non si spegne),
+  rimandabile dall'admin dopo una correzione. Pagina
+  `/dashboard/fiscale/dac7` con i trimestri, diretti e online, commissioni,
+  stato dell'invio e IBAN comunicato.
+
+Da far vedere al commercialista: testo della dichiarazione; IBAN intero o
+ultime 4 cifre.
+
+**Verifica**: `dac7/dac7-entries.test.ts` (date e parti DAC7, IBAN,
+confronto con Stripe, testi, cifratura). Prova in locale su database vero:
+dichiarazione mancante o di versione sbagliata rifiutata, lavoro chiuso con
+versione salvata, IBAN sbagliato rifiutato e giusto salvato cifrato, export
+annuale con diretti/online/commissioni/IBAN, avviso partito a "Segna come
+inviato". Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 247. DAC7: testi ridotti al minimo e quattro migliorie
+
+**Richiesta di Luca (15/10/2026)**: la dichiarazione a "lavoro terminato" è
+troppo lunga e aggressiva; basta accettarla premendo "Conferma", con una frase
+semplice e un "Scopri di più" per il testo completo. Anche le altre
+spiegazioni vanno ridotte al minimo (i termini sono già stati accettati). Poi
+fare le quattro migliorie proposte.
+
+**Testi**:
+- "Lavoro terminato": niente più casella da spuntare. Sopra il pulsante una
+  riga ("Confermando dichiari che 120,00 € è l'importo che ricevi per questo
+  lavoro. Scopri di più"); il testo completo (invariato, stessa versione) si
+  apre sotto. Premere "Conferma" vale come accettazione, salvata con data e
+  versione come prima.
+- Nuovo `apps/web/src/components/LearnMore.tsx` ("Scopri di più" che apre il
+  dettaglio sul posto), usato anche da IBAN e Riepilogo DAC7.
+- IBAN, Riepilogo DAC7, email e notifica dell'avviso annuale, testo admin:
+  una riga ciascuno, il resto dietro "Scopri di più" o tolto.
+
+**Migliorie**:
+1. Rimborsi dopo l'accredito: `dac7Entries` conta l'online al netto attuale
+   (ridotto dal rimborso, PR #76 decrementa `netAmountEurCents`), nel
+   trimestre dell'accredito; online rimborsato del tutto = nessun importo
+   online, resta l'eventuale saldo diretto. Ogni notte (2:00)
+   `checkSubmittedYears` confronta gli anni già comunicati con i dati di oggi:
+   se cambiano, l'anno è segnato "Da correggere" (`needsCorrectionAt`,
+   migrazione `20261015100000_dac7_needs_correction`) e la Finanza riceve
+   `ADMIN_DAC7_NEEDS_CORRECTION`. "Correggi" sull'anno ricalcola anche i
+   trimestri; il nuovo "Segna come inviato" rimanda l'avviso a tutti come
+   "dati corretti".
+2. IBAN ricontrollato con Stripe al webhook `account.updated`
+   (`PayoutAccountService.recheckForStripeAccount`); se diventa diverso, il
+   professionista riceve `PAYOUT_IBAN_MISMATCH`.
+3. Admin Finanza: nel dettaglio di un periodo nome del professionista, "dati
+   fiscali mancanti" e "IBAN mancante"; il dettaglio non restituisce più
+   tutti i dati fiscali (`getPeriodForAdmin`).
+4. Promemoria del 1° novembre (`sendYearEndReminders`, `DAC7_DATA_REMINDER`)
+   a chi ha compensi nell'anno ma senza dati fiscali o senza IBAN dei
+   pagamenti online.
+
+**Verifica**: test API (357), tipi di api e web; in locale su database vero:
+rimborso simulato dopo l'invio → anno segnato e Finanza avvisata una volta,
+correzione → versione 2 e segno tolto, dettaglio admin con nome, promemoria a
+un professionista senza dati fiscali.
+
+## 248. Registrazione: caselle mancanti in rosso, categoria principale dorata
 
 **Richiesta esplicita dell'utente** (15/10/2026): "se clicca su registrati
 senza aver spuntato le due caselle illuminagliele di rosso in modo che

@@ -9,7 +9,7 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
  * la principale, e con più di una si può cambiare quale. Raggiunto il
  * massimo, le altre non si possono toccare finché non se ne toglie una.
  * La principale ha un bordo dorato animato e una stellina (docs/CHANGELOG.md
- * §246, richiesta dell'utente): togliendola, la successiva prende il suo posto.
+ * §248, richiesta dell'utente): togliendola, la successiva prende il suo posto.
  */
 export function CategoryMultiPicker({
   value,

@@ -1,8 +1,29 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, type OnModuleInit } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import type { PlatformDac7SettingsInput } from "@professionisti/shared";
+import { dac7AnnualDeadline, dac7Entries, maskIban, type Dac7YearSummary, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { NotificationsService } from "../notifications/notifications.service";
+import { decryptFiscal } from "../common/fiscal-crypto";
+
+type Dac7Aggregate = {
+  considerationEurCents: number;
+  directConsiderationEurCents: number;
+  onlineConsiderationEurCents: number;
+  numberOfTransactions: number;
+  feesWithheldEurCents: number;
+};
+
+type QuarterValues = Partial<Record<1 | 2 | 3 | 4, number>>;
+type QuarterBreakdown = { consideration: QuarterValues; activities: QuarterValues; fees: QuarterValues; direct: QuarterValues; online: QuarterValues };
+
+function quarterAmounts(values: QuarterValues | undefined): Dac7XmlQuarterAmounts {
+  return { q1: values?.[1] ?? null, q2: values?.[2] ?? null, q3: values?.[3] ?? null, q4: values?.[4] ?? null };
+}
+
+function emptyAggregate(): Dac7Aggregate {
+  return { considerationEurCents: 0, directConsiderationEurCents: 0, onlineConsiderationEurCents: 0, numberOfTransactions: 0, feesWithheldEurCents: 0 };
+}
 import { buildDac7Xml, type Dac7XmlPayload, type Dac7XmlQuarterAmounts, type Dac7XmlSeller } from "./dac7-xml.util";
 
 /**
@@ -43,7 +64,10 @@ import { buildDac7Xml, type Dac7XmlPayload, type Dac7XmlQuarterAmounts, type Dac
 export class Dac7Service implements OnModuleInit {
   private readonly logger = new Logger(Dac7Service.name);
 
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async onModuleInit() {
     const existing = await this.prisma.dac7Rule.findFirst();
@@ -99,35 +123,68 @@ export class Dac7Service implements OnModuleInit {
    * Ricalcola da zero le righe Dac7Record di un periodo (trimestre o anno)
    * — mai un incremento in place: ogni run riflette lo stato reale corrente
    * dei JobPayment, evitando derive da eventuali ricalcoli parziali persi.
+   * Diretti e online separati (docs/CHANGELOG.md §246); le regole su cosa
+   * conta e in quale giorno stanno in `dac7Entries` (packages/shared).
    */
   private async aggregate(range: { start: Date; end: Date }, includeDirectPayments: boolean) {
-    const methods: ("MANOVIA" | "DIRECT")[] = includeDirectPayments ? ["MANOVIA", "DIRECT"] : ["MANOVIA"];
+    const inRange = { gte: range.start, lt: range.end };
     const jobPayments = await this.prisma.jobPayment.findMany({
-      where: { status: "CONFIRMED", paymentMethod: { in: methods }, updatedAt: { gte: range.start, lt: range.end } },
-      include: { booking: { select: { professionalProfileId: true } } },
+      where: {
+        OR: [
+          { paymentMethod: "DIRECT", status: { in: ["CONFIRMED", "AWAITING_CONFIRMATION"] } },
+          // REFUNDED: l'eventuale saldo pagato direttamente resta (dac7Entries).
+          { paymentMethod: "MANOVIA", status: { in: ["CONFIRMED", "REFUNDED"] } },
+        ],
+        AND: [
+          {
+            OR: [
+              { directReportedAt: inRange },
+              { releasedAt: inRange },
+              { booking: { professionalCompletedAt: inRange } },
+              { directReportedAt: null, releasedAt: null, updatedAt: inRange },
+            ],
+          },
+        ],
+      },
+      include: { booking: { select: { professionalProfileId: true, finalAmountEurCents: true, professionalCompletedAt: true } } },
     });
 
-    const byProfessional = new Map<string, { considerationEurCents: number; numberOfTransactions: number; feesWithheldEurCents: number }>();
+    const byProfessional = new Map<string, Dac7Aggregate>();
     for (const jp of jobPayments) {
+      const entries = dac7Entries(jp, includeDirectPayments).filter((e) => e.date >= range.start && e.date < range.end);
+      if (entries.length === 0) continue;
       const professionalProfileId = jp.booking.professionalProfileId;
-      const entry = byProfessional.get(professionalProfileId) ?? { considerationEurCents: 0, numberOfTransactions: 0, feesWithheldEurCents: 0 };
-      entry.considerationEurCents += jp.netAmountEurCents;
-      entry.numberOfTransactions += 1;
-      entry.feesWithheldEurCents += jp.platformFeeEurCents;
-      byProfessional.set(professionalProfileId, entry);
+      const agg = byProfessional.get(professionalProfileId) ?? emptyAggregate();
+      for (const entry of entries) {
+        agg.directConsiderationEurCents += entry.directEurCents;
+        agg.onlineConsiderationEurCents += entry.onlineEurCents;
+        agg.feesWithheldEurCents += entry.feesEurCents;
+      }
+      agg.considerationEurCents = agg.directConsiderationEurCents + agg.onlineConsiderationEurCents;
+      agg.numberOfTransactions += 1;
+      byProfessional.set(professionalProfileId, agg);
     }
     return byProfessional;
   }
 
-  private async upsertPeriodRecords(periodId: string, byProfessional: Map<string, { considerationEurCents: number; numberOfTransactions: number; feesWithheldEurCents: number }>) {
+  private async upsertPeriodRecords(periodId: string, byProfessional: Map<string, Dac7Aggregate>) {
     for (const [professionalProfileId, agg] of byProfessional) {
-      const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
+      const fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { fiscalDataCompleteAt: true } });
+      // Dati DAC7 compilati (`fiscalDataCompleteAt`, docs/CHANGELOG.md §241),
+      // non più la verifica manuale dell'admin che Didit sostituisce.
+      const missingFiscalData = !fiscalProfile?.fiscalDataCompleteAt;
       await this.prisma.dac7Record.upsert({
         where: { reportingPeriodId_professionalProfileId: { reportingPeriodId: periodId, professionalProfileId } },
-        update: { ...agg, missingFiscalData: fiscalProfile?.verificationStatus !== "VERIFIED" },
-        create: { reportingPeriodId: periodId, professionalProfileId, ...agg, missingFiscalData: fiscalProfile?.verificationStatus !== "VERIFIED" },
+        update: { ...agg, missingFiscalData },
+        create: { reportingPeriodId: periodId, professionalProfileId, ...agg, missingFiscalData },
       });
     }
+    // Chi non ha più importi nel periodo (rimborso, lavoro riaperto) torna a
+    // zero invece di tenere il vecchio totale.
+    await this.prisma.dac7Record.updateMany({
+      where: { reportingPeriodId: periodId, professionalProfileId: { notIn: [...byProfessional.keys()] } },
+      data: emptyAggregate(),
+    });
   }
 
   async aggregateQuarter(year: number, quarter: number) {
@@ -177,38 +234,57 @@ export class Dac7Service implements OnModuleInit {
   async getPeriod(id: string) {
     const period = await this.prisma.dac7ReportingPeriod.findUnique({
       where: { id },
-      include: { records: { include: { professionalProfile: { include: { fiscalProfile: true } } } } },
+      include: { records: { include: { professionalProfile: { include: { fiscalProfile: true } } }, orderBy: { considerationEurCents: "desc" } } },
     });
     if (!period) throw new NotFoundException("Periodo DAC7 non trovato.");
     return period;
   }
 
   /**
-   * Righe dei 4 trimestri (aggregazione interna) di un anno già calcolate,
-   * per professionista — usata solo per popolare la scomposizione
-   * Q1-Q4 dell'export ANNUALE (lo schema OECD DPI richiede la
-   * "consideration" scomposta per trimestre solare, non solo un totale
-   * annuale — vedi l'esempio XML in `dac7-xml.util.ts`). Sola lettura, non
-   * forza un'aggregazione dei trimestri mancanti: un trimestre mai
-   * aggregato risulta semplicemente assente (null) nell'export.
+   * Righe dei 4 trimestri (aggregazione interna) di un anno, per
+   * professionista — scomposizione Q1-Q4 dell'export ANNUALE (lo schema
+   * OECD DPI chiede importi, numero di attività e commissioni per trimestre
+   * solare) e riepilogo mostrato al professionista. Sola lettura: un
+   * trimestre mai aggregato risulta assente (null).
    */
-  private async getQuarterlyBreakdown(year: number): Promise<Map<string, { consideration: Partial<Record<1 | 2 | 3 | 4, number>>; activities: Partial<Record<1 | 2 | 3 | 4, number>> }>> {
+  private async getQuarterlyBreakdown(year: number): Promise<Map<string, QuarterBreakdown>> {
     const quarterPeriods = await this.prisma.dac7ReportingPeriod.findMany({
       where: { year, quarter: { in: [1, 2, 3, 4] } },
       include: { records: true },
     });
-    const map = new Map<string, { consideration: Partial<Record<1 | 2 | 3 | 4, number>>; activities: Partial<Record<1 | 2 | 3 | 4, number>> }>();
+    const map = new Map<string, QuarterBreakdown>();
     for (const period of quarterPeriods) {
       if (period.quarter === null) continue;
       const q = period.quarter as 1 | 2 | 3 | 4;
       for (const record of period.records) {
-        const entry = map.get(record.professionalProfileId) ?? { consideration: {}, activities: {} };
+        const entry = map.get(record.professionalProfileId) ?? { consideration: {}, activities: {}, fees: {}, direct: {}, online: {} };
         entry.consideration[q] = record.considerationEurCents;
         entry.activities[q] = record.numberOfTransactions;
+        entry.fees[q] = record.feesWithheldEurCents;
+        entry.direct[q] = record.directConsiderationEurCents;
+        entry.online[q] = record.onlineConsiderationEurCents;
         map.set(record.professionalProfileId, entry);
       }
     }
     return map;
+  }
+
+  /**
+   * Prima dell'export annuale si ricalcolano i trimestri dell'anno: il giro
+   * notturno delle 1:00 aggiorna solo il trimestre in corso, quindi
+   * l'ultimo giorno di ogni trimestre restava fuori. Un trimestre già
+   * segnato come inviato non si tocca.
+   */
+  private async refreshQuartersOfYear(year: number, opts: { includeSubmitted?: boolean } = {}) {
+    const sent = opts.includeSubmitted
+      ? []
+      : await this.prisma.dac7ReportingPeriod.findMany({ where: { year, quarter: { in: [1, 2, 3, 4] }, status: "SUBMITTED" }, select: { quarter: true } });
+    const sentQuarters = new Set(sent.map((p) => p.quarter));
+    for (const quarter of [1, 2, 3, 4]) {
+      if (sentQuarters.has(quarter)) continue;
+      if (new Date(Date.UTC(year, (quarter - 1) * 3, 1)) > new Date()) continue;
+      await this.aggregateQuarter(year, quarter);
+    }
   }
 
   private buildAddressFree(fp: { registeredStreet: string | null; registeredHouseNumber: string | null; registeredPostalCode: string | null; registeredCity: string | null }): string | null {
@@ -231,9 +307,16 @@ export class Dac7Service implements OnModuleInit {
     if (period.quarter !== null) {
       await this.aggregateQuarter(period.year, period.quarter);
     } else {
+      await this.refreshQuartersOfYear(period.year);
       await this.aggregateYear(period.year);
     }
     const refreshed = await this.getPeriod(id);
+    // IBAN (letto in chiaro solo qui, per il file) di chi ha incassato online.
+    const payoutAccounts = await this.prisma.professionalPayoutAccount.findMany({
+      where: { fiscalProfile: { professionalProfileId: { in: refreshed.records.map((r) => r.professionalProfileId) } } },
+      include: { fiscalProfile: { select: { professionalProfileId: true } } },
+    });
+    const payoutByProfessional = new Map(payoutAccounts.map((acc) => [acc.fiscalProfile.professionalProfileId, acc]));
 
     const settingsBefore = await this.getPlatformSettings();
     const settings = await this.prisma.platformDac7Settings.update({
@@ -254,17 +337,30 @@ export class Dac7Service implements OnModuleInit {
       const addressFree = fp ? this.buildAddressFree(fp) : null;
       const issuedBy = fp?.fiscalIdIssuingCountry || fp?.taxResidenceCountry || "IT";
 
-      let considerationEurCents: Dac7XmlQuarterAmounts;
-      let numberOfActivities: Dac7XmlQuarterAmounts;
+      let breakdown: QuarterBreakdown;
       if (refreshed.quarter === null) {
-        const breakdown = quarterlyBreakdown?.get(r.professionalProfileId);
-        considerationEurCents = { q1: breakdown?.consideration[1] ?? null, q2: breakdown?.consideration[2] ?? null, q3: breakdown?.consideration[3] ?? null, q4: breakdown?.consideration[4] ?? null };
-        numberOfActivities = { q1: breakdown?.activities[1] ?? null, q2: breakdown?.activities[2] ?? null, q3: breakdown?.activities[3] ?? null, q4: breakdown?.activities[4] ?? null };
+        breakdown = quarterlyBreakdown?.get(r.professionalProfileId) ?? { consideration: {}, activities: {}, fees: {}, direct: {}, online: {} };
       } else {
-        const zeroed: Dac7XmlQuarterAmounts = { q1: null, q2: null, q3: null, q4: null };
-        considerationEurCents = { ...zeroed, [`q${refreshed.quarter}`]: r.considerationEurCents };
-        numberOfActivities = { ...zeroed, [`q${refreshed.quarter}`]: r.numberOfTransactions };
+        const q = refreshed.quarter as 1 | 2 | 3 | 4;
+        breakdown = {
+          consideration: { [q]: r.considerationEurCents },
+          activities: { [q]: r.numberOfTransactions },
+          fees: { [q]: r.feesWithheldEurCents },
+          direct: { [q]: r.directConsiderationEurCents },
+          online: { [q]: r.onlineConsiderationEurCents },
+        };
       }
+      const considerationEurCents = quarterAmounts(breakdown.consideration);
+      const numberOfActivities = quarterAmounts(breakdown.activities);
+      const feesEurCents = quarterAmounts(breakdown.fees);
+
+      // Conto su cui riceve i pagamenti online (DAC7 "identificativo del
+      // conto finanziario", docs/CHANGELOG.md §246). Chi incassa solo in
+      // diretto non ce l'ha: lì il campo resta vuoto.
+      const payout = payoutByProfessional.get(r.professionalProfileId);
+      const iban = payout ? decryptFiscal(payout.ibanEncrypted) : null;
+      const financialIdentifier = payout && iban ? { iban, holderName: payout.holderName } : null;
+      const missingIban = r.onlineConsiderationEurCents > 0 && !financialIdentifier;
 
       // PRIVATE_INDIVIDUAL e SOLE_PROPRIETOR sono entrambe persone fisiche
       // per lo schema OECD DPI (solo BUSINESS ha personalità giuridica
@@ -302,7 +398,7 @@ export class Dac7Service implements OnModuleInit {
             }
           : null;
 
-      xmlSellers.push({ professionalProfileId: r.professionalProfileId, individual, entity, considerationEurCents, numberOfActivities });
+      xmlSellers.push({ professionalProfileId: r.professionalProfileId, individual, entity, financialIdentifier, considerationEurCents, numberOfActivities, feesEurCents });
 
       return {
         professionalProfileId: r.professionalProfileId,
@@ -311,8 +407,15 @@ export class Dac7Service implements OnModuleInit {
         individual,
         entity,
         considerationByQuarterEurCents: considerationEurCents,
+        directConsiderationByQuarterEurCents: quarterAmounts(breakdown.direct),
+        onlineConsiderationByQuarterEurCents: quarterAmounts(breakdown.online),
+        feesByQuarterEurCents: feesEurCents,
         numberOfActivitiesByQuarter: numberOfActivities,
+        financialIdentifier: financialIdentifier ? { iban: financialIdentifier.iban, holderName: financialIdentifier.holderName, stripeCheck: payout?.stripeCheck ?? null } : null,
+        missingIban,
         considerationTotalEurCents: r.considerationEurCents,
+        directConsiderationTotalEurCents: r.directConsiderationEurCents,
+        onlineConsiderationTotalEurCents: r.onlineConsiderationEurCents,
         numberOfTransactionsTotal: r.numberOfTransactions,
         feesWithheldEurCents: r.feesWithheldEurCents,
         missingFiscalData: r.missingFiscalData,
@@ -338,7 +441,7 @@ export class Dac7Service implements OnModuleInit {
       platformSettingsIncomplete,
       messageSpec: { sendingEntityIn, transmittingCountry: settings.transmittingCountry, receivingCountry: settings.receivingCountry, messageType: "DPI401", messageRefId, reportingPeriodEndDate, timestamp },
       reportingPeriod: { year: refreshed.year, quarter: refreshed.quarter, reportVersion: refreshed.reportVersion },
-      annualDeadline: `${refreshed.year + 1}-01-31`,
+      annualDeadline: dac7AnnualDeadline(refreshed.year),
       sellers: jsonSellers,
       xml: buildDac7Xml(xmlPayload),
     };
@@ -353,7 +456,92 @@ export class Dac7Service implements OnModuleInit {
     if (period.status !== "EXPORTED") {
       throw new BadRequestException("Il periodo deve essere prima esportato.");
     }
-    return this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
+    const updated = await this.prisma.dac7ReportingPeriod.update({ where: { id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
+    // Comunicazione annuale inviata: ogni professionista riceve l'avviso
+    // con i suoi dati, come chiede la direttiva (docs/CHANGELOG.md §246).
+    // Dopo una correzione l'avviso riparte per tutti, come "dati corretti".
+    if (updated.quarter === null) await this.notifySellers(id, { resend: updated.reportVersion > 1 });
+    return updated;
+  }
+
+  /**
+   * Avviso annuale ai professionisti (DAC7, art. 8 bis ter, par. 2, lett. c
+   * della direttiva 2011/16/UE): entro il 31 gennaio la piattaforma comunica a
+   * ogni venditore i dati trasmessi su di lui. Una volta per professionista e
+   * anno (`sellerNotifiedAt`); dopo una correzione l'admin può rimandarlo.
+   * Il dettaglio è nella pagina "Riepilogo DAC7", l'email rimanda lì.
+   */
+  async notifySellers(id: string, opts: { resend?: boolean } = {}) {
+    const period = await this.getPeriod(id);
+    if (period.quarter !== null) throw new BadRequestException("L'avviso ai professionisti si manda per l'anno intero, non per un trimestre.");
+    if (period.status !== "SUBMITTED" && period.status !== "CORRECTED") {
+      throw new BadRequestException("Prima segna come inviata la comunicazione dell'anno all'Agenzia delle Entrate.");
+    }
+    let sent = 0;
+    for (const record of period.records) {
+      if (record.considerationEurCents <= 0 && record.numberOfTransactions === 0) continue;
+      if (record.sellerNotifiedAt && !opts.resend) continue;
+      await this.notificationsService.notify(record.professionalProfile.userId, "DAC7_ANNUAL_NOTICE", {
+        year: period.year,
+        totalEurCents: record.considerationEurCents,
+        corrected: Boolean(record.sellerNotifiedAt),
+      });
+      await this.prisma.dac7Record.update({ where: { id: record.id }, data: { sellerNotifiedAt: new Date() } });
+      sent += 1;
+    }
+    this.logger.log(`Avviso DAC7 ${period.year} inviato a ${sent} professionisti.`);
+    return { sent };
+  }
+
+  /**
+   * Riepilogo DAC7 del professionista, anno per anno: trimestri con diretti e
+   * online, commissioni, lavori; se e quando è stato comunicato. Dati di
+   * sola lettura dai Dac7Record (aggiornati ogni notte), mai ricalcolati qui.
+   */
+  async summaryForProfessional(userId: string): Promise<{ years: Dac7YearSummary[]; maskedIban: string | null }> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { id: true, fiscalProfile: { select: { payoutAccount: { select: { ibanCountry: true, ibanLast4: true } } } } },
+    });
+    if (!profile) throw new NotFoundException("Completa prima il tuo profilo professionista.");
+    const records = await this.prisma.dac7Record.findMany({
+      where: { professionalProfileId: profile.id },
+      include: { reportingPeriod: true },
+    });
+    const years = new Map<number, Dac7YearSummary>();
+    const yearOf = (year: number) => {
+      const existing = years.get(year);
+      if (existing) return existing;
+      const created: Dac7YearSummary = { year, quarters: [], totalEurCents: 0, submittedAt: null, notifiedAt: null };
+      years.set(year, created);
+      return created;
+    };
+    for (const record of records) {
+      const period = record.reportingPeriod;
+      const summary = yearOf(period.year);
+      if (period.quarter === null) {
+        summary.submittedAt = period.status === "SUBMITTED" || period.status === "CORRECTED" ? (period.submittedAt?.toISOString() ?? null) : null;
+        summary.notifiedAt = record.sellerNotifiedAt?.toISOString() ?? null;
+      } else {
+        summary.quarters.push({
+          quarter: period.quarter as 1 | 2 | 3 | 4,
+          directEurCents: record.directConsiderationEurCents,
+          onlineEurCents: record.onlineConsiderationEurCents,
+          feesEurCents: record.feesWithheldEurCents,
+          jobs: record.numberOfTransactions,
+        });
+      }
+    }
+    const list = [...years.values()]
+      .map((y) => ({
+        ...y,
+        quarters: y.quarters.sort((a, b) => a.quarter - b.quarter),
+        totalEurCents: y.quarters.reduce((sum, q) => sum + q.directEurCents + q.onlineEurCents, 0),
+      }))
+      .filter((y) => y.quarters.some((q) => q.jobs > 0) || y.totalEurCents > 0)
+      .sort((a, b) => b.year - a.year);
+    const payout = profile.fiscalProfile?.payoutAccount;
+    return { years: list, maskedIban: payout ? maskIban(payout.ibanCountry, payout.ibanLast4) : null };
   }
 
   /** Correzione dopo un invio — mai in place, `reportVersion` incrementa (richiesta esplicita della specifica). */
@@ -365,11 +553,114 @@ export class Dac7Service implements OnModuleInit {
     if (period.quarter !== null) {
       await this.aggregateQuarter(period.year, period.quarter);
     } else {
+      // Anche i trimestri: l'export annuale li usa per la scomposizione.
+      await this.refreshQuartersOfYear(period.year, { includeSubmitted: true });
       await this.aggregateYear(period.year);
     }
     return this.prisma.dac7ReportingPeriod.update({
       where: { id },
-      data: { status: "CORRECTED", reportVersion: { increment: 1 } },
+      data: { status: "CORRECTED", reportVersion: { increment: 1 }, needsCorrectionAt: null },
     });
+  }
+
+  /**
+   * Periodo per l'area admin: nome del professionista e IBAN mancante per
+   * riga (docs/CHANGELOG.md §247), senza i dati fiscali completi.
+   */
+  async getPeriodForAdmin(id: string) {
+    const period = await this.prisma.dac7ReportingPeriod.findUnique({
+      where: { id },
+      include: {
+        records: {
+          include: { professionalProfile: { select: { businessName: true, fiscalProfile: { select: { payoutAccount: { select: { id: true } } } } } } },
+          orderBy: { considerationEurCents: "desc" },
+        },
+      },
+    });
+    if (!period) throw new NotFoundException("Periodo DAC7 non trovato.");
+    return {
+      ...period,
+      records: period.records.map(({ professionalProfile, ...record }) => ({
+        ...record,
+        businessName: professionalProfile.businessName,
+        missingIban: record.onlineConsiderationEurCents > 0 && !professionalProfile.fiscalProfile?.payoutAccount,
+      })),
+    };
+  }
+
+  /**
+   * Ogni notte: un anno già comunicato i cui importi oggi risultano diversi
+   * (rimborso dopo l'accredito, lavoro riaperto) va corretto. Si segna e si
+   * avvisa la Finanza una volta; la correzione resta un'azione dell'admin
+   * (docs/CHANGELOG.md §247).
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async checkSubmittedYears(): Promise<number[]> {
+    const rule = await this.getRule();
+    const periods = await this.prisma.dac7ReportingPeriod.findMany({
+      where: { quarter: null, status: { in: ["SUBMITTED", "CORRECTED"] }, needsCorrectionAt: null },
+      include: { records: true },
+    });
+    const flagged: number[] = [];
+    for (const period of periods) {
+      const current = await this.aggregate(this.yearRange(period.year), rule.includeDirectPayments);
+      const stored = new Map(period.records.map((r) => [r.professionalProfileId, r]));
+      const keys = new Set([...current.keys(), ...stored.keys()]);
+      const changed = [...keys].some((key) => {
+        const a = current.get(key) ?? emptyAggregate();
+        const b = stored.get(key) ?? emptyAggregate();
+        return (
+          a.directConsiderationEurCents !== b.directConsiderationEurCents ||
+          a.onlineConsiderationEurCents !== b.onlineConsiderationEurCents ||
+          a.feesWithheldEurCents !== b.feesWithheldEurCents ||
+          a.numberOfTransactions !== b.numberOfTransactions
+        );
+      });
+      if (!changed) continue;
+      await this.prisma.dac7ReportingPeriod.update({ where: { id: period.id }, data: { needsCorrectionAt: new Date() } });
+      await this.notifyFinanceAdmins("ADMIN_DAC7_NEEDS_CORRECTION", { year: period.year });
+      flagged.push(period.year);
+    }
+    if (flagged.length > 0) this.logger.warn(`DAC7 da correggere: ${flagged.join(", ")}.`);
+    return flagged;
+  }
+
+  /**
+   * Promemoria del 1° novembre (docs/CHANGELOG.md §247): a chi ha compensi
+   * nell'anno ma non ha ancora i dati fiscali o l'IBAN dei pagamenti online,
+   * così li sistema prima della comunicazione di gennaio.
+   */
+  @Cron("0 9 1 11 *")
+  async sendYearEndReminders(now: Date = new Date()): Promise<number> {
+    const year = now.getUTCFullYear();
+    const period = await this.aggregateYear(year);
+    const records = await this.prisma.dac7Record.findMany({
+      where: { reportingPeriodId: period.id, considerationEurCents: { gt: 0 } },
+      include: { professionalProfile: { select: { userId: true, fiscalProfile: { select: { payoutAccount: { select: { id: true } } } } } } },
+    });
+    let sent = 0;
+    for (const record of records) {
+      const missingIban = record.onlineConsiderationEurCents > 0 && !record.professionalProfile.fiscalProfile?.payoutAccount;
+      if (!record.missingFiscalData && !missingIban) continue;
+      await this.notificationsService.notify(record.professionalProfile.userId, "DAC7_DATA_REMINDER", {
+        year,
+        missingFiscalData: record.missingFiscalData,
+        missingIban,
+      });
+      sent += 1;
+    }
+    this.logger.log(`Promemoria DAC7 ${year} inviato a ${sent} professionisti.`);
+    return sent;
+  }
+
+  /** Avviso agli admin Finanza (o senza ruoli specifici / SUPER), come per i pagamenti. */
+  private async notifyFinanceAdmins(type: "ADMIN_DAC7_NEEDS_CORRECTION", payload: Record<string, unknown>): Promise<void> {
+    const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
+    for (const admin of admins) {
+      const roles = admin.adminRoles ?? [];
+      if (roles.length === 0 || roles.includes("SUPER") || roles.includes("FINANCE")) {
+        await this.notificationsService.notify(admin.id, type, payload as never);
+      }
+    }
   }
 }

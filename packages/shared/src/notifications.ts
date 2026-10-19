@@ -86,6 +86,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
+      "ADMIN_DAC7_NEEDS_CORRECTION",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",
@@ -129,6 +131,11 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "STRIPE_ACCOUNT_ACTIVE",
       // Account Stripe sospeso: niente acconto online né badge finché non si sistema (§242).
       "STRIPE_ACCOUNT_RESTRICTED",
+      // Avviso annuale DAC7 con i dati comunicati al fisco: obbligo di legge (docs/CHANGELOG.md §246).
+      "DAC7_ANNUAL_NOTICE",
+      // Promemoria di novembre sui dati DAC7 mancanti e IBAN diverso da Stripe (§247).
+      "DAC7_DATA_REMINDER",
+      "PAYOUT_IBAN_MISMATCH",
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
       "SUBSCRIPTION_TRIAL_ENDING",

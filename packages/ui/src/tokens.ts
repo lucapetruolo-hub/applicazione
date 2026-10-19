@@ -35,7 +35,7 @@ export const brand = {
   urgenzaVelo: "#FBEAE7",
   ottone: "#D9A441",
   // Testo e icone sull'ottone chiaro (categoria principale in registrazione,
-  // docs/CHANGELOG.md §246): l'ottone pieno sul chiaro non si legge.
+  // docs/CHANGELOG.md §248): l'ottone pieno sul chiaro non si legge.
   ottoneScuro: "#8A5A00",
   // Tinta chiara di sfondo per il badge "Sponsorizzato" (boost a pagamento in
   // ricerca) — stesso principio di cianografiaVelo/urgenzaVelo: colore

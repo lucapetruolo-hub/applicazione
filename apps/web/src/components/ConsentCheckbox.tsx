@@ -6,7 +6,7 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 /**
  * Casella delle dichiarazioni obbligatorie (informative, maggiore età): registrazione e link d'invito.
  * `invalid`: si è provato a proseguire senza spuntarla, la riga si colora di
- * rosso (docs/CHANGELOG.md §246). `id` serve per scorrere fino a lei.
+ * rosso (docs/CHANGELOG.md §248). `id` serve per scorrere fino a lei.
  */
 export function ConsentCheckbox({
   checked,

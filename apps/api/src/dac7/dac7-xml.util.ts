@@ -78,8 +78,12 @@ export type Dac7XmlSeller = {
   professionalProfileId: string;
   individual: Dac7XmlIndividual | null;
   entity: Dac7XmlEntity | null;
+  /** IBAN e titolare del conto su cui riceve i pagamenti online, se lo ha indicato (docs/CHANGELOG.md §246). */
+  financialIdentifier?: { iban: string; holderName: string } | null;
   considerationEurCents: Dac7XmlQuarterAmounts;
   numberOfActivities: Dac7XmlQuarterAmounts;
+  /** Commissioni trattenute dalla piattaforma per trimestre. */
+  feesEurCents?: Dac7XmlQuarterAmounts;
 };
 
 export type Dac7XmlPayload = {
@@ -134,10 +138,18 @@ function sellerXml(seller: Dac7XmlSeller): string {
       ${extraStates}
     </Entity>`;
   }
+  // Nomi dei tag dello schema OECD DPI per il conto finanziario e le
+  // commissioni: non presenti nell'esempio fornito, da verificare sul
+  // tracciato ufficiale come il ramo Entity (vedi in cima al file).
+  const fin = seller.financialIdentifier;
+  const financialXml = fin
+    ? `<FinancialIdentifier>${tag("Identifier", fin.iban, { AccountNumberType: "IBAN" })}${tag("AccountHolderName", fin.holderName)}</FinancialIdentifier>`
+    : "";
   return `<ReportableSeller>
-    <Seller>${sellerBody}</Seller>
+    <Seller>${sellerBody}${financialXml}</Seller>
     ${quarterBlock("Consideration", seller.considerationEurCents, true)}
     ${quarterBlock("NumberOfActivities", seller.numberOfActivities, false)}
+    ${seller.feesEurCents ? quarterBlock("Fees", seller.feesEurCents, true) : ""}
   </ReportableSeller>`;
 }
 

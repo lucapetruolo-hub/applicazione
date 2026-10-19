@@ -489,7 +489,7 @@ function RegistratiForm() {
   const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
   const [declaredAdult, setDeclaredAdult] = useState(false);
   const canSubmitConsent = acceptedLegalTerms && declaredAdult;
-  // "Registrati" resta sempre premibile (docs/CHANGELOG.md §246): senza le
+  // "Registrati" resta sempre premibile (docs/CHANGELOG.md §248): senza le
   // due spunte le caselle mancanti diventano rosse. Il numero cambia a ogni
   // tentativo per far ripartire la scossa.
   const [consentAttempt, setConsentAttempt] = useState(0);
