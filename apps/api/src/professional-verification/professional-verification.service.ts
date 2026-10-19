@@ -157,24 +157,6 @@ export class ProfessionalVerificationService {
     return { professionalProfileId: profile.id, verified: false, verifiedAt: null };
   }
 
-  /**
-   * "Richiedi la verifica" da /dashboard/profilo (docs/CHANGELOG.md §201):
-   * il profilo sale in cima a "Da verificare" e il menu admin lo conta.
-   */
-  async requestVerification(userId: string) {
-    const profile = await this.prisma.professionalProfile.findUnique({
-      where: { userId },
-      select: { id: true, verified: true, verificationRequestedAt: true, deletedAt: true, invitePendingAt: true },
-    });
-    if (!profile || profile.deletedAt) throw new NotFoundException("Completa prima il tuo profilo professionista.");
-    if (profile.invitePendingAt) throw new BadRequestException("Conferma prima il tuo profilo.");
-    if (profile.verified) throw new BadRequestException("Il tuo profilo è già verificato.");
-    if (profile.verificationRequestedAt) return { verificationRequestedAt: profile.verificationRequestedAt.toISOString() };
-    const now = new Date();
-    await this.prisma.professionalProfile.update({ where: { id: profile.id }, data: { verificationRequestedAt: now } });
-    return { verificationRequestedAt: now.toISOString() };
-  }
-
   /** Richieste di verifica in attesa, per il numero nel menu admin. */
   countPendingRequests(): Promise<number> {
     return this.prisma.professionalProfile.count({

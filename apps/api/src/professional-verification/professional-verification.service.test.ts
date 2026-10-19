@@ -102,24 +102,3 @@ describe("ProfessionalVerificationService.revokeAfterOwnChange", () => {
     expect(notificationsService.notify).not.toHaveBeenCalled();
   });
 });
-
-describe("ProfessionalVerificationService.requestVerification", () => {
-  it("segna la richiesta una volta sola", async () => {
-    const { service, prisma } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verificationRequestedAt: null });
-    await service.requestVerification("u-1");
-    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: { verificationRequestedAt: expect.any(Date) } });
-
-    prisma.professionalProfile.update.mockClear();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verificationRequestedAt: new Date("2026-10-08") });
-    const again = await service.requestVerification("u-1");
-    expect(again.verificationRequestedAt).toBe("2026-10-08T00:00:00.000Z");
-    expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
-  });
-
-  it("rifiuta un profilo già verificato", async () => {
-    const { service, prisma } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true, verificationRequestedAt: null });
-    await expect(service.requestVerification("u-1")).rejects.toBeInstanceOf(BadRequestException);
-  });
-});

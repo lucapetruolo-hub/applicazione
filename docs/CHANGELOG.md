@@ -19295,7 +19295,7 @@ blocca nulla, come prima.
 
 **Richiesta esplicita dell'utente** (19/10/2026): "unisci", ma la PR era in conflitto con la base dopo le ultime modifiche a profilo, DAC7 e IBAN.
 
-**Decisione presa**: la base ha vinto sul profilo (`applyProfile`, badge "Verificato" accanto allo stato, menu "Profilo pubblico"). Il bottone "Richiedi il badge Verificato" è stato tolto: con Didit la verifica la fa il professionista da solo, quindi al suo posto c'è un link a "Verifica la tua identità". L'endpoint `/professionals/me/verification-request` resta sul server e da decidere se toglierlo.
+**Decisione presa**: la base ha vinto sul profilo (`applyProfile`, badge "Verificato" accanto allo stato, menu "Profilo pubblico"). Il bottone "Richiedi il badge Verificato" è stato tolto: con Didit la verifica la fa il professionista da solo, quindi al suo posto c'è un link a "Verifica la tua identità". Tolti anche l'endpoint `/professionals/me/verification-request`, il suo servizio e il client; la colonna `verificationRequestedAt` resta nel database per le richieste già fatte (la lista admin la mostra ancora).
 
 **Motivo**: la richiesta manuale contraddice "nessun admin sui casi dubbi" (§255).
 

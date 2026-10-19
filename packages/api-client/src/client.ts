@@ -1546,12 +1546,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §201). */
-    requestProfessionalVerification: (token: string) =>
-      request<{ verificationRequestedAt: string }>("/professionals/me/verification-request", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }),
     /** Richieste generali aperte per questa categoria in questa città (docs/CHANGELOG.md §211). */
     generalRequestAvailability: (categorySlug?: string, city?: string) => {
       const params = new URLSearchParams();
