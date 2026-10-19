@@ -18932,3 +18932,10 @@ più speciale, ad esempio con un bordo che si illumina dorato animato".
 **Verifica:** typecheck ed eslint puliti; build di produzione e foto con
 Playwright a 390px e 1280px (bordo che gira, caselle rosse con una o due
 mancanti, oro che passa alla successiva togliendo la prima).
+
+**Migliorie approvate dall'utente** (19/10/2026, "effettua le 2 migliorie"):
+lo stesso comportamento delle caselle rosse anche in `/completa-profilo`
+(link d'invito dell'operatore, pulsante "Scegli la password ed entra") e nel
+popup del consenso dopo l'accesso con Google (`GoogleConsentModal`, che ora
+usa il `ConsentCheckbox` condiviso invece di una sua copia). Provati con
+Playwright a 390px e 1280px.
