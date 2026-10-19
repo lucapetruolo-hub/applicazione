@@ -19156,4 +19156,8 @@ confermata l'email. Un errore di rete durante il controllo viene ignorato.
 **Motivo:** il link nella mail è il percorso più comune su telefono, e
 senza questo la pagina sul computer resta ferma su un codice già inutile.
 
-**Verifica:** `apps/web` typecheck pulito.
+Quando si torna sulla scheda o sulla finestra il controllo parte subito,
+senza aspettare il giro successivo.
+
+**Verifica:** `apps/web` typecheck pulito. Il popup "Email verificata" sul
+telefono non è incluso: resta da confermare con Luca.

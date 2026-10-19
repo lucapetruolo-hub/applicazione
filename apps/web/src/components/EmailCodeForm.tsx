@@ -113,22 +113,32 @@ export function EmailCodeForm({
   useEffect(() => {
     if (submitCode || done) return;
     let stopped = false;
-    const timer = window.setInterval(async () => {
+    const stop = () => {
+      stopped = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    async function check() {
       try {
         const user = await apiClient.me(token);
         if (stopped || !user?.emailVerified) return;
-        stopped = true;
-        window.clearInterval(timer);
+        stop();
         setState("done");
         window.setTimeout(() => onVerified(user.email ?? email), 700);
       } catch {
         // Un controllo saltato per la rete non conta: si riprova tra poco.
       }
-    }, EMAIL_VERIFIED_POLL_MS);
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-    };
+    }
+    // Tornando sulla scheda (o sulla finestra) si controlla subito, senza
+    // aspettare il prossimo giro.
+    function onVisible() {
+      if (document.visibilityState === "visible") void check();
+    }
+    const timer = window.setInterval(check, EMAIL_VERIFIED_POLL_MS);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", onVisible);
+    return stop;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, submitCode, done]);
 
