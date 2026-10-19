@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
-import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
+import { BRAND, checkFiscalId, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
+import { VerificationSteps } from "@/components/verification/VerificationSteps";
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
@@ -120,9 +121,20 @@ function DashboardFiscaleContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  // Verifica in 3 passi (docs/CHANGELOG.md §253): si ricarica a ogni salvataggio.
+  const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
+  const [verificationKey, setVerificationKey] = useState(0);
   // IBAN per la DAC7, primo passo di "Attiva i pagamenti online" (docs/CHANGELOG.md §250).
   const [payoutIban, setPayoutIban] = useState<PayoutIbanView | null | undefined>(undefined);
   const [ibanStepOpen, setIbanStepOpen] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .myVerificationStatus(token)
+      .then(setVerification)
+      .catch(() => setVerification(null));
+  }, [token, verificationKey]);
 
   useEffect(() => {
     if (!token) return;
@@ -285,6 +297,7 @@ function DashboardFiscaleContent() {
       const updated = await apiClient.updateMyFiscalProfile(token, parsed.data);
       setProfile(updated);
       setSaveSuccess(true);
+      setVerificationKey((k) => k + 1);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Impossibile salvare i dati fiscali.");
     } finally {
@@ -337,12 +350,33 @@ function DashboardFiscaleContent() {
     );
   }
 
-  const verification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
-  const missingForVisibility = fiscalDataMissing(profile);
-  // Validazione in tempo reale (mai bloccante: un formato non riconosciuto
-  // resta comunque salvabile, solo segnalato — CLAUDE.md, fiscalValidation.ts).
+  const adminVerification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
+  // Controlli in tempo reale, gli stessi che rifà il server al salvataggio
+  // (docs/CHANGELOG.md §253): forma, e coerenza del codice fiscale con nome,
+  // cognome e data di nascita.
   const cfCheck = checkFiscalId(fields.fiscalCodiceFiscale ?? "", fields.fiscalIdIssuingCountry, "codiceFiscale");
   const pivaCheck = checkFiscalId(fields.vatNumber ?? "", fields.fiscalIdIssuingCountry, "vatNumber");
+  const liveErrors = fiscalFieldErrors({
+    entityType: entityType || null,
+    fiscalIdIssuingCountry: fields.fiscalIdIssuingCountry,
+    fiscalFirstName: fields.fiscalFirstName,
+    fiscalLastName: fields.fiscalLastName,
+    fiscalCodiceFiscale: fields.fiscalCodiceFiscale,
+    dateOfBirth: /^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "") ? fields.dateOfBirth : null,
+    vatNumber: fields.vatNumber,
+    representative: repFields,
+  });
+  const liveError = (field: string) => liveErrors.find((e) => e.field === field)?.message;
+  // Esito della verifica per il valore salvato (non per uno appena cambiato).
+  const officialCheck = (kind: TaxIdKind, value: string | undefined) => {
+    const check = profile?.taxIdChecks?.find((c) => c.kind === kind);
+    if (!check || check.value !== (value ?? "").trim().toUpperCase().replace(/[\s-]/g, "")) return { error: undefined, hint: undefined };
+    if (check.status === "INVALID") return { error: taxIdCheckMessage(check), hint: undefined };
+    return { error: undefined, hint: taxIdCheckMessage(check) };
+  };
+  const cfOfficial = officialCheck("CODICE_FISCALE", fields.fiscalCodiceFiscale);
+  const vatOfficial = officialCheck("PARTITA_IVA", fields.vatNumber);
+  const hasLiveErrors = liveErrors.length > 0;
 
   return (
     <Section title="Dati fiscali e pagamenti" maxWidth={760}>
@@ -352,30 +386,22 @@ function DashboardFiscaleContent() {
           anche per chi si fa pagare solo direttamente. Il tuo profilo compare nelle ricerche quando li hai compilati. Ai clienti mostriamo solo se
           sei un privato o un professionista con partita IVA.
         </Text>
-        {/* Cosa manca per essere pubblici (docs/CHANGELOG.md §241). */}
-        {missingForVisibility.length > 0 ? (
-          <Text fontSize={13} color={brand.urgenza}>
-            Per rendere visibile il profilo manca: {missingForVisibility.join(", ")}.
-          </Text>
-        ) : profile ? (
-          <Text fontSize={13} color={brand.verificato}>
-            Dati fiscali completi: il tuo profilo può comparire nelle ricerche.
-          </Text>
-        ) : null}
+        {/* Cosa manca per essere pubblici e per inviare preventivi (docs/CHANGELOG.md §241, §253). */}
+        {verification ? <VerificationSteps status={verification} here="fiscale" /> : null}
 
-        {profile && (
-          <XStack alignItems="center" gap="$2">
-            <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
-              Stato verifica:
-            </Text>
-            <Badge variant={verification.variant}>{verification.label}</Badge>
-          </XStack>
-        )}
-        {profile?.verificationNote && (
-          <Text fontSize={13} color={brand.urgenza}>
-            {profile.verificationNote}
-          </Text>
-        )}
+        {/* Esito della revisione manuale dell'admin (area Finanza), solo se c'è qualcosa da fare. */}
+        {profile && (profile.verificationStatus === "REJECTED" || profile.verificationStatus === "REQUIRES_UPDATE") ? (
+          <YStack gap="$1">
+            <XStack alignItems="center" gap="$2">
+              <Badge variant={adminVerification.variant}>{adminVerification.label}</Badge>
+            </XStack>
+            {profile.verificationNote ? (
+              <Text fontSize={13} color={brand.urgenza}>
+                {profile.verificationNote}
+              </Text>
+            ) : null}
+          </YStack>
+        ) : null}
 
         <Surface padding="$4">
           <YStack gap="$4">
@@ -416,7 +442,9 @@ function DashboardFiscaleContent() {
                 accessibilityLabel="Codice fiscale"
                 value={fields.fiscalCodiceFiscale ?? ""}
                 onChangeText={(v) => setField("fiscalCodiceFiscale", v)}
-                error={cfCheck.message ?? undefined}
+                autoCapitalize="characters"
+                error={cfCheck.message ?? liveError("fiscalCodiceFiscale") ?? cfOfficial.error}
+                hint={cfOfficial.hint}
               />
               <Field
                 label="Data di nascita"
@@ -424,7 +452,8 @@ function DashboardFiscaleContent() {
                 value={fields.dateOfBirth ?? ""}
                 onChangeText={(v) => setField("dateOfBirth", v)}
                 placeholder="AAAA-MM-GG"
-                hint="Richiesta insieme al luogo di nascita solo se non fornisci un codice fiscale valido."
+                error={liveError("dateOfBirth")}
+                hint="Come sul documento: la confrontiamo con il codice fiscale."
               />
               <Field label="Luogo di nascita (Comune e Provincia)" accessibilityLabel="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
               <Field label="Paese di nascita (ISO, es. IT)" accessibilityLabel="Paese di nascita" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
@@ -452,7 +481,9 @@ function DashboardFiscaleContent() {
                 accessibilityLabel="Codice fiscale"
                 value={fields.fiscalCodiceFiscale ?? ""}
                 onChangeText={(v) => setField("fiscalCodiceFiscale", v)}
-                error={cfCheck.message ?? undefined}
+                autoCapitalize="characters"
+                error={cfCheck.message ?? liveError("fiscalCodiceFiscale") ?? cfOfficial.error}
+                hint={cfOfficial.hint}
               />
               <Field
                 label="Data di nascita"
@@ -460,7 +491,8 @@ function DashboardFiscaleContent() {
                 value={fields.dateOfBirth ?? ""}
                 onChangeText={(v) => setField("dateOfBirth", v)}
                 placeholder="AAAA-MM-GG"
-                hint="Richiesta insieme al luogo di nascita solo se non fornisci un codice fiscale valido."
+                error={liveError("dateOfBirth")}
+                hint="Come sul documento: la confrontiamo con il codice fiscale."
               />
               <Field label="Luogo di nascita (Comune e Provincia)" accessibilityLabel="Luogo di nascita" value={fields.placeOfBirth ?? ""} onChangeText={(v) => setField("placeOfBirth", v)} />
               <Field label="Paese di nascita (ISO, es. IT)" accessibilityLabel="Paese di nascita" value={fields.countryOfBirth ?? ""} onChangeText={(v) => setField("countryOfBirth", v)} />
@@ -473,7 +505,9 @@ function DashboardFiscaleContent() {
                 accessibilityLabel="Partita IVA"
                 value={fields.vatNumber ?? ""}
                 onChangeText={(v) => setField("vatNumber", v)}
-                error={pivaCheck.message ?? undefined}
+                inputMode="numeric"
+                error={pivaCheck.message ?? vatOfficial.error}
+                hint={vatOfficial.hint}
               />
               <Field
                 label="Nome dell'attività (opzionale)"
@@ -505,7 +539,9 @@ function DashboardFiscaleContent() {
                 accessibilityLabel="Partita IVA"
                 value={fields.vatNumber ?? ""}
                 onChangeText={(v) => setField("vatNumber", v)}
-                error={pivaCheck.message ?? undefined}
+                inputMode="numeric"
+                error={pivaCheck.message ?? vatOfficial.error}
+                hint={vatOfficial.hint}
               />
               <Field
                 label="Numero di iscrizione al Registro delle Imprese (REA / CCIAA)"
@@ -534,7 +570,15 @@ function DashboardFiscaleContent() {
               </Text>
               <Field label="Nome" accessibilityLabel="Nome del legale rappresentante" value={repFields.firstName} onChangeText={(v) => setRepFields((p) => ({ ...p, firstName: v }))} />
               <Field label="Cognome" accessibilityLabel="Cognome del legale rappresentante" value={repFields.lastName} onChangeText={(v) => setRepFields((p) => ({ ...p, lastName: v }))} />
-              <Field label="Codice fiscale" accessibilityLabel="Codice fiscale del legale rappresentante" value={repFields.codiceFiscale} onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v }))} />
+              <Field
+                label="Codice fiscale"
+                accessibilityLabel="Codice fiscale del legale rappresentante"
+                value={repFields.codiceFiscale}
+                onChangeText={(v) => setRepFields((p) => ({ ...p, codiceFiscale: v }))}
+                autoCapitalize="characters"
+                error={liveError("representative.codiceFiscale")}
+                hint="È lui che farà la verifica con documento e selfie."
+              />
               <Field label="Ruolo" accessibilityLabel="Ruolo del legale rappresentante" value={repFields.role} onChangeText={(v) => setRepFields((p) => ({ ...p, role: v }))} placeholder="es. Amministratore unico" />
             </YStack>
           </Surface>
@@ -600,7 +644,7 @@ function DashboardFiscaleContent() {
         )}
 
         <XStack gap="$3" alignItems="center" flexWrap="wrap">
-          <Button variant="primary" onPress={handleSave} disabled={saving || !entityType || !declarationAccepted}>
+          <Button variant="primary" onPress={handleSave} disabled={saving || !entityType || !declarationAccepted || hasLiveErrors}>
             {saving ? "Salvataggio..." : "Salva dati fiscali"}
           </Button>
           {saveSuccess && (
@@ -608,6 +652,11 @@ function DashboardFiscaleContent() {
               Salvato.
             </Text>
           )}
+          {hasLiveErrors && !saveError ? (
+            <Text fontSize={13} color={brand.urgenza}>
+              Correggi i campi segnati in rosso per salvare.
+            </Text>
+          ) : null}
           {saveError && (
             <Text fontSize={13} color={brand.urgenza}>
               {saveError}

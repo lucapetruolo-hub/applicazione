@@ -42,4 +42,15 @@ export type ProfessionalVerificationRow = {
   verifiedAt: string | null;
   verifiedByName: string | null;
   verificationNote: string | null;
+  /** Ultima verifica di documento e selfie (Didit, docs/CHANGELOG.md §253). */
+  identity: {
+    id: string;
+    status: "STARTED" | "PROCESSING" | "APPROVED" | "NEEDS_REVIEW" | "DECLINED" | "EXPIRED";
+    reason: string | null;
+    provider: string;
+    providerSessionId: string;
+    updatedAt: string;
+  } | null;
+  /** Verifiche di codice fiscale e partita IVA (VIES, Openapi). */
+  taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
 };

@@ -34,15 +34,3 @@ export class AdminProfessionalVerificationController {
     return this.verificationService.unverify(req.user.userId, id, body.note);
   }
 }
-
-/** Il professionista chiede la verifica dal proprio profilo (docs/CHANGELOG.md §201). */
-@UseGuards(JwtAuthGuard)
-@Controller("professionals/me/verification-request")
-export class ProfessionalVerificationRequestController {
-  constructor(private readonly verificationService: ProfessionalVerificationService) {}
-
-  @Post()
-  request(@Req() req: AuthenticatedRequest) {
-    return this.verificationService.requestVerification(req.user.userId);
-  }
-}

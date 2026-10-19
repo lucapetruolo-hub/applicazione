@@ -19140,3 +19140,163 @@ sempre.
   la foto invece di restare in una colonna stretta accanto.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
+
+## 253. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
+
+**Richiesta esplicita dell'utente** (14/10/2026): implementare il flusso in
+7 fasi discusso con un'altra IA (registrazione, codice email, dati fiscali,
+controllo Openapi, verifica biometrica Didit, DAC7, Stripe Connect), diviso
+in più thread; questo copre controllo fiscale e verifica d'identità. Con la
+regola "design curato, esperienza da esperto UX".
+
+**Decisioni** (dell'utente, thread "Verifica professionisti e DAC7"):
+- Codice fiscale controllato gratis sul server e nel form: formato, carattere
+  di controllo e **coerenza con nome, cognome e data di nascita** (anche
+  omocodia e donne con giorno +40); per le aziende anche il CF del legale
+  rappresentante (`fiscalFieldErrors` in `packages/shared`).
+- CF all'Agenzia delle Entrate e partita IVA al Registro Imprese con
+  **Openapi** (`TaxIdCheckService`): esito salvato in `tax_id_checks`. Un
+  esito "non valido" non blocca il salvataggio ma toglie il profilo dalla
+  ricerca e lo segna "Da correggere"; una partita IVA non trovata va a un
+  admin senza nascondere il profilo; Openapi irraggiungibile o senza chiave
+  non blocca mai e si riprova ogni 30 minuti (fino a 8 volte, attesa
+  crescente).
+- **Didit** (documento + selfie) obbligatorio prima del primo preventivo
+  (anche il reinvio dopo un rifiuto); non serve per comparire in ricerca.
+  Sostituisce la verifica manuale: esito approvato con nome e data uguali ai
+  dati fiscali (o il CF letto dal documento) dà il badge "Verificato" da
+  solo; se non coincidono va in `/admin/verifiche` come caso dubbio
+  (Verifica / Rifiuta con motivo). Cambiare i dati della persona nei dati
+  fiscali toglie il badge e chiede di rifarla.
+- Consenso biometrico esplicito con casella (testo versionato,
+  `BIOMETRIC_CONSENT_VERSION`), registrato nel registro azioni; si salva solo
+  l'esito, mai immagini o dati del documento. Webhook firmato (HMAC, finestra
+  di 5 minuti) e l'esito viene sempre riletto dall'API di Didit.
+- Fornitori sostituibili dietro `TaxIdProvider` e `IdentityProvider`; tutto
+  spento senza chiavi su Render (`OPENAPI_TOKEN`, `OPENAPI_SANDBOX`,
+  `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`).
+
+**Interfaccia**: nuova pagina `/dashboard/verifica-identita` (voce di menu
+"Verifica identità") con il riquadro "Verifica in 3 passi" (stesso riquadro
+in cima a Dati fiscali), cosa serve, consenso, stati di attesa ed esito con
+aggiornamento automatico al ritorno da Didit; errori in tempo reale sotto CF,
+data di nascita e partita IVA; nel modulo del preventivo un pannello "Verifica
+ora" al posto del modulo; banner in Home. Privacy: nuova sezione 8
+(`/privacy#verifica-identita`), registro dei trattamenti §9-bis.
+
+**Verifica**: test di `apps/api` (controlli fiscali, coerenza CF, firma del
+webhook, abbinamento documento-dati fiscali, blocco preventivi, filtro di
+visibilità), tipi e lint di `apps/api` e `apps/web` verdi; schermate da
+telefono e computer in `/mnt/project-files/anteprime/verifica-identita/`.
+
+## 254. Partita IVA prima con VIES, testi più leggeri, "Ricontrolla ora"
+
+**Richiesta esplicita dell'utente** (15/10/2026), sulla PR di §253: "aggiungi
+prima il controllo vies, e se lento o non risp o da negativo facciamo
+controllo subito con openapi"; non usare "controllo all'Agenzia delle
+Entrate" nella verifica perché "potrebbe intimorire"; fare le migliorie 2
+(CF del legale rappresentante) e 3 (ricontrollo dall'admin). La verifica
+nell'app mobile si fa quando si inizia l'app.
+
+**Decisione**:
+- Partita IVA: prima VIES (`vies-tax-id.provider.ts`, REST della Commissione
+  europea, gratis, 5 secondi al massimo); se non conferma (non valida, lenta,
+  errore) si chiama subito Openapi. Un "non valida" di VIES da solo non
+  basta: in Italia ci sono solo le partite IVA abilitate agli scambi UE. Nel
+  registro azioni e in `tax_id_checks.provider` resta chi ha dato l'esito.
+  Attivo solo con `OPENAPI_TOKEN` (senza, nessun controllo come prima).
+- Testi: il passo si chiama "Verifica P.IVA", "Verifica codice fiscale" o
+  "Verifica codice fiscale e P.IVA" (`taxIdStepTitle`); messaggi, notifica,
+  email e banner senza nominare enti. La privacy resta precisa (dice VIES,
+  Openapi, Agenzia delle Entrate e Registro Imprese).
+- `/admin/verifiche`: "Ricontrolla ora" (`POST
+  /admin/professional-verifications/:id/tax-recheck`, scope MODERATION)
+  rifà subito tutte le verifiche fiscali del professionista.
+
+**Verifica**: test su VIES che conferma (Openapi non chiamato), VIES
+negativa o giù (Openapi chiamato), CF sempre a Openapi e lettura della
+risposta VIES; risposta reale di VIES
+controllata. Tipi, lint e test di `apps/api` e `apps/web` verdi.
+
+## 255. Nessun caso dubbio all'admin; niente Openapi sul legale rappresentante
+
+**Richiesta esplicita dell'utente** (15/10/2026): "non voglio che l'admin
+controlli i casi dubbi, se non passa con i controlli automatici [...]
+dovrebbe risolvere sempre [il professionista] per far in modo che gli
+accetti"; e per il codice fiscale del legale rappresentante bastano i
+controlli gratuiti, senza Openapi.
+
+**Decisione**:
+- Documento e selfie: se Didit non conferma ("In Review") o il documento non
+  coincide con i dati fiscali, la verifica è "da rifare" (`DECLINED`) con il
+  motivo in parole semplici e cosa fare (correggere i dati fiscali come sul
+  documento, o rifare la foto); avviso sul sito e via email, link "Controlla
+  i dati fiscali" accanto al motivo. Lo stato `NEEDS_REVIEW` non viene più
+  usato (resta nell'enum per non toccare la migrazione).
+- `/admin/verifiche` solo per guardare: niente "Verifica" o "Rifiuta" a mano
+  (tolta la rotta `identity-decline`); restano "Ricontrolla ora" e "Togli
+  verifica". Il numero nel menu admin non conta più i casi dubbi.
+- Partita IVA giusta nella forma ma non trovata nel registro delle imprese
+  (es. libero professionista): "numero corretto", non blocca e non va
+  all'admin.
+- Codice fiscale del legale rappresentante: solo forma e coerenza con nome e
+  cognome (gratis); la persona la conferma il documento. Tolti il tipo
+  `REPRESENTATIVE_CODICE_FISCALE` e la sua migrazione di §254, mai applicata
+  (PR non ancora unita).
+
+**Verifica**: test aggiornati (documento che non coincide → da rifare con
+avviso; "In Review" → da rifare; CF del rappresentante non va a Openapi).
+Tipi, lint e test di tutto il monorepo verdi.
+
+## 256. Verifica in attesa se il servizio non risponde; promemoria a chi non l'ha fatta
+
+**Richiesta esplicita dell'utente** (15/10/2026): "se didit non funziona lo
+mettiamo in standby fino a che non viene elaborato il documento e verrà
+avvisato con una notifica ed email"; in più il promemoria via email a chi
+non ha ancora fatto la verifica dopo qualche giorno.
+
+**Decisione**:
+- Didit irraggiungibile all'avvio: nessun errore. Il tentativo resta "in
+  attesa" (`providerStatus = "Standby"`, id provvisorio `standby-…`, nessun
+  link) con il consenso già registrato. La pagina mostra "Verifica in
+  attesa" con "Riprova adesso". Ogni 10 minuti `followUp()` riprova e, appena
+  Didit risponde, avvisa con notifica ed email `IDENTITY_VERIFICATION_READY`.
+  Riprovare a mano riusa lo stesso tentativo, che non conta come nuovo.
+- Esito che non arriva (Didit lento o webhook perso): lo stesso controllo
+  chiede l'esito delle verifiche finite (`PROCESSING`, per 7 giorni) e di
+  quelle iniziate nelle ultime 24 ore. Esito positivo o da rifare arriva con
+  notifica ed email (`PROFILE_VERIFIED` / `IDENTITY_VERIFICATION_DECLINED`).
+- Promemoria `IDENTITY_VERIFICATION_REMINDER` (ogni giorno alle 10): a chi non
+  è verificato, al massimo due, il primo 3 giorni dopo l'iscrizione e il
+  secondo una settimana dopo; mai a chi ha una verifica in attesa o un esito
+  in arrivo, ai profili demo, sospesi o creati da un operatore e non ancora
+  confermati. Solo con Didit attivo.
+- I due nuovi tipi stanno in "Account e sicurezza" (sito ed email).
+- `/admin/verifiche` mostra "in attesa del servizio" per i tentativi in attesa.
+
+**Verifica**: test nuovi (servizio giù → in attesa senza errore, ripresa
+con avviso, nessun tentativo in più riprovando a mano; regole del
+promemoria). Tipi, lint e test di tutto il monorepo.
+
+## 257. Un token Openapi per servizio
+
+**Richiesta esplicita dell'utente** (19/10/2026, configurazione su Render):
+nella console Openapi i token si creano uno per servizio (uno per il codice
+fiscale, uno per la partita IVA), non uno solo.
+
+**Decisione**: `OPENAPI_TOKEN` diventa due variabili, `OPENAPI_TOKEN_RISK`
+(codice fiscale, Risk API) e `OPENAPI_TOKEN_COMPANY` (partita IVA, Company API).
+Se manca quello di un servizio, il controllo di quel servizio è saltato e non
+blocca nulla, come prima.
+
+**Verifica**: test del provider Openapi e typecheck dell'API verdi.
+
+## 258. Unione con la base aggiornata: profilo e fiscale
+
+**Richiesta esplicita dell'utente** (19/10/2026): "unisci", ma la PR era in conflitto con la base dopo le ultime modifiche a profilo, DAC7 e IBAN.
+
+**Decisione presa**: la base ha vinto sul profilo (`applyProfile`, badge "Verificato" accanto allo stato, menu "Profilo pubblico"). Il bottone "Richiedi il badge Verificato" è stato tolto: con Didit la verifica la fa il professionista da solo, quindi al suo posto c'è un link a "Verifica la tua identità". Tolti anche l'endpoint `/professionals/me/verification-request`, il suo servizio e il client; la colonna `verificationRequestedAt` resta nel database per le richieste già fatte (la lista admin la mostra ancora).
+
+**Motivo**: la richiesta manuale contraddice "nessun admin sui casi dubbi" (§255).
+
+**Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.
