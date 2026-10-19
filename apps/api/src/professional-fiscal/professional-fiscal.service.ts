@@ -15,6 +15,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { TaxIdCheckService } from "../tax-id-check/tax-id-check.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
+import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
 
 const FISCAL_FIELDS = [
@@ -305,6 +306,13 @@ export class ProfessionalFiscalService {
     let fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
+    // Pagamenti online solo dopo dati fiscali e verifica dell'identità
+    // (richiesta dell'utente, docs/CHANGELOG.md §261). Chi li aveva già
+    // iniziati prosegue.
+    if (!stripeAccountId) {
+      if (fiscalDataMissing(fiscalProfile).length > 0) throw new BadRequestException("Completa prima i dati fiscali.");
+      if (profile && identityVerificationNeeded(profile)) throw new BadRequestException("Prima verifica la tua identità, poi puoi attivare i pagamenti online.");
+    }
     if (!stripeAccountId) {
       const account = await this.stripe.v2.core.accounts.create(
         {

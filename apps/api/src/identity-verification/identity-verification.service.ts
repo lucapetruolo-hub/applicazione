@@ -38,9 +38,11 @@ const REMINDER_FIRST_AFTER_DAYS = 3;
 const REMINDER_AGAIN_AFTER_DAYS = 7;
 const MAX_REMINDERS = 2;
 const DAY_MS = 24 * 60 * 60_000;
-/** Email "Completa il profilo": dal giorno dopo la creazione del profilo, finché ha meno di 3 giorni. */
-const SETUP_REMINDER_AFTER_DAYS = 1;
-const SETUP_REMINDER_UNTIL_DAYS = 3;
+/** Email "Completa il profilo": il giorno dopo la creazione del profilo, poi dopo una settimana (finestre di 2 giorni). */
+const SETUP_REMINDER_WINDOWS: [number, number][] = [
+  [1, 3],
+  [7, 9],
+];
 
 export type ProfileSetupItem = "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
 
@@ -52,8 +54,17 @@ export function profileSetupMissing(status: Pick<MyVerificationStatus, "publicVi
   const missing: ProfileSetupItem[] = [];
   if (!status.publicVisible) missing.push("SEARCH");
   if (!status.canSendQuotes) missing.push("QUOTES");
-  if (paymentsOn && !stripeVerified) missing.push("ONLINE_PAYMENTS");
+  // I pagamenti online si sbloccano solo dopo la verifica dell'identità (§261).
+  if (paymentsOn && status.canSendQuotes && !stripeVerified) missing.push("ONLINE_PAYMENTS");
   return missing;
+}
+
+/** Va mandata l'email "Completa il profilo"? Una nella prima finestra, una nella seconda, mai due a meno di 5 giorni. */
+export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; lastSentAt: Date | null; now: Date }): boolean {
+  const age = (input.now.getTime() - input.profileCreatedAt.getTime()) / DAY_MS;
+  const window = SETUP_REMINDER_WINDOWS.findIndex(([from, to]) => age >= from && age < to);
+  if (window < 0 || input.sent > window) return false;
+  return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= 5 * DAY_MS;
 }
 
 export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
@@ -327,8 +338,8 @@ export class IdentityVerificationService {
 
   /**
    * Email "Completa il profilo" il giorno dopo l'iscrizione (decisione
-   * dell'utente, docs/CHANGELOG.md §260): una volta sola e solo se manca
-   * ancora qualcosa. I profili più vecchi di 3 giorni non la ricevono.
+   * dell'utente, docs/CHANGELOG.md §260-§261) e di nuovo dopo una settimana,
+   * solo se manca ancora qualcosa.
    */
   @Cron("0 11 * * *", { timeZone: "Europe/Rome" })
   async remindProfileSetup(now: Date = new Date()): Promise<void> {
@@ -339,14 +350,18 @@ export class IdentityVerificationService {
         invitePendingAt: null,
         suspendedAt: null,
         user: { suspendedAt: null },
-        createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_AFTER_DAYS * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_UNTIL_DAYS * DAY_MS) },
+        createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[0]![0] * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[SETUP_REMINDER_WINDOWS.length - 1]![1] * DAY_MS) },
       },
-      select: { id: true, userId: true, isDemo: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      select: { id: true, userId: true, createdAt: true, isDemo: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
       take: 200,
     });
     for (const profile of profiles) {
-      const already = await this.prisma.notification.count({ where: { userId: profile.userId, type: "PROFILE_SETUP_REMINDER" } });
-      if (already > 0) continue;
+      const sent = await this.prisma.notification.findMany({
+        where: { userId: profile.userId, type: "PROFILE_SETUP_REMINDER" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (!setupReminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
       const status = this.buildStatus(profile, await this.latest(profile.id));
       const missing = profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled());
       if (missing.length === 0) continue;

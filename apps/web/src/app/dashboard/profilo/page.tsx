@@ -30,7 +30,7 @@ import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
-import { VerificationSteps } from "@/components/verification/VerificationSteps";
+import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -599,6 +599,10 @@ export default function DashboardProfiloPage() {
     .slice(0, 10);
 
   const visibilityStatus = preview ? VISIBILITY_STATUS[preview.visibility] : null;
+  const journey = preview && verification ? setupJourney(verification, !!preview.profile.stripeVerified) : null;
+  const identityStep = journey?.find((step) => step.key === "identity") ?? null;
+  const paymentsStep = journey?.find((step) => step.key === "payments") ?? null;
+  const nextStep = journey ? journeyCurrent(journey) : null;
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
@@ -649,41 +653,40 @@ export default function DashboardProfiloPage() {
                   <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
                     Apri la pagina pubblica ↗
                   </Link>
-                ) : preview.visibility === "FISCAL_DATA_MISSING" ? (
-                  <Link href="/dashboard/fiscale" className="profile-visibility-link">
-                    Completa i dati fiscali →
-                  </Link>
                 ) : preview.visibility === "NOT_CONFIRMED" ? (
                   <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
                     Controlla e salva →
                   </button>
                 ) : null}
               </div>
-              {/* Cosa non può ancora fare, un pallino per ciascuno (richiesta
-                  dell'utente, docs/CHANGELOG.md §259). */}
-              {verification && !verification.canSendQuotes ? (
+              {/* Cosa non può ancora fare, un pallino per ciascuno, e un solo
+                  prossimo passo (richieste dell'utente, docs/CHANGELOG.md §259, §261). */}
+              {identityStep && identityStep.state !== "done" ? (
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />
-                  <span className="profile-visibility-text">Non puoi rispondere alle richieste di preventivo</span>
-                  <Link href="/dashboard/verifica-identita" className="profile-visibility-link">
-                    Verifica la tua identità →
-                  </Link>
+                  <span className="profile-visibility-text">
+                    {identityStep.state === "waiting" ? "Identità in verifica: presto potrai rispondere ai preventivi" : "Non puoi ancora rispondere alle richieste di preventivo"}
+                  </span>
                 </div>
               ) : null}
-              {!preview.profile.stripeVerified ? (
+              {paymentsStep && paymentsStep.state !== "done" ? (
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />
-                  <span className="profile-visibility-text">Non puoi ricevere pagamenti online</span>
-                  <Link href="/dashboard/fiscale" className="profile-visibility-link">
-                    Attiva i pagamenti online →
+                  <span className="profile-visibility-text">Non puoi ancora ricevere pagamenti online</span>
+                </div>
+              ) : null}
+              {nextStep?.action ? (
+                <div className="profile-status-next">
+                  <span>
+                    <span className="profile-status-next-label">Prossimo passo</span>
+                    <span className="profile-status-next-title">{nextStep.title}</span>
+                  </span>
+                  <Link href={nextStep.action.href} style={{ textDecoration: "none" }}>
+                    <Button variant="primary">{nextStep.action.label}</Button>
                   </Link>
                 </div>
               ) : null}
             </div>
-          ) : null}
-
-          {verification && !(verification.publicVisible && verification.canSendQuotes && (verification.verified || !verification.identity.available)) ? (
-            <VerificationSteps status={verification} here="profilo" title="Per completare il profilo" showOutcomes={false} />
           ) : null}
 
           <div className="profile-preview-frame">

@@ -7,15 +7,15 @@ import { BRAND, biometricConsentText, type MyVerificationStatus } from "@profess
 import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { VerificationSteps } from "@/components/verification/VerificationSteps";
+import { JourneyProgress, PAYMENTS_ANCHOR, setupJourney } from "@/components/verification/SetupJourney";
 
 /** Mentre si aspetta l'esito la pagina si aggiorna da sola, per al massimo 3 minuti. */
 const POLL_MS = 4000;
 const POLL_LIMIT_MS = 3 * 60_000;
 
 /**
- * Verifica identità (docs/CHANGELOG.md §253): i tre passi in alto, sotto una
- * sola azione alla volta. Documento e selfie si fanno sulla pagina di Didit
+ * Verifica identità (docs/CHANGELOG.md §253, §261): in alto a che passo del
+ * percorso sei, sotto una sola azione alla volta. Documento e selfie si fanno sulla pagina di Didit
  * (dal computer Didit mostra un codice QR per continuare dal telefono); al
  * ritorno questa pagina aspetta l'esito e lo mostra.
  */
@@ -38,6 +38,15 @@ function VerificaIdentitaContent() {
   const [startError, setStartError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const pollStartedAt = useRef<number | null>(returned ? Date.now() : null);
+  const [stripeVerified, setStripeVerified] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .getMyProfessionalProfile(token)
+      .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
+      .catch(() => undefined);
+  }, [token]);
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/accedi?redirect=/dashboard/verifica-identita");
@@ -118,10 +127,7 @@ function VerificaIdentitaContent() {
   return (
     <Section title="Verifica identità" maxWidth={760}>
       <YStack gap="$5">
-        <Text color={brand.grafite70}>
-          Tre passi per comparire nelle ricerche e inviare preventivi. I clienti vedono solo il badge Verificato, mai i tuoi documenti.
-        </Text>
-        <VerificationSteps status={status} here="verifica" />
+        <JourneyProgress steps={setupJourney(status, stripeVerified)} here="identity" />
         <ActionPanel
           status={status}
           waiting={waiting}
@@ -131,6 +137,7 @@ function VerificaIdentitaContent() {
           starting={starting}
           startError={startError}
           onStart={start}
+          stripeVerified={stripeVerified}
         />
       </YStack>
     </Section>
@@ -174,8 +181,10 @@ function ActionPanel({
   starting,
   startError,
   onStart,
+  stripeVerified,
 }: {
   status: MyVerificationStatus;
+  stripeVerified: boolean;
   waiting: boolean;
   stillDown: boolean;
   consent: boolean;
@@ -190,9 +199,25 @@ function ActionPanel({
     return (
       <Panel icon="badge-check" tone="ok" title="Identità verificata">
         <Text color={brand.grafite70}>Il tuo profilo mostra il badge Verificato e puoi inviare preventivi ai clienti.</Text>
-        <Link href="/dashboard/richieste" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-          <Button variant="primary">Vai alle richieste</Button>
-        </Link>
+        {stripeVerified ? (
+          <Link href="/dashboard/richieste" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+            <Button variant="primary">Vai alle richieste</Button>
+          </Link>
+        ) : (
+          <YStack gap="$2">
+            <Text fontWeight="700" color={brand.grafite}>
+              Ultimo passo, facoltativo: i pagamenti online.
+            </Text>
+            <XStack gap="$3" flexWrap="wrap">
+              <Link href={PAYMENTS_ANCHOR} style={{ textDecoration: "none" }}>
+                <Button variant="primary">Attiva i pagamenti online</Button>
+              </Link>
+              <Link href="/dashboard/richieste" style={{ textDecoration: "none" }}>
+                <Button variant="secondary">Vai alle richieste</Button>
+              </Link>
+            </XStack>
+          </YStack>
+        )}
       </Panel>
     );
   }
