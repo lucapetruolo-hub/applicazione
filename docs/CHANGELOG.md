@@ -19179,3 +19179,7 @@ differenti per ogni categoria".
 - Le richieste dello stesso invio hanno lo stesso `submissionGroupId`
   (migrazione `20261019150000_guided_request_submission_group`, colonna
   facoltativa): in "Le mie richieste" ognuna mostra "Inviata insieme a …".
+- Profilo pubblico del professionista: le categorie stanno su una riga
+  loro, come pillole con icona, e la città va sotto con l'icona della
+  posizione (prima erano sulla stessa riga, "Idraulico · Elettricista ·
+  Latina").
