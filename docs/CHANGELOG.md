@@ -19141,6 +19141,31 @@ sempre.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
 
+## 259. Conferma email da un altro dispositivo: la pagina si aggiorna da sola
+
+**Richiesta (Luca, 19/10/2026):** se il link di conferma viene aperto dal
+telefono, la pagina registrazione sul computer deve passare avanti da sola,
+senza ricaricarla né inserire il codice.
+
+**Decisione:** `EmailCodeForm` controlla ogni 3 secondi `/auth/me` finché
+l'email non risulta confermata (`emailVerified`) e, quando succede, mostra
+"Email confermata" e prosegue come con il codice giusto. Il controllo non
+serve in "Password dimenticata" (che ha il suo codice) ed è fermo una volta
+confermata l'email. Un errore di rete durante il controllo viene ignorato.
+
+**Motivo:** il link nella mail è il percorso più comune su telefono, e
+senza questo la pagina sul computer resta ferma su un codice già inutile.
+
+Quando si torna sulla scheda o sulla finestra il controllo parte subito,
+senza aspettare il giro successivo.
+
+Sul telefono, dopo il link, compare il popup "Email verificata" con il
+pulsante per continuare, invece di una sola riga di testo.
+
+**Verifica:** `apps/web` typecheck pulito. Il popup "Email verificata" sul
+telefono è incluso (vedi sopra).
+
+
 ## 253. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
 
 **Richiesta esplicita dell'utente** (14/10/2026): implementare il flusso in

@@ -10,6 +10,8 @@ type CheckState = "idle" | "checking" | "error" | "done";
 
 /** Validità di un codice appena mandato, come `EMAIL_CODE_MINUTES` in apps/api. */
 const CODE_VALID_SECONDS = 15 * 60;
+/** Ogni quanto controllare se l'email è già stata confermata altrove (link sul telefono). */
+const EMAIL_VERIFIED_POLL_MS = 3000;
 
 /**
  * Inserimento del codice di 6 cifre arrivato con l'email di conferma
@@ -103,6 +105,42 @@ export function EmailCodeForm({
     void resend(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Conferma fatta da un altro dispositivo (il link nella mail, aperto dal
+  // telefono): la pagina lo vede da sola, senza ricaricarla. Solo per la
+  // conferma email, non per il recupero password (che ha submitCode).
+  const done = state === "done";
+  useEffect(() => {
+    if (submitCode || done) return;
+    let stopped = false;
+    const stop = () => {
+      stopped = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    async function check() {
+      try {
+        const user = await apiClient.me(token);
+        if (stopped || !user?.emailVerified) return;
+        stop();
+        setState("done");
+        window.setTimeout(() => onVerified(user.email ?? email), 700);
+      } catch {
+        // Un controllo saltato per la rete non conta: si riprova tra poco.
+      }
+    }
+    // Tornando sulla scheda (o sulla finestra) si controlla subito, senza
+    // aspettare il prossimo giro.
+    function onVisible() {
+      if (document.visibilityState === "visible") void check();
+    }
+    const timer = window.setInterval(check, EMAIL_VERIFIED_POLL_MS);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", onVisible);
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, submitCode, done]);
 
   async function submit(value: string) {
     if (value.length !== EMAIL_CODE_LENGTH || state === "checking" || state === "done") return;
