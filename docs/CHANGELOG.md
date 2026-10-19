@@ -19159,8 +19159,11 @@ senza questo la pagina sul computer resta ferma su un codice già inutile.
 Quando si torna sulla scheda o sulla finestra il controllo parte subito,
 senza aspettare il giro successivo.
 
+Sul telefono, dopo il link, compare il popup "Email verificata" con il
+pulsante per continuare, invece di una sola riga di testo.
+
 **Verifica:** `apps/web` typecheck pulito. Il popup "Email verificata" sul
-telefono non è incluso: resta da confermare con Luca.
+telefono è incluso (vedi sopra).
 
 
 ## 253. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)

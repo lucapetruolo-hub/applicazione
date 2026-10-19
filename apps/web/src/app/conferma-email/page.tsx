@@ -78,6 +78,7 @@ function ConfermaEmail() {
   const { user, refreshUser } = useAuth();
   const [confirmedEmail, setConfirmedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [popupOpen, setPopupOpen] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
@@ -91,6 +92,7 @@ function ConfermaEmail() {
       .verifyEmail(token)
       .then((result) => {
         setConfirmedEmail(result.email);
+        setPopupOpen(true);
         void refreshUser();
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Link non valido."));
@@ -120,6 +122,60 @@ function ConfermaEmail() {
           </Link>
         ) : null}
       </Surface>
+      {popupOpen && confirmedEmail ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Email verificata"
+          onClick={() => setPopupOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 400,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$3" alignItems="center">
+              <YStack
+                width={56}
+                height={56}
+                borderRadius={28}
+                alignItems="center"
+                justifyContent="center"
+                backgroundColor={brand.cianografia}
+              >
+                <Text color={brand.calce} fontSize="$7" fontWeight="800">
+                  ✓
+                </Text>
+              </YStack>
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
+                Email verificata
+              </Text>
+              <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+                Puoi tornare al computer: la registrazione va avanti da sola.
+              </Text>
+              <Link
+                href={nextHref}
+                style={{
+                  color: brand.calce,
+                  backgroundColor: brand.cianografia,
+                  borderRadius: 999,
+                  padding: "10px 24px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                {nextLabel}
+              </Link>
+            </YStack>
+          </div>
+        </div>
+      ) : null}
     </YStack>
   );
 }
