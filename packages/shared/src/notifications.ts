@@ -131,7 +131,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Badge "Verificato" assegnato o tolto da un admin (docs/CHANGELOG.md §200).
       "PROFILE_VERIFIED",
       "PROFILE_VERIFICATION_REMOVED",
-      // Verifica fiscale e d'identità (docs/CHANGELOG.md §253): documento e
+      // Verifica fiscale e d'identità (docs/CHANGELOG.md §259): documento e
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",

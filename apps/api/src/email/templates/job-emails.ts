@@ -11,7 +11,10 @@ import { descriptionDetail, formatAppointmentDay, formatAppointmentTime } from "
 /** Conferma al cliente che la richiesta è partita. */
 export function requestSentEmail(input: {
   name: string | null;
+  /** Una o più categorie già unite ("Idraulico ed Elettricista"). */
   category: string;
+  /** Richieste nate dallo stesso invio, una per categoria (docs/CHANGELOG.md §259). */
+  requestsCount?: number;
   city: string | null;
   isUrgent: boolean;
   /** Professionisti che l'hanno ricevuta subito; 0 se in zona per ora non c'è nessuno. */
@@ -21,7 +24,15 @@ export function requestSentEmail(input: {
   description?: string | null;
 }): RenderedEmail {
   const where = input.city ? ` a ${input.city}` : "";
-  const paragraphs = input.direct
+  const count = input.requestsCount ?? 1;
+  const paragraphs = count > 1
+    ? [
+        input.sentTo > 0
+          ? `Abbiamo inviato le tue ${count} richieste per **${input.category}${where}**, una per categoria, ai professionisti della tua zona${input.isUrgent ? ", segnalandole come urgenti" : ""}.`
+          : `Abbiamo ricevuto le tue ${count} richieste per **${input.category}${where}**, una per categoria. Dove in zona non c'è ancora nessuno le teniamo aperte e le inviamo appena se ne iscrive uno.`,
+        "Ti scriviamo appena arriva un preventivo: le trovi separate in Le mie richieste.",
+      ]
+    : input.direct
     ? [
         `Abbiamo inviato la tua richiesta per **${input.category}${where}** al professionista che hai scelto.`,
         "Ti scriviamo appena ti manda un preventivo. Intanto puoi scrivergli in chat dalla richiesta.",
@@ -37,12 +48,12 @@ export function requestSentEmail(input: {
         ];
   return renderEmail({
     kind: "notification",
-    subject: `Richiesta inviata: ${input.category}${where}`,
+    subject: `${count > 1 ? "Richieste inviate" : "Richiesta inviata"}: ${input.category}${where}`,
     greeting: input.name,
-    title: "Abbiamo ricevuto la tua richiesta",
+    title: count > 1 ? "Abbiamo ricevuto le tue richieste" : "Abbiamo ricevuto la tua richiesta",
     paragraphs,
     details: input.description?.trim() ? descriptionDetail(input.description) : undefined,
-    cta: { label: "Segui la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
+    cta: { label: count > 1 ? "Segui le richieste" : "Segui la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["I tuoi contatti restano riservati: il professionista vede telefono e indirizzo solo dopo che hai accettato il suo preventivo."],
   });
 }

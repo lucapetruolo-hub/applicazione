@@ -144,7 +144,7 @@ export const ICONS = {
   briefcase: Briefcase,
   "arrow-right": ArrowRight,
   "building-2": Building2,
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §259).
   "id-card": IdCard,
   "scan-face": ScanFace,
   sun: Sun,

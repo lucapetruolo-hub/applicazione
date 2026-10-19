@@ -78,7 +78,7 @@ function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?:
 }
 
 /**
- * Verifica dei professionisti (docs/CHANGELOG.md §200, §253, §255): tutto
+ * Verifica dei professionisti (docs/CHANGELOG.md §200, §259, §255): tutto
  * automatico, documento e selfie con Didit, codice fiscale e P.IVA con VIES
  * e Openapi. L'admin non accetta né rifiuta nessuno (decisione dell'utente):
  * qui vede a che punto è ciascuno, può ricontrollare i dati fiscali e

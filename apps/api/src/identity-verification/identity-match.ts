@@ -28,7 +28,7 @@ function sameNames(a: string | null, b: string | null): boolean {
 
 /**
  * Il documento appartiene alla persona dei dati fiscali? (docs/CHANGELOG.md
- * §253) Prima il codice fiscale stampato sulla CIE, poi nome, cognome e data
+ * §259) Prima il codice fiscale stampato sulla CIE, poi nome, cognome e data
  * di nascita. Quello che non torna torna al professionista con il motivo,
  * che corregge e riprova da solo (§255, nessun admin).
  */

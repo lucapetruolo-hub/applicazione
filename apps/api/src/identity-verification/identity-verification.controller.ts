@@ -8,7 +8,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { IdentityVerificationService } from "./identity-verification.service";
 import { TaxIdCheckService, toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 
-/** Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253). */
+/** Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §259). */
 @Controller("professionals/me/verification")
 export class IdentityVerificationController {
   constructor(private readonly identityVerificationService: IdentityVerificationService) {}

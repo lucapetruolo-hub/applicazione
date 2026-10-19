@@ -59,7 +59,7 @@ const FISCAL_INCLUDE = { taxIdChecks: true, representative: true } satisfies Pri
 type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: typeof FISCAL_INCLUDE }>;
 
 /**
- * Verifica di documento e selfie (docs/CHANGELOG.md §253, decisioni
+ * Verifica di documento e selfie (docs/CHANGELOG.md §259, decisioni
  * dell'utente del 14/10/2026): obbligatoria prima di inviare preventivi,
  * sostituisce la verifica manuale di /admin/verifiche (nessun caso passa
  * all'admin, §255). Il confronto è con il codice fiscale e i dati fiscali (per le

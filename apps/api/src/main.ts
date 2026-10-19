@@ -20,7 +20,7 @@ async function bootstrap() {
   // singolo IP reale — Express deve fidarsi dell'header X-Forwarded-For.
   app.set("trust proxy", 1);
   app.use("/billing/webhook", express.raw({ type: "application/json" }));
-  // Webhook della verifica d'identità (Didit, docs/CHANGELOG.md §253): firma sul body raw.
+  // Webhook della verifica d'identità (Didit, docs/CHANGELOG.md §259): firma sul body raw.
   app.use("/identity-verification/webhook", express.raw({ type: "application/json" }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

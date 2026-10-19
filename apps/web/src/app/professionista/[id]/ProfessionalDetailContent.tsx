@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -344,11 +344,38 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                   </span>
                 ) : null}
               </XStack>
-              <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
-                {/* Tutte le categorie, da 1 a 3 (docs/CHANGELOG.md §217). */}
-                {(professional.categories?.length ? professional.categories.map((category) => category.label) : [professional.categoryLabel]).join(" · ")} ·{" "}
-                {professional.city}
-              </Text>
+              {/* Categorie (da 1 a 3, docs/CHANGELOG.md §217) su una riga loro,
+                  separate dalla città (docs/CHANGELOG.md §259). */}
+              <XStack flexWrap="wrap" gap="$2">
+                {(professional.categories?.length
+                  ? professional.categories
+                  : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
+                ).map((category) => {
+                  const icon = PROFESSIONAL_CATEGORIES.find((c) => c.slug === category.slug)?.icon;
+                  return (
+                    <XStack
+                      key={category.slug}
+                      alignItems="center"
+                      gap={6}
+                      paddingHorizontal={10}
+                      paddingVertical={4}
+                      borderRadius={999}
+                      backgroundColor={brand.cianografiaVelo}
+                    >
+                      {icon ? <Icon name={icon} size={13} color={brand.cianografiaScuro} /> : null}
+                      <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.cianografiaScuro}>
+                        {category.label}
+                      </Text>
+                    </XStack>
+                  );
+                })}
+              </XStack>
+              <XStack alignItems="center" gap={4}>
+                <Icon name="map-pin" size={13} color={brand.grafite70} />
+                <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+                  {professional.city}
+                </Text>
+              </XStack>
               {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241). */}
               {professional.traderStatus ? (
                 <YStack gap={2}>

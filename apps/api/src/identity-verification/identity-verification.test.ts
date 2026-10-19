@@ -5,7 +5,7 @@ import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
 import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, reminderDue } from "./identity-verification.service";
 
-/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
+/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §259). */
 describe("Didit", () => {
   const secret = "whsec_prova";
   const provider = new DiditIdentityProvider("key", "workflow", secret);

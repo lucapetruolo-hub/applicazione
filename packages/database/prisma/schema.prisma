@@ -339,7 +339,7 @@ model ProfessionalProfile {
   feeRules               PlatformFeeRule[]
   revenueEntries         ManoviaRevenue[]
   dac7Records            Dac7Record[]
-  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
+  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §259): un tentativo per riga.
   identityVerifications  IdentityVerification[]
 
   @@index([categoryId, city])
@@ -701,6 +701,9 @@ model GuidedRequest {
   preferredDate         DateTime?
   preferredTimeSlot     String?
   professionalProfileId String?
+  // Stesso valore per le richieste nate da un unico invio con più categorie
+  // (docs/CHANGELOG.md §259): il cliente le vede "inviate insieme".
+  submissionGroupId     String?
   // Scadenza della richiesta nel suo complesso (non del singolo Lead, vedi
   // Lead.expiresAt sotto) — oltre questa data, se ancora OPEN/MATCHED senza
   // esito, il job schedulato la chiude (closedReason EXPIRED). Nullable:
@@ -1618,7 +1621,7 @@ model ProfessionalFiscalProfile {
   professionalProfile ProfessionalProfile        @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   representative      FiscalRepresentative?
   // Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e al
-  // Registro Imprese (Openapi, docs/CHANGELOG.md §253).
+  // Registro Imprese (Openapi, docs/CHANGELOG.md §259).
   taxIdChecks         TaxIdCheck[]
   payoutAccount       ProfessionalPayoutAccount?
 
@@ -1644,7 +1647,7 @@ model FiscalRepresentative {
   @@map("fiscal_representatives")
 }
 
-// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §253) -----------------
+// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §259) -----------------
 // Decisioni dell'utente del 14/10/2026: profilo pubblico dopo i dati fiscali
 // e il controllo con Openapi; documento e selfie (Didit) obbligatori prima di
 // inviare preventivi; Didit al posto della verifica manuale, l'admin guarda

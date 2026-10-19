@@ -121,7 +121,7 @@ function DashboardFiscaleContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
-  // Verifica in 3 passi (docs/CHANGELOG.md §253): si ricarica a ogni salvataggio.
+  // Verifica in 3 passi (docs/CHANGELOG.md §259): si ricarica a ogni salvataggio.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   const [verificationKey, setVerificationKey] = useState(0);
   // IBAN per la DAC7, primo passo di "Attiva i pagamenti online" (docs/CHANGELOG.md §250).
@@ -352,7 +352,7 @@ function DashboardFiscaleContent() {
 
   const adminVerification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
   // Controlli in tempo reale, gli stessi che rifà il server al salvataggio
-  // (docs/CHANGELOG.md §253): forma, e coerenza del codice fiscale con nome,
+  // (docs/CHANGELOG.md §259): forma, e coerenza del codice fiscale con nome,
   // cognome e data di nascita.
   const cfCheck = checkFiscalId(fields.fiscalCodiceFiscale ?? "", fields.fiscalIdIssuingCountry, "codiceFiscale");
   const pivaCheck = checkFiscalId(fields.vatNumber ?? "", fields.fiscalIdIssuingCountry, "vatNumber");
@@ -386,7 +386,7 @@ function DashboardFiscaleContent() {
           anche per chi si fa pagare solo direttamente. Il tuo profilo compare nelle ricerche quando li hai compilati. Ai clienti mostriamo solo se
           sei un privato o un professionista con partita IVA.
         </Text>
-        {/* Cosa manca per essere pubblici e per inviare preventivi (docs/CHANGELOG.md §241, §253). */}
+        {/* Cosa manca per essere pubblici e per inviare preventivi (docs/CHANGELOG.md §241, §259). */}
         {verification ? <VerificationSteps status={verification} here="fiscale" /> : null}
 
         {/* Esito della revisione manuale dell'admin (area Finanza), solo se c'è qualcosa da fare. */}

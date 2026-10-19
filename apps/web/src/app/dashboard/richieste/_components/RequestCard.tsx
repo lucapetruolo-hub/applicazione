@@ -76,7 +76,7 @@ export function RequestCard({
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
-  /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
+  /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §259). */
   identityVerificationNeeded?: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -1224,7 +1224,7 @@ export function RequestCard({
           </YStack>
 
           {/* Prima del primo preventivo serve la verifica dell'identità
-              (docs/CHANGELOG.md §253): al posto del modulo, cosa fare. Un
+              (docs/CHANGELOG.md §259): al posto del modulo, cosa fare. Un
               preventivo già inviato resta modificabile. */}
           {showQuoteForm && identityVerificationNeeded && (!lead.quote || canResendQuote) ? (
             <YStack gap="$2.5" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.ottone}>

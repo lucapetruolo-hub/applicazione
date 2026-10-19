@@ -100,7 +100,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
     ProfessionalVerificationModule,
-    // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §253.
+    // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §259.
     TaxIdCheckModule,
     IdentityVerificationModule,
     GeneralRequestsAdminModule,

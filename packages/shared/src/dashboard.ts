@@ -17,7 +17,7 @@ export type MyProfessionalProfile = {
   defaultPaymentOffer: { paymentOptions: JobPaymentChoice[]; depositPercent: number };
   /** Verifica su Stripe completata: può offrire l'acconto online e ha il badge (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
-  /** Deve ancora verificare l'identità (documento e selfie) prima di inviare preventivi (docs/CHANGELOG.md §253). */
+  /** Deve ancora verificare l'identità (documento e selfie) prima di inviare preventivi (docs/CHANGELOG.md §259). */
   identityVerificationNeeded: boolean;
   businessName: string;
   /** Categoria principale (la prima di `categorySlugs`). */

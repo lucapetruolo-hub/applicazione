@@ -612,6 +612,15 @@ export function GuidedRequestCard({
             </Text>
           </XStack>
         )}
+        {request.sentWith && request.sentWith.length > 0 ? (
+          // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §259).
+          <XStack alignItems="center" gap="$1">
+            <Icon name="send" size={14} color={brand.grafite70} />
+            <Text fontSize={14} color={brand.grafite70}>
+              Inviata insieme a {new Intl.ListFormat("it-IT", { type: "conjunction" }).format(request.sentWith.map((other) => other.categoryLabel))}
+            </Text>
+          </XStack>
+        ) : null}
         {stage === "annullata" && booking?.canceledBy ? (
           <Text fontSize={13} fontWeight="700" color={STAGE_STYLE.annullata.fg}>
             Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}

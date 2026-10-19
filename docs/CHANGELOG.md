@@ -19300,3 +19300,46 @@ blocca nulla, come prima.
 **Motivo**: la richiesta manuale contraddice "nessun admin sui casi dubbi" (§255).
 
 **Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.
+
+---
+
+## 259. Richiesta di preventivo con più categorie
+
+**Richiesta dell'utente:** "nella richiesta preventivo, dai la possibilità di
+selezionare più categorie, e poi visualizzale come fossero richieste
+differenti per ogni categoria".
+
+**Decisione:**
+- Nel modulo `/preventivo` (e `/urgente`) le pillole delle categorie si
+  accendono e spengono: fino a 3 (`MAX_REQUEST_CATEGORIES`), arrivati al
+  massimo le altre si attenuano, contatore "2 di 3". Tolto il menu a
+  tendina per telefono (§F2.1): non permette una scelta multipla e le
+  pillole vanno già a capo sugli schermi stretti.
+- All'invio il server crea una `GuidedRequest` separata per ogni
+  categoria, con gli stessi dati (descrizione, foto, indirizzo, urgenza):
+  ognuna arriva ai professionisti della sua categoria, con le sue
+  notifiche ed email, e il cliente la vede come richiesta a sé in "Le mie
+  richieste". Nessuna migrazione.
+- `guidedRequestSchema.extraCategorySlugs` (default `[]`): la prima
+  categoria resta `categorySlug`, così app e chiamate vecchie funzionano
+  come prima. `GuidedRequestsService.createForCategories` controlla tutte
+  le categorie, la zona aperta (§211) e l'indirizzo (§214) prima di crearne
+  una, così non resta mai solo una parte delle richieste.
+- Richiesta a un professionista scelto: resta a una sola categoria
+  (decisione §217), lo schema rifiuta categorie in più.
+- Se le richieste generali sono chiuse in zona per una delle categorie,
+  l'avviso la nomina e offre "Togli <categoria>".
+
+**Verifica:** `tsc` su api e web, test dello schema (vitest), Playwright a
+390px e 1280px (scelta categorie e riepilogo).
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Una sola email di conferma al cliente per tutto l'invio ("Richieste
+  inviate: Idraulico ed Elettricista a Roma"), non una per categoria.
+- Le richieste dello stesso invio hanno lo stesso `submissionGroupId`
+  (migrazione `20261019150000_guided_request_submission_group`, colonna
+  facoltativa): in "Le mie richieste" ognuna mostra "Inviata insieme a …".
+- Profilo pubblico del professionista: le categorie stanno su una riga
+  loro, come pillole con icona, e la città va sotto con l'icona della
+  posizione (prima erano sulla stessa riga, "Idraulico · Elettricista ·
+  Latina").

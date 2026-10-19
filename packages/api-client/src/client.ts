@@ -156,6 +156,8 @@ export type ClientBooking = {
 
 export type ClientGuidedRequest = {
   id: string;
+  /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §259). */
+  sentWith?: { id: string; categoryLabel: string }[];
   categorySlug: string;
   categoryLabel: string;
   description: string;
@@ -686,7 +688,7 @@ export type ProfessionalFiscalProfile = {
   stripePayoutsEnabled: boolean;
   stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
-  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §253). */
+  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §259). */
   taxIdChecks?: TaxIdCheckView[];
 };
 
@@ -1080,7 +1082,12 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }),
 
     createGuidedRequest: (token: string, input: GuidedRequestInput) =>
-      request<{ guidedRequestId: string; matchedProfessionals: number }>("/guided-requests", {
+      request<{
+        guidedRequestId: string;
+        matchedProfessionals: number;
+        /** Una richiesta per categoria (docs/CHANGELOG.md §259). */
+        requests: { guidedRequestId: string; categorySlug: string; matchedProfessionals: number }[];
+      }>("/guided-requests", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
@@ -1579,7 +1586,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */
+    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §259). */
     myVerificationStatus: (token: string) =>
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */

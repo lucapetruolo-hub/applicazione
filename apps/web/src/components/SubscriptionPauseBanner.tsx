@@ -71,7 +71,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
     action = "Riattiva il tuo account";
   } else if (sub.identityVerificationNeeded && showAction) {
-    // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §253).
+    // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §259).
     tone = "warn";
     title = "Verifica la tua identità per inviare preventivi";
     body = "Il tuo profilo è visibile, ma per rispondere ai clienti con un preventivo serve una verifica veloce: un documento e un selfie, circa 2 minuti.";

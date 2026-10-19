@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253,
+ * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §259,
  * decisioni dell'utente del 14/10/2026):
  * 1. dati fiscali compilati e controllati gratis (formato, coerenza del
  *    codice fiscale con nome e data di nascita);

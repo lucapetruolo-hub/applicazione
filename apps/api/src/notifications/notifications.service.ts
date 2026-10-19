@@ -211,7 +211,7 @@ export class NotificationsService {
    * Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185),
    * nell'argomento "Le tue richieste" delle preferenze.
    */
-  emailRequestSent(clientId: string, input: { category: string; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean; description?: string | null }): void {
+  emailRequestSent(clientId: string, input: { category: string; requestsCount?: number; city: string | null; isUrgent: boolean; sentTo: number; direct: boolean; description?: string | null }): void {
     void (async () => {
       const user = await this.prisma.user.findUnique({ where: { id: clientId }, select: { email: true, name: true, deletedAt: true } });
       if (!user?.email || user.deletedAt) return;

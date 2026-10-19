@@ -36,7 +36,7 @@ describe("visibilità pubblica con i dati fiscali (§241)", () => {
     expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: null })).toBe(true);
     expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: { fiscalDataCompleteAt: new Date() } })).toBe(false);
     expect(publicVisibilityMissing({ isDemo: true, fiscalProfile: null })).toBe(false);
-    // Codice fiscale o P.IVA inesistenti per Openapi: fuori dalla ricerca (§253).
+    // Codice fiscale o P.IVA inesistenti per Openapi: fuori dalla ricerca (§259).
     expect(publicVisibilityMissing({ isDemo: false, fiscalProfile: { fiscalDataCompleteAt: new Date(), taxIdChecks: [{ status: "INVALID" }] } })).toBe(true);
     expect(stripeVerified({ stripePayoutsEnabled: false })).toBe(false);
     expect(stripeVerified({ stripePayoutsEnabled: true })).toBe(true);
