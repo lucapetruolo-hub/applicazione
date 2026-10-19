@@ -537,6 +537,10 @@ export class BillingService {
         await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", { amountEurCents: dispute.amount, status: dispute.status, bookingId: null });
       }
     }
+    // Saldo addebitato sulla carta salvata con l'acconto (§260).
+    if (event.type === "payment_intent.succeeded") {
+      await this.jobPaymentsService.handleAutoBalanceSucceeded(event.data.object as Stripe.PaymentIntent);
+    }
     // Cifra contestata tolta dal nostro conto o restituita (§260): si riprende
     // subito dai soldi bloccati del professionista e gli torna se si vince.
     if (event.type === "charge.dispute.funds_withdrawn" || event.type === "charge.dispute.funds_reinstated") {

@@ -39,7 +39,7 @@ function buildService() {
     transfers: { create: vi.fn(), createReversal: vi.fn(), retrieve: vi.fn() },
     applicationFees: { createRefund: vi.fn() },
     refunds: { create: vi.fn() },
-    paymentIntents: { retrieve: vi.fn() },
+    paymentIntents: { retrieve: vi.fn(), create: vi.fn() },
   };
   const service = new OnlineMoneyService(prisma as never, auditLogService as never, notificationsService as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
@@ -313,7 +313,7 @@ describe("OnlineMoneyService.refundOnline con i soldi sul conto del professionis
 });
 
 describe("OnlineMoneyService.refundOnline per colpa del professionista (§260)", () => {
-  it("dopo il bonifico riprende quanto c'è ancora e mette il resto come debito, senza la nostra commissione", async () => {
+  it("dopo il bonifico riprende quanto c'è ancora e mette il resto come debito, compresa la nostra commissione", async () => {
     const { service, prisma, stripe, notificationsService } = buildService();
     // Sbloccati 93,25 €, bonifico già partito per 90 €: sul conto ne restano 3,25 €.
     const job = releasedJob({ payoutPendingEurCents: 325, payoutSentEurCents: 9000 });
@@ -331,12 +331,12 @@ describe("OnlineMoneyService.refundOnline per colpa del professionista (§260)",
     expect(stripe.transfers.createReversal).toHaveBeenCalledWith("tr_1", expect.objectContaining({ amount: 325 }), expect.anything());
     // Il cliente riceve tutto dal nostro conto (niente reverse_transfer dopo lo sblocco).
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.not.objectContaining({ reverse_transfer: true }), expect.anything());
-    // Debito: 90 € già in banca + 1,75 € di carta (100 € - 93,25 € - 5 € di commissione).
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9000 + 175 } } }));
-    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_PAYMENT_DEBT", expect.objectContaining({ amountEurCents: 9175 }));
+    // Debito: 90 € già in banca + 6,75 € di trattenuta (commissione e carta restano a noi).
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9000 + 675 } } }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_PAYMENT_DEBT", expect.objectContaining({ amountEurCents: 9675 }));
   });
 
-  it("con il rimborso totale prima dello sblocco il costo della carta diventa un suo debito", async () => {
+  it("con il rimborso totale prima dello sblocco commissione e costo della carta diventano un suo debito", async () => {
     const { service, prisma, stripe } = buildService();
     const job = releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0 });
     prisma.jobPayment.findUnique.mockResolvedValue(job);
@@ -346,7 +346,7 @@ describe("OnlineMoneyService.refundOnline per colpa del professionista (§260)",
 
     await service.refundOnline("jp-1", "ALL", "Segnalazione accolta.", null, { professionalFault: true });
 
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 175 } } }));
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 175 + 500 } } }));
   });
 
   it("senza colpa (annullamento) nessun debito per il costo della carta", async () => {
@@ -403,8 +403,8 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§260)", () => {
 
     await service.handleStripeDispute(dispute({ status: "lost", balance_transactions: [{ fee: 2000 }] }));
 
-    // 93,25 € già in banca + 20 € di commissione di Stripe + 1,75 € di carta.
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 + 2000 + 175 } } }));
+    // 93,25 € già in banca + 20 € di commissione di Stripe + 6,75 € di trattenuta.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 + 2000 + 675 } } }));
   });
 
   it("persa per frode: la commissione di Stripe resta a noi", async () => {
@@ -416,6 +416,69 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§260)", () => {
     await service.handleStripeDispute(dispute({ status: "lost", reason: "fraudulent", balance_transactions: [{ fee: 2000 }] }));
 
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 } } }));
+  });
+});
+
+describe("saldo addebitato sulla carta dell'acconto (§260)", () => {
+  it("salva la carta all'acconto solo se anche il saldo si paga online", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: new Date() });
+    const params = { clientUserId: "c-1", quoteId: "q-1", guidedRequestId: "gr-1", amountEurCents: 10000, businessName: "Rossi", professionalProfileId: "pro-1" };
+
+    await service.createQuoteDepositCheckout({ ...params, paymentMethod: "ONLINE" });
+    await service.createQuoteDepositCheckout({ ...params, paymentMethod: "MIXED" });
+
+    const [online, mixed] = stripe.checkout.sessions.create.mock.calls.map((call) => call[0]);
+    expect(online).toMatchObject({ customer_creation: "always", payment_intent_data: { setup_future_usage: "off_session" } });
+    expect(mixed.customer_creation).toBeUndefined();
+    expect(mixed.payment_intent_data.setup_future_usage).toBeUndefined();
+  });
+
+  function closedJob(overrides: Record<string, unknown> = {}) {
+    return {
+      ...releasedJob({ onlineStage: "DEPOSIT_PAID", releasedAt: null, paidEurCents: 2000, applicationFeeEurCents: 165, payoutPendingEurCents: 0, netAmountEurCents: 0 }),
+      clientStripeCustomerId: "cus_1",
+      savedPaymentMethodId: "pm_1",
+      balanceDirect: false,
+      balanceAutoChargedAt: null,
+      booking: { clientId: "client-1", finalAmountEurCents: 10000, professionalProfileId: "pro-1", quoteId: null, professionalProfile: { businessName: "Rossi Impianti" }, quote: { guidedRequestId: "gr-1" } },
+      ...overrides,
+    };
+  }
+
+  it("alla chiusura addebita il saldo sulla carta salvata, sul conto del professionista", async () => {
+    const { service, prisma, stripe, notificationsService } = buildService();
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(closedJob());
+    prisma.jobPayment.findUnique.mockResolvedValue(closedJob());
+    stripe.paymentIntents.create = vi.fn().mockResolvedValue({ id: "pi_bal", status: "succeeded", amount: 8000 });
+    stripe.paymentIntents.retrieve.mockResolvedValue({ transfer_data: { destination: "acct_1" }, latest_charge: { id: "ch_2", application_fee_amount: 0, balance_transaction: { fee: 0 } } });
+
+    await expect(service.afterCompletion("jp-1", 10000, 500, { autoCharge: true })).resolves.toEqual({ balanceDueEurCents: 0, autoChargedEurCents: 8000 });
+
+    expect(stripe.paymentIntents.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 8000, customer: "cus_1", payment_method: "pm_1", off_session: true, confirm: true, transfer_data: { destination: "acct_1" } }),
+      { idempotencyKey: "job-auto-balance-jp-1-2000-8000" },
+    );
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ balancePaymentIntentId: "pi_bal", paidEurCents: 10000 }) }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "JOB_BALANCE_AUTO_CHARGED", expect.objectContaining({ amountEurCents: 8000 }));
+  });
+
+  it("se la banca rifiuta, il cliente paga con il link come prima", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(closedJob());
+    stripe.paymentIntents.create = vi.fn().mockRejectedValue(Object.assign(new Error("Your card was declined."), { code: "card_declined" }));
+
+    await expect(service.afterCompletion("jp-1", 10000, 500, { autoCharge: true })).resolves.toEqual({ balanceDueEurCents: 8000, autoChargedEurCents: 0 });
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { balanceAutoChargeFailedAt: expect.any(Date) } });
+  });
+
+  it("senza il via (importo sopra il preventivo) non addebita nulla", async () => {
+    const { service, prisma, stripe } = buildService();
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(closedJob());
+    stripe.paymentIntents.create = vi.fn();
+
+    await expect(service.afterCompletion("jp-1", 10000, 500)).resolves.toEqual({ balanceDueEurCents: 8000, autoChargedEurCents: 0 });
+    expect(stripe.paymentIntents.create).not.toHaveBeenCalled();
   });
 });
 

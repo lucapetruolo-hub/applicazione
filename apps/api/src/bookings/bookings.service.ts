@@ -508,6 +508,9 @@ export class BookingsService {
       grossAmountEurCents: finalAmountEurCents,
       reportedByUserId: professionalUserId,
       alreadyConfirmedByClient: booking.clientConfirmedCompletedAt !== null,
+      // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§260).
+      autoChargeBalance:
+        !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
     });
     // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
     if (online && online.balanceDueEurCents > 0) {

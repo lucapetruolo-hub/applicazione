@@ -44,7 +44,25 @@ type ChargeInfo = {
   destination: string | null;
   /** Trattenuta della piattaforma (application fee) sull'addebito. */
   applicationFeeAmount: number;
+  /** Carta salvata per addebitare da sola il saldo (§260), se il cliente l'ha salvata. */
+  savedCard: { customerId: string; paymentMethodId: string } | null;
 };
+
+/**
+ * Salvataggio della carta all'acconto, per addebitare il saldo da solo alla
+ * chiusura del lavoro (decisione dell'utente, §260). Solo quando anche il
+ * saldo si paga online.
+ */
+function saveCardForBalance(enabled: boolean) {
+  if (!enabled) return { session: {}, intent: {} };
+  return {
+    session: {
+      customer_creation: "always" as const,
+      custom_text: { submit: { message: "Il saldo verrà addebitato su questa carta quando il professionista chiude il lavoro, entro l'importo massimo del preventivo." } },
+    },
+    intent: { setup_future_usage: "off_session" as const },
+  };
+}
 
 function idOf(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
@@ -155,8 +173,10 @@ export class OnlineMoneyService {
     // tiene lo stesso modello anche per il saldo: un lavoro non mescola i due.
     const legacy = jp.paidEurCents > 0 && !jp.stripeDestinationAccountId;
     const destination = legacy ? null : await this.destinationAccount(booking.professionalProfileId);
+    const saveCard = saveCardForBalance(part === "deposit" && !jp.balanceDirect && !!destination);
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
+      ...saveCard.session,
       line_items: [
         {
           price_data: {
@@ -171,6 +191,7 @@ export class OnlineMoneyService {
       ],
       payment_intent_data: {
         ...(destination ? this.destinationChargeData(destination, amount) : {}),
+        ...saveCard.intent,
         transfer_group: bookingId,
         // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §238): meno contestazioni "non riconosco l'addebito".
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
@@ -203,8 +224,11 @@ export class OnlineMoneyService {
     const suffix = statementSuffix(params.businessName);
     const destination = await this.destinationAccount(params.professionalProfileId);
     const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod };
+    // Col saldo online la carta resta salvata per il saldo (§260); col saldo diretto (MIXED) no.
+    const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
+      ...saveCard.session,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       line_items: [
         {
@@ -218,6 +242,7 @@ export class OnlineMoneyService {
       ],
       payment_intent_data: {
         ...this.destinationChargeData(destination, params.amountEurCents),
+        ...saveCard.intent,
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
         metadata,
       },
@@ -304,11 +329,20 @@ export class OnlineMoneyService {
   async recordCheckoutPayment(jobPaymentId: string, part: "deposit" | "balance", session: Stripe.Checkout.Session, opts: { notify: boolean }): Promise<void> {
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
     if (!paymentIntentId) return;
+    await this.recordPayment(jobPaymentId, part, paymentIntentId, session.amount_total ?? 0, opts);
+  }
+
+  /** Registra un acconto o saldo riuscito (da Checkout o addebitato sulla carta salvata). Idempotente sul payment intent. */
+  private async recordPayment(jobPaymentId: string, part: "deposit" | "balance", paymentIntentId: string, amount: number, opts: { notify: boolean; autoCharged?: boolean }): Promise<void> {
     const jp = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, include: { booking: true } });
     if (!jp) return;
     if (jp.stripePaymentIntentId === paymentIntentId || jp.balancePaymentIntentId === paymentIntentId) return;
+    // Saldo automatico: lo registrano sia l'addebito sia il webhook, solo il primo che arriva.
+    if (opts.autoCharged) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, balanceAutoChargedAt: null }, data: { balanceAutoChargedAt: new Date() } });
+      if (claimed.count === 0) return;
+    }
 
-    const amount = session.amount_total ?? 0;
     const charge = await this.chargeOf(paymentIntentId);
 
     // Saldo pagato in ritardo, dopo che l'acconto era già passato al
@@ -332,6 +366,9 @@ export class OnlineMoneyService {
         status: "PENDING",
         ...(charge.destination
           ? { stripeDestinationAccountId: charge.destination, applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount }
+          : {}),
+        ...(part === "deposit" && charge.savedCard
+          ? { clientStripeCustomerId: charge.savedCard.customerId, savedPaymentMethodId: charge.savedCard.paymentMethodId }
           : {}),
         ...(part === "deposit" ? { stripePaymentIntentId: paymentIntentId, depositPaidAt: new Date() } : { balancePaymentIntentId: paymentIntentId, balancePaidAt: new Date() }),
       },
@@ -484,7 +521,7 @@ export class OnlineMoneyService {
    * del professionista e trattenuta della piattaforma.
    */
   private async chargeOf(paymentIntentId: string): Promise<ChargeInfo> {
-    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, applicationFeeAmount: 0 };
+    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, applicationFeeAmount: 0, savedCard: null };
     if (!this.stripe) return empty;
     let pi: Stripe.PaymentIntent;
     try {
@@ -496,11 +533,14 @@ export class OnlineMoneyService {
     const charge = pi.latest_charge as Stripe.Charge | null;
     const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null;
     const destination = idOf(pi.transfer_data?.destination ?? charge?.transfer_data?.destination ?? null);
+    const customerId = idOf(pi.customer);
+    const paymentMethodId = idOf(pi.payment_method);
     return {
       fee: bt?.fee ?? 0,
       chargeId: charge?.id ?? null,
       destination,
       applicationFeeAmount: destination ? (charge?.application_fee_amount ?? pi.application_fee_amount ?? 0) : 0,
+      savedCard: pi.setup_future_usage === "off_session" && customerId && paymentMethodId ? { customerId, paymentMethodId } : null,
     };
   }
 
@@ -508,7 +548,12 @@ export class OnlineMoneyService {
    * Dopo la chiusura del lavoro (importo finale noto): fase del saldo e data
    * in cui i soldi passano al professionista se il cliente non conferma.
    */
-  async afterCompletion(jobPaymentId: string, finalAmountEurCents: number, appFeeEurCents: number): Promise<{ balanceDueEurCents: number }> {
+  async afterCompletion(
+    jobPaymentId: string,
+    finalAmountEurCents: number,
+    appFeeEurCents: number,
+    opts: { autoCharge?: boolean } = {},
+  ): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     // Col saldo diretto (§237) da Stripe passa solo l'acconto: il saldo online è già a zero.
     const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
@@ -523,7 +568,71 @@ export class OnlineMoneyService {
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
     });
-    return { balanceDueEurCents: due };
+    // Saldo addebitato da solo sulla carta salvata con l'acconto (§260):
+    // solo se l'importo finale resta nel preventivo accettato dal cliente.
+    if (due > 0 && opts.autoCharge && (await this.chargeSavedCard(jp.id, due))) return { balanceDueEurCents: 0, autoChargedEurCents: due };
+    return { balanceDueEurCents: due, autoChargedEurCents: 0 };
+  }
+
+  /**
+   * Addebito del saldo sulla carta salvata con l'acconto, senza il cliente
+   * presente (off-session). Se la banca lo rifiuta o chiede di confermare,
+   * il cliente paga con il link come prima. Restituisce true se è riuscito.
+   */
+  private async chargeSavedCard(jobPaymentId: string, amount: number): Promise<boolean> {
+    if (!this.stripe) return false;
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({
+      where: { id: jobPaymentId },
+      include: { booking: { select: { clientId: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp.clientStripeCustomerId || !jp.savedPaymentMethodId || !jp.stripeDestinationAccountId || jp.balanceDirect || jp.balancePaymentIntentId) return false;
+    const suffix = statementSuffix(jp.booking.professionalProfile.businessName);
+    let intent: Stripe.PaymentIntent;
+    try {
+      intent = await this.stripe.paymentIntents.create(
+        {
+          amount,
+          currency: "eur",
+          customer: jp.clientStripeCustomerId,
+          payment_method: jp.savedPaymentMethodId,
+          off_session: true,
+          confirm: true,
+          description: `Saldo del lavoro con ${jp.booking.professionalProfile.businessName}`,
+          ...this.destinationChargeData(jp.stripeDestinationAccountId, amount),
+          transfer_group: jp.bookingId,
+          ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+          metadata: { kind: "job_payment", part: "balance", auto: "true", jobPaymentId: jp.id, bookingId: jp.bookingId },
+        },
+        { idempotencyKey: `job-auto-balance-${jp.id}-${jp.paidEurCents}-${amount}` },
+      );
+    } catch (err) {
+      this.logger.warn(`Saldo automatico non riuscito per ${jp.id}: ${(err as Error).message}`);
+      await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeFailedAt: new Date() } });
+      return false;
+    }
+    if (intent.status !== "succeeded") {
+      // Pagamento in sospeso o da confermare: il webhook lo registra se riesce, intanto vale il link.
+      if (intent.status !== "processing") await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeFailedAt: new Date() } });
+      return false;
+    }
+    await this.recordPayment(jp.id, "balance", intent.id, intent.amount, { notify: true, autoCharged: true });
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_BALANCE_AUTO_CHARGED", {
+      bookingId: jp.bookingId,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      amountEurCents: intent.amount,
+      audience: "CLIENT",
+    });
+    return true;
+  }
+
+  /**
+   * Webhook `payment_intent.succeeded` di un saldo addebitato sulla carta
+   * salvata (§260): rete di sicurezza se la registrazione subito dopo
+   * l'addebito non è andata a buon fine. Idempotente.
+   */
+  async handleAutoBalanceSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
+    if (intent.metadata?.kind !== "job_payment" || intent.metadata?.auto !== "true" || !intent.metadata.jobPaymentId) return;
+    await this.recordPayment(intent.metadata.jobPaymentId, "balance", intent.id, intent.amount, { notify: true, autoCharged: true });
   }
 
   /**
@@ -603,9 +712,12 @@ export class OnlineMoneyService {
       paidEurCents: jp.paidEurCents,
       refundedEurCents: jp.refundedEurCents,
       stripeFeeEurCents: jp.stripeFeeEurCents,
-      // Commissione solo su quanto resta pagato: saldo non pagato o parte
-      // rimborsata al cliente (§260) non la pagano.
-      appFeeEurCents: Math.round((jp.platformFeeEurCents * Math.min(1, (jp.paidEurCents - jp.refundedEurCents) / Math.max(1, onlineTarget)))),
+      // Commissione sul totale del lavoro anche con una parte rimborsata al
+      // cliente (decisione dell'utente, §260); col saldo non pagato solo su
+      // quanto incassato.
+      appFeeEurCents: balanceUnpaid
+        ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, onlineTarget))
+        : jp.platformFeeEurCents,
     });
 
     // Update condizionato: due giri concorrenti non sbloccano due volte.
@@ -1076,22 +1188,21 @@ export class OnlineMoneyService {
   }
 
   /**
-   * Costi del pagamento che Stripe non restituisce su una cifra rimborsata o
-   * persa (costo della carta, del bonifico), da mettere a carico del
-   * professionista quando è colpa sua (§260). La nostra commissione su quella
-   * cifra non gliela chiediamo.
+   * Quello che la piattaforma rimetterebbe su una cifra rimborsata o persa
+   * (costo della carta e del bonifico che Stripe non restituisce, e la nostra
+   * commissione già trattenuta, che resta a noi: decisione dell'utente,
+   * §260), da mettere a carico del professionista quando è colpa sua.
    */
   private faultCostsEurCents(
     jp: { releasedAt: Date | null; netAmountEurCents: number; paidEurCents: number; refundedEurCents: number; platformFeeEurCents: number; stripeFeeEurCents: number },
     amount: number,
   ): number {
-    if (jp.releasedAt) {
-      const commission = Math.round((jp.platformFeeEurCents * amount) / Math.max(1, jp.paidEurCents));
-      return Math.max(0, amount - Math.min(amount, jp.netAmountEurCents) - commission);
-    }
-    // Prima dello sblocco il costo della carta lo paga già lui allo sblocco;
-    // se tutto torna al cliente lo sblocco non c'è più e il costo diventa un debito.
-    return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents : 0;
+    if (jp.releasedAt) return Math.max(0, amount - Math.min(amount, jp.netAmountEurCents));
+    // Prima dello sblocco commissione e costo della carta li paga già lui
+    // allo sblocco; se tutto torna al cliente lo sblocco non c'è più (e la
+    // trattenuta gli è stata restituita): diventano un suo debito.
+    const heldCommission = Math.round((jp.paidEurCents * ONLINE_APP_FEE_PERCENT) / 100);
+    return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents + heldCommission : 0;
   }
 
   /** Debito del professionista verso la piattaforma, recuperato dai suoi sblocchi successivi (§260). */

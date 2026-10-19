@@ -79,6 +79,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_DEPOSIT_PAID",
       "JOB_BALANCE_PAID",
       "JOB_BALANCE_DUE",
+      // Saldo addebitato da solo sulla carta salvata con l'acconto (docs/CHANGELOG.md §260).
+      "JOB_BALANCE_AUTO_CHARGED",
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",

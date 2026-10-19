@@ -95,8 +95,9 @@ Si può fare una sola segnalazione per ogni lavoro.
     2. **50%**: difetti seri;
     3. **20%**: difetti piccoli.
 
-    Il rimborso è a carico del professionista, compresi i costi del
-    pagamento che Stripe non restituisce. Di norma i soldi sono ancora
+    Il rimborso è a carico del professionista, compresi la commissione
+    della piattaforma (calcolata sull'importo totale del lavoro) e i costi
+    del pagamento che Stripe non restituisce. Di norma i soldi sono ancora
     bloccati sul suo conto Stripe e si riprendono da lì; con un rimborso
     parziale il resto gli viene sbloccato. Se erano già passati a lui, quello
     che non si riprende dal suo conto si trattiene dai suoi pagamenti online

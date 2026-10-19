@@ -121,7 +121,7 @@ describe("OnlineMoneyService con saldo diretto", () => {
     const { service, prisma } = buildService();
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...mixedJob(50000), booking: undefined });
 
-    await expect(service.afterCompletion("jp-1", 50000, 500)).resolves.toEqual({ balanceDueEurCents: 0 });
+    await expect(service.afterCompletion("jp-1", 50000, 500)).resolves.toEqual({ balanceDueEurCents: 0, autoChargedEurCents: 0 });
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: expect.objectContaining({ onlineStage: "PAID", netAmountEurCents: 9200 }) });
   });
 

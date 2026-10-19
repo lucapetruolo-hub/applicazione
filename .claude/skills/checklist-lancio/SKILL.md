@@ -73,7 +73,8 @@ produzione):
    `charge.dispute.updated`, `charge.dispute.closed`,
    `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`:
    cifra contestata ripresa subito dal professionista e restituita se si
-   vince, docs/CHANGELOG.md §260) e un **secondo
+   vince, `payment_intent.succeeded`: saldo addebitato da solo sulla carta
+   dell'acconto, docs/CHANGELOG.md §260) e un **secondo
    endpoint "Connect"** sullo stesso URL `/billing/webhook` con gli eventi
    `account.updated`, `payout.paid`, `payout.failed`, `payout.canceled`
    (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §249) e
@@ -90,10 +91,9 @@ produzione):
    modifica della pianificazione dei bonifici e i bonifici manuali/istantanei
    da parte dei professionisti: altrimenti potrebbero mandarsi in banca i
    soldi ancora bloccati (§260). Attivare Smart Disputes (Impostazioni →
-   Contestazioni) se si vuole che Stripe risponda da solo alle contestazioni
-   con le prove: costa il 30% delle contestazioni vinte, consigliato perché
-   Luca vuole occuparsi il meno possibile delle contestazioni (da confermare
-   con lui). Salvare la
+   Contestazioni): Stripe risponde da solo alle contestazioni con le prove,
+   costa il 30% delle contestazioni vinte (deciso da Luca il 19/10/2026: lo
+   attiva lui prima del lancio). Salvare la
    configurazione del Customer Portal (Impostazioni → Fatturazione → Portale
    clienti: metodi di pagamento e fatture sì, cambio piano e annullamento no,
    li gestisce il sito) e impostare un descrittore abbreviato corto (max 10

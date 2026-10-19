@@ -662,6 +662,19 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Saldo addebitato da solo sulla carta dell'acconto (§260).
+  JOB_BALANCE_AUTO_CHARGED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Saldo del lavoro pagato",
+    greeting: ctx.name,
+    title: "Saldo pagato",
+    paragraphs: [
+      `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**: abbiamo addebitato il saldo sulla carta usata per l'acconto.`,
+      "Il professionista riceve i soldi quando confermi il lavoro. Se c'è un problema, segnalalo dalla richiesta.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo pagato", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: { label: "Conferma il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
   JOB_BALANCE_UNPAID: (_payload, ctx) => ({
     kind: "notification",
     tone: "urgent",

@@ -1863,6 +1863,14 @@ model JobPayment {
   // AAAA-MM, al primo sblocco del mese).
   connectFeesEurCents        Int       @default(0)
   connectMonthlyFeeMonth     String?
+  // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
+  // alla chiusura del lavoro (docs/CHANGELOG.md §260): cliente Stripe sulla
+  // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
+  // non riuscito, il cliente paga con il link.
+  clientStripeCustomerId     String?
+  savedPaymentMethodId       String?
+  balanceAutoChargedAt       DateTime?
+  balanceAutoChargeFailedAt  DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?

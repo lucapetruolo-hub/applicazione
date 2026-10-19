@@ -90,6 +90,7 @@ notification("BOOKING_REOPENED_BY_CLIENT", "Professionista", "Lavori e appuntame
 // Pagamenti
 notification("JOB_DEPOSIT_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("JOB_BALANCE_DUE", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
+notification("JOB_BALANCE_AUTO_CHARGED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
 notification("JOB_BALANCE_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 14400 });
 notification("JOB_BALANCE_UNPAID", "Cliente", "Pagamenti dei lavori");
 notification("JOB_PAYOUT_SENT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 16380 });

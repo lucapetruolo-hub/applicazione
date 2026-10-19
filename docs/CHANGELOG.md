@@ -19391,9 +19391,9 @@ professionista; occuparci il meno possibile delle contestazioni.
 - **Colpa del professionista** (`refundOnline(..., { professionalFault })`,
   segnalazione accolta, anche quando il rimborso passa dalla Finanza): la
   cifra rimborsata e i costi del pagamento che Stripe non restituisce
-  (carta, bonifico) sono suoi; la nostra commissione sulla parte rimborsata
-  no. La commissione allo sblocco ora si calcola solo su quanto resta
-  pagato.
+  (carta, bonifico) sono suoi, e la commissione già trattenuta resta a noi
+  (decisione dell'utente: la commissione si paga sul totale del lavoro,
+  anche con un rimborso parziale).
 - **Debito del professionista** (`JobPayment.professionalDebtEurCents`):
   quello che si deve riprendere ma non è più sul suo conto Stripe (rimborso
   o contestazione persa dopo il bonifico) non si storna più dal conto (lo
@@ -19417,8 +19417,31 @@ professionista; occuparci il meno possibile delle contestazioni.
 - Smart Disputes e funzioni della Dashboard Express (bonifici fatti da sé)
   sono impostazioni della Dashboard Stripe: nella checklist di lancio.
 
-**Migrazione:** `20261019170000_refund_levels_professional_costs` (colonne
-facoltative o con default 0).
+**Secondo giro (risposta di Luca del 19/10/2026):**
+- **Commissione sul totale, resta a noi**: anche con un rimborso per colpa
+  del professionista la commissione del 5% già trattenuta non si restituisce
+  ed è calcolata sul totale pagato (`releaseIfDue`, `faultCostsEurCents`).
+- **Saldo addebitato da solo sulla carta dell'acconto**: al pagamento
+  dell'acconto online (non con saldo diretto) Stripe salva la carta
+  (`setup_future_usage: "off_session"`, cliente Stripe creato in Checkout,
+  con una riga sotto il tasto "Paga"). Quando il professionista chiude il
+  lavoro senza voci aggiunte e con l'importo finale entro il massimo del
+  preventivo, il saldo si addebita da solo (`chargeSavedCard`, chiave di
+  idempotenza per lavoro e importo); il cliente riceve
+  `JOB_BALANCE_AUTO_CHARGED` ("Saldo pagato", invito a confermare il lavoro).
+  Se l'importo supera il massimo, ci sono voci nuove o la carta viene
+  rifiutata (`balanceAutoChargeFailedAt`) resta il link di pagamento di
+  prima. Il webhook `payment_intent.succeeded` registra il pagamento se la
+  risposta sincrona si perde; la registrazione è unica
+  (`balanceAutoChargedAt`).
+- **Smart Disputes**: Luca lo attiva dalla Dashboard Stripe prima del
+  lancio (checklist).
+- **Bonifici fatti da sé dal professionista**: si possono spegnere perché
+  gli account sono con Dashboard Express (non Standard): checklist.
+
+**Migrazioni:** `20261019170000_refund_levels_professional_costs` (colonne
+facoltative o con default 0), `20261019180000_job_payment_saved_card`
+(cliente e carta salvati, stato dell'addebito automatico).
 
 **Testi:** Termini (punto pagamenti), regolamento delle controversie,
 email e notifiche di sblocco e contestazione, scheda admin.

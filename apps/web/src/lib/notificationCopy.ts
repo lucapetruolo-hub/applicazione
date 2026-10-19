@@ -75,6 +75,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_DEPOSIT_PAID: { icon: "💳", message: "Il cliente ha pagato l'acconto online per un lavoro." },
   JOB_BALANCE_PAID: { icon: "💳", message: "Il cliente ha pagato il saldo online: riceverai l'accredito alla sua conferma o entro 7 giorni." },
   JOB_BALANCE_DUE: { icon: "💳", message: "Il lavoro è chiuso: paga il saldo online per completare il pagamento." },
+  JOB_BALANCE_AUTO_CHARGED: { icon: "💳", message: "Il lavoro è chiuso: il saldo è stato addebitato sulla carta dell'acconto." },
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
   JOB_PAYOUT_SENT: { icon: "✅", message: "Pagamento sbloccato: il bonifico è in arrivo." },
   JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
