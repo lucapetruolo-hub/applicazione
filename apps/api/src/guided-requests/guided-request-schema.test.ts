@@ -18,7 +18,7 @@ describe("guidedRequestSchema: città", () => {
   });
 });
 
-// Più categorie in una richiesta generale (docs/CHANGELOG.md §253).
+// Più categorie in una richiesta generale (docs/CHANGELOG.md §259).
 describe("guidedRequestSchema: più categorie", () => {
   const base = { categorySlug: "idraulico", description: "Rifare il bagno di casa", serviceMode: "ONLINE" as const, city: "Latina" };
 

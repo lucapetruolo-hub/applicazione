@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { requestSentEmail } from "./job-emails";
 
-// Una sola email per un invio con più categorie (docs/CHANGELOG.md §253).
+// Una sola email per un invio con più categorie (docs/CHANGELOG.md §259).
 describe("requestSentEmail", () => {
   const base = { name: "Anna", city: "Roma", isUrgent: false, sentTo: 4, direct: false };
 

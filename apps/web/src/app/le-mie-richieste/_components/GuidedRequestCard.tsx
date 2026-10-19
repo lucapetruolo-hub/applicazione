@@ -613,7 +613,7 @@ export function GuidedRequestCard({
           </XStack>
         )}
         {request.sentWith && request.sentWith.length > 0 ? (
-          // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §253).
+          // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §259).
           <XStack alignItems="center" gap="$1">
             <Icon name="send" size={14} color={brand.grafite70} />
             <Text fontSize={14} color={brand.grafite70}>

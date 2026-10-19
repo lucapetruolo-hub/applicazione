@@ -13,7 +13,7 @@ export function requestSentEmail(input: {
   name: string | null;
   /** Una o più categorie già unite ("Idraulico ed Elettricista"). */
   category: string;
-  /** Richieste nate dallo stesso invio, una per categoria (docs/CHANGELOG.md §253). */
+  /** Richieste nate dallo stesso invio, una per categoria (docs/CHANGELOG.md §259). */
   requestsCount?: number;
   city: string | null;
   isUrgent: boolean;

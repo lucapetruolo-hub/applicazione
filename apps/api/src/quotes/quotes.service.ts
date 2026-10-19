@@ -4,6 +4,7 @@ import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   formatServicePriceRange,
   describePaymentOffer,
+  IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE,
   paymentChoiceIsOnline,
   paymentOfferChanged,
   quoteChangeWhat,
@@ -24,6 +25,7 @@ import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
+import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -100,6 +102,14 @@ export class QuotesService {
       isResend = true;
     } else if (existingQuote && existingQuote.status !== "SENT") {
       throw new ForbiddenException("Questo preventivo non è più modificabile da qui.");
+    }
+
+    // Documento e selfie prima del primo preventivo (decisione dell'utente,
+    // docs/CHANGELOG.md §259): così il cliente non riceve mai un preventivo
+    // da chi non ha verificato l'identità. Un preventivo già inviato resta
+    // modificabile.
+    if ((!existingQuote || isResend) && identityVerificationNeeded(professionalProfile)) {
+      throw new ForbiddenException(IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE);
     }
 
     // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §237). Senza

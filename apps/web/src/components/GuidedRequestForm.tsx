@@ -273,7 +273,7 @@ export function GuidedRequestForm({
       : pickableSlots;
 
   // Più categorie insieme in una richiesta generale (docs/CHANGELOG.md
-  // §253): all'invio diventa una richiesta per categoria. La prima scelta
+  // §259): all'invio diventa una richiesta per categoria. La prima scelta
   // guida l'esempio della descrizione.
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(
     initialCategory && isProfessionalCategorySlug(initialCategory) ? [initialCategory] : [],
@@ -803,7 +803,7 @@ export function GuidedRequestForm({
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
-            {/* Più categorie insieme (docs/CHANGELOG.md §253): ogni pillola si
+            {/* Più categorie insieme (docs/CHANGELOG.md §259): ogni pillola si
                 accende e si spegne; arrivati al massimo le altre si
                 attenuano. Il menu a tendina per telefono (F2.1) è stato tolto:
                 non permette una scelta multipla e le pillole vanno a capo
@@ -1266,7 +1266,7 @@ function GeneralRequestsClosedNotice({
   categorySlug: string | null;
   categoryLabel: string | null;
   city: string;
-  /** Con più categorie scelte si può togliere solo quella chiusa (docs/CHANGELOG.md §253). */
+  /** Con più categorie scelte si può togliere solo quella chiusa (docs/CHANGELOG.md §259). */
   canRemove?: boolean;
   onRemove?: () => void;
 }) {

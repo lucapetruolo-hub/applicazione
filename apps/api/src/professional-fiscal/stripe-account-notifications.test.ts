@@ -10,7 +10,7 @@ function build(wasEnabled: boolean) {
     },
   };
   const notificationsService = { notify: vi.fn() };
-  const service = new ProfessionalFiscalService(prisma as never, {} as never, {} as never, notificationsService as never);
+  const service = new ProfessionalFiscalService(prisma as never, {} as never, {} as never, notificationsService as never, {} as never);
   return { service, prisma, notificationsService };
 }
 

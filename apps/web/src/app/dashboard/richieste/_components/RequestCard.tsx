@@ -56,6 +56,7 @@ export function RequestCard({
   myProfileId,
   defaultPaymentOffer,
   stripeVerified = true,
+  identityVerificationNeeded = false,
   isOpen,
   onToggle,
   onChanged,
@@ -75,6 +76,8 @@ export function RequestCard({
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
+  /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §259). */
+  identityVerificationNeeded?: boolean;
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -1220,8 +1223,30 @@ export function RequestCard({
             ) : null}
           </YStack>
 
+          {/* Prima del primo preventivo serve la verifica dell'identità
+              (docs/CHANGELOG.md §259): al posto del modulo, cosa fare. Un
+              preventivo già inviato resta modificabile. */}
+          {showQuoteForm && identityVerificationNeeded && (!lead.quote || canResendQuote) ? (
+            <YStack gap="$2.5" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.ottone}>
+              <XStack gap="$2" alignItems="center">
+                <Icon name="id-card" size={20} color={brand.grafite} strokeWidth={1.8} />
+                <Text fontWeight="700" color={brand.grafite} flex={1}>
+                  Verifica la tua identità per inviare il preventivo
+                </Text>
+              </XStack>
+              <Text fontSize={13.5} color={brand.grafite70}>
+                Serve una sola volta: un documento e un selfie, circa 2 minuti. Poi torni qui e invii il preventivo.
+              </Text>
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton tone="primary" onPress={() => router.push("/dashboard/verifica-identita")}>
+                  Verifica ora
+                </CardButton>
+                <CardButton onPress={() => setShowQuoteForm(false)}>Più tardi</CardButton>
+              </XStack>
+            </YStack>
+          ) : null}
           {/* Form invio/modifica preventivo */}
-          {showQuoteForm ? (
+          {showQuoteForm && !(identityVerificationNeeded && (!lead.quote || canResendQuote)) ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {items.map((item, index) => (
                 <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">

@@ -72,6 +72,8 @@ import type {
   PendingProfileInvite,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
+  MyVerificationStatus,
+  TaxIdCheckView,
   VerifyProfessionalInput,
   GeneralRequestAvailability,
   GeneralRequestsAdminOverview,
@@ -154,7 +156,7 @@ export type ClientBooking = {
 
 export type ClientGuidedRequest = {
   id: string;
-  /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §253). */
+  /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §259). */
   sentWith?: { id: string; categoryLabel: string }[];
   categorySlug: string;
   categoryLabel: string;
@@ -686,6 +688,8 @@ export type ProfessionalFiscalProfile = {
   stripePayoutsEnabled: boolean;
   stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
+  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §259). */
+  taxIdChecks?: TaxIdCheckView[];
 };
 
 export type AuditLogEntry = {
@@ -1081,7 +1085,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       request<{
         guidedRequestId: string;
         matchedProfessionals: number;
-        /** Una richiesta per categoria (docs/CHANGELOG.md §253). */
+        /** Una richiesta per categoria (docs/CHANGELOG.md §259). */
         requests: { guidedRequestId: string; categorySlug: string; matchedProfessionals: number }[];
       }>("/guided-requests", {
         method: "POST",
@@ -1549,12 +1553,6 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** "Richiedi la verifica" dal profilo (docs/CHANGELOG.md §201). */
-    requestProfessionalVerification: (token: string) =>
-      request<{ verificationRequestedAt: string }>("/professionals/me/verification-request", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      }),
     /** Richieste generali aperte per questa categoria in questa città (docs/CHANGELOG.md §211). */
     generalRequestAvailability: (categorySlug?: string, city?: string) => {
       const params = new URLSearchParams();
@@ -1582,6 +1580,22 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
+    /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §254). */
+    adminRecheckTaxIds: (token: string, professionalProfileId: string) =>
+      request<TaxIdCheckView[]>(`/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/tax-recheck`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §259). */
+    myVerificationStatus: (token: string) =>
+      request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */
+    startIdentityVerification: (token: string) =>
+      request<{ url: string | null; standby: boolean }>("/professionals/me/verification/identity", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ biometricConsent: true }),
+      }),
     adminUnverifyProfessional: (token: string, professionalProfileId: string, note: string) =>
       request<{ professionalProfileId: string; verified: boolean }>(
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/unverify`,

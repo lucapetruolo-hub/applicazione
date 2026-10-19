@@ -76,7 +76,7 @@ export class GuidedRequestsService {
   ) {}
 
   /**
-   * Richiesta del modulo, con una o più categorie (docs/CHANGELOG.md §253):
+   * Richiesta del modulo, con una o più categorie (docs/CHANGELOG.md §259):
    * una richiesta separata per ogni categoria, con gli stessi dati. I
    * controlli (categorie, zona aperta, indirizzo) si fanno tutti prima di
    * crearne una, così non resta mai una parte delle richieste a metà.
@@ -430,7 +430,7 @@ export class GuidedRequestsService {
     });
 
     return requests.map((request) => {
-      // Altre richieste dello stesso invio con più categorie (§253).
+      // Altre richieste dello stesso invio con più categorie (§259).
       const sentWith = request.submissionGroupId
         ? requests
             .filter((other) => other.id !== request.id && other.submissionGroupId === request.submissionGroupId)

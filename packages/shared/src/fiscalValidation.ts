@@ -108,3 +108,159 @@ export function checkFiscalId(value: string, issuingCountry: string | undefined,
     ? { valid: true, message: null }
     : { valid: false, message: "Il formato non sembra valido per un identificativo fiscale estero." };
 }
+
+// --- Coerenza del codice fiscale con nome, cognome e data di nascita ------
+// (docs/CHANGELOG.md §259) Gratis, nel browser e sul server: blocca chi
+// scrive un codice fiscale non suo o sbaglia una lettera del nome. Il sesso
+// non lo chiediamo, quindi per il giorno di nascita valgono sia il giorno sia
+// il giorno + 40 (donne). Gestisce l'omocodia (cifre sostituite da lettere).
+
+const OMOCODIA_DIGIT: Record<string, string> = { L: "0", M: "1", N: "2", P: "3", Q: "4", R: "5", S: "6", T: "7", U: "8", V: "9" };
+const OMOCODIA_POSITIONS = [6, 7, 9, 10, 12, 13, 14];
+const CF_MONTHS = "ABCDEHLMPRST";
+
+function lettersOf(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+}
+
+function splitLetters(value: string): { consonants: string; vowels: string } {
+  const letters = lettersOf(value);
+  return { consonants: letters.replace(/[AEIOU]/g, ""), vowels: letters.replace(/[^AEIOU]/g, "") };
+}
+
+/** Le 3 lettere del cognome nel codice fiscale. */
+export function codiceFiscaleSurnameCode(lastName: string): string {
+  const { consonants, vowels } = splitLetters(lastName);
+  return `${consonants}${vowels}XXX`.slice(0, 3);
+}
+
+/** Le 3 lettere del nome nel codice fiscale (con 4 o più consonanti si salta la seconda). */
+export function codiceFiscaleNameCode(firstName: string): string {
+  const { consonants, vowels } = splitLetters(firstName);
+  if (consonants.length >= 4) return `${consonants[0]}${consonants[2]}${consonants[3]}`;
+  return `${consonants}${vowels}XXX`.slice(0, 3);
+}
+
+/** Anno (ultime 2 cifre), mese e giorno scritti nel codice fiscale; `null` se il codice non è valido. */
+export function codiceFiscaleBirth(value: string): { year2: number; month: number; day: number; female: boolean } | null {
+  const cf = normalize(value);
+  if (!isValidCodiceFiscale(cf)) return null;
+  const chars = cf.split("");
+  for (const position of OMOCODIA_POSITIONS) {
+    const char = chars[position] ?? "";
+    if (OMOCODIA_DIGIT[char]) chars[position] = OMOCODIA_DIGIT[char];
+  }
+  const decoded = chars.join("");
+  const rawDay = Number(decoded.slice(9, 11));
+  return {
+    year2: Number(decoded.slice(6, 8)),
+    month: CF_MONTHS.indexOf(decoded.charAt(8)) + 1,
+    day: rawDay > 40 ? rawDay - 40 : rawDay,
+    female: rawDay > 40,
+  };
+}
+
+export type CodiceFiscalePerson = { firstName?: string | null; lastName?: string | null; dateOfBirth?: string | Date | null };
+
+/**
+ * Cosa non torna tra il codice fiscale e la persona: "cognome", "nome",
+ * "data di nascita". Vuoto se tutto coincide, se il codice non è un codice
+ * fiscale italiano valido (lo segnala già `checkFiscalId`) o se manca il dato
+ * da confrontare.
+ */
+export function codiceFiscaleMismatches(codiceFiscale: string | null | undefined, person: CodiceFiscalePerson): string[] {
+  const cf = normalize(codiceFiscale ?? "");
+  if (!cf || !isValidCodiceFiscale(cf)) return [];
+  const mismatches: string[] = [];
+  if (person.lastName && lettersOf(person.lastName) && codiceFiscaleSurnameCode(person.lastName) !== cf.slice(0, 3)) mismatches.push("cognome");
+  if (person.firstName && lettersOf(person.firstName) && codiceFiscaleNameCode(person.firstName) !== cf.slice(3, 6)) mismatches.push("nome");
+  const birth = codiceFiscaleBirth(cf);
+  const date = person.dateOfBirth ? new Date(person.dateOfBirth) : null;
+  if (birth && date && !Number.isNaN(date.getTime())) {
+    const sameDate = date.getUTCFullYear() % 100 === birth.year2 && date.getUTCMonth() + 1 === birth.month && date.getUTCDate() === birth.day;
+    if (!sameDate) mismatches.push("data di nascita");
+  }
+  return mismatches;
+}
+
+/** Messaggio per l'utente quando il codice fiscale non corrisponde: dice cosa controllare. */
+export function codiceFiscaleMismatchMessage(mismatches: string[]): string | null {
+  if (mismatches.length === 0) return null;
+  const list = mismatches.length === 1 ? mismatches[0] : `${mismatches.slice(0, -1).join(", ")} e ${mismatches[mismatches.length - 1]}`;
+  const hint = mismatches.includes("nome") ? " Se hai più nomi scrivili tutti, come sul documento." : "";
+  return `Il codice fiscale non corrisponde a ${list}: controlla di averli scritti come sul documento.${hint}`;
+}
+
+/** Data di nascita (AAAA-MM-GG) da un codice fiscale valido; il secolo si deduce dall'età (18-100 anni). */
+export function birthDateFromCodiceFiscale(value: string, today: Date = new Date()): string | null {
+  const birth = codiceFiscaleBirth(value);
+  if (!birth || birth.month < 1 || birth.day < 1 || birth.day > 31) return null;
+  // Chi lavora sulla piattaforma ha almeno 18 anni: se nel 2000 sarebbe più giovane, è nato nel 1900.
+  const year = 2000 + birth.year2 > today.getUTCFullYear() - 18 ? 1900 + birth.year2 : 2000 + birth.year2;
+  return `${year}-${String(birth.month).padStart(2, "0")}-${String(birth.day).padStart(2, "0")}`;
+}
+
+export type FiscalFieldError = { field: string; message: string };
+
+export type FiscalValidationInput = {
+  entityType?: string | null;
+  fiscalIdIssuingCountry?: string | null;
+  fiscalFirstName?: string | null;
+  fiscalLastName?: string | null;
+  fiscalCodiceFiscale?: string | null;
+  dateOfBirth?: string | Date | null;
+  vatNumber?: string | null;
+  representative?: { firstName?: string | null; lastName?: string | null; codiceFiscale?: string | null } | null;
+};
+
+/**
+ * Tutti i controlli gratuiti sui dati fiscali, uguali nel browser e sul
+ * server (docs/CHANGELOG.md §259): prima il server non li ripeteva e una
+ * chiamata diretta all'API poteva salvare un codice sbagliato.
+ */
+export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldError[] {
+  const errors: FiscalFieldError[] = [];
+  const country = input.fiscalIdIssuingCountry ?? undefined;
+  const isPerson = input.entityType === "PRIVATE_INDIVIDUAL" || input.entityType === "SOLE_PROPRIETOR";
+  const cf = (input.fiscalCodiceFiscale ?? "").trim();
+  if (isPerson && cf) {
+    const check = checkFiscalId(cf, country, "codiceFiscale");
+    if (!check.valid) errors.push({ field: "fiscalCodiceFiscale", message: check.message ?? "Codice fiscale non valido." });
+    else if ((country ?? "IT").toUpperCase() === "IT") {
+      const message = codiceFiscaleMismatchMessage(
+        codiceFiscaleMismatches(cf, { firstName: input.fiscalFirstName, lastName: input.fiscalLastName, dateOfBirth: input.dateOfBirth }),
+      );
+      if (message) errors.push({ field: "fiscalCodiceFiscale", message });
+    }
+  }
+  if (input.dateOfBirth) {
+    const date = new Date(input.dateOfBirth);
+    if (Number.isNaN(date.getTime())) errors.push({ field: "dateOfBirth", message: "La data di nascita non è valida." });
+    else if (date.getTime() > Date.now()) errors.push({ field: "dateOfBirth", message: "La data di nascita non può essere nel futuro." });
+  }
+  const vat = (input.vatNumber ?? "").trim();
+  if ((input.entityType === "SOLE_PROPRIETOR" || input.entityType === "BUSINESS") && vat) {
+    const check = checkFiscalId(vat, country, "vatNumber");
+    if (!check.valid) errors.push({ field: "vatNumber", message: check.message ?? "Partita IVA non valida." });
+  }
+  const rep = input.representative;
+  const repCf = (rep?.codiceFiscale ?? "").trim();
+  if (input.entityType === "BUSINESS" && repCf) {
+    if (!isValidCodiceFiscale(repCf)) {
+      errors.push({ field: "representative.codiceFiscale", message: "Il codice fiscale del legale rappresentante non sembra valido." });
+    } else {
+      const mismatches = codiceFiscaleMismatches(repCf, { firstName: rep?.firstName, lastName: rep?.lastName });
+      if (mismatches.length > 0) {
+        errors.push({
+          field: "representative.codiceFiscale",
+          message: `Il codice fiscale del legale rappresentante non corrisponde a ${mismatches.join(" e ")}.`,
+        });
+      }
+    }
+  }
+  return errors;
+}

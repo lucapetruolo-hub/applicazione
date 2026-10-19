@@ -243,7 +243,7 @@ export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
 });
 export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 
-/** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §253). */
+/** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §259). */
 export const MAX_REQUEST_CATEGORIES = 3;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
 
@@ -253,7 +253,7 @@ export const guidedRequestSchema = z
     categorySlug: professionalCategorySlugSchema,
     /**
      * Altre categorie della stessa richiesta generale (docs/CHANGELOG.md
-     * §253, richiesta dell'utente): diventa una richiesta separata per
+     * §259, richiesta dell'utente): diventa una richiesta separata per
      * ognuna, con gli stessi dati. Mai in una richiesta diretta.
      */
     extraCategorySlugs: z.array(professionalCategorySlugSchema).max(MAX_REQUEST_CATEGORIES - 1, tooManyRequestCategoriesMessage).default([]),

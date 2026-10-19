@@ -345,7 +345,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                 ) : null}
               </XStack>
               {/* Categorie (da 1 a 3, docs/CHANGELOG.md §217) su una riga loro,
-                  separate dalla città (docs/CHANGELOG.md §253). */}
+                  separate dalla città (docs/CHANGELOG.md §259). */}
               <XStack flexWrap="wrap" gap="$2">
                 {(professional.categories?.length
                   ? professional.categories
