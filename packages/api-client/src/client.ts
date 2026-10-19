@@ -1850,7 +1850,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §248). */
+    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §249). */
     professionalPayoutSummary: (token: string) =>
       request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

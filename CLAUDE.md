@@ -294,7 +294,7 @@ accetta il preventivo, mai i "completati", che segna il professionista).
   sul conto Stripe del professionista meno costo Stripe e commissione del 5%,
   mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
   fino alla conferma o per 7 giorni (massimo 90, regola Stripe),
-  docs/CHANGELOG.md §248; assistenza e rimborso sulle segnalazioni accolte)
+  docs/CHANGELOG.md §249; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
   restano tra le parti, il cliente può comunque recensire). Il pagamento
   diretto non paga commissione.

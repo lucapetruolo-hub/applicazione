@@ -238,7 +238,7 @@ export class ProfessionalFiscalService {
    * carte), Dashboard Express, commissioni Stripe e perdite a carico della
    * piattaforma. I pagamenti dei lavori si addebitano "a destinazione" sul
    * suo conto con i bonifici verso la banca in manuale (docs/CHANGELOG.md
-   * §248, impostati da OnlineMoneyService al primo pagamento).
+   * §249, impostati da OnlineMoneyService al primo pagamento).
    * Prima di creare il primo account va accettata la responsabilità delle
    * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */

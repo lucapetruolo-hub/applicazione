@@ -73,8 +73,8 @@ produzione):
    `charge.dispute.updated`, `charge.dispute.closed`) e un **secondo
    endpoint "Connect"** sullo stesso URL `/billing/webhook` con gli eventi
    `account.updated`, `payout.paid`, `payout.failed`, `payout.canceled`
-   (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §248) e
-   `balance.available` (bonifico appena i soldi sono disponibili, §248),
+   (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §249) e
+   `balance.available` (bonifico appena i soldi sono disponibili, §249),
    `account.external_account.created` e `account.external_account.updated`
    (conto bancario aggiunto o cambiato su Stripe),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).

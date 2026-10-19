@@ -1606,7 +1606,7 @@ model ProfessionalFiscalProfile {
   stripeChargesEnabled     Boolean @default(false)
   stripePayoutsEnabled     Boolean @default(false)
   stripeRequirementsStatus String? // riassunto testuale dei requisiti mancanti restituiti da Stripe
-  // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §248):
+  // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
   // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
   stripeManualPayoutsAt    DateTime?
 
@@ -1736,7 +1736,7 @@ model JobPayment {
   stripeDisputeStatus    String?
   stripeDisputedAt       DateTime?
 
-  // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §248) ---
+  // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
   // Acconto e saldo addebitati "a destinazione" sul conto del professionista
   // (`stripeDestinationAccountId`; null = vecchio modello, soldi in custodia
   // sulla piattaforma e trasferimento allo sblocco). La piattaforma trattiene
@@ -1754,7 +1754,7 @@ model JobPayment {
   payoutPaidAt               DateTime?
   payoutFailedAt             DateTime?
   payoutFailureMessage       String?
-  /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §248).
+  /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
   longHoldAlertedAt          DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---

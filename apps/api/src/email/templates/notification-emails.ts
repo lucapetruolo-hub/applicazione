@@ -674,7 +674,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
-  // Soldi sbloccati sul conto Stripe del professionista (§248): parte il bonifico.
+  // Soldi sbloccati sul conto Stripe del professionista (§249): parte il bonifico.
   JOB_PAYOUT_SENT: (payload, ctx) => ({
     kind: "notification",
     subject: `Pagamento sbloccato: ${formatEur(payload.amountEurCents) || "un bonifico"} in arrivo`,

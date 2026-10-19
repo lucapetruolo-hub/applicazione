@@ -92,14 +92,14 @@ export const ONLINE_APP_FEE_PERCENT = 5;
 /**
  * Costo massimo della carta su Stripe (carte extra europee, 3,25% + €0,25),
  * usato per la trattenuta provvisoria sul pagamento: la differenza col costo
- * reale torna al professionista appena Stripe lo comunica (docs/CHANGELOG.md §248).
+ * reale torna al professionista appena Stripe lo comunica (docs/CHANGELOG.md §249).
  */
 export const ONLINE_CARD_FEE_MAX_BASIS_POINTS = 325;
 export const ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS = 25;
 
 /**
  * Trattenuta della piattaforma su un pagamento addebitato sul conto Stripe
- * del professionista (application fee, docs/CHANGELOG.md §248): commissione
+ * del professionista (application fee, docs/CHANGELOG.md §249): commissione
  * più il costo massimo della carta. Il costo reale si conosce solo dopo il
  * pagamento, quindi si trattiene il massimo e si restituisce la differenza.
  */
@@ -110,7 +110,7 @@ export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number
 }
 
 /**
- * Bonifico verso la banca del professionista (docs/CHANGELOG.md §248):
+ * Bonifico verso la banca del professionista (docs/CHANGELOG.md §249):
  * - `BLOCKED`: soldi sul suo conto Stripe, bloccati fino alla conferma del cliente o ai 7 giorni;
  * - `WAITING_FUNDS`: sbloccati, il bonifico parte appena Stripe li rende disponibili;
  * - `SENT`: bonifico partito verso la banca;
@@ -279,7 +279,7 @@ type JobPaymentRow = {
   payoutFailureMessage?: string | null;
 };
 
-/** Dov'è il bonifico del professionista (docs/CHANGELOG.md §248). */
+/** Dov'è il bonifico del professionista (docs/CHANGELOG.md §249). */
 export function jobPayoutStatus(jp: JobPaymentRow): JobPayoutStatus | null {
   if (jp.paymentMethod !== "MANOVIA" || jp.onlineStage === "REFUNDED" || jp.onlineStage === "AWAITING_DEPOSIT") return null;
   if (!jp.releasedAt) return jp.paidEurCents - jp.refundedEurCents > 0 ? "BLOCKED" : null;
@@ -335,12 +335,12 @@ export function toJobPaymentSummary(
  * Giorni dopo il primo pagamento oltre i quali avvisiamo il team Finanza di
  * un pagamento ancora bloccato: Stripe non tiene i soldi bloccati più di
  * 90 giorni e poi li manda comunque in banca al professionista
- * (docs/CHANGELOG.md §248).
+ * (docs/CHANGELOG.md §249).
  */
 export const ONLINE_LONG_HOLD_ALERT_DAYS = 80;
 export const ONLINE_MAX_HOLD_DAYS = 90;
 
-/** Totali dei pagamenti online del professionista, per stato del bonifico (Dati fiscali e pagamenti, §248). */
+/** Totali dei pagamenti online del professionista, per stato del bonifico (Dati fiscali e pagamenti, §249). */
 export type ProfessionalPayoutTotals = {
   /** Pagati dal cliente, bloccati fino alla conferma. */
   blockedEurCents: number;

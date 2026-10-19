@@ -82,7 +82,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
-      // Bonifico dal conto Stripe del professionista non riuscito (docs/CHANGELOG.md §248).
+      // Bonifico dal conto Stripe del professionista non riuscito (docs/CHANGELOG.md §249).
       "JOB_PAYOUT_FAILED",
       "ADMIN_JOB_BALANCE_UNPAID",
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
@@ -96,7 +96,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_CLOSE_REMINDER",
       "JOB_CLOSE_EXPIRED",
       "ADMIN_JOB_NOT_CLOSED",
-      // Soldi bloccati da più di 80 giorni, Stripe li paga comunque dopo 90 (docs/CHANGELOG.md §248).
+      // Soldi bloccati da più di 80 giorni, Stripe li paga comunque dopo 90 (docs/CHANGELOG.md §249).
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
       "BOOKING_REMINDER",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).

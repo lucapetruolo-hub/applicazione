@@ -30,7 +30,7 @@ const PAYOUT_RETRY_AFTER_FAILURE_MS = DAY_MS;
 type ChargeInfo = {
   fee: number;
   chargeId: string | null;
-  /** Conto Stripe del professionista se l'addebito è "a destinazione" (§248). */
+  /** Conto Stripe del professionista se l'addebito è "a destinazione" (§249). */
   destination: string | null;
   /** Trattenuta della piattaforma (application fee) sull'addebito. */
   applicationFeeAmount: number;
@@ -50,7 +50,7 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
 }
 
 /**
- * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §248):
+ * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §249):
  * acconto e saldo pagati dal cliente con Stripe Checkout e addebitati "a
  * destinazione" sul conto Stripe del professionista (destination charges di
  * Stripe Connect), mai in custodia sul conto della piattaforma (decisione
@@ -62,7 +62,7 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
  * bonifico. Rimborsi al cliente (annullamenti, segnalazioni accolte,
  * differenza pagata in più) ripresi dal conto del professionista.
  *
- * I pagamenti registrati prima di §248 (`stripeDestinationAccountId` vuoto)
+ * I pagamenti registrati prima di §249 (`stripeDestinationAccountId` vuoto)
  * seguono il vecchio modello: custodia sulla piattaforma e trasferimento
  * allo sblocco.
  *
@@ -220,7 +220,7 @@ export class OnlineMoneyService {
 
   /**
    * Conto Stripe del professionista su cui addebitare un pagamento online
-   * (docs/CHANGELOG.md §248): deve poter ricevere i soldi e avere i bonifici
+   * (docs/CHANGELOG.md §249): deve poter ricevere i soldi e avere i bonifici
    * verso la banca in manuale, altrimenti Stripe li manderebbe subito alla
    * sua banca e non sarebbero più bloccati. Se qualcosa manca il pagamento
    * non parte: meglio un errore chiaro che soldi non bloccati.
@@ -515,7 +515,7 @@ export class OnlineMoneyService {
   /**
    * Sblocca i soldi al professionista se è il momento (conferma del cliente o
    * 7 giorni, nessuna segnalazione né contestazione aperta). Con l'addebito
-   * sul suo conto (§248) restituisce il conguaglio della trattenuta e fa
+   * sul suo conto (§249) restituisce il conguaglio della trattenuta e fa
    * partire il bonifico verso la sua banca; col vecchio modello trasferisce
    * dal conto della piattaforma.
    */
@@ -665,7 +665,7 @@ export class OnlineMoneyService {
 
   /**
    * Bonifico dal conto Stripe del professionista alla sua banca per un lavoro
-   * sbloccato (docs/CHANGELOG.md §248). Parte solo se sul conto ci sono
+   * sbloccato (docs/CHANGELOG.md §249). Parte solo se sul conto ci sono
    * abbastanza soldi disponibili senza toccare quelli ancora bloccati per
    * altri lavori; altrimenti si riprova al giro successivo (i soldi appena
    * pagati restano "in arrivo" su Stripe per qualche giorno).
@@ -788,7 +788,7 @@ export class OnlineMoneyService {
   /**
    * Riprova subito i bonifici in sospeso di un conto: quando il professionista
    * aggiorna il conto Stripe (anche quelli non riusciti) o quando Stripe rende
-   * disponibili i suoi soldi (`skipFailed`: solo quelli in attesa, §248).
+   * disponibili i suoi soldi (`skipFailed`: solo quelli in attesa, §249).
    */
   async retryPayoutsForAccount(accountId: string, options: { skipFailed?: boolean } = {}): Promise<void> {
     const rows = await this.prisma.jobPayment.findMany({
@@ -863,7 +863,7 @@ export class OnlineMoneyService {
       },
     });
     // Addebito sul conto del professionista con i soldi ancora bloccati
-    // (§248): la cifra persa si riprende dal suo conto, come per un rimborso.
+    // (§249): la cifra persa si riprende dal suo conto, come per un rimborso.
     if (lostAmount > 0 && jp.stripeDestinationAccountId && !jp.releasedAt) {
       await this.recoverFromProfessional(jp.id, lostAmount, `dispute-${dispute.id}`).catch((err) =>
         this.logger.error(`Contestazione persa ${dispute.id}: recupero dal conto del professionista non riuscito: ${(err as Error).message}`),
@@ -934,7 +934,7 @@ export class OnlineMoneyService {
 
   /**
    * Soldi bloccati da più di 80 giorni sul conto del professionista
-   * (docs/CHANGELOG.md §248): Stripe non li tiene oltre 90 e poi li manda
+   * (docs/CHANGELOG.md §249): Stripe non li tiene oltre 90 e poi li manda
    * comunque in banca, quindi il team Finanza decide prima se sbloccarli o
    * rimborsare il cliente. Un solo avviso per pagamento.
    */
@@ -985,7 +985,7 @@ export class OnlineMoneyService {
 
   /**
    * Rimborso al cliente di un lavoro pagato online. Con l'addebito sul conto
-   * del professionista (§248) i soldi si riprendono da lì; se erano già
+   * del professionista (§249) i soldi si riprendono da lì; se erano già
    * sbloccati se ne riprende al massimo la sua quota, come quando erano
    * stati trasferiti col vecchio modello (storno del trasferimento).
    */
