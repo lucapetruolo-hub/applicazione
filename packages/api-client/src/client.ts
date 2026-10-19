@@ -73,6 +73,8 @@ import type {
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
+  AddressSuggestion,
+  AddressPlace,
   TaxIdCheckView,
   VerifyProfessionalInput,
   GeneralRequestAvailability,
@@ -1580,6 +1582,18 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */
+    /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §263). */
+    addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
+      const query = new URLSearchParams({ q: params.q, session: params.session });
+      if (params.latitude !== undefined && params.longitude !== undefined) {
+        query.set("lat", String(params.latitude));
+        query.set("lng", String(params.longitude));
+      }
+      return request<AddressSuggestion[]>(`/address/suggestions?${query.toString()}`, { cache: "no-store" });
+    },
+    /** Dettagli dell'indirizzo scelto: coordinate e pezzi (via, civico, CAP, comune, provincia). */
+    addressPlace: (id: string, session: string) =>
+      request<AddressPlace>(`/address/place/${encodeURIComponent(id)}?session=${encodeURIComponent(session)}`, { cache: "no-store" }),
     myVerificationStatus: (token: string) =>
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */

@@ -19351,3 +19351,17 @@ blocca nulla, come prima.
 **Motivo**: meno da scrivere a mano e un indirizzo completo come lo vuole il fisco.
 
 **Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate `dati-fiscali-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 263. Suggerimenti degli indirizzi dal nostro server, senza consenso; via e città in un solo campo
+
+**Richiesta esplicita dell'utente** (19/10/2026): "nella parte a domicilio si può inserire tutto insieme via, città e tutto il resto, non serve inserire prima la città"; poi, sul consenso ai cookie Google: "procedi col campo unico visto che ora funziona sempre"; "vedi dove altro si può implementare questo inserimento dell'indirizzo".
+
+**Decisione presa**:
+- I suggerimenti li chiede a Google il nostro server: `GET /address/suggestions` e `GET /address/place/:id` (`apps/api/src/geocoding/address-suggestions.*`, Places API (New) con la chiave server `GOOGLE_MAPS_API_KEY`, token di sessione dal browser, limite per IP). `AddressAutocompleteInput` non carica più la libreria Google nel browser: niente cookie né consenso, suggerimenti per tutti. Se il server non risponde il campo resta testo libero (`useChosenAddress` non dipende più dalla chiave del browser). Informativa privacy aggiornata.
+- **Richiesta di preventivo a domicilio**: un solo campo "Indirizzo" (via e città insieme); la scelta compila città, civico, CAP e provincia, e il numero civico si chiede a parte solo se manca. Il campo "Città" resta per le richieste online e, se i suggerimenti non funzionano, compaiono i campi separati.
+- **Modifica richiesta** e **Account**: l'indirizzo non è più limitato alla città scelta prima; la scelta compila anche la città. **Dati fiscali** (§262) e **Profilo pubblico** usano già lo stesso campo, ora anche senza consenso.
+- Supera in parte §214 (indirizzo "solo della città scelta"): resta l'obbligo di sceglierlo dall'elenco, e il controllo lato server via/comune.
+
+**Da fare sul pannello Google Cloud**: abilitare "Places API (New)" sulla chiave server usata su Render.
+
+**Verifica**: test del nuovo servizio; typecheck e lint di web e API, test dell'API verdi; schermate `richiesta-indirizzo-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
