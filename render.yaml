@@ -74,7 +74,9 @@ services:
       # Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e
       # al Registro Imprese (Openapi, docs/CHANGELOG.md §246). Senza token il
       # controllo è saltato e non blocca nulla; OPENAPI_SANDBOX=true per le prove.
-      - key: OPENAPI_TOKEN
+      - key: OPENAPI_TOKEN_RISK
+        sync: false
+      - key: OPENAPI_TOKEN_COMPANY
         sync: false
       - key: OPENAPI_SANDBOX
         sync: false

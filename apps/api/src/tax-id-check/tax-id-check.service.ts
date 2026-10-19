@@ -72,7 +72,7 @@ export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
  * - Un controllo a pagamento per dato: si ripete solo se il dato cambia.
  * - "Inesistente" o "cessata" toglie il profilo dalla ricerca finché non si
  *   corregge; "servizio che non risponde" non blocca: si riprova dopo.
- * - Senza `OPENAPI_TOKEN` non si controlla nulla e non si blocca nulla.
+ * - Senza `OPENAPI_TOKEN_RISK` / `OPENAPI_TOKEN_COMPANY` non si controlla nulla e non si blocca nulla.
  */
 @Injectable()
 export class TaxIdCheckService {

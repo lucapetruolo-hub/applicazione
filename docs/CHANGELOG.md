@@ -18940,3 +18940,16 @@ non ha ancora fatto la verifica dopo qualche giorno.
 **Verifica**: test nuovi (servizio giù → in attesa senza errore, ripresa
 con avviso, nessun tentativo in più riprovando a mano; regole del
 promemoria). Tipi, lint e test di tutto il monorepo.
+
+## 250. Un token Openapi per servizio
+
+**Richiesta esplicita dell'utente** (19/10/2026, configurazione su Render):
+nella console Openapi i token si creano uno per servizio (uno per il codice
+fiscale, uno per la partita IVA), non uno solo.
+
+**Decisione**: `OPENAPI_TOKEN` diventa due variabili, `OPENAPI_TOKEN_RISK`
+(codice fiscale, Risk API) e `OPENAPI_TOKEN_COMPANY` (partita IVA, Company API).
+Se manca quello di un servizio, il controllo di quel servizio è saltato e non
+blocca nulla, come prima.
+
+**Verifica**: test del provider Openapi e typecheck dell'API verdi.
