@@ -23,6 +23,18 @@ const VERIFICATION_LABEL: Record<FiscalVerificationStatus, { label: string; vari
   REQUIRES_UPDATE: { label: "Dati da aggiornare", variant: "urgente" },
 };
 
+type EntityType = "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS";
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  PRIVATE_INDIVIDUAL: "Privato",
+  SOLE_PROPRIETOR: "Professionista",
+  BUSINESS: "Azienda",
+};
+
+function isEntityType(value: string | null | undefined): value is EntityType {
+  return value === "PRIVATE_INDIVIDUAL" || value === "SOLE_PROPRIETOR" || value === "BUSINESS";
+}
+
 // Etichette esatte, identiche a quelle mostrate sopra ogni campo del form
 // sotto — usate per tradurre un errore di validazione in un messaggio che
 // nomina il campo giusto, invece del generico messaggio Zod grezzo (es.
@@ -102,6 +114,12 @@ function DashboardFiscaleContent() {
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
   const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | "">("");
+  // Tipo già deciso: quello salvato, altrimenti quello della registrazione.
+  const lockedEntityType: EntityType | null = isEntityType(profile?.entityType)
+    ? profile.entityType
+    : isEntityType(prefillEntityType)
+      ? prefillEntityType
+      : null;
   const [fields, setFields] = useState<Record<string, string>>({});
   // Dichiarazione richiesta esplicitamente dall'utente al salvataggio:
   // pre-spuntata solo se già accettata in un salvataggio precedente (stesso
@@ -408,24 +426,31 @@ function DashboardFiscaleContent() {
             <Text fontSize={15} fontWeight="700">
               Tipo di attività
             </Text>
-            {/* Tre categorie, non due — richiesta esplicita dell'utente:
-                "Privato" (persona fisica senza P.IVA), "Professionista"
-                (persona fisica CON P.IVA, es. libero professionista/ditta
-                individuale), "Azienda" (impresa/società con personalità
-                giuridica propria). */}
-            <XStack gap="$3" flexWrap="wrap">
-              {(
-                [
-                  { value: "PRIVATE_INDIVIDUAL", label: "Privato" },
-                  { value: "SOLE_PROPRIETOR", label: "Professionista" },
-                  { value: "BUSINESS", label: "Azienda" },
-                ] as const
-              ).map((type) => (
-                <Button key={type.value} variant={entityType === type.value ? "primary" : "secondary"} onPress={() => setEntityType(type.value)}>
-                  {type.label}
-                </Button>
-              ))}
-            </XStack>
+            {/* Tipo già scelto alla registrazione (o salvato): niente scelta
+                qui, si vedono solo i dati fiscali di quel tipo. Il picker
+                resta solo per gli account senza un tipo. */}
+            {lockedEntityType ? (
+              <Text color={brand.grafite70}>{ENTITY_TYPE_LABELS[lockedEntityType]}</Text>
+            ) : (
+              /* Tre categorie, non due — richiesta esplicita dell'utente:
+                 "Privato" (persona fisica senza P.IVA), "Professionista"
+                 (persona fisica CON P.IVA, es. libero professionista/ditta
+                 individuale), "Azienda" (impresa/società con personalità
+                 giuridica propria). */
+              <XStack gap="$3" flexWrap="wrap">
+                {(
+                  [
+                    { value: "PRIVATE_INDIVIDUAL", label: "Privato" },
+                    { value: "SOLE_PROPRIETOR", label: "Professionista" },
+                    { value: "BUSINESS", label: "Azienda" },
+                  ] as const
+                ).map((type) => (
+                  <Button key={type.value} variant={entityType === type.value ? "primary" : "secondary"} onPress={() => setEntityType(type.value)}>
+                    {type.label}
+                  </Button>
+                ))}
+              </XStack>
+            )}
           </YStack>
         </Surface>
 

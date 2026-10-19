@@ -16,6 +16,7 @@ import {
   findComuneByName,
   type MyProfessionalProfile,
   type MyProfilePreview,
+  type MyVerificationStatus,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -29,6 +30,7 @@ import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
+import { VerificationSteps } from "@/components/verification/VerificationSteps";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -205,6 +207,9 @@ export default function DashboardProfiloPage() {
   // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
   const [mode, setMode] = useState<"preview" | "edit">("edit");
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
+  // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
+  // dell'utente, docs/CHANGELOG.md §259): i tre passi finché non sono fatti.
+  const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
@@ -214,6 +219,10 @@ export default function DashboardProfiloPage() {
       .getMyProfilePreview(token)
       .then(setPreview)
       .catch(() => setPreview(null));
+    apiClient
+      .myVerificationStatus(token)
+      .then(setVerification)
+      .catch(() => setVerification(null));
   }, [token]);
 
   /** Riempie il modulo con i dati salvati (al caricamento e quando si annullano le modifiche). */
@@ -625,35 +634,56 @@ export default function DashboardProfiloPage() {
           ) : null}
 
           {preview && visibilityStatus ? (
-            <div className={`profile-visibility is-${visibilityStatus.tone}`}>
-              <span className="profile-visibility-dot" aria-hidden="true" />
-              <span className="profile-visibility-text">{visibilityStatus.label}</span>
-              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
-              {verified ? (
-                <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
-                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
-                  Verificato
-                </span>
-              ) : (
-                <Link href="/dashboard/verifica-identita" className="profile-verify-chip is-action">
-                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.cianografiaScuro} />
-                  Verifica la tua identità
-                </Link>
-              )}
-              {preview.visibility === "PUBLIC" ? (
-                <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
-                  Apri la pagina pubblica ↗
-                </Link>
-              ) : preview.visibility === "FISCAL_DATA_MISSING" ? (
-                <Link href="/dashboard/fiscale" className="profile-visibility-link">
-                  Completa i dati fiscali →
-                </Link>
-              ) : preview.visibility === "NOT_CONFIRMED" ? (
-                <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
-                  Controlla e salva →
-                </button>
+            <div className="profile-status">
+              <div className={`profile-visibility is-${visibilityStatus.tone}`}>
+                <span className="profile-visibility-dot" aria-hidden="true" />
+                <span className="profile-visibility-text">{visibilityStatus.label}</span>
+                {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
+                {verified ? (
+                  <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
+                    <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
+                    Verificato
+                  </span>
+                ) : null}
+                {preview.visibility === "PUBLIC" ? (
+                  <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
+                    Apri la pagina pubblica ↗
+                  </Link>
+                ) : preview.visibility === "FISCAL_DATA_MISSING" ? (
+                  <Link href="/dashboard/fiscale" className="profile-visibility-link">
+                    Completa i dati fiscali →
+                  </Link>
+                ) : preview.visibility === "NOT_CONFIRMED" ? (
+                  <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
+                    Controlla e salva →
+                  </button>
+                ) : null}
+              </div>
+              {/* Cosa non può ancora fare, un pallino per ciascuno (richiesta
+                  dell'utente, docs/CHANGELOG.md §259). */}
+              {verification && !verification.canSendQuotes ? (
+                <div className="profile-visibility is-warn">
+                  <span className="profile-visibility-dot" aria-hidden="true" />
+                  <span className="profile-visibility-text">Non puoi rispondere alle richieste di preventivo</span>
+                  <Link href="/dashboard/verifica-identita" className="profile-visibility-link">
+                    Verifica la tua identità →
+                  </Link>
+                </div>
+              ) : null}
+              {!preview.profile.stripeVerified ? (
+                <div className="profile-visibility is-warn">
+                  <span className="profile-visibility-dot" aria-hidden="true" />
+                  <span className="profile-visibility-text">Non puoi ricevere pagamenti online</span>
+                  <Link href="/dashboard/fiscale" className="profile-visibility-link">
+                    Attiva i pagamenti online →
+                  </Link>
+                </div>
               ) : null}
             </div>
+          ) : null}
+
+          {verification && !(verification.publicVisible && verification.canSendQuotes && (verification.verified || !verification.identity.available)) ? (
+            <VerificationSteps status={verification} here="profilo" title="Per completare il profilo" showOutcomes={false} />
           ) : null}
 
           <div className="profile-preview-frame">

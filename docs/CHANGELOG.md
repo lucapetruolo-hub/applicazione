@@ -19300,3 +19300,18 @@ blocca nulla, come prima.
 **Motivo**: la richiesta manuale contraddice "nessun admin sui casi dubbi" (§255).
 
 **Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.
+
+## 259. Dati fiscali del tipo scelto alla registrazione; cosa manca, in Profilo pubblico e in Oggi
+
+**Richiesta esplicita dell'utente** (19/10/2026): "lascia solo i dati fiscali in base a quello che ha inserito in fase di registrazione"; "fagli comparire un badge che se non effettua le verifiche non sarà pubblico, altrimenti un qualcosa con le cose ancora da fare per completare il profilo"; nell'anteprima del profilo "un altro pallino con scritto che non può rispondere e un altro che dice non può ricevere pagamenti online"; "la stessa cosa può essere inserita anche in oggi oppure proponi qualcosa di più bello di design".
+
+**Decisione presa**:
+- In "Dati fiscali" il tipo (Privato, Professionista, Azienda) non si sceglie più quando è già noto (quello salvato o quello della registrazione): si vedono il nome del tipo e solo i suoi campi. La scelta resta per gli account senza tipo.
+- In "Profilo pubblico" lo stato sopra l'anteprima diventa un riquadro a righe con un pallino ciascuna: visibilità, "Non puoi rispondere alle richieste di preventivo" (→ Verifica la tua identità), "Non puoi ricevere pagamenti online" (→ Attiva i pagamenti online). Sotto, finché manca qualcosa, i tre passi "Per completare il profilo". Il chip "Verifica la tua identità" accanto allo stato lascia il posto alla riga dei preventivi.
+- In "Oggi" il riquadro "Completa il profilo" (`ProfileReadinessCard`): barra "N di 3 fatto", le tre righe con icona e il bottone del prossimo passo. Sparisce quando è tutto fatto. In Oggi il banner dell'abbonamento non ripete più dati fiscali e verifica dell'identità (`profileStepsElsewhere`).
+
+**Motivo**: un solo colpo d'occhio su cosa il professionista può e non può ancora fare, e il prossimo passo.
+
+**Nota**: oggi senza documento e selfie il profilo resta nelle ricerche, sono bloccati solo i preventivi (§253): le scritte dicono esattamente questo. Togliere dalla ricerca chi non ha fatto documento e selfie è da confermare con l'utente.
+
+**Verifica**: typecheck e lint del web verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/verifica-identita/` (`oggi-completa-profilo-*`, `profilo-da-completare-*`, `dati-fiscali-tipo-registrazione-*`).

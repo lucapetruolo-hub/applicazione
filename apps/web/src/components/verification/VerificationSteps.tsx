@@ -18,7 +18,7 @@ const TONE: Record<StepTone, { color: string; background: string; label: string 
 type Step = { icon: IconName; title: string; tone: StepTone; text: string; extra?: ReactNode; action?: { href: string; label: string } };
 
 /** I tre passi in parole semplici (titoli senza nomi di enti, §254), con lo stato di ciascuno (docs/CHANGELOG.md §253). */
-export function verificationSteps(status: MyVerificationStatus, here: "fiscale" | "verifica"): Step[] {
+export function verificationSteps(status: MyVerificationStatus, here: "fiscale" | "verifica" | "profilo"): Step[] {
   const fiscalHref = "/dashboard/fiscale";
   const step1: Step = status.fiscalDataComplete
     ? { icon: "file-text", title: "Dati fiscali", tone: "done", text: "Compilati." }
@@ -85,21 +85,35 @@ function Outcome({ ok, children }: { ok: boolean; children: ReactNode }) {
 
 /**
  * Riquadro "Verifica in 3 passi": dati fiscali, verifica di codice fiscale e
- * P.IVA, documento e selfie. Usato in Verifica identità e in cima a Dati
- * fiscali, così il professionista vede sempre a che punto è e cosa sblocca.
+ * P.IVA, documento e selfie. Usato in Verifica identità, in cima a Dati
+ * fiscali e in Profilo pubblico finché manca qualcosa, così il professionista
+ * vede sempre a che punto è e cosa sblocca.
  */
-export function VerificationSteps({ status, here }: { status: MyVerificationStatus; here: "fiscale" | "verifica" }) {
+export function VerificationSteps({
+  status,
+  here,
+  title = "Verifica in 3 passi",
+  showOutcomes = true,
+}: {
+  status: MyVerificationStatus;
+  here: "fiscale" | "verifica" | "profilo";
+  title?: string;
+  /** Falso dove gli stessi esiti sono già scritti sopra (Profilo pubblico). */
+  showOutcomes?: boolean;
+}) {
   const steps = verificationSteps(status, here);
   return (
-    <Surface gap="$4" aria-label="Verifica in tre passi">
+    <Surface gap="$4" aria-label={title}>
       <YStack gap="$2">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-          Verifica in 3 passi
+          {title}
         </Text>
-        <XStack gap="$2" flexWrap="wrap">
-          <Outcome ok={status.publicVisible}>{status.publicVisible ? "Compari nelle ricerche" : "Non compari nelle ricerche"}</Outcome>
-          <Outcome ok={status.canSendQuotes}>{status.canSendQuotes ? "Puoi inviare preventivi" : "Preventivi bloccati"}</Outcome>
-        </XStack>
+        {showOutcomes ? (
+          <XStack gap="$2" flexWrap="wrap">
+            <Outcome ok={status.publicVisible}>{status.publicVisible ? "Compari nelle ricerche" : "Non compari nelle ricerche"}</Outcome>
+            <Outcome ok={status.canSendQuotes}>{status.canSendQuotes ? "Puoi inviare preventivi" : "Preventivi bloccati"}</Outcome>
+          </XStack>
+        ) : null}
       </YStack>
       <YStack tag="ol" margin={0} padding={0} gap="$3">
         {steps.map((step, index) => {

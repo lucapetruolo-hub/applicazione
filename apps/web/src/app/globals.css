@@ -812,6 +812,34 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   border-radius: 50%;
   background: #f0dcc0;
 }
+/* Avanzamento di "Completa il profilo" in Oggi (docs/CHANGELOG.md §259). */
+.readiness-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0e6da;
+  overflow: hidden;
+}
+.readiness-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #189a63;
+  transition: width 0.3s ease;
+}
+/* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
+.profile-status {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: #ffffff;
+}
+.profile-status .profile-visibility {
+  background: transparent;
+  border-radius: 0;
+}
+.profile-status .profile-visibility + .profile-visibility {
+  border-top: 1px solid #f0e6da;
+}
 .profile-visibility {
   display: flex;
   align-items: center;
