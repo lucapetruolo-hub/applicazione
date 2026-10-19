@@ -1,51 +1,90 @@
 "use client";
 
-import { Badge, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, YStack, brand, type IconName } from "@professionisti/ui";
 
-const BOOST_OPTIONS: { type: "BOOST_LOCALE" | "BADGE_REPUTAZIONE" | "STORIA_SUCCESSO"; label: string; description: string; priceEur: number }[] = [
-  { type: "BOOST_LOCALE", label: "Boost locale", description: "Prime posizioni nei risultati per 30 giorni.", priceEur: 19.9 },
-  { type: "BADGE_REPUTAZIONE", label: "Badge reputazione", description: "Evidenza per rating alto e risposta rapida.", priceEur: 9.9 },
-  { type: "STORIA_SUCCESSO", label: "Storia di successo", description: "Contenuto editoriale in evidenza sulla piattaforma.", priceEur: 49.9 },
+type BoostOption = {
+  type: "BOOST_LOCALE" | "STORIA_SUCCESSO";
+  label: string;
+  description: string;
+  perks: string[];
+  priceEur: number;
+  priceNote: string;
+  icon: IconName;
+  tone: "green" | "gold";
+};
+
+const BOOST_OPTIONS: BoostOption[] = [
+  {
+    type: "BOOST_LOCALE",
+    label: "Boost locale",
+    description: "Compari tra i primi quando cercano la tua categoria nella tua zona.",
+    perks: ["Prime posizioni per 30 giorni", "Etichetta Sponsorizzato"],
+    priceEur: 19.9,
+    priceNote: "30 giorni",
+    icon: "trending-up",
+    tone: "green",
+  },
+  {
+    type: "STORIA_SUCCESSO",
+    label: "Storia di successo",
+    description: "Raccontiamo un tuo lavoro riuscito, in evidenza sul sito.",
+    perks: ["Testo curato da noi", "Con le foto del lavoro"],
+    priceEur: 49.9,
+    priceNote: "una tantum",
+    icon: "sparkles",
+    tone: "gold",
+  },
 ];
 
 /**
- * Pacchetti di visibilità (CLAUDE.md §6). Spostati dalla Dashboard a
- * "Profilo e visibilità" (docs/CHANGELOG.md §147): la Home "Oggi" mostra solo
- * cose da fare. Prezzi e contenuti invariati (decisione di prezzo non presa
- * qui).
+ * Pacchetti di visibilità (CLAUDE.md §6), in fondo alla Home "Oggi"
+ * (docs/CHANGELOG.md §252, decisione dell'utente: tolti da "Profilo e
+ * visibilità", restano solo Boost locale e Storia di successo). Gli acquisti
+ * non sono ancora attivi: niente pulsante "Acquista" che fallirebbe sempre,
+ * solo lo stato "In arrivo". Prezzi invariati.
  */
 export function BoostSection() {
   return (
     <YStack gap="$3">
-      <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
-        Aumenta la tua visibilità
-      </Text>
-      <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
-        {BOOST_OPTIONS.map((option) => (
-          <Surface key={option.type} flex={1} gap="$2">
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
-              <Badge variant="pro">{option.label}</Badge>
-              {/* Pagamenti non ancora attivi (Stripe escluso dal lancio):
-                  il bottone "Acquista" fallirebbe sempre, quindi mostriamo
-                  uno stato "In arrivo" onesto invece di un errore. */}
-              <YStack backgroundColor={brand.cianografiaVelo} borderRadius="$10" paddingHorizontal="$2" paddingVertical={2}>
-                <Text fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
-                  In arrivo
-                </Text>
-              </YStack>
-            </XStack>
-            <Text color={brand.grafite70} fontSize="$3">
-              {option.description}
-            </Text>
-            <Text fontWeight="700" color={brand.grafite}>
-              €{option.priceEur.toFixed(2)}
-            </Text>
-            <Text fontSize="$2" color={brand.grafite70}>
-              Ti avviseremo appena gli acquisti in piattaforma saranno attivi.
-            </Text>
-          </Surface>
-        ))}
+      <YStack>
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          Aumenta la tua visibilità
+        </Text>
+        <Text fontSize="$2" color={brand.grafite70}>
+          Ti avvisiamo appena si potranno attivare.
+        </Text>
       </YStack>
+      <div className="boost-grid">
+        {BOOST_OPTIONS.map((option) => (
+          <article key={option.type} className={`boost-card is-${option.tone}`}>
+            <span className="boost-card-glow" aria-hidden="true">
+              <Icon name={option.icon} size={120} strokeWidth={1.25} color={option.tone === "green" ? brand.cianografia : brand.ottone} />
+            </span>
+            <div className="boost-card-top">
+              <span className="boost-card-icon">
+                <Icon name={option.icon} size={22} strokeWidth={2} color="#FFFFFF" />
+              </span>
+              <span className="boost-card-soon">In arrivo</span>
+            </div>
+            <div className="boost-card-body">
+              <h3>{option.label}</h3>
+              <p>{option.description}</p>
+              <ul>
+                {option.perks.map((perk) => (
+                  <li key={perk}>
+                    <Icon name="check" size={15} strokeWidth={2.5} color={option.tone === "green" ? brand.cianografiaScuro : brand.ottoneScuro} />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="boost-card-price">
+              <strong>{option.priceEur.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}</strong>
+              <span>{option.priceNote}</span>
+            </div>
+          </article>
+        ))}
+      </div>
     </YStack>
   );
 }

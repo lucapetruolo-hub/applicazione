@@ -770,6 +770,260 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     margin-left: auto;
   }
 }
+/* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
+.profile-preview-frame {
+  border-radius: 22px;
+  background: #fdefe1;
+  border: 1px solid #f0dcc0;
+  box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
+  overflow: hidden;
+}
+@media (max-width: 599px) {
+  /* Sul telefono l'anteprima usa quasi tutta la larghezza, come la pagina vera. */
+  .profile-preview-frame {
+    margin: 0 -12px;
+    border-radius: 18px;
+  }
+}
+.profile-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0dcc0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.profile-preview-bar > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-preview-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+.profile-preview-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f0dcc0;
+}
+.profile-visibility {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  font-size: 14px;
+}
+.profile-visibility-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.profile-visibility.is-ok .profile-visibility-dot {
+  background: #189a63;
+  box-shadow: 0 0 0 4px #dcf3e7;
+}
+.profile-visibility.is-warn .profile-visibility-dot {
+  background: #d9a441;
+  box-shadow: 0 0 0 4px #f6ecd9;
+}
+.profile-visibility.is-off .profile-visibility-dot {
+  background: #c8362b;
+  box-shadow: 0 0 0 4px #fbeae7;
+}
+.profile-visibility-text {
+  font-weight: 700;
+  color: #2b2420;
+}
+.profile-visibility .profile-visibility-link {
+  margin-left: auto;
+}
+.profile-verify-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f6f1ea;
+  color: #6e6459;
+  border: 1px solid transparent;
+}
+.profile-verify-chip.is-verified {
+  background: #e6efe3;
+  color: #3d6b3e;
+}
+.profile-verify-chip.is-action {
+  background: #ffffff;
+  border-color: #189a63;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.profile-verify-chip.is-action:hover {
+  background: #dcf3e7;
+}
+.profile-verify-chip.is-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.profile-visibility-link {
+  font: inherit;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.profile-visibility-link:hover {
+  text-decoration: underline;
+}
+.profile-back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0e7a4c;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.profile-back-link:hover {
+  text-decoration: underline;
+}
+/* Pacchetti di visibilità in fondo alla Home "Oggi" (docs/CHANGELOG.md §252). */
+.boost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 640px) {
+  .boost-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.boost-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
+}
+.boost-card.is-green {
+  background: linear-gradient(160deg, #dcf3e7 0%, #ffffff 58%);
+}
+.boost-card.is-gold {
+  background: linear-gradient(160deg, #f6ecd9 0%, #ffffff 58%);
+}
+.boost-card-glow {
+  position: absolute;
+  right: -18px;
+  bottom: -22px;
+  opacity: 0.09;
+  pointer-events: none;
+  display: flex;
+}
+.boost-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.boost-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+.is-green .boost-card-icon {
+  background: #189a63;
+  box-shadow: 0 6px 14px rgba(24, 154, 99, 0.3);
+}
+.is-gold .boost-card-icon {
+  background: #d9a441;
+  box-shadow: 0 6px 14px rgba(217, 164, 65, 0.35);
+}
+.boost-card-soon {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #f0dcc0;
+  color: #6e6459;
+}
+.boost-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boost-card-body h3 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+}
+.boost-card-body p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.boost-card-body ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boost-card-body li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.boost-card-price {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed #f0dcc0;
+}
+.boost-card-price strong {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.boost-card-price span {
+  font-size: 13px;
+  color: #6e6459;
+}
 /* Griglia dei contatori della home admin. */
 .admin-kpi-grid {
   display: grid;

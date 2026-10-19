@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,8 @@ import {
   ALL_ITALIAN_CITY_NAMES,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
+  type MyProfessionalProfile,
+  type MyProfilePreview,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -25,8 +27,8 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
-import { BoostSection } from "@/components/BoostSection";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
+import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -109,6 +111,14 @@ const BIO_TIPS = [
   "Racconta cosa ti distingue: preventivo gratuito, tempi di risposta rapidi, disponibilità per urgenze.",
   'Evita frasi generiche come "professionista serio e affidabile": preferisci esempi concreti.',
 ];
+
+/** Stato del profilo sopra l'anteprima (docs/CHANGELOG.md §252). */
+const VISIBILITY_STATUS: Record<MyProfilePreview["visibility"], { label: string; tone: "ok" | "warn" | "off" }> = {
+  PUBLIC: { label: "Visibile ai clienti", tone: "ok" },
+  FISCAL_DATA_MISSING: { label: "Non ancora visibile ai clienti", tone: "warn" },
+  NOT_CONFIRMED: { label: "Non ancora visibile ai clienti", tone: "warn" },
+  SUSPENDED: { label: "Profilo sospeso", tone: "off" },
+};
 
 const BIO_EXAMPLE =
   "Lavoro in questo settore da oltre 10 anni, con esperienza in interventi di manutenzione, riparazione e lavori su misura. Offro un preventivo gratuito dopo un sopralluogo rapido e garantisco una risposta entro 24 ore. Uso solo materiali di qualità e rilascio garanzia scritta su ogni intervento.";
@@ -193,6 +203,54 @@ export default function DashboardProfiloPage() {
   // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  // Anteprima del profilo come lo vedono i clienti (docs/CHANGELOG.md §252,
+  // richiesta dell'utente): si apre sull'anteprima, il modulo solo con
+  // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
+  const [mode, setMode] = useState<"preview" | "edit">("edit");
+  const [preview, setPreview] = useState<MyProfilePreview | null>(null);
+  // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  const loadPreview = useCallback(() => {
+    if (!token) return;
+    apiClient
+      .getMyProfilePreview(token)
+      .then(setPreview)
+      .catch(() => setPreview(null));
+  }, [token]);
+
+  /** Riempie il modulo con i dati salvati (al caricamento e quando si annullano le modifiche). */
+  function applyProfile(profile: MyProfessionalProfile) {
+    setBusinessName(profile.businessName);
+    setVerified(profile.verified);
+    setVerificationRequestedAt(profile.verificationRequestedAt);
+    setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
+    setCity(profile.city);
+    setAddress(profile.address ?? "");
+    setBio(profile.bio ?? "");
+    setRemoteAvailable(profile.remoteAvailable);
+    setImageUrl(profile.imageUrl);
+    setPortfolioUrls(profile.portfolioUrls);
+    setSpokenLanguages(profile.spokenLanguages);
+    setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
+    setCertifications(profile.certifications ?? "");
+    setHasLiabilityInsurance(profile.hasLiabilityInsurance);
+    // 0,0 = comune non ancora geocodificato (stessa convenzione già
+    // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
+    // raggio di ingaggio centrata sull'oceano davanti all'Africa.
+    if (profile.latitude !== 0 || profile.longitude !== 0) {
+      setEngagementLocation({ latitude: profile.latitude, longitude: profile.longitude });
+    }
+    setEngagementRadiusKm(profile.engagementRadiusKm);
+    setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
+    setServices(
+      profile.services.map((service) => ({
+        name: service.name,
+        priceMin: service.priceMinEurCents !== null ? (service.priceMinEurCents / 100).toFixed(2) : "",
+        priceMax: service.priceMaxEurCents !== null ? (service.priceMaxEurCents / 100).toFixed(2) : "",
+      })),
+    );
+  }
 
   useEffect(() => {
     apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
@@ -200,11 +258,13 @@ export default function DashboardProfiloPage() {
 
   useEffect(() => {
     if (!token) return;
+    loadPreview();
     apiClient
       .getMyProfessionalProfile(token)
       .then((profile) => {
         setIsFirstProfileSave(!profile);
         setNeedsConfirmation(!!profile && !profile.profileDeclarationAccepted);
+        setMode(profile && profile.profileDeclarationAccepted ? "preview" : "edit");
         // Primo profilo: parte dalla foto dell'account (quella di Google per
         // chi si è registrato con Google), modificabile come le altre.
         if (!profile && user?.imageUrl) setImageUrl(user.imageUrl);
@@ -212,37 +272,7 @@ export default function DashboardProfiloPage() {
         if (!profile && user?.signupCategorySlugs?.length) {
           setCategorySlugs(user.signupCategorySlugs.filter(isProfessionalCategorySlug).slice(0, MAX_PROFESSIONAL_CATEGORIES));
         }
-        if (profile) {
-          setBusinessName(profile.businessName);
-          setVerified(profile.verified);
-          setVerificationRequestedAt(profile.verificationRequestedAt);
-          setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
-          setCity(profile.city);
-          setAddress(profile.address ?? "");
-          setBio(profile.bio ?? "");
-          setRemoteAvailable(profile.remoteAvailable);
-          setImageUrl(profile.imageUrl);
-          setPortfolioUrls(profile.portfolioUrls);
-          setSpokenLanguages(profile.spokenLanguages);
-          setYearsOfExperience(profile.yearsOfExperience !== null ? String(profile.yearsOfExperience) : "");
-          setCertifications(profile.certifications ?? "");
-          setHasLiabilityInsurance(profile.hasLiabilityInsurance);
-          // 0,0 = comune non ancora geocodificato (stessa convenzione già
-          // usata da ResultsMap.tsx): non ha senso mostrare la mappa del
-          // raggio di ingaggio centrata sull'oceano davanti all'Africa.
-          if (profile.latitude !== 0 || profile.longitude !== 0) {
-            setEngagementLocation({ latitude: profile.latitude, longitude: profile.longitude });
-          }
-          setEngagementRadiusKm(profile.engagementRadiusKm);
-          setUrgentEngagementRadiusKm(profile.urgentEngagementRadiusKm);
-          setServices(
-            profile.services.map((service) => ({
-              name: service.name,
-              priceMin: service.priceMinEurCents !== null ? (service.priceMinEurCents / 100).toFixed(2) : "",
-              priceMax: service.priceMaxEurCents !== null ? (service.priceMaxEurCents / 100).toFixed(2) : "",
-            })),
-          );
-        }
+        if (profile) applyProfile(profile);
       })
       .finally(() => setIsLoadingProfile(false));
     // Solo al cambio di token: con user?.imageUrl tra le dipendenze, cambiare
@@ -250,6 +280,23 @@ export default function DashboardProfiloPage() {
     // modifiche non ancora salvate nel modulo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  /** Torna all'anteprima rimettendo nel modulo i dati salvati. */
+  function discardChanges() {
+    setConfirmDiscard(false);
+    setError(null);
+    setMode("preview");
+    window.scrollTo({ top: 0 });
+    if (!token) return;
+    apiClient
+      .getMyProfessionalProfile(token)
+      .then((profile) => {
+        if (!profile) return;
+        applyProfile(profile);
+        setSavedSnapshot(null);
+      })
+      .catch(() => undefined);
+  }
 
   // Modifiche non salvate (richiesta esplicita dell'utente, docs/CHANGELOG.md
   // §136): confronto tra i campi del form principale e com'erano all'ultimo
@@ -407,21 +454,39 @@ export default function DashboardProfiloPage() {
     // il ciclo di vita dell'account, appena dopo essersi iscritti.
     if (isFirstProfileSave) {
       setShowAgendaPrompt(true);
+      loadPreview();
     } else {
-      setTimeout(() => router.push("/dashboard"), 900);
+      // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §252).
+      showSavedPreview();
     }
   }
 
+  function showSavedPreview() {
+    loadPreview();
+    setMode("preview");
+    window.scrollTo({ top: 0 });
+  }
+
   async function handleSaveAndLeave() {
-    if (!pendingHref) return;
+    if (!pendingHref && !confirmDiscard) return;
     const target = pendingHref;
     setIsSavingBeforeLeave(true);
     const ok = await saveProfile();
     setIsSavingBeforeLeave(false);
-    if (ok) router.push(target);
+    if (!ok) return;
+    if (target) {
+      router.push(target);
+    } else {
+      setConfirmDiscard(false);
+      showSavedPreview();
+    }
   }
 
   function handleLeaveWithoutSaving() {
+    if (confirmDiscard && !pendingHref) {
+      discardChanges();
+      return;
+    }
     if (!pendingHref) return;
     const target = pendingHref;
     // Nessun avviso nemmeno dal browser: l'utente ha appena scelto di uscire.
@@ -542,44 +607,134 @@ export default function DashboardProfiloPage() {
     }
   }
 
+  const visibilityStatus = preview ? VISIBILITY_STATUS[preview.visibility] : null;
+
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
+      {mode === "preview" ? (
+        <YStack width="100%" maxWidth={920} gap="$5">
+          <XStack justifyContent="space-between" alignItems="flex-end" gap="$3" flexWrap="wrap">
+            <YStack gap="$1" flex={1} minWidth={220}>
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+                Profilo pubblico
+              </Text>
+              <Text color={brand.grafite70}>Così ti vedono i clienti su {BRAND.name}.</Text>
+            </YStack>
+            <Button
+              variant="primary"
+              icon={<Icon name="pencil" size={16} strokeWidth={2} color="#FFFFFF" />}
+              onPress={() => {
+                setSaved(false);
+                setMode("edit");
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              Modifica profilo
+            </Button>
+          </XStack>
+
+          {saved ? (
+            <XStack alignItems="center" gap="$2" padding="$3" borderRadius={14} backgroundColor={brand.cianografiaVelo}>
+              <Icon name="check" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
+              <Text fontWeight="700" color={brand.cianografiaScuro}>
+                Profilo salvato
+              </Text>
+            </XStack>
+          ) : null}
+
+          {preview && visibilityStatus ? (
+            <div className={`profile-visibility is-${visibilityStatus.tone}`}>
+              <span className="profile-visibility-dot" aria-hidden="true" />
+              <span className="profile-visibility-text">{visibilityStatus.label}</span>
+              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
+              {verified ? (
+                <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
+                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
+                  Verificato
+                </span>
+              ) : verificationRequestedAt ? (
+                <span className="profile-verify-chip" title="Ti ricontattiamo per controllare documento d'identità e partita IVA o codice fiscale">
+                  <Icon name="clock" size={14} strokeWidth={2} color={brand.grafite70} />
+                  Verifica richiesta
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="profile-verify-chip is-action"
+                  disabled={requestingVerification}
+                  title="Controlliamo un tuo documento d'identità e la partita IVA o il codice fiscale"
+                  onClick={() => void requestVerification()}
+                >
+                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.cianografiaScuro} />
+                  {requestingVerification ? "Invio…" : "Richiedi il badge Verificato"}
+                </button>
+              )}
+              {preview.visibility === "PUBLIC" ? (
+                <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
+                  Apri la pagina pubblica ↗
+                </Link>
+              ) : preview.visibility === "FISCAL_DATA_MISSING" ? (
+                <Link href="/dashboard/fiscale" className="profile-visibility-link">
+                  Completa i dati fiscali →
+                </Link>
+              ) : preview.visibility === "NOT_CONFIRMED" ? (
+                <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
+                  Controlla e salva →
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
+
+          <div className="profile-preview-frame">
+            <div className="profile-preview-bar">
+              <span className="profile-preview-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span>
+                <Icon name="eye" size={14} strokeWidth={2} color={brand.grafite70} />
+                Anteprima
+              </span>
+            </div>
+            {preview ? (
+              <Suspense fallback={null}>
+                <ProfessionalDetailContent professional={preview.profile} preview />
+              </Suspense>
+            ) : (
+              <YStack padding="$6" alignItems="center">
+                <Text color={brand.grafite70} textAlign="center">
+                  Anteprima non disponibile al momento.
+                </Text>
+              </YStack>
+            )}
+          </div>
+        </YStack>
+      ) : (
       <YStack width="100%" maxWidth={760} gap="$5">
         <YStack gap="$2">
+          {isFirstProfileSave ? null : (
+            <button
+              type="button"
+              className="profile-back-link"
+              onClick={() => {
+                if (isDirty) setConfirmDiscard(true);
+                else discardChanges();
+              }}
+            >
+              <Icon name="chevron-left" size={16} strokeWidth={2} color={brand.cianografiaScuro} />
+              Torna all&apos;anteprima
+            </button>
+          )}
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Profilo e visibilità
+            {isFirstProfileSave ? "Profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>
             Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche
             compari.
           </Text>
         </YStack>
-
-        {isFirstProfileSave ? null : (
-          <Surface gap="$2">
-            <XStack alignItems="center" gap="$2">
-              <Icon name="badge-check" size={18} color={verified ? brand.verificato : brand.grafite70} strokeWidth={2} />
-              <Text fontWeight="700" color={brand.grafite}>
-                {verified ? "Il tuo profilo è verificato" : "Badge Verificato"}
-              </Text>
-            </XStack>
-            <Text color={brand.grafite70}>
-              {verified
-                ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
-                : verificationRequestedAt
-                  ? `Richiesta inviata il ${new Date(verificationRequestedAt).toLocaleDateString("it-IT")}: ti ricontattiamo per controllare un tuo documento d'identità e la partita IVA (o il codice fiscale).`
-                  : "Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Chiedilo qui sotto: ti ricontattiamo per il controllo."}
-            </Text>
-            {verified || verificationRequestedAt ? null : (
-              <XStack>
-                <Button size="$3" disabled={requestingVerification} onPress={() => void requestVerification()}>
-                  {requestingVerification ? "Invio…" : "Richiedi la verifica"}
-                </Button>
-              </XStack>
-            )}
-            {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
-          </Surface>
-        )}
 
         {needsConfirmation ? (
           <Surface gap="$2" borderColor={brand.cianografia} borderWidth={1}>
@@ -1212,17 +1367,14 @@ export default function DashboardProfiloPage() {
         <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Salvataggio..." : "Salva profilo"}
         </Button>
-
-        {/* Pacchetti di visibilità: spostati qui dalla Dashboard
-            (docs/CHANGELOG.md §147). */}
-        <BoostSection />
       </YStack>
+      )}
 
       {cropImageSrc ? (
         <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} />
       ) : null}
 
-      {pendingHref ? (
+      {pendingHref || confirmDiscard ? (
         // Popup "modifiche non salvate" (richiesta esplicita dell'utente,
         // docs/CHANGELOG.md §136): stesso overlay del popup disponibilità
         // qui sotto. Click fuori dal popup = si resta sulla pagina.
@@ -1230,7 +1382,10 @@ export default function DashboardProfiloPage() {
           role="dialog"
           aria-modal="true"
           aria-label="Modifiche non salvate"
-          onClick={cancelLeave}
+          onClick={() => {
+            cancelLeave();
+            setConfirmDiscard(false);
+          }}
           style={{
             position: "fixed",
             inset: 0,
@@ -1249,7 +1404,9 @@ export default function DashboardProfiloPage() {
                   Salvare le modifiche?
                 </Text>
                 <Text fontSize="$3" color={brand.grafite70}>
-                  Hai modificato il tuo profilo pubblico senza salvare. Se esci ora, le modifiche andranno perse.
+                  {confirmDiscard
+                    ? "Hai modificato il tuo profilo senza salvare. Se torni all'anteprima, le modifiche andranno perse."
+                    : "Hai modificato il tuo profilo pubblico senza salvare. Se esci ora, le modifiche andranno perse."}
                 </Text>
                 {error ? (
                   <Text fontSize="$3" color={brand.urgenza}>
@@ -1266,7 +1423,7 @@ export default function DashboardProfiloPage() {
                   {isSavingBeforeLeave ? "Salvataggio..." : "Salva"}
                 </Button>
                 <Button flex={1} variant="urgent" onPress={handleLeaveWithoutSaving} disabled={isSavingBeforeLeave}>
-                  Esci senza salvare
+                  {confirmDiscard && !pendingHref ? "Non salvare" : "Esci senza salvare"}
                 </Button>
               </XStack>
             </YStack>

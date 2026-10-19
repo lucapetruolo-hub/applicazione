@@ -19101,3 +19101,42 @@ rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
   Express (docs.stripe.com/connect/payouts-bank-accounts), e i nostri la
   usano per "Apri il conto Stripe". Il testo del passo lo dice già ("Poi
   completi l'attivazione su Stripe, con lo stesso conto").
+
+## 252. "Profilo e visibilità" si apre sull'anteprima; pacchetti di visibilità in fondo a "Oggi"
+
+**Richiesta dell'utente:** togliere la scheda "Aumenta la tua visibilità"
+da "Profilo e visibilità" e metterla in fondo alla pagina Oggi, lasciando
+solo "Boost locale" e "Storia di successo", più belle da vedere. Aprendo
+"Profilo e visibilità" si vede prima un'anteprima di come i clienti vedono
+il profilo, senza poter modificare; "Modifica profilo" apre il modulo di
+sempre.
+
+**Decisione:**
+- `BoostSection` in fondo a `/dashboard`: due schede (verde per il Boost,
+  oro per la Storia) con icona, una riga di descrizione, due vantaggi e il
+  prezzo; stato "In arrivo" come prima (acquisti non attivi). Tolto il
+  "Badge reputazione".
+- `/dashboard/profilo` parte dall'anteprima quando il profilo esiste ed è
+  confermato: stato "Visibile ai clienti" (o perché non lo è, con il link
+  per rimediare), badge Verificato e la pagina pubblica vera
+  (`ProfessionalDetailContent` con `preview`: niente salva/condividi/
+  segnala, orari e "Richiedi un preventivo" non cliccabili, visita non
+  contata). "Modifica profilo" apre il modulo; "Torna all'anteprima" con
+  modifiche non salvate chiede se salvarle; dopo il salvataggio si torna
+  all'anteprima aggiornata invece che alla Home. Senza profilo, o con un
+  profilo da confermare, si parte dal modulo come prima.
+- API `GET /professionals/me/preview`: gli stessi dati della pagina
+  pubblica anche se il profilo non è ancora pubblico, con il motivo
+  (`PUBLIC`, `FISCAL_DATA_MISSING`, `NOT_CONFIRMED`, `SUSPENDED`).
+
+**Verifica:** `tsc` su api e web, `next build`; Playwright a 390px e 1366px
+(anteprima, modulo, Oggi) con un'API finta.
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Il riquadro "Il tuo profilo è verificato" sopra l'anteprima diventa un
+  badge accanto allo stato: "Verificato", "Verifica richiesta" oppure il
+  pulsante "Richiedi il badge Verificato".
+- Pagina del profilo (pubblica e anteprima): su telefono il nome va sotto
+  la foto invece di restare in una colonna stretta accanto.
+- Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
+  pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
