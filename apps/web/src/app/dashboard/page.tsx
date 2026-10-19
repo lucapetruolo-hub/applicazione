@@ -218,7 +218,7 @@ export default function DashboardTodayPage() {
 
         {insights ? <Suggestion insights={insights} /> : null}
 
-        {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §249). */}
+        {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252). */}
         <BoostSection />
       </YStack>
     </YStack>

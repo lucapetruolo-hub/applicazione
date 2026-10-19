@@ -6,6 +6,7 @@ import {
   paymentChoiceIsOnline,
   type JobPaymentChoice,
 } from "@professionisti/shared";
+import Link from "next/link";
 import { Text, YStack, brand } from "@professionisti/ui";
 
 function eur(cents: number): string {
@@ -110,6 +111,11 @@ export function PaymentChoice({
         <Text fontSize="$2" color={brand.grafite70}>
           Il pagamento online con carta sarà disponibile a breve.
         </Text>
+      ) : null}
+      {options.some(paymentChoiceIsOnline) ? (
+        <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>
+          Come funziona il pagamento online
+        </Link>
       ) : null}
     </YStack>
   );

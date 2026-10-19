@@ -2,7 +2,7 @@ import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
 /**
- * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §249): gli stessi
+ * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
  */
 export type MyProfilePreview = {

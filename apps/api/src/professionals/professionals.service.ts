@@ -428,7 +428,7 @@ export class ProfessionalsService {
 
   /**
    * Anteprima del proprio profilo pubblico in "Profilo pubblico"
-   * (docs/CHANGELOG.md §249): gli stessi dati della pagina pubblica, anche
+   * (docs/CHANGELOG.md §252): gli stessi dati della pagina pubblica, anche
    * quando il profilo non è ancora visibile ai clienti, con il motivo.
    */
   async getMyPreview(userId: string): Promise<MyProfilePreview | null> {

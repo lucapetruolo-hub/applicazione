@@ -69,7 +69,7 @@ function reviewTimeAgo(iso: string): string {
 
 /**
  * `preview`: anteprima del proprio profilo in "Profilo pubblico"
- * (docs/CHANGELOG.md §249). Si vede come la vede un cliente, ma senza le sue
+ * (docs/CHANGELOG.md §252). Si vede come la vede un cliente, ma senza le sue
  * azioni (salva, condividi, segnala, richiedi preventivo) e senza contare la
  * visita.
  */
@@ -304,7 +304,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
         <XStack gap="$3" alignItems="flex-start">
           {/* Su telefono il nome va sotto la foto: accanto restava una
               colonna stretta, con il nome spezzato su più righe
-              (docs/CHANGELOG.md §249). */}
+              (docs/CHANGELOG.md §252). */}
           <XStack gap="$3" alignItems="flex-start" flex={1} minWidth={0} $xs={{ flexDirection: "column" }}>
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}

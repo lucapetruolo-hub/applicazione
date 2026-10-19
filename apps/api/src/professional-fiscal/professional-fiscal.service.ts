@@ -236,7 +236,9 @@ export class ProfessionalFiscalService {
    * `type: "express"` che Stripe considera superato: configurazione
    * "destinatario" (riceve i trasferimenti dalla piattaforma, non incassa
    * carte), Dashboard Express, commissioni Stripe e perdite a carico della
-   * piattaforma (schema "separate charges and transfers" con custodia).
+   * piattaforma. I pagamenti dei lavori si addebitano "a destinazione" sul
+   * suo conto con i bonifici verso la banca in manuale (docs/CHANGELOG.md
+   * §249, impostati da OnlineMoneyService al primo pagamento).
    * Prima di creare il primo account va accettata la responsabilità delle
    * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */

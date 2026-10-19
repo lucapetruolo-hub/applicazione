@@ -112,7 +112,7 @@ const BIO_TIPS = [
   'Evita frasi generiche come "professionista serio e affidabile": preferisci esempi concreti.',
 ];
 
-/** Stato del profilo sopra l'anteprima (docs/CHANGELOG.md §249). */
+/** Stato del profilo sopra l'anteprima (docs/CHANGELOG.md §252). */
 const VISIBILITY_STATUS: Record<MyProfilePreview["visibility"], { label: string; tone: "ok" | "warn" | "off" }> = {
   PUBLIC: { label: "Visibile ai clienti", tone: "ok" },
   FISCAL_DATA_MISSING: { label: "Non ancora visibile ai clienti", tone: "warn" },
@@ -203,7 +203,7 @@ export default function DashboardProfiloPage() {
   // Profilo preparato da un operatore (docs/CHANGELOG.md §170) o dichiarazione
   // cambiata: il profilo entra in ricerca solo quando il professionista salva.
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  // Anteprima del profilo come lo vedono i clienti (docs/CHANGELOG.md §249,
+  // Anteprima del profilo come lo vedono i clienti (docs/CHANGELOG.md §252,
   // richiesta dell'utente): si apre sull'anteprima, il modulo solo con
   // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
   const [mode, setMode] = useState<"preview" | "edit">("edit");
@@ -456,7 +456,7 @@ export default function DashboardProfiloPage() {
       setShowAgendaPrompt(true);
       loadPreview();
     } else {
-      // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §249).
+      // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §252).
       showSavedPreview();
     }
   }
@@ -646,7 +646,7 @@ export default function DashboardProfiloPage() {
             <div className={`profile-visibility is-${visibilityStatus.tone}`}>
               <span className="profile-visibility-dot" aria-hidden="true" />
               <span className="profile-visibility-text">{visibilityStatus.label}</span>
-              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §249). */}
+              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
               {verified ? (
                 <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
                   <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />

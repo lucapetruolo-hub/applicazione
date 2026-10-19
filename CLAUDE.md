@@ -290,9 +290,11 @@ accetta il preventivo, mai i "completati", che segna il professionista).
   §168): nel preventivo il professionista offre uno o più modi (§237: diretto,
   acconto online con percentuale sua 1-100% e saldo online o diretto) e
   accettando il cliente sceglie tra questi: **online con Stripe**
-  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi in custodia
-  fino alla conferma o per 7 giorni, poi al professionista meno costo Stripe
-  e commissione del 5%; assistenza e rimborso sulle segnalazioni accolte)
+  (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi addebitati
+  sul conto Stripe del professionista meno costo Stripe e commissione del 5%,
+  mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
+  fino alla conferma o per 7 giorni (massimo 90, regola Stripe),
+  docs/CHANGELOG.md §249; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
   restano tra le parti, il cliente può comunque recensire). Il pagamento
   diretto non paga commissione.

@@ -38,7 +38,7 @@ const BOOST_OPTIONS: BoostOption[] = [
 
 /**
  * Pacchetti di visibilità (CLAUDE.md §6), in fondo alla Home "Oggi"
- * (docs/CHANGELOG.md §249, decisione dell'utente: tolti da "Profilo e
+ * (docs/CHANGELOG.md §252, decisione dell'utente: tolti da "Profilo e
  * visibilità", restano solo Boost locale e Storia di successo). Gli acquisti
  * non sono ancora attivi: niente pulsante "Acquista" che fallirebbe sempre,
  * solo lo stato "In arrivo". Prezzi invariati.

@@ -770,7 +770,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     margin-left: auto;
   }
 }
-/* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §249). */
+/* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
   border-radius: 22px;
   background: #fdefe1;
@@ -907,7 +907,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 .profile-back-link:hover {
   text-decoration: underline;
 }
-/* Pacchetti di visibilità in fondo alla Home "Oggi" (docs/CHANGELOG.md §249). */
+/* Pacchetti di visibilità in fondo alla Home "Oggi" (docs/CHANGELOG.md §252). */
 .boost-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

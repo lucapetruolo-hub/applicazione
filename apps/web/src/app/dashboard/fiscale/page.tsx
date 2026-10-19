@@ -4,11 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge } from "@professionisti/ui";
-import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
+import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
 import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
+import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
 // su urgenza, verde solo su verificato" — mai un colore libero), non un
@@ -119,6 +120,17 @@ function DashboardFiscaleContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  // IBAN per la DAC7, primo passo di "Attiva i pagamenti online" (docs/CHANGELOG.md §250).
+  const [payoutIban, setPayoutIban] = useState<PayoutIbanView | null | undefined>(undefined);
+  const [ibanStepOpen, setIbanStepOpen] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .myPayoutIban(token)
+      .then(setPayoutIban)
+      .catch(() => setPayoutIban(null));
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -294,6 +306,12 @@ function DashboardFiscaleContent() {
     }
   }
 
+  // Senza IBAN si apre prima il passo dell'IBAN, poi si va su Stripe.
+  function handleActivate() {
+    if (payoutIban === null) setIbanStepOpen(true);
+    else void handleStripeConnect();
+  }
+
   // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §238).
   async function handleStripeDashboard() {
     if (!token) return;
@@ -307,6 +325,9 @@ function DashboardFiscaleContent() {
       setStripeLoading(false);
     }
   }
+
+  const holderName =
+    entityType === "BUSINESS" ? (fields.businessName ?? "") : [fields.fiscalFirstName, fields.fiscalLastName].filter(Boolean).join(" ");
 
   if (isLoading || profile === undefined) {
     return (
@@ -607,65 +628,35 @@ function DashboardFiscaleContent() {
           )}
         </XStack>
 
-        <Surface padding="$4">
-          <YStack gap="$3">
-            <Text fontSize={15} fontWeight="700">
-              Pagamenti tramite {BRAND.name}
-            </Text>
-            <Text fontSize={13} color={brand.grafite70}>
-              Nel preventivo scegli tu come farti pagare: diretto, acconto online (la percentuale la decidi tu) con saldo online, o acconto
-              online con saldo diretto. Quello che il cliente paga online lo teniamo noi e te lo
-              accreditiamo sul tuo conto Stripe quando il cliente conferma il lavoro, o 7 giorni dopo la chiusura, meno il costo di Stripe e
-              la commissione {BRAND.name} del 5%. Attiva i pagamenti per ricevere gli accrediti: finché non lo fai i soldi restano in custodia.
-              Quello che il cliente paga direttamente te lo dà come vi accordate. La verifica su Stripe serve solo per offrire
-              l&apos;acconto online: quando è completata il tuo profilo mostra anche il badge &quot;Identità verificata da Stripe&quot;.
-            </Text>
-            {profile?.stripeChargesEnabled ? (
-              <XStack gap="$3" alignItems="center" flexWrap="wrap">
-                <Badge variant="verificato">Pagamenti attivi</Badge>
-                <Button variant="secondary" onPress={handleStripeDashboard} disabled={stripeLoading}>
-                  {stripeLoading ? "Attendere..." : "Vedi accrediti e IBAN su Stripe"}
-                </Button>
-                {stripeError && (
-                  <Text fontSize={13} color={brand.urgenza}>
-                    {stripeError}
-                  </Text>
-                )}
-              </XStack>
-            ) : (
-              <XStack gap="$3" alignItems="center" flexWrap="wrap">
-                <Button variant="secondary" onPress={handleStripeConnect} disabled={stripeLoading}>
-                  {stripeLoading
-                    ? "Attendere..."
-                    : profile?.stripeConnectAccountId
-                      ? "Completa la verifica su Stripe"
-                      : `Attiva pagamenti tramite ${BRAND.name}`}
-                </Button>
-                {profile?.stripeConnectAccountId && profile.stripeRequirementsStatus && (
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Stripe ti chiede ancora: {profile.stripeRequirementsStatus}
-                  </Text>
-                )}
-                {stripeError && (
-                  <Text fontSize={13} color={brand.urgenza}>
-                    {stripeError}
-                  </Text>
-                )}
-              </XStack>
-            )}
-            {/* IBAN per la DAC7, solo per chi ha avviato i pagamenti online (docs/CHANGELOG.md §246). */}
-            {profile?.stripeConnectAccountId && token ? (
+        <OnlinePaymentsCard
+          active={!!profile?.stripeChargesEnabled}
+          started={!!profile?.stripeConnectAccountId}
+          requirements={profile?.stripeRequirementsStatus}
+          loading={stripeLoading}
+          error={stripeError}
+          onActivate={handleActivate}
+          onOpenStripe={handleStripeDashboard}
+          step={
+            ibanStepOpen && token && !profile?.stripeChargesEnabled ? (
               <PayoutIbanCard
+                variant="step"
                 token={token}
-                defaultHolderName={
-                  profile.entityType === "BUSINESS"
-                    ? (profile.businessName ?? "")
-                    : [profile.fiscalFirstName, profile.fiscalLastName].filter(Boolean).join(" ")
-                }
+                initial={null}
+                defaultHolderName={holderName}
+                busy={stripeLoading}
+                onCancel={() => setIbanStepOpen(false)}
+                onSaved={(saved) => {
+                  // Il passo si chiude: se Stripe non risponde, "Attiva" riprova senza richiedere l'IBAN.
+                  setPayoutIban(saved);
+                  setIbanStepOpen(false);
+                  void handleStripeConnect();
+                }}
               />
-            ) : null}
-          </YStack>
-        </Surface>
+            ) : undefined
+          }
+        >
+          {token && payoutIban !== undefined ? <PayoutIbanCard token={token} initial={payoutIban} defaultHolderName={holderName} onSaved={setPayoutIban} /> : null}
+        </OnlinePaymentsCard>
 
         {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §246). */}
         <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>

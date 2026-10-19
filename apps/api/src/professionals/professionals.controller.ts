@@ -96,7 +96,7 @@ export class ProfessionalsController {
     return this.professionalsService.getMyProfile(req.user.userId);
   }
 
-  /** Anteprima del proprio profilo come lo vedono i clienti (docs/CHANGELOG.md §249). */
+  /** Anteprima del proprio profilo come lo vedono i clienti (docs/CHANGELOG.md §252). */
   @UseGuards(JwtAuthGuard)
   @Get("me/preview")
   getMyPreview(@Req() req: AuthenticatedRequest) {

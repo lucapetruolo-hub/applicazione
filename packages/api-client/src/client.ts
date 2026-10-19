@@ -79,6 +79,7 @@ import type {
   CloseGeneralRequestsInput,
   ProfileInviteLink,
   ProfileInvitePreview,
+  ProfessionalPayoutTotals,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -1853,6 +1854,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §249). */
+    professionalPayoutSummary: (token: string) =>
+      request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     bookingJobPayment: (token: string, bookingId: string) =>
       request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
