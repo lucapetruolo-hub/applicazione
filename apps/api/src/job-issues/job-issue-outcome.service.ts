@@ -10,6 +10,7 @@ import {
   jobIssueCanAppeal,
   jobIssueEvidenceDueAt,
   jobIssueOutcomeText,
+  jobIssueRefundPercent,
   jobIssueSanctionFor,
   type JobIssueAutoDecision,
   type JobIssueSanction,
@@ -89,10 +90,18 @@ export class JobIssueOutcomeService {
    */
   async decide(
     issueId: string,
-    input: { decision: "UPHELD" | "REJECTED"; note: string; byUserId: string | null; autoDecision?: JobIssueAutoDecision },
+    input: {
+      decision: "UPHELD" | "REJECTED";
+      note: string;
+      byUserId: string | null;
+      autoDecision?: JobIssueAutoDecision;
+      /** Rimborso scelto dall'admin (§260); le decisioni automatiche rimborsano tutto. */
+      refundPercent?: number;
+    },
   ): Promise<{ id: string; status: string; sanction: JobIssueSanction | null }> {
     const issue = await this.prisma.jobIssue.findUnique({ where: { id: issueId }, include: issueInclude });
     if (!issue) throw new NotFoundException("Segnalazione non trovata.");
+    const refundPercent = input.decision === "UPHELD" ? jobIssueRefundPercent(issue.type, input.autoDecision ? 100 : input.refundPercent) : null;
     // Update condizionato: una decisione automatica e una dell'admin nello
     // stesso istante non si sovrappongono.
     const claimed = await this.prisma.jobIssue.updateMany({
@@ -103,6 +112,7 @@ export class JobIssueOutcomeService {
         resolvedAt: new Date(),
         resolvedByUserId: input.byUserId,
         autoDecision: input.autoDecision ?? null,
+        refundPercent,
       },
     });
     if (claimed.count === 0) throw new BadRequestException("La segnalazione è già stata decisa.");
@@ -114,14 +124,14 @@ export class JobIssueOutcomeService {
       // l'affidabilità nello smistamento (decisione dell'utente).
       await this.professionalMetricsService.recordNoShowConfirmed(booking.professionalProfileId, booking.status === "COMPLETED");
       sanction = await this.applySanction(issueId, booking.professionalProfileId, booking.professionalProfile.userId);
-      await this.requestRefundIfPaidOnline(issueId, booking);
+      await this.requestRefundIfPaidOnline(issueId, booking, refundPercent ?? 100);
     }
     await this.auditLogService.record({
       entityType: "JobIssue",
       entityId: issueId,
       fieldName: "status",
       oldValue: "OPEN",
-      newValue: { decision: input.decision, sanction, autoDecision: input.autoDecision ?? null },
+      newValue: { decision: input.decision, sanction, autoDecision: input.autoDecision ?? null, refundPercent },
       changedByUserId: input.byUserId,
       reason: input.note,
     });
@@ -138,13 +148,15 @@ export class JobIssueOutcomeService {
     await this.notificationsService.notify(booking.clientId, "JOB_ISSUE_RESOLVED", {
       ...payload,
       audience: "CLIENT",
-      text: jobIssueOutcomeText({ type: issue.type, decision: input.decision, note: input.note, audience: "client", paidOnline: online }),
+      refundPercent,
+      text: jobIssueOutcomeText({ type: issue.type, decision: input.decision, note: input.note, audience: "client", paidOnline: online, refundPercent }),
     });
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_RESOLVED", {
       ...payload,
       audience: "PROFESSIONAL",
       sanction,
-      text: jobIssueOutcomeText({ type: issue.type, decision: input.decision, note: input.note, audience: "professional", paidOnline: online }),
+      refundPercent,
+      text: jobIssueOutcomeText({ type: issue.type, decision: input.decision, note: input.note, audience: "professional", paidOnline: online, refundPercent }),
     });
     return { id: issueId, status: input.decision, sanction };
   }
@@ -186,40 +198,47 @@ export class JobIssueOutcomeService {
   /**
    * Garanzia del pagamento online (decisione dell'utente, §167-§168): se il
    * lavoro è pagato sul sito con Stripe e la segnalazione è accolta, il
-   * cliente riceve subito il rimborso di quanto pagato (se i soldi erano già
-   * passati al professionista, la sua quota viene ripresa dal suo conto
-   * Stripe). Se Stripe non risponde, la richiesta resta alla Finanza in
+   * cliente riceve subito il rimborso del 100, 50 o 20% di quanto pagato
+   * (§260). È colpa del professionista: la cifra e i costi del pagamento che
+   * Stripe non restituisce sono a suo carico (se i soldi erano già passati a
+   * lui, quello che non si riprende dal suo conto si trattiene dai suoi
+   * pagamenti successivi). Con un rimborso parziale il resto gli viene
+   * sbloccato. Se Stripe non risponde, la richiesta resta alla Finanza in
    * "Rimborsi e contestazioni". Con il pagamento diretto nessun rimborso.
    */
   private async requestRefundIfPaidOnline(
     issueId: string,
     booking: { clientId: string; jobPayment: { id: string; paymentMethod: string; status: string; grossAmountEurCents: number } | null },
+    percent: number,
   ): Promise<void> {
     const payment = booking.jobPayment;
     if (!payment || payment.paymentMethod !== "MANOVIA") return;
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: payment.id } });
+    const available = jp.paidEurCents - jp.refundedEurCents;
+    const amount = percent >= 100 ? available : Math.round((available * percent) / 100);
+    if (amount <= 0) return;
+    const reason = `Segnalazione accolta (${issueId}): rimborso garantito del ${percent}% del pagamento online.`;
     try {
-      await this.onlineMoneyService.refundOnline(payment.id, "ALL", `Segnalazione accolta (${issueId}): rimborso garantito del pagamento online.`, null);
+      await this.onlineMoneyService.refundOnline(payment.id, percent >= 100 ? "ALL" : amount, reason, null, { professionalFault: true });
+      if (percent < 100) await this.onlineMoneyService.releaseIfDue(payment.id).catch(() => false);
       return;
     } catch (err) {
       this.logger.warn(`Rimborso automatico non riuscito per ${issueId}: ${(err as Error).message}`);
     }
     const existing = await this.prisma.refund.findFirst({ where: { jobPaymentId: payment.id, status: { in: ["REQUESTED", "APPROVED"] } } });
     if (existing) return;
-    const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: payment.id } });
-    const amount = jp.paidEurCents - jp.refundedEurCents;
-    if (amount <= 0) return;
     const refund = await this.prisma.refund.create({
       data: {
         jobPaymentId: payment.id,
         amountEurCents: amount,
-        reason: `Segnalazione accolta (${issueId}): rimborso garantito del pagamento online.`,
+        reason,
         requestedById: booking.clientId,
       },
     });
     await this.auditLogService.record({
       entityType: "Refund",
       entityId: refund.id,
-      newValue: { amountEurCents: amount, jobPaymentId: payment.id, jobIssueId: issueId },
+      newValue: { amountEurCents: amount, jobPaymentId: payment.id, jobIssueId: issueId, refundPercent: percent },
       reason: "Rimborso automatico non riuscito: richiesta passata alla Finanza.",
     });
   }

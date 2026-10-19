@@ -681,7 +681,10 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e del costo della carta.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione, del costo della carta e del costo del bonifico.`,
+      ...(typeof payload.debtRecoveredEurCents === "number" && payload.debtRecoveredEurCents > 0
+        ? [`Abbiamo trattenuto ${formatEur(payload.debtRecoveredEurCents)} che dovevi restituire per un lavoro precedente.`]
+        : []),
       "Il bonifico arriva in banca in pochi giorni lavorativi.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
@@ -773,7 +776,20 @@ const BUILDERS: Record<string, Builder> = {
     title: "Contestazione in banca",
     paragraphs: [
       `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
-      "Decide la banca: finché la contestazione è aperta l'accredito resta sospeso. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+      "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+      "Se la banca dà ragione a te la cifra torna sul tuo conto; se dà ragione al cliente resta a lui.",
+    ],
+    cta: proRequests("Apri il lavoro"),
+  }),
+  // Cifra da restituire (§260): rimborso o contestazione persa quando i soldi non erano più sul conto.
+  JOB_PAYMENT_DEBT: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Un importo da restituire su un lavoro",
+    greeting: ctx.name,
+    title: "Importo da restituire",
+    paragraphs: [
+      `Per il lavoro **${job(ctx)}** devi restituire ${formatEur(payload.amountEurCents) || "un importo"} (rimborso al cliente o contestazione in banca).`,
+      "Lo tratteniamo dai tuoi prossimi pagamenti online, prima del bonifico. Non devi fare nulla.",
     ],
     cta: proRequests("Apri il lavoro"),
   }),
@@ -784,7 +800,9 @@ const BUILDERS: Record<string, Builder> = {
     title: "Contestazione in banca",
     paragraphs: [
       `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
-      payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+      payload.alreadyReleased
+        ? "I soldi erano già passati al professionista: quello che non si riprende dal suo conto si trattiene dai suoi prossimi pagamenti."
+        : "Se riguarda un lavoro, la cifra si riprende subito dai soldi bloccati del professionista e l'accredito resta sospeso finché la banca non decide.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),

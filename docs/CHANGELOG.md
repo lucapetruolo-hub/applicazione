@@ -19368,3 +19368,57 @@ differenti per ogni categoria".
   loro, come pillole con icona, e la città va sotto con l'icona della
   posizione (prima erano sulla stessa riga, "Idraulico · Elettricista ·
   Latina").
+
+## 260. Rimborso a livelli, costi e contestazioni a carico del professionista
+
+**Richiesta dell'utente (19/10/2026, thread sulle contestazioni Stripe):**
+sulle migliorie proposte nell'analisi dei pagamenti online: rimborso a
+livelli sì; costi a carico del professionista "in percentuale" quando il
+rimborso è colpa sua; i soldi contestati non devono uscire dal nostro conto
+("noi non prendiamo mai i soldi del professionista"); una contestazione
+persa dopo il bonifico va risolta; i costi di Stripe Connect restano al
+professionista; occuparci il meno possibile delle contestazioni.
+
+**Decisioni e motivo:**
+- **Rimborso a tre livelli** sulle segnalazioni accolte di lavori pagati
+  online: 100% (lavoro non fatto o da rifare), 50% (difetti seri), 20%
+  (difetti piccoli), scelto dall'admin nella scheda della segnalazione
+  (`JOB_ISSUE_REFUND_PERCENTS` in `packages/shared/src/jobIssues.ts`).
+  Mancata presentazione e decisioni automatiche: sempre 100%. Salvato in
+  `JobIssue.refundPercent`. Con un rimborso parziale il resto si sblocca al
+  professionista (prima una segnalazione accolta bloccava i soldi per
+  sempre, fino ai 90 giorni di Stripe).
+- **Colpa del professionista** (`refundOnline(..., { professionalFault })`,
+  segnalazione accolta, anche quando il rimborso passa dalla Finanza): la
+  cifra rimborsata e i costi del pagamento che Stripe non restituisce
+  (carta, bonifico) sono suoi; la nostra commissione sulla parte rimborsata
+  no. La commissione allo sblocco ora si calcola solo su quanto resta
+  pagato.
+- **Debito del professionista** (`JobPayment.professionalDebtEurCents`):
+  quello che si deve riprendere ma non è più sul suo conto Stripe (rimborso
+  o contestazione persa dopo il bonifico) non si storna più dal conto (lo
+  avrebbe mandato in negativo, cioè a carico nostro) ma si trattiene dai suoi
+  sblocchi successivi, dal debito più vecchio, prima del bonifico. Nuova
+  notifica `JOB_PAYMENT_DEBT` al professionista (argomento "Pagamenti dei
+  lavori").
+- **Contestazione in banca**: con l'addebito a destinazione Stripe prende
+  sempre cifra e commissione (20 €) dal conto della piattaforma
+  all'apertura. Ora, all'evento `charge.dispute.funds_withdrawn`, la cifra
+  si riprende subito dai soldi del lavoro ancora sul conto del
+  professionista (`disputeRecoveredEurCents`); a `funds_reinstated`
+  (vinta) gli torna con un trasferimento (`disputeReturnTransferId`) e lo
+  sblocco riparte. Persa: quello che manca diventa debito; se il motivo è
+  "lavoro non ricevuto" o "non conforme" anche la commissione di Stripe e i
+  costi del pagamento (frode e simili restano a noi).
+- **Costi Stripe Connect a carico del professionista**: 0,25% + 0,10 € per
+  bonifico e 2 € al primo sblocco del mese (`connectFeesEurCents`,
+  `connectMonthlyFeeMonth`), presi prima dalla trattenuta da restituire e,
+  se non basta, stornati dal suo conto.
+- Smart Disputes e funzioni della Dashboard Express (bonifici fatti da sé)
+  sono impostazioni della Dashboard Stripe: nella checklist di lancio.
+
+**Migrazione:** `20261019170000_refund_levels_professional_costs` (colonne
+facoltative o con default 0).
+
+**Testi:** Termini (punto pagamenti), regolamento delle controversie,
+email e notifiche di sblocco e contestazione, scheda admin.

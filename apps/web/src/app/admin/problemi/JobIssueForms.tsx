@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import type { AdminJobIssue } from "@professionisti/api-client";
-import { JOB_ISSUE_DECISION_TEMPLATES, JOB_ISSUE_SANCTION_LABEL, jobIssueSanctionFor } from "@professionisti/shared";
+import {
+  JOB_ISSUE_DECISION_TEMPLATES,
+  JOB_ISSUE_REFUND_LABEL,
+  JOB_ISSUE_REFUND_PERCENTS,
+  JOB_ISSUE_SANCTION_LABEL,
+  jobIssueSanctionFor,
+  type JobIssueRefundPercent,
+} from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "@/components/admin/adminUi";
@@ -62,6 +69,9 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [question, setQuestion] = useState("");
+  // Rimborso a livelli (§260): solo per il lavoro fatto male pagato online; la mancata presentazione rimborsa sempre tutto.
+  const [refundPercent, setRefundPercent] = useState<JobIssueRefundPercent>(100);
+  const choosesRefund = row.issue.paidOnline && row.issue.type !== "NO_SHOW";
   const nextCount = row.professional.upheldLast30Days + 1;
   const nextSanction = jobIssueSanctionFor(nextCount);
 
@@ -73,7 +83,11 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
     }
     setSaving(decision);
     try {
-      await apiClient.adminResolveJobIssue(token, row.issue.id, { decision, note: note.trim() });
+      await apiClient.adminResolveJobIssue(token, row.issue.id, {
+        decision,
+        note: note.trim(),
+        ...(decision === "UPHELD" && choosesRefund ? { refundPercent } : {}),
+      });
       onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -124,8 +138,30 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
       <Text fontSize={13} color={brand.grafite70}>
         {`Se la accogli: affidabilità del professionista più bassa nell'assegnazione delle richieste e misura «${JOB_ISSUE_SANCTION_LABEL[nextSanction]}» (${
           nextCount === 1 ? "prima segnalazione accolta in 30 giorni" : `${nextCount}ª segnalazione accolta in 30 giorni`
-        }).${row.issue.paidOnline ? " Lavoro pagato sul sito: parte la richiesta di rimborso completo al cliente." : ""}`}
+        }).${row.issue.paidOnline ? ` Lavoro pagato sul sito: rimborso al cliente del ${choosesRefund ? refundPercent : 100}% di quanto pagato, a carico del professionista.` : ""}`}
       </Text>
+      {choosesRefund ? (
+        <YStack gap="$1">
+          <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+            Rimborso se la accogli
+          </Text>
+          <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-label="Rimborso al cliente">
+            {JOB_ISSUE_REFUND_PERCENTS.map((percent) => (
+              <Button
+                key={percent}
+                role="radio"
+                aria-checked={refundPercent === percent}
+                variant={refundPercent === percent ? "primary" : "secondary"}
+                size="$2"
+                height={32}
+                onPress={() => setRefundPercent(percent)}
+              >
+                {JOB_ISSUE_REFUND_LABEL[percent]}
+              </Button>
+            ))}
+          </XStack>
+        </YStack>
+      ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="$2" flexWrap="wrap">
         <Button variant="urgent" size="$3" height={40} disabled={saving !== null} opacity={saving ? 0.6 : 1} onPress={() => decide("UPHELD")}>

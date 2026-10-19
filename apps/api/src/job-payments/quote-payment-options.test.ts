@@ -61,7 +61,7 @@ describe("toJobPaymentSummary con saldo diretto", () => {
       50000,
       true,
     );
-    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 500, payoutEurCents: 9200 });
+    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 500, payoutEurCents: 9200 - 33 });
   });
 });
 

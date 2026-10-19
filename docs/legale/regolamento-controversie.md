@@ -87,10 +87,20 @@ Si può fare una sola segnalazione per ogni lavoro.
   - per una mancata presentazione, il cliente può inviare con un tasto la
     stessa richiesta ad altri professionisti della zona, escluso quello che
     non si è presentato;
-  - **lavoro pagato online:** il cliente riceve subito il rimborso di
-    quanto pagato, sul metodo di pagamento usato. Di norma i soldi sono
-    ancora in custodia; se erano già passati al professionista, la sua
-    quota viene ripresa dal suo conto Stripe (storno del trasferimento).
+  - **lavoro pagato online:** il cliente riceve subito, sul metodo di
+    pagamento usato, il rimborso di una parte fissa di quanto pagato,
+    scelta secondo la gravità:
+    1. **100%**: lavoro non fatto o da rifare (sempre per la mancata
+       presentazione e per le segnalazioni accolte automaticamente);
+    2. **50%**: difetti seri;
+    3. **20%**: difetti piccoli.
+
+    Il rimborso è a carico del professionista, compresi i costi del
+    pagamento che Stripe non restituisce. Di norma i soldi sono ancora
+    bloccati sul suo conto Stripe e si riprendono da lì; con un rimborso
+    parziale il resto gli viene sbloccato. Se erano già passati a lui, quello
+    che non si riprende dal suo conto si trattiene dai suoi pagamenti online
+    successivi.
 - Dopo la decisione, o dopo un accordo in chat, il cliente può lasciare la
   recensione.
 

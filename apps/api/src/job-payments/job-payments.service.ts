@@ -194,6 +194,11 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleStripeDispute(dispute);
   }
 
+  /** Soldi di una contestazione tolti o restituiti dalla banca (`charge.dispute.funds_*`, §260). */
+  handleStripeDisputeFunds(dispute: Stripe.Dispute, kind: "withdrawn" | "reinstated"): Promise<boolean> {
+    return this.onlineMoneyService.handleStripeDisputeFunds(dispute, kind);
+  }
+
   /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§249). */
   handlePayoutEvent(payout: Stripe.Payout): Promise<void> {
     return this.onlineMoneyService.handlePayoutEvent(payout);

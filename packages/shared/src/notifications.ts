@@ -88,6 +88,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §260).
+      "JOB_PAYMENT_DEBT",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).

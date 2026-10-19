@@ -110,6 +110,35 @@ export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number
 }
 
 /**
+ * Costi di Stripe Connect per i bonifici verso la banca dei professionisti
+ * (listino Stripe per l'Italia): 0,25% + €0,10 per bonifico e €2 al mese per
+ * ogni account che riceve almeno un bonifico in quel mese. Sono a carico del
+ * professionista (decisione dell'utente del 19/10/2026, docs/CHANGELOG.md
+ * §260) e si riprendono allo sblocco, la quota mensile al primo sblocco del
+ * mese.
+ */
+export const CONNECT_PAYOUT_FEE_BASIS_POINTS = 25;
+export const CONNECT_PAYOUT_FEE_FIXED_EUR_CENTS = 10;
+export const CONNECT_MONTHLY_ACCOUNT_FEE_EUR_CENTS = 200;
+
+/** Costo Stripe di un bonifico verso la banca del professionista. */
+export function connectPayoutFeeEurCents(payoutEurCents: number): number {
+  if (payoutEurCents <= 0) return 0;
+  return Math.ceil((payoutEurCents * CONNECT_PAYOUT_FEE_BASIS_POINTS) / 10_000) + CONNECT_PAYOUT_FEE_FIXED_EUR_CENTS;
+}
+
+/** Costi Connect ripresi allo sblocco di un lavoro: mai più di quanto si sblocca. */
+export function connectFeesForReleaseEurCents(payoutEurCents: number, withMonthlyFee: boolean): number {
+  if (payoutEurCents <= 0) return 0;
+  return Math.min(payoutEurCents, connectPayoutFeeEurCents(payoutEurCents) + (withMonthlyFee ? CONNECT_MONTHLY_ACCOUNT_FEE_EUR_CENTS : 0));
+}
+
+/** Mese (AAAA-MM, ora italiana non necessaria: basta il confronto tra sblocchi) della quota mensile Connect. */
+export function connectFeeMonth(date: Date): string {
+  return date.toISOString().slice(0, 7);
+}
+
+/**
  * Bonifico verso la banca del professionista (docs/CHANGELOG.md §249):
  * - `BLOCKED`: soldi sul suo conto Stripe, bloccati fino alla conferma del cliente o ai 7 giorni;
  * - `WAITING_FUNDS`: sbloccati, il bonifico parte appena Stripe li rende disponibili;
@@ -324,7 +353,9 @@ export function toJobPaymentSummary(
     const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || Math.round((base * ONLINE_APP_FEE_PERCENT) / 100);
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
-    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    // Prima dello sblocco una stima: anche il costo del bonifico è a carico del professionista (§260).
+    const estimate = Math.max(0, base - appFee - jp.stripeFeeEurCents);
+    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, estimate - connectPayoutFeeEurCents(estimate));
     summary.payoutStatus = jobPayoutStatus(jp);
     summary.payoutFailureMessage = summary.payoutStatus === "FAILED" ? (jp.payoutFailureMessage ?? null) : null;
   }

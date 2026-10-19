@@ -537,6 +537,11 @@ export class BillingService {
         await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", { amountEurCents: dispute.amount, status: dispute.status, bookingId: null });
       }
     }
+    // Cifra contestata tolta dal nostro conto o restituita (§260): si riprende
+    // subito dai soldi bloccati del professionista e gli torna se si vince.
+    if (event.type === "charge.dispute.funds_withdrawn" || event.type === "charge.dispute.funds_reinstated") {
+      await this.jobPaymentsService.handleStripeDisputeFunds(event.data.object as Stripe.Dispute, event.type === "charge.dispute.funds_withdrawn" ? "withdrawn" : "reinstated");
+    }
 
     // Ciclo di vita dell'abbonamento (docs/CHANGELOG.md §161-§162): rinnovo
     // pagato o non riuscito, cambio di livello, annullamento, fine.

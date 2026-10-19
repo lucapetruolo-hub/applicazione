@@ -1847,6 +1847,23 @@ model JobPayment {
   /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
   longHoldAlertedAt          DateTime?
 
+  // --- Contestazioni, debiti e costi Stripe a carico del professionista (docs/CHANGELOG.md §260) ---
+  // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
+  // e che abbiamo già ripreso dal conto del professionista (storno), più il
+  // trasferimento con cui gliela restituiamo se la contestazione è vinta.
+  disputeRecoveredEurCents   Int       @default(0)
+  disputeReturnTransferId    String?
+  // Quanto il professionista deve ancora alla piattaforma per questo lavoro
+  // (rimborso o contestazione persa per colpa sua quando i soldi erano già
+  // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
+  // lavori sbloccati, prima del bonifico.
+  professionalDebtEurCents   Int       @default(0)
+  // Costi di Stripe Connect ripresi dal professionista allo sblocco: costo
+  // del bonifico e quota mensile dell'account attivo (`connectMonthlyFeeMonth`,
+  // AAAA-MM, al primo sblocco del mese).
+  connectFeesEurCents        Int       @default(0)
+  connectMonthlyFeeMonth     String?
+
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
   directReportedById String? // User.id di chi ha dichiarato l'importo (di norma il professionista)
@@ -2208,6 +2225,9 @@ model JobIssue {
   // Misura applicata al professionista con la decisione "accolta":
   // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
   sanction                    String?
+  // Percentuale di quanto pagato online rimborsata al cliente quando la
+  // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §260).
+  refundPercent               Int?
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?
