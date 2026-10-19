@@ -19140,3 +19140,20 @@ sempre.
   la foto invece di restare in una colonna stretta accanto.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
+
+## 253. Conferma email da un altro dispositivo: la pagina si aggiorna da sola
+
+**Richiesta (Luca, 19/10/2026):** se il link di conferma viene aperto dal
+telefono, la pagina registrazione sul computer deve passare avanti da sola,
+senza ricaricarla né inserire il codice.
+
+**Decisione:** `EmailCodeForm` controlla ogni 3 secondi `/auth/me` finché
+l'email non risulta confermata (`emailVerified`) e, quando succede, mostra
+"Email confermata" e prosegue come con il codice giusto. Il controllo non
+serve in "Password dimenticata" (che ha il suo codice) ed è fermo una volta
+confermata l'email. Un errore di rete durante il controllo viene ignorato.
+
+**Motivo:** il link nella mail è il percorso più comune su telefono, e
+senza questo la pagina sul computer resta ferma su un codice già inutile.
+
+**Verifica:** `apps/web` typecheck pulito.

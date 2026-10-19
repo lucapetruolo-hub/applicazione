@@ -10,6 +10,8 @@ type CheckState = "idle" | "checking" | "error" | "done";
 
 /** Validità di un codice appena mandato, come `EMAIL_CODE_MINUTES` in apps/api. */
 const CODE_VALID_SECONDS = 15 * 60;
+/** Ogni quanto controllare se l'email è già stata confermata altrove (link sul telefono). */
+const EMAIL_VERIFIED_POLL_MS = 3000;
 
 /**
  * Inserimento del codice di 6 cifre arrivato con l'email di conferma
@@ -103,6 +105,32 @@ export function EmailCodeForm({
     void resend(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Conferma fatta da un altro dispositivo (il link nella mail, aperto dal
+  // telefono): la pagina lo vede da sola, senza ricaricarla. Solo per la
+  // conferma email, non per il recupero password (che ha submitCode).
+  const done = state === "done";
+  useEffect(() => {
+    if (submitCode || done) return;
+    let stopped = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const user = await apiClient.me(token);
+        if (stopped || !user?.emailVerified) return;
+        stopped = true;
+        window.clearInterval(timer);
+        setState("done");
+        window.setTimeout(() => onVerified(user.email ?? email), 700);
+      } catch {
+        // Un controllo saltato per la rete non conta: si riprova tra poco.
+      }
+    }, EMAIL_VERIFIED_POLL_MS);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, submitCode, done]);
 
   async function submit(value: string) {
     if (value.length !== EMAIL_CODE_LENGTH || state === "checking" || state === "done") return;
