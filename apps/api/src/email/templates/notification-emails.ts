@@ -901,6 +901,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Profilo verificato",
     paragraphs: [
       "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
+      "Da adesso puoi anche inviare preventivi ai clienti.",
     ],
     cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },
   }),
@@ -973,9 +974,60 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         "Il tuo profilo non mostra più il badge Verificato.",
         ...(note ? [`**Motivazione:** ${note}`] : []),
-        "Se pensi che sia un errore, scrivici dal modulo Contatti.",
+        "Per riaverlo rifai la verifica dell'identità con documento e selfie: servono circa 2 minuti. Se pensi che sia un errore, scrivici dal modulo Contatti.",
       ],
-      cta: { label: "Scrivici dal modulo Contatti", url: `${frontendUrl()}/contatti` },
+      cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+    };
+  },
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
+  IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
+    const reason = str(payload.reason);
+    return {
+      kind: "account",
+      subject: "Verifica dell'identità da rifare",
+      greeting: ctx.name,
+      title: "La verifica dell'identità non è andata a buon fine",
+      paragraphs: [
+        ...(reason ? [reason] : ["Il documento o il selfie non sono stati accettati."]),
+        "Puoi riprovare subito: tieni a portata di mano un documento valido (carta d'identità, patente o passaporto) e mettiti in un posto con buona luce.",
+      ],
+      cta: { label: "Riprova la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+    };
+  },
+  // Verifica in attesa ripresa e promemoria (§256).
+  IDENTITY_VERIFICATION_READY: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Puoi continuare la verifica dell'identità",
+    greeting: ctx.name,
+    title: "La verifica è di nuovo disponibile",
+    paragraphs: ["Prima il servizio di verifica non rispondeva, ora funziona: riprendi da dove eri, servono circa 2 minuti."],
+    cta: { label: "Continua la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+  }),
+  IDENTITY_VERIFICATION_REMINDER: (_payload, ctx) => ({
+    kind: "account",
+    subject: "Ti manca solo la verifica dell'identità",
+    greeting: ctx.name,
+    title: "Completa la verifica per inviare preventivi",
+    paragraphs: [
+      "Per inviare il tuo primo preventivo serve una verifica veloce con documento e selfie: circa 2 minuti, una volta sola.",
+      "Così i clienti vedono il badge **Verificato** sul tuo profilo.",
+    ],
+    cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+  }),
+  TAX_ID_INVALID: (payload, ctx) => {
+    const isVat = payload.kind === "PARTITA_IVA";
+    return {
+      kind: "account",
+      subject: isVat ? "Controlla la tua partita IVA" : "Controlla il tuo codice fiscale",
+      greeting: ctx.name,
+      title: isVat ? "La partita IVA non risulta attiva" : "Non riusciamo a verificare il codice fiscale",
+      paragraphs: [
+        isVat
+          ? "Abbiamo verificato la partita IVA che hai inserito nei dati fiscali e non risulta attiva."
+          : "Il codice fiscale che hai inserito nei dati fiscali non risulta valido: forse c'è un errore di battitura.",
+        "Finché non lo correggi il tuo profilo non compare nelle ricerche. Se il dato è giusto, scrivici dal modulo Contatti e lo controlliamo insieme.",
+      ],
+      cta: { label: "Correggi i dati fiscali", url: `${frontendUrl()}/dashboard/fiscale` },
     };
   },
   CONTENT_REPORT_REVERTED: (payload, ctx) => {

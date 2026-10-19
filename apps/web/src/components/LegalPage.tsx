@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Text, YStack, brand } from "@professionisti/ui";
 
-/** `id`: ancora per un link diretto alla sezione (es. /termini#pagamenti). */
+/** `id` serve per i link diretti a una sezione (es. /privacy#verifica-identita). */
 type LegalSection = { heading: string; body: ReactNode; id?: string };
 
 /**

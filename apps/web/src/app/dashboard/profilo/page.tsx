@@ -131,9 +131,6 @@ export default function DashboardProfiloPage() {
   // Badge assegnato da un admin dopo il controllo dei documenti (docs/CHANGELOG.md §200).
   const [verified, setVerified] = useState(false);
   // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
-  const [verificationRequestedAt, setVerificationRequestedAt] = useState<string | null>(null);
-  const [requestingVerification, setRequestingVerification] = useState(false);
-  const [verificationRequestError, setVerificationRequestError] = useState<string | null>(null);
   // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
   const [city, setCity] = useState("");
@@ -223,7 +220,6 @@ export default function DashboardProfiloPage() {
   function applyProfile(profile: MyProfessionalProfile) {
     setBusinessName(profile.businessName);
     setVerified(profile.verified);
-    setVerificationRequestedAt(profile.verificationRequestedAt);
     setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
     setCity(profile.city);
     setAddress(profile.address ?? "");
@@ -593,20 +589,6 @@ export default function DashboardProfiloPage() {
     })
     .slice(0, 10);
 
-  async function requestVerification() {
-    if (!token) return;
-    setRequestingVerification(true);
-    setVerificationRequestError(null);
-    try {
-      const result = await apiClient.requestProfessionalVerification(token);
-      setVerificationRequestedAt(result.verificationRequestedAt);
-    } catch (err) {
-      setVerificationRequestError(err instanceof Error ? err.message : "Non siamo riusciti a inviare la richiesta. Riprova.");
-    } finally {
-      setRequestingVerification(false);
-    }
-  }
-
   const visibilityStatus = preview ? VISIBILITY_STATUS[preview.visibility] : null;
 
   return (
@@ -652,22 +634,11 @@ export default function DashboardProfiloPage() {
                   <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
                   Verificato
                 </span>
-              ) : verificationRequestedAt ? (
-                <span className="profile-verify-chip" title="Ti ricontattiamo per controllare documento d'identità e partita IVA o codice fiscale">
-                  <Icon name="clock" size={14} strokeWidth={2} color={brand.grafite70} />
-                  Verifica richiesta
-                </span>
               ) : (
-                <button
-                  type="button"
-                  className="profile-verify-chip is-action"
-                  disabled={requestingVerification}
-                  title="Controlliamo un tuo documento d'identità e la partita IVA o il codice fiscale"
-                  onClick={() => void requestVerification()}
-                >
+                <Link href="/dashboard/verifica-identita" className="profile-verify-chip is-action">
                   <Icon name="badge-check" size={14} strokeWidth={2} color={brand.cianografiaScuro} />
-                  {requestingVerification ? "Invio…" : "Richiedi il badge Verificato"}
-                </button>
+                  Verifica la tua identità
+                </Link>
               )}
               {preview.visibility === "PUBLIC" ? (
                 <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
@@ -684,7 +655,6 @@ export default function DashboardProfiloPage() {
               ) : null}
             </div>
           ) : null}
-          {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
 
           <div className="profile-preview-frame">
             <div className="profile-preview-bar">

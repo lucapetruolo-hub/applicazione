@@ -2,18 +2,87 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { ProfessionalVerificationFilter, ProfessionalVerificationRow } from "@professionisti/shared";
+import { TAX_ID_KIND_LABEL, type ProfessionalVerificationFilter, type ProfessionalVerificationRow } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
+type Row = ProfessionalVerificationRow;
+
+const IDENTITY_LABEL: Record<NonNullable<Row["identity"]>["status"], { text: string; tone: "ok" | "warn" | "danger" | "neutral" }> = {
+  STARTED: { text: "Documento e selfie: iniziata", tone: "neutral" },
+  PROCESSING: { text: "Documento e selfie: in attesa di esito", tone: "neutral" },
+  APPROVED: { text: "Documento e selfie: approvata", tone: "ok" },
+  NEEDS_REVIEW: { text: "Documento e selfie: da rifare", tone: "danger" },
+  DECLINED: { text: "Documento e selfie: rifiutata", tone: "danger" },
+  EXPIRED: { text: "Documento e selfie: scaduta", tone: "neutral" },
+};
+
+const TAX_TONE: Record<Row["taxIdChecks"][number]["status"], "ok" | "warn" | "danger" | "neutral"> = {
+  VALID: "ok",
+  REVIEW: "neutral",
+  INVALID: "danger",
+  PENDING: "neutral",
+};
+
+const TAX_TEXT: Record<Row["taxIdChecks"][number]["status"], string> = {
+  VALID: "confermato",
+  REVIEW: "non nel registro imprese",
+  INVALID: "non valido",
+  PENDING: "in controllo",
+};
+
+/** Esiti dei controlli automatici: documento e selfie (Didit), codice fiscale e partita IVA (VIES, Openapi). */
+function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?: () => void; rechecking?: boolean }) {
+  if (!row.identity && row.taxIdChecks.length === 0) return null;
+  // Servizio di verifica irraggiungibile all'avvio: id provvisorio "standby-…" (§256).
+  const identity = row.identity
+    ? row.identity.status === "STARTED" && row.identity.providerSessionId.startsWith("standby-")
+      ? { text: "Documento e selfie: in attesa del servizio", tone: "neutral" as const }
+      : IDENTITY_LABEL[row.identity.status]
+    : null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, marginTop: 4 }}>
+      {row.taxIdChecks.map((check) => (
+        <div key={check.kind}>
+          <AdminPill tone={TAX_TONE[check.status]}>
+            {TAX_ID_KIND_LABEL[check.kind]}: {TAX_TEXT[check.status]}
+            {check.detail ? ` (${check.detail.toLowerCase()})` : ""}
+          </AdminPill>
+          {check.officialName ? <div style={{ color: brand.grafite70, fontSize: 13 }}>Registro: {check.officialName}</div> : null}
+        </div>
+      ))}
+      {onRecheck && row.taxIdChecks.length > 0 ? (
+        <button
+          type="button"
+          onClick={onRecheck}
+          disabled={rechecking}
+          style={{ background: "none", border: "none", padding: 0, color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13, textDecoration: "underline", cursor: rechecking ? "wait" : "pointer" }}
+        >
+          {rechecking ? "Verifica in corso…" : "Ricontrolla ora"}
+        </button>
+      ) : null}
+      {identity && row.identity ? (
+        <div>
+          <AdminPill tone={identity.tone}>{identity.text}</AdminPill>
+          {row.identity.reason ? <div style={{ color: brand.grafite70, fontSize: 13 }}>{row.identity.reason}</div> : null}
+          <div style={{ color: brand.grafite70, fontSize: 12 }}>
+            Sessione {row.identity.provider}: <code>{row.identity.providerSessionId}</code>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): l'admin
- * controlla fuori dal sito un documento d'identità e la partita IVA (o il
- * codice fiscale) e qui assegna il badge "Verificato". Nessun documento
- * viene caricato o conservato sul sito.
+ * Verifica dei professionisti (docs/CHANGELOG.md §200, §253, §255): tutto
+ * automatico, documento e selfie con Didit, codice fiscale e P.IVA con VIES
+ * e Openapi. L'admin non accetta né rifiuta nessuno (decisione dell'utente):
+ * qui vede a che punto è ciascuno, può ricontrollare i dati fiscali e
+ * togliere il badge. Nessun documento viene caricato o conservato sul sito.
  */
 export default function AdminVerifichePage() {
   const { token } = useAuth();
@@ -22,13 +91,13 @@ export default function AdminVerifichePage() {
   const [rows, setRows] = useState<ProfessionalVerificationRow[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   // Riga su cui si sta agendo: il pannello di conferma compare sopra l'elenco.
-  const [selected, setSelected] = useState<ProfessionalVerificationRow | null>(null);
-  const [identityChecked, setIdentityChecked] = useState(false);
-  const [taxIdChecked, setTaxIdChecked] = useState(false);
+  const [selected, setSelected] = useState<Row | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // Profilo su cui è in corso "Ricontrolla ora" (§254).
+  const [recheckingId, setRecheckingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -45,10 +114,28 @@ export default function AdminVerifichePage() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  function open(row: ProfessionalVerificationRow) {
+  async function recheck(row: Row) {
+    if (!token) return;
+    setRecheckingId(row.professionalProfileId);
+    setListError(null);
+    try {
+      const checks = await apiClient.adminRecheckTaxIds(token, row.professionalProfileId);
+      const pending = checks.filter((check) => check.status === "PENDING").length;
+      setDone(
+        pending > 0
+          ? `${row.businessName}: il servizio non ha risposto, riproviamo da soli tra poco.`
+          : `${row.businessName}: codice fiscale e partita IVA verificati di nuovo.`,
+      );
+      load();
+    } catch (err) {
+      setListError(errorMessage(err));
+    } finally {
+      setRecheckingId(null);
+    }
+  }
+
+  function open(row: Row) {
     setSelected(row);
-    setIdentityChecked(false);
-    setTaxIdChecked(false);
     setNote("");
     setActionError(null);
     setDone(null);
@@ -59,25 +146,12 @@ export default function AdminVerifichePage() {
     setSaving(true);
     setActionError(null);
     try {
-      if (selected.verified) {
-        if (note.trim().length < 3) {
-          setActionError("Scrivi il motivo: arriva al professionista.");
-          return;
-        }
-        await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
-        setDone(`Verifica tolta a ${selected.businessName}.`);
-      } else {
-        if (!identityChecked || !taxIdChecked) {
-          setActionError("Spunta entrambi i controlli prima di verificare.");
-          return;
-        }
-        await apiClient.adminVerifyProfessional(token, selected.professionalProfileId, {
-          identityChecked: true,
-          taxIdChecked: true,
-          note: note.trim() || undefined,
-        });
-        setDone(`${selected.businessName} ora ha il badge Verificato.`);
+      if (note.trim().length < 3) {
+        setActionError("Scrivi il motivo: arriva al professionista.");
+        return;
       }
+      await apiClient.adminUnverifyProfessional(token, selected.professionalProfileId, note.trim());
+      setDone(`Verifica tolta a ${selected.businessName}.`);
       setSelected(null);
       load();
     } catch (err) {
@@ -91,12 +165,12 @@ export default function AdminVerifichePage() {
     <YStack gap="$4">
       <AdminPageHeader
         title="Verifica profili"
-        description="Controlla un documento d'identità e la partita IVA (o il codice fiscale, per chi non ha partita IVA) in videochiamata o per email, poi assegna il badge Verificato. Sul sito non si carica nessun documento."
+        description="La verifica è tutta automatica: documento e selfie con Didit, codice fiscale e partita IVA con VIES e Openapi. Se qualcosa non torna il professionista riceve il motivo e la rifà da solo. Qui vedi a che punto è ognuno, puoi ricontrollare i dati fiscali o togliere il badge a chi non lo merita più."
       />
 
       <AdminTabs
         tabs={[
-          { key: "pending", label: "Da verificare" },
+          { key: "pending", label: "Non ancora verificati" },
           { key: "verified", label: "Verificati" },
         ]}
         value={filter}
@@ -113,35 +187,20 @@ export default function AdminVerifichePage() {
         <AdminCard highlight>
           <YStack gap="$3">
             <Text fontWeight="700" color={brand.grafite}>
-              {selected.verified ? `Togli la verifica a ${selected.businessName}` : `Verifica ${selected.businessName}`}
+              Togli la verifica a {selected.businessName}
             </Text>
-            {selected.verified ? null : (
-              <YStack gap="$2">
-                <Text fontSize={14} color={brand.grafite70}>
-                  Titolare: {selected.ownerName || "non indicato"} · Partita IVA: {selected.vatNumber ?? "non inserita"} · Codice fiscale:{" "}
-                  {selected.codiceFiscale ?? "non inserito"}
-                </Text>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={identityChecked} onChange={(e) => setIdentityChecked(e.target.checked)} />
-                  <Text fontSize={14}>Ho controllato un documento d&apos;identità valido del titolare</Text>
-                </label>
-                <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={taxIdChecked} onChange={(e) => setTaxIdChecked(e.target.checked)} />
-                  <Text fontSize={14}>Ho controllato la partita IVA (o il codice fiscale) e corrisponde al titolare</Text>
-                </label>
-              </YStack>
-            )}
-            <textarea aria-label={selected.verified ? "Motivo" : "Nota interna"}
+            <textarea
+              aria-label="Motivo"
               className="admin-input"
               rows={2}
-              placeholder={selected.verified ? "Motivo (lo riceve il professionista) *" : "Nota interna (facoltativa, es. come hai fatto il controllo)"}
+              placeholder="Motivo (lo riceve il professionista) *"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
             {actionError ? <Text color={brand.urgenza}>{actionError}</Text> : null}
             <XStack gap="$2">
-              <Button size="$3" disabled={saving} backgroundColor={selected.verified ? brand.urgenza : undefined} onPress={() => void confirm()}>
-                {saving ? "…" : selected.verified ? "Togli verifica" : "Segna come verificato"}
+              <Button size="$3" disabled={saving} backgroundColor={brand.urgenza} onPress={() => void confirm()}>
+                {saving ? "…" : "Togli verifica"}
               </Button>
               <Button variant="secondary" size="$3" onPress={() => setSelected(null)}>
                 Annulla
@@ -162,7 +221,7 @@ export default function AdminVerifichePage() {
       {rows === null && !listError ? (
         <SkeletonTableRows rows={4} cols={5} />
       ) : rows && rows.length === 0 ? (
-        <Text color={brand.grafite70}>{filter === "pending" ? "Nessun profilo da verificare." : "Nessun profilo verificato."}</Text>
+        <Text color={brand.grafite70}>{filter === "pending" ? "Tutti i professionisti sono verificati." : "Nessun profilo verificato."}</Text>
       ) : rows ? (
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -202,6 +261,7 @@ export default function AdminVerifichePage() {
                       <AdminPill tone="warn">Non compilati</AdminPill>
                     )}
                     {row.hasLiabilityInsurance ? <div style={{ color: brand.grafite70, fontSize: 13 }}>RC dichiarata</div> : null}
+                    <AutomaticChecks row={row} onRecheck={() => void recheck(row)} rechecking={recheckingId === row.professionalProfileId} />
                   </td>
                   <td>
                     {row.verified ? (
@@ -222,9 +282,11 @@ export default function AdminVerifichePage() {
                     )}
                   </td>
                   <td>
-                    <Button variant="secondary" size="$2" onPress={() => open(row)}>
-                      {row.verified ? "Togli verifica" : "Verifica"}
-                    </Button>
+                    {row.verified ? (
+                      <Button variant="secondary" size="$2" onPress={() => open(row)}>
+                        Togli verifica
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               ))}

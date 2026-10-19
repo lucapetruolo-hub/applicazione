@@ -49,8 +49,8 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
   if (sub.fiscalDataNeeded) {
     title = "Il tuo profilo non è ancora visibile";
     body =
-      "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila i dati fiscali: " +
-      "la legge ci chiede di raccoglierli per tutti. Per farti pagare l'acconto online serve poi anche la verifica su Stripe.";
+      "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila (o correggi) i dati fiscali: " +
+      "la legge ci chiede di raccoglierli per tutti. Li verifichiamo subito, in automatico.";
     action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
   } else if (sub.pausedReason === "LIMIT_REACHED") {
@@ -70,6 +70,13 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
     title = "Abbonamento concluso";
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
     action = "Riattiva il tuo account";
+  } else if (sub.identityVerificationNeeded && showAction) {
+    // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §253).
+    tone = "warn";
+    title = "Verifica la tua identità per inviare preventivi";
+    body = "Il tuo profilo è visibile, ma per rispondere ai clienti con un preventivo serve una verifica veloce: un documento e un selfie, circa 2 minuti.";
+    action = "Verifica la tua identità";
+    href = "/dashboard/verifica-identita";
   } else if (sub.state === "PAST_DUE") {
     tone = "warn";
     title = "Pagamento dell'abbonamento non riuscito";
