@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { BRAND, FISCAL_DECLARATION_VERSION, fiscalDataMissing, type ProfessionalFiscalProfileInput, type SetFiscalVerificationInput } from "@professionisti/shared";
@@ -7,6 +7,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
+import { PayoutAccountService } from "./payout-account.service";
 
 const FISCAL_FIELDS = [
   "entityType",
@@ -47,11 +48,14 @@ const FISCAL_FIELDS = [
 export class ProfessionalFiscalService {
   private readonly stripe: Stripe | null;
 
+  private readonly logger = new Logger(ProfessionalFiscalService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly payoutAccountService?: PayoutAccountService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -310,6 +314,10 @@ export class ProfessionalFiscalService {
     if (!this.stripe) return;
     const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
     await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
+    // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
+    await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {
+      this.logger.warn(`IBAN non ricontrollato per ${stripeAccountId}: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */
