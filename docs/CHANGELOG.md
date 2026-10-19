@@ -19141,7 +19141,7 @@ sempre.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
 
-## 256. Conferma email da un altro dispositivo: la pagina si aggiorna da sola
+## 257. Conferma email da un altro dispositivo: la pagina si aggiorna da sola
 
 **Richiesta (Luca, 19/10/2026):** se il link di conferma viene aperto dal
 telefono, la pagina registrazione sul computer deve passare avanti da sola,
